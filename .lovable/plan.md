@@ -1,44 +1,71 @@
 
 
-## «Sist flydd»-dato på droner + sortering
+## Flylogg-varsler basert på terskelverdier (DJI/ArduPilot)
 
 ### Oversikt
-Vis dato for siste loggede flytur på dronekortet (både på /ressurser-listen og i DroneDetailDialog). Legg til sorteringsfunksjon i droneseksjonen.
+Ny seksjon under Selskapsinnstillinger (admin → Avdelinger) der selskapet definerer terskelverdier fra flylogger som utløser e-postvarsler. Selskapet velger hvilke brukere som skal motta varslene.
 
-### Datahenting
+### Foreslåtte terskelverdier
 
-Sist flydd hentes fra `flight_logs`-tabellen. I `fetchDrones` i Resources.tsx, etter at dronene er hentet, gjør en samlet spørring for å finne nyeste `flight_date` per drone:
+Basert på data som allerede lagres i `flight_logs` og `parsed_result`:
 
+| Terskel | Felt i flight_logs / parsed_result | Standard |
+|---|---|---|
+| Batteri under X % | `parsed_result.minBattery` | 20% |
+| RTH ble trigget | `rth_triggered` | på/av |
+| Høyde over X meter AGL | `max_height_m` | 120m |
+| Maks horisontal hastighet over X m/s | `max_horiz_speed_ms` | 20 m/s |
+| GPS-satellitter under X | `gps_sat_min` | 6 |
+| Battericelleavvik over X V | `battery_cell_deviation_max_v` | 0.3V |
+| Batteritemperatur over X °C | `battery_temp_max_c` | 50°C |
+| Høy vibrasjon (ArduPilot) | parsed warnings `high_vibration` | på/av |
+
+### Database
+
+**Ny tabell `company_flight_alerts`:**
 ```sql
-SELECT drone_id, MAX(flight_date) as last_flown
-FROM flight_logs
-WHERE drone_id IN (...)
-GROUP BY drone_id
+CREATE TABLE public.company_flight_alerts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid REFERENCES companies(id) ON DELETE CASCADE NOT NULL,
+  alert_type text NOT NULL,
+  enabled boolean DEFAULT true,
+  threshold_value numeric,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(company_id, alert_type)
+);
 ```
 
-Resultatet merges inn som `last_flown` på hvert drone-objekt.
+**Ny tabell `company_flight_alert_recipients`:**
+```sql
+CREATE TABLE public.company_flight_alert_recipients (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid REFERENCES companies(id) ON DELETE CASCADE NOT NULL,
+  profile_id uuid NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(company_id, profile_id)
+);
+```
+
+RLS: Brukere i synlige selskaper kan lese/skrive.
 
 ### UI-endringer
 
-**`src/pages/Resources.tsx`**
-- I `fetchDrones`: hent siste flytur-dato fra `flight_logs` og legg til `last_flown` på hvert drone-objekt
-- Ny state `droneSortBy` med verdier `"default"` | `"last_flown"`
-- Legg til en sorteringsvelger i filter-raden (ved siden av modell/status-filtere)
-- Vis «Sist flydd: dd.MM.yyyy» som ny rad **over** flyvetimer i dronekortet på listen
-- Sortering på «Sist flydd» sorterer nyeste først (droner uten flytur sist)
+**`src/components/admin/ChildCompaniesSection.tsx`**
+- Ny seksjon «Flylogg-varsler» etter Roller-seksjonen
+- Infotekst: «Motta e-postvarsler når kritiske terskelverdier nås under flyging»
+- Liste over alle 8 terskelverdier med Switch (av/på) og Input for definerbar verdi
+- Velger for mottakere: hent profiler fra selskapets brukere, vis som tags med X-knapp
+- Bruk SearchablePersonSelect eller lignende komponent for å legge til mottakere
 
-**`src/components/resources/DroneDetailDialog.tsx`**
-- Hent `last_flown` fra `flight_logs` når dialogen åpnes
-- Vis «Sist flydd: dd.MM.yyyy» under flyvetimer/status-seksjonen i visningsmodusen
+### Varslingslogikk
 
-**`src/components/dashboard/DroneListDialog.tsx`**
-- Vis «Sist flydd» i grid-infoen på dronekortet (samme mønster som Resources)
-
-### Ingen databaseendringer
-All data finnes allerede i `flight_logs`-tabellen.
+**`src/components/UploadDroneLogDialog.tsx`**
+- Etter vellykket lagring av flylogg: hent selskapets aktive alerts og sjekk parsed_result mot terskelverdier
+- Hvis en terskel overskrides: kall `send-notification-email` edge function med varsel-e-post til alle registrerte mottakere
+- Genererer HTML med info om dronen, piloten, flyturen og hvilke terskler som ble utløst
 
 ### Filer som endres
-1. `src/pages/Resources.tsx` — hent last_flown, vis i liste, legg til sortering
-2. `src/components/resources/DroneDetailDialog.tsx` — vis last_flown i detalj-visning
-3. `src/components/dashboard/DroneListDialog.tsx` — vis last_flown i status-dialogen
+1. **Ny migrasjon** — `company_flight_alerts` + `company_flight_alert_recipients`
+2. **`src/components/admin/ChildCompaniesSection.tsx`** — Ny varsler-seksjon i innstillinger
+3. **`src/components/UploadDroneLogDialog.tsx`** — Terskelsjekk og varselutsending etter lagring
 
