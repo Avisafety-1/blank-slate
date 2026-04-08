@@ -106,6 +106,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sist_vedlikehold: "",
   });
   const [missionsSinceInspection, setMissionsSinceInspection] = useState(0);
+  const [lastFlown, setLastFlown] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
   const [technicalResponsibleName, setTechnicalResponsibleName] = useState<string | null>(null);
   const [formTechnicalResponsibleId, setFormTechnicalResponsibleId] = useState<string | null>(null);
@@ -882,6 +883,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
                   <p className="text-sm sm:text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sist flydd</p>
+                  <p className="text-sm sm:text-base">{lastFlown ? format(new Date(lastFlown), "dd.MM.yyyy") : "–"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
