@@ -52,7 +52,7 @@ export const MissionResourceSections = ({ mission, open }: MissionResourceSectio
         const [pRes, dRes, eRes] = await Promise.all([
           supabase
             .from("mission_personnel")
-            .select("profile_id, profiles(id, full_name)")
+            .select("profile_id, profiles(id, full_name), role_id, company_mission_roles(id, name)")
             .eq("mission_id", mission.id),
           supabase
             .from("mission_drones")
@@ -103,8 +103,11 @@ export const MissionResourceSections = ({ mission, open }: MissionResourceSectio
             <p className="text-sm font-medium text-muted-foreground">Personell</p>
             <ul className="text-base space-y-0.5">
               {personnel.map((p) => (
-                <li key={p.profile_id}>
-                  {p.profiles?.full_name || "Ukjent"}
+                <li key={p.profile_id} className="flex items-center gap-1.5">
+                  <span>{p.profiles?.full_name || "Ukjent"}</span>
+                  {p.company_mission_roles?.name && (
+                    <span className="text-xs text-muted-foreground">({p.company_mission_roles.name})</span>
+                  )}
                 </li>
               ))}
             </ul>
