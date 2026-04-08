@@ -188,11 +188,11 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
           <Tabs value={activeChecklistId} onValueChange={handleTabChange}>
             <TabsList className="w-full">
               {checklistIds.map((id) => (
-                <TabsTrigger key={id} value={id} className="flex-1 gap-1.5 text-xs">
+                <TabsTrigger key={id} value={id} className="flex-1 gap-1.5 text-xs whitespace-normal text-left leading-tight py-2 min-h-[2.5rem] h-auto">
                   {completedChecklistIds.has(id) && (
                     <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
                   )}
-                  <span className="truncate">{checklistTitles[id] || "…"}</span>
+                  <span className="line-clamp-2 break-words">{checklistTitles[id] || "…"}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
