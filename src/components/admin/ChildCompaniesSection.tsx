@@ -123,6 +123,7 @@ export const ChildCompaniesSection = () => {
   useEffect(() => {
     fetchChildren();
     fetchParentSettings();
+    fetchMissionRoles();
 
     if (!companyId) return;
     const channel = supabase
