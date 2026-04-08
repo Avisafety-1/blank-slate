@@ -495,7 +495,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Parter som er informert om hendelsen (VL1064)'
   },
 
-  // ===== ANALYSIS GROUP (Entity 14 - Events) =====
+  // ===== ANALYSIS GROUP =====
   {
     code: 391,
     label: 'Risikoklassifisering (Risk Classification)',
@@ -508,24 +508,25 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     helpText: 'Risikoklassifisering av hendelsen — kun RPAS-relevante verdier (VL391)'
   },
   {
-    code: 393,
-    label: 'Vurdering (Assessment)',
+    code: 1065,
+    label: 'Risikoklassifisering (intern)',
     taxonomyCode: '24',
-    entityPath: '14',
-    format: 'value_list_int_array',
-    type: 'select',
+    entityPath: '53',
+    format: 'string_array',
+    type: 'text',
     group: 'analysis',
-    helpText: 'Risikovurdering/assessment av hendelsen (VL393)'
+    maxLength: 200,
+    helpText: 'Intern risikoklassifisering fra rapporterende organisasjon (maks 200 tegn)'
   },
   {
-    code: 394,
-    label: 'Sikkerhetsanbefaling (Safety Recommendation)',
+    code: 1068,
+    label: 'Risikovurdering (Risk Assessment)',
     taxonomyCode: '24',
-    entityPath: '14',
+    entityPath: '53',
     format: 'text_content_array',
     type: 'textarea',
     group: 'analysis',
-    helpText: 'Sikkerhetsanbefalinger og konklusjon'
+    helpText: 'Detaljert risikovurdering av hendelsen'
   },
 
   // ===== BIRDSTRIKE GROUP (Entity 4 - Aircraft) =====

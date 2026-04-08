@@ -123,8 +123,8 @@ async function loadIncidentAttributesGeneric(supabase, incident_id) {
 const ENTITY_PATH_OVERRIDES = {
   '390': '14',   // Event_Type -> Events entity (Entity 14)
   '391': '14',   // Risk Classification -> Events entity (Entity 14)
-  '393': '14',   // Assessment -> Events entity (Entity 14)
-  '394': '14',   // Safety Recommendation -> Events entity (Entity 14)
+  '1065': '53',  // Risk classification (internal) -> Reporting history (Entity 53)
+  '1068': '53',  // Risk assessment -> Reporting history (Entity 53)
   '32': '4',     // Aircraft Category -> Aircraft entity (Entity 4)
   '215': '4',    // Operator -> Aircraft entity (Entity 4)
   
