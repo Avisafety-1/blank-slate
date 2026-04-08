@@ -261,7 +261,7 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_token, flighthub2_base_url")
       .eq("id", companyId)
       .single();
     if (data) {
