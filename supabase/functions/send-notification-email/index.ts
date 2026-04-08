@@ -37,7 +37,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
+    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
