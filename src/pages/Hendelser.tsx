@@ -140,6 +140,7 @@ const getEccairsStatusClass = (status?: string): string => {
 
 const Hendelser = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading, companyId, departmentsEnabled, isAdmin } = useAuth();
   const companySettings = useCompanySettings();
   const [incidents, setIncidents] = useState<Incident[]>([]);
