@@ -14,12 +14,13 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
-import { ImagePlus, X, Check, ChevronsUpDown } from "lucide-react";
+import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanGating } from "@/hooks/usePlanGating";
@@ -54,6 +55,18 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Resource fields
+  const [pilotId, setPilotId] = useState<string | null>(null);
+  const [droneId, setDroneId] = useState<string | null>(null);
+  const [equipmentIds, setEquipmentIds] = useState<string[]>([]);
+  const [resourcesOpen, setResourcesOpen] = useState(false);
+
+  // Resource data
+  const [companyProfiles, setCompanyProfiles] = useState<Array<{ id: string; full_name?: string | null }>>([]);
+  const [companyDrones, setCompanyDrones] = useState<Array<{ id: string; modell: string; serienummer: string }>>([]);
+  const [companyEquipment, setCompanyEquipment] = useState<Array<{ id: string; navn: string; type: string }>>([]);
+
   const [formData, setFormData] = useState({
     tittel: "",
     beskrivelse: "",
@@ -73,6 +86,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       fetchMissions();
       fetchUsers();
       fetchCauseTypes();
+      fetchResourceData();
       
       // Hvis vi redigerer, forhåndsutfyll skjemaet
       if (incidentToEdit) {
@@ -97,6 +111,14 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           hovedaarsak: incidentToEdit.hovedaarsak || "",
           medvirkende_aarsak: incidentToEdit.medvirkende_aarsak || "",
         });
+
+        // Pre-fill resource fields from existing incident
+        setPilotId(incidentToEdit.pilot_id || null);
+        setDroneId(incidentToEdit.drone_id || null);
+        setEquipmentIds((incidentToEdit.equipment_ids as string[]) || []);
+        if (incidentToEdit.pilot_id || incidentToEdit.drone_id || ((incidentToEdit.equipment_ids as string[])?.length > 0)) {
+          setResourcesOpen(true);
+        }
         
         // Show existing image if available
         if ((incidentToEdit as any).bilde_url) {
@@ -135,8 +157,28 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       });
       setSelectedFile(null);
       setPreviewUrl(null);
+      setPilotId(null);
+      setDroneId(null);
+      setEquipmentIds([]);
+      setResourcesOpen(false);
     }
   }, [open, defaultDate, incidentToEdit, defaultMissionId]);
+
+  const fetchResourceData = async () => {
+    if (!companyId) return;
+    try {
+      const [profilesRes, dronesRes, equipRes] = await Promise.all([
+        supabase.from("profiles").select("id, full_name").eq("company_id", companyId),
+        supabase.from("drones").select("id, modell, serienummer").eq("company_id", companyId).eq("aktiv", true),
+        supabase.from("equipment").select("id, navn, type").eq("company_id", companyId).eq("aktiv", true),
+      ]);
+      setCompanyProfiles(profilesRes.data || []);
+      setCompanyDrones(dronesRes.data || []);
+      setCompanyEquipment(equipRes.data || []);
+    } catch (e) {
+      console.error("Error fetching resource data:", e);
+    }
+  };
 
   const fetchMissions = async () => {
     try {
@@ -190,7 +232,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     }
   };
 
-  const handleMissionSelect = (missionId: string) => {
+  const handleMissionSelect = async (missionId: string) => {
     const selectedMission = missions.find(m => m.id === missionId);
     
     if (selectedMission) {
@@ -208,6 +250,31 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         hendelsestidspunkt: dateTimeStr,
         lokasjon: selectedMission.lokasjon,
       }));
+
+      // Auto-fill resources from mission
+      try {
+        const [pRes, dRes, eRes] = await Promise.all([
+          supabase.from("mission_personnel").select("profile_id").eq("mission_id", missionId),
+          supabase.from("mission_drones").select("drone_id").eq("mission_id", missionId),
+          supabase.from("mission_equipment").select("equipment_id").eq("mission_id", missionId),
+        ]);
+
+        if (pRes.data?.length) {
+          setPilotId(pRes.data[0].profile_id);
+        }
+        if (dRes.data?.length) {
+          setDroneId(dRes.data[0].drone_id);
+        }
+        if (eRes.data?.length) {
+          setEquipmentIds(eRes.data.map(e => e.equipment_id));
+        }
+
+        if (pRes.data?.length || dRes.data?.length || eRes.data?.length) {
+          setResourcesOpen(true);
+        }
+      } catch (e) {
+        console.error("Error fetching mission resources:", e);
+      }
     } else {
       setFormData(prev => ({ ...prev, mission_id: missionId }));
     }
@@ -226,6 +293,36 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     setSelectedFile(null);
     setPreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const createLogbookEntries = async (incidentTitle: string) => {
+    if (!companyId) return;
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const today = new Date().toISOString().split("T")[0];
+
+    if (droneId) {
+      await supabase.from("drone_log_entries").insert({
+        company_id: companyId,
+        drone_id: droneId,
+        entry_date: today,
+        entry_type: "hendelse",
+        title: `Hendelse: ${incidentTitle}`,
+        user_id: user?.id || null,
+      });
+    }
+
+    if (equipmentIds.length > 0) {
+      const entries = equipmentIds.map(eqId => ({
+        company_id: companyId,
+        equipment_id: eqId,
+        entry_date: today,
+        entry_type: "hendelse",
+        title: `Hendelse: ${incidentTitle}`,
+        user_id: user?.id || null,
+      }));
+      await supabase.from("equipment_log_entries").insert(entries);
+    }
   };
 
   const handleSubmit = async () => {
@@ -288,6 +385,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         medvirkende_aarsak: formData.medvirkende_aarsak || null,
         oppdatert_dato: new Date().toISOString(),
         bilde_url,
+        pilot_id: pilotId || null,
+        drone_id: droneId || null,
+        equipment_ids: equipmentIds.length > 0 ? equipmentIds : null,
       };
 
       // === OFFLINE PATH ===
@@ -318,6 +418,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           .eq('id', incidentToEdit.id);
 
         if (error) throw error;
+
+        // Create logbook entries on update too (if resources changed)
+        await createLogbookEntries(formData.tittel);
 
         toast.success("Hendelse oppdatert!");
       } else {
@@ -350,6 +453,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           });
 
         if (error) throw error;
+
+        // Create logbook entries for linked resources
+        await createLogbookEntries(formData.tittel);
 
         // Send email notification for new incident (kun ved ny hendelse)
         try {
@@ -403,6 +509,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   };
 
   const isEditing = !!incidentToEdit;
+
+  const toggleEquipment = (eqId: string) => {
+    setEquipmentIds(prev =>
+      prev.includes(eqId) ? prev.filter(id => id !== eqId) : [...prev, eqId]
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -640,6 +752,123 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               placeholder="F.eks. Oslo, Hangar A, etc."
             />
           </div>
+
+          {/* Ressurser – sammenleggbar seksjon */}
+          <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between px-2 py-1.5 h-auto text-sm font-medium text-muted-foreground hover:text-foreground">
+                Ressurser (valgfritt)
+                <ChevronDown className={cn("h-4 w-4 transition-transform", resourcesOpen && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 pt-2">
+              {/* Pilot */}
+              <div className="space-y-1">
+                <Label className="text-sm">Pilot</Label>
+                <SearchablePersonSelect
+                  persons={companyProfiles}
+                  value={pilotId}
+                  onValueChange={setPilotId}
+                  placeholder="Velg pilot..."
+                  searchPlaceholder="Søk pilot..."
+                  allowNone
+                  noneLabel="Ingen"
+                />
+              </div>
+
+              {/* Drone */}
+              <div className="space-y-1">
+                <Label className="text-sm">Drone</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                      <span className="truncate">
+                        {droneId
+                          ? companyDrones.find(d => d.id === droneId)?.modell || "Ukjent drone"
+                          : "Velg drone..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Søk drone..." />
+                      <CommandList>
+                        <CommandEmpty>Ingen droner funnet.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem value="__none__" onSelect={() => setDroneId(null)}>
+                            <Check className={cn("mr-2 h-4 w-4", !droneId ? "opacity-100" : "opacity-0")} />
+                            Ingen
+                          </CommandItem>
+                          {companyDrones.map((drone) => (
+                            <CommandItem
+                              key={drone.id}
+                              value={`${drone.modell} ${drone.serienummer}`}
+                              onSelect={() => setDroneId(drone.id)}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", droneId === drone.id ? "opacity-100" : "opacity-0")} />
+                              {drone.modell} <span className="text-muted-foreground ml-1 text-xs">({drone.serienummer})</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Utstyr – multi-select */}
+              <div className="space-y-1">
+                <Label className="text-sm">Utstyr</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                      <span className="truncate">
+                        {equipmentIds.length > 0
+                          ? `${equipmentIds.length} valgt`
+                          : "Velg utstyr..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
+                    <div className="space-y-1 max-h-60 overflow-y-auto">
+                      {companyEquipment.map((eq) => (
+                        <label
+                          key={eq.id}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer text-sm"
+                        >
+                          <Checkbox
+                            checked={equipmentIds.includes(eq.id)}
+                            onCheckedChange={() => toggleEquipment(eq.id)}
+                          />
+                          {eq.navn} <span className="text-muted-foreground text-xs">({eq.type})</span>
+                        </label>
+                      ))}
+                      {companyEquipment.length === 0 && (
+                        <p className="text-sm text-muted-foreground px-2 py-1">Ingen utstyr registrert.</p>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {equipmentIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {equipmentIds.map((eqId) => {
+                      const eq = companyEquipment.find(e => e.id === eqId);
+                      return (
+                        <span key={eqId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
+                          {eq?.navn || "Ukjent"}
+                          <button type="button" onClick={() => toggleEquipment(eqId)} className="hover:text-foreground">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Bildeopplasting */}
           <div className="space-y-2">
