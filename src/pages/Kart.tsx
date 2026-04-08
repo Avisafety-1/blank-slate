@@ -586,6 +586,14 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           onEditRoute={handleEditMissionRoute}
         />
       )}
+
+      {/* FlightHub 2 Send Dialog */}
+      <FlightHub2SendDialog
+        open={fh2DialogOpen}
+        onOpenChange={setFh2DialogOpen}
+        route={currentRoute}
+        soraSettings={soraSettings.enabled ? soraSettings : undefined}
+      />
     </div>
   );
 }
