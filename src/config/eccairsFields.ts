@@ -203,6 +203,26 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     group: 'classification',
     helpText: 'Fase da hendelsen ble oppdaget'
   },
+  {
+    code: 1088,
+    label: 'Luftfartssektor (Aviation Sector)',
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'classification',
+    helpText: 'Relatert luftfartssektor (VL1088)'
+  },
+  {
+    code: 455,
+    label: 'Hendelsesstatus (Occurrence Status)',
+    taxonomyCode: '24',
+    entityPath: null,
+    format: 'value_list_int_array',
+    type: 'select',
+    group: 'classification',
+    helpText: 'Status på hendelsen (VL455)'
+  },
 
   // ===== AIRCRAFT GROUP =====
   { 
@@ -527,6 +547,26 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     type: 'textarea',
     group: 'analysis',
     helpText: 'Detaljert risikovurdering av hendelsen'
+  },
+  {
+    code: 1070,
+    label: 'Konklusjoner (Conclusions)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'text_content_array',
+    type: 'textarea',
+    group: 'analysis',
+    helpText: 'Konklusjoner fra organisasjonen'
+  },
+  {
+    code: 1069,
+    label: 'Risikoreduserende tiltak (Risk Mitigation Action)',
+    taxonomyCode: '24',
+    entityPath: '53',
+    format: 'text_content_array',
+    type: 'textarea',
+    group: 'analysis',
+    helpText: 'Forebyggende, korrigerende eller utbedrende tiltak for å redusere risiko'
   },
 
   // ===== BIRDSTRIKE GROUP (Entity 4 - Aircraft) =====
