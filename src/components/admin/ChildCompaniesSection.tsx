@@ -441,7 +441,45 @@ export const ChildCompaniesSection = () => {
     toast.success("Buffermodus lagret");
   };
 
-  const handleToggleApplySettingsToChildren = async (checked: boolean) => {
+  const handleSaveFh2 = async () => {
+    if (!companyId) return;
+    setSavingFh2(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ flighthub2_token: fh2Token || null, flighthub2_base_url: fh2BaseUrl || "https://openapi.dji.com" } as any)
+      .eq("id", companyId);
+    setSavingFh2(false);
+    if (error) { toast.error("Kunne ikke lagre"); return; }
+    toast.success("FlightHub 2-innstillinger lagret");
+  };
+
+  const handleTestFh2 = async () => {
+    if (!fh2Token) { toast.error("Fyll inn organisasjonsnøkkel først"); return; }
+    setTestingFh2(true);
+    try {
+      // Save first so edge function can read it
+      await supabase
+        .from("companies")
+        .update({ flighthub2_token: fh2Token, flighthub2_base_url: fh2BaseUrl || "https://openapi.dji.com" } as any)
+        .eq("id", companyId);
+
+      const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+        body: { action: "list-projects" },
+      });
+      if (error) throw error;
+      if (data?.code === 0) {
+        const count = data?.data?.list?.length || 0;
+        toast.success(`Tilkoblet! Fant ${count} prosjekt${count !== 1 ? 'er' : ''}`);
+      } else {
+        toast.error(`FlightHub 2 feil: ${data?.message || 'Ukjent feil'}`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Tilkobling feilet");
+    } finally {
+      setTestingFh2(false);
+    }
+  };
+
     if (!companyId) return;
     setApplySettingsToChildren(checked);
     if (checked) {
