@@ -497,6 +497,70 @@ export type Database = {
           },
         ]
       }
+      company_flight_alert_recipients: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_flight_alert_recipients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_flight_alerts: {
+        Row: {
+          alert_type: string
+          company_id: string
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          threshold_value: number | null
+        }
+        Insert: {
+          alert_type: string
+          company_id: string
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          threshold_value?: number | null
+        }
+        Update: {
+          alert_type?: string
+          company_id?: string
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          threshold_value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_flight_alerts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_mission_roles: {
         Row: {
           company_id: string
