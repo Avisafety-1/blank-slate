@@ -443,7 +443,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         const incidentNumber = `${dateStr}${nextNumber}`;
 
         // INSERT ny hendelse
-        const { error } = await supabase
+        const { data: insertedIncident, error } = await supabase
           .from('incidents')
           .insert({
             ...incidentData,
@@ -451,12 +451,14 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             user_id: user.id,
             rapportert_av: user.email || 'Ukjent',
             incident_number: incidentNumber,
-          });
+          })
+          .select('id')
+          .single();
 
         if (error) throw error;
 
         // Create logbook entries for linked resources
-        await createLogbookEntries(formData.tittel);
+        await createLogbookEntries(formData.tittel, insertedIncident?.id);
 
         // Send email notification for new incident (kun ved ny hendelse)
         try {
