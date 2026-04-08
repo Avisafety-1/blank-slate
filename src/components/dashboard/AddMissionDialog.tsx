@@ -749,12 +749,12 @@ export const AddMissionDialog = ({
         }
 
         toast.success(t('missions.missionCreated'));
-      }
-      
-      if (!mission && onMissionAddedWithData && createdMission) {
-        onMissionAddedWithData(createdMission);
-      } else {
-        onMissionAdded();
+
+        if (onMissionAddedWithData && createdMission) {
+          onMissionAddedWithData(createdMission);
+        } else {
+          onMissionAdded();
+        }
       }
       onOpenChange(false);
       
