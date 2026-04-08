@@ -545,7 +545,7 @@ export const AddMissionDialog = ({
           if (documentsError) throw documentsError;
         }
 
-        // Auto-sync checklist_ids based on attached checklist documents
+        // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
           const checklistDocIds = selectedDocuments.filter(id => {
             const doc = documents.find(d => d.id === id);
@@ -556,6 +556,17 @@ export const AddMissionDialog = ({
           const allChecklistDocIds = documents
             .filter(d => d.kategori === "sjekklister")
             .map(d => d.id);
+
+          // Fetch operations_checklist_id from selected drones
+          let droneOpsChecklistIds: string[] = [];
+          if (selectedDrones.length > 0) {
+            const { data: droneRows } = await (supabase as any)
+              .from("drones")
+              .select("operations_checklist_id")
+              .in("id", selectedDrones)
+              .not("operations_checklist_id", "is", null);
+            droneOpsChecklistIds = (droneRows || []).map((d: any) => d.operations_checklist_id);
+          }
 
           // Fetch current checklist_ids from mission
           const { data: currentMission } = await (supabase as any)
@@ -571,8 +582,8 @@ export const AddMissionDialog = ({
             id => !allChecklistDocIds.includes(id) || checklistDocIds.includes(id)
           );
 
-          // Merge in newly selected checklist doc IDs (deduplicated)
-          const merged = [...new Set([...withoutRemoved, ...checklistDocIds])];
+          // Merge in newly selected checklist doc IDs + drone ops checklists (deduplicated)
+          const merged = [...new Set([...withoutRemoved, ...checklistDocIds, ...droneOpsChecklistIds])];
 
           await (supabase as any)
             .from("missions")
@@ -661,17 +672,30 @@ export const AddMissionDialog = ({
           if (documentsError) throw documentsError;
         }
 
-        // Auto-sync checklist_ids based on attached checklist documents
+        // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
           const checklistDocIds = selectedDocuments.filter(id => {
             const doc = documents.find(d => d.id === id);
             return doc?.kategori === "sjekklister";
           });
 
-          if (checklistDocIds.length > 0) {
+          // Fetch operations_checklist_id from selected drones
+          let droneOpsChecklistIds: string[] = [];
+          if (selectedDrones.length > 0) {
+            const { data: droneRows } = await (supabase as any)
+              .from("drones")
+              .select("operations_checklist_id")
+              .in("id", selectedDrones)
+              .not("operations_checklist_id", "is", null);
+            droneOpsChecklistIds = (droneRows || []).map((d: any) => d.operations_checklist_id);
+          }
+
+          const allChecklistIds = [...new Set([...checklistDocIds, ...droneOpsChecklistIds])];
+
+          if (allChecklistIds.length > 0) {
             await (supabase as any)
               .from("missions")
-              .update({ checklist_ids: checklistDocIds })
+              .update({ checklist_ids: allChecklistIds })
               .eq("id", newMission.id);
           }
         }
