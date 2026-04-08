@@ -5,6 +5,8 @@ import { Users, Plane, Wrench, Building2, User } from "lucide-react";
 interface PersonnelItem {
   profile_id: string;
   profiles: { id: string; full_name: string | null } | null;
+  role_id: string | null;
+  company_mission_roles: { id: string; name: string } | null;
 }
 
 interface DroneItem {
