@@ -431,8 +431,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                   className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
                   title="Sjekk NOTAM (åpner ippc.no)"
                 >
-                  <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                  <span className="ml-0.5 sm:ml-1">IPPC</span>
+                  IPPC
                 </Button>
 
                 {/* Sensor zone application link */}
@@ -443,8 +442,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                   className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
                   title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
                 >
-                  <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                  <span className="ml-0.5 sm:ml-1">Sensor</span>
+                  Sensor
                 </Button>
               </div>
 
