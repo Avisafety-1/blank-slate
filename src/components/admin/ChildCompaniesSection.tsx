@@ -57,6 +57,7 @@ export const ChildCompaniesSection = () => {
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
+  const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [applySettingsToChildren, setApplySettingsToChildren] = useState(false);
   const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
   const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
@@ -263,6 +264,15 @@ export const ChildCompaniesSection = () => {
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
+    }
+    // Fetch default buffer mode from sora config
+    const { data: soraData } = await (supabase as any)
+      .from("company_sora_config")
+      .select("default_buffer_mode")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (soraData?.default_buffer_mode) {
+      setDefaultBufferMode(soraData.default_buffer_mode);
     }
   };
 
