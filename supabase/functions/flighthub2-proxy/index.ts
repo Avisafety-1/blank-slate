@@ -40,10 +40,16 @@ Deno.serve(async (req: Request) => {
       .single();
 
     const fh2Token = (company as any)?.flighthub2_token;
-    const fh2BaseUrl = (company as any)?.flighthub2_base_url || "https://openapi.dji.com";
+    const fh2BaseUrl = (company as any)?.flighthub2_base_url;
 
     if (!fh2Token) {
-      return new Response(JSON.stringify({ error: "FlightHub 2 er ikke konfigurert for dette selskapet" }), {
+      return new Response(JSON.stringify({ error: "FlightHub 2 er ikke konfigurert for dette selskapet. Legg inn organisasjonsnøkkel under Admin → Mitt selskap." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!fh2BaseUrl) {
+      return new Response(JSON.stringify({ error: "FlightHub 2 base URL er ikke konfigurert. Legg inn server-adressen under Admin → Mitt selskap (f.eks. https://fh.dji.com eller din on-premises server)." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
