@@ -6,12 +6,13 @@ import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import safeskyLogo from "@/assets/safesky-logo.png";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
+import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -65,13 +66,17 @@ export default function KartPage() {
   });
   const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
 
+  // FlightHub 2 state
+  const [hasFH2Token, setHasFH2Token] = useState(false);
+  const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
 
-  // Fetch company default buffer mode
+  // Fetch company default buffer mode + FH2 token status
   useEffect(() => {
     if (!companyId) return;
     (supabase as any)
@@ -85,6 +90,15 @@ export default function KartPage() {
           setCompanyBufferMode(mode);
           setSoraSettings(prev => prev.bufferMode === "corridor" ? { ...prev, bufferMode: mode } : prev);
         }
+      });
+    // Check if FlightHub 2 is configured
+    supabase
+      .from("companies")
+      .select("flighthub2_token")
+      .eq("id", companyId)
+      .single()
+      .then(({ data }: any) => {
+        setHasFH2Token(!!data?.flighthub2_token);
       });
   }, [companyId]);
 
@@ -462,6 +476,20 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                 >
                   Sensor
                 </Button>
+
+                {/* FlightHub 2 */}
+                {hasFH2Token && currentRoute.coordinates.length >= 2 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFh2DialogOpen(true)}
+                    className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
+                    title="Send rute og SORA-korridor til DJI FlightHub 2"
+                  >
+                    <Send className="h-3 w-3 mr-0.5 sm:mr-1" />
+                    FH2
+                  </Button>
+                )}
               </div>
 
               {/* Undo & Clear grouped together */}
@@ -558,6 +586,14 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           onEditRoute={handleEditMissionRoute}
         />
       )}
+
+      {/* FlightHub 2 Send Dialog */}
+      <FlightHub2SendDialog
+        open={fh2DialogOpen}
+        onOpenChange={setFh2DialogOpen}
+        route={currentRoute}
+        soraSettings={soraSettings.enabled ? soraSettings : undefined}
+      />
     </div>
   );
 }

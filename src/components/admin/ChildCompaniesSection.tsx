@@ -16,7 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell } from "lucide-react";
+import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -81,6 +81,13 @@ export const ChildCompaniesSection = () => {
   const [alertRecipients, setAlertRecipients] = useState<{ id: string; profile_id: string; full_name: string | null }[]>([]);
   const [companyProfiles, setCompanyProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+
+  // FlightHub 2 state
+  const [fh2Token, setFh2Token] = useState("");
+  const [fh2BaseUrl, setFh2BaseUrl] = useState("https://openapi.dji.com");
+  const [savingFh2, setSavingFh2] = useState(false);
+  const [testingFh2, setTestingFh2] = useState(false);
+  const [fh2ShowToken, setFh2ShowToken] = useState(false);
 
   const fetchFlightAlerts = useCallback(async () => {
     if (!companyId) return;
@@ -254,7 +261,7 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_token, flighthub2_base_url")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -264,6 +271,8 @@ export const ChildCompaniesSection = () => {
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
+      setFh2Token((data as any).flighthub2_token || "");
+      setFh2BaseUrl((data as any).flighthub2_base_url || "https://openapi.dji.com");
     }
     // Fetch default buffer mode from sora config
     const { data: soraData } = await (supabase as any)
@@ -430,6 +439,45 @@ export const ChildCompaniesSection = () => {
     setDefaultBufferMode(mode);
     invalidateCompanySettingsCache();
     toast.success("Buffermodus lagret");
+  };
+
+  const handleSaveFh2 = async () => {
+    if (!companyId) return;
+    setSavingFh2(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ flighthub2_token: fh2Token || null, flighthub2_base_url: fh2BaseUrl || "https://openapi.dji.com" } as any)
+      .eq("id", companyId);
+    setSavingFh2(false);
+    if (error) { toast.error("Kunne ikke lagre"); return; }
+    toast.success("FlightHub 2-innstillinger lagret");
+  };
+
+  const handleTestFh2 = async () => {
+    if (!fh2Token) { toast.error("Fyll inn organisasjonsnøkkel først"); return; }
+    setTestingFh2(true);
+    try {
+      // Save first so edge function can read it
+      await supabase
+        .from("companies")
+        .update({ flighthub2_token: fh2Token, flighthub2_base_url: fh2BaseUrl || "https://openapi.dji.com" } as any)
+        .eq("id", companyId);
+
+      const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+        body: { action: "list-projects" },
+      });
+      if (error) throw error;
+      if (data?.code === 0) {
+        const count = data?.data?.list?.length || 0;
+        toast.success(`Tilkoblet! Fant ${count} prosjekt${count !== 1 ? 'er' : ''}`);
+      } else {
+        toast.error(`FlightHub 2 feil: ${data?.message || 'Ukjent feil'}`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Tilkobling feilet");
+    } finally {
+      setTestingFh2(false);
+    }
   };
 
   const handleToggleApplySettingsToChildren = async (checked: boolean) => {
@@ -840,6 +888,64 @@ export const ChildCompaniesSection = () => {
           </CollapsibleContent>
         </GlassCard>
       </Collapsible>
+
+      {/* FlightHub 2 Integration */}
+      <GlassCard>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Send className="h-4 w-4 text-muted-foreground" />
+            <div className="font-medium text-sm">DJI FlightHub 2</div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-[220px]">Send rutefiler og SORA-korridorer direkte til DJI FlightHub 2</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs">Organisasjonsnøkkel</Label>
+            <div className="flex gap-2">
+              <Input
+                type={fh2ShowToken ? "text" : "password"}
+                value={fh2Token}
+                onChange={(e) => setFh2Token(e.target.value)}
+                placeholder="Lim inn nøkkel fra FlightHub 2..."
+                className="h-8 text-sm font-mono"
+              />
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
+                {fh2ShowToken ? "Skjul" : "Vis"}
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Finnes under FlightHub 2 → Min organisasjon → Organisasjonsinnstillinger → FlightHub Sync
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs">Base URL (valgfri)</Label>
+            <Input
+              value={fh2BaseUrl}
+              onChange={(e) => setFh2BaseUrl(e.target.value)}
+              placeholder="https://openapi.dji.com"
+              className="h-8 text-sm"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
+              {savingFh2 ? "Lagrer..." : "Lagre"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
+              {testingFh2 ? "Tester..." : "Test tilkobling"}
+            </Button>
+          </div>
+        </div>
+      </GlassCard>
 
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
