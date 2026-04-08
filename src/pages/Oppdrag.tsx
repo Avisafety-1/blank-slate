@@ -456,6 +456,10 @@ const Oppdrag = () => {
           activeMissions={data.activeMissions}
           completedMissions={data.completedMissions}
           onMissionChecklistComplete={handleMissionChecklistComplete}
+          riskPromptOpen={riskPromptOpen}
+          setRiskPromptOpen={setRiskPromptOpen}
+          onPerformRiskAssessment={handlePerformRiskAssessment}
+          onSkipRiskAssessment={handleSkipRiskAssessment}
         />
       </div>
     </div>

@@ -528,6 +528,26 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
           />
         );
       })()}
+
+      {/* Risk assessment prompt after mission creation */}
+      <AlertDialog open={props.riskPromptOpen} onOpenChange={props.setRiskPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Risikovurdering</AlertDialogTitle>
+            <AlertDialogDescription>
+              Oppdraget er opprettet. Ønsker du å utføre en risikovurdering nå, eller fortsette uten?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={props.onSkipRiskAssessment}>
+              Fortsett uten risikovurdering
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={props.onPerformRiskAssessment}>
+              Utfør risikovurdering
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
