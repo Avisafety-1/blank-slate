@@ -293,11 +293,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const createLogbookEntries = async (incidentTitle: string) => {
+  const createLogbookEntries = async (incidentTitle: string, incidentId?: string) => {
     if (!companyId) return;
     const { data: { user } } = await supabase.auth.getUser();
 
     const today = new Date().toISOString().split("T")[0];
+    const description = incidentId ? `incident_id:${incidentId}` : undefined;
 
     if (droneId) {
       await supabase.from("drone_log_entries").insert({
@@ -306,6 +307,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         entry_date: today,
         entry_type: "hendelse",
         title: `Hendelse: ${incidentTitle}`,
+        description,
         user_id: user?.id || null,
       });
     }
@@ -317,6 +319,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         entry_date: today,
         entry_type: "hendelse",
         title: `Hendelse: ${incidentTitle}`,
+        description,
         user_id: user?.id || null,
       }));
       await supabase.from("equipment_log_entries").insert(entries);
