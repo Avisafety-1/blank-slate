@@ -1,33 +1,32 @@
 
 
-## Bekreftelses-dialog etter opprettelse av oppdrag: «Utfør risikovurdering?»
+## Støtte for bildebaserte sjekklister
 
 ### Oversikt
-Etter at et nytt oppdrag lagres vellykket, vis en bekreftelses-dialog med to valg:
-1. **Utfør risikovurdering** → lukker dialogen, åpner RiskAssessmentDialog (AI) med det nye oppdraget
-2. **Fortsett uten** → lukker dialogen og går videre som i dag
+Når et dokument lastes opp med kategori «sjekklister» og har en fil (bilde), skal det kunne velges overalt der sjekklister velges i dag. Ved utførelse vises bildet i stedet for avkrysningspunkter, og brukeren markerer sjekklisten manuelt som utført via en knapp.
+
+### Hvordan det fungerer
+- Eksisterende sjekklister har JSON-data i `beskrivelse`-feltet → viser avkrysningsliste
+- Nye bildebaserte sjekklister har `fil_url` satt og ingen/ugyldig JSON i `beskrivelse` → viser bildet
+- Deteksjon: Når `ChecklistExecutionDialog` henter data, sjekk om `beskrivelse` er gyldig JSON med items. Hvis ikke, og `fil_url` finnes, vis bildemodus
 
 ### Endringer
 
-**`src/components/dashboard/AddMissionDialog.tsx`**
-- Endre `onMissionAdded` callback til å også kunne returnere det nye oppdraget: ny prop `onMissionAddedWithData?: (mission: any) => void`
-- Etter vellykket INSERT (linje ~752), kall `onMissionAddedWithData(newMission)` i stedet for `onMissionAdded()` (kun for nye oppdrag, ikke redigering)
+**`src/components/resources/ChecklistExecutionDialog.tsx`**
+- Hent `fil_url` i tillegg til `beskrivelse` fra documents-tabellen
+- Ny state: `imageUrl` (string | null) for signert URL til bildefilen
+- Ny state: `manuallyCompleted` (boolean) for manuell markering
+- Logikk: Hvis `beskrivelse` ikke kan parses som JSON-array OG `fil_url` finnes → generer signert URL, sett `imageUrl`, vis bildemodus
+- **Bildemodus UI**: Vis bildet (zoombart/scrollbart), med en «Marker som utført»-knapp i bunnen. Ingen progressbar eller avkrysningsliste
+- **Fullfør-knapp**: Aktiveres kun når `manuallyCompleted` er true
+- Eksisterende JSON-modus forblir uendret
 
-**`src/pages/Oppdrag.tsx`**
-- Legg til ny state `riskPromptMission` for det nettopp opprettede oppdraget
-- Legg til ny state `riskPromptOpen` for bekreftelses-dialogen
-- Ny `handleMissionAdded` → sett `riskPromptMission` og åpne prompt-dialogen
-- Ved «Utfør risikovurdering» → lukk prompt, sett `riskAssessmentMission` til det nye oppdraget, åpne `riskDialogOpen` med `initialTab: 'input'`
-- Ved «Fortsett uten» → lukk prompt, fetch missions som vanlig
+**`src/hooks/useChecklists.ts`**
+- Ingen endring nødvendig — henter allerede alle dokumenter med `kategori: "sjekklister"`, uavhengig av om de har fil eller JSON-innhold
 
-**`src/components/oppdrag/dialogs/OppdragDialogs.tsx`**
-- Legg til en enkel AlertDialog/Dialog for bekreftelsen med to knapper:
-  - «Utfør risikovurdering» (primary)
-  - «Fortsett uten risikovurdering» (outline/secondary)
-- Nye props: `riskPromptOpen`, `setRiskPromptOpen`, `onPerformRiskAssessment`, `onSkipRiskAssessment`
+### Ingen andre filer endres
+Velgere (AddDroneDialog, AddMissionDialog, StartFlightDialog) bruker allerede `useChecklists` og sender ID-er til `ChecklistExecutionDialog` — de trenger ingen endring.
 
-### Filer som endres
-1. `src/components/dashboard/AddMissionDialog.tsx` — returnere oppdraget etter lagring
-2. `src/pages/Oppdrag.tsx` — ny state og håndtering av bekreftelsesdialog
-3. `src/components/oppdrag/dialogs/OppdragDialogs.tsx` — ny bekreftelses-dialog UI
+### Fil som endres
+1. **`src/components/resources/ChecklistExecutionDialog.tsx`** — Legg til bildemodus med manuell markering
 
