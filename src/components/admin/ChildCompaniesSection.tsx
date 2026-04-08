@@ -650,6 +650,29 @@ export const ChildCompaniesSection = () => {
                   </div>
                 )}
               </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <Label className="flex-1">
+                  <div className="font-medium text-sm">Standard SORA-buffersone</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Velg standard buffermodus for nye oppdrag og ruteplanlegger
+                  </div>
+                </Label>
+                <RadioGroup
+                  value={defaultBufferMode}
+                  onValueChange={(v) => handleChangeBufferMode(v as "corridor" | "convexHull")}
+                  className="flex gap-4"
+                  disabled={savingSettings}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="corridor" id="buffer-corridor" />
+                    <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="convexHull" id="buffer-convex" />
+                    <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
               {/* Settings propagation toggle */}
               <div className="border-t pt-2 flex items-center justify-between">
                 <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
