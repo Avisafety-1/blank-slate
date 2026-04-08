@@ -1,37 +1,33 @@
 
 
-## Operasjonssjekkliste på dronekortet med auto-kobling til oppdrag
+## Bekreftelses-dialog etter opprettelse av oppdrag: «Utfør risikovurdering?»
 
 ### Oversikt
-Legg til et nytt felt `operations_checklist_id` på droner. Denne sjekklisten knyttes automatisk til oppdrag når dronen legges til, og må utføres som del av oppdraget — akkurat som dagens dokumentbaserte sjekklister.
-
-### Database-migrasjon
-Legg til kolonne på `drones`-tabellen:
-```sql
-ALTER TABLE public.drones
-  ADD COLUMN operations_checklist_id UUID REFERENCES public.documents(id);
-```
+Etter at et nytt oppdrag lagres vellykket, vis en bekreftelses-dialog med to valg:
+1. **Utfør risikovurdering** → lukker dialogen, åpner RiskAssessmentDialog (AI) med det nye oppdraget
+2. **Fortsett uten** → lukker dialogen og går videre som i dag
 
 ### Endringer
 
-**`src/components/resources/DroneDetailDialog.tsx`**
-- Legg til `operations_checklist_id` i Drone-interfacet, formData, og populering fra DB
-- I visningsmodus: vis valgt operasjonssjekkliste (label + navn)
-- I redigeringsmodus: ny Select-dropdown «Operasjonssjekkliste» med checklists fra `useChecklists`
-- Lagre feltet ved oppdatering
-
-**`src/components/resources/AddDroneDialog.tsx`**
-- Legg til ny Select-dropdown «Operasjonssjekkliste» (separat fra inspeksjonssjekklisten)
-- Lagre `operations_checklist_id` ved opprettelse
-
 **`src/components/dashboard/AddMissionDialog.tsx`**
-- Etter at droner er koblet til oppdrag (både INSERT og UPDATE), hent `operations_checklist_id` fra de valgte dronene
-- Merge disse sjekkliste-ID-ene inn i oppdragets `checklist_ids` (deduplisert)
-- Ved fjerning av drone fra oppdrag, fjern tilhørende operations_checklist_id fra checklist_ids (med mindre andre droner har samme)
+- Endre `onMissionAdded` callback til å også kunne returnere det nye oppdraget: ny prop `onMissionAddedWithData?: (mission: any) => void`
+- Etter vellykket INSERT (linje ~752), kall `onMissionAddedWithData(newMission)` i stedet for `onMissionAdded()` (kun for nye oppdrag, ikke redigering)
+
+**`src/pages/Oppdrag.tsx`**
+- Legg til ny state `riskPromptMission` for det nettopp opprettede oppdraget
+- Legg til ny state `riskPromptOpen` for bekreftelses-dialogen
+- Ny `handleMissionAdded` → sett `riskPromptMission` og åpne prompt-dialogen
+- Ved «Utfør risikovurdering» → lukk prompt, sett `riskAssessmentMission` til det nye oppdraget, åpne `riskDialogOpen` med `initialTab: 'input'`
+- Ved «Fortsett uten» → lukk prompt, fetch missions som vanlig
+
+**`src/components/oppdrag/dialogs/OppdragDialogs.tsx`**
+- Legg til en enkel AlertDialog/Dialog for bekreftelsen med to knapper:
+  - «Utfør risikovurdering» (primary)
+  - «Fortsett uten risikovurdering» (outline/secondary)
+- Nye props: `riskPromptOpen`, `setRiskPromptOpen`, `onPerformRiskAssessment`, `onSkipRiskAssessment`
 
 ### Filer som endres
-1. **Ny migrasjon** — `operations_checklist_id` kolonne
-2. **`src/components/resources/DroneDetailDialog.tsx`** — vis/rediger feltet
-3. **`src/components/resources/AddDroneDialog.tsx`** — velg ved opprettelse
-4. **`src/components/dashboard/AddMissionDialog.tsx`** — auto-sync til oppdrag
+1. `src/components/dashboard/AddMissionDialog.tsx` — returnere oppdraget etter lagring
+2. `src/pages/Oppdrag.tsx` — ny state og håndtering av bekreftelsesdialog
+3. `src/components/oppdrag/dialogs/OppdragDialogs.tsx` — ny bekreftelses-dialog UI
 
