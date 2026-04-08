@@ -30,7 +30,7 @@ interface AddIncidentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate?: Date;
-  incidentToEdit?: (Tables<"incidents"> & Record<string, any>) | null;
+  incidentToEdit?: any | null;
   defaultMissionId?: string;
 }
 
