@@ -145,6 +145,11 @@ const ENTITY_PATH_OVERRIDES = {
 };
 
 // -------------------------
+// Attributes to skip (removed/invalid fields that may still exist in DB)
+// -------------------------
+const SKIP_ATTRIBUTES = new Set(['216', '393', '394']);
+
+// -------------------------
 // Attributes that must ALWAYS be at top-level (Entity 24) regardless of DB value
 // -------------------------
 const FORCE_TOP_LEVEL = new Set(['432', '448']);
