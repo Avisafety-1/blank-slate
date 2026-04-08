@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 
 import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck } from "lucide-react";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
@@ -209,6 +210,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchMissionsSinceInspection();
       fetchLatestWarning();
       fetchTechnicalResponsibleName();
+      fetchLastFlown();
     }
   }, [drone]);
 
