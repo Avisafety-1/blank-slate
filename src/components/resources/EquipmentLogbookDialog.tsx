@@ -645,6 +645,20 @@ export const EquipmentLogbookDialog = ({
                                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </Button>
                               )}
+                              {log.incidentId && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
+                                  title="Åpne hendelse"
+                                  onClick={() => {
+                                    onOpenChange(false);
+                                    navigate('/hendelser', { state: { openIncidentId: log.incidentId } });
+                                  }}
+                                >
+                                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                </Button>
+                              )}
                             </div>
                             {log.description && (
                               <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2 break-words">
