@@ -1748,6 +1748,114 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   // updateDroneFlightHours removed — handled by DB trigger trg_update_drone_hours (divides minutes by 60.0)
 
+  // ── Flight alert threshold check ──
+  const checkFlightAlerts = async (parsedResult: DroneLogResult) => {
+    if (!companyId) return;
+    try {
+      const { data: alerts } = await (supabase as any)
+        .from("company_flight_alerts")
+        .select("alert_type, enabled, threshold_value")
+        .eq("company_id", companyId)
+        .eq("enabled", true);
+      if (!alerts || alerts.length === 0) return;
+
+      const { data: recipients } = await (supabase as any)
+        .from("company_flight_alert_recipients")
+        .select("profile_id")
+        .eq("company_id", companyId);
+      if (!recipients || recipients.length === 0) return;
+
+      const profileIds = recipients.map((r: any) => r.profile_id);
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name, email").in("id", profileIds);
+      const recipientEmails = (profiles || []).filter((p: any) => p.email).map((p: any) => ({ email: p.email, name: p.full_name }));
+      if (recipientEmails.length === 0) return;
+
+      const violations: string[] = [];
+      for (const alert of alerts) {
+        const t = alert.threshold_value;
+        switch (alert.alert_type) {
+          case 'low_battery':
+            if (parsedResult.minBattery >= 0 && parsedResult.minBattery < (t ?? 20))
+              violations.push(`Batteri nådde ${parsedResult.minBattery}% (terskel: ${t}%)`);
+            break;
+          case 'rth_triggered':
+            if (parsedResult.rthTriggered)
+              violations.push('RTH (Return to Home) ble trigget');
+            break;
+          case 'max_height':
+            if (parsedResult.maxAltitude && parsedResult.maxAltitude > (t ?? 120))
+              violations.push(`Maks høyde: ${parsedResult.maxAltitude.toFixed(0)}m AGL (terskel: ${t}m)`);
+            break;
+          case 'max_speed':
+            if (parsedResult.maxSpeed > (t ?? 20))
+              violations.push(`Maks hastighet: ${parsedResult.maxSpeed.toFixed(1)} m/s (terskel: ${t} m/s)`);
+            break;
+          case 'low_gps_sats':
+            if (parsedResult.minGpsSatellites != null && parsedResult.minGpsSatellites < (t ?? 6))
+              violations.push(`GPS-satellitter: ${parsedResult.minGpsSatellites} (terskel: ${t})`);
+            break;
+          case 'battery_cell_deviation':
+            if (parsedResult.batteryCellDeviationMax != null && parsedResult.batteryCellDeviationMax > (t ?? 0.3))
+              violations.push(`Battericelleavvik: ${parsedResult.batteryCellDeviationMax.toFixed(2)}V (terskel: ${t}V)`);
+            break;
+          case 'battery_temp_high':
+            if (parsedResult.batteryTemperature != null && parsedResult.batteryTemperature > (t ?? 50))
+              violations.push(`Batteritemperatur: ${parsedResult.batteryTemperature}°C (terskel: ${t}°C)`);
+            break;
+          case 'high_vibration':
+            if (parsedResult.warnings?.some(w => w.type === 'high_vibration'))
+              violations.push('Høy vibrasjon registrert (ArduPilot)');
+            break;
+        }
+      }
+
+      if (violations.length === 0) return;
+
+      const droneName = selectedDrone ? `${selectedDrone.modell} (${(selectedDrone as any).serienummer || ''})` : 'Ukjent drone';
+      const pilotName = selectedPilot ? (selectedPilot as any).full_name || 'Ukjent pilot' : 'Ukjent pilot';
+      const flightDate = parsedResult.startTime ? format(parseFlightDate(parsedResult.startTime) || new Date(), 'dd.MM.yyyy HH:mm') : format(new Date(), 'dd.MM.yyyy HH:mm');
+
+      const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+      const html = `<!DOCTYPE html>
+<html><head><style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.logo { text-align: center; padding: 20px 20px 10px 20px; }
+.header { background: #dc2626; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.violation { background: #fee2e2; border-left: 4px solid #dc2626; padding: 8px 12px; margin: 8px 0; border-radius: 0 4px 4px 0; }
+</style></head><body>
+<div class="container">
+<div class="logo"><img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" /></div>
+<div class="header"><h1 style="margin:0;font-size:18px;">⚠️ Flylogg-varsel: Terskelverdier overskredet</h1></div>
+<div class="content">
+<p><strong>Drone:</strong> ${droneName}</p>
+<p><strong>Pilot:</strong> ${pilotName}</p>
+<p><strong>Dato:</strong> ${flightDate}</p>
+<h3 style="margin-top:16px;">Overskredne terskelverdier:</h3>
+${violations.map(v => `<div class="violation">${v}</div>`).join('')}
+<p style="margin-top:20px;color:#666;font-size:12px;">Logg inn i AviSafe for å se detaljer om flyturen.</p>
+</div></div></body></html>`;
+
+      for (const recipient of recipientEmails) {
+        try {
+          await supabase.functions.invoke('send-notification-email', {
+            body: {
+              recipientEmail: recipient.email,
+              subject: `⚠️ Flylogg-varsel: ${violations.length} terskel${violations.length > 1 ? 'verdier' : 'verdi'} overskredet`,
+              htmlContent: html,
+              companyId,
+            },
+          });
+        } catch (e) {
+          console.error('Failed to send flight alert to', recipient.email, e);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking flight alerts:', err);
+    }
+  };
+
   // ── Helpers ──
 
   const selectedPilot = personnel.find(p => p.id === pilotId);
