@@ -57,7 +57,9 @@ export const ChildCompaniesSection = () => {
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
-  const [applyToChildren, setApplyToChildren] = useState(false);
+  const [applySettingsToChildren, setApplySettingsToChildren] = useState(false);
+  const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
+  const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
   const [missionRoles, setMissionRoles] = useState<{id: string; name: string}[]>([]);
   const [newRoleName, setNewRoleName] = useState("");
   const [savingRole, setSavingRole] = useState(false);
