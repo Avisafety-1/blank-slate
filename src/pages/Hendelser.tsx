@@ -406,7 +406,20 @@ const Hendelser = () => {
     }
   };
 
-  const filterIncidents = () => {
+  // Auto-open incident from logbook navigation
+  useEffect(() => {
+    const openId = (location.state as any)?.openIncidentId;
+    if (openId && incidents.length > 0) {
+      const found = incidents.find(i => i.id === openId);
+      if (found) {
+        setSelectedIncident(found);
+        setDetailDialogOpen(true);
+      }
+      // Clear the state so it doesn't re-trigger
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [incidents, location.state]);
+
     let filtered = [...incidents];
 
     // Filter by status
