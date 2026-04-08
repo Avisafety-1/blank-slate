@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,8 @@ import {
   TrendingDown,
   Calendar,
   Thermometer,
-  Zap
+  Zap,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -70,6 +72,7 @@ interface LogEntry {
   badgeColor: string;
   badgeText: string;
   imageUrl?: string;
+  incidentId?: string;
 }
 
 export const EquipmentLogbookDialog = ({ 
@@ -82,6 +85,7 @@ export const EquipmentLogbookDialog = ({
   equipmentSerienummer,
 }: EquipmentLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const navigate = useNavigate();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
