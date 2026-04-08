@@ -279,7 +279,7 @@ export const ChildCompaniesSection = () => {
       return;
     }
 
-    if (applyToChildren) {
+    if (applySettingsToChildren) {
       await supabase
         .from("companies")
         .update({ show_all_airspace_warnings: checked } as any)
@@ -305,7 +305,7 @@ export const ChildCompaniesSection = () => {
       return;
     }
 
-    if (applyToChildren) {
+    if (applySettingsToChildren) {
       await supabase
         .from("companies")
         .update({ hide_reporter_identity: checked } as any)
@@ -331,7 +331,7 @@ export const ChildCompaniesSection = () => {
       return;
     }
 
-    if (applyToChildren) {
+    if (applySettingsToChildren) {
       await supabase
         .from("companies")
         .update({ require_mission_approval: checked } as any)
@@ -371,7 +371,7 @@ export const ChildCompaniesSection = () => {
       return;
     }
 
-    if (applyToChildren) {
+    if (applySettingsToChildren) {
       await supabase
         .from("companies")
         .update({ require_sora_on_missions: checked } as any)
@@ -397,7 +397,7 @@ export const ChildCompaniesSection = () => {
       return;
     }
 
-    if (applyToChildren) {
+    if (applySettingsToChildren) {
       await supabase
         .from("companies")
         .update({ require_sora_steps: steps } as any)
@@ -410,9 +410,9 @@ export const ChildCompaniesSection = () => {
     toast.success("Innstilling lagret");
   };
 
-  const handleToggleApplyToChildren = async (checked: boolean) => {
+  const handleToggleApplySettingsToChildren = async (checked: boolean) => {
     if (!companyId) return;
-    setApplyToChildren(checked);
+    setApplySettingsToChildren(checked);
     if (checked) {
       setSavingSettings(true);
       await supabase
@@ -420,7 +420,77 @@ export const ChildCompaniesSection = () => {
         .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps } as any)
         .eq("parent_company_id", companyId);
       setSavingSettings(false);
-      toast.success("Innstilling anvendt på alle avdelinger");
+      toast.success("Selskapsinnstillinger anvendt på alle avdelinger");
+    }
+  };
+
+  const handleToggleApplyRolesToChildren = async (checked: boolean) => {
+    if (!companyId) return;
+    setApplyRolesToChildren(checked);
+    if (checked) {
+      setSavingSettings(true);
+      // Get child companies
+      const { data: childCompanies } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("parent_company_id", companyId);
+      if (childCompanies && childCompanies.length > 0) {
+        for (const child of childCompanies) {
+          // Get existing roles for child
+          const { data: existingRoles } = await (supabase as any)
+            .from("company_mission_roles")
+            .select("name")
+            .eq("company_id", child.id);
+          const existingNames = new Set((existingRoles || []).map((r: any) => r.name));
+          const rolesToInsert = missionRoles
+            .filter(r => !existingNames.has(r.name))
+            .map(r => ({ company_id: child.id, name: r.name }));
+          if (rolesToInsert.length > 0) {
+            await (supabase as any).from("company_mission_roles").insert(rolesToInsert);
+          }
+        }
+      }
+      setSavingSettings(false);
+      toast.success("Roller anvendt på alle avdelinger");
+    }
+  };
+
+  const handleToggleApplyAlertsToChildren = async (checked: boolean) => {
+    if (!companyId) return;
+    setApplyAlertsToChildren(checked);
+    if (checked) {
+      setSavingSettings(true);
+      const { data: childCompanies } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("parent_company_id", companyId);
+      if (childCompanies && childCompanies.length > 0) {
+        for (const child of childCompanies) {
+          // Upsert alerts
+          for (const alertType of ALERT_TYPES) {
+            const current = flightAlerts[alertType.key];
+            if (current) {
+              await (supabase as any).from("company_flight_alerts").upsert({
+                company_id: child.id,
+                alert_type: alertType.key,
+                enabled: current.enabled,
+                threshold_value: current.threshold_value,
+              }, { onConflict: 'company_id,alert_type' });
+            }
+          }
+          // Sync recipients
+          await (supabase as any).from("company_flight_alert_recipients").delete().eq("company_id", child.id);
+          if (alertRecipients.length > 0) {
+            const recipientInserts = alertRecipients.map(r => ({
+              company_id: child.id,
+              profile_id: r.profile_id,
+            }));
+            await (supabase as any).from("company_flight_alert_recipients").insert(recipientInserts);
+          }
+        }
+      }
+      setSavingSettings(false);
+      toast.success("Flylogg-varsler anvendt på alle avdelinger");
     }
   };
 
