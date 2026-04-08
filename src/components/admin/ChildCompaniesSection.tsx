@@ -420,6 +420,18 @@ export const ChildCompaniesSection = () => {
     toast.success("Innstilling lagret");
   };
 
+  const handleChangeBufferMode = async (mode: "corridor" | "convexHull") => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("company_sora_config")
+      .upsert({ company_id: companyId, default_buffer_mode: mode }, { onConflict: 'company_id' });
+    setSavingSettings(false);
+    setDefaultBufferMode(mode);
+    invalidateCompanySettingsCache();
+    toast.success("Buffermodus lagret");
+  };
+
   const handleToggleApplySettingsToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplySettingsToChildren(checked);
