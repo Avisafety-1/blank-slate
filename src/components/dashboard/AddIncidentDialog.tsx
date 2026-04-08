@@ -26,7 +26,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import type { Tables } from "@/integrations/supabase/types";
 
-type Incident = Tables<"incidents">;
+type Incident = Tables<"incidents"> & {
+  pilot_id?: string | null;
+  drone_id?: string | null;
+  equipment_ids?: string[] | null;
+};
 
 interface AddIncidentDialogProps {
   open: boolean;
