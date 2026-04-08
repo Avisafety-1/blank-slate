@@ -52,7 +52,8 @@ export default function KartPage() {
   const kmlInputRef = useRef<HTMLInputElement>(null);
   const [importingKml, setImportingKml] = useState(false);
   
-  // SORA settings
+  // SORA settings - default buffer mode loaded from company config
+  const [companyBufferMode, setCompanyBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [soraSettings, setSoraSettings] = useState<SoraSettings>({
     enabled: false,
     flightAltitude: 120,
@@ -60,7 +61,7 @@ export default function KartPage() {
     contingencyDistance: 50,
     contingencyHeight: 30,
     groundRiskDistance: 100,
-    bufferMode: "convexHull",
+    bufferMode: "corridor",
   });
   const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
 
