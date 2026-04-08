@@ -49,6 +49,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [inspectionIntervalDays, setInspectionIntervalDays] = useState<string>("");
   const [calculatedNextInspection, setCalculatedNextInspection] = useState<string>("");
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
+  const [selectedOpsChecklistId, setSelectedOpsChecklistId] = useState<string>("");
   const [droneCount, setDroneCount] = useState(0);
   const terminology = useTerminology();
   const { checklists } = useChecklists();
@@ -122,6 +123,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       setInspectionIntervalDays("");
       setCalculatedNextInspection("");
       setSelectedChecklistId("");
+      setSelectedOpsChecklistId("");
     } else if (defaultValues) {
       if (defaultValues.modell) setModell(defaultValues.modell);
       if (defaultValues.merknader) setMerknader(defaultValues.merknader);
@@ -210,6 +212,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         inspection_start_date: inspectionStartDate || null,
         inspection_interval_days: inspectionIntervalDays ? parseInt(inspectionIntervalDays) : null,
         sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
+        operations_checklist_id: selectedOpsChecklistId && selectedOpsChecklistId !== "none" ? selectedOpsChecklistId : null,
       }]).select().single();
 
       if (error) {
@@ -226,6 +229,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         setInspectionIntervalDays("");
         setCalculatedNextInspection("");
         setSelectedChecklistId("");
+        setSelectedOpsChecklistId("");
         setSelectedModelId("");
         setModell("");
         setKlasse("");
