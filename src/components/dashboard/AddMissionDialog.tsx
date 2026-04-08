@@ -132,6 +132,7 @@ export const AddMissionDialog = ({
       fetchDrones();
       fetchCustomers();
       fetchDocuments();
+      fetchCompanyMissionRoles();
       
       // Pre-fylle skjemaet hvis vi redigerer
       if (mission) {
@@ -308,16 +309,32 @@ export const AddMissionDialog = ({
   };
 
   const fetchMissionPersonnel = async (missionId: string) => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("mission_personnel")
-      .select("profile_id")
+      .select("profile_id, role_id")
       .eq("mission_id", missionId);
     
     if (error) {
       console.error("Error fetching mission personnel:", error);
     } else {
-      setSelectedPersonnel(data?.map(p => p.profile_id) || []);
+      setSelectedPersonnel(data?.map((p: any) => p.profile_id) || []);
+      const roles: Record<string, string | null> = {};
+      (data || []).forEach((p: any) => { roles[p.profile_id] = p.role_id || null; });
+      setPersonnelRoles(roles);
     }
+  };
+
+  const fetchCompanyMissionRoles = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
+    if (!profile?.company_id) return;
+    const { data } = await (supabase as any)
+      .from("company_mission_roles")
+      .select("id, name")
+      .eq("company_id", profile.company_id)
+      .order("name");
+    setCompanyMissionRoles(data || []);
   };
 
   const fetchMissionEquipment = async (missionId: string) => {
