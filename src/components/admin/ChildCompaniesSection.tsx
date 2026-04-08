@@ -84,7 +84,7 @@ export const ChildCompaniesSection = () => {
 
   // FlightHub 2 state
   const [fh2Token, setFh2Token] = useState("");
-  const [fh2BaseUrl, setFh2BaseUrl] = useState("https://openapi.dji.com");
+  const [fh2BaseUrl, setFh2BaseUrl] = useState("");
   const [savingFh2, setSavingFh2] = useState(false);
   const [testingFh2, setTestingFh2] = useState(false);
   const [fh2ShowToken, setFh2ShowToken] = useState(false);
@@ -927,11 +927,11 @@ export const ChildCompaniesSection = () => {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs">Base URL (valgfri)</Label>
+            <Label className="text-xs">Base URL</Label>
             <Input
               value={fh2BaseUrl}
               onChange={(e) => setFh2BaseUrl(e.target.value)}
-              placeholder="https://openapi.dji.com"
+              placeholder="https://fh.dji.com eller din on-prem server"
               className="h-8 text-sm"
             />
           </div>
