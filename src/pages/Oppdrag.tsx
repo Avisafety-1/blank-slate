@@ -385,6 +385,7 @@ const Oppdrag = () => {
           addDialogOpen={addDialogOpen}
           setAddDialogOpen={setAddDialogOpen}
           onMissionAdded={handleMissionAdded}
+          onMissionAddedWithData={handleMissionAddedWithData}
           initialRouteData={initialRouteData}
           initialFormData={initialFormData}
           initialSelectedPersonnel={initialSelectedPersonnel}
