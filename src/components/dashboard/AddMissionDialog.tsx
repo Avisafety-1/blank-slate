@@ -594,6 +594,7 @@ export const AddMissionDialog = ({
         }
 
         toast.success(t('missions.missionUpdated'));
+        onMissionAdded();
       } else {
         // INSERT mode
         const { data: createdMission, error: missionError } = await (supabase as any)
