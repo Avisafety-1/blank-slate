@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import {
   X,
   ZoomIn,
   BarChart3,
+  AlertTriangle,
 } from "lucide-react";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { format } from "date-fns";
@@ -55,6 +57,7 @@ interface LogEntry {
   badgeText: string;
   imageUrl?: string;
   flightTrack?: any;
+  incidentId?: string;
   flightDate?: string;
 }
 
