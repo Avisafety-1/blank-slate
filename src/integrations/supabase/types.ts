@@ -398,6 +398,8 @@ export type Database = {
           dronelog_api_key: string | null
           dronetag_enabled: boolean
           eccairs_enabled: boolean | null
+          flighthub2_base_url: string | null
+          flighthub2_token: string | null
           hide_reporter_identity: boolean
           id: string
           kontakt_epost: string | null
@@ -431,6 +433,8 @@ export type Database = {
           dronelog_api_key?: string | null
           dronetag_enabled?: boolean
           eccairs_enabled?: boolean | null
+          flighthub2_base_url?: string | null
+          flighthub2_token?: string | null
           hide_reporter_identity?: boolean
           id?: string
           kontakt_epost?: string | null
@@ -464,6 +468,8 @@ export type Database = {
           dronelog_api_key?: string | null
           dronetag_enabled?: boolean
           eccairs_enabled?: boolean | null
+          flighthub2_base_url?: string | null
+          flighthub2_token?: string | null
           hide_reporter_identity?: boolean
           id?: string
           kontakt_epost?: string | null
