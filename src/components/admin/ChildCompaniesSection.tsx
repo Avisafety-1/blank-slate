@@ -643,6 +643,9 @@ export const ChildCompaniesSection = () => {
                   disabled={savingSettings}
                 />
               </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <UserCog className="h-4 w-4 text-muted-foreground" />
                   <div className="font-medium text-sm">Roller</div>
                   <TooltipProvider>
                     <Tooltip>
