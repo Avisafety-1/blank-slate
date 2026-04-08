@@ -34,6 +34,7 @@ interface Drone {
   modell: string;
   serienummer: string;
   internal_serial: string | null;
+  registration_number: string | null;
   status: string;
   flyvetimer: number;
   merknader: string | null;
@@ -111,6 +112,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     modell: "",
     serienummer: "",
     internal_serial: "",
+    registration_number: "",
     status: "Grønn",
     flyvetimer: 0,
     merknader: "",
@@ -171,6 +173,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         modell: drone.modell,
         serienummer: drone.serienummer,
         internal_serial: drone.internal_serial || "",
+        registration_number: (drone as any).registration_number || "",
         status: drone.status,
         flyvetimer: drone.flyvetimer,
         merknader: drone.merknader || "",
@@ -659,6 +662,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           modell: formData.modell,
           serienummer: formData.serienummer,
           internal_serial: formData.internal_serial || null,
+          registration_number: formData.registration_number || null,
           status: formData.status,
           flyvetimer: formData.flyvetimer,
           merknader: formData.merknader || null,
@@ -803,6 +807,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Internt serienummer</p>
                   <p className="text-sm sm:text-base">{drone.internal_serial}</p>
+                </div>
+              )}
+
+              {(drone as any).registration_number && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Registreringsnummer</p>
+                  <p className="text-sm sm:text-base">{(drone as any).registration_number}</p>
                 </div>
               )}
 
@@ -1478,6 +1489,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   id="internal_serial"
                   value={formData.internal_serial}
                   onChange={(e) => setFormData({ ...formData, internal_serial: e.target.value })}
+                  placeholder="Valgfritt"
+                />
+              </div>
+              <div>
+                <Label htmlFor="registration_number">Registreringsnummer</Label>
+                <Input
+                  id="registration_number"
+                  value={formData.registration_number}
+                  onChange={(e) => setFormData({ ...formData, registration_number: e.target.value })}
                   placeholder="Valgfritt"
                 />
               </div>

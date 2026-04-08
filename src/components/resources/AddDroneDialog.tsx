@@ -197,6 +197,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         modell: modell || (formData.get("modell") as string),
         serienummer: (formData.get("serienummer") as string) || '',
         internal_serial: internalSerial || null,
+        registration_number: (formData.get("registration_number") as string) || null,
         status: (formData.get("status") as string) || "Grønn",
         flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
         merknader: merknader || null,
@@ -293,6 +294,10 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
               onChange={(e) => setInternalSerial(e.target.value)}
               placeholder="Valgfritt"
             />
+          </div>
+          <div>
+            <Label htmlFor="registration_number">Registreringsnummer</Label>
+            <Input id="registration_number" name="registration_number" placeholder="Valgfritt" />
           </div>
           <div>
             <Label htmlFor="klasse">Klasse</Label>
