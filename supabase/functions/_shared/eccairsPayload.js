@@ -180,6 +180,7 @@ async function buildSelections({ supabase, incident_id, company_id }) {
     for (const r of generic) {
       const code = toAttributeCode(r.attribute_code);
       if (!code) continue;
+      if (SKIP_ATTRIBUTES.has(code)) continue;
       
       // Force certain attributes to top-level, ignoring any stored entity_path
       let entityPath;
