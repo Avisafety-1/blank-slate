@@ -41,6 +41,7 @@ interface AddMissionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onMissionAdded: () => void;
+  onMissionAddedWithData?: (mission: any) => void;
   mission?: any;
   initialRouteData?: RouteData | null;
   initialFormData?: any;
@@ -749,7 +750,11 @@ export const AddMissionDialog = ({
         toast.success(t('missions.missionCreated'));
       }
       
-      onMissionAdded();
+      if (!mission && onMissionAddedWithData && newMission) {
+        onMissionAddedWithData(newMission);
+      } else {
+        onMissionAdded();
+      }
       onOpenChange(false);
       
       // Reset form

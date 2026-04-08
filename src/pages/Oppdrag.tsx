@@ -52,6 +52,8 @@ const Oppdrag = () => {
   const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
   const [checklistPickerOpen, setChecklistPickerOpen] = useState(false);
   const [executingChecklistMissionId, setExecutingChecklistMissionId] = useState<string | null>(null);
+  const [riskPromptMission, setRiskPromptMission] = useState<Mission | null>(null);
+  const [riskPromptOpen, setRiskPromptOpen] = useState(false);
 
   // Infinite scroll
   const [visibleCount, setVisibleCount] = useState(10);
@@ -179,6 +181,25 @@ const Oppdrag = () => {
   const handleMissionAdded = () => {
     data.fetchMissions();
     setAddDialogOpen(false);
+  };
+
+  const handleMissionAddedWithData = (mission: Mission) => {
+    data.fetchMissions();
+    setAddDialogOpen(false);
+    setRiskPromptMission(mission);
+    setRiskPromptOpen(true);
+  };
+
+  const handlePerformRiskAssessment = () => {
+    setRiskPromptOpen(false);
+    setRiskAssessmentMission(riskPromptMission);
+    setRiskDialogInitialTab('input');
+    setRiskDialogOpen(true);
+  };
+
+  const handleSkipRiskAssessment = () => {
+    setRiskPromptOpen(false);
+    setRiskPromptMission(null);
   };
 
   const handleEditSora = (missionId: string) => {
