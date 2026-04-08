@@ -1389,6 +1389,7 @@ export type Database = {
           missions_at_last_inspection: number | null
           modell: string
           neste_inspeksjon: string | null
+          operations_checklist_id: string | null
           oppdatert_dato: string
           opprettet_dato: string
           payload: number | null
@@ -1423,6 +1424,7 @@ export type Database = {
           missions_at_last_inspection?: number | null
           modell: string
           neste_inspeksjon?: string | null
+          operations_checklist_id?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
           payload?: number | null
@@ -1457,6 +1459,7 @@ export type Database = {
           missions_at_last_inspection?: number | null
           modell?: string
           neste_inspeksjon?: string | null
+          operations_checklist_id?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
           payload?: number | null
@@ -1479,6 +1482,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drones_operations_checklist_id_fkey"
+            columns: ["operations_checklist_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
           {
