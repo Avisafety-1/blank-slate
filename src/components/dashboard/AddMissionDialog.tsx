@@ -67,6 +67,7 @@ export const AddMissionDialog = ({
   open, 
   onOpenChange, 
   onMissionAdded, 
+  onMissionAddedWithData,
   mission,
   initialRouteData,
   initialFormData,
@@ -595,7 +596,7 @@ export const AddMissionDialog = ({
         toast.success(t('missions.missionUpdated'));
       } else {
         // INSERT mode
-        const { data: newMission, error: missionError } = await (supabase as any)
+        const { data: createdMission, error: missionError } = await (supabase as any)
           .from("missions")
           .insert({
             tittel: formData.tittel,
