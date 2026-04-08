@@ -71,6 +71,23 @@ export default function KartPage() {
     }
   }, [user, loading, navigate]);
 
+  // Fetch company default buffer mode
+  useEffect(() => {
+    if (!companyId) return;
+    (supabase as any)
+      .from("company_sora_config")
+      .select("default_buffer_mode")
+      .eq("company_id", companyId)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (data?.default_buffer_mode) {
+          const mode = data.default_buffer_mode as "corridor" | "convexHull";
+          setCompanyBufferMode(mode);
+          setSoraSettings(prev => prev.bufferMode === "corridor" ? { ...prev, bufferMode: mode } : prev);
+        }
+      });
+  }, [companyId]);
+
   // Check for route planning mode or viewMission from navigation state
   useEffect(() => {
     const state = location.state as (RoutePlanningState & { focusFlightId?: string; viewMission?: any }) | null;
