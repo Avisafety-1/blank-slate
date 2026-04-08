@@ -434,6 +434,18 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                   <ExternalLink className="h-4 w-4" />
                   <span className="hidden sm:inline ml-1">NOTAM</span>
                 </Button>
+
+                {/* Sensor zone application link */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
+                  className="h-8 px-2 sm:px-3"
+                  title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Sensor</span>
+                </Button>
               </div>
 
               {/* Undo & Clear grouped together */}
