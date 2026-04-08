@@ -421,7 +421,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         if (error) throw error;
 
         // Create logbook entries on update too (if resources changed)
-        await createLogbookEntries(formData.tittel);
+        await createLogbookEntries(formData.tittel, incidentToEdit.id);
 
         toast.success("Hendelse oppdatert!");
       } else {
