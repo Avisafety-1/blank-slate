@@ -626,7 +626,7 @@ export const DroneLogbookDialog = ({
                                   {log.title}
                                 </p>
                               </div>
-                                {log.type === 'manual' && !log.incidentId && (
+                                {log.type === 'manual' && !log.incidentId && log.badgeText !== 'hendelse' && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
