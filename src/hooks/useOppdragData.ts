@@ -146,7 +146,7 @@ export const useOppdragData = () => {
         personnelRes, dronesRes, equipmentRes, soraRes,
         incidentsRes, risksRes, docsRes, logsRes
       ] = await Promise.all([
-        supabase.from("mission_personnel").select("mission_id, profile_id, profiles(id, full_name)").in("mission_id", missionIds),
+        supabase.from("mission_personnel").select("mission_id, profile_id, profiles(id, full_name), role_id, company_mission_roles(id, name)").in("mission_id", missionIds),
         supabase.from("mission_drones").select("mission_id, drone_id, drones(id, modell, serienummer)").in("mission_id", missionIds),
         supabase.from("mission_equipment").select("mission_id, equipment_id, equipment(id, navn, type)").in("mission_id", missionIds),
         supabase.from("mission_sora").select("*").in("mission_id", missionIds),
@@ -277,7 +277,7 @@ export const useOppdragData = () => {
         personnelRes, dronesRes, equipmentRes, soraRes,
         incidentsRes, risksRes, docsRes, logsRes
       ] = await Promise.all([
-        supabase.from("mission_personnel").select("mission_id, profile_id, profiles(id, full_name)").in("mission_id", missionIds),
+        supabase.from("mission_personnel").select("mission_id, profile_id, profiles(id, full_name), role_id, company_mission_roles(id, name)").in("mission_id", missionIds),
         supabase.from("mission_drones").select("mission_id, drone_id, drones(id, modell, serienummer)").in("mission_id", missionIds),
         supabase.from("mission_equipment").select("mission_id, equipment_id, equipment(id, navn, type)").in("mission_id", missionIds),
         supabase.from("mission_sora").select("*").in("mission_id", missionIds),
