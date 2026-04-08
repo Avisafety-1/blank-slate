@@ -463,6 +463,29 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             </div>
           )}
           
+          {/* Operations checklist selection */}
+          {checklists.length > 0 && (
+            <div className="border-t pt-4 mt-4">
+              <Label htmlFor="ops_checklist">Operasjonssjekkliste</Label>
+              <Select value={selectedOpsChecklistId} onValueChange={setSelectedOpsChecklistId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Velg operasjonssjekkliste (valgfritt)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                  {checklists.map((checklist) => (
+                    <SelectItem key={checklist.id} value={checklist.id}>
+                      {checklist.tittel}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Kobles automatisk til oppdrag når dronen legges til
+              </p>
+            </div>
+          )}
+          
           <div>
             <Label htmlFor="neste_inspeksjon">Neste inspeksjon {calculatedNextInspection && "(overstyrt av intervall)"}</Label>
             <Input 
