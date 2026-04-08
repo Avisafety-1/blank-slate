@@ -1392,6 +1392,7 @@ export type Database = {
           oppdatert_dato: string
           opprettet_dato: string
           payload: number | null
+          registration_number: string | null
           serienummer: string
           sist_inspeksjon: string | null
           sjekkliste_id: string | null
@@ -1425,6 +1426,7 @@ export type Database = {
           oppdatert_dato?: string
           opprettet_dato?: string
           payload?: number | null
+          registration_number?: string | null
           serienummer: string
           sist_inspeksjon?: string | null
           sjekkliste_id?: string | null
@@ -1458,6 +1460,7 @@ export type Database = {
           oppdatert_dato?: string
           opprettet_dato?: string
           payload?: number | null
+          registration_number?: string | null
           serienummer?: string
           sist_inspeksjon?: string | null
           sjekkliste_id?: string | null
