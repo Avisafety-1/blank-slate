@@ -452,6 +452,51 @@ export const ChildCompaniesSection = () => {
                   </div>
                 )}
               </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <UserCog className="h-4 w-4 text-muted-foreground" />
+                  <div className="font-medium text-sm">Roller</div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs max-w-[200px]">Roller kan tildeles personell ved planlegging av oppdrag</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ny rolle (f.eks. Ansvarlig pilot)"
+                    value={newRoleName}
+                    onChange={(e) => setNewRoleName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddRole()}
+                    className="h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={handleAddRole} disabled={savingRole || !newRoleName.trim()} className="h-8">
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Legg til
+                  </Button>
+                </div>
+                {missionRoles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {missionRoles.map((role) => (
+                      <div key={role.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
+                        <span>{role.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRole(role.id)}
+                          className="hover:bg-destructive/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="rounded-lg border-2 border-primary/20 border-dashed bg-muted/20 p-3 flex items-center justify-between">
                 <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
