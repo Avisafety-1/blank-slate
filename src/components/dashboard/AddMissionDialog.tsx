@@ -515,6 +515,7 @@ export const AddMissionDialog = ({
           const personnelData = selectedPersonnel.map(profileId => ({
             mission_id: mission.id,
             profile_id: profileId,
+            role_id: personnelRoles[profileId] || null,
           }));
           
           const { error: personnelError } = await supabase
