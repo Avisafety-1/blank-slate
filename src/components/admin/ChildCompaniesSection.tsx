@@ -57,6 +57,49 @@ export const ChildCompaniesSection = () => {
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [applyToChildren, setApplyToChildren] = useState(false);
+  const [missionRoles, setMissionRoles] = useState<{id: string; name: string}[]>([]);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [savingRole, setSavingRole] = useState(false);
+
+  const fetchMissionRoles = useCallback(async () => {
+    if (!companyId) return;
+    const { data } = await (supabase as any)
+      .from("company_mission_roles")
+      .select("id, name")
+      .eq("company_id", companyId)
+      .order("name");
+    setMissionRoles(data || []);
+  }, [companyId]);
+
+  const handleAddRole = async () => {
+    if (!companyId || !newRoleName.trim()) return;
+    setSavingRole(true);
+    const { error } = await (supabase as any)
+      .from("company_mission_roles")
+      .insert({ company_id: companyId, name: newRoleName.trim() });
+    setSavingRole(false);
+    if (error) {
+      if (error.code === '23505') toast.error("Rollen finnes allerede");
+      else toast.error("Kunne ikke legge til rolle");
+      return;
+    }
+    setNewRoleName("");
+    toast.success("Rolle lagt til");
+    fetchMissionRoles();
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    const { error } = await (supabase as any)
+      .from("company_mission_roles")
+      .delete()
+      .eq("id", roleId);
+    if (error) {
+      toast.error("Kunne ikke slette rolle");
+      return;
+    }
+    toast.success("Rolle slettet");
+    fetchMissionRoles();
+  };
 
   const fetchChildren = async () => {
     if (!companyId) return;
