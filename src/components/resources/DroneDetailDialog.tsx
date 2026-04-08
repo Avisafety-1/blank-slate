@@ -282,6 +282,18 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     setLatestWarning(data || null);
   };
 
+  const fetchLastFlown = async () => {
+    if (!drone) { setLastFlown(null); return; }
+    const { data } = await supabase
+      .from("flight_logs")
+      .select("flight_date")
+      .eq("drone_id", drone.id)
+      .order("flight_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLastFlown(data?.flight_date || null);
+  };
+
   // Fetch matching catalog model for extra specs
   useEffect(() => {
     if (!drone?.modell) { setCatalogModel(null); return; }
