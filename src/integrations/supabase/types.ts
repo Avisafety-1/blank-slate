@@ -2558,6 +2558,8 @@ export type Database = {
           beskrivelse: string | null
           bilde_url: string | null
           company_id: string
+          drone_id: string | null
+          equipment_ids: string[] | null
           hendelsestidspunkt: string
           hovedaarsak: string | null
           id: string
@@ -2569,6 +2571,7 @@ export type Database = {
           oppdatert_dato: string | null
           oppfolgingsansvarlig_id: string | null
           opprettet_dato: string | null
+          pilot_id: string | null
           rapportert_av: string | null
           status: string
           tittel: string
@@ -2579,6 +2582,8 @@ export type Database = {
           beskrivelse?: string | null
           bilde_url?: string | null
           company_id: string
+          drone_id?: string | null
+          equipment_ids?: string[] | null
           hendelsestidspunkt: string
           hovedaarsak?: string | null
           id?: string
@@ -2590,6 +2595,7 @@ export type Database = {
           oppdatert_dato?: string | null
           oppfolgingsansvarlig_id?: string | null
           opprettet_dato?: string | null
+          pilot_id?: string | null
           rapportert_av?: string | null
           status?: string
           tittel: string
@@ -2600,6 +2606,8 @@ export type Database = {
           beskrivelse?: string | null
           bilde_url?: string | null
           company_id?: string
+          drone_id?: string | null
+          equipment_ids?: string[] | null
           hendelsestidspunkt?: string
           hovedaarsak?: string | null
           id?: string
@@ -2611,6 +2619,7 @@ export type Database = {
           oppdatert_dato?: string | null
           oppfolgingsansvarlig_id?: string | null
           opprettet_dato?: string | null
+          pilot_id?: string | null
           rapportert_av?: string | null
           status?: string
           tittel?: string
@@ -2625,6 +2634,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "incidents_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "incidents_mission_id_fkey"
             columns: ["mission_id"]
             isOneToOne: false
@@ -2634,6 +2650,13 @@ export type Database = {
           {
             foreignKeyName: "incidents_oppfolgingsansvarlig_id_fkey"
             columns: ["oppfolgingsansvarlig_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidents_pilot_id_fkey"
+            columns: ["pilot_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
