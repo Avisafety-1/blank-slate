@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateCompanySettingsCache } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -15,7 +16,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -55,6 +57,49 @@ export const ChildCompaniesSection = () => {
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [applyToChildren, setApplyToChildren] = useState(false);
+  const [missionRoles, setMissionRoles] = useState<{id: string; name: string}[]>([]);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [savingRole, setSavingRole] = useState(false);
+
+  const fetchMissionRoles = useCallback(async () => {
+    if (!companyId) return;
+    const { data } = await (supabase as any)
+      .from("company_mission_roles")
+      .select("id, name")
+      .eq("company_id", companyId)
+      .order("name");
+    setMissionRoles(data || []);
+  }, [companyId]);
+
+  const handleAddRole = async () => {
+    if (!companyId || !newRoleName.trim()) return;
+    setSavingRole(true);
+    const { error } = await (supabase as any)
+      .from("company_mission_roles")
+      .insert({ company_id: companyId, name: newRoleName.trim() });
+    setSavingRole(false);
+    if (error) {
+      if (error.code === '23505') toast.error("Rollen finnes allerede");
+      else toast.error("Kunne ikke legge til rolle");
+      return;
+    }
+    setNewRoleName("");
+    toast.success("Rolle lagt til");
+    fetchMissionRoles();
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    const { error } = await (supabase as any)
+      .from("company_mission_roles")
+      .delete()
+      .eq("id", roleId);
+    if (error) {
+      toast.error("Kunne ikke slette rolle");
+      return;
+    }
+    toast.success("Rolle slettet");
+    fetchMissionRoles();
+  };
 
   const fetchChildren = async () => {
     if (!companyId) return;
@@ -78,6 +123,7 @@ export const ChildCompaniesSection = () => {
   useEffect(() => {
     fetchChildren();
     fetchParentSettings();
+    fetchMissionRoles();
 
     if (!companyId) return;
     const channel = supabase
@@ -403,6 +449,51 @@ export const ChildCompaniesSection = () => {
                         <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
                       </div>
                     </RadioGroup>
+                  </div>
+                )}
+              </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <UserCog className="h-4 w-4 text-muted-foreground" />
+                  <div className="font-medium text-sm">Roller</div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs max-w-[200px]">Roller kan tildeles personell ved planlegging av oppdrag</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ny rolle (f.eks. Ansvarlig pilot)"
+                    value={newRoleName}
+                    onChange={(e) => setNewRoleName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddRole()}
+                    className="h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={handleAddRole} disabled={savingRole || !newRoleName.trim()} className="h-8">
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Legg til
+                  </Button>
+                </div>
+                {missionRoles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {missionRoles.map((role) => (
+                      <div key={role.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
+                        <span>{role.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRole(role.id)}
+                          className="hover:bg-destructive/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
