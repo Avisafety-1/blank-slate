@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,8 @@ import {
   TrendingDown,
   Calendar,
   Thermometer,
-  Zap
+  Zap,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -70,6 +72,7 @@ interface LogEntry {
   badgeColor: string;
   badgeText: string;
   imageUrl?: string;
+  incidentId?: string;
 }
 
 export const EquipmentLogbookDialog = ({ 
@@ -82,6 +85,7 @@ export const EquipmentLogbookDialog = ({
   equipmentSerienummer,
 }: EquipmentLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const navigate = useNavigate();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
@@ -249,19 +253,24 @@ export const EquipmentLogbookDialog = ({
             const { data } = await supabase.storage.from("logbook-images").createSignedUrl(entry.image_url, 3600);
             imagePublicUrl = data?.signedUrl || undefined;
           }
+          const isHendelse = entry.entry_type === 'hendelse';
+          const incidentIdMatch = entry.description?.match(/^incident_id:(.+)$/);
           logs.push({
             id: `manual-${entry.id}`,
             type: 'manual',
             date: new Date(entry.entry_date),
             title: entry.title,
-            description: entry.description || undefined,
+            description: incidentIdMatch ? undefined : (entry.description || undefined),
             userName: userMap.get(entry.user_id) || 'Ukjent',
-            icon: isVedlikehold ? <Wrench className="w-4 h-4" /> : <Edit className="w-4 h-4" />,
-            badgeColor: isVedlikehold
-              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-              : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+            icon: isHendelse ? <AlertTriangle className="w-4 h-4" /> : (isVedlikehold ? <Wrench className="w-4 h-4" /> : <Edit className="w-4 h-4" />),
+            badgeColor: isHendelse
+              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+              : (isVedlikehold
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'),
             badgeText: entry.entry_type || 'Merknad',
             imageUrl: imagePublicUrl,
+            incidentId: incidentIdMatch?.[1] || undefined,
           });
         }
       }
@@ -634,6 +643,20 @@ export const EquipmentLogbookDialog = ({
                                   onClick={() => handleDeleteEntry(log.id)}
                                 >
                                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                </Button>
+                              )}
+                              {log.incidentId && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
+                                  title="Åpne hendelse"
+                                  onClick={() => {
+                                    onOpenChange(false);
+                                    navigate('/hendelser', { state: { openIncidentId: log.incidentId } });
+                                  }}
+                                >
+                                  <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </Button>
                               )}
                             </div>

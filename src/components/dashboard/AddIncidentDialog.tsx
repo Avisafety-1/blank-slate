@@ -293,11 +293,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const createLogbookEntries = async (incidentTitle: string) => {
+  const createLogbookEntries = async (incidentTitle: string, incidentId?: string) => {
     if (!companyId) return;
     const { data: { user } } = await supabase.auth.getUser();
 
     const today = new Date().toISOString().split("T")[0];
+    const description = incidentId ? `incident_id:${incidentId}` : undefined;
 
     if (droneId) {
       await supabase.from("drone_log_entries").insert({
@@ -306,6 +307,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         entry_date: today,
         entry_type: "hendelse",
         title: `Hendelse: ${incidentTitle}`,
+        description,
         user_id: user?.id || null,
       });
     }
@@ -317,6 +319,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         entry_date: today,
         entry_type: "hendelse",
         title: `Hendelse: ${incidentTitle}`,
+        description,
         user_id: user?.id || null,
       }));
       await supabase.from("equipment_log_entries").insert(entries);
@@ -418,7 +421,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         if (error) throw error;
 
         // Create logbook entries on update too (if resources changed)
-        await createLogbookEntries(formData.tittel);
+        await createLogbookEntries(formData.tittel, incidentToEdit.id);
 
         toast.success("Hendelse oppdatert!");
       } else {
@@ -440,7 +443,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         const incidentNumber = `${dateStr}${nextNumber}`;
 
         // INSERT ny hendelse
-        const { error } = await supabase
+        const { data: insertedIncident, error } = await supabase
           .from('incidents')
           .insert({
             ...incidentData,
@@ -448,12 +451,14 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             user_id: user.id,
             rapportert_av: user.email || 'Ukjent',
             incident_number: incidentNumber,
-          });
+          })
+          .select('id')
+          .single();
 
         if (error) throw error;
 
         // Create logbook entries for linked resources
-        await createLogbookEntries(formData.tittel);
+        await createLogbookEntries(formData.tittel, insertedIncident?.id);
 
         // Send email notification for new incident (kun ved ny hendelse)
         try {

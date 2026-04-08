@@ -29,7 +29,7 @@ import {
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { getAttributeLabel } from "@/config/eccairsFields";
@@ -140,6 +140,7 @@ const getEccairsStatusClass = (status?: string): string => {
 
 const Hendelser = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading, companyId, departmentsEnabled, isAdmin } = useAuth();
   const companySettings = useCompanySettings();
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -404,6 +405,20 @@ const Hendelser = () => {
       setLoading(false);
     }
   };
+
+  // Auto-open incident from logbook navigation
+  useEffect(() => {
+    const openId = (location.state as any)?.openIncidentId;
+    if (openId && incidents.length > 0) {
+      const found = incidents.find(i => i.id === openId);
+      if (found) {
+        setSelectedIncident(found);
+        setDetailDialogOpen(true);
+      }
+      // Clear the state so it doesn't re-trigger
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [incidents, location.state]);
 
   const filterIncidents = () => {
     let filtered = [...incidents];
