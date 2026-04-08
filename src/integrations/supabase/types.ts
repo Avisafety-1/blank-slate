@@ -596,6 +596,7 @@ export type Database = {
           allow_night_flight: boolean
           company_id: string
           created_at: string
+          default_buffer_mode: string
           id: string
           linked_document_ids: string[]
           max_flight_altitude_m: number
@@ -621,6 +622,7 @@ export type Database = {
           allow_night_flight?: boolean
           company_id: string
           created_at?: string
+          default_buffer_mode?: string
           id?: string
           linked_document_ids?: string[]
           max_flight_altitude_m?: number
@@ -646,6 +648,7 @@ export type Database = {
           allow_night_flight?: boolean
           company_id?: string
           created_at?: string
+          default_buffer_mode?: string
           id?: string
           linked_document_ids?: string[]
           max_flight_altitude_m?: number
