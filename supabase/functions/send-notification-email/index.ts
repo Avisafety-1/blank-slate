@@ -664,6 +664,16 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
       return new Response(JSON.stringify({ success: true, missedCount, totalEligible: eligibleEmails.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
+    // Direct email by recipientEmail (e.g. flight alert notifications)
+    if (recipientEmail && subject && htmlContent) {
+      const emailConfig = await getEmailConfig(companyId);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+      const fixedHtmlContent = fixEmailImages(htmlContent);
+      await sendEmail({ from: senderAddress, to: recipientEmail, subject: sanitizeSubject(subject), html: fixedHtmlContent });
+      return new Response(JSON.stringify({ message: "Email sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Single recipient flow
     if (!recipientId || !subject || !htmlContent) throw new Error('Missing required fields');
 
