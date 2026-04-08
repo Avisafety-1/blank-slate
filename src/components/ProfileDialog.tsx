@@ -80,6 +80,9 @@ interface Incident {
   medvirkende_aarsak: string | null;
   incident_number: string | null;
   bilde_url: string | null;
+  pilot_id: string | null;
+  drone_id: string | null;
+  equipment_ids: string[] | null;
 }
 
 interface NotificationPreferences {
@@ -172,7 +175,7 @@ export const ProfileDialog = () => {
         const [incidentsResult, approvalResult, trainingResult] = await Promise.all([
           supabase
             .from("incidents")
-            .select("id, tittel, hendelsestidspunkt, status, alvorlighetsgrad, beskrivelse, kategori, lokasjon, mission_id, oppdatert_dato, oppfolgingsansvarlig_id, opprettet_dato, rapportert_av, user_id, company_id, hovedaarsak, medvirkende_aarsak, incident_number, bilde_url")
+            .select("id, tittel, hendelsestidspunkt, status, alvorlighetsgrad, beskrivelse, kategori, lokasjon, mission_id, oppdatert_dato, oppfolgingsansvarlig_id, opprettet_dato, rapportert_av, user_id, company_id, hovedaarsak, medvirkende_aarsak, incident_number, bilde_url, pilot_id, drone_id, equipment_ids")
             .eq("oppfolgingsansvarlig_id", user.id)
             .neq("status", "Lukket")
             .order("hendelsestidspunkt", { ascending: false }),
