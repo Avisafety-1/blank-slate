@@ -1211,8 +1211,24 @@ export const AddMissionDialog = ({
                   );
                   return (
                     <div key={id}>
-                      <div className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm w-fit">
+                      <div className="flex items-center gap-1.5 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm w-fit flex-wrap">
                         <span>{profile?.full_name || t('missions.unknown')}</span>
+                        {companyMissionRoles.length > 0 && (
+                          <Select
+                            value={personnelRoles[id] || "none"}
+                            onValueChange={(val) => setPersonnelRoles(prev => ({ ...prev, [id]: val === "none" ? null : val }))}
+                          >
+                            <SelectTrigger className="h-6 w-auto min-w-[100px] text-xs border-none bg-background/50 px-1.5 py-0">
+                              <SelectValue placeholder="Rolle" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Ingen rolle</SelectItem>
+                              {companyMissionRoles.map((role) => (
+                                <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <ResourceConflictIndicator conflicts={conflicts} />
                         <button
                           type="button"
