@@ -480,6 +480,7 @@ export const ChildCompaniesSection = () => {
     }
   };
 
+  const handleToggleApplySettingsToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplySettingsToChildren(checked);
     if (checked) {
