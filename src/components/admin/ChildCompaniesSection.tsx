@@ -687,6 +687,21 @@ export const ChildCompaniesSection = () => {
                     ))}
                   </div>
                 )}
+                {/* Roles propagation toggle */}
+                <div className="border-t pt-2 flex items-center justify-between">
+                  <Label htmlFor="apply-roles-children" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert kopieres rollene til alle avdelinger i selskapet
+                    </div>
+                  </Label>
+                  <Switch
+                    id="apply-roles-children"
+                    checked={applyRolesToChildren}
+                    onCheckedChange={handleToggleApplyRolesToChildren}
+                    disabled={savingSettings}
+                  />
+                </div>
               </div>
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <div className="flex items-center gap-2">
@@ -760,18 +775,21 @@ export const ChildCompaniesSection = () => {
                     </div>
                   )}
                 </div>
-                <Label htmlFor="apply-children" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert vil innstillingene også settes på alle avdelinger i selskapet
-                  </div>
-                </Label>
-                <Switch
-                  id="apply-children"
-                  checked={applyToChildren}
-                  onCheckedChange={handleToggleApplyToChildren}
-                  disabled={savingSettings}
-                />
+                {/* Alerts propagation toggle */}
+                <div className="border-t pt-2 flex items-center justify-between">
+                  <Label htmlFor="apply-alerts-children" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert kopieres varsler og mottakere til alle avdelinger
+                    </div>
+                  </Label>
+                  <Switch
+                    id="apply-alerts-children"
+                    checked={applyAlertsToChildren}
+                    onCheckedChange={handleToggleApplyAlertsToChildren}
+                    disabled={savingSettings}
+                  />
+                </div>
               </div>
             </div>
           </CollapsibleContent>
