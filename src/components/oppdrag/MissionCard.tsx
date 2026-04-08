@@ -368,6 +368,9 @@ export const MissionCard = ({
                   <li key={p.profile_id} className="space-y-0.5">
                     <span className="text-sm text-foreground flex items-center gap-1">
                       {p.profiles?.full_name || "Ukjent"}
+                      {p.company_mission_roles?.name && (
+                        <span className="text-xs text-muted-foreground">({p.company_mission_roles.name})</span>
+                      )}
                       {conflicts.length > 0 && (
                         conflicts.some((c: ResourceConflict) => c.conflictType === 'overlap') 
                           ? <AlertTriangle className="h-3 w-3 text-amber-500" />
