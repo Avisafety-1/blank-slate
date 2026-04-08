@@ -29,7 +29,7 @@ interface RoutePlanningState {
 export default function KartPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user, loading, companyId } = useAuth();
   useAppHeartbeat();
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
