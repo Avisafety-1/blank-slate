@@ -1,33 +1,19 @@
 
 
-## Legg til «Additional Text» for Attributt 215 (Operator)
-
-### Problem
-ECCAIRS Attributt 215 har datatypen «Code and Additional Text». Det betyr at i tillegg til å velge en verdi fra value list (f.eks. `1799998` = Norway → Other), skal brukeren kunne skrive inn operatørnavnet som fritekst. Dagens implementasjon støtter kun kode-valget, ikke fritekstfeltet.
-
-### Løsning
-Utvide systemet med en ny felttype `code_and_text` som kombinerer en dropdown (koden) med et tekstfelt (additional text). For felt 215 vil dette vise:
-- Dropdown: Velg operatør fra VL215 (default: Norway → Other)
-- Tekstfelt: Skriv inn operatørens navn
+## Erstatt 393/394 med 1065/1068 + rydd opp i payload
 
 ### Endringer
 
 **`src/config/eccairsFields.ts`**
-- Legg til ny type `'code_and_text'` i `EccairsFieldConfig.type`
-- Legg til valgfri `additionalTextField?: string` egenskap for label på fritekstfeltet
-- Oppdater felt 215: `type: 'code_and_text'`, `additionalTextField: 'Operatørnavn'`
-- Legg til ny format `'code_and_additional_text'` i `EccairsFormat`
+- Fjern felt 393 (Assessment) og 394 (Safety Recommendation) fra ECCAIRS_FIELDS
+- Legg til felt 1065: label «Risikoklassifisering (intern)», entityPath `'53'`, format `'string_array'`, type `'text'`, group `'analysis'`, helpText «Maks 200 tegn»
+- Legg til felt 1068: label «Risikovurdering»,  entityPath `'53'`, format `'text_content_array'`, type `'textarea'`, group `'analysis'`
 
-**`src/components/eccairs/EccairsMappingDialog.tsx`**
-- Legg til rendering av `code_and_text`-felt: dropdown + tekstfelt under
-- Lagre additional text i `text_value`-kolonnen, koden i `value_id`
-
-**`supabase/functions/_shared/eccairsPayload.js`**
-- Legg til ny format `code_and_additional_text` i `selectionToE2Value`
-- Generer E2-format: `[{content: [kode], additionalText: "operatørnavn"}]` (eller tilsvarende per E2 API-spesifikasjon — mest sannsynlig `[1799998, "Company Name"]` som en array med mixed types)
+**`supabase/functions/_shared/eccairsPayload.js`** (kun opprydding)
+- Fjern `'393': '14'` og `'394': '14'` fra ENTITY_PATH_OVERRIDES
+- Legg til en SKIP_ATTRIBUTES-liste med `'216'`, `'393'`, `'394'` som filtreres bort i `buildSelections` — dette hindrer gamle DB-rader fra å bli sendt til E2
 
 ### Filer som endres
 - `src/config/eccairsFields.ts`
-- `src/components/eccairs/EccairsMappingDialog.tsx`
 - `supabase/functions/_shared/eccairsPayload.js`
 
