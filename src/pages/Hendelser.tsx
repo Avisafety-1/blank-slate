@@ -61,9 +61,9 @@ type Incident = {
   medvirkende_aarsak: string | null;
   incident_number: string | null;
   bilde_url: string | null;
-  pilot_id?: string | null;
-  drone_id?: string | null;
-  equipment_ids?: string[] | null;
+  pilot_id: string | null;
+  drone_id: string | null;
+  equipment_ids: string[] | null;
   drone_serial_number?: string | null;
   comments?: IncidentComment[];
 };
