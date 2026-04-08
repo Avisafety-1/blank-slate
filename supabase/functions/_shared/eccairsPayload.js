@@ -123,8 +123,8 @@ async function loadIncidentAttributesGeneric(supabase, incident_id) {
 const ENTITY_PATH_OVERRIDES = {
   '390': '14',   // Event_Type -> Events entity (Entity 14)
   '391': '14',   // Risk Classification -> Events entity (Entity 14)
-  '393': '14',   // Assessment -> Events entity (Entity 14)
-  '394': '14',   // Safety Recommendation -> Events entity (Entity 14)
+  '1065': '53',  // Risk classification (internal) -> Reporting history (Entity 53)
+  '1068': '53',  // Risk assessment -> Reporting history (Entity 53)
   '32': '4',     // Aircraft Category -> Aircraft entity (Entity 4)
   '215': '4',    // Operator -> Aircraft entity (Entity 4)
   
@@ -143,6 +143,11 @@ const ENTITY_PATH_OVERRIDES = {
   '648': '4',    // Bird size -> Aircraft entity (Entity 4)
   '649': '4',    // Pilot advised of birds -> Aircraft entity (Entity 4)
 };
+
+// -------------------------
+// Attributes to skip (removed/invalid fields that may still exist in DB)
+// -------------------------
+const SKIP_ATTRIBUTES = new Set(['216', '393', '394']);
 
 // -------------------------
 // Attributes that must ALWAYS be at top-level (Entity 24) regardless of DB value
@@ -175,6 +180,7 @@ async function buildSelections({ supabase, incident_id, company_id }) {
     for (const r of generic) {
       const code = toAttributeCode(r.attribute_code);
       if (!code) continue;
+      if (SKIP_ATTRIBUTES.has(code)) continue;
       
       // Force certain attributes to top-level, ignoring any stored entity_path
       let entityPath;
