@@ -16,7 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
-import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell } from "lucide-react";
+import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -81,6 +81,13 @@ export const ChildCompaniesSection = () => {
   const [alertRecipients, setAlertRecipients] = useState<{ id: string; profile_id: string; full_name: string | null }[]>([]);
   const [companyProfiles, setCompanyProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+
+  // FlightHub 2 state
+  const [fh2Token, setFh2Token] = useState("");
+  const [fh2BaseUrl, setFh2BaseUrl] = useState("https://openapi.dji.com");
+  const [savingFh2, setSavingFh2] = useState(false);
+  const [testingFh2, setTestingFh2] = useState(false);
+  const [fh2ShowToken, setFh2ShowToken] = useState(false);
 
   const fetchFlightAlerts = useCallback(async () => {
     if (!companyId) return;
@@ -264,6 +271,8 @@ export const ChildCompaniesSection = () => {
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
+      setFh2Token((data as any).flighthub2_token || "");
+      setFh2BaseUrl((data as any).flighthub2_base_url || "https://openapi.dji.com");
     }
     // Fetch default buffer mode from sora config
     const { data: soraData } = await (supabase as any)
