@@ -947,6 +947,7 @@ export const ChildCompaniesSection = () => {
         </div>
       </GlassCard>
 
+      <GlassCard>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
