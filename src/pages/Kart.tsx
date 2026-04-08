@@ -167,7 +167,7 @@ export default function KartPage() {
       setEditingMissionId(null);
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
       setPilotPosition(undefined);
-setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: "convexHull" });
+setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: companyBufferMode });
       return;
     }
 
@@ -215,7 +215,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
     if (route?.soraSettings) {
       setSoraSettings(route.soraSettings);
     } else {
-      setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: "convexHull" });
+      setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: companyBufferMode });
     }
   }, []);
 
