@@ -12,6 +12,7 @@ const corsHeaders = {
 
 interface EmailRequest {
   recipientId?: string;
+  recipientEmail?: string;
   notificationType?: string;
   subject?: string;
   htmlContent?: string;
@@ -36,7 +37,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
+    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -661,6 +662,16 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
       const missedCount = eligibleEmails.filter(email => !alreadySentEmails.has(email.toLowerCase())).length;
 
       return new Response(JSON.stringify({ success: true, missedCount, totalEligible: eligibleEmails.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    // Direct email by recipientEmail (e.g. flight alert notifications)
+    if (recipientEmail && subject && htmlContent) {
+      const emailConfig = await getEmailConfig(companyId);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+      const fixedHtmlContent = fixEmailImages(htmlContent);
+      await sendEmail({ from: senderAddress, to: recipientEmail, subject: sanitizeSubject(subject), html: fixedHtmlContent });
+      return new Response(JSON.stringify({ message: "Email sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Single recipient flow
