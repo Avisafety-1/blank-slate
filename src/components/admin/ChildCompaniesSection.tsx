@@ -57,6 +57,7 @@ export const ChildCompaniesSection = () => {
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
+  const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [applySettingsToChildren, setApplySettingsToChildren] = useState(false);
   const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
   const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
@@ -264,6 +265,15 @@ export const ChildCompaniesSection = () => {
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
     }
+    // Fetch default buffer mode from sora config
+    const { data: soraData } = await (supabase as any)
+      .from("company_sora_config")
+      .select("default_buffer_mode")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (soraData?.default_buffer_mode) {
+      setDefaultBufferMode(soraData.default_buffer_mode);
+    }
   };
 
   const handleToggleAirspaceWarnings = async (checked: boolean) => {
@@ -408,6 +418,18 @@ export const ChildCompaniesSection = () => {
     setRequireSoraSteps(steps);
     invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
+  };
+
+  const handleChangeBufferMode = async (mode: "corridor" | "convexHull") => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("company_sora_config")
+      .upsert({ company_id: companyId, default_buffer_mode: mode }, { onConflict: 'company_id' });
+    setSavingSettings(false);
+    setDefaultBufferMode(mode);
+    invalidateCompanySettingsCache();
+    toast.success("Buffermodus lagret");
   };
 
   const handleToggleApplySettingsToChildren = async (checked: boolean) => {
@@ -627,6 +649,29 @@ export const ChildCompaniesSection = () => {
                     </RadioGroup>
                   </div>
                 )}
+              </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <Label className="flex-1">
+                  <div className="font-medium text-sm">Standard SORA-buffersone</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Velg standard buffermodus for nye oppdrag og ruteplanlegger
+                  </div>
+                </Label>
+                <RadioGroup
+                  value={defaultBufferMode}
+                  onValueChange={(v) => handleChangeBufferMode(v as "corridor" | "convexHull")}
+                  className="flex gap-4"
+                  disabled={savingSettings}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="corridor" id="buffer-corridor" />
+                    <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="convexHull" id="buffer-convex" />
+                    <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
+                  </div>
+                </RadioGroup>
               </div>
               {/* Settings propagation toggle */}
               <div className="border-t pt-2 flex items-center justify-between">

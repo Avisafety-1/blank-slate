@@ -29,7 +29,7 @@ interface RoutePlanningState {
 export default function KartPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user, loading, companyId } = useAuth();
   useAppHeartbeat();
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
@@ -52,7 +52,8 @@ export default function KartPage() {
   const kmlInputRef = useRef<HTMLInputElement>(null);
   const [importingKml, setImportingKml] = useState(false);
   
-  // SORA settings
+  // SORA settings - default buffer mode loaded from company config
+  const [companyBufferMode, setCompanyBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [soraSettings, setSoraSettings] = useState<SoraSettings>({
     enabled: false,
     flightAltitude: 120,
@@ -60,7 +61,7 @@ export default function KartPage() {
     contingencyDistance: 50,
     contingencyHeight: 30,
     groundRiskDistance: 100,
-    bufferMode: "convexHull",
+    bufferMode: "corridor",
   });
   const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
 
@@ -69,6 +70,23 @@ export default function KartPage() {
       navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
+
+  // Fetch company default buffer mode
+  useEffect(() => {
+    if (!companyId) return;
+    (supabase as any)
+      .from("company_sora_config")
+      .select("default_buffer_mode")
+      .eq("company_id", companyId)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (data?.default_buffer_mode) {
+          const mode = data.default_buffer_mode as "corridor" | "convexHull";
+          setCompanyBufferMode(mode);
+          setSoraSettings(prev => prev.bufferMode === "corridor" ? { ...prev, bufferMode: mode } : prev);
+        }
+      });
+  }, [companyId]);
 
   // Check for route planning mode or viewMission from navigation state
   useEffect(() => {
@@ -149,7 +167,7 @@ export default function KartPage() {
       setEditingMissionId(null);
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
       setPilotPosition(undefined);
-setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: "convexHull" });
+setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: companyBufferMode });
       return;
     }
 
@@ -197,7 +215,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
     if (route?.soraSettings) {
       setSoraSettings(route.soraSettings);
     } else {
-      setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: "convexHull" });
+      setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: companyBufferMode });
     }
   }, []);
 
