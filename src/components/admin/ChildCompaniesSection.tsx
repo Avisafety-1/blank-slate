@@ -84,7 +84,7 @@ export const ChildCompaniesSection = () => {
 
   // FlightHub 2 state
   const [fh2Token, setFh2Token] = useState("");
-  const [fh2BaseUrl, setFh2BaseUrl] = useState("https://openapi.dji.com");
+  const [fh2BaseUrl, setFh2BaseUrl] = useState("");
   const [savingFh2, setSavingFh2] = useState(false);
   const [testingFh2, setTestingFh2] = useState(false);
   const [fh2ShowToken, setFh2ShowToken] = useState(false);
@@ -272,7 +272,7 @@ export const ChildCompaniesSection = () => {
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       setFh2Token((data as any).flighthub2_token || "");
-      setFh2BaseUrl((data as any).flighthub2_base_url || "https://openapi.dji.com");
+      setFh2BaseUrl((data as any).flighthub2_base_url || "");
     }
     // Fetch default buffer mode from sora config
     const { data: soraData } = await (supabase as any)
@@ -446,7 +446,7 @@ export const ChildCompaniesSection = () => {
     setSavingFh2(true);
     const { error } = await supabase
       .from("companies")
-      .update({ flighthub2_token: fh2Token || null, flighthub2_base_url: fh2BaseUrl || "https://openapi.dji.com" } as any)
+      .update({ flighthub2_token: fh2Token || null, flighthub2_base_url: fh2BaseUrl || null } as any)
       .eq("id", companyId);
     setSavingFh2(false);
     if (error) { toast.error("Kunne ikke lagre"); return; }
@@ -460,7 +460,7 @@ export const ChildCompaniesSection = () => {
       // Save first so edge function can read it
       await supabase
         .from("companies")
-        .update({ flighthub2_token: fh2Token, flighthub2_base_url: fh2BaseUrl || "https://openapi.dji.com" } as any)
+        .update({ flighthub2_token: fh2Token, flighthub2_base_url: fh2BaseUrl || null } as any)
         .eq("id", companyId);
 
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
@@ -927,11 +927,11 @@ export const ChildCompaniesSection = () => {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs">Base URL (valgfri)</Label>
+            <Label className="text-xs">Base URL</Label>
             <Input
               value={fh2BaseUrl}
               onChange={(e) => setFh2BaseUrl(e.target.value)}
-              placeholder="https://openapi.dji.com"
+              placeholder="https://fh.dji.com eller din on-prem server"
               className="h-8 text-sm"
             />
           </div>
