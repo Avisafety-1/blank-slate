@@ -476,6 +476,20 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                 >
                   Sensor
                 </Button>
+
+                {/* FlightHub 2 */}
+                {hasFH2Token && currentRoute.coordinates.length >= 2 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFh2DialogOpen(true)}
+                    className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
+                    title="Send rute og SORA-korridor til DJI FlightHub 2"
+                  >
+                    <Send className="h-3 w-3 mr-0.5 sm:mr-1" />
+                    FH2
+                  </Button>
+                )}
               </div>
 
               {/* Undo & Clear grouped together */}
