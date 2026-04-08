@@ -12,6 +12,7 @@ const corsHeaders = {
 
 interface EmailRequest {
   recipientId?: string;
+  recipientEmail?: string;
   notificationType?: string;
   subject?: string;
   htmlContent?: string;
