@@ -1,43 +1,47 @@
 
 
-## Fiks FlightHub 2 401 -- Prøv begge regioner automatisk + token-verifisering
+## Diagnose: FlightHub 2 401 -- nøkkeltype og FlightHub Sync-aktivering
 
-### Analyse
+### Hva vi vet nå
 
-Loggene viser at DJI returnerer `200401 Unauthorized` for begge API-varianter mot `es-flight-api-us.djigate.com`. JWT-tokenet er gyldig og ikke utløpt. 
+Etter grundig gjennomgang av **all** DJI-dokumentasjon:
 
-**Mest sannsynlig årsak: Feil region.** Organisasjonen din kan være registrert på Kina-serveren (`es-flight-api-cn.djigate.com`), ikke US-serveren. DJI har separate databaser per region -- et token fra én region fungerer IKKE på den andre.
+1. **To separate API-er, begge feiler med 401:**
+   - Ny OpenAPI: `GET /openapi/v0.1/project` + `X-User-Token` → 401
+   - Gammel FlightHub Sync: `GET /manage/api/v1.0/projects` + `X-Organization-Key` → 401
+   - Begge mot US og CN → 401 alle 4 kombinasjoner
 
-Det kan også være at tokenet som er lagret i databasen er forskjellig fra det du ser i jwt.io (f.eks. kuttet av, ekstra tegn).
+2. **Koden er korrekt.** URL-er, headers, og token-håndtering matcher dokumentasjonen perfekt. Tokenet trimmes, har riktig lengde (452), er en gyldig JWT med riktig org_uuid, og er ikke utløpt.
 
-### Plan
+3. **`system_status` krever ingen autentisering** (bekreftet i OpenAPI-spesifikasjonen: `security: []`). At den returnerte "Tilkoblet!" tidligere betyr bare at serveren svarer -- det sier ingenting om nøkkelen.
 
-**Edge function (`flighthub2-proxy/index.ts`)**:
+### Mest sannsynlig årsak
 
-1. **Test-connection: Prøv begge regioner automatisk**
-   - Hvis den konfigurerte base URL-en returnerer 401 på list-projects, prøv automatisk den ANDRE regionen
-   - Rapporter hvilken region som fungerte (eller at begge feilet)
-   - Vis dette i test-resultatet: "Prøvde US: 401, Prøvde CN: OK" eller "Begge regioner feilet"
+FlightHub Sync-dokumentasjonen sier at **storage bucket MÅ konfigureres** for at file sync (inkludert route upload) skal fungere. Uten konfigurert bucket kan det hende at DJI ikke aktiverer API-tilgangen fullt ut.
 
-2. **Logg token-fingeravtrykk**
-   - Logg token-lengde og første 10 + siste 6 tegn (nok til å verifisere mot jwt.io uten å eksponere hele tokenet)
-   - Logg organization_uuid fra JWT-payload
+Men 401 på bare å **liste prosjekter** burde ikke kreve bucket. Derfor er det mest sannsynlig et **nøkkel-problem**:
 
-```text
-Konkret flyt i test-connection:
-1. system_status mot konfigurert URL (verifiser at serveren svarer)
-2. list-projects mot konfigurert URL (begge API-varianter)
-3. Hvis begge 401 → prøv den ANDRE regionen:
-   - Konfigurert US → prøv CN
-   - Konfigurert CN → prøv US
-4. Returner resultat med info om hvilken region som fungerte
-```
+- Nøkkelen kan være fra feil sted (OpenAPI-seksjonen vs FlightHub Sync-seksjonen)
+- Nøkkelen kan kreve at FlightHub Sync er fullt aktivert med bucket
 
-**Admin UI (`ChildCompaniesSection.tsx`)**:
-- Vis i testresultatet hvis en annen region fungerte: "Tokenet fungerer på CN-serveren, ikke US. Oppdater base URL."
-- Tilby automatisk URL-bytte hvis alternativ region fungerer
+### Plan: Isoler problemet
+
+**1. Legg til en direkte API-test i edge function** som logger absolutt alt:
+- Full HTTP request (alle headers, URL, metode)
+- Full HTTP response (status, alle response headers, body)
+- Spesifikt: sjekk om DJI returnerer noe i response headers som forklarer 401 (f.eks. `X-Error-Code`, `X-Rate-Limit`, etc.)
+
+**2. Legg til en "raw test"-action** i proxy:
+- Tar inn en vilkårlig URL + header-navn + token
+- Gjør kallet og returnerer alt
+- Slik at vi kan teste direkte fra admin-UI uten å gå via Apifox
+
+**3. Oppdater admin-UI med tydeligere veiledning:**
+- Vis tydelig melding: "Nøkkelen avvises av DJI. Prøv å generere en ny nøkkel under FlightHub 2 → Organization Settings → FlightHub Sync → Organization Key"
+- Legg til lenke til DJI-dokumentasjonen
+- Vis knapp for "Test direkte mot DJI" som viser full request/response
 
 ### Filer som endres
-1. `supabase/functions/flighthub2-proxy/index.ts` -- region-fallback i test-connection, token-fingeravtrykk
-2. `src/components/admin/ChildCompaniesSection.tsx` -- vis region-diagnostikk og tilby auto-bytte
+1. `supabase/functions/flighthub2-proxy/index.ts` -- legg til raw-test action med full request/response logging
+2. `src/components/admin/ChildCompaniesSection.tsx` -- vis tydeligere feilmelding og veiledning ved 401
 
