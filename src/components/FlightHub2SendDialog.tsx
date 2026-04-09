@@ -112,6 +112,7 @@ export const FlightHub2SendDialog = ({
       turnMode,
       droneEnumValue: activeDjiModel?.enumValue ?? 67,
       droneSubEnumValue: activeDjiModel?.subEnumValue ?? 0,
+      takeOffPoint: pilotPosition || (route.coordinates.length > 0 ? route.coordinates[0] : undefined),
     };
     const blob = await generateDJIKMZ(routeName || "Avisafe Route", route, flightHeight, opts);
     const arrayBuffer = await blob.arrayBuffer();
