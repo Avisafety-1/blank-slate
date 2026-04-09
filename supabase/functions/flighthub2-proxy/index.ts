@@ -181,11 +181,12 @@ Deno.serve(async (req: Request) => {
       "X-Request-Id": crypto.randomUUID(),
       "X-Language": "en",
     };
-    // Set X-Project-Uuid: prefer client-provided, then JWT-extracted
+    // X-Project-Uuid: only added for project-specific actions, NOT for list-projects/test-connection
     const effectiveProjectUuid = projectUuid || jwtProjectUuid;
+    const projectHeaders: Record<string, string> = { ...commonHeaders };
     if (effectiveProjectUuid) {
-      commonHeaders["X-Project-Uuid"] = effectiveProjectUuid;
-      console.log("Using X-Project-Uuid:", effectiveProjectUuid, projectUuid ? "(from client)" : "(from JWT)");
+      projectHeaders["X-Project-Uuid"] = effectiveProjectUuid;
+      console.log("Project-specific X-Project-Uuid available:", effectiveProjectUuid, projectUuid ? "(from client)" : "(from JWT)");
     }
 
     // Helper: fetch with DNS error handling
