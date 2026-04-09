@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   layers: Layers,
@@ -73,31 +74,33 @@ export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps)
         <SheetHeader>
           <SheetTitle>Kartlag</SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-4">
-          {layers.map((layer) => {
-            const IconComponent = layer.icon ? iconMap[layer.icon] : null;
-            return (
-              <div key={layer.id} className="flex items-center space-x-3">
-                <Checkbox
-                  id={layer.id}
-                  checked={layer.enabled}
-                  onCheckedChange={(checked) => {
-                    onLayerToggle(layer.id, checked as boolean);
-                  }}
-                />
-                {IconComponent && (
-                  <IconComponent className="h-4 w-4 text-muted-foreground" />
-                )}
-                <Label
-                  htmlFor={layer.id}
-                  className="text-sm font-normal cursor-pointer flex-1"
-                >
-                  {layer.name}
-                </Label>
-              </div>
-            );
-          })}
-        </div>
+        <ScrollArea className="mt-6 h-[calc(100vh-8rem)]">
+          <div className="space-y-4 pr-3">
+            {layers.map((layer) => {
+              const IconComponent = layer.icon ? iconMap[layer.icon] : null;
+              return (
+                <div key={layer.id} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={layer.id}
+                    checked={layer.enabled}
+                    onCheckedChange={(checked) => {
+                      onLayerToggle(layer.id, checked as boolean);
+                    }}
+                  />
+                  {IconComponent && (
+                    <IconComponent className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <Label
+                    htmlFor={layer.id}
+                    className="text-sm font-normal cursor-pointer flex-1"
+                  >
+                    {layer.name}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
