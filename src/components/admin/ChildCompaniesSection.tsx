@@ -503,8 +503,9 @@ export const ChildCompaniesSection = () => {
           .update({ flighthub2_base_url: workingUrl } as any)
           .eq("id", companyId);
         toast.success(`FlightHub 2 tilkoblet! Base URL oppdatert til ${workingUrl}.${jwtDiag}`);
-      } else if (data?.server_ok && data?.token_ok) {
-        toast.success(`FlightHub 2 tilkoblet og organisasjonsnøkkel godkjent!${jwtDiag}`);
+      } else if (data?.token_ok) {
+        const projectInfo = data?.project_count ? ` ${data.project_count} prosjekter funnet.` : '';
+        toast.success(`FlightHub 2 tilkoblet!${projectInfo}${jwtDiag}`);
       } else if (data?.server_ok && !data?.token_ok) {
         const errMsg = data?._project_error_code === 200401
           ? `Organisasjonsnøkkelen ble avvist (Unauthorized) på begge regioner (US og CN). Sjekk at nøkkelen er riktig og ikke utløpt.${jwtDiag}`
