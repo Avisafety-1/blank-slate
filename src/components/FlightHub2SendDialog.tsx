@@ -19,6 +19,7 @@ interface FlightHub2SendDialogProps {
   soraBufferCoordinates?: Array<{ lat: number; lng: number }>;
   droneModelName?: string;
   pilotPosition?: { lat: number; lng: number };
+  initialRouteName?: string;
 }
 
 interface FH2Project {
@@ -42,10 +43,11 @@ export const FlightHub2SendDialog = ({
   soraBufferCoordinates,
   droneModelName,
   pilotPosition,
+  initialRouteName,
 }: FlightHub2SendDialogProps) => {
   const [projects, setProjects] = useState<FH2Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
-  const [routeName, setRouteName] = useState("Avisafe Route");
+  const [routeName, setRouteName] = useState(initialRouteName || "Avisafe Route");
   const [sendRoute, setSendRoute] = useState(true);
   const [sendAnnotation, setSendAnnotation] = useState(true);
   const [loading, setLoading] = useState(false);

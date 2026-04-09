@@ -487,6 +487,19 @@ const Oppdrag = () => {
           onPerformRiskAssessment={handlePerformRiskAssessment}
           onSkipRiskAssessment={handleSkipRiskAssessment}
         />
+
+        {fh2Mission && (
+          <FlightHub2SendDialog
+            open={fh2DialogOpen}
+            onOpenChange={(open) => {
+              setFh2DialogOpen(open);
+              if (!open) setFh2Mission(null);
+            }}
+            route={(fh2Mission.route as any) || { coordinates: [], altitude: 120 }}
+            droneModelName={fh2Mission.drones?.[0]?.drones?.modell}
+            initialRouteName={fh2Mission.tittel}
+          />
+        )}
       </div>
     </div>
   );
