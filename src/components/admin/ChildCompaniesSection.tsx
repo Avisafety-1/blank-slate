@@ -914,109 +914,77 @@ export const ChildCompaniesSection = () => {
       </Collapsible>
 
       {/* FlightHub 2 Integration */}
-      <GlassCard>
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Send className="h-4 w-4 text-muted-foreground" />
-            <div className="font-medium text-sm">DJI FlightHub 2</div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs max-w-[220px]">Send rutefiler og SORA-korridorer direkte til DJI FlightHub 2</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs">Organisasjonsnøkkel (FlightHub Sync)</Label>
-            <div className="flex gap-2">
-              <Input
-                type={fh2ShowToken ? "text" : "password"}
-                value={fh2Token}
-                onChange={(e) => setFh2Token(e.target.value)}
-                placeholder="Lim inn FlightHub Sync-nøkkel..."
-                className="h-8 text-sm font-mono"
-              />
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
-                {fh2ShowToken ? "Skjul" : "Vis"}
-              </Button>
+      <Collapsible>
+        <GlassCard>
+          <CollapsibleTrigger className="w-full text-left">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Send className="h-5 w-5" />
+                  DJI FlightHub 2
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Send rutefiler og SORA-korridorer til DJI FlightHub 2
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {fh2Connected && (
+                  <Badge variant="default" className="text-xs bg-green-600">Tilkoblet</Badge>
+                )}
+                <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
+              </div>
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              Bruk nøkkelen fra FlightHub 2 → Organisasjonsinnstillinger → FlightHub Sync → Organisasjonsnøkkel.
-              Nøkkelen må ha tilgang til prosjektene du ønsker å synkronisere med, og tilhøre riktig region/base URL.
-            </p>
-          </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-4">
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label className="text-xs">Organisasjonsnøkkel (FlightHub Sync)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type={fh2ShowToken ? "text" : "password"}
+                    value={fh2Token}
+                    onChange={(e) => setFh2Token(e.target.value)}
+                    placeholder="Lim inn FlightHub Sync-nøkkel..."
+                    className="h-8 text-sm font-mono"
+                  />
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
+                    {fh2ShowToken ? "Skjul" : "Vis"}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Bruk nøkkelen fra FlightHub 2 → Organisasjonsinnstillinger → FlightHub Sync → Organisasjonsnøkkel.
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs">Base URL</Label>
-            <Select value={fh2BaseUrl} onValueChange={(val) => setFh2BaseUrl(val === "__custom__" ? "" : val)}>
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="Velg server..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="https://es-flight-api-eu.djigate.com">Public Cloud – Europa (EU)</SelectItem>
-                <SelectItem value="https://es-flight-api-us.djigate.com">Public Cloud – Internasjonal (US)</SelectItem>
-                <SelectItem value="https://es-flight-api-cn.djigate.com">Public Cloud – Kina</SelectItem>
-                <SelectItem value="__custom__">Egendefinert URL (on-prem)...</SelectItem>
-              </SelectContent>
-            </Select>
-            {(fh2BaseUrl && !["https://es-flight-api-eu.djigate.com", "https://es-flight-api-us.djigate.com", "https://es-flight-api-cn.djigate.com"].includes(fh2BaseUrl)) && (
-              <Input
-                value={fh2BaseUrl}
-                onChange={(e) => setFh2BaseUrl(e.target.value)}
-                placeholder="https://din-server.example.com"
-                className="h-8 text-sm"
-              />
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
-              {savingFh2 ? "Lagrer..." : "Lagre"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
-              {testingFh2 ? "Tester..." : "Test tilkobling"}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleRawTestFh2} disabled={rawTesting || !fh2Token || !fh2BaseUrl} className="h-8 text-xs">
-              {rawTesting ? "Tester..." : "🔍 Raw API-test"}
-            </Button>
-          </div>
-
-          {rawTestResult && (
-            <div className="mt-3 p-3 rounded-lg bg-muted/50 border text-xs font-mono overflow-auto max-h-60">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-foreground">Raw API-respons</span>
-                <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setRawTestResult(null)}>
-                  <X className="h-3 w-3" />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
+                  {savingFh2 ? "Lagrer..." : "Lagre"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
+                  {testingFh2 ? "Tester..." : "Test tilkobling"}
                 </Button>
               </div>
-              {rawTestResult.request && (
-                <div className="mb-2">
-                  <p><strong>URL:</strong> {rawTestResult.request.url}</p>
-                  <p><strong>Auth header:</strong> {rawTestResult.request.auth_header}</p>
-                  <p><strong>Token:</strong> {rawTestResult.request.token_fingerprint} (len={rawTestResult.request.token_length})</p>
+
+              {fh2Connected && (
+                <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 space-y-2">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                    ✅ Gratulerer! Du er tilkoblet din FH2-konto med {fh2Projects.length} prosjekter
+                  </p>
+                  {fh2Projects.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {fh2Projects.map((name, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-              {rawTestResult.response && (
-                <div>
-                  <p><strong>Status:</strong> <span className={rawTestResult.response.status === 200 ? "text-green-600" : "text-red-500"}>{rawTestResult.response.status}</span></p>
-                  <p><strong>Response headers:</strong></p>
-                  <pre className="text-[10px] whitespace-pre-wrap text-muted-foreground">{JSON.stringify(rawTestResult.response.headers, null, 2)}</pre>
-                  <p className="mt-1"><strong>Body:</strong></p>
-                  <pre className="text-[10px] whitespace-pre-wrap">{typeof rawTestResult.response.body === 'string' ? rawTestResult.response.body : JSON.stringify(rawTestResult.response.body, null, 2)}</pre>
-                </div>
-              )}
-              {rawTestResult.error && (
-                <p className="text-destructive">{rawTestResult.error}</p>
               )}
             </div>
-          )}
-        </div>
-      </GlassCard>
+          </CollapsibleContent>
+        </GlassCard>
+      </Collapsible>
 
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
