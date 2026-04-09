@@ -23,7 +23,7 @@ const generateTemplateKml = (
   flightHeight: number,
   opts: DJIExportOptions = {}
 ): string => {
-  const timestamp = new Date().toISOString();
+  const timestamp = Date.now();
   const speed = opts.speed ?? 5;
   const takeOffHeight = opts.takeOffHeight ?? 20;
   const heightMode = opts.heightMode ?? 'relativeToStartPoint';
@@ -35,6 +35,8 @@ const generateTemplateKml = (
           <coordinates>${coord.lng},${coord.lat}</coordinates>
         </Point>
         <wpml:index>${index}</wpml:index>
+        <wpml:ellipsoidHeight>0</wpml:ellipsoidHeight>
+        <wpml:height>${flightHeight}</wpml:height>
         <wpml:executeHeight>${flightHeight}</wpml:executeHeight>
         <wpml:waypointSpeed>${speed}</wpml:waypointSpeed>
         <wpml:waypointHeadingParam>
@@ -44,6 +46,7 @@ const generateTemplateKml = (
           <wpml:waypointTurnMode>${turnMode}</wpml:waypointTurnMode>
           <wpml:waypointTurnDampingDist>0</wpml:waypointTurnDampingDist>
         </wpml:waypointTurnParam>
+        <wpml:gimbalPitchAngle>0</wpml:gimbalPitchAngle>
         <wpml:useGlobalHeight>1</wpml:useGlobalHeight>
         <wpml:useGlobalSpeed>1</wpml:useGlobalSpeed>
         <wpml:useGlobalHeadingParam>1</wpml:useGlobalHeadingParam>
@@ -51,7 +54,7 @@ const generateTemplateKml = (
       </Placemark>`).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.6">
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.2">
   <Document>
     <wpml:author>Avisafe</wpml:author>
     <wpml:createTime>${timestamp}</wpml:createTime>
@@ -63,6 +66,7 @@ const generateTemplateKml = (
       <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>
       <wpml:takeOffSecurityHeight>${takeOffHeight}</wpml:takeOffSecurityHeight>
       <wpml:globalTransitionalSpeed>${speed}</wpml:globalTransitionalSpeed>
+      <wpml:globalRTHHeight>${takeOffHeight}</wpml:globalRTHHeight>
       <wpml:droneInfo>
         <wpml:droneEnumValue>68</wpml:droneEnumValue>
         <wpml:droneSubEnumValue>0</wpml:droneSubEnumValue>
@@ -98,7 +102,7 @@ const generateWaylinesWpml = (
   flightHeight: number,
   opts: DJIExportOptions = {}
 ): string => {
-  const timestamp = new Date().toISOString();
+  const timestamp = Date.now();
   const speed = opts.speed ?? 5;
   const takeOffHeight = opts.takeOffHeight ?? 20;
   const heightMode = opts.heightMode ?? 'relativeToStartPoint';
@@ -110,6 +114,8 @@ const generateWaylinesWpml = (
           <coordinates>${coord.lng},${coord.lat}</coordinates>
         </Point>
         <wpml:index>${index}</wpml:index>
+        <wpml:ellipsoidHeight>0</wpml:ellipsoidHeight>
+        <wpml:height>${flightHeight}</wpml:height>
         <wpml:executeHeight>${flightHeight}</wpml:executeHeight>
         <wpml:waypointSpeed>${speed}</wpml:waypointSpeed>
         <wpml:waypointHeadingParam>
@@ -119,14 +125,10 @@ const generateWaylinesWpml = (
           <wpml:waypointTurnMode>${turnMode}</wpml:waypointTurnMode>
           <wpml:waypointTurnDampingDist>0</wpml:waypointTurnDampingDist>
         </wpml:waypointTurnParam>
-        <wpml:useGlobalHeight>1</wpml:useGlobalHeight>
-        <wpml:useGlobalSpeed>1</wpml:useGlobalSpeed>
-        <wpml:useGlobalHeadingParam>1</wpml:useGlobalHeadingParam>
-        <wpml:useGlobalTurnParam>1</wpml:useGlobalTurnParam>
       </Placemark>`).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.6">
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.2">
   <Document>
     <wpml:author>Avisafe</wpml:author>
     <wpml:createTime>${timestamp}</wpml:createTime>
@@ -138,6 +140,7 @@ const generateWaylinesWpml = (
       <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>
       <wpml:takeOffSecurityHeight>${takeOffHeight}</wpml:takeOffSecurityHeight>
       <wpml:globalTransitionalSpeed>${speed}</wpml:globalTransitionalSpeed>
+      <wpml:globalRTHHeight>${takeOffHeight}</wpml:globalRTHHeight>
       <wpml:droneInfo>
         <wpml:droneEnumValue>68</wpml:droneEnumValue>
         <wpml:droneSubEnumValue>0</wpml:droneSubEnumValue>
@@ -147,8 +150,6 @@ const generateWaylinesWpml = (
       <wpml:templateId>0</wpml:templateId>
       <wpml:executeHeightMode>${heightMode}</wpml:executeHeightMode>
       <wpml:waylineId>0</wpml:waylineId>
-      <wpml:distance>${Math.round(route.totalDistance)}</wpml:distance>
-      <wpml:duration>0</wpml:duration>
       <wpml:autoFlightSpeed>${speed}</wpml:autoFlightSpeed>
 ${placemarks}
     </Folder>
