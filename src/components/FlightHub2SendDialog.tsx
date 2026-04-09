@@ -73,8 +73,8 @@ export const FlightHub2SendDialog = ({
   useEffect(() => {
     if (open) {
       fetchProjects();
-      // Reset manual override when dialog opens
       setManualDjiModel("");
+      setRouteName(initialRouteName || "Avisafe Route");
     }
   }, [open]);
 
