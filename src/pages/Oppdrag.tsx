@@ -14,6 +14,8 @@ import { exportToPDF, DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdf
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
+import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Mission = any;
 
@@ -54,6 +56,23 @@ const Oppdrag = () => {
   const [executingChecklistMissionId, setExecutingChecklistMissionId] = useState<string | null>(null);
   const [riskPromptMission, setRiskPromptMission] = useState<Mission | null>(null);
   const [riskPromptOpen, setRiskPromptOpen] = useState(false);
+
+  // FH2 state
+  const { companyId: authCompanyId } = useAuth();
+  const [hasFh2Connection, setHasFh2Connection] = useState(false);
+  const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
+  const [fh2Mission, setFh2Mission] = useState<Mission | null>(null);
+
+  // Check FH2 connection
+  useEffect(() => {
+    if (!authCompanyId) return;
+    supabase
+      .from('company_fh2_credentials')
+      .select('company_id')
+      .eq('company_id', authCompanyId)
+      .maybeSingle()
+      .then(({ data: cred }) => setHasFh2Connection(!!cred));
+  }, [authCompanyId]);
 
   // Infinite scroll
   const [visibleCount, setVisibleCount] = useState(10);
@@ -258,6 +277,11 @@ const Oppdrag = () => {
     await data.handleMissionChecklistComplete(checklistId, executingChecklistMissionId);
   };
 
+  const handleSendToFH2 = (mission: Mission) => {
+    setFh2Mission(mission);
+    setFh2DialogOpen(true);
+  };
+
   if (data.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -357,6 +381,8 @@ const Oppdrag = () => {
                       setRiskDialogInitialTab('history');
                       setRiskDialogOpen(true);
                     }}
+                    hasFh2Connection={hasFh2Connection}
+                    onSendToFH2={handleSendToFH2}
                   />
                 ))}
                 {hasMore && (
@@ -461,6 +487,19 @@ const Oppdrag = () => {
           onPerformRiskAssessment={handlePerformRiskAssessment}
           onSkipRiskAssessment={handleSkipRiskAssessment}
         />
+
+        {fh2Mission && (
+          <FlightHub2SendDialog
+            open={fh2DialogOpen}
+            onOpenChange={(open) => {
+              setFh2DialogOpen(open);
+              if (!open) setFh2Mission(null);
+            }}
+            route={(fh2Mission.route as any) || { coordinates: [], altitude: 120 }}
+            droneModelName={fh2Mission.drones?.[0]?.drones?.modell}
+            initialRouteName={fh2Mission.tittel}
+          />
+        )}
       </div>
     </div>
   );
