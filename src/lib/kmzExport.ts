@@ -50,6 +50,7 @@ export interface DJIExportOptions {
   turnMode?: 'toPointAndStopWithDiscontinuityCurvature' | 'toPointAndPassWithContinuityCurvature';
   droneEnumValue?: number;      // DJI drone enum, default 67 (M30)
   droneSubEnumValue?: number;   // DJI drone sub-enum, default 0
+  takeOffPoint?: { lat: number; lng: number }; // Takeoff reference point; fallback to first waypoint
 }
 
 const generateTemplateKml = (
