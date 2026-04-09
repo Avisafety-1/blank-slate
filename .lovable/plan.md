@@ -1,27 +1,35 @@
 
 
-## Fiks FlightHub 2 token-validering -- trim + verbose request-logging
+## Prøv begge DJI API-variantene (gammel + ny)
 
-### Analyse
+### Rotårsak
 
-1. "Tilkoblet!" var basert KUN på `system_status` som krever ingen autentisering (`security: []` i DJI-spesifikasjonen). Tokenet ble aldri verifisert.
-2. `list-projects` er det første kallet som faktisk validerer `X-User-Token`, og det returnerer `401`.
-3. `.trim()` ble aldri lagt til på tokenet -- whitespace/newlines fra kopiering kan bryte headeren.
-4. Vi har ingen logging av nøyaktig hva som sendes til DJI (header-verdier, token-lengde etter trim).
+Det finnes to separate DJI FlightHub API-er som bruker SAMME organisasjonsnøkkel men med forskjellig header-navn og URL-sti:
+
+| | Gammel (FlightHub Sync) | Ny (OpenAPI V1.0) |
+|---|---|---|
+| Prosjektliste | `/manage/api/v1.0/projects` | `/openapi/v0.1/project` |
+| Header-navn | `X-Organization-Key` | `X-User-Token` |
+| Status | Produksjon | "Developing" |
+
+Vi har kun prøvd den nye. Den gamle API-en kan fungere med nøyaktig samme nøkkel -- bare med annet header-navn og URL-sti.
 
 ### Plan
 
 **Edge function (`flighthub2-proxy/index.ts`)**:
 
-1. Legg til `.trim()` på `fh2Token` rett etter den hentes fra databasen
-2. Logg nøyaktig request til DJI for `list-projects`:
-   - Token-lengde, første 8 og siste 4 tegn (for å verifisere at det er riktig token uten whitespace)
-   - Alle header-nøkler som sendes
-   - Full URL
-   - DJI response headers (for å se om det er rate-limiting, IP-info, etc.)
-3. Sjekk om tokenet inneholder `Bearer ` prefix (noen kopierer hele Authorization-headeren)
-4. Legg til `prj_authorized_status=project-status-authorized` parameter i list-projects URL (dokumentasjonen viser dette som et filter for prosjekter brukeren har tilgang til)
+1. **test-connection**: Prøv den nye API-en først (`/openapi/v0.1/project` + `X-User-Token`). Hvis 401, prøv den gamle (`/manage/api/v1.0/projects` + `X-Organization-Key`). Rapporter hvilken som fungerte.
+2. **list-projects**: Samme logikk -- prøv ny først, fall tilbake til gammel.
+3. Lagre hvilken API-versjon som fungerte i responsen slik at andre actions kan bruke riktig variant.
+4. **upload-route / create-annotation / get-sts-token**: Bruk gammel API-sti (`/manage/api/v1.0/...`) med `X-Organization-Key` som fallback hvis den nye feiler.
+
+```text
+Konkret:
+- Ny: GET /openapi/v0.1/project  + header X-User-Token: <key>
+- Gammel: GET /manage/api/v1.0/projects  + header X-Organization-Key: <key>
+- Begge mot samme base URL (es-flight-api-us.djigate.com)
+```
 
 ### Filer som endres
-1. `supabase/functions/flighthub2-proxy/index.ts` -- trim token, verbose request/response logging
+1. `supabase/functions/flighthub2-proxy/index.ts` -- legg til fallback til gammel API
 
