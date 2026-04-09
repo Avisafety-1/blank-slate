@@ -187,42 +187,65 @@ Deno.serve(async (req: Request) => {
 
     // ─── Action: test-connection ───
     if (action === "test-connection") {
-      const testUrl = `${fh2BaseUrl}/openapi/v0.1/system_status`;
-      const res = await safeFetch(testUrl, { method: "GET", headers: commonHeaders });
-      const contentType = res.headers.get("content-type") || "";
-      const bodyText = await res.text();
+      const result: any = { server_ok: false, token_ok: false };
 
-      if (contentType.includes("text/html")) {
-        return new Response(JSON.stringify({
-          error: `URL-en returnerer HTML (web-innlogging), ikke API-JSON. Dette er sannsynligvis feil base URL.`,
-          _tested_url: testUrl,
-          _status: res.status,
-          _content_type: contentType,
-          _body_preview: bodyText.substring(0, 200),
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      let data: any;
+      // Step 1: Check system_status (no auth needed)
+      const statusUrl = `${fh2BaseUrl}/openapi/v0.1/system_status`;
       try {
-        data = JSON.parse(bodyText);
-      } catch {
+        const statusRes = await safeFetch(statusUrl, { method: "GET", headers: commonHeaders });
+        const statusText = await statusRes.text();
+        const ct = statusRes.headers.get("content-type") || "";
+
+        if (ct.includes("text/html")) {
+          return new Response(JSON.stringify({
+            error: `URL-en returnerer HTML (web-innlogging), ikke API-JSON. Dette er sannsynligvis feil base URL.`,
+            server_ok: false, token_ok: false,
+            _tested_url: statusUrl, _status: statusRes.status,
+          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        let statusData: any;
+        try { statusData = JSON.parse(statusText); } catch { statusData = null; }
+
+        if (statusRes.ok && statusData?.code === 0) {
+          result.server_ok = true;
+          result._system_status = statusData;
+        } else {
+          result._system_status_error = statusText.substring(0, 200);
+        }
+      } catch (err: any) {
         return new Response(JSON.stringify({
-          error: `Uventet respons (ikke JSON). Content-Type: ${contentType}`,
-          _tested_url: testUrl,
-          _status: res.status,
-          _body_preview: bodyText.substring(0, 300),
-        }), {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+          error: err.message, server_ok: false, token_ok: false, _tested_url: statusUrl,
+        }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      return new Response(JSON.stringify({ ...data, _tested_url: testUrl }), {
-        status: res.ok ? 200 : 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      // Step 2: Check list-projects (requires valid org key)
+      const projectUrl = `${fh2BaseUrl}/openapi/v0.1/project?page=1&page_size=1&usage=simple`;
+      try {
+        const projRes = await safeFetch(projectUrl, { method: "GET", headers: commonHeaders });
+        const projText = await projRes.text();
+        let projData: any;
+        try { projData = JSON.parse(projText); } catch { projData = null; }
+
+        console.log("test-connection project check:", projRes.status, projText.substring(0, 200));
+
+        if (projData?.code === 0) {
+          result.token_ok = true;
+          result.project_count = projData?.data?.list?.length ?? 0;
+        } else {
+          result.token_ok = false;
+          result._project_error_code = projData?.code;
+          result._project_error_message = projData?.message || projText.substring(0, 200);
+        }
+      } catch (err: any) {
+        result.token_ok = false;
+        result._project_error_message = err.message;
+      }
+
+      result._tested_url = statusUrl;
+      const httpStatus = result.server_ok ? 200 : 502;
+      return new Response(JSON.stringify(result), {
+        status: httpStatus, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
