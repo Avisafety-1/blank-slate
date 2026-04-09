@@ -163,14 +163,30 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { action, projectUuid, ...params } = body;
 
+    // Extract project_uuid from JWT for auto-fallback
+    let jwtProjectUuid = "";
+    let jwtOrgUuid = "";
+    try {
+      const jwtParts = fh2Token.split(".");
+      if (jwtParts.length === 3) {
+        const payload = JSON.parse(atob(jwtParts[1]));
+        jwtProjectUuid = payload.project_uuid || "";
+        jwtOrgUuid = payload.organization_uuid || "";
+        console.log("JWT project_uuid:", jwtProjectUuid, "organization_uuid:", jwtOrgUuid);
+      }
+    } catch (_) { /* ignore decode errors */ }
+
     const commonHeaders: Record<string, string> = {
       "X-User-Token": fh2Token,
       "X-Request-Id": crypto.randomUUID(),
       "X-Language": "en",
       "Content-Type": "application/json",
     };
-    if (projectUuid) {
-      commonHeaders["X-Project-Uuid"] = projectUuid;
+    // Set X-Project-Uuid: prefer client-provided, then JWT-extracted
+    const effectiveProjectUuid = projectUuid || jwtProjectUuid;
+    if (effectiveProjectUuid) {
+      commonHeaders["X-Project-Uuid"] = effectiveProjectUuid;
+      console.log("Using X-Project-Uuid:", effectiveProjectUuid, projectUuid ? "(from client)" : "(from JWT)");
     }
 
     // Helper: fetch with DNS error handling
