@@ -276,6 +276,18 @@ export const ChildCompaniesSection = () => {
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       setFh2Token((data as any).flighthub2_token || "");
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
+
+      // Auto-check FH2 connection if token exists
+      if ((data as any).flighthub2_token) {
+        supabase.functions.invoke("flighthub2-proxy", {
+          body: { action: "test-connection" },
+        }).then(({ data: testData }) => {
+          if (testData?.token_ok) {
+            setFh2Connected(true);
+            setFh2Projects(testData.project_names || []);
+          }
+        }).catch(() => { /* silent */ });
+      }
     }
     // Fetch default buffer mode from sora config
     const { data: soraData } = await (supabase as any)
