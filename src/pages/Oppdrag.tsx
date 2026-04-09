@@ -63,6 +63,17 @@ const Oppdrag = () => {
   const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
   const [fh2Mission, setFh2Mission] = useState<Mission | null>(null);
 
+  // Check FH2 connection
+  useEffect(() => {
+    if (!authCompanyId) return;
+    supabase
+      .from('company_fh2_credentials')
+      .select('company_id')
+      .eq('company_id', authCompanyId)
+      .maybeSingle()
+      .then(({ data: cred }) => setHasFh2Connection(!!cred));
+  }, [authCompanyId]);
+
   // Infinite scroll
   const [visibleCount, setVisibleCount] = useState(10);
   const sentinelRef = useRef<HTMLDivElement>(null);
