@@ -251,7 +251,7 @@ Deno.serve(async (req: Request) => {
     const safeFetch = async (url: string, opts: RequestInit) => {
       try {
         return await fetch(url, opts);
-      } catch (err: any) {
+      } catch (err) {
         if (err.message?.includes("dns error") || err.message?.includes("Name or service not known")) {
           throw new Error(`DNS-oppslag feilet for ${new URL(url).hostname}. Sjekk at Base URL er korrekt.`);
         }
@@ -323,7 +323,7 @@ Deno.serve(async (req: Request) => {
               console.log(`✅ ${variant.name} worked on ${baseUrl}, saved base URL`);
               break;
             }
-          } catch (err: any) {
+          } catch (err) {
             console.log(`❌ ${baseUrl} [${variant.name}] error: ${err.message}`);
           }
         }
@@ -368,7 +368,7 @@ Deno.serve(async (req: Request) => {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-        } catch (err: any) {
+        } catch (err) {
           console.log(`list-projects: ${variant.name} error: ${err.message}`);
         }
       }
@@ -404,7 +404,7 @@ Deno.serve(async (req: Request) => {
             });
           }
           console.log(`get-sts-token [${v.name}]: code=${data.code}`);
-        } catch (err: any) {
+        } catch (err) {
           console.log(`get-sts-token [${v.name}] error: ${err.message}`);
         }
       }
@@ -525,7 +525,7 @@ Deno.serve(async (req: Request) => {
             });
           }
           console.log(`create-annotation [${v.name}]: code=${data.code}`);
-        } catch (err: any) {
+        } catch (err) {
           console.log(`create-annotation [${v.name}] error: ${err.message}`);
         }
       }
