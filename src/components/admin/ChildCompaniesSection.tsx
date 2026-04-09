@@ -264,7 +264,7 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_token, flighthub2_base_url")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_base_url")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -274,11 +274,18 @@ export const ChildCompaniesSection = () => {
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
-      setFh2Token((data as any).flighthub2_token || "");
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
 
-      // Auto-check FH2 connection if token exists
-      if ((data as any).flighthub2_token) {
+      // Check if FH2 credentials exist (we can't read the token, just check existence)
+      const { data: cred } = await (supabase as any)
+        .from("company_fh2_credentials")
+        .select("company_id")
+        .eq("company_id", companyId)
+        .maybeSingle();
+
+      if (cred) {
+        setFh2Token("••••••••"); // Mask - token is encrypted
+        // Auto-check FH2 connection
         supabase.functions.invoke("flighthub2-proxy", {
           body: { action: "test-connection" },
         }).then(({ data: testData }) => {
@@ -460,14 +467,40 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     setSavingFh2(true);
     const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
-    const { error } = await supabase
-      .from("companies")
-      .update({ flighthub2_token: cleanToken || null } as any)
-      .eq("id", companyId);
-    setSavingFh2(false);
-    if (error) { toast.error("Kunne ikke lagre"); return; }
-    setFh2Token(cleanToken);
-    toast.success("FlightHub 2-nøkkel lagret");
+    try {
+      if (cleanToken) {
+        // Save encrypted via RPC
+        const { error } = await supabase.functions.invoke("flighthub2-proxy", {
+          body: { action: "save-token", token: cleanToken },
+        });
+        if (error) throw error;
+      } else {
+        // Delete token
+        await (supabase as any).from("company_fh2_credentials").delete().eq("company_id", companyId);
+      }
+      setFh2Token(cleanToken);
+      toast.success(cleanToken ? "FlightHub 2-nøkkel lagret (kryptert)" : "FlightHub 2-nøkkel fjernet");
+    } catch (err: any) {
+      toast.error(err?.message || "Kunne ikke lagre");
+    } finally {
+      setSavingFh2(false);
+    }
+  };
+
+  const handleDeleteFh2 = async () => {
+    if (!companyId) return;
+    setSavingFh2(true);
+    try {
+      await (supabase as any).from("company_fh2_credentials").delete().eq("company_id", companyId);
+      setFh2Token("");
+      setFh2Connected(false);
+      setFh2Projects([]);
+      toast.success("FlightHub 2-nøkkel slettet");
+    } catch (err: any) {
+      toast.error(err?.message || "Kunne ikke slette");
+    } finally {
+      setSavingFh2(false);
+    }
   };
 
   const handleTestFh2 = async () => {
@@ -476,12 +509,11 @@ export const ChildCompaniesSection = () => {
     setFh2Connected(false);
     setFh2Projects([]);
     try {
-      // Save token first, then test
+      // Save token first (encrypted), then test
       const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
-      await supabase
-        .from("companies")
-        .update({ flighthub2_token: cleanToken } as any)
-        .eq("id", companyId);
+      await supabase.functions.invoke("flighthub2-proxy", {
+        body: { action: "save-token", token: cleanToken },
+      });
 
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
         body: { action: "test-connection" },
@@ -489,7 +521,6 @@ export const ChildCompaniesSection = () => {
       if (error) throw error;
 
       if (data?.token_ok) {
-        // Auto-save working base URL if detected
         if (data.working_base_url) {
           await supabase
             .from("companies")
@@ -975,6 +1006,11 @@ export const ChildCompaniesSection = () => {
                 <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
                   {testingFh2 ? "Tester..." : "Test tilkobling"}
                 </Button>
+                {fh2Connected && (
+                  <Button variant="destructive" size="sm" onClick={handleDeleteFh2} disabled={savingFh2} className="h-8">
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Slett
+                  </Button>
+                )}
               </div>
 
               {fh2Connected && (

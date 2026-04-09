@@ -180,14 +180,24 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get FlightHub 2 config
+    const encKey = Deno.env.get("FH2_ENCRYPTION_KEY");
     const { data: company } = await supabase
       .from("companies")
-      .select("flighthub2_token, flighthub2_base_url, parent_company_id")
+      .select("flighthub2_base_url, parent_company_id")
       .eq("id", profile.company_id)
       .single();
 
-    let fh2Token = ((company as any)?.flighthub2_token || "").trim();
     let fh2BaseUrl = ((company as any)?.flighthub2_base_url || "").trim();
+
+    // Decrypt token from vault table
+    let fh2Token = "";
+    if (encKey) {
+      const { data: decrypted } = await supabase.rpc("get_fh2_token", {
+        p_company_id: profile.company_id,
+        p_key: encKey,
+      });
+      fh2Token = (decrypted || "").trim();
+    }
 
     // Strip accidental "Bearer " prefix
     if (fh2Token.toLowerCase().startsWith("bearer ")) {
@@ -196,15 +206,53 @@ Deno.serve(async (req: Request) => {
 
     // Fallback to parent company
     if (!fh2Token && (company as any)?.parent_company_id) {
-      const { data: parent } = await supabase
-        .from("companies")
-        .select("flighthub2_token, flighthub2_base_url")
-        .eq("id", (company as any).parent_company_id)
-        .single();
-      if ((parent as any)?.flighthub2_token) {
-        fh2Token = ((parent as any).flighthub2_token || "").trim();
-        fh2BaseUrl = fh2BaseUrl || ((parent as any).flighthub2_base_url || "").trim();
+      if (encKey) {
+        const { data: parentDecrypted } = await supabase.rpc("get_fh2_token", {
+          p_company_id: (company as any).parent_company_id,
+          p_key: encKey,
+        });
+        fh2Token = (parentDecrypted || "").trim();
       }
+      if (!fh2BaseUrl) {
+        const { data: parent } = await supabase
+          .from("companies")
+          .select("flighthub2_base_url")
+          .eq("id", (company as any).parent_company_id)
+          .single();
+        fh2BaseUrl = ((parent as any)?.flighthub2_base_url || "").trim();
+      }
+    }
+
+    const body = await req.json();
+    const { action, projectUuid, apiVersion, ...params } = body;
+
+    // ─── Action: save-token (before token check) ───
+    if (action === "save-token") {
+      const tokenToSave = (params.token || "").trim().replace(/^bearer\s+/i, "");
+      if (!tokenToSave) {
+        return new Response(JSON.stringify({ error: "Token mangler" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!encKey) {
+        return new Response(JSON.stringify({ error: "FH2_ENCRYPTION_KEY er ikke konfigurert på serveren" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error: saveErr } = await supabase.rpc("save_fh2_token", {
+        p_company_id: profile.company_id,
+        p_token: tokenToSave,
+        p_key: encKey,
+      });
+      if (saveErr) {
+        console.error("save_fh2_token error:", saveErr);
+        return new Response(JSON.stringify({ error: saveErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!fh2Token) {
@@ -221,9 +269,6 @@ Deno.serve(async (req: Request) => {
 
     // Strip trailing slash
     fh2BaseUrl = fh2BaseUrl.replace(/\/+$/, "");
-
-    const body = await req.json();
-    const { action, projectUuid, apiVersion, ...params } = body;
 
     // Extract project_uuid from JWT
     let jwtProjectUuid = "";
