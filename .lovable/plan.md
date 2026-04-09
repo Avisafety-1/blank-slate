@@ -1,29 +1,51 @@
 
 
-## Individuelle «Gjelder for alle underavdelinger»-toggles per innstillingsseksjon
+## Fiks FlightHub 2 DNS-feil og forbedre tilkoblingstest
 
 ### Problem
-Den nåværende «Gjelder for alle underavdelinger»-togglen ligger visuelt innenfor flylogg-varsler-boksen, men propagerer alle selskapsinnstillinger samlet. Brukeren ønsker individuelle propagerings-toggles per seksjon.
+Base URL `https://api.dji.com` finnes ikke (DNS-feil). DJI FlightHub 2 API-dokumentasjonen bruker kun relative stier (f.eks. `/openapi/v0.1/project`) uten å spesifisere en base URL. Base URL avhenger av om man bruker DJI cloud eller on-premises-installasjon.
+
+### Analyse
+Fra dokumentasjonen:
+- Alle API-endepunkter bruker stier som `/openapi/v0.1/...`
+- `X-User-Token` er organisasjonsnøkkelen fra FlightHub Sync
+- Det finnes et `system_status`-endepunkt (`GET /openapi/v0.1/system_status`) som kan brukes til testing
+- Storage-opplasting bruker Alibaba Cloud OSS med STS-credentials
 
 ### Løsning
-Flytt den eksisterende togglen ut av flylogg-varsler-boksen og erstatt med individuelle toggles inne i hver innstillingsseksjon. Hver toggle propagerer kun sin egen seksjons innstillinger til underavdelinger.
 
-### Seksjoner som får egen toggle
+**1. Legg til predefinerte base URL-valg i admin UI**
 
-1. **Selskapsinnstillinger** (luftromsadvarsler, skjul rapportør, godkjenningskrav, SORA) — propagerer `show_all_airspace_warnings`, `hide_reporter_identity`, `require_mission_approval`, `require_sora_on_missions`, `require_sora_steps` til `companies`-tabellen
-2. **Roller** — kopierer roller fra morselskapet til alle underavdelinger (insert manglende roller)
-3. **Flylogg-varsler** — kopierer alert-konfigurasjoner og mottakere til alle underavdelinger
+I stedet for kun et fritekstfelt, legg til en dropdown med kjente alternativer:
+- `https://fh.dji.com` (DJI Cloud - Global)
+- `https://fh2-api.dji.com` (DJI Cloud - API)  
+- Egendefinert URL (fritekst)
 
-### Endringer i `src/components/admin/ChildCompaniesSection.tsx`
+**2. Forbedre test-funksjonen**
 
-- Erstatt enkelt `applyToChildren`-state med tre separate: `applySettingsToChildren`, `applyRolesToChildren`, `applyAlertsToChildren`
-- Fjern den nåværende togglen fra linje 676-687 (inne i flylogg-varsler-boksen)
-- Legg til en liten propagerings-toggle nederst i hver av de tre seksjonene:
-  - **Selskapsinnstillinger-boksen**: propagerer company-settings via `UPDATE companies SET ... WHERE parent_company_id = companyId`
-  - **Roller-boksen**: henter morselskaps-roller og inserter manglende i hver underavdeling via `company_mission_roles`
-  - **Flylogg-varsler-boksen**: upserterer alerts og recipients til alle underavdelinger via `company_flight_alerts` og `company_flight_alert_recipients`
-- Hver toggle er uavhengig og viser samme UI-mønster: Switch + label «Gjelder for alle underavdelinger» med forklaringstekst
+- Bruk `system_status`-endepunktet (`/openapi/v0.1/system_status`) i stedet for `list-projects` for test -- det er enklere og krever ikke `X-Project-Uuid`
+- Legg til en ny `test-connection` action i edge function
+- Vis den faktiske URL-en som ble forsøkt i feilmeldingen slik at brukeren kan feilsøke
 
-### Fil som endres
-1. **`src/components/admin/ChildCompaniesSection.tsx`** — Refaktorer propagerings-logikk til individuelle toggles per seksjon
+**3. Oppdater edge function**
+
+- Legg til `test-connection` action som kaller `system_status`
+- Inkluder den forsøkte URL-en i feilmeldinger ved DNS/nettverksfeil
+- Bedre feilhåndtering med spesifikke meldinger for DNS-feil vs. auth-feil
+
+### Tekniske detaljer
+
+**`src/components/admin/ChildCompaniesSection.tsx`**
+- Endre base URL-input til Select + Input-kombo
+- Test-knappen bruker ny `test-connection` action
+- Vis forsøkt URL i feilmelding
+
+**`supabase/functions/flighthub2-proxy/index.ts`**
+- Ny action `test-connection` som kaller `/openapi/v0.1/system_status`
+- Wrapp fetch-kall i try/catch med DNS-spesifikk feilmelding som inkluderer URL
+- Redeploy etter endring
+
+### Filer som endres
+1. `supabase/functions/flighthub2-proxy/index.ts` -- ny test-connection action, bedre feilmeldinger
+2. `src/components/admin/ChildCompaniesSection.tsx` -- dropdown for base URL, forbedret test
 
