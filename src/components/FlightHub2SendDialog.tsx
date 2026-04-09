@@ -255,7 +255,7 @@ export const FlightHub2SendDialog = ({
                 Henter prosjekter...
               </div>
             ) : projects.length === 0 ? (
-              <p className="text-sm text-destructive">Ingen prosjekter funnet. Sjekk FlightHub 2-konfigurasjonen.</p>
+              <p className="text-sm text-destructive">Ingen prosjekter funnet. Sjekk at organisasjonsnøkkelen er gyldig og har riktig tilgang under Admin → Mitt selskap.</p>
             ) : (
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger>
