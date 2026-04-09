@@ -336,6 +336,7 @@ Deno.serve(async (req: Request) => {
       // Step 3: If token failed on configured URL, try the OTHER region automatically
       if (!result.token_ok) {
         const REGION_URLS = [
+          "https://es-flight-api-eu.djigate.com",
           "https://es-flight-api-us.djigate.com",
           "https://es-flight-api-cn.djigate.com",
         ];
