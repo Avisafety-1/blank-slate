@@ -460,14 +460,40 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     setSavingFh2(true);
     const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
-    const { error } = await supabase
-      .from("companies")
-      .update({ flighthub2_token: cleanToken || null } as any)
-      .eq("id", companyId);
-    setSavingFh2(false);
-    if (error) { toast.error("Kunne ikke lagre"); return; }
-    setFh2Token(cleanToken);
-    toast.success("FlightHub 2-nøkkel lagret");
+    try {
+      if (cleanToken) {
+        // Save encrypted via RPC
+        const { error } = await supabase.functions.invoke("flighthub2-proxy", {
+          body: { action: "save-token", token: cleanToken },
+        });
+        if (error) throw error;
+      } else {
+        // Delete token
+        await (supabase as any).from("company_fh2_credentials").delete().eq("company_id", companyId);
+      }
+      setFh2Token(cleanToken);
+      toast.success(cleanToken ? "FlightHub 2-nøkkel lagret (kryptert)" : "FlightHub 2-nøkkel fjernet");
+    } catch (err: any) {
+      toast.error(err?.message || "Kunne ikke lagre");
+    } finally {
+      setSavingFh2(false);
+    }
+  };
+
+  const handleDeleteFh2 = async () => {
+    if (!companyId) return;
+    setSavingFh2(true);
+    try {
+      await (supabase as any).from("company_fh2_credentials").delete().eq("company_id", companyId);
+      setFh2Token("");
+      setFh2Connected(false);
+      setFh2Projects([]);
+      toast.success("FlightHub 2-nøkkel slettet");
+    } catch (err: any) {
+      toast.error(err?.message || "Kunne ikke slette");
+    } finally {
+      setSavingFh2(false);
+    }
   };
 
   const handleTestFh2 = async () => {
@@ -476,12 +502,11 @@ export const ChildCompaniesSection = () => {
     setFh2Connected(false);
     setFh2Projects([]);
     try {
-      // Save token first, then test
+      // Save token first (encrypted), then test
       const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
-      await supabase
-        .from("companies")
-        .update({ flighthub2_token: cleanToken } as any)
-        .eq("id", companyId);
+      await supabase.functions.invoke("flighthub2-proxy", {
+        body: { action: "save-token", token: cleanToken },
+      });
 
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
         body: { action: "test-connection" },
@@ -489,7 +514,6 @@ export const ChildCompaniesSection = () => {
       if (error) throw error;
 
       if (data?.token_ok) {
-        // Auto-save working base URL if detected
         if (data.working_base_url) {
           await supabase
             .from("companies")
