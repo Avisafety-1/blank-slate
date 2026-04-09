@@ -626,6 +626,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
         route={currentRoute}
         soraSettings={soraSettings.enabled ? soraSettings : undefined}
         soraBufferCoordinates={soraBufferCoords}
+        droneModelName={soraDroneModel}
       />
     </div>
   );
