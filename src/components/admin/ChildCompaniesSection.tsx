@@ -998,12 +998,13 @@ export const ChildCompaniesSection = () => {
                 <SelectValue placeholder="Velg server..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="https://es-flight-api-us.djigate.com">Public Cloud – Internasjonal (Europa/US)</SelectItem>
+                <SelectItem value="https://es-flight-api-eu.djigate.com">Public Cloud – Europa (EU)</SelectItem>
+                <SelectItem value="https://es-flight-api-us.djigate.com">Public Cloud – Internasjonal (US)</SelectItem>
                 <SelectItem value="https://es-flight-api-cn.djigate.com">Public Cloud – Kina</SelectItem>
                 <SelectItem value="__custom__">Egendefinert URL (on-prem)...</SelectItem>
               </SelectContent>
             </Select>
-            {(fh2BaseUrl && !["https://es-flight-api-us.djigate.com", "https://es-flight-api-cn.djigate.com"].includes(fh2BaseUrl)) && (
+            {(fh2BaseUrl && !["https://es-flight-api-eu.djigate.com", "https://es-flight-api-us.djigate.com", "https://es-flight-api-cn.djigate.com"].includes(fh2BaseUrl)) && (
               <Input
                 value={fh2BaseUrl}
                 onChange={(e) => setFh2BaseUrl(e.target.value)}
