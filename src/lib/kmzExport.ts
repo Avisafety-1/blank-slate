@@ -68,7 +68,7 @@ const generateTemplateKml = (
   const droneSubEnum = opts.droneSubEnumValue ?? 0;
   const takeOff = opts.takeOffPoint ?? route.coordinates[0];
   const takeOffRefXml = takeOff
-    ? `\n      <wpml:takeOffRefPoint>${takeOff.lng},${takeOff.lat},0</wpml:takeOffRefPoint>`
+    ? `\n      <wpml:takeOffRefPoint>${takeOff.lat},${takeOff.lng},0</wpml:takeOffRefPoint>`
     : '';
 
   const placemarks = route.coordinates.map((coord, index) => `
@@ -158,7 +158,7 @@ const generateWaylinesWpml = (
   const droneSubEnum = opts.droneSubEnumValue ?? 0;
   const takeOff = opts.takeOffPoint ?? route.coordinates[0];
   const takeOffRefXml = takeOff
-    ? `\n      <wpml:takeOffRefPoint>${takeOff.lng},${takeOff.lat},0</wpml:takeOffRefPoint>`
+    ? `\n      <wpml:takeOffRefPoint>${takeOff.lat},${takeOff.lng},0</wpml:takeOffRefPoint>`
     : '';
 
   const placemarks = route.coordinates.map((coord, index) => `
