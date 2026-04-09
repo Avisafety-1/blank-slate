@@ -35,19 +35,17 @@ async function signV4Put(
 ): Promise<Response> {
   const url = new URL(`/${bucket}/${objectKey}`, endpoint);
   const host = url.host;
-  // Try to extract region from endpoint like oss-cn-hangzhou.aliyuncs.com → cn-hangzhou
   const regionMatch = host.match(/oss-([^.]+)\./);
   const region = regionMatch ? regionMatch[1] : "us-east-1";
-  const service = "s3"; // OSS is S3-compatible
+  const service = "s3";
 
   const now = new Date();
-  const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z/, "Z"); // 20260409T120000Z
-  const dateStamp = amzDate.substring(0, 8); // 20260409
+  const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z/, "Z");
+  const dateStamp = amzDate.substring(0, 8);
 
   const payloadHash = await sha256Hex(body);
   const contentType = "application/octet-stream";
 
-  // Canonical headers (sorted)
   const canonicalHeaders =
     `content-type:${contentType}\n` +
     `host:${host}\n` +
@@ -58,19 +56,12 @@ async function signV4Put(
   const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date;x-amz-security-token";
 
   const canonicalRequest = [
-    "PUT",
-    url.pathname,
-    "", // no query string
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
+    "PUT", url.pathname, "", canonicalHeaders, signedHeaders, payloadHash,
   ].join("\n");
 
   const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
   const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    amzDate,
-    credentialScope,
+    "AWS4-HMAC-SHA256", amzDate, credentialScope,
     await sha256Hex(new TextEncoder().encode(canonicalRequest)),
   ].join("\n");
 
@@ -91,6 +82,66 @@ async function signV4Put(
     },
     body: body,
   });
+}
+
+// ─── Helper: Try fetching projects with both API variants ───
+
+interface ApiVariant {
+  name: string;
+  listUrl: (base: string) => string;
+  headerName: string;
+  projectHeaderName?: string;
+}
+
+const NEW_API: ApiVariant = {
+  name: "openapi-v0.1",
+  listUrl: (base) => `${base}/openapi/v0.1/project?page=1&page_size=100&usage=simple`,
+  headerName: "X-User-Token",
+  projectHeaderName: "X-Project-Uuid",
+};
+
+const OLD_API: ApiVariant = {
+  name: "manage-v1.0",
+  listUrl: (base) => `${base}/manage/api/v1.0/projects?page=1&page_size=100`,
+  headerName: "X-Organization-Key",
+  projectHeaderName: "X-Project-Uuid",
+};
+
+const API_VARIANTS = [NEW_API, OLD_API];
+
+async function tryListProjects(
+  baseUrl: string, token: string, variant: ApiVariant,
+  safeFetch: (url: string, opts: RequestInit) => Promise<Response>
+): Promise<{ ok: boolean; data: any; status: number; variant: string; bodyText: string }> {
+  const url = variant.listUrl(baseUrl);
+  const headers: Record<string, string> = {
+    [variant.headerName]: token,
+    "X-Request-Id": crypto.randomUUID(),
+    "X-Language": "en",
+  };
+
+  console.log(`=== tryListProjects [${variant.name}] ===`);
+  console.log("URL:", url);
+  console.log("Auth header:", variant.headerName);
+
+  const res = await safeFetch(url, { method: "GET", headers });
+  const bodyText = await res.text();
+  console.log(`[${variant.name}] Status: ${res.status}, Body: ${bodyText.substring(0, 300)}`);
+
+  let data: any = null;
+  try { data = JSON.parse(bodyText); } catch { /* not JSON */ }
+
+  // Check if this variant worked
+  const isSuccess = res.ok && data?.code === 0;
+  const isUnauthorized = data?.code === 200401 || res.status === 401;
+
+  return {
+    ok: isSuccess,
+    data,
+    status: res.status,
+    variant: variant.name,
+    bodyText,
+  };
 }
 
 // ─── Main handler ───
@@ -123,7 +174,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "No company" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get FlightHub 2 config from company (with parent fallback)
+    // Get FlightHub 2 config
     const { data: company } = await supabase
       .from("companies")
       .select("flighthub2_token, flighthub2_base_url, parent_company_id")
@@ -136,93 +187,102 @@ Deno.serve(async (req: Request) => {
     // Strip accidental "Bearer " prefix
     if (fh2Token.toLowerCase().startsWith("bearer ")) {
       fh2Token = fh2Token.substring(7).trim();
-      console.log("Stripped 'Bearer ' prefix from token");
     }
 
-    // Fallback to parent company if token is missing
+    // Fallback to parent company
     if (!fh2Token && (company as any)?.parent_company_id) {
-      console.log("No FH2 token on company, checking parent:", (company as any).parent_company_id);
       const { data: parent } = await supabase
         .from("companies")
         .select("flighthub2_token, flighthub2_base_url")
         .eq("id", (company as any).parent_company_id)
         .single();
       if ((parent as any)?.flighthub2_token) {
-        fh2Token = (parent as any).flighthub2_token;
-        fh2BaseUrl = fh2BaseUrl || (parent as any).flighthub2_base_url;
-        console.log("Using FH2 token from parent company");
+        fh2Token = ((parent as any).flighthub2_token || "").trim();
+        fh2BaseUrl = fh2BaseUrl || ((parent as any).flighthub2_base_url || "").trim();
       }
     }
 
     if (!fh2Token) {
-      return new Response(JSON.stringify({ error: "FlightHub 2 er ikke konfigurert for dette selskapet. Legg inn organisasjonsnøkkel under Admin → Mitt selskap." }), {
+      return new Response(JSON.stringify({ error: "FlightHub 2 er ikke konfigurert for dette selskapet." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!fh2BaseUrl) {
+      return new Response(JSON.stringify({ error: "FlightHub 2 base URL er ikke konfigurert." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!fh2BaseUrl) {
-      return new Response(JSON.stringify({ error: "FlightHub 2 base URL er ikke konfigurert. Legg inn server-adressen under Admin → Mitt selskap." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Strip trailing slash
+    fh2BaseUrl = fh2BaseUrl.replace(/\/+$/, "");
 
     const body = await req.json();
-    const { action, projectUuid, ...params } = body;
+    const { action, projectUuid, apiVersion, ...params } = body;
 
-    // Extract project_uuid from JWT for auto-fallback
+    // Extract project_uuid from JWT
     let jwtProjectUuid = "";
     let jwtOrgUuid = "";
+    let jwtPayload: any = null;
     try {
       const jwtParts = fh2Token.split(".");
       if (jwtParts.length === 3) {
-        const payload = JSON.parse(atob(jwtParts[1]));
-        jwtProjectUuid = payload.project_uuid || "";
-        jwtOrgUuid = payload.organization_uuid || "";
-        console.log("JWT project_uuid:", jwtProjectUuid, "organization_uuid:", jwtOrgUuid);
+        jwtPayload = JSON.parse(atob(jwtParts[1]));
+        jwtProjectUuid = jwtPayload.project_uuid || "";
+        jwtOrgUuid = jwtPayload.organization_uuid || "";
       }
-    } catch (_) { /* ignore decode errors */ }
+    } catch (_) { /* ignore */ }
 
-    const commonHeaders: Record<string, string> = {
-      "X-User-Token": fh2Token,
-      "X-Request-Id": crypto.randomUUID(),
-      "X-Language": "en",
-    };
-    // X-Project-Uuid: only added for project-specific actions, NOT for list-projects/test-connection
-    const effectiveProjectUuid = projectUuid || jwtProjectUuid;
-    const projectHeaders: Record<string, string> = { ...commonHeaders };
-    if (effectiveProjectUuid) {
-      projectHeaders["X-Project-Uuid"] = effectiveProjectUuid;
-      console.log("Project-specific X-Project-Uuid available:", effectiveProjectUuid, projectUuid ? "(from client)" : "(from JWT)");
-    }
-
-    // Helper: fetch with DNS error handling
+    // DNS error handling
     const safeFetch = async (url: string, opts: RequestInit) => {
       try {
         return await fetch(url, opts);
       } catch (err: any) {
         if (err.message?.includes("dns error") || err.message?.includes("Name or service not known")) {
-          throw new Error(`DNS-oppslag feilet for ${new URL(url).hostname}. Sjekk at Base URL er korrekt. Forsøkt URL: ${url}`);
+          throw new Error(`DNS-oppslag feilet for ${new URL(url).hostname}. Sjekk at Base URL er korrekt.`);
         }
         throw new Error(`Nettverksfeil mot ${url}: ${err.message}`);
       }
     };
 
+    // Determine which API variant to use (client can hint with apiVersion)
+    function getVariant(): ApiVariant {
+      if (apiVersion === "manage-v1.0") return OLD_API;
+      if (apiVersion === "openapi-v0.1") return NEW_API;
+      return NEW_API; // default
+    }
+
+    function makeHeaders(variant: ApiVariant, includeProject: boolean): Record<string, string> {
+      const h: Record<string, string> = {
+        [variant.headerName]: fh2Token,
+        "X-Request-Id": crypto.randomUUID(),
+        "X-Language": "en",
+      };
+      const effectiveProjUuid = projectUuid || jwtProjectUuid;
+      if (includeProject && effectiveProjUuid && variant.projectHeaderName) {
+        h[variant.projectHeaderName] = effectiveProjUuid;
+      }
+      return h;
+    }
+
     // ─── Action: test-connection ───
     if (action === "test-connection") {
-      const result: any = { server_ok: false, token_ok: false };
+      const result: any = {
+        server_ok: false,
+        token_ok: false,
+        api_version: null,
+      };
 
-      // Step 1: Check system_status (no auth needed)
+      // Step 1: system_status (no auth needed)
       const statusUrl = `${fh2BaseUrl}/openapi/v0.1/system_status`;
       try {
-        const statusRes = await safeFetch(statusUrl, { method: "GET", headers: commonHeaders });
+        const statusRes = await safeFetch(statusUrl, { method: "GET", headers: { "X-Request-Id": crypto.randomUUID() } });
         const statusText = await statusRes.text();
         const ct = statusRes.headers.get("content-type") || "";
 
         if (ct.includes("text/html")) {
           return new Response(JSON.stringify({
-            error: `URL-en returnerer HTML (web-innlogging), ikke API-JSON. Dette er sannsynligvis feil base URL.`,
+            error: "URL-en returnerer HTML, ikke API-JSON. Feil base URL.",
             server_ok: false, token_ok: false,
-            _tested_url: statusUrl, _status: statusRes.status,
           }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
@@ -231,142 +291,114 @@ Deno.serve(async (req: Request) => {
 
         if (statusRes.ok && statusData?.code === 0) {
           result.server_ok = true;
-          result._system_status = statusData;
-        } else {
-          result._system_status_error = statusText.substring(0, 200);
         }
       } catch (err: any) {
         return new Response(JSON.stringify({
-          error: err.message, server_ok: false, token_ok: false, _tested_url: statusUrl,
+          error: err.message, server_ok: false, token_ok: false,
         }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Step 2: Check list-projects (requires valid org key)
-      const projectUrl = `${fh2BaseUrl}/openapi/v0.1/project?page=1&page_size=1&usage=simple`;
-      try {
-        const projRes = await safeFetch(projectUrl, { method: "GET", headers: commonHeaders });
-        const projText = await projRes.text();
-        let projData: any;
-        try { projData = JSON.parse(projText); } catch { projData = null; }
-
-        console.log("test-connection project check:", projRes.status, projText.substring(0, 200));
-
-        if (projData?.code === 0) {
-          result.token_ok = true;
-          result.project_count = projData?.data?.list?.length ?? 0;
-        } else {
-          result.token_ok = false;
-          result._project_error_code = projData?.code;
-          result._project_error_message = projData?.message || projText.substring(0, 200);
+      // Step 2: Try both API variants to list projects
+      for (const variant of API_VARIANTS) {
+        try {
+          const attempt = await tryListProjects(fh2BaseUrl, fh2Token, variant, safeFetch);
+          if (attempt.ok) {
+            result.token_ok = true;
+            result.api_version = variant.name;
+            result.project_count = attempt.data?.data?.list?.length ?? attempt.data?.data?.length ?? 0;
+            console.log(`✅ API variant ${variant.name} worked!`);
+            break;
+          } else {
+            console.log(`❌ API variant ${variant.name} failed: code=${attempt.data?.code}, status=${attempt.status}`);
+            result[`_${variant.name}_error`] = {
+              code: attempt.data?.code,
+              message: attempt.data?.message || attempt.bodyText.substring(0, 200),
+              status: attempt.status,
+            };
+          }
+        } catch (err: any) {
+          console.log(`❌ API variant ${variant.name} exception: ${err.message}`);
+          result[`_${variant.name}_error`] = { message: err.message };
         }
-      } catch (err: any) {
-        result.token_ok = false;
-        result._project_error_message = err.message;
       }
 
-      // Step 3: Decode JWT token for diagnostics -- show ALL fields
-      try {
-        const parts = fh2Token.split(".");
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          result.jwt_info = {
-            is_jwt: true,
-            organization_uuid: payload.organization_uuid || null,
-            project_uuid: payload.project_uuid || null,
-            account: payload.account || null,
-            user_id: payload.user_id || null,
-            sub: payload.sub || null,
-            exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : null,
-            iat: payload.iat ? new Date(payload.iat * 1000).toISOString() : null,
-            expired: payload.exp ? (payload.exp * 1000 < Date.now()) : null,
-            raw_keys: Object.keys(payload),
-            raw_payload: payload, // full payload for debugging
-          };
-          console.log("JWT full payload:", JSON.stringify(payload));
-        } else {
-          result.jwt_info = { is_jwt: false, token_length: fh2Token.length, parts: parts.length };
-        }
-      } catch (jwtErr: any) {
-        result.jwt_info = { is_jwt: false, decode_error: jwtErr.message, token_length: fh2Token.length };
+      // Step 3: JWT diagnostics
+      if (jwtPayload) {
+        result.jwt_info = {
+          is_jwt: true,
+          organization_uuid: jwtPayload.organization_uuid || null,
+          project_uuid: jwtPayload.project_uuid || null,
+          account: jwtPayload.account || null,
+          user_id: jwtPayload.user_id || null,
+          exp: jwtPayload.exp ? new Date(jwtPayload.exp * 1000).toISOString() : null,
+          expired: jwtPayload.exp ? (jwtPayload.exp * 1000 < Date.now()) : null,
+          raw_keys: Object.keys(jwtPayload),
+        };
+      } else {
+        result.jwt_info = { is_jwt: false, token_length: fh2Token.length };
       }
 
-      result._tested_url = statusUrl;
       result._token_length = fh2Token.length;
-      const httpStatus = result.server_ok ? 200 : 502;
       return new Response(JSON.stringify(result), {
-        status: httpStatus, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: result.server_ok ? 200 : 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // ─── Action: list-projects ───
     if (action === "list-projects") {
-      const listUrl = `${fh2BaseUrl}/openapi/v0.1/project?page=1&page_size=100&usage=simple&prj_authorized_status=project-status-authorized`;
-      
-      // Verbose request logging
-      const reqHeaders = { ...commonHeaders };
-      console.log("=== list-projects REQUEST ===");
-      console.log("URL:", listUrl);
-      console.log("Header keys:", Object.keys(reqHeaders));
-      console.log("Token length:", fh2Token.length, "prefix:", fh2Token.substring(0, 8) + "...", "suffix: ..." + fh2Token.substring(fh2Token.length - 4));
-      console.log("Token has newlines:", fh2Token.includes("\n") || fh2Token.includes("\r"));
-      console.log("Token has spaces:", fh2Token.includes(" "));
-      
-      const res = await safeFetch(listUrl, {
-        method: "GET",
-        headers: reqHeaders,
-      });
-      const contentType = res.headers.get("content-type") || "";
-      const bodyText = await res.text();
-      
-      // Verbose response logging
-      console.log("=== list-projects RESPONSE ===");
-      console.log("Status:", res.status);
-      console.log("Content-Type:", contentType);
-      console.log("Body:", bodyText.substring(0, 500));
-      const respHeaders: Record<string, string> = {};
-      res.headers.forEach((v, k) => { respHeaders[k] = v; });
-      console.log("Response headers:", JSON.stringify(respHeaders));
-
-      if (!res.ok) {
-        return new Response(JSON.stringify({
-          error: `FlightHub 2 returnerte ${res.status}: ${bodyText.substring(0, 200)}`,
-          code: -1,
-          _status: res.status,
-          _response_headers: respHeaders,
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      // Try both variants
+      for (const variant of API_VARIANTS) {
+        try {
+          const attempt = await tryListProjects(fh2BaseUrl, fh2Token, variant, safeFetch);
+          if (attempt.ok) {
+            console.log(`list-projects: ✅ ${variant.name} worked`);
+            return new Response(JSON.stringify({ ...attempt.data, _api_version: variant.name }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        } catch (err: any) {
+          console.log(`list-projects: ${variant.name} error: ${err.message}`);
+        }
       }
 
-      let data: any;
-      try {
-        data = JSON.parse(bodyText);
-      } catch {
-        return new Response(JSON.stringify({
-          error: `Uventet respons fra FlightHub 2 (ikke JSON). Content-Type: ${contentType}`,
-          code: -1,
-          _body_preview: bodyText.substring(0, 200),
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      return new Response(JSON.stringify(data), {
+      // Both failed
+      return new Response(JSON.stringify({
+        error: "Kunne ikke hente prosjekter. Begge API-varianter (ny og gammel) returnerte feil. Sjekk at organisasjonsnøkkelen er korrekt.",
+        code: -1,
+      }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // ─── For remaining actions, try both API variants ───
+    const variant = getVariant();
+    const projectHeadersForAction = makeHeaders(variant, true);
+
     // ─── Action: get-sts-token ───
     if (action === "get-sts-token") {
-      const res = await safeFetch(`${fh2BaseUrl}/openapi/v0.1/project/sts-token`, {
-        method: "GET",
-        headers: projectHeaders,
-      });
-      const data = await res.json();
-      return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const urls = [
+        { url: `${fh2BaseUrl}/openapi/v0.1/project/sts-token`, v: NEW_API },
+        { url: `${fh2BaseUrl}/manage/api/v1.0/project/sts-token`, v: OLD_API },
+      ];
+      for (const { url, v } of urls) {
+        try {
+          const h = makeHeaders(v, true);
+          const res = await safeFetch(url, { method: "GET", headers: h });
+          const data = await res.json();
+          if (data.code === 0) {
+            return new Response(JSON.stringify(data), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          console.log(`get-sts-token [${v.name}]: code=${data.code}`);
+        } catch (err: any) {
+          console.log(`get-sts-token [${v.name}] error: ${err.message}`);
+        }
+      }
+      return new Response(JSON.stringify({ error: "Kunne ikke hente STS-token fra FlightHub 2" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -374,15 +406,26 @@ Deno.serve(async (req: Request) => {
     if (action === "upload-route") {
       const { kmzBase64, routeName } = params;
 
-      // Step 1: Get STS token
-      const stsRes = await safeFetch(`${fh2BaseUrl}/openapi/v0.1/project/sts-token`, {
-        method: "GET",
-        headers: projectHeaders,
-      });
-      const stsData = await stsRes.json();
-      console.log("STS response code:", stsData.code, "keys:", stsData.data ? Object.keys(stsData.data) : "no data");
+      // Step 1: Get STS token (try both variants)
+      let stsData: any = null;
+      let workingVariant = NEW_API;
+      for (const v of API_VARIANTS) {
+        const stsUrl = v.name === "openapi-v0.1"
+          ? `${fh2BaseUrl}/openapi/v0.1/project/sts-token`
+          : `${fh2BaseUrl}/manage/api/v1.0/project/sts-token`;
+        try {
+          const h = makeHeaders(v, true);
+          const res = await safeFetch(stsUrl, { method: "GET", headers: h });
+          const d = await res.json();
+          if (d.code === 0) {
+            stsData = d;
+            workingVariant = v;
+            break;
+          }
+        } catch (_) { /* try next */ }
+      }
 
-      if (stsData.code !== 0) {
+      if (!stsData || stsData.code !== 0) {
         return new Response(JSON.stringify({ error: "Kunne ikke hente STS-token", detail: stsData }), {
           status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -391,7 +434,7 @@ Deno.serve(async (req: Request) => {
       const { endpoint, bucket, credentials, object_key_prefix } = stsData.data;
       const objectKey = `${object_key_prefix}/${crypto.randomUUID()}/wayline.kmz`;
 
-      // Step 2: Decode KMZ and upload with SigV4
+      // Step 2: Upload KMZ with SigV4
       const kmzBinary = Uint8Array.from(atob(kmzBase64), (c) => c.charCodeAt(0));
       console.log("Uploading KMZ to:", endpoint, "bucket:", bucket, "key:", objectKey, "size:", kmzBinary.length);
 
@@ -401,42 +444,31 @@ Deno.serve(async (req: Request) => {
         console.log("OSS upload status:", ossRes.status, "body:", ossBody.substring(0, 300));
 
         if (!ossRes.ok) {
-          // Try with x-oss-security-token header name instead (Alibaba OSS variant)
-          console.log("SigV4 upload failed, trying OSS presigned URL fallback...");
-          const presignedUrl = `${endpoint}/${bucket}/${objectKey}?OSSAccessKeyId=${encodeURIComponent(credentials.access_key_id)}&Signature=placeholder&Expires=${Math.floor(Date.now() / 1000) + 3600}&security-token=${encodeURIComponent(credentials.security_token)}`;
-          
           return new Response(JSON.stringify({
-            error: "OSS-opplasting feilet med SigV4",
+            error: "OSS-opplasting feilet",
             oss_status: ossRes.status,
             oss_body: ossBody.substring(0, 500),
-            _debug: {
-              endpoint,
-              bucket,
-              objectKey,
-              credentials_available: !!(credentials.access_key_id && credentials.access_key_secret && credentials.security_token),
-            }
           }), {
             status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
       } catch (uploadErr: any) {
-        return new Response(JSON.stringify({
-          error: `Feil ved opplasting til lagring: ${uploadErr.message}`,
-          _debug: { endpoint, bucket, objectKey }
-        }), {
+        return new Response(JSON.stringify({ error: `Feil ved opplasting: ${uploadErr.message}` }), {
           status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Step 3: Notify FlightHub 2 that upload is complete
-      const finishRes = await safeFetch(`${fh2BaseUrl}/openapi/v0.1/wayline/finish-upload`, {
+      // Step 3: Notify FlightHub 2
+      const finishUrl = workingVariant.name === "openapi-v0.1"
+        ? `${fh2BaseUrl}/openapi/v0.1/wayline/finish-upload`
+        : `${fh2BaseUrl}/manage/api/v1.0/wayline/finish-upload`;
+      const finishHeaders = { ...makeHeaders(workingVariant, true), "Content-Type": "application/json" };
+      const finishRes = await safeFetch(finishUrl, {
         method: "POST",
-        headers: { ...projectHeaders, "Content-Type": "application/json" },
+        headers: finishHeaders,
         body: JSON.stringify({ name: routeName || "Avisafe Route", object_key: objectKey }),
       });
       const finishData = await finishRes.json();
-      console.log("finish-upload response:", JSON.stringify(finishData));
-
       return new Response(JSON.stringify(finishData), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -446,21 +478,35 @@ Deno.serve(async (req: Request) => {
     if (action === "create-annotation") {
       const { name, desc, geoJson, annotationType } = params;
 
-      const res = await safeFetch(`${fh2BaseUrl}/openapi/v0.1/map/element`, {
-        method: "POST",
-        headers: { ...projectHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name || "SORA Buffer Zone",
-          desc: desc || "Generated by Avisafe",
-          resource: {
-            type: annotationType ?? 2,
-            content: geoJson,
-          },
-        }),
-      });
-      const data = await res.json();
-      return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      for (const v of API_VARIANTS) {
+        const annotUrl = v.name === "openapi-v0.1"
+          ? `${fh2BaseUrl}/openapi/v0.1/map/element`
+          : `${fh2BaseUrl}/manage/api/v1.0/map/element`;
+        try {
+          const h = { ...makeHeaders(v, true), "Content-Type": "application/json" };
+          const res = await safeFetch(annotUrl, {
+            method: "POST",
+            headers: h,
+            body: JSON.stringify({
+              name: name || "SORA Buffer Zone",
+              desc: desc || "Generated by Avisafe",
+              resource: { type: annotationType ?? 2, content: geoJson },
+            }),
+          });
+          const data = await res.json();
+          if (data.code === 0) {
+            return new Response(JSON.stringify(data), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          console.log(`create-annotation [${v.name}]: code=${data.code}`);
+        } catch (err: any) {
+          console.log(`create-annotation [${v.name}] error: ${err.message}`);
+        }
+      }
+
+      return new Response(JSON.stringify({ error: "Kunne ikke opprette annotasjon" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
