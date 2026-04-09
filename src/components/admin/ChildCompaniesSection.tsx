@@ -447,23 +447,28 @@ export const ChildCompaniesSection = () => {
   const handleSaveFh2 = async () => {
     if (!companyId) return;
     setSavingFh2(true);
+    const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
     const { error } = await supabase
       .from("companies")
-      .update({ flighthub2_token: fh2Token || null, flighthub2_base_url: fh2BaseUrl || null } as any)
+      .update({ flighthub2_token: cleanToken || null } as any)
       .eq("id", companyId);
     setSavingFh2(false);
     if (error) { toast.error("Kunne ikke lagre"); return; }
-    toast.success("FlightHub 2-innstillinger lagret");
+    setFh2Token(cleanToken);
+    toast.success("FlightHub 2-nøkkel lagret");
   };
 
   const handleTestFh2 = async () => {
     if (!fh2Token) { toast.error("Fyll inn organisasjonsnøkkel først"); return; }
-    if (!fh2BaseUrl) { toast.error("Velg en Base URL først"); return; }
     setTestingFh2(true);
+    setFh2Connected(false);
+    setFh2Projects([]);
     try {
+      // Save token first, then test
+      const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
       await supabase
         .from("companies")
-        .update({ flighthub2_token: fh2Token, flighthub2_base_url: fh2BaseUrl || null } as any)
+        .update({ flighthub2_token: cleanToken } as any)
         .eq("id", companyId);
 
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
@@ -471,77 +476,31 @@ export const ChildCompaniesSection = () => {
       });
       if (error) throw error;
 
-      // Build JWT diagnostics string
-      let jwtDiag = "";
-      if (data?.jwt_info) {
-        const ji = data.jwt_info;
-        if (ji.is_jwt) {
-          const parts = [];
-          if (ji.organization_uuid) parts.push(`Org: ${ji.organization_uuid}`);
-          if (ji.project_uuid) parts.push(`Prosjekt: ${ji.project_uuid}`);
-          if (ji.account) parts.push(`Konto: ${ji.account}`);
-          if (ji.user_id) parts.push(`User: ${ji.user_id}`);
-          if (ji.exp) parts.push(`Utløper: ${new Date(ji.exp).toLocaleString()}`);
-          if (ji.expired) parts.push("⚠️ UTLØPT!");
-          if (!ji.organization_uuid) parts.push("⚠️ Mangler organization_uuid i token");
-          jwtDiag = `\nJWT-info: ${parts.join(", ") || `Nøkler: ${ji.raw_keys?.join(", ")}`}`;
-        } else {
-          jwtDiag = `\n⚠️ Tokenet er IKKE en gyldig JWT (lengde: ${ji.token_length}). Sjekk at du bruker riktig nøkkel fra FlightHub 2 → Organization Settings → OpenAPI → Copy key.`;
+      if (data?.token_ok) {
+        // Auto-save working base URL if detected
+        if (data.working_base_url) {
+          await supabase
+            .from("companies")
+            .update({ flighthub2_base_url: data.working_base_url } as any)
+            .eq("id", companyId);
+          setFh2BaseUrl(data.working_base_url);
         }
-      }
 
-      if (data?.server_ok && data?.token_ok && data?.alternate_region_worked) {
-        // Token worked on a different region - offer to switch
-        const workingUrl = data.working_base_url;
-        toast.info(
-          `Tokenet fungerer på ${workingUrl}, men du har konfigurert ${fh2BaseUrl}. Oppdaterer Base URL automatisk...`,
-          { duration: 8000 }
-        );
-        setFh2BaseUrl(workingUrl);
-        await supabase
-          .from("companies")
-          .update({ flighthub2_base_url: workingUrl } as any)
-          .eq("id", companyId);
-        toast.success(`FlightHub 2 tilkoblet! Base URL oppdatert til ${workingUrl}.${jwtDiag}`);
-      } else if (data?.token_ok) {
-        const projectInfo = data?.project_count ? ` ${data.project_count} prosjekter funnet.` : '';
-        toast.success(`FlightHub 2 tilkoblet!${projectInfo}${jwtDiag}`);
+        const projectNames: string[] = data.project_names || [];
+        setFh2Projects(projectNames);
+        setFh2Connected(true);
+        toast.success(`Gratulerer! Du er tilkoblet din FH2-konto med ${data.project_count || 0} prosjekter`);
       } else if (data?.server_ok && !data?.token_ok) {
-        const errMsg = data?._project_error_code === 200401
-          ? `Organisasjonsnøkkelen ble avvist (Unauthorized) på begge regioner (US og CN). Sjekk at nøkkelen er riktig og ikke utløpt.${jwtDiag}`
-          : `Server svarer, men nøkkelen ble avvist: ${data?._project_error_message || 'Ukjent feil'}${jwtDiag}`;
-        toast.error(errMsg, { duration: 10000 });
+        toast.error("Server svarer, men nøkkelen ble avvist. Sjekk at nøkkelen er korrekt og ikke utløpt.", { duration: 10000 });
       } else if (data?.error) {
-        toast.error(`FlightHub 2 feil: ${data.error}${jwtDiag}`, { duration: 10000 });
+        toast.error(`FlightHub 2 feil: ${data.error}`, { duration: 10000 });
       } else {
-        toast.error("Kunne ikke nå FlightHub 2-serveren. Sjekk Base URL.");
+        toast.error("Kunne ikke nå FlightHub 2-serveren.");
       }
     } catch (err: any) {
       toast.error(err?.message || "Tilkobling feilet");
     } finally {
       setTestingFh2(false);
-    }
-  };
-
-  const handleRawTestFh2 = async () => {
-    if (!fh2Token || !fh2BaseUrl) return;
-    setRawTesting(true);
-    setRawTestResult(null);
-    try {
-      await supabase
-        .from("companies")
-        .update({ flighthub2_token: fh2Token, flighthub2_base_url: fh2BaseUrl || null } as any)
-        .eq("id", companyId);
-
-      const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
-        body: { action: "raw-test" },
-      });
-      if (error) throw error;
-      setRawTestResult(data);
-    } catch (err: any) {
-      setRawTestResult({ error: err?.message || "Feil ved raw-test" });
-    } finally {
-      setRawTesting(false);
     }
   };
 
