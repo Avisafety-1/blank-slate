@@ -1,48 +1,55 @@
 
-Mest sannsynlig er dette ikke lenger et autentiseringsproblem, men et filformatproblem.
 
-Hva jeg fant:
-- `list-projects` fungerer mot EU og returnerer prosjekter, så token, region og `X-Project-Uuid` virker.
-- S3/OSS-opplasting fungerer også (`OSS upload status: 200`).
-- Feilen oppstår først i `POST /openapi/v0.1/wayline/finish-upload`, som svarer `500 {"code":200500,"message":"server error"}`.
-- DJI-dokumentasjonen for `finish-upload` viser bare `name` + `object_key` i body. `drone_model_key` er ikke dokumentert der, så den bør ikke være nødvendig.
-- Den nåværende KMZ-generatoren i `FlightHub2SendDialog.tsx` bygger en for enkel og sannsynligvis ugyldig DJI-WPMZ:
-  - den skriver `wpmz/waylines.kml` i stedet for `wpmz/waylines.wpml`
-  - `template.kml` mangler flere påkrevde DJI-felter som finnes i dokumentasjonen, bl.a. `wpml:templateType`, `wpml:takeOffSecurityHeight`, ofte også payload-relaterte felt for støttede modeller
-  - `waylineKml = templateKml` er en klar forenkling som trolig gjør filen ugyldig for FlightHub 2
-- Prosjektet har allerede en mye bedre generator i `src/lib/kmzExport.ts` som faktisk lager:
-  - `wpmz/template.kml`
-  - `wpmz/waylines.wpml`
+## Oppdater KMZ-eksport med DJI-påkrevde felter + konfigurerbare parametre
 
-Konklusjon:
-- “Server error” kommer sannsynligvis fordi FlightHub 2 aksepterer at filen er lastet opp til storage, men feiler når den prøver å parse/registrere KMZ-en som en gyldig wayline-fil.
+### Hva som endres
 
-Plan:
-1. Erstatt den innebygde KMZ-genereringen i `src/components/FlightHub2SendDialog.tsx` med den eksisterende `generateDJIKMZ` fra `src/lib/kmzExport.ts`.
-2. Konverter `Blob`-resultatet til base64 i dialogen, i stedet for å generere ZIP/KML manuelt der.
-3. Fjern `drone_model_key` fra `finish-upload`-payloaden i `supabase/functions/flighthub2-proxy/index.ts`, siden DJI-dokumentasjonen for dette endepunktet kun viser `name` og `object_key`.
-4. Behold loggingen for `finish-upload`, slik at vi kan se om responsen endrer seg fra 500 til 200 / `code: 0`.
-5. Hvis det fortsatt feiler etter korrekt KMZ-format:
-   - legg til én ekstra logg som viser hvilken API-variant som brukes for STS + finish-upload
-   - sjekk at `openapi/v0.1/project/sts-token` og `finish-upload` bruker samme variant og samme prosjekt-header
-   - eventuelt teste om `finish-upload` må kjøres uten ekstra, udokumenterte felter og med ren DJI-eksempelflyt
+**1. Legg til manglende påkrevde DJI WPML-felter i `src/lib/kmzExport.ts`**
 
-Filer som endres:
-1. `src/components/FlightHub2SendDialog.tsx` — bruk `generateDJIKMZ` i stedet for lokal, forenklet KMZ-bygging
-2. `supabase/functions/flighthub2-proxy/index.ts` — fjern `drone_model_key` fra `finish-upload` body, behold diagnostikk
+Uten disse godtar ikke FlightHub 2 filen:
+- `wpml:templateType` = `waypoint` (påkrevd, mangler helt)
+- `wpml:takeOffSecurityHeight` i missionConfig
+- `wpml:waylineCoordinateSysParam` med `coordinateMode`, `heightMode`, `positioningType`
+- Per Placemark: `wpml:useGlobalHeight`, `wpml:useGlobalSpeed`, `wpml:useGlobalHeadingParam`, `wpml:useGlobalTurnParam`
 
-Tekniske detaljer:
-```text
-Nåværende feilkjede:
-JWT OK -> prosjektliste OK -> STS OK -> S3 upload OK -> finish-upload 500
+**2. Gjør nøkkelparametere konfigurerbare via dialog**
 
-Mest sannsynlig årsak:
-finish-upload peker på en objektfil som finnes,
-men selve KMZ-innholdet er ikke gyldig DJI WPMZ.
+Legg til innstillinger i `FlightHub2SendDialog.tsx`:
 
-Sterke indikatorer:
-- bruker `waylines.kml` i stedet for `waylines.wpml`
-- template/wayline-filer er “samme struktur”
-- mangler flere DJI-felter som docs viser
-- prosjektet har allerede en dedikert generator som lager riktig filnavnstruktur
-```
+| Parameter | Default | Alternativer |
+|---|---|---|
+| Takeoff-sikkerhetshøyde | 20m | Tallinnput (1.2-1500m) |
+| Høydemodus | Relativ til startpunkt | Dropdown: Relativ / EGM96 (havnivå) |
+| Flyhastighet | 5 m/s | Tallinnput (1-15 m/s) |
+| Svingmodus | Stopp i hvert punkt | Dropdown: Stopp / Fly gjennom |
+
+Disse sendes videre til `generateDJIKMZ` som nye valgfrie parametre.
+
+**3. Hardkodede (trygge) verdier**
+
+Disse trenger IKKE å være konfigurerbare:
+- `finishAction: goHome` -- drona flyr hjem etter siste punkt
+- `exitOnRCLost: executeLostAction` + `executeRCLostAction: goBack` -- drona flyr hjem ved signaltap
+- `flyToWaylineMode: safely` -- trygg rute til første waypoint
+- `coordinateMode: WGS84` -- alltid WGS84
+- `positioningType: GPS` -- standard GPS
+
+### Teknisk
+
+**`src/lib/kmzExport.ts`**: 
+- Nytt options-interface med valgfrie felter (takeOffHeight, heightMode, speed, turnMode)
+- Oppdater `generateTemplateKml` med alle påkrevde felter
+- Oppdater `generateWaylinesWpml` tilsvarende
+
+**`src/components/FlightHub2SendDialog.tsx`**:
+- Legg til 4 nye inputs i dialogen (under "Navn på rute")
+- Send verdiene til `generateDJIKMZ`
+
+**`src/lib/oppdragKmzExport.ts`**:
+- Oppdater kallet til `generateDJIKMZ` med det nye options-interfacet (bruker defaults)
+
+### Filer som endres
+1. `src/lib/kmzExport.ts` -- påkrevde WPML-felter + konfigurerbare parametre
+2. `src/components/FlightHub2SendDialog.tsx` -- UI for parametre
+3. `src/lib/oppdragKmzExport.ts` -- tilpass til nytt interface
+
