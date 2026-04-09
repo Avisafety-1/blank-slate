@@ -1,78 +1,64 @@
 
-## Sammenligning av de to KMZ-filene
+Mest sannsynlig ja: vi bør knytte en faktisk drone/enhet til FH2-ruten, eller i det minste la brukeren velge hvilken DJI-modell ruten er laget for.
 
-Jeg fant en viktig ledetråd:
+Hva jeg fant i koden:
+- `FlightHub2SendDialog.tsx` sender bare `{ action, projectUuid, kmzBase64, routeName }`.
+- `flighthub2-proxy` sender bare `name` og `object_key` til `finish-upload`.
+- `kmzExport.ts` hardkoder `droneEnumValue=68` / `droneSubEnumValue=0`.
+- På `/kart` finnes allerede dronevalg via `SoraSettingsPanel`, men dette brukes ikke i FH2-dialogen.
+- DJI-dokumentasjonen viser egne API-er for:
+  - liste enheter i organisasjonen/prosjektet
+  - hente enhetsmodell via `device_sn`
+- Skjermbildet ditt viser at FH2 faktisk har en modellkobling på fungerende ruter (`Matrice 30 T`), mens Avisafe-rutene vises uten slik modelltekst. Det er en sterk indikasjon på at FH2 trenger eller forventer device/model-kontekst for full waypoint-rendering eller redigering.
 
-- `src/lib/kmzExport.ts` i kodebasen er nå oppdatert til WPML `1.0.2` med `Date.now()`-timestamps og `globalRTHHeight`.
-- Men den opplastede `Avisafe_Route_v3.kmz` inneholder fortsatt:
-  - `xmlns:wpml="http://www.dji.com/wpmz/1.0.6"`
-  - ISO-timestamps som `2026-04-09T16:28:10.038Z`
+Plan:
+1. Koble FH2-rutesending til valgt drone fra ruteplanleggingen
+   - bruke `soraDroneId` / valgt drone fra `SoraSettingsPanel`
+   - sende valgt drones modell videre til FH2-dialogen og KMZ-generatoren
+   - dersom ingen drone er valgt, vise tydelig advarsel eller blokkere rutesending
 
-Det betyr at filen du sammenligner fra Avisafe ikke ser ut til å være generert av den nyeste koden som ligger i repoet nå. Enten:
-1. ruten ble eksportert før siste fix,
-2. FH2-sending bruker fortsatt en eldre bygget frontend,
-3. eller en annen eksportsti enn `src/lib/kmzExport.ts` brukes i praksis.
+2. Gjøre KMZ-generatoren modellbevisst
+   - utvide `DJIExportOptions` med DJI droneidentitet, ikke bare flyparametre
+   - erstatte hardkodet `68/0` med verdier utledet fra valgt drone
+   - legge inn en liten modellmapping for kjente DJI-modeller (f.eks. Matrice 30 / 30T / 300 RTK)
+   - fallback til dagens standard hvis modellen ikke kan mappes
 
-## Mest sannsynlig problem nå
+3. Forbedre FlightHub 2-dialogen
+   - vise hvilken drone/modell ruten sendes for
+   - eventuelt legge til et eksplisitt “DJI-modell”-valg dersom valgt intern drone ikke kan mappes sikkert
+   - forklare kort at dette påvirker hvordan FH2 tolker og viser waypoints
 
-Det er sannsynligvis to ting vi må fikse/verifisere:
+4. Utvide proxyen med FH2-enhetsstøtte
+   - legge til read-only action for å hente prosjektets enheter fra DJI
+   - bruke den for å vise/validere hvilke enheter som finnes i valgt prosjekt
+   - om nødvendig sende ekstra metadata i upload-flyten dersom FH2 krever dette i tillegg til KMZ-innholdet
 
-1. **Sikre at FlightHub 2-dialogen faktisk bruker den nye KMZ-generatoren i preview/builden**
-   - Bekrefte at `FlightHub2SendDialog.tsx -> generateDJIKMZ(...)` er koden som faktisk kjører
-   - Verifisere at siste build er ute og at cached frontend ikke bruker gammel bundle
+5. Stramme inn sikker standard
+   - standardisere konservative default-verdier for takeoff height, turn mode og height mode
+   - gjøre “stopp i punkt” og “relativ til startpunkt” til trygge defaults
+   - la avanserte valg være eksplisitte, ikke skjulte harde antagelser
 
-2. **Sammenligne struktur mot FH2-filen helt ned på waypoint-nivå**
-   - Pakke ut begge KMZ-filer ordentlig
-   - Sammenligne `wpmz/template.kml` og `wpmz/waylines.wpml`
-   - Se etter manglende felter som FH2 faktisk har, f.eks. ekstra `payloadInfo`, heading-parametre, waypoint-actioner, folder-metadata eller annen required struktur som ikke er synlig i repoet alene
+6. Verifisering etter implementasjon
+   - teste med en rute sendt med valgt DJI-modell/enhet
+   - bekrefte at ruten viser waypoint-punkter i FH2, ikke bare rute-boks
+   - sammenligne metadata mot fungerende FH2-rute hvis den fortsatt ikke vises riktig
 
-## Også funnet i koden
-
-- `FlightHub2SendDialog.tsx` bruker `generateDJIKMZ(...)` direkte, så riktig eksportsti ser ut til å være koblet opp.
-- `Kart.tsx` sender nå `soraBufferCoordinates`, så buffer-sone-feilen er sannsynligvis separat fra rute-synlighet.
-- Edge-funksjonen sender fortsatt et veldig minimalt `finish-upload` body:
-  ```text
-  { name, object_key }
-  ```
-  Hvis DJI krever mer metadata for noen rutetyper/prosjekter, kan dette fortsatt være en medvirkende årsak, men siden “rute-boks” vises, peker det fortsatt sterkest mot selve WPML-innholdet.
-
-## Plan
-
-1. **Verifiser faktisk generert fil**
-   - Reprodusere en ny Avisafe-KMZ etter siste kode
-   - Bekrefte at den faktisk inneholder WPML `1.0.2` og millisekund-timestamps
-   - Hvis ikke: spore caching / gammel bundle / feil eksportsti
-
-2. **Diff mot FH2-referansefilen**
-   - Pakke ut begge KMZ-filer og sammenligne `template.kml` + `waylines.wpml`
-   - Identifisere nøyaktig hvilke XML-elementer FH2-filen har som Avisafe-filen mangler eller strukturerer annerledes
-
-3. **Oppdatere `src/lib/kmzExport.ts` til å matche FH2-eksempelet enda tettere**
-   - Legge til eventuelle manglende mission-/folder-/placemark-felter
-   - Justere rekkefølge og schema der FH2 er streng
-
-4. **Verifisere runtime-feilen på `/kart`**
-   - Det finnes også en separat runtime-feil i kartet:
-     `TypeError: undefined is not an object (evaluating 'this.getPane().appendChild')`
-   - Den bør fikses samtidig fordi den kan påvirke kartlag/rendering og gjøre FH2-testing mindre pålitelig
-
-## Filer som sannsynligvis må endres
+Filer som mest sannsynlig må endres:
+- `src/pages/Kart.tsx`
+- `src/components/FlightHub2SendDialog.tsx`
 - `src/lib/kmzExport.ts`
-- eventuelt `src/components/FlightHub2SendDialog.tsx`
-- eventuelt kartrelatert fil etter reproduksjon av runtime-feilen på `/kart`
+- `supabase/functions/flighthub2-proxy/index.ts`
 
-## Teknisk detalj
-Det viktigste funnet er dette:
-
+Teknisk vurdering:
 ```text
-Repo-kode:
-- wpml 1.0.2
-- timestamp = Date.now()
+Nåværende svakhet:
+- Avisafe sender generell KMZ
+- FH2-referansen ser ut til å være knyttet til spesifikk drone/modell
+- valgt drone i ruteplanlegging brukes ikke i FH2-upload
 
-Opplastet Avisafe_Route_v3.kmz:
-- wpml 1.0.6
-- timestamp = ISO string
-
-Konklusjon:
-Den sammenlignede Avisafe-filen er ikke generert fra den nyeste koden slik repoet ser ut nå.
+Sannsynlig forbedring:
+- velg drone i Kart/SORA
+- map intern drone -> DJI modellidentitet
+- skriv riktig droneInfo i WPML
+- eventuelt hent/prosjektsjekk devices via FH2 API
 ```
