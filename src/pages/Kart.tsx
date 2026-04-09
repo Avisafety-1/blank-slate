@@ -66,6 +66,15 @@ export default function KartPage() {
     bufferMode: "corridor",
   });
   const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
+  const [soraDroneModel, setSoraDroneModel] = useState<string | undefined>(undefined);
+
+  // Fetch drone model name when soraDroneId changes
+  useEffect(() => {
+    if (!soraDroneId) { setSoraDroneModel(undefined); return; }
+    supabase.from('drones').select('modell').eq('id', soraDroneId).single().then(({ data }) => {
+      setSoraDroneModel(data?.modell || undefined);
+    });
+  }, [soraDroneId]);
 
   // FlightHub 2 state
   const [hasFH2Token, setHasFH2Token] = useState(false);
