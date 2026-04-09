@@ -258,10 +258,29 @@ export const MissionCard = ({
               Eksporter PDF
             </DropdownMenuItem>
             {(mission.route as { coordinates?: any[] } | null)?.coordinates?.length > 0 && (
-              <DropdownMenuItem onClick={() => onExportKmz(mission)}>
-                <Navigation className="h-4 w-4 mr-2" />
-                Eksporter KMZ
-              </DropdownMenuItem>
+              hasFh2Connection && onSendToFH2 ? (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Navigation className="h-4 w-4 mr-2" />
+                    Eksporter KMZ
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => onExportKmz(mission)}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Lagre til dokumenter
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onSendToFH2(mission)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Send til FlightHub 2
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              ) : (
+                <DropdownMenuItem onClick={() => onExportKmz(mission)}>
+                  <Navigation className="h-4 w-4 mr-2" />
+                  Eksporter KMZ
+                </DropdownMenuItem>
+              )
             )}
             <DropdownMenuItem onClick={() => onImportKml(mission.id)} disabled={importingKml}>
               <Upload className="h-4 w-4 mr-2" />
