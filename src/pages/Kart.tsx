@@ -123,7 +123,7 @@ export default function KartPage() {
           setSoraSettings(prev => prev.bufferMode === "corridor" ? { ...prev, bufferMode: mode } : prev);
         }
       });
-    // Check if FlightHub 2 is configured (with parent fallback)
+    // Check if FlightHub 2 is configured (edge function handles parent fallback)
     (async () => {
       const { data: cred } = await supabase
         .from("company_fh2_credentials")
@@ -134,20 +134,13 @@ export default function KartPage() {
         setHasFH2Token(true);
         return;
       }
-      // Fallback: check parent company
-      const { data: company } = await supabase
-        .from("companies")
-        .select("parent_company_id")
-        .eq("id", companyId)
-        .single();
-      if (company?.parent_company_id) {
-        const { data: parentCred } = await supabase
-          .from("company_fh2_credentials")
-          .select("company_id")
-          .eq("company_id", company.parent_company_id)
-          .maybeSingle();
-        setHasFH2Token(!!parentCred);
-      } else {
+      // No own cred — ask edge function (it checks parent automatically)
+      try {
+        const { data: testData } = await supabase.functions.invoke("flighthub2-proxy", {
+          body: { action: "test-connection" },
+        });
+        setHasFH2Token(!!testData?.token_ok);
+      } catch {
         setHasFH2Token(false);
       }
     })();
