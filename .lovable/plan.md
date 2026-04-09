@@ -1,26 +1,39 @@
 
 
-## Fiks FlightHub 2 test-connection: returner 200 når token fungerer
+## Fiks FlightHub 2 rutesending og SORA-buffersoner
 
-### Rotårsak
+### Problem 1: Upload feiler med "region 'us-east-1' is wrong; expecting 'eu-central-1'"
 
-Nettverksloggene beviser at DJI EU-serveren fungerer:
-- `token_ok: true`, `project_count: 14`, `api_version: "openapi-v0.1"`
-- Men `server_ok: false` fordi `system_status`-endepunktet enten ikke finnes eller returnerer et annet format på EU
+Loggene viser:
+```
+OSS upload status: 400 body: AuthorizationHeaderMalformed - the region 'us-east-1' is wrong; expecting 'eu-central-1'
+```
 
-Proxy-koden på linje 387 returnerer `status: result.server_ok ? 200 : 502`. Siden `server_ok` er `false`, returnerer den HTTP 502. `supabase.functions.invoke` kaster da en "non-2xx" feil og klienten treffer `catch`-blokken i stedet for å lese `data`.
+**Årsak**: `signV4Put` i `flighthub2-proxy/index.ts` (linje 38-39) bruker regex `host.match(/oss-([^.]+)\./)` for å finne AWS-region. Dette matcher Alibaba OSS-URLer (`oss-cn-hangzhou.aliyuncs.com`), men DJI EU returnerer en AWS S3-URL (`s3.eu-central-1.amazonaws.com`). Regexen matcher ikke, så den faller tilbake til `us-east-1`.
 
-### Løsning
+**Løsning**: Oppdater region-deteksjonen til å også håndtere AWS S3 URLer:
+```
+s3.eu-central-1.amazonaws.com → eu-central-1
+oss-cn-hangzhou.aliyuncs.com → cn-hangzhou (eksisterende)
+```
 
-**Edge function (`flighthub2-proxy/index.ts`)** -- linje 387:
-- Endre til: `status: (result.server_ok || result.token_ok) ? 200 : 502`
-- Hvis token_ok er true (vi fikk prosjektdata fra DJI), er tilkoblingen vellykket uansett hva system_status sier
+### Problem 2: SORA-buffersoner vises som "ikke tilgjengelig"
 
-**Admin UI (`ChildCompaniesSection.tsx`)** -- linje 506-507:
-- Oppdater suksess-sjekken: Vis suksess også når `token_ok` er true selv om `server_ok` er false
-- Vis antall prosjekter funnet i suksessmeldingen: "FlightHub 2 tilkoblet! {project_count} prosjekter funnet."
+**Årsak**: I `Kart.tsx` linje 591-596 mangler `soraBufferCoordinates`-propen helt:
+```tsx
+<FlightHub2SendDialog
+  open={fh2DialogOpen}
+  onOpenChange={setFh2DialogOpen}
+  route={currentRoute}
+  soraSettings={soraSettings.enabled ? soraSettings : undefined}
+  // soraBufferCoordinates mangler!
+/>
+```
+
+**Løsning**: Beregn buffersone-koordinatene fra `soraGeometry.ts` sine eksporterte funksjoner (`bufferPolyline`/`bufferPolygon`/`computeConvexHull`) basert på gjeldende rute og SORA-innstillinger, og send dem som prop.
 
 ### Filer som endres
-1. `supabase/functions/flighthub2-proxy/index.ts` -- endre HTTP status-logikk (1 linje)
-2. `src/components/admin/ChildCompaniesSection.tsx` -- oppdater suksess-logikk i UI
+
+1. **`supabase/functions/flighthub2-proxy/index.ts`** -- Fiks SigV4 region-deteksjon for AWS S3 URLer (linje 38-39)
+2. **`src/pages/Kart.tsx`** -- Beregn og pass `soraBufferCoordinates` til `FlightHub2SendDialog`
 
