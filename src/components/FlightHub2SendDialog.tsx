@@ -9,7 +9,7 @@ import { Loader2, Upload, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RouteData, SoraSettings } from "@/types/map";
-import JSZip from "jszip";
+import { generateDJIKMZ } from "@/lib/kmzExport";
 
 interface FlightHub2SendDialogProps {
   open: boolean;
