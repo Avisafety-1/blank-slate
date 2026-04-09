@@ -65,15 +65,36 @@ const Oppdrag = () => {
   const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
   const [fh2Mission, setFh2Mission] = useState<Mission | null>(null);
 
-  // Check FH2 connection
+  // Check FH2 connection (with parent fallback)
   useEffect(() => {
     if (!authCompanyId) return;
-    supabase
-      .from('company_fh2_credentials')
-      .select('company_id')
-      .eq('company_id', authCompanyId)
-      .maybeSingle()
-      .then(({ data: cred }) => setHasFh2Connection(!!cred));
+    (async () => {
+      const { data: cred } = await supabase
+        .from('company_fh2_credentials')
+        .select('company_id')
+        .eq('company_id', authCompanyId)
+        .maybeSingle();
+      if (cred) {
+        setHasFh2Connection(true);
+        return;
+      }
+      // Fallback: check parent company
+      const { data: company } = await supabase
+        .from('companies')
+        .select('parent_company_id')
+        .eq('id', authCompanyId)
+        .single();
+      if (company?.parent_company_id) {
+        const { data: parentCred } = await supabase
+          .from('company_fh2_credentials')
+          .select('company_id')
+          .eq('company_id', company.parent_company_id)
+          .maybeSingle();
+        setHasFh2Connection(!!parentCred);
+      } else {
+        setHasFh2Connection(false);
+      }
+    })();
   }, [authCompanyId]);
 
   // Infinite scroll
