@@ -503,6 +503,35 @@ export type Database = {
           },
         ]
       }
+      company_fh2_credentials: {
+        Row: {
+          company_id: string
+          created_at: string
+          token_encrypted: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          token_encrypted: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          token_encrypted?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_fh2_credentials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_flight_alert_recipients: {
         Row: {
           company_id: string
@@ -5140,6 +5169,10 @@ export type Database = {
           e2_scope: string
         }[]
       }
+      get_fh2_token: {
+        Args: { p_company_id: string; p_key: string }
+        Returns: string
+      }
       get_incident_responsible_users: {
         Args: { target_company_id: string }
         Returns: {
@@ -5260,6 +5293,10 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      save_fh2_token: {
+        Args: { p_company_id: string; p_key: string; p_token: string }
+        Returns: undefined
+      }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
