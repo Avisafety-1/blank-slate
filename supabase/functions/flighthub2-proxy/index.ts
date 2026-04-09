@@ -35,8 +35,7 @@ async function signV4Put(
 ): Promise<Response> {
   const url = new URL(`/${bucket}/${objectKey}`, endpoint);
   const host = url.host;
-  const regionMatch = host.match(/oss-([^.]+)\./);
-  const region = regionMatch ? regionMatch[1] : "us-east-1";
+  const region = host.match(/oss-([^.]+)\./)?.[1] || host.match(/s3\.([^.]+)\./)?.[1] || "us-east-1";
   const service = "s3";
 
   const now = new Date();

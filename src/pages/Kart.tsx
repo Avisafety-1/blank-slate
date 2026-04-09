@@ -2,6 +2,7 @@ import { OpenAIPMap, RouteData, RoutePoint, SoraSettings } from "@/components/Op
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { bufferPolyline, bufferPolygon, computeConvexHull } from "@/lib/soraGeometry";
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
