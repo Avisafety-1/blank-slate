@@ -1,37 +1,27 @@
 
 
-## Fiks FlightHub 2 "Unauthorized" -- fjern X-Project-Uuid fra list-projects
+## Fiks FlightHub 2 token-validering -- trim + verbose request-logging
 
-### Rotårsak funnet
+### Analyse
 
-Problemet er at vi sender `X-Project-Uuid`-headeren på **alle** API-kall, inkludert `list-projects` og `test-connection`. Dette skjer fordi koden på linje 185-189 dekoder JWT-tokenet og setter `X-Project-Uuid` som en global header i `commonHeaders` FØR den sjekker hvilken action som skal utføres.
+1. "Tilkoblet!" var basert KUN på `system_status` som krever ingen autentisering (`security: []` i DJI-spesifikasjonen). Tokenet ble aldri verifisert.
+2. `list-projects` er det første kallet som faktisk validerer `X-User-Token`, og det returnerer `401`.
+3. `.trim()` ble aldri lagt til på tokenet -- whitespace/newlines fra kopiering kan bryte headeren.
+4. Vi har ingen logging av nøyaktig hva som sendes til DJI (header-verdier, token-lengde etter trim).
 
-Fra DJI-dokumentasjonen:
-> "FlightHub 2 will authorize based on the provided `X-User-Token` **and** `X-Project-Uuid`."
-
-Når `X-Project-Uuid` sendes, prøver DJI å autorisere brukeren mot det spesifikke prosjektet. Hvis nøkkelen ikke har tilgang til akkurat det prosjektet (eller verdien er ugyldig), returneres `200401 Unauthorized` -- selv for endepunkter som `list-projects` som egentlig bare trenger org-nøkkelen.
-
-Dokumentasjonen sier tydelig at `X-Project-Uuid` skal hentes FRA `list-projects`-responsens `data.list.uuid`, altså ETTER at du har listet prosjektene. Det er en catch-22 å sende den på selve list-kallet.
-
-### Løsning
+### Plan
 
 **Edge function (`flighthub2-proxy/index.ts`)**:
 
-1. Flytt `X-Project-Uuid` ut av `commonHeaders` -- sett den IKKE som default
-2. For `list-projects` og `test-connection` (project-sjekk): send UTEN `X-Project-Uuid`
-3. For `upload-route`, `create-annotation`, `get-sts-token`: send MED `X-Project-Uuid` (klient-valgt fra prosjektlisten, eller JWT-fallback)
-4. Legg til en `projectHeaders`-funksjon som returnerer `commonHeaders` med `X-Project-Uuid` kun når det trengs
-
-```text
-Konkret endring:
-- Fjern linje 186-189 (automatisk X-Project-Uuid i commonHeaders)
-- I upload-route/create-annotation/get-sts-token: bruk { ...commonHeaders, "X-Project-Uuid": effectiveProjectUuid }
-- list-projects og test-connection: bruk commonHeaders uten X-Project-Uuid
-```
+1. Legg til `.trim()` på `fh2Token` rett etter den hentes fra databasen
+2. Logg nøyaktig request til DJI for `list-projects`:
+   - Token-lengde, første 8 og siste 4 tegn (for å verifisere at det er riktig token uten whitespace)
+   - Alle header-nøkler som sendes
+   - Full URL
+   - DJI response headers (for å se om det er rate-limiting, IP-info, etc.)
+3. Sjekk om tokenet inneholder `Bearer ` prefix (noen kopierer hele Authorization-headeren)
+4. Legg til `prj_authorized_status=project-status-authorized` parameter i list-projects URL (dokumentasjonen viser dette som et filter for prosjekter brukeren har tilgang til)
 
 ### Filer som endres
-1. `supabase/functions/flighthub2-proxy/index.ts` -- flytt X-Project-Uuid fra global til per-action
-
-### Ingen endringer i UI
-Klientkoden sender allerede `projectUuid` som parameter for de actionene som trenger det. Denne endringen sørger bare for at headeren ikke "lekker" til kall som ikke skal ha den.
+1. `supabase/functions/flighthub2-proxy/index.ts` -- trim token, verbose request/response logging
 
