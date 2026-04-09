@@ -488,11 +488,24 @@ export const ChildCompaniesSection = () => {
         }
       }
 
-      if (data?.server_ok && data?.token_ok) {
+      if (data?.server_ok && data?.token_ok && data?.alternate_region_worked) {
+        // Token worked on a different region - offer to switch
+        const workingUrl = data.working_base_url;
+        toast.info(
+          `Tokenet fungerer på ${workingUrl}, men du har konfigurert ${fh2BaseUrl}. Oppdaterer Base URL automatisk...`,
+          { duration: 8000 }
+        );
+        setFh2BaseUrl(workingUrl);
+        await supabase
+          .from("companies")
+          .update({ flighthub2_base_url: workingUrl } as any)
+          .eq("id", companyId);
+        toast.success(`FlightHub 2 tilkoblet! Base URL oppdatert til ${workingUrl}.${jwtDiag}`);
+      } else if (data?.server_ok && data?.token_ok) {
         toast.success(`FlightHub 2 tilkoblet og organisasjonsnøkkel godkjent!${jwtDiag}`);
       } else if (data?.server_ok && !data?.token_ok) {
         const errMsg = data?._project_error_code === 200401
-          ? `Organisasjonsnøkkelen ble avvist (Unauthorized). Sjekk at nøkkelen er riktig og ikke utløpt.${jwtDiag}`
+          ? `Organisasjonsnøkkelen ble avvist (Unauthorized) på begge regioner (US og CN). Sjekk at nøkkelen er riktig og ikke utløpt.${jwtDiag}`
           : `Server svarer, men nøkkelen ble avvist: ${data?._project_error_message || 'Ukjent feil'}${jwtDiag}`;
         toast.error(errMsg, { duration: 10000 });
       } else if (data?.error) {

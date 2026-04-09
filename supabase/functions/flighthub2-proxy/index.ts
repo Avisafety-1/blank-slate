@@ -232,6 +232,12 @@ Deno.serve(async (req: Request) => {
       }
     } catch (_) { /* ignore */ }
 
+    // Token fingerprint for debugging (never log full token)
+    const tokenFingerprint = fh2Token.length > 20
+      ? `${fh2Token.substring(0, 10)}...${fh2Token.substring(fh2Token.length - 6)}`
+      : `[len=${fh2Token.length}]`;
+    console.log(`Token fingerprint: ${tokenFingerprint}, length: ${fh2Token.length}, org_uuid: ${jwtOrgUuid || "none"}`);
+
     // DNS error handling
     const safeFetch = async (url: string, opts: RequestInit) => {
       try {
@@ -298,7 +304,7 @@ Deno.serve(async (req: Request) => {
         }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Step 2: Try both API variants to list projects
+      // Step 2: Try both API variants to list projects on configured URL
       for (const variant of API_VARIANTS) {
         try {
           const attempt = await tryListProjects(fh2BaseUrl, fh2Token, variant, safeFetch);
@@ -306,10 +312,10 @@ Deno.serve(async (req: Request) => {
             result.token_ok = true;
             result.api_version = variant.name;
             result.project_count = attempt.data?.data?.list?.length ?? attempt.data?.data?.length ?? 0;
-            console.log(`✅ API variant ${variant.name} worked!`);
+            console.log(`✅ API variant ${variant.name} worked on ${fh2BaseUrl}!`);
             break;
           } else {
-            console.log(`❌ API variant ${variant.name} failed: code=${attempt.data?.code}, status=${attempt.status}`);
+            console.log(`❌ API variant ${variant.name} failed on ${fh2BaseUrl}: code=${attempt.data?.code}, status=${attempt.status}`);
             result[`_${variant.name}_error`] = {
               code: attempt.data?.code,
               message: attempt.data?.message || attempt.bodyText.substring(0, 200),
@@ -322,7 +328,38 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // Step 3: JWT diagnostics
+      // Step 3: If token failed on configured URL, try the OTHER region automatically
+      if (!result.token_ok) {
+        const REGION_URLS = [
+          "https://es-flight-api-us.djigate.com",
+          "https://es-flight-api-cn.djigate.com",
+        ];
+        const currentNormalized = fh2BaseUrl.replace(/\/+$/, "").toLowerCase();
+        const alternateUrls = REGION_URLS.filter(u => u !== currentNormalized);
+
+        for (const altUrl of alternateUrls) {
+          console.log(`🔄 Trying alternate region: ${altUrl}`);
+          for (const variant of API_VARIANTS) {
+            try {
+              const attempt = await tryListProjects(altUrl, fh2Token, variant, safeFetch);
+              if (attempt.ok) {
+                result.token_ok = true;
+                result.api_version = variant.name;
+                result.project_count = attempt.data?.data?.list?.length ?? attempt.data?.data?.length ?? 0;
+                result.alternate_region_worked = true;
+                result.working_base_url = altUrl;
+                console.log(`✅ Alternate region ${altUrl} worked with ${variant.name}!`);
+                break;
+              }
+            } catch (err: any) {
+              console.log(`❌ Alternate ${altUrl} [${variant.name}] error: ${err.message}`);
+            }
+          }
+          if (result.token_ok) break;
+        }
+      }
+
+      // Step 4: JWT diagnostics
       if (jwtPayload) {
         result.jwt_info = {
           is_jwt: true,
@@ -339,6 +376,7 @@ Deno.serve(async (req: Request) => {
       }
 
       result._token_length = fh2Token.length;
+      result._token_fingerprint = tokenFingerprint;
       return new Response(JSON.stringify(result), {
         status: result.server_ok ? 200 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
