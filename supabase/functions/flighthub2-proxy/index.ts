@@ -130,8 +130,14 @@ Deno.serve(async (req: Request) => {
       .eq("id", profile.company_id)
       .single();
 
-    let fh2Token = (company as any)?.flighthub2_token;
-    let fh2BaseUrl = (company as any)?.flighthub2_base_url;
+    let fh2Token = ((company as any)?.flighthub2_token || "").trim();
+    let fh2BaseUrl = ((company as any)?.flighthub2_base_url || "").trim();
+
+    // Strip accidental "Bearer " prefix
+    if (fh2Token.toLowerCase().startsWith("bearer ")) {
+      fh2Token = fh2Token.substring(7).trim();
+      console.log("Stripped 'Bearer ' prefix from token");
+    }
 
     // Fallback to parent company if token is missing
     if (!fh2Token && (company as any)?.parent_company_id) {
