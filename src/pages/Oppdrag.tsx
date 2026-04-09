@@ -14,6 +14,8 @@ import { exportToPDF, DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdf
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
+import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Mission = any;
 
@@ -54,6 +56,12 @@ const Oppdrag = () => {
   const [executingChecklistMissionId, setExecutingChecklistMissionId] = useState<string | null>(null);
   const [riskPromptMission, setRiskPromptMission] = useState<Mission | null>(null);
   const [riskPromptOpen, setRiskPromptOpen] = useState(false);
+
+  // FH2 state
+  const { companyId: authCompanyId } = useAuth();
+  const [hasFh2Connection, setHasFh2Connection] = useState(false);
+  const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
+  const [fh2Mission, setFh2Mission] = useState<Mission | null>(null);
 
   // Infinite scroll
   const [visibleCount, setVisibleCount] = useState(10);
