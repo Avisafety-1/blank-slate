@@ -10,11 +10,46 @@ interface RouteData {
   totalDistance: number;
 }
 
+// DJI drone model mapping: model name substring -> { droneEnumValue, droneSubEnumValue }
+export const DJI_DRONE_MODELS: Record<string, { enumValue: number; subEnumValue: number; label: string }> = {
+  'Matrice 350 RTK':    { enumValue: 77,  subEnumValue: 2, label: 'Matrice 350 RTK' },
+  'Matrice 300 RTK':    { enumValue: 60,  subEnumValue: 0, label: 'Matrice 300 RTK' },
+  'Matrice 30T':        { enumValue: 67,  subEnumValue: 1, label: 'Matrice 30T' },
+  'Matrice 30':         { enumValue: 67,  subEnumValue: 0, label: 'Matrice 30' },
+  'Mavic 3 Enterprise': { enumValue: 77,  subEnumValue: 0, label: 'Mavic 3E/3T' },
+  'Mavic 3E':           { enumValue: 77,  subEnumValue: 0, label: 'Mavic 3E' },
+  'Mavic 3T':           { enumValue: 77,  subEnumValue: 1, label: 'Mavic 3T' },
+  'Mavic 3 Pro':        { enumValue: 77,  subEnumValue: 0, label: 'Mavic 3 Pro' },
+  'Mavic 3':            { enumValue: 77,  subEnumValue: 0, label: 'Mavic 3' },
+  'Mini 4 Pro':         { enumValue: 91,  subEnumValue: 0, label: 'Mini 4 Pro' },
+  'Air 3':              { enumValue: 89,  subEnumValue: 0, label: 'Air 3' },
+  'Dock 2':             { enumValue: 67,  subEnumValue: 0, label: 'Dock 2' },
+};
+
+/**
+ * Try to match an internal drone model string to DJI enum values.
+ * Returns undefined if no match found.
+ */
+export function matchDjiDroneModel(modelName: string): { enumValue: number; subEnumValue: number; label: string } | undefined {
+  if (!modelName) return undefined;
+  const upper = modelName.toUpperCase();
+  // Try exact-ish match first (longest key first for specificity)
+  const sortedKeys = Object.keys(DJI_DRONE_MODELS).sort((a, b) => b.length - a.length);
+  for (const key of sortedKeys) {
+    if (upper.includes(key.toUpperCase())) {
+      return DJI_DRONE_MODELS[key];
+    }
+  }
+  return undefined;
+}
+
 export interface DJIExportOptions {
   takeOffHeight?: number;       // 1.2–1500m, default 20
   heightMode?: 'relativeToStartPoint' | 'EGM96'; // default relativeToStartPoint
   speed?: number;               // 1–15 m/s, default 5
-  turnMode?: 'toPointAndStopWithDiscontinuityCurvature' | 'toPointAndPassWithContinuityCurvature'; // default stop
+  turnMode?: 'toPointAndStopWithDiscontinuityCurvature' | 'toPointAndPassWithContinuityCurvature';
+  droneEnumValue?: number;      // DJI drone enum, default 67 (M30)
+  droneSubEnumValue?: number;   // DJI drone sub-enum, default 0
 }
 
 const generateTemplateKml = (
@@ -28,6 +63,8 @@ const generateTemplateKml = (
   const takeOffHeight = opts.takeOffHeight ?? 20;
   const heightMode = opts.heightMode ?? 'relativeToStartPoint';
   const turnMode = opts.turnMode ?? 'toPointAndStopWithDiscontinuityCurvature';
+  const droneEnum = opts.droneEnumValue ?? 67;
+  const droneSubEnum = opts.droneSubEnumValue ?? 0;
 
   const placemarks = route.coordinates.map((coord, index) => `
       <Placemark>
@@ -74,8 +111,8 @@ const generateTemplateKml = (
       <wpml:globalTransitionalSpeed>${speed}</wpml:globalTransitionalSpeed>
       <wpml:globalRTHHeight>${takeOffHeight}</wpml:globalRTHHeight>
       <wpml:droneInfo>
-        <wpml:droneEnumValue>68</wpml:droneEnumValue>
-        <wpml:droneSubEnumValue>0</wpml:droneSubEnumValue>
+        <wpml:droneEnumValue>${droneEnum}</wpml:droneEnumValue>
+        <wpml:droneSubEnumValue>${droneSubEnum}</wpml:droneSubEnumValue>
       </wpml:droneInfo>
     </wpml:missionConfig>
     <Folder>
@@ -112,6 +149,8 @@ const generateWaylinesWpml = (
   const speed = opts.speed ?? 5;
   const takeOffHeight = opts.takeOffHeight ?? 20;
   const turnMode = opts.turnMode ?? 'toPointAndStopWithDiscontinuityCurvature';
+  const droneEnum = opts.droneEnumValue ?? 67;
+  const droneSubEnum = opts.droneSubEnumValue ?? 0;
 
   const placemarks = route.coordinates.map((coord, index) => `
       <Placemark>
@@ -156,8 +195,8 @@ const generateWaylinesWpml = (
       <wpml:globalTransitionalSpeed>${speed}</wpml:globalTransitionalSpeed>
       <wpml:globalRTHHeight>${takeOffHeight}</wpml:globalRTHHeight>
       <wpml:droneInfo>
-        <wpml:droneEnumValue>68</wpml:droneEnumValue>
-        <wpml:droneSubEnumValue>0</wpml:droneSubEnumValue>
+        <wpml:droneEnumValue>${droneEnum}</wpml:droneEnumValue>
+        <wpml:droneSubEnumValue>${droneSubEnum}</wpml:droneSubEnumValue>
       </wpml:droneInfo>
     </wpml:missionConfig>
     <Folder>

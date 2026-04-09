@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RouteData, SoraSettings } from "@/types/map";
-import { generateDJIKMZ, type DJIExportOptions } from "@/lib/kmzExport";
+import { generateDJIKMZ, type DJIExportOptions, DJI_DRONE_MODELS, matchDjiDroneModel } from "@/lib/kmzExport";
 
 interface FlightHub2SendDialogProps {
   open: boolean;
@@ -17,6 +17,7 @@ interface FlightHub2SendDialogProps {
   route: RouteData;
   soraSettings?: SoraSettings;
   soraBufferCoordinates?: Array<{ lat: number; lng: number }>;
+  droneModelName?: string; // Internal drone model name from SoraSettingsPanel
 }
 
 interface FH2Project {
@@ -24,12 +25,21 @@ interface FH2Project {
   name: string;
 }
 
+// All selectable DJI models for manual override
+const DJI_MODEL_OPTIONS = Object.entries(DJI_DRONE_MODELS).map(([key, val]) => ({
+  key,
+  label: val.label,
+  enumValue: val.enumValue,
+  subEnumValue: val.subEnumValue,
+}));
+
 export const FlightHub2SendDialog = ({
   open,
   onOpenChange,
   route,
   soraSettings,
   soraBufferCoordinates,
+  droneModelName,
 }: FlightHub2SendDialogProps) => {
   const [projects, setProjects] = useState<FH2Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
@@ -45,9 +55,22 @@ export const FlightHub2SendDialog = ({
   const [speed, setSpeed] = useState(5);
   const [turnMode, setTurnMode] = useState<'toPointAndStopWithDiscontinuityCurvature' | 'toPointAndPassWithContinuityCurvature'>('toPointAndStopWithDiscontinuityCurvature');
 
+  // DJI drone model selection
+  const autoMatch = droneModelName ? matchDjiDroneModel(droneModelName) : undefined;
+  const [manualDjiModel, setManualDjiModel] = useState<string>("");
+
+  // Resolve the active DJI model
+  const activeDjiModel = manualDjiModel
+    ? DJI_MODEL_OPTIONS.find(m => m.key === manualDjiModel)
+    : autoMatch
+      ? { key: '', label: autoMatch.label, enumValue: autoMatch.enumValue, subEnumValue: autoMatch.subEnumValue }
+      : undefined;
+
   useEffect(() => {
     if (open) {
       fetchProjects();
+      // Reset manual override when dialog opens
+      setManualDjiModel("");
     }
   }, [open]);
 
@@ -80,7 +103,14 @@ export const FlightHub2SendDialog = ({
 
   const generateKmzBase64 = async (): Promise<string> => {
     const flightHeight = soraSettings?.flightAltitude || 120;
-    const opts: DJIExportOptions = { takeOffHeight, heightMode, speed, turnMode };
+    const opts: DJIExportOptions = {
+      takeOffHeight,
+      heightMode,
+      speed,
+      turnMode,
+      droneEnumValue: activeDjiModel?.enumValue ?? 67,
+      droneSubEnumValue: activeDjiModel?.subEnumValue ?? 0,
+    };
     const blob = await generateDJIKMZ(routeName || "Avisafe Route", route, flightHeight, opts);
     const arrayBuffer = await blob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
@@ -201,6 +231,64 @@ export const FlightHub2SendDialog = ({
           <div className="space-y-2">
             <Label>Navn på rute</Label>
             <Input value={routeName} onChange={(e) => setRouteName(e.target.value)} placeholder="Skriv inn navn..." />
+          </div>
+
+          {/* DJI Drone Model */}
+          <div className="space-y-2">
+            <Label className="text-sm">DJI-dronemodell</Label>
+            {autoMatch && !manualDjiModel ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+                  <span>Automatisk gjenkjent: <strong className="text-foreground">{autoMatch.label}</strong></span>
+                  <span className="text-xs">(fra {droneModelName})</span>
+                </div>
+                <button
+                  type="button"
+                  className="text-xs text-primary underline"
+                  onClick={() => setManualDjiModel(Object.keys(DJI_DRONE_MODELS).find(k =>
+                    DJI_DRONE_MODELS[k].enumValue === autoMatch.enumValue &&
+                    DJI_DRONE_MODELS[k].subEnumValue === autoMatch.subEnumValue
+                  ) || Object.keys(DJI_DRONE_MODELS)[0])}
+                >
+                  Velg annen modell manuelt
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {!droneModelName && (
+                  <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>Ingen drone valgt i SORA-panelet. Velg DJI-modell manuelt – dette påvirker hvordan FlightHub 2 viser ruten.</span>
+                  </div>
+                )}
+                {droneModelName && !autoMatch && (
+                  <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>Kunne ikke matche «{droneModelName}» til en kjent DJI-modell. Velg manuelt.</span>
+                  </div>
+                )}
+                <Select value={manualDjiModel || "__default"} onValueChange={(v) => setManualDjiModel(v === "__default" ? "" : v)}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="Velg DJI-modell" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__default">Matrice 30 (standard)</SelectItem>
+                    {DJI_MODEL_OPTIONS.map((m) => (
+                      <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {autoMatch && (
+                  <button
+                    type="button"
+                    className="text-xs text-primary underline"
+                    onClick={() => setManualDjiModel("")}
+                  >
+                    Bruk automatisk gjenkjent modell
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* DJI Flight Parameters */}
