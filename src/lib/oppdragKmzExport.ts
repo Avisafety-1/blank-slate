@@ -17,7 +17,6 @@ export const exportToKMZ = async (
   }
   
   try {
-    // Fetch user's full name for opprettet_av
     const { data: userProfile } = await supabase
       .from('profiles')
       .select('full_name')
@@ -28,13 +27,12 @@ export const exportToKMZ = async (
     const blob = await generateDJIKMZ(
       mission.tittel || 'Oppdrag',
       route,
-      50 // Default flight height 50m
+      50
     );
     
     const fileName = `${sanitizeFilename(mission.tittel || 'oppdrag')}-${Date.now()}.kmz`;
     const filePath = `${companyId}/${fileName}`;
     
-    // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, blob, {
@@ -44,7 +42,6 @@ export const exportToKMZ = async (
     
     if (uploadError) throw uploadError;
     
-    // Create document record with kml-kmz category
     const { error: insertError } = await supabase
       .from('documents')
       .insert({
