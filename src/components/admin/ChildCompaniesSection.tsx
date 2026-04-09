@@ -480,6 +480,9 @@ export const ChildCompaniesSection = () => {
           if (ji.user_id) parts.push(`User: ${ji.user_id}`);
           if (ji.exp) parts.push(`Utløper: ${new Date(ji.exp).toLocaleString()}`);
           if (ji.expired) parts.push("⚠️ UTLØPT!");
+          // Show organization_uuid and project_uuid from JWT
+          const orgUuid = ji.raw_keys?.includes("organization_uuid") ? (ji.org_id || "funnet") : null;
+          if (orgUuid) parts.push(`Org UUID: ${orgUuid}`);
           jwtDiag = `\nJWT-info: ${parts.join(", ") || `Nøkler: ${ji.raw_keys?.join(", ")}`}`;
         } else {
           jwtDiag = `\n⚠️ Tokenet er IKKE en gyldig JWT (lengde: ${ji.token_length}). Sjekk at du bruker riktig nøkkel fra FlightHub 2 → Organization Settings → OpenAPI → Copy key.`;
