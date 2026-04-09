@@ -1,58 +1,38 @@
 
 
-## Flytt FlightHub 2-token til Supabase Vault
+## Legg til "Send til FH2" i oppdragsmenyen
 
-### Bakgrunn
+### Oversikt
 
-Tokenet lagres i dag som klartekst i `companies.flighthub2_token`. Prosjektet bruker allerede Vault + pgcrypto for ECCAIRS-hemmeligheter -- vi følger samme mønster med pgp-kryptering.
+Endre "Eksporter KMZ"-menypunktet i "Flere valg"-dropdownen på `/oppdrag` til en undermeny med to valg: lagre til dokumenter eller sende til FlightHub 2. FH2-valget er kun synlig når selskapet har en aktiv FH2-tilkobling. Dronemodellen autofylles fra oppdragets tilknyttede drone.
 
-### Tilnærming
+### Endringer
 
-Bruk `pgp_sym_encrypt`/`pgp_sym_decrypt` med en Vault-nøkkel (`FH2_ENCRYPTION_KEY`), lagre kryptert token i en ny dedikert tabell. Alle i samme selskap refererer til selskapets krypterte rad.
+**1. `src/components/oppdrag/MissionCard.tsx`**
+- Erstatt "Eksporter KMZ"-menypunktet med en sub-menu (DropdownMenuSub) som har to valg:
+  - "Lagre til dokumenter" -- kaller eksisterende `onExportKmz`
+  - "Send til FlightHub 2" -- kaller ny callback `onSendToFH2`
+- "Send til FlightHub 2" vises kun når `hasFh2Connection` prop er `true`
+- Legg til ny prop `onSendToFH2: (mission: Mission) => void` og `hasFh2Connection: boolean`
 
-### Plan
+**2. `src/pages/Oppdrag.tsx`**
+- Ved oppstart, sjekk om selskapet har FH2-credentials (`company_fh2_credentials`-tabellen)
+- Legg til state for FH2-dialogen (`fh2DialogOpen`, `fh2Mission`)
+- Når bruker velger "Send til FH2":
+  - Hent oppdragets tilknyttede drone fra `mission.drones[0]?.drones?.modell`
+  - Bygg route-data fra `mission.route`
+  - Åpne `FlightHub2SendDialog` med `droneModelName` autofylt
+- Importer og render `FlightHub2SendDialog`
 
-**1. Vault-hemmelighet**
-- Legg til `FH2_ENCRYPTION_KEY` i Supabase Vault (via SQL-migrasjon: `INSERT INTO vault.secrets (name, secret) VALUES ('FH2_ENCRYPTION_KEY', gen_random_uuid()::text)`)
+**3. `src/components/FlightHub2SendDialog.tsx`**
+- Liten justering: godta valgfritt `routeName` prop for å forhåndsfylle med oppdragstittel
 
-**2. DB-migrasjon**
-- Opprett tabell `company_fh2_credentials`:
-  ```sql
-  CREATE TABLE public.company_fh2_credentials (
-    company_id UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
-    token_encrypted TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-  );
-  ```
-- RLS: kun administratorer i eget selskap kan lese/skrive
-- Opprett `SECURITY DEFINER`-funksjoner:
-  - `save_fh2_token(p_company_id UUID, p_token TEXT)` -- krypterer og upsert-er
-  - `get_fh2_token(p_company_id UUID) RETURNS TEXT` -- dekrypterer og returnerer klartekst (kun callable fra edge functions via service role)
-- Migrer eksisterende tokens: `INSERT INTO company_fh2_credentials SELECT id, pgp_sym_encrypt(flighthub2_token, key) FROM companies WHERE flighthub2_token IS NOT NULL`
-- Sett `flighthub2_token = NULL` på migrerte selskaper
+### Drone-autofyll
 
-**3. Edge function (`flighthub2-proxy/index.ts`)**
-- Erstatt `SELECT flighthub2_token FROM companies` med kall til `get_fh2_token(company_id)` via `supabase.rpc()`
-- Behold parent-fallback: prøv eget selskap først, deretter morselskap
-
-**4. Admin UI (`ChildCompaniesSection.tsx`)**
-- `handleSaveFh2`: kall `supabase.rpc('save_fh2_token', { p_company_id, p_token })` i stedet for direkte update
-- Fjern lesing av `flighthub2_token` fra companies-select (bruk en boolean-sjekk i stedet)
-- Token vises aldri i UI etter lagring (kun `●●●●●●●●` med mulighet for å skrive inn nytt)
-
-**5. Kartvisning (`Kart.tsx`)**
-- Erstatt `SELECT flighthub2_token` med `SELECT 1 FROM company_fh2_credentials WHERE company_id = X` for å sjekke om FH2 er konfigurert (trenger ikke selve tokenet)
-
-### Sikkerhet
-- Klartekst-token eksisterer kun inne i `SECURITY DEFINER`-funksjoner (kjører med eierens privilegier)
-- Frontend ser aldri tokenet etter lagring
-- Krypteringsnøkkelen ligger i Vault, utilgjengelig for klienter
-- Hvert selskap har sin egen rad -- ingen lekkasje mellom selskaper
+Oppdrag har allerede `mission.drones` med `drones.modell` (f.eks. "DJI Matrice 30T"). `FlightHub2SendDialog` bruker allerede `matchDjiDroneModel(droneModelName)` for å mappe til riktig DJI enum-verdi. Vi sender `mission.drones[0]?.drones?.modell` som `droneModelName`.
 
 ### Filer som endres
-1. SQL-migrasjon (ny tabell, vault-nøkkel, 2 funksjoner, datamigrering)
-2. `supabase/functions/flighthub2-proxy/index.ts`
-3. `src/components/admin/ChildCompaniesSection.tsx`
-4. `src/pages/Kart.tsx`
+1. `src/components/oppdrag/MissionCard.tsx` -- sub-meny for KMZ-eksport
+2. `src/pages/Oppdrag.tsx` -- FH2-dialog, credentials-sjekk, drone-mapping
+3. `src/components/FlightHub2SendDialog.tsx` -- valgfri `routeName` prop
 
