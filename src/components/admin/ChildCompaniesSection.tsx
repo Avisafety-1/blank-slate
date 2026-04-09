@@ -277,7 +277,7 @@ export const ChildCompaniesSection = () => {
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
 
-      // Check if FH2 credentials exist (we can't read the token, just check existence)
+      // Check if FH2 credentials exist (own or inherited via parent)
       const { data: cred } = await (supabase as any)
         .from("company_fh2_credentials")
         .select("company_id")
@@ -285,39 +285,23 @@ export const ChildCompaniesSection = () => {
         .maybeSingle();
 
       const hasOwnCred = !!cred;
-      let hasParentCred = false;
+      if (hasOwnCred) setFh2Token("••••••••");
 
-      if (!hasOwnCred) {
-        // Check parent company for inherited credentials
-        const { data: companyInfo } = await supabase
-          .from("companies")
-          .select("parent_company_id")
-          .eq("id", companyId)
-          .single();
-        if (companyInfo?.parent_company_id) {
-          const { data: parentCred } = await (supabase as any)
-            .from("company_fh2_credentials")
-            .select("company_id")
-            .eq("company_id", companyInfo.parent_company_id)
-            .maybeSingle();
-          hasParentCred = !!parentCred;
-        }
-      }
-
-      if (hasOwnCred || hasParentCred) {
-        if (hasOwnCred) setFh2Token("••••••••"); // Mask - token is encrypted
-        setFh2Inherited(!hasOwnCred && hasParentCred);
-        // Auto-check FH2 connection (edge function handles parent fallback)
-        supabase.functions.invoke("flighthub2-proxy", {
+      // Always try test-connection — edge function handles parent fallback
+      try {
+        const { data: testData } = await supabase.functions.invoke("flighthub2-proxy", {
           body: { action: "test-connection" },
-        }).then(({ data: testData }) => {
-          if (testData?.token_ok) {
-            setFh2Connected(true);
-            setFh2Projects(testData.project_names || []);
-          }
-        }).catch(() => { /* silent */ });
-      } else {
+        });
+        if (testData?.token_ok) {
+          setFh2Connected(true);
+          setFh2Projects(testData.project_names || []);
+          setFh2Inherited(!hasOwnCred);
+        } else {
+          setFh2Inherited(false);
+        }
+      } catch {
         setFh2Inherited(false);
+      }
       }
     }
     // Fetch default buffer mode from sora config
