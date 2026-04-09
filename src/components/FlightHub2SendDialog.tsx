@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Upload, MapPin } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RouteData, SoraSettings } from "@/types/map";
-import { generateDJIKMZ } from "@/lib/kmzExport";
+import { generateDJIKMZ, type DJIExportOptions } from "@/lib/kmzExport";
 
 interface FlightHub2SendDialogProps {
   open: boolean;
@@ -38,6 +38,12 @@ export const FlightHub2SendDialog = ({
   const [sendAnnotation, setSendAnnotation] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
+
+  // Configurable DJI parameters
+  const [takeOffHeight, setTakeOffHeight] = useState(20);
+  const [heightMode, setHeightMode] = useState<'relativeToStartPoint' | 'EGM96'>('relativeToStartPoint');
+  const [speed, setSpeed] = useState(5);
+  const [turnMode, setTurnMode] = useState<'toPointAndStopWithDiscontinuityCurvature' | 'toPointAndPassWithContinuityCurvature'>('toPointAndStopWithDiscontinuityCurvature');
 
   useEffect(() => {
     if (open) {
@@ -74,11 +80,8 @@ export const FlightHub2SendDialog = ({
 
   const generateKmzBase64 = async (): Promise<string> => {
     const flightHeight = soraSettings?.flightAltitude || 120;
-    const blob = await generateDJIKMZ(
-      routeName || "Avisafe Route",
-      route,
-      flightHeight
-    );
+    const opts: DJIExportOptions = { takeOffHeight, heightMode, speed, turnMode };
+    const blob = await generateDJIKMZ(routeName || "Avisafe Route", route, flightHeight, opts);
     const arrayBuffer = await blob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     let binary = "";
@@ -90,47 +93,26 @@ export const FlightHub2SendDialog = ({
 
   const buildSoraGeoJson = () => {
     if (!soraBufferCoordinates || soraBufferCoordinates.length < 3) return null;
-
     const coords = soraBufferCoordinates.map((c) => [c.lng, c.lat, 0]);
-    // Close the polygon
-    if (coords.length > 0) {
-      coords.push(coords[0]);
-    }
-
+    if (coords.length > 0) coords.push(coords[0]);
     return {
       type: "Feature",
-      properties: {
-        color: "#FF6B35",
-        clampToGround: true,
-      },
-      geometry: {
-        type: "Polygon",
-        coordinates: [coords],
-      },
+      properties: { color: "#FF6B35", clampToGround: true },
+      geometry: { type: "Polygon", coordinates: [coords] },
     };
   };
 
   const handleSend = async () => {
-    if (!selectedProject) {
-      toast.error("Velg et prosjekt");
-      return;
-    }
-
+    if (!selectedProject) { toast.error("Velg et prosjekt"); return; }
     setLoading(true);
     let routeSuccess = false;
     let annotationSuccess = false;
 
     try {
-      // Send route KMZ
       if (sendRoute && route.coordinates.length >= 2) {
         const kmzBase64 = await generateKmzBase64();
         const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
-          body: {
-            action: "upload-route",
-            projectUuid: selectedProject,
-            kmzBase64,
-            routeName,
-          },
+          body: { action: "upload-route", projectUuid: selectedProject, kmzBase64, routeName },
         });
         if (error) throw error;
         if (data?.code === 0) {
@@ -142,7 +124,6 @@ export const FlightHub2SendDialog = ({
         }
       }
 
-      // Send SORA annotation
       if (sendAnnotation && soraBufferCoordinates && soraBufferCoordinates.length >= 3) {
         const geoJson = buildSoraGeoJson();
         if (geoJson) {
@@ -157,11 +138,8 @@ export const FlightHub2SendDialog = ({
             },
           });
           if (error) throw error;
-          if (data?.code === 0) {
-            annotationSuccess = true;
-          } else {
-            toast.error(`Annotasjon: ${data?.message || "Feil"}`);
-          }
+          if (data?.code === 0) annotationSuccess = true;
+          else toast.error(`Annotasjon: ${data?.message || "Feil"}`);
         }
       }
 
@@ -183,7 +161,7 @@ export const FlightHub2SendDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
@@ -204,7 +182,7 @@ export const FlightHub2SendDialog = ({
                 Henter prosjekter...
               </div>
             ) : projects.length === 0 ? (
-              <p className="text-sm text-destructive">Ingen prosjekter funnet. Sjekk at organisasjonsnøkkelen er gyldig og har riktig tilgang under Admin → Mitt selskap.</p>
+              <p className="text-sm text-destructive">Ingen prosjekter funnet. Sjekk at organisasjonsnøkkelen er gyldig.</p>
             ) : (
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger>
@@ -212,9 +190,7 @@ export const FlightHub2SendDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((p) => (
-                    <SelectItem key={p.uuid} value={p.uuid}>
-                      {p.name}
-                    </SelectItem>
+                    <SelectItem key={p.uuid} value={p.uuid}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -224,51 +200,84 @@ export const FlightHub2SendDialog = ({
           {/* Route name */}
           <div className="space-y-2">
             <Label>Navn på rute</Label>
-            <Input
-              value={routeName}
-              onChange={(e) => setRouteName(e.target.value)}
-              placeholder="Skriv inn navn..."
-            />
+            <Input value={routeName} onChange={(e) => setRouteName(e.target.value)} placeholder="Skriv inn navn..." />
+          </div>
+
+          {/* DJI Flight Parameters */}
+          <div className="space-y-3 rounded-md border border-border p-3">
+            <p className="text-sm font-medium text-foreground">Flyparametre</p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Flyhastighet (m/s)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={15}
+                  value={speed}
+                  onChange={(e) => setSpeed(Math.max(1, Math.min(15, Number(e.target.value))))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Takeoff-høyde (m)</Label>
+                <Input
+                  type="number"
+                  min={1.2}
+                  max={1500}
+                  step={0.1}
+                  value={takeOffHeight}
+                  onChange={(e) => setTakeOffHeight(Math.max(1.2, Math.min(1500, Number(e.target.value))))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Høydemodus</Label>
+                <Select value={heightMode} onValueChange={(v) => setHeightMode(v as any)}>
+                  <SelectTrigger className="text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relativeToStartPoint">Relativ til startpunkt</SelectItem>
+                    <SelectItem value="EGM96">EGM96 (havnivå)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Svingmodus</Label>
+                <Select value={turnMode} onValueChange={(v) => setTurnMode(v as any)}>
+                  <SelectTrigger className="text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="toPointAndStopWithDiscontinuityCurvature">Stopp i punkt</SelectItem>
+                    <SelectItem value="toPointAndPassWithContinuityCurvature">Fly gjennom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           {/* Checkboxes */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Checkbox
-                id="send-route"
-                checked={sendRoute}
-                onCheckedChange={(c) => setSendRoute(!!c)}
-                disabled={route.coordinates.length < 2}
-              />
-              <Label htmlFor="send-route" className="text-sm cursor-pointer">
-                Send rutefil (KMZ)
-              </Label>
+              <Checkbox id="send-route" checked={sendRoute} onCheckedChange={(c) => setSendRoute(!!c)} disabled={route.coordinates.length < 2} />
+              <Label htmlFor="send-route" className="text-sm cursor-pointer">Send rutefil (KMZ)</Label>
             </div>
             <div className="flex items-center gap-2">
-              <Checkbox
-                id="send-annotation"
-                checked={sendAnnotation && !!hasAnnotation}
-                onCheckedChange={(c) => setSendAnnotation(!!c)}
-                disabled={!hasAnnotation}
-              />
+              <Checkbox id="send-annotation" checked={sendAnnotation && !!hasAnnotation} onCheckedChange={(c) => setSendAnnotation(!!c)} disabled={!hasAnnotation} />
               <Label htmlFor="send-annotation" className="text-sm cursor-pointer">
                 Send SORA-korridor som kartannotasjon
-                {!hasAnnotation && (
-                  <span className="text-muted-foreground ml-1">(ikke tilgjengelig)</span>
-                )}
+                {!hasAnnotation && <span className="text-muted-foreground ml-1">(ikke tilgjengelig)</span>}
               </Label>
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Avbryt
-          </Button>
-          <Button
-            onClick={handleSend}
-            disabled={loading || !selectedProject || (!sendRoute && !sendAnnotation)}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+          <Button onClick={handleSend} disabled={loading || !selectedProject || (!sendRoute && !sendAnnotation)}>
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Send
           </Button>
