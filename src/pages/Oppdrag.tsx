@@ -65,10 +65,11 @@ const Oppdrag = () => {
   const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
   const [fh2Mission, setFh2Mission] = useState<Mission | null>(null);
 
-  // Check FH2 connection (with parent fallback)
+  // Check FH2 connection (edge function handles parent fallback)
   useEffect(() => {
     if (!authCompanyId) return;
     (async () => {
+      // First check own credentials
       const { data: cred } = await supabase
         .from('company_fh2_credentials')
         .select('company_id')
@@ -78,20 +79,13 @@ const Oppdrag = () => {
         setHasFh2Connection(true);
         return;
       }
-      // Fallback: check parent company
-      const { data: company } = await supabase
-        .from('companies')
-        .select('parent_company_id')
-        .eq('id', authCompanyId)
-        .single();
-      if (company?.parent_company_id) {
-        const { data: parentCred } = await supabase
-          .from('company_fh2_credentials')
-          .select('company_id')
-          .eq('company_id', company.parent_company_id)
-          .maybeSingle();
-        setHasFh2Connection(!!parentCred);
-      } else {
+      // No own cred — ask edge function (it checks parent automatically)
+      try {
+        const { data: testData } = await supabase.functions.invoke('flighthub2-proxy', {
+          body: { action: 'test-connection' },
+        });
+        setHasFh2Connection(!!testData?.token_ok);
+      } catch {
         setHasFh2Connection(false);
       }
     })();
