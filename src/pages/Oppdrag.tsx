@@ -277,6 +277,11 @@ const Oppdrag = () => {
     await data.handleMissionChecklistComplete(checklistId, executingChecklistMissionId);
   };
 
+  const handleSendToFH2 = (mission: Mission) => {
+    setFh2Mission(mission);
+    setFh2DialogOpen(true);
+  };
+
   if (data.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -376,6 +381,8 @@ const Oppdrag = () => {
                       setRiskDialogInitialTab('history');
                       setRiskDialogOpen(true);
                     }}
+                    hasFh2Connection={hasFh2Connection}
+                    onSendToFH2={handleSendToFH2}
                   />
                 ))}
                 {hasMore && (
