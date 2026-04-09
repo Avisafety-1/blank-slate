@@ -468,10 +468,18 @@ export const ChildCompaniesSection = () => {
         body: { action: "test-connection" },
       });
       if (error) throw error;
-      if (data?.code === 0) {
-        toast.success("Tilkoblet til FlightHub 2!");
+
+      if (data?.server_ok && data?.token_ok) {
+        toast.success("FlightHub 2 tilkoblet og organisasjonsnøkkel godkjent!");
+      } else if (data?.server_ok && !data?.token_ok) {
+        const errMsg = data?._project_error_code === 200401
+          ? "Organisasjonsnøkkelen er ugyldig eller mangler tilgang til prosjekter. Sjekk at du bruker riktig FlightHub Sync-nøkkel."
+          : `Server svarer, men nøkkelen ble avvist: ${data?._project_error_message || 'Ukjent feil'}`;
+        toast.error(errMsg);
+      } else if (data?.error) {
+        toast.error(`FlightHub 2 feil: ${data.error}`);
       } else {
-        toast.error(`FlightHub 2 feil: ${data?.message || data?.error || 'Ukjent feil'}${data?._tested_url ? ` (${data._tested_url})` : ''}`);
+        toast.error("Kunne ikke nå FlightHub 2-serveren. Sjekk Base URL.");
       }
     } catch (err: any) {
       toast.error(err?.message || "Tilkobling feilet");
@@ -908,13 +916,13 @@ export const ChildCompaniesSection = () => {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs">Organisasjonsnøkkel</Label>
+            <Label className="text-xs">Organisasjonsnøkkel (FlightHub Sync)</Label>
             <div className="flex gap-2">
               <Input
                 type={fh2ShowToken ? "text" : "password"}
                 value={fh2Token}
                 onChange={(e) => setFh2Token(e.target.value)}
-                placeholder="Lim inn nøkkel fra FlightHub 2..."
+                placeholder="Lim inn FlightHub Sync-nøkkel..."
                 className="h-8 text-sm font-mono"
               />
               <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
@@ -922,7 +930,8 @@ export const ChildCompaniesSection = () => {
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Finnes under FlightHub 2 → Min organisasjon → Organisasjonsinnstillinger → FlightHub Sync
+              Bruk nøkkelen fra FlightHub 2 → Organisasjonsinnstillinger → FlightHub Sync → Organisasjonsnøkkel.
+              Nøkkelen må ha tilgang til prosjektene du ønsker å synkronisere med, og tilhøre riktig region/base URL.
             </p>
           </div>
 

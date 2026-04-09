@@ -57,6 +57,11 @@ export const FlightHub2SendDialog = ({
         if (data.data.list.length > 0 && !selectedProject) {
           setSelectedProject(data.data.list[0].uuid);
         }
+        if (data.data.list.length === 0) {
+          toast.info("Ingen prosjekter finnes under denne organisasjonen i FlightHub 2.");
+        }
+      } else if (data?.code === 200401) {
+        toast.error("Ugyldig eller ikke-autorisert organisasjonsnøkkel. Sjekk nøkkelen under Admin → Mitt selskap.");
       } else {
         toast.error(data?.error || data?.message || "Kunne ikke hente prosjekter fra FlightHub 2");
       }
@@ -250,7 +255,7 @@ export const FlightHub2SendDialog = ({
                 Henter prosjekter...
               </div>
             ) : projects.length === 0 ? (
-              <p className="text-sm text-destructive">Ingen prosjekter funnet. Sjekk FlightHub 2-konfigurasjonen.</p>
+              <p className="text-sm text-destructive">Ingen prosjekter funnet. Sjekk at organisasjonsnøkkelen er gyldig og har riktig tilgang under Admin → Mitt selskap.</p>
             ) : (
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger>
