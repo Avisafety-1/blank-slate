@@ -1,35 +1,43 @@
 
 
-## Prøv begge DJI API-variantene (gammel + ny)
+## Fiks FlightHub 2 401 -- Prøv begge regioner automatisk + token-verifisering
 
-### Rotårsak
+### Analyse
 
-Det finnes to separate DJI FlightHub API-er som bruker SAMME organisasjonsnøkkel men med forskjellig header-navn og URL-sti:
+Loggene viser at DJI returnerer `200401 Unauthorized` for begge API-varianter mot `es-flight-api-us.djigate.com`. JWT-tokenet er gyldig og ikke utløpt. 
 
-| | Gammel (FlightHub Sync) | Ny (OpenAPI V1.0) |
-|---|---|---|
-| Prosjektliste | `/manage/api/v1.0/projects` | `/openapi/v0.1/project` |
-| Header-navn | `X-Organization-Key` | `X-User-Token` |
-| Status | Produksjon | "Developing" |
+**Mest sannsynlig årsak: Feil region.** Organisasjonen din kan være registrert på Kina-serveren (`es-flight-api-cn.djigate.com`), ikke US-serveren. DJI har separate databaser per region -- et token fra én region fungerer IKKE på den andre.
 
-Vi har kun prøvd den nye. Den gamle API-en kan fungere med nøyaktig samme nøkkel -- bare med annet header-navn og URL-sti.
+Det kan også være at tokenet som er lagret i databasen er forskjellig fra det du ser i jwt.io (f.eks. kuttet av, ekstra tegn).
 
 ### Plan
 
 **Edge function (`flighthub2-proxy/index.ts`)**:
 
-1. **test-connection**: Prøv den nye API-en først (`/openapi/v0.1/project` + `X-User-Token`). Hvis 401, prøv den gamle (`/manage/api/v1.0/projects` + `X-Organization-Key`). Rapporter hvilken som fungerte.
-2. **list-projects**: Samme logikk -- prøv ny først, fall tilbake til gammel.
-3. Lagre hvilken API-versjon som fungerte i responsen slik at andre actions kan bruke riktig variant.
-4. **upload-route / create-annotation / get-sts-token**: Bruk gammel API-sti (`/manage/api/v1.0/...`) med `X-Organization-Key` som fallback hvis den nye feiler.
+1. **Test-connection: Prøv begge regioner automatisk**
+   - Hvis den konfigurerte base URL-en returnerer 401 på list-projects, prøv automatisk den ANDRE regionen
+   - Rapporter hvilken region som fungerte (eller at begge feilet)
+   - Vis dette i test-resultatet: "Prøvde US: 401, Prøvde CN: OK" eller "Begge regioner feilet"
+
+2. **Logg token-fingeravtrykk**
+   - Logg token-lengde og første 10 + siste 6 tegn (nok til å verifisere mot jwt.io uten å eksponere hele tokenet)
+   - Logg organization_uuid fra JWT-payload
 
 ```text
-Konkret:
-- Ny: GET /openapi/v0.1/project  + header X-User-Token: <key>
-- Gammel: GET /manage/api/v1.0/projects  + header X-Organization-Key: <key>
-- Begge mot samme base URL (es-flight-api-us.djigate.com)
+Konkret flyt i test-connection:
+1. system_status mot konfigurert URL (verifiser at serveren svarer)
+2. list-projects mot konfigurert URL (begge API-varianter)
+3. Hvis begge 401 → prøv den ANDRE regionen:
+   - Konfigurert US → prøv CN
+   - Konfigurert CN → prøv US
+4. Returner resultat med info om hvilken region som fungerte
 ```
 
+**Admin UI (`ChildCompaniesSection.tsx`)**:
+- Vis i testresultatet hvis en annen region fungerte: "Tokenet fungerer på CN-serveren, ikke US. Oppdater base URL."
+- Tilby automatisk URL-bytte hvis alternativ region fungerer
+
 ### Filer som endres
-1. `supabase/functions/flighthub2-proxy/index.ts` -- legg til fallback til gammel API
+1. `supabase/functions/flighthub2-proxy/index.ts` -- region-fallback i test-connection, token-fingeravtrykk
+2. `src/components/admin/ChildCompaniesSection.tsx` -- vis region-diagnostikk og tilby auto-bytte
 
