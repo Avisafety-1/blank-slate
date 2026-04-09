@@ -91,6 +91,7 @@ export const ChildCompaniesSection = () => {
   const [fh2ShowToken, setFh2ShowToken] = useState(false);
   const [fh2Connected, setFh2Connected] = useState(false);
   const [fh2Projects, setFh2Projects] = useState<string[]>([]);
+  const [fh2Inherited, setFh2Inherited] = useState(false);
 
   const fetchFlightAlerts = useCallback(async () => {
     if (!companyId) return;
@@ -283,9 +284,30 @@ export const ChildCompaniesSection = () => {
         .eq("company_id", companyId)
         .maybeSingle();
 
-      if (cred) {
-        setFh2Token("••••••••"); // Mask - token is encrypted
-        // Auto-check FH2 connection
+      const hasOwnCred = !!cred;
+      let hasParentCred = false;
+
+      if (!hasOwnCred) {
+        // Check parent company for inherited credentials
+        const { data: companyInfo } = await supabase
+          .from("companies")
+          .select("parent_company_id")
+          .eq("id", companyId)
+          .single();
+        if (companyInfo?.parent_company_id) {
+          const { data: parentCred } = await (supabase as any)
+            .from("company_fh2_credentials")
+            .select("company_id")
+            .eq("company_id", companyInfo.parent_company_id)
+            .maybeSingle();
+          hasParentCred = !!parentCred;
+        }
+      }
+
+      if (hasOwnCred || hasParentCred) {
+        if (hasOwnCred) setFh2Token("••••••••"); // Mask - token is encrypted
+        setFh2Inherited(!hasOwnCred && hasParentCred);
+        // Auto-check FH2 connection (edge function handles parent fallback)
         supabase.functions.invoke("flighthub2-proxy", {
           body: { action: "test-connection" },
         }).then(({ data: testData }) => {
@@ -294,6 +316,8 @@ export const ChildCompaniesSection = () => {
             setFh2Projects(testData.project_names || []);
           }
         }).catch(() => { /* silent */ });
+      } else {
+        setFh2Inherited(false);
       }
     }
     // Fetch default buffer mode from sora config
