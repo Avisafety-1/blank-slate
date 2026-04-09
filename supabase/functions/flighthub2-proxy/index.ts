@@ -218,10 +218,6 @@ Deno.serve(async (req: Request) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-      return new Response(JSON.stringify({ error: "FlightHub 2 base URL er ikke konfigurert." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     // Strip trailing slash
     fh2BaseUrl = fh2BaseUrl.replace(/\/+$/, "");
