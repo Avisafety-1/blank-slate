@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   layers: Layers,
