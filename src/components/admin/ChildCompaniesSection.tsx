@@ -996,7 +996,9 @@ export const ChildCompaniesSection = () => {
               </div>
               <div className="flex items-center gap-2">
                 {fh2Connected && (
-                  <Badge variant="default" className="text-xs bg-green-600">Tilkoblet</Badge>
+                  <Badge variant="default" className="text-xs bg-green-600">
+                    {fh2Inherited ? "Arvet tilkobling" : "Tilkoblet"}
+                  </Badge>
                 )}
                 <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
               </div>
