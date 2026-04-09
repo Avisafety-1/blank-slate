@@ -264,7 +264,7 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_token, flighthub2_base_url")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_base_url")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -274,11 +274,18 @@ export const ChildCompaniesSection = () => {
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
-      setFh2Token((data as any).flighthub2_token || "");
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
 
-      // Auto-check FH2 connection if token exists
-      if ((data as any).flighthub2_token) {
+      // Check if FH2 credentials exist (we can't read the token, just check existence)
+      const { data: cred } = await (supabase as any)
+        .from("company_fh2_credentials")
+        .select("company_id")
+        .eq("company_id", companyId)
+        .maybeSingle();
+
+      if (cred) {
+        setFh2Token("••••••••"); // Mask - token is encrypted
+        // Auto-check FH2 connection
         supabase.functions.invoke("flighthub2-proxy", {
           body: { action: "test-connection" },
         }).then(({ data: testData }) => {
@@ -999,6 +1006,11 @@ export const ChildCompaniesSection = () => {
                 <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
                   {testingFh2 ? "Tester..." : "Test tilkobling"}
                 </Button>
+                {fh2Connected && (
+                  <Button variant="destructive" size="sm" onClick={handleDeleteFh2} disabled={savingFh2} className="h-8">
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Slett
+                  </Button>
+                )}
               </div>
 
               {fh2Connected && (
