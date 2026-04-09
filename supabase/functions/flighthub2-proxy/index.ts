@@ -506,10 +506,14 @@ Deno.serve(async (req: Request) => {
         ? `${fh2BaseUrl}/openapi/v0.1/wayline/finish-upload`
         : `${fh2BaseUrl}/manage/api/v1.0/wayline/finish-upload`;
       const finishHeaders = { ...makeHeaders(workingVariant, true), "Content-Type": "application/json" };
-      const finishBody = {
+      const finishBody: Record<string, unknown> = {
         name: routeName || "Avisafe Route",
         object_key: objectKey,
       };
+      // Include device_model_key if provided by client (e.g. "0-67-0" for M30)
+      if (params.deviceModelKey) {
+        finishBody.device_model_key = params.deviceModelKey;
+      }
       console.log("[finish-upload] URL:", finishUrl);
       console.log("[finish-upload] body:", JSON.stringify(finishBody));
       const finishRes = await safeFetch(finishUrl, {
