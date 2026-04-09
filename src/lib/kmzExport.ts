@@ -118,7 +118,7 @@ const generateTemplateKml = (
       <wpml:droneInfo>
         <wpml:droneEnumValue>${droneEnum}</wpml:droneEnumValue>
         <wpml:droneSubEnumValue>${droneSubEnum}</wpml:droneSubEnumValue>
-      </wpml:droneInfo>
+      </wpml:droneInfo>${takeOffRefXml}
     </wpml:missionConfig>
     <Folder>
       <wpml:templateType>waypoint</wpml:templateType>
