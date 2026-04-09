@@ -141,8 +141,11 @@ export const FlightHub2SendDialog = ({
     try {
       if (sendRoute && route.coordinates.length >= 2) {
         const kmzBase64 = await generateKmzBase64();
+        const droneEnum = activeDjiModel?.enumValue ?? 67;
+        const droneSubEnum = activeDjiModel?.subEnumValue ?? 0;
+        const deviceModelKey = `0-${droneEnum}-${droneSubEnum}`;
         const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
-          body: { action: "upload-route", projectUuid: selectedProject, kmzBase64, routeName },
+          body: { action: "upload-route", projectUuid: selectedProject, kmzBase64, routeName, deviceModelKey },
         });
         if (error) throw error;
         if (data?.code === 0) {
