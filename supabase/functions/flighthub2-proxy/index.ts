@@ -130,8 +130,14 @@ Deno.serve(async (req: Request) => {
       .eq("id", profile.company_id)
       .single();
 
-    let fh2Token = (company as any)?.flighthub2_token;
-    let fh2BaseUrl = (company as any)?.flighthub2_base_url;
+    let fh2Token = ((company as any)?.flighthub2_token || "").trim();
+    let fh2BaseUrl = ((company as any)?.flighthub2_base_url || "").trim();
+
+    // Strip accidental "Bearer " prefix
+    if (fh2Token.toLowerCase().startsWith("bearer ")) {
+      fh2Token = fh2Token.substring(7).trim();
+      console.log("Stripped 'Bearer ' prefix from token");
+    }
 
     // Fallback to parent company if token is missing
     if (!fh2Token && (company as any)?.parent_company_id) {
@@ -294,22 +300,41 @@ Deno.serve(async (req: Request) => {
 
     // ─── Action: list-projects ───
     if (action === "list-projects") {
-      const listUrl = `${fh2BaseUrl}/openapi/v0.1/project?page=1&page_size=100&usage=simple`;
+      const listUrl = `${fh2BaseUrl}/openapi/v0.1/project?page=1&page_size=100&usage=simple&prj_authorized_status=project-status-authorized`;
+      
+      // Verbose request logging
+      const reqHeaders = { ...commonHeaders };
+      console.log("=== list-projects REQUEST ===");
+      console.log("URL:", listUrl);
+      console.log("Header keys:", Object.keys(reqHeaders));
+      console.log("Token length:", fh2Token.length, "prefix:", fh2Token.substring(0, 8) + "...", "suffix: ..." + fh2Token.substring(fh2Token.length - 4));
+      console.log("Token has newlines:", fh2Token.includes("\n") || fh2Token.includes("\r"));
+      console.log("Token has spaces:", fh2Token.includes(" "));
+      
       const res = await safeFetch(listUrl, {
         method: "GET",
-        headers: commonHeaders,
+        headers: reqHeaders,
       });
       const contentType = res.headers.get("content-type") || "";
       const bodyText = await res.text();
-      console.log("list-projects status:", res.status, "content-type:", contentType, "body:", bodyText.substring(0, 300));
+      
+      // Verbose response logging
+      console.log("=== list-projects RESPONSE ===");
+      console.log("Status:", res.status);
+      console.log("Content-Type:", contentType);
+      console.log("Body:", bodyText.substring(0, 500));
+      const respHeaders: Record<string, string> = {};
+      res.headers.forEach((v, k) => { respHeaders[k] = v; });
+      console.log("Response headers:", JSON.stringify(respHeaders));
 
       if (!res.ok) {
         return new Response(JSON.stringify({
           error: `FlightHub 2 returnerte ${res.status}: ${bodyText.substring(0, 200)}`,
           code: -1,
           _status: res.status,
+          _response_headers: respHeaders,
         }), {
-          status: 200, // Return 200 so client can parse
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
