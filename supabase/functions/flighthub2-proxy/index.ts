@@ -384,7 +384,7 @@ Deno.serve(async (req: Request) => {
       result._token_length = fh2Token.length;
       result._token_fingerprint = tokenFingerprint;
       return new Response(JSON.stringify(result), {
-        status: result.server_ok ? 200 : 502,
+        status: (result.server_ok || result.token_ok) ? 200 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
