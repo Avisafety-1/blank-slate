@@ -93,6 +93,7 @@ export default function KartPage() {
     return bufferPolyline(validCoords, totalBuffer, 16, refPoint, avgLat);
   }, [currentRoute.coordinates, soraSettings]);
 
+  useEffect(() => {
     if (!loading && !user) {
       navigate("/auth", { replace: true });
     }
