@@ -928,12 +928,24 @@ export const ChildCompaniesSection = () => {
 
           <div className="space-y-2">
             <Label className="text-xs">Base URL</Label>
-            <Input
-              value={fh2BaseUrl}
-              onChange={(e) => setFh2BaseUrl(e.target.value)}
-              placeholder="https://fh.dji.com eller din on-prem server"
-              className="h-8 text-sm"
-            />
+            <Select value={fh2BaseUrl} onValueChange={(val) => setFh2BaseUrl(val === "__custom__" ? "" : val)}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Velg server..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="https://fh.dji.com">fh.dji.com (DJI Cloud – Global)</SelectItem>
+                <SelectItem value="https://fh2-api.dji.com">fh2-api.dji.com (DJI Cloud – API)</SelectItem>
+                <SelectItem value="__custom__">Egendefinert URL...</SelectItem>
+              </SelectContent>
+            </Select>
+            {(fh2BaseUrl && !["https://fh.dji.com", "https://fh2-api.dji.com"].includes(fh2BaseUrl)) && (
+              <Input
+                value={fh2BaseUrl}
+                onChange={(e) => setFh2BaseUrl(e.target.value)}
+                placeholder="https://din-server.example.com"
+                className="h-8 text-sm"
+              />
+            )}
           </div>
 
           <div className="flex gap-2">
