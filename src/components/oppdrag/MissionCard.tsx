@@ -69,6 +69,8 @@ export interface MissionCardProps {
   onReportIncident: (mission: Mission) => void;
   fetchMissions: () => void;
   onRiskBadgeClick: (mission: Mission) => void;
+  hasFh2Connection?: boolean;
+  onSendToFH2?: (mission: Mission) => void;
 }
 
 export const MissionCard = ({
@@ -93,6 +95,8 @@ export const MissionCard = ({
   onReportIncident,
   fetchMissions,
   onRiskBadgeClick,
+  hasFh2Connection,
+  onSendToFH2,
 }: MissionCardProps) => {
   const navigate = useNavigate();
   const { companyId, departmentsEnabled } = useAuth();
