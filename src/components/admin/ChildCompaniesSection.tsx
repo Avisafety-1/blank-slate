@@ -522,6 +522,28 @@ export const ChildCompaniesSection = () => {
     }
   };
 
+  const handleRawTestFh2 = async () => {
+    if (!fh2Token || !fh2BaseUrl) return;
+    setRawTesting(true);
+    setRawTestResult(null);
+    try {
+      await supabase
+        .from("companies")
+        .update({ flighthub2_token: fh2Token, flighthub2_base_url: fh2BaseUrl || null } as any)
+        .eq("id", companyId);
+
+      const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+        body: { action: "raw-test" },
+      });
+      if (error) throw error;
+      setRawTestResult(data);
+    } catch (err: any) {
+      setRawTestResult({ error: err?.message || "Feil ved raw-test" });
+    } finally {
+      setRawTesting(false);
+    }
+  };
+
   const handleToggleApplySettingsToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplySettingsToChildren(checked);
@@ -998,7 +1020,40 @@ export const ChildCompaniesSection = () => {
             <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
               {testingFh2 ? "Tester..." : "Test tilkobling"}
             </Button>
+            <Button variant="ghost" size="sm" onClick={handleRawTestFh2} disabled={rawTesting || !fh2Token || !fh2BaseUrl} className="h-8 text-xs">
+              {rawTesting ? "Tester..." : "🔍 Raw API-test"}
+            </Button>
           </div>
+
+          {rawTestResult && (
+            <div className="mt-3 p-3 rounded-lg bg-muted/50 border text-xs font-mono overflow-auto max-h-60">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-semibold text-foreground">Raw API-respons</span>
+                <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setRawTestResult(null)}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              {rawTestResult.request && (
+                <div className="mb-2">
+                  <p><strong>URL:</strong> {rawTestResult.request.url}</p>
+                  <p><strong>Auth header:</strong> {rawTestResult.request.auth_header}</p>
+                  <p><strong>Token:</strong> {rawTestResult.request.token_fingerprint} (len={rawTestResult.request.token_length})</p>
+                </div>
+              )}
+              {rawTestResult.response && (
+                <div>
+                  <p><strong>Status:</strong> <span className={rawTestResult.response.status === 200 ? "text-green-600" : "text-red-500"}>{rawTestResult.response.status}</span></p>
+                  <p><strong>Response headers:</strong></p>
+                  <pre className="text-[10px] whitespace-pre-wrap text-muted-foreground">{JSON.stringify(rawTestResult.response.headers, null, 2)}</pre>
+                  <p className="mt-1"><strong>Body:</strong></p>
+                  <pre className="text-[10px] whitespace-pre-wrap">{typeof rawTestResult.response.body === 'string' ? rawTestResult.response.body : JSON.stringify(rawTestResult.response.body, null, 2)}</pre>
+                </div>
+              )}
+              {rawTestResult.error && (
+                <p className="text-destructive">{rawTestResult.error}</p>
+              )}
+            </div>
+          )}
         </div>
       </GlassCard>
 
