@@ -469,15 +469,32 @@ export const ChildCompaniesSection = () => {
       });
       if (error) throw error;
 
+      // Build JWT diagnostics string
+      let jwtDiag = "";
+      if (data?.jwt_info) {
+        const ji = data.jwt_info;
+        if (ji.is_jwt) {
+          const parts = [];
+          if (ji.org_id) parts.push(`Org: ${ji.org_id}`);
+          if (ji.sub) parts.push(`Sub: ${ji.sub}`);
+          if (ji.user_id) parts.push(`User: ${ji.user_id}`);
+          if (ji.exp) parts.push(`Utløper: ${new Date(ji.exp).toLocaleString()}`);
+          if (ji.expired) parts.push("⚠️ UTLØPT!");
+          jwtDiag = `\nJWT-info: ${parts.join(", ") || `Nøkler: ${ji.raw_keys?.join(", ")}`}`;
+        } else {
+          jwtDiag = `\n⚠️ Tokenet er IKKE en gyldig JWT (lengde: ${ji.token_length}). Sjekk at du bruker riktig nøkkel fra FlightHub 2 → Organization Settings → OpenAPI → Copy key.`;
+        }
+      }
+
       if (data?.server_ok && data?.token_ok) {
-        toast.success("FlightHub 2 tilkoblet og organisasjonsnøkkel godkjent!");
+        toast.success(`FlightHub 2 tilkoblet og organisasjonsnøkkel godkjent!${jwtDiag}`);
       } else if (data?.server_ok && !data?.token_ok) {
         const errMsg = data?._project_error_code === 200401
-          ? "Organisasjonsnøkkelen er ugyldig eller mangler tilgang til prosjekter. Sjekk at du bruker riktig FlightHub Sync-nøkkel."
-          : `Server svarer, men nøkkelen ble avvist: ${data?._project_error_message || 'Ukjent feil'}`;
-        toast.error(errMsg);
+          ? `Organisasjonsnøkkelen ble avvist (Unauthorized). Sjekk at nøkkelen er riktig og ikke utløpt.${jwtDiag}`
+          : `Server svarer, men nøkkelen ble avvist: ${data?._project_error_message || 'Ukjent feil'}${jwtDiag}`;
+        toast.error(errMsg, { duration: 10000 });
       } else if (data?.error) {
-        toast.error(`FlightHub 2 feil: ${data.error}`);
+        toast.error(`FlightHub 2 feil: ${data.error}${jwtDiag}`, { duration: 10000 });
       } else {
         toast.error("Kunne ikke nå FlightHub 2-serveren. Sjekk Base URL.");
       }
