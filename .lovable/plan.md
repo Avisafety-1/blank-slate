@@ -1,35 +1,35 @@
 
 
-## Fiks FlightHub 2 autentisering -- JWT-diagnostikk
+## Fiks FlightHub 2 autorisasjon -- legg til X-Project-Uuid fra JWT
 
-### Analyse
+### Rotårsak
+DJI-dokumentasjonen sier eksplisitt:
+> "FlightHub 2 will authorize based on the provided `X-User-Token` **and** `X-Project-Uuid`."
 
-Fra dokumentasjonen (linje 191):
-> "The current X-User-Token for FlightHub 2 is the **organization key** for FlightHub Sync. The path to obtain the organization key is: FlightHub 2 → My Organization → Organization Settings → FlightHub Sync → Organization Key."
+JWT-tokenet inneholder `project_uuid`, men vi sender det ikke som header. Uten `X-Project-Uuid` returnerer DJI `200401 Unauthorized`.
 
-Men fra skjermbildet ditt ser det ut som Organization Key er den **samme nøkkelen som vises under OpenAPI-seksjonen** ("Copy key"-knappen). Det finnes ikke en separat nøkkel under FlightHub Sync.
+### Løsning
 
-DJI sier at `X-User-Token` er en **JWT-token**. Vi kan dekode den for å se om:
-- Den inneholder riktig organisasjon
-- Den er utløpt
-- Den faktisk er en JWT (og ikke en annen type nøkkel)
+**Edge function (`flighthub2-proxy/index.ts`)**:
 
-### Problem
-Vi vet ikke om nøkkelen som sendes faktisk er en gyldig JWT, eller om den er feil formatert/utløpt. Vi trenger diagnostikk.
+1. Etter at `fh2Token` er hentet, dekod JWT-payload og ekstraher `project_uuid` og `organization_uuid`
+2. Hvis `X-Project-Uuid` ikke er satt av klienten, bruk `project_uuid` fra JWT automatisk
+3. Logg hvilke verdier som brukes for debugging
 
-### Plan
+```text
+Endring i commonHeaders-oppsettet:
+- Dekod JWT (del 2, base64)
+- Sett commonHeaders["X-Project-Uuid"] = jwt.project_uuid (hvis ikke allerede satt)
+- Logg: "Using project_uuid from JWT: <uuid>"
+```
 
-**1. Edge function (`flighthub2-proxy/index.ts`)**
-- I `test-connection`: Dekod JWT-tokenet (base64 uten signaturvalidering) og returner payload til frontend
-- Vis: `org_id`, `sub` (bruker), `exp` (utløpstid), og om tokenet faktisk er en JWT
-- Logg også nøyaktig hvilke headers som sendes til DJI (uten å vise selve tokenet, bare om det finnes og lengde)
+4. For `list-projects` spesifikt: prøv først UTEN `X-Project-Uuid`, og hvis det feiler med 401, prøv på nytt MED `X-Project-Uuid` fra JWT
 
-**2. Admin UI (`ChildCompaniesSection.tsx`)**
-- Etter test: vis JWT-info (organisasjon, bruker, utløpsdato) i testresultatet
-- Vis tydelig feilmelding hvis tokenet IKKE er en JWT (feil nøkkeltype)
-- Legg til hjelpetekst: "Nøkkelen finner du under OpenAPI → Copy key i FlightHub 2 Organization Settings"
+**Admin UI (`ChildCompaniesSection.tsx`)**:
+- Vis `organization_uuid` og `project_uuid` fra JWT-diagnostikken i testresultatet
+- Vis at begge verdier ble funnet og brukt
 
 ### Filer som endres
-1. `supabase/functions/flighthub2-proxy/index.ts` -- JWT-dekoding i test-connection
-2. `src/components/admin/ChildCompaniesSection.tsx` -- vis JWT-diagnostikk
+1. `supabase/functions/flighthub2-proxy/index.ts` -- ekstraher project_uuid fra JWT, send som header
+2. `src/components/admin/ChildCompaniesSection.tsx` -- vis org/prosjekt-UUID fra JWT i test
 
