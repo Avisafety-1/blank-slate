@@ -17,7 +17,8 @@ interface FlightHub2SendDialogProps {
   route: RouteData;
   soraSettings?: SoraSettings;
   soraBufferCoordinates?: Array<{ lat: number; lng: number }>;
-  droneModelName?: string; // Internal drone model name from SoraSettingsPanel
+  droneModelName?: string;
+  pilotPosition?: { lat: number; lng: number };
 }
 
 interface FH2Project {
@@ -40,6 +41,7 @@ export const FlightHub2SendDialog = ({
   soraSettings,
   soraBufferCoordinates,
   droneModelName,
+  pilotPosition,
 }: FlightHub2SendDialogProps) => {
   const [projects, setProjects] = useState<FH2Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
@@ -110,6 +112,7 @@ export const FlightHub2SendDialog = ({
       turnMode,
       droneEnumValue: activeDjiModel?.enumValue ?? 67,
       droneSubEnumValue: activeDjiModel?.subEnumValue ?? 0,
+      takeOffPoint: pilotPosition || (route.coordinates.length > 0 ? route.coordinates[0] : undefined),
     };
     const blob = await generateDJIKMZ(routeName || "Avisafe Route", route, flightHeight, opts);
     const arrayBuffer = await blob.arrayBuffer();

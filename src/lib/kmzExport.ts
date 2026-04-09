@@ -50,6 +50,7 @@ export interface DJIExportOptions {
   turnMode?: 'toPointAndStopWithDiscontinuityCurvature' | 'toPointAndPassWithContinuityCurvature';
   droneEnumValue?: number;      // DJI drone enum, default 67 (M30)
   droneSubEnumValue?: number;   // DJI drone sub-enum, default 0
+  takeOffPoint?: { lat: number; lng: number }; // Takeoff reference point; fallback to first waypoint
 }
 
 const generateTemplateKml = (
@@ -65,6 +66,10 @@ const generateTemplateKml = (
   const turnMode = opts.turnMode ?? 'toPointAndStopWithDiscontinuityCurvature';
   const droneEnum = opts.droneEnumValue ?? 67;
   const droneSubEnum = opts.droneSubEnumValue ?? 0;
+  const takeOff = opts.takeOffPoint ?? route.coordinates[0];
+  const takeOffRefXml = takeOff
+    ? `\n      <wpml:takeOffRefPoint>${takeOff.lng},${takeOff.lat},0</wpml:takeOffRefPoint>`
+    : '';
 
   const placemarks = route.coordinates.map((coord, index) => `
       <Placemark>
@@ -113,7 +118,7 @@ const generateTemplateKml = (
       <wpml:droneInfo>
         <wpml:droneEnumValue>${droneEnum}</wpml:droneEnumValue>
         <wpml:droneSubEnumValue>${droneSubEnum}</wpml:droneSubEnumValue>
-      </wpml:droneInfo>
+      </wpml:droneInfo>${takeOffRefXml}
     </wpml:missionConfig>
     <Folder>
       <wpml:templateType>waypoint</wpml:templateType>
@@ -151,6 +156,10 @@ const generateWaylinesWpml = (
   const turnMode = opts.turnMode ?? 'toPointAndStopWithDiscontinuityCurvature';
   const droneEnum = opts.droneEnumValue ?? 67;
   const droneSubEnum = opts.droneSubEnumValue ?? 0;
+  const takeOff = opts.takeOffPoint ?? route.coordinates[0];
+  const takeOffRefXml = takeOff
+    ? `\n      <wpml:takeOffRefPoint>${takeOff.lng},${takeOff.lat},0</wpml:takeOffRefPoint>`
+    : '';
 
   const placemarks = route.coordinates.map((coord, index) => `
       <Placemark>
@@ -197,7 +206,7 @@ const generateWaylinesWpml = (
       <wpml:droneInfo>
         <wpml:droneEnumValue>${droneEnum}</wpml:droneEnumValue>
         <wpml:droneSubEnumValue>${droneSubEnum}</wpml:droneSubEnumValue>
-      </wpml:droneInfo>
+      </wpml:droneInfo>${takeOffRefXml}
     </wpml:missionConfig>
     <Folder>
       <wpml:templateId>0</wpml:templateId>
