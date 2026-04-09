@@ -71,7 +71,28 @@ export default function KartPage() {
   const [hasFH2Token, setHasFH2Token] = useState(false);
   const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
 
-  useEffect(() => {
+  // Compute SORA buffer coordinates for FlightHub 2 dialog
+  const soraBufferCoords = useMemo(() => {
+    if (!soraSettings.enabled || currentRoute.coordinates.length < 2) return undefined;
+    const validCoords = currentRoute.coordinates.filter(
+      p => p && isFinite(p.lat) && isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
+    );
+    if (validCoords.length < 2) return undefined;
+    const totalBuffer = (soraSettings.flightGeographyDistance || 0) + soraSettings.contingencyDistance + soraSettings.groundRiskDistance;
+    if (totalBuffer <= 0) return undefined;
+    const refPoint = validCoords[0];
+    const avgLat = validCoords.reduce((s, p) => s + p.lat, 0) / validCoords.length;
+    const mode = soraSettings.bufferMode ?? "corridor";
+    const isClosedRoute = validCoords.length >= 3 &&
+      validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
+      validCoords[0].lng === validCoords[validCoords.length - 1].lng;
+    if (mode === "convexHull" || isClosedRoute) {
+      const hull = computeConvexHull(validCoords);
+      return bufferPolygon(hull, totalBuffer, refPoint, avgLat);
+    }
+    return bufferPolyline(validCoords, totalBuffer, 16, refPoint, avgLat);
+  }, [currentRoute.coordinates, soraSettings]);
+
     if (!loading && !user) {
       navigate("/auth", { replace: true });
     }
