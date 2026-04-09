@@ -32,29 +32,35 @@ const generateTemplateKml = (
   const placemarks = route.coordinates.map((coord, index) => `
       <Placemark>
         <Point>
-          <coordinates>${coord.lng},${coord.lat}</coordinates>
+          <coordinates>
+            ${coord.lng},${coord.lat}
+          </coordinates>
         </Point>
         <wpml:index>${index}</wpml:index>
         <wpml:ellipsoidHeight>0</wpml:ellipsoidHeight>
         <wpml:height>${flightHeight}</wpml:height>
-        <wpml:executeHeight>${flightHeight}</wpml:executeHeight>
         <wpml:waypointSpeed>${speed}</wpml:waypointSpeed>
         <wpml:waypointHeadingParam>
           <wpml:waypointHeadingMode>followWayline</wpml:waypointHeadingMode>
+          <wpml:waypointHeadingAngle>0</wpml:waypointHeadingAngle>
+          <wpml:waypointPoiPoint>0.000000,0.000000,0.000000</wpml:waypointPoiPoint>
+          <wpml:waypointHeadingPathMode>followBadArc</wpml:waypointHeadingPathMode>
+          <wpml:waypointHeadingPoiIndex>0</wpml:waypointHeadingPoiIndex>
         </wpml:waypointHeadingParam>
         <wpml:waypointTurnParam>
           <wpml:waypointTurnMode>${turnMode}</wpml:waypointTurnMode>
-          <wpml:waypointTurnDampingDist>0</wpml:waypointTurnDampingDist>
+          <wpml:waypointTurnDampingDist>0.2</wpml:waypointTurnDampingDist>
         </wpml:waypointTurnParam>
-        <wpml:gimbalPitchAngle>0</wpml:gimbalPitchAngle>
         <wpml:useGlobalHeight>1</wpml:useGlobalHeight>
         <wpml:useGlobalSpeed>1</wpml:useGlobalSpeed>
         <wpml:useGlobalHeadingParam>1</wpml:useGlobalHeadingParam>
         <wpml:useGlobalTurnParam>1</wpml:useGlobalTurnParam>
+        <wpml:useStraightLine>1</wpml:useStraightLine>
+        <wpml:isRisky>0</wpml:isRisky>
       </Placemark>`).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.2">
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.6">
   <Document>
     <wpml:author>Avisafe</wpml:author>
     <wpml:createTime>${timestamp}</wpml:createTime>
@@ -73,24 +79,25 @@ const generateTemplateKml = (
       </wpml:droneInfo>
     </wpml:missionConfig>
     <Folder>
-      <wpml:templateId>0</wpml:templateId>
       <wpml:templateType>waypoint</wpml:templateType>
-      <wpml:executeHeightMode>${heightMode}</wpml:executeHeightMode>
-      <wpml:waylineId>0</wpml:waylineId>
-      <wpml:distance>${Math.round(route.totalDistance)}</wpml:distance>
-      <wpml:duration>0</wpml:duration>
-      <wpml:autoFlightSpeed>${speed}</wpml:autoFlightSpeed>
+      <wpml:templateId>0</wpml:templateId>
       <wpml:waylineCoordinateSysParam>
         <wpml:coordinateMode>WGS84</wpml:coordinateMode>
         <wpml:heightMode>${heightMode}</wpml:heightMode>
-        <wpml:positioningType>GPS</wpml:positioningType>
       </wpml:waylineCoordinateSysParam>
+      <wpml:autoFlightSpeed>${speed}</wpml:autoFlightSpeed>
+      <wpml:globalHeight>${flightHeight}</wpml:globalHeight>
+      <wpml:caliFlightEnable>0</wpml:caliFlightEnable>
+      <wpml:gimbalPitchMode>manual</wpml:gimbalPitchMode>
       <wpml:globalWaypointHeadingParam>
         <wpml:waypointHeadingMode>followWayline</wpml:waypointHeadingMode>
+        <wpml:waypointHeadingAngle>0</wpml:waypointHeadingAngle>
+        <wpml:waypointPoiPoint>0.000000,0.000000,0.000000</wpml:waypointPoiPoint>
+        <wpml:waypointHeadingPathMode>followBadArc</wpml:waypointHeadingPathMode>
+        <wpml:waypointHeadingPoiIndex>0</wpml:waypointHeadingPoiIndex>
       </wpml:globalWaypointHeadingParam>
       <wpml:globalWaypointTurnMode>${turnMode}</wpml:globalWaypointTurnMode>
       <wpml:globalUseStraightLine>1</wpml:globalUseStraightLine>
-      <name>${missionName}</name>
 ${placemarks}
     </Folder>
   </Document>
@@ -102,37 +109,44 @@ const generateWaylinesWpml = (
   flightHeight: number,
   opts: DJIExportOptions = {}
 ): string => {
-  const timestamp = Date.now();
   const speed = opts.speed ?? 5;
   const takeOffHeight = opts.takeOffHeight ?? 20;
-  const heightMode = opts.heightMode ?? 'relativeToStartPoint';
   const turnMode = opts.turnMode ?? 'toPointAndStopWithDiscontinuityCurvature';
 
   const placemarks = route.coordinates.map((coord, index) => `
       <Placemark>
         <Point>
-          <coordinates>${coord.lng},${coord.lat}</coordinates>
+          <coordinates>
+            ${coord.lng},${coord.lat}
+          </coordinates>
         </Point>
         <wpml:index>${index}</wpml:index>
-        <wpml:ellipsoidHeight>0</wpml:ellipsoidHeight>
-        <wpml:height>${flightHeight}</wpml:height>
         <wpml:executeHeight>${flightHeight}</wpml:executeHeight>
         <wpml:waypointSpeed>${speed}</wpml:waypointSpeed>
         <wpml:waypointHeadingParam>
           <wpml:waypointHeadingMode>followWayline</wpml:waypointHeadingMode>
+          <wpml:waypointHeadingAngle>0</wpml:waypointHeadingAngle>
+          <wpml:waypointPoiPoint>0.000000,0.000000,0.000000</wpml:waypointPoiPoint>
+          <wpml:waypointHeadingAngleEnable>0</wpml:waypointHeadingAngleEnable>
+          <wpml:waypointHeadingPathMode>followBadArc</wpml:waypointHeadingPathMode>
+          <wpml:waypointHeadingPoiIndex>0</wpml:waypointHeadingPoiIndex>
         </wpml:waypointHeadingParam>
         <wpml:waypointTurnParam>
           <wpml:waypointTurnMode>${turnMode}</wpml:waypointTurnMode>
           <wpml:waypointTurnDampingDist>0</wpml:waypointTurnDampingDist>
         </wpml:waypointTurnParam>
+        <wpml:useStraightLine>1</wpml:useStraightLine>
+        <wpml:waypointGimbalHeadingParam>
+          <wpml:waypointGimbalPitchAngle>0</wpml:waypointGimbalPitchAngle>
+          <wpml:waypointGimbalYawAngle>0</wpml:waypointGimbalYawAngle>
+        </wpml:waypointGimbalHeadingParam>
+        <wpml:isRisky>0</wpml:isRisky>
+        <wpml:waypointWorkType>0</wpml:waypointWorkType>
       </Placemark>`).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.2">
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.6">
   <Document>
-    <wpml:author>Avisafe</wpml:author>
-    <wpml:createTime>${timestamp}</wpml:createTime>
-    <wpml:updateTime>${timestamp}</wpml:updateTime>
     <wpml:missionConfig>
       <wpml:flyToWaylineMode>safely</wpml:flyToWaylineMode>
       <wpml:finishAction>goHome</wpml:finishAction>
@@ -148,8 +162,10 @@ const generateWaylinesWpml = (
     </wpml:missionConfig>
     <Folder>
       <wpml:templateId>0</wpml:templateId>
-      <wpml:executeHeightMode>${heightMode}</wpml:executeHeightMode>
+      <wpml:executeHeightMode>WGS84</wpml:executeHeightMode>
       <wpml:waylineId>0</wpml:waylineId>
+      <wpml:distance>${route.totalDistance.toFixed(1)}</wpml:distance>
+      <wpml:duration>0</wpml:duration>
       <wpml:autoFlightSpeed>${speed}</wpml:autoFlightSpeed>
 ${placemarks}
     </Folder>
