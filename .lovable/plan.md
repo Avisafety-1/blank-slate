@@ -1,26 +1,28 @@
 
 
-## Fiks: SORA-korridor mangler ved FH2-sending fra oppdragskort
+## Fiks: Avdelinger arver ikke FH2-tilkobling fra morselskap
 
 ### Problem
 
-I `Oppdrag.tsx` linje 491-501 sendes `FlightHub2SendDialog` uten `soraSettings` og `soraBufferCoordinates`. Oppdragets rute inneholder `route.soraSettings`, men disse dataene blir ikke videresendt. Dermed tror dialogen at SORA-korridor ikke finnes.
+Frontend-sjekken for FH2-tilkobling sjekker kun det aktive selskapet -- ikke morselskapet. Edge-funksjonen (`flighthub2-proxy`) har allerede parent-fallback, men UI-en skjuler knappene fordi den ikke finner credentials.
+
+To steder trenger fiks:
+
+1. **`Kart.tsx`** (linje 127-134): Bruker fortsatt den gamle `companies.flighthub2_token`-kolonnen i stedet for `company_fh2_credentials`-tabellen. Sjekker ikke parent.
+2. **`Oppdrag.tsx`** (linje 70-77): Bruker riktig tabell men sjekker kun `authCompanyId`, ikke parent.
 
 ### Løsning
 
-Hent `soraSettings` fra `fh2Mission.route.soraSettings` og beregn `soraBufferCoordinates` med samme logikk som i `Kart.tsx` (bruk `bufferPolyline`/`bufferPolygon` fra `soraGeometry.ts`).
+Begge steder: Sjekk først om nåværende selskap har credentials. Hvis ikke, hent `parent_company_id` og sjekk om parent har credentials.
 
-### Endringer
+**`src/pages/Kart.tsx`**
+- Erstatt `companies.flighthub2_token`-sjekken med en sjekk mot `company_fh2_credentials`-tabellen
+- Legg til parent-fallback: hent `parent_company_id` fra `companies`, sjekk parent credentials hvis eget selskap ikke har
 
 **`src/pages/Oppdrag.tsx`**
-- Importer `computeConvexHull`, `bufferPolyline`, `bufferPolygon` fra `@/lib/soraGeometry`
-- Beregn SORA buffer-koordinater fra `fh2Mission.route` når FH2-dialogen åpnes (inline i `useMemo` eller direkte i render)
-- Send `soraSettings` og `soraBufferCoordinates` til `FlightHub2SendDialog`:
-  ```
-  soraSettings={fh2Mission.route?.soraSettings}
-  soraBufferCoordinates={computedBufferCoords}
-  ```
+- Legg til parent-fallback med samme logikk: sjekk `parent_company_id` og deretter parent credentials
 
-### Fil som endres
-1. `src/pages/Oppdrag.tsx`
+### Filer som endres
+1. `src/pages/Kart.tsx` -- oppdater FH2-tilkoblingssjekk med parent-arv
+2. `src/pages/Oppdrag.tsx` -- legg til parent-fallback i FH2-sjekk
 
