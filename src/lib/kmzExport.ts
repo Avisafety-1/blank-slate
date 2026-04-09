@@ -66,6 +66,10 @@ const generateTemplateKml = (
   const turnMode = opts.turnMode ?? 'toPointAndStopWithDiscontinuityCurvature';
   const droneEnum = opts.droneEnumValue ?? 67;
   const droneSubEnum = opts.droneSubEnumValue ?? 0;
+  const takeOff = opts.takeOffPoint ?? route.coordinates[0];
+  const takeOffRefXml = takeOff
+    ? `\n      <wpml:takeOffRefPoint>${takeOff.lng},${takeOff.lat},0</wpml:takeOffRefPoint>`
+    : '';
 
   const placemarks = route.coordinates.map((coord, index) => `
       <Placemark>
@@ -152,6 +156,10 @@ const generateWaylinesWpml = (
   const turnMode = opts.turnMode ?? 'toPointAndStopWithDiscontinuityCurvature';
   const droneEnum = opts.droneEnumValue ?? 67;
   const droneSubEnum = opts.droneSubEnumValue ?? 0;
+  const takeOff = opts.takeOffPoint ?? route.coordinates[0];
+  const takeOffRefXml = takeOff
+    ? `\n      <wpml:takeOffRefPoint>${takeOff.lng},${takeOff.lat},0</wpml:takeOffRefPoint>`
+    : '';
 
   const placemarks = route.coordinates.map((coord, index) => `
       <Placemark>
