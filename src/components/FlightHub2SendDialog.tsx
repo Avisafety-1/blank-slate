@@ -9,7 +9,7 @@ import { Loader2, Upload, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RouteData, SoraSettings } from "@/types/map";
-import JSZip from "jszip";
+import { generateDJIKMZ } from "@/lib/kmzExport";
 
 interface FlightHub2SendDialogProps {
   open: boolean;
@@ -74,66 +74,13 @@ export const FlightHub2SendDialog = ({
 
   const generateKmzBase64 = async (): Promise<string> => {
     const flightHeight = soraSettings?.flightAltitude || 120;
-    const timestamp = new Date().toISOString();
-
-    const placemarks = route.coordinates
-      .map(
-        (coord, index) => `
-      <Placemark>
-        <wpml:index>${index}</wpml:index>
-        <wpml:executeHeight>${flightHeight}</wpml:executeHeight>
-        <wpml:waypointSpeed>5</wpml:waypointSpeed>
-        <wpml:waypointHeadingParam>
-          <wpml:waypointHeadingMode>followWayline</wpml:waypointHeadingMode>
-        </wpml:waypointHeadingParam>
-        <wpml:waypointTurnParam>
-          <wpml:waypointTurnMode>toPointAndStopWithDiscontinuityCurvature</wpml:waypointTurnMode>
-          <wpml:waypointTurnDampingDist>0</wpml:waypointTurnDampingDist>
-        </wpml:waypointTurnParam>
-        <Point>
-          <coordinates>${coord.lng},${coord.lat}</coordinates>
-        </Point>
-      </Placemark>`
-      )
-      .join("\n");
-
-    const templateKml = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.2">
-  <Document>
-    <wpml:author>Avisafe</wpml:author>
-    <wpml:createTime>${timestamp}</wpml:createTime>
-    <wpml:updateTime>${timestamp}</wpml:updateTime>
-    <wpml:missionConfig>
-      <wpml:flyToWaylineMode>safely</wpml:flyToWaylineMode>
-      <wpml:finishAction>goHome</wpml:finishAction>
-      <wpml:exitOnRCLost>executeLostAction</wpml:exitOnRCLost>
-      <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>
-      <wpml:globalTransitionalSpeed>8</wpml:globalTransitionalSpeed>
-      <wpml:droneInfo>
-        <wpml:droneEnumValue>68</wpml:droneEnumValue>
-        <wpml:droneSubEnumValue>0</wpml:droneSubEnumValue>
-      </wpml:droneInfo>
-    </wpml:missionConfig>
-    <Folder>
-      <wpml:templateId>0</wpml:templateId>
-      <wpml:waylineCoordinateSysParam>
-        <wpml:coordinateMode>WGS84</wpml:coordinateMode>
-        <wpml:heightMode>relativeToStartPoint</wpml:heightMode>
-      </wpml:waylineCoordinateSysParam>
-      <wpml:autoFlightSpeed>5</wpml:autoFlightSpeed>
-      ${placemarks}
-    </Folder>
-  </Document>
-</kml>`;
-
-    const waylineKml = templateKml; // simplified — same structure for waylines
-
-    const zip = new JSZip();
-    zip.file("wpmz/template.kml", templateKml);
-    zip.file("wpmz/waylines.kml", waylineKml);
-
-    const blob = await zip.generateAsync({ type: "arraybuffer" });
-    const bytes = new Uint8Array(blob);
+    const blob = await generateDJIKMZ(
+      routeName || "Avisafe Route",
+      route,
+      flightHeight
+    );
+    const arrayBuffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
     let binary = "";
     for (let i = 0; i < bytes.length; i++) {
       binary += String.fromCharCode(bytes[i]);

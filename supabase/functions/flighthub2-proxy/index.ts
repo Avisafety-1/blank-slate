@@ -509,7 +509,6 @@ Deno.serve(async (req: Request) => {
       const finishBody = {
         name: routeName || "Avisafe Route",
         object_key: objectKey,
-        drone_model_key: "0-68-0",
       };
       console.log("[finish-upload] URL:", finishUrl);
       console.log("[finish-upload] body:", JSON.stringify(finishBody));
