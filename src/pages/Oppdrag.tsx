@@ -10,6 +10,8 @@ import { GlassCard } from "@/components/GlassCard";
 import { Loader2 } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
 import { exportToKMZ } from "@/lib/oppdragKmzExport";
+import { bufferPolyline, computeConvexHull, bufferPolygon } from "@/lib/soraGeometry";
+import type { SoraSettings } from "@/types/map";
 import { exportToPDF, DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdfExport";
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
@@ -488,18 +490,42 @@ const Oppdrag = () => {
           onSkipRiskAssessment={handleSkipRiskAssessment}
         />
 
-        {fh2Mission && (
-          <FlightHub2SendDialog
-            open={fh2DialogOpen}
-            onOpenChange={(open) => {
-              setFh2DialogOpen(open);
-              if (!open) setFh2Mission(null);
-            }}
-            route={(fh2Mission.route as any) || { coordinates: [], altitude: 120 }}
-            droneModelName={fh2Mission.drones?.[0]?.drones?.modell}
-            initialRouteName={fh2Mission.tittel}
-          />
-        )}
+        {fh2Mission && (() => {
+          const route = (fh2Mission.route as any) || { coordinates: [], altitude: 120 };
+          const sora: SoraSettings | undefined = route.soraSettings;
+          let soraBufferCoords: { lat: number; lng: number }[] | undefined;
+          if (sora?.enabled && route.coordinates?.length >= 1) {
+            const coords = route.coordinates as { lat: number; lng: number }[];
+            const validCoords = coords.filter(p => p && isFinite(p.lat) && isFinite(p.lng) && !(p.lat === 0 && p.lng === 0));
+            if (validCoords.length >= 1) {
+              const totalDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
+              const mode = sora.bufferMode ?? "corridor";
+              const isClosedRoute = validCoords.length >= 3 &&
+                validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
+                validCoords[0].lng === validCoords[validCoords.length - 1].lng;
+              if (mode === "convexHull" || isClosedRoute) {
+                const hull = computeConvexHull(validCoords);
+                soraBufferCoords = bufferPolygon(hull, totalDist);
+              } else {
+                soraBufferCoords = bufferPolyline(validCoords, totalDist);
+              }
+            }
+          }
+          return (
+            <FlightHub2SendDialog
+              open={fh2DialogOpen}
+              onOpenChange={(open) => {
+                setFh2DialogOpen(open);
+                if (!open) setFh2Mission(null);
+              }}
+              route={route}
+              droneModelName={fh2Mission.drones?.[0]?.drones?.modell}
+              initialRouteName={fh2Mission.tittel}
+              soraSettings={sora}
+              soraBufferCoordinates={soraBufferCoords}
+            />
+          );
+        })()}
       </div>
     </div>
   );
