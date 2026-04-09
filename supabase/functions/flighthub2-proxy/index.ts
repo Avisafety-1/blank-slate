@@ -506,12 +506,23 @@ Deno.serve(async (req: Request) => {
         ? `${fh2BaseUrl}/openapi/v0.1/wayline/finish-upload`
         : `${fh2BaseUrl}/manage/api/v1.0/wayline/finish-upload`;
       const finishHeaders = { ...makeHeaders(workingVariant, true), "Content-Type": "application/json" };
+      const finishBody = {
+        name: routeName || "Avisafe Route",
+        object_key: objectKey,
+        drone_model_key: "0-68-0",
+      };
+      console.log("[finish-upload] URL:", finishUrl);
+      console.log("[finish-upload] body:", JSON.stringify(finishBody));
       const finishRes = await safeFetch(finishUrl, {
         method: "POST",
         headers: finishHeaders,
-        body: JSON.stringify({ name: routeName || "Avisafe Route", object_key: objectKey }),
+        body: JSON.stringify(finishBody),
       });
-      const finishData = await finishRes.json();
+      const finishText = await finishRes.text();
+      console.log("[finish-upload] status:", finishRes.status);
+      console.log("[finish-upload] response:", finishText.substring(0, 2000));
+      let finishData;
+      try { finishData = JSON.parse(finishText); } catch { finishData = { raw: finishText }; }
       return new Response(JSON.stringify(finishData), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

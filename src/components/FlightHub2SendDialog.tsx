@@ -189,7 +189,9 @@ export const FlightHub2SendDialog = ({
         if (data?.code === 0) {
           routeSuccess = true;
         } else {
-          toast.error(`Rutefil: ${data?.message || "Feil"}`);
+          const detail = data?.message || data?.raw || JSON.stringify(data);
+          toast.error(`Rutefil: ${detail}`);
+          console.error("[FH2] finish-upload response:", data);
         }
       }
 
