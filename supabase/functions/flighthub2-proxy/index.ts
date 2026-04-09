@@ -223,6 +223,38 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const body = await req.json();
+    const { action, projectUuid, apiVersion, ...params } = body;
+
+    // ─── Action: save-token (before token check) ───
+    if (action === "save-token") {
+      const tokenToSave = (params.token || "").trim().replace(/^bearer\s+/i, "");
+      if (!tokenToSave) {
+        return new Response(JSON.stringify({ error: "Token mangler" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!encKey) {
+        return new Response(JSON.stringify({ error: "FH2_ENCRYPTION_KEY er ikke konfigurert på serveren" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { error: saveErr } = await supabase.rpc("save_fh2_token", {
+        p_company_id: profile.company_id,
+        p_token: tokenToSave,
+        p_key: encKey,
+      });
+      if (saveErr) {
+        console.error("save_fh2_token error:", saveErr);
+        return new Response(JSON.stringify({ error: saveErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!fh2Token) {
       return new Response(JSON.stringify({ error: "FlightHub 2 er ikke konfigurert for dette selskapet." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -237,9 +269,6 @@ Deno.serve(async (req: Request) => {
 
     // Strip trailing slash
     fh2BaseUrl = fh2BaseUrl.replace(/\/+$/, "");
-
-    const body = await req.json();
-    const { action, projectUuid, apiVersion, ...params } = body;
 
     // Extract project_uuid from JWT
     let jwtProjectUuid = "";
