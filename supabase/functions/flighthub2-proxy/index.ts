@@ -211,7 +211,12 @@ Deno.serve(async (req: Request) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!fh2BaseUrl) {
+    // If no base URL, auto-detect during test-connection; for other actions require it
+    if (!fh2BaseUrl && action !== "test-connection") {
+      return new Response(JSON.stringify({ error: "FlightHub 2 base URL er ikke konfigurert. Kjør 'Test tilkobling' først." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
       return new Response(JSON.stringify({ error: "FlightHub 2 base URL er ikke konfigurert." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
