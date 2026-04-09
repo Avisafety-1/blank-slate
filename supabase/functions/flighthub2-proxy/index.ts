@@ -83,7 +83,37 @@ Deno.serve(async (req: Request) => {
     if (action === "test-connection") {
       const testUrl = `${fh2BaseUrl}/openapi/v0.1/system_status`;
       const res = await safeFetch(testUrl, { method: "GET", headers: commonHeaders });
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      const bodyText = await res.text();
+
+      if (contentType.includes("text/html")) {
+        return new Response(JSON.stringify({
+          error: `URL-en returnerer HTML (web-innlogging), ikke API-JSON. Dette er sannsynligvis feil base URL.`,
+          _tested_url: testUrl,
+          _status: res.status,
+          _content_type: contentType,
+          _body_preview: bodyText.substring(0, 200),
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(bodyText);
+      } catch {
+        return new Response(JSON.stringify({
+          error: `Uventet respons (ikke JSON). Content-Type: ${contentType}`,
+          _tested_url: testUrl,
+          _status: res.status,
+          _body_preview: bodyText.substring(0, 300),
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       return new Response(JSON.stringify({ ...data, _tested_url: testUrl }), {
         status: res.ok ? 200 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
