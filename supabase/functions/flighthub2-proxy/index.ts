@@ -4,6 +4,97 @@ const corsHeaders = {
 };
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ─── AWS SigV4 helpers (minimal, for OSS/S3-compatible upload) ───
+
+async function hmacSha256(key: ArrayBuffer | Uint8Array, message: string): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  return crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(message));
+}
+
+async function sha256Hex(data: Uint8Array): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function toHex(buf: ArrayBuffer): string {
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function getSignatureKey(secret: string, dateStamp: string, region: string, service: string): Promise<ArrayBuffer> {
+  const kDate = await hmacSha256(new TextEncoder().encode("AWS4" + secret), dateStamp);
+  const kRegion = await hmacSha256(kDate, region);
+  const kService = await hmacSha256(kRegion, service);
+  return hmacSha256(kService, "aws4_request");
+}
+
+async function signV4Put(
+  endpoint: string, bucket: string, objectKey: string,
+  body: Uint8Array, credentials: { access_key_id: string; access_key_secret: string; security_token: string }
+): Promise<Response> {
+  const url = new URL(`/${bucket}/${objectKey}`, endpoint);
+  const host = url.host;
+  // Try to extract region from endpoint like oss-cn-hangzhou.aliyuncs.com → cn-hangzhou
+  const regionMatch = host.match(/oss-([^.]+)\./);
+  const region = regionMatch ? regionMatch[1] : "us-east-1";
+  const service = "s3"; // OSS is S3-compatible
+
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z/, "Z"); // 20260409T120000Z
+  const dateStamp = amzDate.substring(0, 8); // 20260409
+
+  const payloadHash = await sha256Hex(body);
+  const contentType = "application/octet-stream";
+
+  // Canonical headers (sorted)
+  const canonicalHeaders =
+    `content-type:${contentType}\n` +
+    `host:${host}\n` +
+    `x-amz-content-sha256:${payloadHash}\n` +
+    `x-amz-date:${amzDate}\n` +
+    `x-amz-security-token:${credentials.security_token}\n`;
+
+  const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date;x-amz-security-token";
+
+  const canonicalRequest = [
+    "PUT",
+    url.pathname,
+    "", // no query string
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join("\n");
+
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    await sha256Hex(new TextEncoder().encode(canonicalRequest)),
+  ].join("\n");
+
+  const signingKey = await getSignatureKey(credentials.access_key_secret, dateStamp, region, service);
+  const signature = toHex(await hmacSha256(signingKey, stringToSign));
+
+  const authHeader = `AWS4-HMAC-SHA256 Credential=${credentials.access_key_id}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  return fetch(url.toString(), {
+    method: "PUT",
+    headers: {
+      "Content-Type": contentType,
+      "Host": host,
+      "x-amz-date": amzDate,
+      "x-amz-content-sha256": payloadHash,
+      "x-amz-security-token": credentials.security_token,
+      "Authorization": authHeader,
+    },
+    body: body,
+  });
+}
+
+// ─── Main handler ───
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -148,11 +239,13 @@ Deno.serve(async (req: Request) => {
     if (action === "upload-route") {
       const { kmzBase64, routeName } = params;
 
+      // Step 1: Get STS token
       const stsRes = await safeFetch(`${fh2BaseUrl}/openapi/v0.1/project/sts-token`, {
         method: "GET",
         headers: commonHeaders,
       });
       const stsData = await stsRes.json();
+      console.log("STS response code:", stsData.code, "keys:", stsData.data ? Object.keys(stsData.data) : "no data");
 
       if (stsData.code !== 0) {
         return new Response(JSON.stringify({ error: "Kunne ikke hente STS-token", detail: stsData }), {
@@ -163,41 +256,51 @@ Deno.serve(async (req: Request) => {
       const { endpoint, bucket, credentials, object_key_prefix } = stsData.data;
       const objectKey = `${object_key_prefix}/${crypto.randomUUID()}/wayline.kmz`;
 
+      // Step 2: Decode KMZ and upload with SigV4
       const kmzBinary = Uint8Array.from(atob(kmzBase64), (c) => c.charCodeAt(0));
+      console.log("Uploading KMZ to:", endpoint, "bucket:", bucket, "key:", objectKey, "size:", kmzBinary.length);
 
-      const ossUrl = `${endpoint}/${bucket}/${objectKey}`;
-      const ossRes = await fetch(ossUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "x-oss-security-token": credentials.security_token,
-          "Authorization": `OSS ${credentials.access_key_id}:placeholder`,
-        },
-        body: kmzBinary,
-      });
+      try {
+        const ossRes = await signV4Put(endpoint, bucket, objectKey, kmzBinary, credentials);
+        const ossBody = await ossRes.text();
+        console.log("OSS upload status:", ossRes.status, "body:", ossBody.substring(0, 300));
 
-      if (!ossRes.ok) {
-        const ossUrl2 = `${endpoint}/${bucket}/${objectKey}?OSSAccessKeyId=${encodeURIComponent(credentials.access_key_id)}&security-token=${encodeURIComponent(credentials.security_token)}`;
-        const ossRes2 = await fetch(ossUrl2, {
-          method: "PUT",
-          headers: { "Content-Type": "application/octet-stream" },
-          body: kmzBinary,
-        });
-
-        if (!ossRes2.ok) {
-          const errText = await ossRes2.text();
-          return new Response(JSON.stringify({ error: "OSS-opplasting feilet", detail: errText }), {
+        if (!ossRes.ok) {
+          // Try with x-oss-security-token header name instead (Alibaba OSS variant)
+          console.log("SigV4 upload failed, trying OSS presigned URL fallback...");
+          const presignedUrl = `${endpoint}/${bucket}/${objectKey}?OSSAccessKeyId=${encodeURIComponent(credentials.access_key_id)}&Signature=placeholder&Expires=${Math.floor(Date.now() / 1000) + 3600}&security-token=${encodeURIComponent(credentials.security_token)}`;
+          
+          return new Response(JSON.stringify({
+            error: "OSS-opplasting feilet med SigV4",
+            oss_status: ossRes.status,
+            oss_body: ossBody.substring(0, 500),
+            _debug: {
+              endpoint,
+              bucket,
+              objectKey,
+              credentials_available: !!(credentials.access_key_id && credentials.access_key_secret && credentials.security_token),
+            }
+          }), {
             status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+      } catch (uploadErr: any) {
+        return new Response(JSON.stringify({
+          error: `Feil ved opplasting til lagring: ${uploadErr.message}`,
+          _debug: { endpoint, bucket, objectKey }
+        }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
+      // Step 3: Notify FlightHub 2 that upload is complete
       const finishRes = await safeFetch(`${fh2BaseUrl}/openapi/v0.1/wayline/finish-upload`, {
         method: "POST",
         headers: commonHeaders,
         body: JSON.stringify({ name: routeName || "Avisafe Route", object_key: objectKey }),
       });
       const finishData = await finishRes.json();
+      console.log("finish-upload response:", JSON.stringify(finishData));
 
       return new Response(JSON.stringify(finishData), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
