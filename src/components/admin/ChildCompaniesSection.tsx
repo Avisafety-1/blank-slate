@@ -302,7 +302,6 @@ export const ChildCompaniesSection = () => {
       } catch {
         setFh2Inherited(false);
       }
-      }
     }
     // Fetch default buffer mode from sora config
     const { data: soraData } = await (supabase as any)
