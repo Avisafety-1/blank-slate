@@ -206,7 +206,7 @@ const generateWaylinesWpml = (
       <wpml:droneInfo>
         <wpml:droneEnumValue>${droneEnum}</wpml:droneEnumValue>
         <wpml:droneSubEnumValue>${droneSubEnum}</wpml:droneSubEnumValue>
-      </wpml:droneInfo>
+      </wpml:droneInfo>${takeOffRefXml}
     </wpml:missionConfig>
     <Folder>
       <wpml:templateId>0</wpml:templateId>
