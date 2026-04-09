@@ -126,7 +126,12 @@ async function tryListProjects(
 
   const res = await safeFetch(url, { method: "GET", headers });
   const bodyText = await res.text();
+  
+  // Log ALL response headers for debugging
+  const respHeaders: Record<string, string> = {};
+  res.headers.forEach((value, key) => { respHeaders[key] = value; });
   console.log(`[${variant.name}] Status: ${res.status}, Body: ${bodyText.substring(0, 300)}`);
+  console.log(`[${variant.name}] Response headers:`, JSON.stringify(respHeaders));
 
   let data: any = null;
   try { data = JSON.parse(bodyText); } catch { /* not JSON */ }
