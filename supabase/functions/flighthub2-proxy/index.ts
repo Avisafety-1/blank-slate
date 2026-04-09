@@ -281,112 +281,75 @@ Deno.serve(async (req: Request) => {
 
     // ─── Action: test-connection ───
     if (action === "test-connection") {
+      const REGION_URLS = [
+        "https://es-flight-api-eu.djigate.com",
+        "https://es-flight-api-us.djigate.com",
+        "https://es-flight-api-cn.djigate.com",
+      ];
+      // If we have a base URL, try it first; otherwise try all regions
+      const urlsToTry = fh2BaseUrl
+        ? [fh2BaseUrl, ...REGION_URLS.filter(u => u !== fh2BaseUrl.replace(/\/+$/, "").toLowerCase())]
+        : REGION_URLS;
+
       const result: any = {
         server_ok: false,
         token_ok: false,
         api_version: null,
+        project_count: 0,
+        project_names: [],
       };
 
-      // Step 1: system_status (no auth needed)
-      const statusUrl = `${fh2BaseUrl}/openapi/v0.1/system_status`;
-      try {
-        const statusRes = await safeFetch(statusUrl, { method: "GET", headers: { "X-Request-Id": crypto.randomUUID() } });
-        const statusText = await statusRes.text();
-        const ct = statusRes.headers.get("content-type") || "";
+      for (const baseUrl of urlsToTry) {
+        for (const variant of API_VARIANTS) {
+          try {
+            const attempt = await tryListProjects(baseUrl, fh2Token, variant, safeFetch);
+            if (attempt.ok) {
+              result.server_ok = true;
+              result.token_ok = true;
+              result.api_version = variant.name;
 
-        if (ct.includes("text/html")) {
-          return new Response(JSON.stringify({
-            error: "URL-en returnerer HTML, ikke API-JSON. Feil base URL.",
-            server_ok: false, token_ok: false,
-          }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
+              // Extract project names
+              const projectList = attempt.data?.data?.list || attempt.data?.data || [];
+              result.project_count = projectList.length;
+              result.project_names = projectList.map((p: any) => p.workspace_name || p.name || p.project_name || "Ukjent").filter(Boolean);
 
-        let statusData: any;
-        try { statusData = JSON.parse(statusText); } catch { statusData = null; }
-
-        if (statusRes.ok && statusData?.code === 0) {
-          result.server_ok = true;
-        }
-      } catch (err: any) {
-        return new Response(JSON.stringify({
-          error: err.message, server_ok: false, token_ok: false,
-        }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      // Step 2: Try both API variants to list projects on configured URL
-      for (const variant of API_VARIANTS) {
-        try {
-          const attempt = await tryListProjects(fh2BaseUrl, fh2Token, variant, safeFetch);
-          if (attempt.ok) {
-            result.token_ok = true;
-            result.api_version = variant.name;
-            result.project_count = attempt.data?.data?.list?.length ?? attempt.data?.data?.length ?? 0;
-            console.log(`✅ API variant ${variant.name} worked on ${fh2BaseUrl}!`);
-            break;
-          } else {
-            console.log(`❌ API variant ${variant.name} failed on ${fh2BaseUrl}: code=${attempt.data?.code}, status=${attempt.status}`);
-            result[`_${variant.name}_error`] = {
-              code: attempt.data?.code,
-              message: attempt.data?.message || attempt.bodyText.substring(0, 200),
-              status: attempt.status,
-            };
-          }
-        } catch (err: any) {
-          console.log(`❌ API variant ${variant.name} exception: ${err.message}`);
-          result[`_${variant.name}_error`] = { message: err.message };
-        }
-      }
-
-      // Step 3: If token failed on configured URL, try the OTHER region automatically
-      if (!result.token_ok) {
-        const REGION_URLS = [
-          "https://es-flight-api-eu.djigate.com",
-          "https://es-flight-api-us.djigate.com",
-          "https://es-flight-api-cn.djigate.com",
-        ];
-        const currentNormalized = fh2BaseUrl.replace(/\/+$/, "").toLowerCase();
-        const alternateUrls = REGION_URLS.filter(u => u !== currentNormalized);
-
-        for (const altUrl of alternateUrls) {
-          console.log(`🔄 Trying alternate region: ${altUrl}`);
-          for (const variant of API_VARIANTS) {
-            try {
-              const attempt = await tryListProjects(altUrl, fh2Token, variant, safeFetch);
-              if (attempt.ok) {
-                result.token_ok = true;
-                result.api_version = variant.name;
-                result.project_count = attempt.data?.data?.list?.length ?? attempt.data?.data?.length ?? 0;
+              // Auto-save working base URL
+              const normalizedUrl = baseUrl.replace(/\/+$/, "");
+              result.working_base_url = normalizedUrl;
+              if (normalizedUrl !== (fh2BaseUrl || "").replace(/\/+$/, "")) {
                 result.alternate_region_worked = true;
-                result.working_base_url = altUrl;
-                console.log(`✅ Alternate region ${altUrl} worked with ${variant.name}!`);
-                break;
               }
-            } catch (err: any) {
-              console.log(`❌ Alternate ${altUrl} [${variant.name}] error: ${err.message}`);
+              await supabase.from("companies").update({ flighthub2_base_url: normalizedUrl }).eq("id", profile.company_id);
+              console.log(`✅ ${variant.name} worked on ${baseUrl}, saved base URL`);
+              break;
             }
+          } catch (err: any) {
+            console.log(`❌ ${baseUrl} [${variant.name}] error: ${err.message}`);
           }
-          if (result.token_ok) break;
+        }
+        if (result.token_ok) break;
+
+        // At least check if first URL server responds
+        if (!result.server_ok) {
+          try {
+            const statusRes = await safeFetch(`${baseUrl}/openapi/v0.1/system_status`, {
+              method: "GET", headers: { "X-Request-Id": crypto.randomUUID() }
+            });
+            if (statusRes.ok) result.server_ok = true;
+          } catch (_) { /* ignore */ }
         }
       }
 
-      // Step 4: JWT diagnostics
+      // JWT diagnostics
       if (jwtPayload) {
         result.jwt_info = {
           is_jwt: true,
           organization_uuid: jwtPayload.organization_uuid || null,
-          project_uuid: jwtPayload.project_uuid || null,
-          account: jwtPayload.account || null,
-          user_id: jwtPayload.user_id || null,
           exp: jwtPayload.exp ? new Date(jwtPayload.exp * 1000).toISOString() : null,
           expired: jwtPayload.exp ? (jwtPayload.exp * 1000 < Date.now()) : null,
-          raw_keys: Object.keys(jwtPayload),
         };
-      } else {
-        result.jwt_info = { is_jwt: false, token_length: fh2Token.length };
       }
 
-      result._token_length = fh2Token.length;
-      result._token_fingerprint = tokenFingerprint;
       return new Response(JSON.stringify(result), {
         status: (result.server_ok || result.token_ok) ? 200 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
