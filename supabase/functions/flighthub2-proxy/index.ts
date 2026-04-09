@@ -540,7 +540,7 @@ Deno.serve(async (req: Request) => {
     });
   } catch (err) {
     console.error("flighthub2-proxy error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: String(err) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
