@@ -1042,7 +1042,9 @@ export const ChildCompaniesSection = () => {
               {fh2Connected && (
                 <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 space-y-2">
                   <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                    ✅ Gratulerer! Du er tilkoblet din FH2-konto med {fh2Projects.length} prosjekter
+                    ✅ {fh2Inherited
+                      ? `Tilkoblet via morselskapet med ${fh2Projects.length} prosjekter`
+                      : `Gratulerer! Du er tilkoblet din FH2-konto med ${fh2Projects.length} prosjekter`}
                   </p>
                   {fh2Projects.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
