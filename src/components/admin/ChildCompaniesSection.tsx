@@ -89,6 +89,8 @@ export const ChildCompaniesSection = () => {
   const [savingFh2, setSavingFh2] = useState(false);
   const [testingFh2, setTestingFh2] = useState(false);
   const [fh2ShowToken, setFh2ShowToken] = useState(false);
+  const [rawTestResult, setRawTestResult] = useState<any>(null);
+  const [rawTesting, setRawTesting] = useState(false);
 
   const fetchFlightAlerts = useCallback(async () => {
     if (!companyId) return;
