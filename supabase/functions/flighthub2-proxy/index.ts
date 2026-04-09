@@ -242,7 +242,31 @@ Deno.serve(async (req: Request) => {
         result._project_error_message = err.message;
       }
 
+      // Step 3: Decode JWT token for diagnostics
+      try {
+        const parts = fh2Token.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          result.jwt_info = {
+            is_jwt: true,
+            org_id: payload.org_id || payload.oid || payload.org || null,
+            sub: payload.sub || null,
+            user_id: payload.user_id || payload.uid || null,
+            exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : null,
+            iat: payload.iat ? new Date(payload.iat * 1000).toISOString() : null,
+            expired: payload.exp ? (payload.exp * 1000 < Date.now()) : null,
+            raw_keys: Object.keys(payload),
+          };
+          console.log("JWT payload keys:", Object.keys(payload), "exp:", payload.exp);
+        } else {
+          result.jwt_info = { is_jwt: false, token_length: fh2Token.length, parts: parts.length };
+        }
+      } catch (jwtErr: any) {
+        result.jwt_info = { is_jwt: false, decode_error: jwtErr.message, token_length: fh2Token.length };
+      }
+
       result._tested_url = statusUrl;
+      result._token_length = fh2Token.length;
       const httpStatus = result.server_ok ? 200 : 502;
       return new Response(JSON.stringify(result), {
         status: httpStatus, headers: { ...corsHeaders, "Content-Type": "application/json" },
