@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -455,23 +456,22 @@ export const ChildCompaniesSection = () => {
 
   const handleTestFh2 = async () => {
     if (!fh2Token) { toast.error("Fyll inn organisasjonsnøkkel først"); return; }
+    if (!fh2BaseUrl) { toast.error("Velg en Base URL først"); return; }
     setTestingFh2(true);
     try {
-      // Save first so edge function can read it
       await supabase
         .from("companies")
         .update({ flighthub2_token: fh2Token, flighthub2_base_url: fh2BaseUrl || null } as any)
         .eq("id", companyId);
 
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
-        body: { action: "list-projects" },
+        body: { action: "test-connection" },
       });
       if (error) throw error;
       if (data?.code === 0) {
-        const count = data?.data?.list?.length || 0;
-        toast.success(`Tilkoblet! Fant ${count} prosjekt${count !== 1 ? 'er' : ''}`);
+        toast.success("Tilkoblet til FlightHub 2!");
       } else {
-        toast.error(`FlightHub 2 feil: ${data?.message || 'Ukjent feil'}`);
+        toast.error(`FlightHub 2 feil: ${data?.message || data?.error || 'Ukjent feil'}${data?._tested_url ? ` (${data._tested_url})` : ''}`);
       }
     } catch (err: any) {
       toast.error(err?.message || "Tilkobling feilet");
@@ -928,12 +928,24 @@ export const ChildCompaniesSection = () => {
 
           <div className="space-y-2">
             <Label className="text-xs">Base URL</Label>
-            <Input
-              value={fh2BaseUrl}
-              onChange={(e) => setFh2BaseUrl(e.target.value)}
-              placeholder="https://fh.dji.com eller din on-prem server"
-              className="h-8 text-sm"
-            />
+            <Select value={fh2BaseUrl} onValueChange={(val) => setFh2BaseUrl(val === "__custom__" ? "" : val)}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Velg server..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="https://fh.dji.com">fh.dji.com (DJI Cloud – Global)</SelectItem>
+                <SelectItem value="https://fh2-api.dji.com">fh2-api.dji.com (DJI Cloud – API)</SelectItem>
+                <SelectItem value="__custom__">Egendefinert URL...</SelectItem>
+              </SelectContent>
+            </Select>
+            {(fh2BaseUrl && !["https://fh.dji.com", "https://fh2-api.dji.com"].includes(fh2BaseUrl)) && (
+              <Input
+                value={fh2BaseUrl}
+                onChange={(e) => setFh2BaseUrl(e.target.value)}
+                placeholder="https://din-server.example.com"
+                className="h-8 text-sm"
+              />
+            )}
           </div>
 
           <div className="flex gap-2">
