@@ -1,44 +1,43 @@
 
 
-## Fiks ruteopplasting til FlightHub 2 med korrekt MinIO/OSS-signering
+## Fiks "unauthorized" og "Ingen prosjekter funnet" i FlightHub 2 Send-dialogen
 
-### Status
-Tilkoblingen til FlightHub 2 fungerer. Neste steg er ruteopplasting. **Du trenger IKKE koble din egen Amazon S3-bøtte** -- DJI leverer sin egen lagringsbøtte via STS-tokener. Avisafe laster opp direkte til DJIs bøtte.
+### Problem
+To separate problemer:
 
-### Problem med nåværende kode
-Opplastingskoden bruker `Authorization: OSS access_key_id:placeholder` -- en placeholder-signatur som aldri vil fungere. DJI-dokumentasjonen sier at man skal bruke **MinIO SDK** (S3-kompatibelt) med de midlertidige STS-credentials (`access_key_id`, `access_key_secret`, `security_token`) for å laste opp til DJIs Alibaba Cloud OSS-bøtte.
+1. **`list-projects` mangler robust feilhåndtering**: Kallet gjør `res.json()` uten å sjekke `res.ok` eller content-type. Hvis DJI returnerer 401/403 med HTML eller en feilmelding, krasjer parsingen eller feilen vises ikke tydelig.
 
-### Flyten (ifølge dokumentasjonen)
-```text
-1. GET /openapi/v0.1/project/sts-token  →  STS-credentials + endpoint + bucket + prefix
-2. Upload KMZ til OSS/MinIO med korrekt AWS SigV4-signering (S3-kompatibelt)
-3. POST /openapi/v0.1/wayline/finish-upload  →  meld fra til FH2 at filen er lastet opp
-```
+2. **Selskaps-hierarki ikke håndtert**: Edge-funksjonen henter `flighthub2_token` kun fra brukerens eget selskap. Hvis token er konfigurert på morselskapet, men brukeren tilhører en underavdeling, finner den ingen token og returnerer feil. Dette er sannsynligvis hovedproblemet -- brukeren konfigurerte FH2 på ett selskap men er logget inn med et annet.
 
 ### Løsning
 
-**Edge function (`flighthub2-proxy/index.ts`) -- upload-route action:**
+**1. Edge function (`flighthub2-proxy/index.ts`)**
 
-1. Hent STS-token (allerede implementert, fungerer)
-2. Erstatt placeholder-opplastingen med korrekt **AWS Signature V4**-signering:
-   - Bruk `access_key_id` + `access_key_secret` fra STS-responsen
-   - Inkluder `x-amz-security-token` (eller `x-oss-security-token`) headeren
-   - Signer PUT-requesten manuelt med HMAC-SHA256 (implementert direkte i Deno uten ekstern SDK)
-   - Endpoint fra STS-responsen (f.eks. `https://oss-cn-hangzhou.aliyuncs.com`) brukes som host
-3. Etter vellykket opplasting: kall `finish-upload` (allerede implementert)
+- **Arv fra morselskap**: Etter å ha hentet brukerens company, sjekk om `flighthub2_token` er null. Hvis ja, slå opp `parent_id` og hent token fra morselskapet (ett nivå opp).
+- **Robust `list-projects`**: Les respons som tekst først, sjekk content-type og status, og parse JSON kun hvis det er JSON. Logg status og responskropp for debugging.
+- **Bedre feilmeldinger**: Vis DJI-status og melding i responsen tilbake til klienten.
 
-**Implementasjonsdetaljer:**
-- Implementer en minimal AWS SigV4-signeringsfunksjon i edge-funksjonen (ca. 60 linjer)
-- Funksjonen bruker Denos innebygde `crypto.subtle` for HMAC-SHA256
-- Støtter OSS/MinIO som er S3-kompatibel
-- Legg til bedre feillogging for å vise STS-respons og opplastingsresultat
+**2. Send-dialogen (`FlightHub2SendDialog.tsx`)**
 
-**Annotasjoner (SORA-korridor):**
-- `create-annotation` bruker allerede en direkte API-kall uten filopplasting -- denne bør fungere som den er
+- Vis den faktiske feilmeldingen fra API-et (f.eks. "unauthorized") i toast i stedet for bare "Kunne ikke hente prosjekter".
+
+### Teknisk endring
+
+**`supabase/functions/flighthub2-proxy/index.ts`**:
+```text
+1. Etter company-oppslag, hvis flighthub2_token er null:
+   → Hent parent_id fra companies-tabellen
+   → Hvis parent_id finnes, hent token fra morselskapet
+2. list-projects: erstatt res.json() med res.text() + JSON.parse + feilhåndtering (samme mønster som test-connection)
+3. Legg til console.log for list-projects status og respons
+```
+
+**`src/components/FlightHub2SendDialog.tsx`**:
+```text
+- I fetchProjects: vis data?.message eller data?.error i toast
+```
 
 ### Filer som endres
-1. `supabase/functions/flighthub2-proxy/index.ts` -- erstatt placeholder-signering med korrekt AWS SigV4
-
-### Ingen databaseendringer eller nye secrets nødvendig
-STS-tokener leveres av DJI API-et. Din S3-bøtte brukes ikke i denne flyten.
+1. `supabase/functions/flighthub2-proxy/index.ts` -- parent company fallback + robust list-projects
+2. `src/components/FlightHub2SendDialog.tsx` -- bedre feilvisning
 
