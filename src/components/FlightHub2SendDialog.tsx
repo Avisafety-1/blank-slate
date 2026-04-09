@@ -58,7 +58,7 @@ export const FlightHub2SendDialog = ({
           setSelectedProject(data.data.list[0].uuid);
         }
       } else {
-        toast.error(data?.message || "Kunne ikke hente prosjekter fra FlightHub 2");
+        toast.error(data?.error || data?.message || "Kunne ikke hente prosjekter fra FlightHub 2");
       }
     } catch (err: any) {
       toast.error(err?.message || "Feil ved tilkobling til FlightHub 2");

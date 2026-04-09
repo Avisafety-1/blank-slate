@@ -123,15 +123,30 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "No company" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get FlightHub 2 config from company
+    // Get FlightHub 2 config from company (with parent fallback)
     const { data: company } = await supabase
       .from("companies")
-      .select("flighthub2_token, flighthub2_base_url")
+      .select("flighthub2_token, flighthub2_base_url, parent_company_id")
       .eq("id", profile.company_id)
       .single();
 
-    const fh2Token = (company as any)?.flighthub2_token;
-    const fh2BaseUrl = (company as any)?.flighthub2_base_url;
+    let fh2Token = (company as any)?.flighthub2_token;
+    let fh2BaseUrl = (company as any)?.flighthub2_base_url;
+
+    // Fallback to parent company if token is missing
+    if (!fh2Token && (company as any)?.parent_company_id) {
+      console.log("No FH2 token on company, checking parent:", (company as any).parent_company_id);
+      const { data: parent } = await supabase
+        .from("companies")
+        .select("flighthub2_token, flighthub2_base_url")
+        .eq("id", (company as any).parent_company_id)
+        .single();
+      if ((parent as any)?.flighthub2_token) {
+        fh2Token = (parent as any).flighthub2_token;
+        fh2BaseUrl = fh2BaseUrl || (parent as any).flighthub2_base_url;
+        console.log("Using FH2 token from parent company");
+      }
+    }
 
     if (!fh2Token) {
       return new Response(JSON.stringify({ error: "FlightHub 2 er ikke konfigurert for dette selskapet. Legg inn organisasjonsnøkkel under Admin → Mitt selskap." }), {
@@ -140,7 +155,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!fh2BaseUrl) {
-      return new Response(JSON.stringify({ error: "FlightHub 2 base URL er ikke konfigurert. Legg inn server-adressen under Admin → Mitt selskap (f.eks. https://fh.dji.com eller din on-premises server)." }), {
+      return new Response(JSON.stringify({ error: "FlightHub 2 base URL er ikke konfigurert. Legg inn server-adressen under Admin → Mitt selskap." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -213,11 +228,40 @@ Deno.serve(async (req: Request) => {
 
     // ─── Action: list-projects ───
     if (action === "list-projects") {
-      const res = await safeFetch(`${fh2BaseUrl}/openapi/v0.1/project?page=1&page_size=100&usage=simple`, {
+      const listUrl = `${fh2BaseUrl}/openapi/v0.1/project?page=1&page_size=100&usage=simple`;
+      const res = await safeFetch(listUrl, {
         method: "GET",
         headers: commonHeaders,
       });
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      const bodyText = await res.text();
+      console.log("list-projects status:", res.status, "content-type:", contentType, "body:", bodyText.substring(0, 300));
+
+      if (!res.ok) {
+        return new Response(JSON.stringify({
+          error: `FlightHub 2 returnerte ${res.status}: ${bodyText.substring(0, 200)}`,
+          code: -1,
+          _status: res.status,
+        }), {
+          status: 200, // Return 200 so client can parse
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(bodyText);
+      } catch {
+        return new Response(JSON.stringify({
+          error: `Uventet respons fra FlightHub 2 (ikke JSON). Content-Type: ${contentType}`,
+          code: -1,
+          _body_preview: bodyText.substring(0, 200),
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
