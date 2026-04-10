@@ -1003,12 +1003,18 @@ export const ChildCompaniesSection = () => {
                     type={fh2ShowToken ? "text" : "password"}
                     value={fh2Token}
                     onChange={(e) => setFh2Token(e.target.value)}
+                    onFocus={() => { if (fh2Token === FH2_MASK) setFh2Token(""); }}
                     placeholder="Lim inn FlightHub Sync-nøkkel..."
                     className="h-8 text-sm font-mono"
                   />
                   <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
                     {fh2ShowToken ? "Skjul" : "Vis"}
                   </Button>
+                  {fh2Token === FH2_MASK && (
+                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2Token("")}>
+                      <Pencil className="h-3 w-3 mr-1" /> Endre
+                    </Button>
+                  )}
                 </div>
                 <p className="text-[10px] text-muted-foreground">
                   Bruk nøkkelen fra FlightHub 2 → Organisasjonsinnstillinger → FlightHub Sync → Organisasjonsnøkkel.
