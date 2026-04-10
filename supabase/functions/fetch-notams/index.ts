@@ -102,9 +102,12 @@ function parseRssItem(title: string, description: string, guid: string) {
   // Extract location from Q-line
   const location = qline ? qline.substring(0, 4) : null;
 
-  // Extract Q-code
+  // Extract Q-code and scope from Q-line segments
+  // Format: FIR/Qcode/Traffic/Purpose/Scope/Lower/Upper/Coords
+  const qlineSegments = qline?.split("/") ?? [];
   const qcodeMatch = qline?.match(/\/(Q[A-Z]+)\//);
   const qcode = qcodeMatch ? qcodeMatch[1] : null;
+  const scope = qlineSegments.length >= 5 ? qlineSegments[4] : null;
 
   // Parse center from Q-line
   let centerLat: number | null = null;
@@ -155,8 +158,9 @@ function parseRssItem(title: string, description: string, guid: string) {
   const parsedPolygon = parseNotamCoordinates(notamText);
   
   // If no polygon but we have center+radius, create circle
+  // Skip circle for aerodrome (scope "A") NOTAMs — show as pin instead
   let geometryGeojson = parsedPolygon;
-  if (!geometryGeojson && centerLat && centerLng && radiusNm && radiusNm > 0) {
+  if (!geometryGeojson && centerLat && centerLng && radiusNm && radiusNm > 0 && scope !== "A") {
     geometryGeojson = createCirclePolygon(centerLat, centerLng, radiusNm);
   }
 
@@ -168,7 +172,7 @@ function parseRssItem(title: string, description: string, guid: string) {
     location,
     country_code: "NOR",
     qcode,
-    scope: null,
+    scope,
     traffic: null,
     purpose: null,
     notam_type: null,
