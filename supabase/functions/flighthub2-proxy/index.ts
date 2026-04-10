@@ -913,6 +913,18 @@ Deno.serve(async (req: Request) => {
       const testSn = params.deviceSn || "1581F8DBW255D00A2M0U";
       const results: Record<string, any> = {};
 
+      // 0. GET /system_status
+      try {
+        const url = `${fh2BaseUrl}/openapi/v0.1/system_status`;
+        const h = makeHeaders(NEW_API, false);
+        console.log(`[test-device-api] GET ${url}`);
+        const res = await safeFetch(url, { method: "GET", headers: h });
+        const text = await res.text();
+        results.system_status = { status: res.status, body: text.substring(0, 3000) };
+      } catch (err: any) {
+        results.system_status = { error: err.message };
+      }
+
       // 1. GET /device (org-level device list)
       try {
         const url = `${fh2BaseUrl}/openapi/v0.1/device`;
