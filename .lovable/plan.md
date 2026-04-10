@@ -1,26 +1,46 @@
 
 
-## Fix: Redeploy og verifiser FH2 list-devices
+## Plan: Test DJI HMS-endepunkt med kjent SN og fiks list-devices
 
-### Rotårsak
-Edge-funksjonen har sannsynligvis ikke blitt deployet etter de siste endringene med `flattenDjiDeviceList` og diagnostikk-koden. Loggene viser null `list-devices`-kall, noe som betyr enten at gammel kode kjører (uten diagnostikk-loggene), eller at kallet feiler stille.
+### Hva vi vet
+- **Loggene viser at `list-devices` aldri har blitt kalt** - kun `list-projects` og `upload-route` finnes i loggene
+- Token og base URL fungerer (upload-route og list-projects virker med `openapi-v0.1`)
+- Org UUID er `4593f426-e454-4ba5-8246-92b109bb0a12`
+- Kjent drone SN: `1581F8DBW255D00A2M0U`
+- Du er på auth-siden i preview, så jeg kan ikke teste via curl akkurat nå
+
+### Mulig årsak til at list-devices aldri kalles
+Siden loggene er helt tomme for `list-devices`, kan det hende at:
+1. Edge-funksjonen krasjer på body-parsing før den når `list-devices`-logikken
+2. Eller at UI-et ikke sender kallet riktig etter redeployen
 
 ### Plan
 
-1. **Redeploy `flighthub2-proxy`**
-   - Deploye den nåværende koden som allerede har korrekt flatten-logikk og diagnostikk
+**1. Legge til en ny debug-action `test-device-api`**
 
-2. **Teste direkte via curl**
-   - Etter deploy, kalle `list-devices` via `curl_edge_functions` med brukerens auth-token
-   - Inspisere rå-responsen fra DJI (diagnostikk-feltene: `raw_body_preview`, `raw_list_sample`, `raw_list_length`)
+En enkel action i `flighthub2-proxy` som tester tre DJI-endepunkter på én gang og returnerer rå-resultatene:
+- `GET /openapi/v0.1/device` (org-enheter)
+- `GET /openapi/v0.1/device/hms?device_sn_list=1581F8DBW255D00A2M0U` (HMS)
+- `GET /openapi/v0.1/device/1581F8DBW255D00A2M0U/state` (enhetsstatus)
 
-3. **Basert på resultatet:**
-   - Hvis DJI returnerer `code: 0, data.list: []` (tom liste): problemet er på DJI-siden (rettigheter/nøkkel)
-   - Hvis DJI returnerer enheter men de filtreres bort: fikse mapping
-   - Hvis funksjonen krasjer: fikse feil i koden
+Returnerer rå HTTP-status + body for alle tre, uten noen normalisering.
 
-### Tekniske detaljer
-- Fil: `supabase/functions/flighthub2-proxy/index.ts` (ingen kodeendring, kun deploy)
-- Diagnostikk-koden er allerede på plass i koden -- den returnerer `raw_body_preview`, `raw_list_sample`, `raw_data_keys` etc.
-- UI-et i `FH2DevicesSection.tsx` har allerede "Vis rå-data"-knapp som viser `debugData`
+**2. Legge til en "Test enhets-API" knapp i `FH2DevicesSection.tsx`**
+
+En ny knapp ved siden av "Hent enheter" som kaller `test-device-api` og viser rå-responsen direkte. Ingen parsing, ingen normalisering - bare rå JSON fra DJI.
+
+**3. Redeploy og test**
+
+Etter deploy: trykk "Test enhets-API", og vi får svart-hvitt svar på:
+- Om `/device` returnerer tom liste eller data
+- Om HMS virker med den kjente SN-en
+- Om device state virker
+
+### Teknisk
+- Filer: `supabase/functions/flighthub2-proxy/index.ts`, `src/components/admin/FH2DevicesSection.tsx`
+- Ingen databaseendringer
+- Debug-actionen kan fjernes etterpå
+
+### Forventet resultat
+Vi ser nøyaktig hva DJI returnerer for hvert endepunkt og kan endelig avgjøre om det er rettighets- eller mappingproblem.
 
