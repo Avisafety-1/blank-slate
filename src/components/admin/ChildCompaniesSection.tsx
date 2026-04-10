@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invalidateCompanySettingsCache } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,6 +85,7 @@ export const ChildCompaniesSection = () => {
 
   // FlightHub 2 state
   const [fh2Token, setFh2Token] = useState("");
+  const fh2Editing = useRef(false);
   const [fh2BaseUrl, setFh2BaseUrl] = useState("");
   const [savingFh2, setSavingFh2] = useState(false);
   const [testingFh2, setTestingFh2] = useState(false);
@@ -285,7 +286,7 @@ export const ChildCompaniesSection = () => {
         .maybeSingle();
 
       const hasOwnCred = !!cred;
-      if (hasOwnCred) setFh2Token("••••••••");
+      if (hasOwnCred && !fh2Editing.current) setFh2Token("••••••••");
 
       // Always try test-connection — edge function handles parent fallback
       try {
@@ -490,6 +491,7 @@ export const ChildCompaniesSection = () => {
         await (supabase as any).from("company_fh2_credentials").delete().eq("company_id", companyId);
       }
       setFh2Token(cleanToken ? FH2_MASK : "");
+      fh2Editing.current = false;
       toast.success(cleanToken ? "FlightHub 2-nøkkel lagret (kryptert)" : "FlightHub 2-nøkkel fjernet");
     } catch (err: any) {
       toast.error(err?.message || "Kunne ikke lagre");
@@ -547,6 +549,7 @@ export const ChildCompaniesSection = () => {
         setFh2Projects(projectNames);
         setFh2Connected(true);
         setFh2Token(FH2_MASK);
+        fh2Editing.current = false;
         toast.success(`Gratulerer! Du er tilkoblet din FH2-konto med ${data.project_count || 0} prosjekter`);
       } else if (data?.server_ok && !data?.token_ok) {
         toast.error("Server svarer, men nøkkelen ble avvist. Sjekk at nøkkelen er korrekt og ikke utløpt.", { duration: 10000 });
@@ -1004,7 +1007,7 @@ export const ChildCompaniesSection = () => {
                     type={fh2ShowToken ? "text" : "password"}
                     value={fh2Token}
                     onChange={(e) => setFh2Token(e.target.value)}
-                    onFocus={() => { if (fh2Token === FH2_MASK) setFh2Token(""); }}
+                    onFocus={() => { if (fh2Token === FH2_MASK) { fh2Editing.current = true; setFh2Token(""); } }}
                     placeholder="Lim inn FlightHub Sync-nøkkel..."
                     className="h-8 text-sm font-mono"
                   />
@@ -1012,7 +1015,7 @@ export const ChildCompaniesSection = () => {
                     {fh2ShowToken ? "Skjul" : "Vis"}
                   </Button>
                   {fh2Token === FH2_MASK && (
-                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2Token("")}>
+                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => { fh2Editing.current = true; setFh2Token(""); }}>
                       <Pencil className="h-3 w-3 mr-1" /> Endre
                     </Button>
                   )}
