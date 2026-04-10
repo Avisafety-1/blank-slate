@@ -949,6 +949,37 @@ Deno.serve(async (req: Request) => {
         results.device_state = { error: err.message };
       }
 
+      // 4. GET /project/device (project-level, using first project UUID)
+      try {
+        // First fetch the project list
+        const projUrl = `${fh2BaseUrl}/openapi/v0.1/project`;
+        const projH = makeHeaders(NEW_API, false);
+        console.log(`[test-device-api] GET ${projUrl} (to find first project UUID)`);
+        const projRes = await safeFetch(projUrl, { method: "GET", headers: projH });
+        const projData = await projRes.json();
+        const projects = projData?.data?.list || projData?.data || [];
+        const firstProject = Array.isArray(projects) ? projects[0] : null;
+        const firstUuid = firstProject?.project_uuid || firstProject?.uuid || firstProject?.id;
+
+        if (firstUuid) {
+          const url = `${fh2BaseUrl}/openapi/v0.1/project/device`;
+          const h = makeHeaders(NEW_API, true, firstUuid);
+          console.log(`[test-device-api] GET ${url} with X-Project-Uuid: ${firstUuid}`);
+          const res = await safeFetch(url, { method: "GET", headers: h });
+          const text = await res.text();
+          results.project_device = {
+            status: res.status,
+            project_uuid: firstUuid,
+            project_name: firstProject?.name || firstProject?.project_name,
+            body: text.substring(0, 3000),
+          };
+        } else {
+          results.project_device = { error: "No projects found", raw_projects: JSON.stringify(projData).substring(0, 500) };
+        }
+      } catch (err: any) {
+        results.project_device = { error: err.message };
+      }
+
       return new Response(JSON.stringify({ ok: true, testSn, results }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
