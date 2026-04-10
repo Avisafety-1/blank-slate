@@ -183,7 +183,7 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   };
 
   const getModelName = (device: FH2Device) =>
-    device.device_model?.model || device.model_name || device.device_name || "Ukjent";
+    device.device_model?.model || device.device_model?.name || device.model_name || device.device_name || "Ukjent";
 
   const isOnline = (device: FH2Device) => device.online_status === 1;
 
