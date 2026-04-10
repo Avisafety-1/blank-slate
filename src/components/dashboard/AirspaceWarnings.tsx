@@ -119,11 +119,13 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
               message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
             }
           } else if (r.z_type === 'NOTAM') {
+            // z_name is now "A1234/26: UNMANNED ACFT (BLOS) WILL ..."
+            const cleanName = (r.z_name || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
             if (r.route_inside) {
-              message = `Aktiv NOTAM i operasjonsområdet: «${r.z_name}». Sjekk restriksjoner.`;
+              message = `Aktiv NOTAM i operasjonsområdet: ${cleanName}. Sjekk restriksjoner.`;
             } else {
               const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Aktiv NOTAM ${distStr} unna: «${r.z_name}».`;
+              message = `Aktiv NOTAM ${distStr} unna: ${cleanName}`;
             }
           } else if (r.z_type === 'NATURVERN') {
             if (r.route_inside) {
