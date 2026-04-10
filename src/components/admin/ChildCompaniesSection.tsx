@@ -546,6 +546,7 @@ export const ChildCompaniesSection = () => {
         const projectNames: string[] = data.project_names || [];
         setFh2Projects(projectNames);
         setFh2Connected(true);
+        setFh2Token(FH2_MASK);
         toast.success(`Gratulerer! Du er tilkoblet din FH2-konto med ${data.project_count || 0} prosjekter`);
       } else if (data?.server_ok && !data?.token_ok) {
         toast.error("Server svarer, men nøkkelen ble avvist. Sjekk at nøkkelen er korrekt og ikke utløpt.", { duration: 10000 });
