@@ -521,19 +521,10 @@ export const ChildCompaniesSection = () => {
   };
 
   const handleTestFh2 = async () => {
-    if (!fh2Token) { toast.error("Fyll inn organisasjonsnøkkel først"); return; }
-    const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
     setTestingFh2(true);
     setFh2Connected(false);
     setFh2Projects([]);
     try {
-      // Only save if it's a new key (not the masked placeholder)
-      if (cleanToken !== FH2_MASK) {
-        await supabase.functions.invoke("flighthub2-proxy", {
-          body: { action: "save-token", token: cleanToken },
-        });
-      }
-
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
         body: { action: "test-connection" },
       });
@@ -551,8 +542,6 @@ export const ChildCompaniesSection = () => {
         const projectNames: string[] = data.project_names || [];
         setFh2Projects(projectNames);
         setFh2Connected(true);
-        setFh2Token(FH2_MASK);
-        fh2Editing.current = false;
         toast.success(`Gratulerer! Du er tilkoblet din FH2-konto med ${data.project_count || 0} prosjekter`);
       } else if (data?.server_ok && !data?.token_ok) {
         toast.error("Server svarer, men nøkkelen ble avvist. Sjekk at nøkkelen er korrekt og ikke utløpt.", { duration: 10000 });
@@ -1029,9 +1018,11 @@ export const ChildCompaniesSection = () => {
                     {savingFh2 ? "Lagrer..." : "Lagre"}
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
-                  {testingFh2 ? "Tester..." : "Test tilkobling"}
-                </Button>
+                {fh2Token === FH2_MASK && (
+                  <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2} className="h-8">
+                    {testingFh2 ? "Tester..." : "Test tilkobling"}
+                  </Button>
+                )}
                 {fh2Connected && (
                   <Button variant="destructive" size="sm" onClick={handleDeleteFh2} disabled={savingFh2} className="h-8">
                     <Trash2 className="h-3.5 w-3.5 mr-1" /> Slett
