@@ -28,6 +28,7 @@ import { CompanyManagementSection } from "@/components/admin/CompanyManagementSe
 import { CustomerManagementSection } from "@/components/admin/CustomerManagementSection";
 import { ChildCompaniesSection } from "@/components/admin/ChildCompaniesSection";
 import { CompanySoraConfigSection } from "@/components/admin/CompanySoraConfigSection";
+import { NotamRssFeedsSection } from "@/components/admin/NotamRssFeedsSection";
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
 import { BulkEmailSenderWithHistory } from "@/components/admin/BulkEmailSender";
