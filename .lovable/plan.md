@@ -1,55 +1,26 @@
 
-Jeg kan ikke se råresponsen direkte akkurat nå med dagens verktøy fordi:
 
-- `flighthub2-proxy` krever auth, og direkte kall fra testverktøyet returnerer `401 Unauthorized`
-- eksisterende edge-logs viser bare `test-connection` / prosjektkall, ikke råresponsen fra `list-devices`
-- UI-et viser kun “Ingen enheter funnet”, men eksponerer ikke `data`, `diagnostics` eller rå `orgText`
+## Fix: Redeploy og verifiser FH2 list-devices
 
-Plan for å få ut rå-data på en trygg og rask måte:
+### Rotårsak
+Edge-funksjonen har sannsynligvis ikke blitt deployet etter de siste endringene med `flattenDjiDeviceList` og diagnostikk-koden. Loggene viser null `list-devices`-kall, noe som betyr enten at gammel kode kjører (uten diagnostikk-loggene), eller at kallet feiler stille.
 
-1. Oppdatere `flighthub2-proxy`
-- I `list-devices` lagre og returnere ekstra debugfelt midlertidig:
-  - `raw_status`
-  - `raw_code`
-  - `raw_message`
-  - `raw_body_preview` (første del av DJI-responsen)
-  - `raw_list_sample` (første 1–3 elementer fra `data.list`)
-  - `raw_shape` (om elementene er `{ gateway, drone }`, flate objekter, eller noe annet)
-- Beholde normalisering som i dag, men gjøre det tydelig hva som faktisk kom fra DJI før filtrering.
+### Plan
 
-2. Oppdatere `FH2DevicesSection.tsx`
-- Legge inn en liten debugvisning under “Hent enheter”:
-  - “Vis rå-data”
-  - viser `diagnostics`
-  - viser `raw_body_preview`
-  - viser første element(er) av responsen formatert i `<pre>`
-- Hvis listen blir tom, vise hvorfor:
-  - “DJI returnerte 0 enheter”
-  - eller “DJI returnerte enheter, men de ble ikke mappet riktig”
+1. **Redeploy `flighthub2-proxy`**
+   - Deploye den nåværende koden som allerede har korrekt flatten-logikk og diagnostikk
 
-3. Gjøre parsingen enda mer robust
-- Siden DJI-dokumentasjonen viser `list[] -> { gateway, drone }`, støtte eksplisitt:
-  - kun `gateway`
-  - kun `drone`
-  - begge
-  - allerede flate objekter
-- Ikke filtrere bort poster før vi har logget hva som faktisk mangler (`sn`, `callsign`, `device_model`, osv.)
+2. **Teste direkte via curl**
+   - Etter deploy, kalle `list-devices` via `curl_edge_functions` med brukerens auth-token
+   - Inspisere rå-responsen fra DJI (diagnostikk-feltene: `raw_body_preview`, `raw_list_sample`, `raw_list_length`)
 
-4. Verifisering
-- Åpne admin > Tensio > FH2
-- Klikke “Hent enheter”
-- Bekrefte at råresponsen vises i UI
-- Sammenligne rå-data med normalisert liste
-- Deretter rette siste mapping hvis DJI returnerer en litt annen struktur enn dokumentasjonen
+3. **Basert på resultatet:**
+   - Hvis DJI returnerer `code: 0, data.list: []` (tom liste): problemet er på DJI-siden (rettigheter/nøkkel)
+   - Hvis DJI returnerer enheter men de filtreres bort: fikse mapping
+   - Hvis funksjonen krasjer: fikse feil i koden
 
-Forventet resultat
-- Vi får se nøyaktig hva `/openapi/v0.1/device` returnerer for Tensio
-- Vi kan fastslå om problemet er:
-  - tom respons fra DJI
-  - feil respons-shape
-  - feil mapping i edge-funksjonen
-  - filtrering i UI-et
+### Tekniske detaljer
+- Fil: `supabase/functions/flighthub2-proxy/index.ts` (ingen kodeendring, kun deploy)
+- Diagnostikk-koden er allerede på plass i koden -- den returnerer `raw_body_preview`, `raw_list_sample`, `raw_data_keys` etc.
+- UI-et i `FH2DevicesSection.tsx` har allerede "Vis rå-data"-knapp som viser `debugData`
 
-Teknisk berørte filer
-- `supabase/functions/flighthub2-proxy/index.ts`
-- `src/components/admin/FH2DevicesSection.tsx`
