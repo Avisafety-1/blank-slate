@@ -1380,6 +1380,13 @@ const Admin = () => {
             </TabsContent>
           )}
 
+          {isSuperAdmin && (
+            <TabsContent value="notam-feeds" className="mt-4 sm:mt-8">
+              <NotamRssFeedsSection />
+            </TabsContent>
+          )}
+
+
           {!isChildCompany && (
             <TabsContent value="training" className="mt-4 sm:mt-8">
               {isSuperAdmin ? (
