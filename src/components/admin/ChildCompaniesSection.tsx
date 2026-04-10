@@ -1032,26 +1032,28 @@ export const ChildCompaniesSection = () => {
               </div>
 
               {fh2Connected && (
-                <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 space-y-2">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                    ✅ {fh2Inherited
-                      ? `Tilkoblet via morselskapet med ${fh2Projects.length} prosjekter`
-                      : `Gratulerer! Du er tilkoblet din FH2-konto med ${fh2Projects.length} prosjekter`}
-                  </p>
-                  {fh2Projects.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {fh2Projects.map((name, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {name}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 space-y-2">
+                    <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                      ✅ {fh2Inherited
+                        ? `Tilkoblet via morselskapet med ${fh2Projects.length} prosjekter`
+                        : `Gratulerer! Du er tilkoblet din FH2-konto med ${fh2Projects.length} prosjekter`}
+                    </p>
+                    {fh2Projects.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {fh2Projects.map((name, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* FH2 Devices Section */}
+                  <FH2DevicesSection fh2Projects={fh2Projects} />
                 </div>
               )}
-
-              {/* FH2 Devices Section */}
-              <FH2DevicesSection fh2Projects={fh2Projects} />
             </div>
           </CollapsibleContent>
         </GlassCard>
