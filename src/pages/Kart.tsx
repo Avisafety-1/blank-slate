@@ -2,7 +2,7 @@ import { OpenAIPMap, RouteData, RoutePoint, SoraSettings } from "@/components/Op
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { bufferPolyline, bufferPolygon, computeConvexHull } from "@/lib/soraGeometry";
+// soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -80,27 +80,7 @@ export default function KartPage() {
   const [hasFH2Token, setHasFH2Token] = useState(false);
   const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
 
-  // Compute SORA buffer coordinates for FlightHub 2 dialog
-  const soraBufferCoords = useMemo(() => {
-    if (!soraSettings.enabled || currentRoute.coordinates.length < 2) return undefined;
-    const validCoords = currentRoute.coordinates.filter(
-      p => p && isFinite(p.lat) && isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
-    );
-    if (validCoords.length < 2) return undefined;
-    const totalBuffer = (soraSettings.flightGeographyDistance || 0) + soraSettings.contingencyDistance + soraSettings.groundRiskDistance;
-    if (totalBuffer <= 0) return undefined;
-    const refPoint = validCoords[0];
-    const avgLat = validCoords.reduce((s, p) => s + p.lat, 0) / validCoords.length;
-    const mode = soraSettings.bufferMode ?? "corridor";
-    const isClosedRoute = validCoords.length >= 3 &&
-      validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
-      validCoords[0].lng === validCoords[validCoords.length - 1].lng;
-    if (mode === "convexHull" || isClosedRoute) {
-      const hull = computeConvexHull(validCoords);
-      return bufferPolygon(hull, totalBuffer, refPoint, avgLat);
-    }
-    return bufferPolyline(validCoords, totalBuffer, 16, refPoint, avgLat);
-  }, [currentRoute.coordinates, soraSettings]);
+  // SORA buffer zones are now computed inside FlightHub2SendDialog
 
   useEffect(() => {
     if (!loading && !user) {
@@ -637,7 +617,6 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
         onOpenChange={setFh2DialogOpen}
         route={currentRoute}
         soraSettings={soraSettings.enabled ? soraSettings : undefined}
-        soraBufferCoordinates={soraBufferCoords}
         droneModelName={soraDroneModel}
         pilotPosition={pilotPosition}
       />

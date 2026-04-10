@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,13 +10,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RouteData, SoraSettings } from "@/types/map";
 import { generateDJIKMZ, type DJIExportOptions, DJI_DRONE_MODELS, matchDjiDroneModel } from "@/lib/kmzExport";
+import { bufferPolyline, bufferPolygon, computeConvexHull } from "@/lib/soraGeometry";
 
 interface FlightHub2SendDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   route: RouteData;
   soraSettings?: SoraSettings;
-  soraBufferCoordinates?: Array<{ lat: number; lng: number }>;
   droneModelName?: string;
   pilotPosition?: { lat: number; lng: number };
   initialRouteName?: string;
@@ -27,7 +27,12 @@ interface FH2Project {
   name: string;
 }
 
-// All selectable DJI models for manual override
+const SORA_ZONES = [
+  { key: "flightGeo", label: "Flight Geography", color: "#3B82F6" },
+  { key: "contingency", label: "Contingency Volume", color: "#F59E0B" },
+  { key: "groundRisk", label: "Ground Risk Buffer", color: "#EF4444" },
+] as const;
+
 const DJI_MODEL_OPTIONS = Object.entries(DJI_DRONE_MODELS).map(([key, val]) => ({
   key,
   label: val.label,
@@ -40,7 +45,6 @@ export const FlightHub2SendDialog = ({
   onOpenChange,
   route,
   soraSettings,
-  soraBufferCoordinates,
   droneModelName,
   pilotPosition,
   initialRouteName,
@@ -53,22 +57,59 @@ export const FlightHub2SendDialog = ({
   const [loading, setLoading] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
 
-  // Configurable DJI parameters
   const [takeOffHeight, setTakeOffHeight] = useState(20);
   const [heightMode, setHeightMode] = useState<'relativeToStartPoint' | 'EGM96'>('relativeToStartPoint');
   const [speed, setSpeed] = useState(5);
   const [turnMode, setTurnMode] = useState<'toPointAndStopWithDiscontinuityCurvature' | 'toPointAndPassWithContinuityCurvature'>('toPointAndStopWithDiscontinuityCurvature');
 
-  // DJI drone model selection
   const autoMatch = droneModelName ? matchDjiDroneModel(droneModelName) : undefined;
   const [manualDjiModel, setManualDjiModel] = useState<string>("");
 
-  // Resolve the active DJI model
   const activeDjiModel = manualDjiModel
     ? DJI_MODEL_OPTIONS.find(m => m.key === manualDjiModel)
     : autoMatch
       ? { key: '', label: autoMatch.label, enumValue: autoMatch.enumValue, subEnumValue: autoMatch.subEnumValue }
       : undefined;
+
+  // Compute three separate SORA buffer zones internally
+  const soraZones = useMemo(() => {
+    if (!soraSettings?.enabled || !route.coordinates?.length) return null;
+    const coords = route.coordinates.filter(
+      (p: any) => p && isFinite(p.lat) && isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
+    );
+    if (coords.length < 1) return null;
+
+    const refPoint = coords[0];
+    const avgLat = coords.reduce((s: number, p: any) => s + p.lat, 0) / coords.length;
+    const mode = soraSettings.bufferMode ?? "corridor";
+    const isClosedRoute = coords.length >= 3 &&
+      coords[0].lat === coords[coords.length - 1].lat &&
+      coords[0].lng === coords[coords.length - 1].lng;
+
+    const makeBuffer = (dist: number) => {
+      if (dist <= 0) return null;
+      if (mode === "convexHull" || isClosedRoute) {
+        const hull = computeConvexHull(coords);
+        return bufferPolygon(hull, dist, refPoint, avgLat);
+      }
+      return bufferPolyline(coords, dist, 16, refPoint, avgLat);
+    };
+
+    const fgDist = soraSettings.flightGeographyDistance;
+    const contDist = fgDist + soraSettings.contingencyDistance;
+    const grDist = contDist + soraSettings.groundRiskDistance;
+
+    const flightGeo = makeBuffer(fgDist);
+    const contingency = makeBuffer(contDist);
+    const groundRisk = makeBuffer(grDist);
+
+    const zones: Array<{ key: string; label: string; color: string; coords: Array<{ lat: number; lng: number }> }> = [];
+    if (flightGeo && flightGeo.length >= 3) zones.push({ ...SORA_ZONES[0], coords: flightGeo });
+    if (contingency && contingency.length >= 3) zones.push({ ...SORA_ZONES[1], coords: contingency });
+    if (groundRisk && groundRisk.length >= 3) zones.push({ ...SORA_ZONES[2], coords: groundRisk });
+
+    return zones.length > 0 ? zones : null;
+  }, [route.coordinates, soraSettings]);
 
   useEffect(() => {
     if (open) {
@@ -126,13 +167,12 @@ export const FlightHub2SendDialog = ({
     return btoa(binary);
   };
 
-  const buildSoraGeoJson = () => {
-    if (!soraBufferCoordinates || soraBufferCoordinates.length < 3) return null;
-    const coords = soraBufferCoordinates.map((c) => [c.lng, c.lat, 0]);
+  const buildZoneGeoJson = (zoneCoords: Array<{ lat: number; lng: number }>, color: string) => {
+    const coords = zoneCoords.map((c) => [c.lng, c.lat, 0]);
     if (coords.length > 0) coords.push(coords[0]);
     return {
       type: "Feature",
-      properties: { color: "#FF6B35", clampToGround: true },
+      properties: { color, clampToGround: true },
       geometry: { type: "Polygon", coordinates: [coords] },
     };
   };
@@ -141,7 +181,7 @@ export const FlightHub2SendDialog = ({
     if (!selectedProject) { toast.error("Velg et prosjekt"); return; }
     setLoading(true);
     let routeSuccess = false;
-    let annotationSuccess = false;
+    let annotationCount = 0;
 
     try {
       if (sendRoute && route.coordinates.length >= 2) {
@@ -162,29 +202,34 @@ export const FlightHub2SendDialog = ({
         }
       }
 
-      if (sendAnnotation && soraBufferCoordinates && soraBufferCoordinates.length >= 3) {
-        const geoJson = buildSoraGeoJson();
-        if (geoJson) {
+      if (sendAnnotation && soraZones) {
+        for (const zone of soraZones) {
+          const geoJson = buildZoneGeoJson(zone.coords, zone.color);
           const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
             body: {
               action: "create-annotation",
               projectUuid: selectedProject,
-              name: `${routeName} – SORA Buffer`,
-              desc: `SORA buffersone generert av Avisafe. Høyde: ${soraSettings?.flightAltitude || 120}m`,
+              name: `${routeName} – ${zone.label}`,
+              desc: `${zone.label} generert av Avisafe. Høyde: ${soraSettings?.flightAltitude || 120}m`,
               geoJson,
               annotationType: 2,
             },
           });
-          if (error) throw error;
-          if (data?.code === 0) annotationSuccess = true;
-          else toast.error(`Annotasjon: ${data?.message || "Feil"}`);
+          if (error) {
+            console.error(`[FH2] annotation error (${zone.label}):`, error);
+            toast.error(`Annotasjon (${zone.label}): ${error.message}`);
+          } else if (data?.code === 0) {
+            annotationCount++;
+          } else {
+            toast.error(`Annotasjon (${zone.label}): ${data?.message || "Feil"}`);
+          }
         }
       }
 
-      if (routeSuccess || annotationSuccess) {
+      if (routeSuccess || annotationCount > 0) {
         const parts = [];
         if (routeSuccess) parts.push("rutefil");
-        if (annotationSuccess) parts.push("SORA-sone");
+        if (annotationCount > 0) parts.push(`${annotationCount} SORA-soner`);
         toast.success(`Sendt til FlightHub 2: ${parts.join(" og ")}`);
         onOpenChange(false);
       }
@@ -195,7 +240,7 @@ export const FlightHub2SendDialog = ({
     }
   };
 
-  const hasAnnotation = soraBufferCoordinates && soraBufferCoordinates.length >= 3;
+  const hasAnnotation = !!soraZones;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,7 +256,6 @@ export const FlightHub2SendDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Project selector */}
           <div className="space-y-2">
             <Label>FlightHub 2-prosjekt</Label>
             {loadingProjects ? (
@@ -235,13 +279,11 @@ export const FlightHub2SendDialog = ({
             )}
           </div>
 
-          {/* Route name */}
           <div className="space-y-2">
             <Label>Navn på rute</Label>
             <Input value={routeName} onChange={(e) => setRouteName(e.target.value)} placeholder="Skriv inn navn..." />
           </div>
 
-          {/* DJI Drone Model */}
           <div className="space-y-2">
             <Label className="text-sm">DJI-dronemodell</Label>
             {autoMatch && !manualDjiModel ? (
@@ -299,41 +341,23 @@ export const FlightHub2SendDialog = ({
             )}
           </div>
 
-          {/* DJI Flight Parameters */}
           <div className="space-y-3 rounded-md border border-border p-3">
             <p className="text-sm font-medium text-foreground">Flyparametre</p>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Flyhastighet (m/s)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={15}
-                  value={speed}
-                  onChange={(e) => setSpeed(Math.max(1, Math.min(15, Number(e.target.value))))}
-                />
+                <Input type="number" min={1} max={15} value={speed} onChange={(e) => setSpeed(Math.max(1, Math.min(15, Number(e.target.value))))} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Takeoff-høyde (m)</Label>
-                <Input
-                  type="number"
-                  min={1.2}
-                  max={1500}
-                  step={0.1}
-                  value={takeOffHeight}
-                  onChange={(e) => setTakeOffHeight(Math.max(1.2, Math.min(1500, Number(e.target.value))))}
-                />
+                <Input type="number" min={1.2} max={1500} step={0.1} value={takeOffHeight} onChange={(e) => setTakeOffHeight(Math.max(1.2, Math.min(1500, Number(e.target.value))))} />
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Høydemodus</Label>
                 <Select value={heightMode} onValueChange={(v) => setHeightMode(v as any)}>
-                  <SelectTrigger className="text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="relativeToStartPoint">Relativ til startpunkt</SelectItem>
                     <SelectItem value="EGM96">EGM96 (havnivå)</SelectItem>
@@ -343,9 +367,7 @@ export const FlightHub2SendDialog = ({
               <div className="space-y-1">
                 <Label className="text-xs">Svingmodus</Label>
                 <Select value={turnMode} onValueChange={(v) => setTurnMode(v as any)}>
-                  <SelectTrigger className="text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="toPointAndStopWithDiscontinuityCurvature">Stopp i punkt</SelectItem>
                     <SelectItem value="toPointAndPassWithContinuityCurvature">Fly gjennom</SelectItem>
@@ -355,7 +377,6 @@ export const FlightHub2SendDialog = ({
             </div>
           </div>
 
-          {/* Checkboxes */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Checkbox id="send-route" checked={sendRoute} onCheckedChange={(c) => setSendRoute(!!c)} disabled={route.coordinates.length < 2} />
@@ -364,7 +385,8 @@ export const FlightHub2SendDialog = ({
             <div className="flex items-center gap-2">
               <Checkbox id="send-annotation" checked={sendAnnotation && !!hasAnnotation} onCheckedChange={(c) => setSendAnnotation(!!c)} disabled={!hasAnnotation} />
               <Label htmlFor="send-annotation" className="text-sm cursor-pointer">
-                Send SORA-korridor som kartannotasjon
+                Send SORA-soner som kartannotasjoner
+                {hasAnnotation && <span className="text-muted-foreground ml-1">({soraZones!.length} soner)</span>}
                 {!hasAnnotation && <span className="text-muted-foreground ml-1">(ikke tilgjengelig)</span>}
               </Label>
             </div>
