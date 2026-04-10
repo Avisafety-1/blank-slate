@@ -66,6 +66,8 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [devices, setDevices] = useState<FH2Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [debugData, setDebugData] = useState<any>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   // Device detail
   const [detailDevice, setDetailDevice] = useState<FH2Device | null>(null);
@@ -83,11 +85,16 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
 
   const fetchDevices = async () => {
     setLoading(true);
+    setDebugData(null);
     try {
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
         body: { action: "list-devices" },
       });
       if (error) throw error;
+
+      // Always save full response for debug
+      setDebugData(data);
+
       if (data?.ok === false) {
         setDevices([]);
         setLoaded(true);
@@ -244,6 +251,20 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
 
       {loaded && devices.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4">Ingen enheter funnet.</p>
+      )}
+
+      {/* Debug raw data panel */}
+      {debugData && (
+        <div className="space-y-1">
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => setShowDebug(!showDebug)}>
+            {showDebug ? "Skjul" : "Vis"} rå-data
+          </Button>
+          {showDebug && (
+            <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-60 whitespace-pre-wrap break-all">
+              {JSON.stringify(debugData, null, 2)}
+            </pre>
+          )}
+        </div>
       )}
 
       {/* Device Detail Dialog */}
