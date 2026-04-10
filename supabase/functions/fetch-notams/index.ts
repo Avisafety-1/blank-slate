@@ -48,8 +48,12 @@ function parseQlineCenter(qline: string): { lat: number; lng: number; radiusNm: 
   return { lat, lng, radiusNm };
 }
 
-/** Create a circle polygon from center+radius for NOTAMs without polygon coords */
-function createCirclePolygon(lat: number, lng: number, radiusNm: number): object {
+/** Create a circle polygon from center+radius for NOTAMs without polygon coords.
+ *  Returns null if radius exceeds MAX_CIRCLE_NM (FIR-level NOTAMs). */
+const MAX_CIRCLE_NM = 25;
+
+function createCirclePolygon(lat: number, lng: number, radiusNm: number): object | null {
+  if (radiusNm > MAX_CIRCLE_NM) return null; // Skip huge FIR-level circles
   const radiusKm = radiusNm * 1.852;
   const radiusDeg = radiusKm / 111.32;
   const points: [number, number][] = [];
@@ -226,9 +230,8 @@ Deno.serve(async (req) => {
     const now = new Date();
     let totalUpserted = 0;
     let totalSkipped = 0;
-    let rssSuccess = false;
 
-    // ── Step 1: Try RSS feeds from notam_rss_feeds table ──
+    // ── Step 1: Fetch RSS feeds from notam_rss_feeds table ──
     const { data: feeds } = await supabase
       .from("notam_rss_feeds")
       .select("id, name, feed_url")
@@ -273,86 +276,17 @@ Deno.serve(async (req) => {
           }
 
           feedResults.push({ name: feed.name, count: rows.length });
-          rssSuccess = true;
         } catch (feedErr) {
           console.error(`Error processing feed "${feed.name}":`, feedErr);
           feedResults.push({ name: feed.name, count: -1 });
         }
       }
       console.log("RSS feed results:", JSON.stringify(feedResults));
+    } else {
+      console.warn("No enabled RSS feeds configured in notam_rss_feeds table");
     }
 
-    // ── Step 2: Fallback to Laminar if no RSS feeds or all failed ──
-    let laminarUsed = false;
-    if (!rssSuccess) {
-      const LAMINAR_API_KEY = Deno.env.get("LAMINAR_API_KEY");
-      if (LAMINAR_API_KEY) {
-        console.log("RSS feeds unavailable, falling back to Laminar API...");
-        const apiUrl = `https://api.laminardata.aero/v2/countries/NOR/notams?user_key=${LAMINAR_API_KEY}`;
-        const response = await fetch(apiUrl, {
-          headers: { "Accept-Encoding": "gzip", Accept: "application/json" },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const features = data?.features;
-          if (Array.isArray(features)) {
-            laminarUsed = true;
-            for (let i = 0; i < features.length; i += 50) {
-              const batch = features.slice(i, i + 50);
-              const rows = [];
-              for (const feature of batch) {
-                const props = feature.properties || {};
-                const id = feature.id;
-                if (!id) { totalSkipped++; continue; }
-                const effectiveEnd = props.effectiveEnd ? new Date(props.effectiveEnd) : null;
-                const interpretation = props.effectiveEndInterpretation;
-                if (effectiveEnd && effectiveEnd < now && interpretation !== "PERM" && interpretation !== "EST") {
-                  totalSkipped++;
-                  continue;
-                }
-                const parsedPolygon = parseNotamCoordinates(props.text);
-                rows.push({
-                  notam_id: String(id),
-                  series: props.series || null,
-                  number: props.number ?? 0,
-                  year: props.year ?? 0,
-                  location: props.location || null,
-                  country_code: props.countryCode || null,
-                  qcode: props.qcode || null,
-                  scope: props.scope || null,
-                  traffic: props.traffic || null,
-                  purpose: props.purpose || null,
-                  notam_type: props.type || null,
-                  notam_text: props.text || null,
-                  effective_start: props.effectiveStart || null,
-                  effective_end: props.effectiveEnd || null,
-                  effective_end_interpretation: interpretation || null,
-                  minimum_fl: props.minimumFL ?? null,
-                  maximum_fl: props.maximumFL ?? null,
-                  center_lat: props.lat ?? null,
-                  center_lng: props.lon ?? null,
-                  geometry_geojson: parsedPolygon || feature.geometry || null,
-                  properties: props,
-                  fetched_at: now.toISOString(),
-                });
-              }
-              if (rows.length > 0) {
-                const { error } = await supabase.from("notams").upsert(rows, { onConflict: "notam_id" });
-                if (error) console.error("Laminar upsert error:", error);
-                else totalUpserted += rows.length;
-              }
-            }
-          }
-        } else {
-          console.error(`Laminar API error [${response.status}]:`, await response.text());
-        }
-      } else {
-        console.warn("No RSS feeds configured and LAMINAR_API_KEY not set");
-      }
-    }
-
-    // ── Step 3: Clean up expired NOTAMs ──
+    // ── Step 2: Clean up expired NOTAMs ──
     const { count: deleteCount } = await supabase
       .from("notams")
       .delete({ count: "exact" })
@@ -366,10 +300,10 @@ Deno.serve(async (req) => {
       .is("effective_end", null)
       .lt("fetched_at", staleDate.toISOString());
 
-    console.log(`NOTAMs: source=${rssSuccess ? "RSS" : laminarUsed ? "Laminar" : "none"}, upserted=${totalUpserted}, skipped=${totalSkipped}, deleted=${deleteCount || 0}`);
+    console.log(`NOTAMs: upserted=${totalUpserted}, skipped=${totalSkipped}, deleted=${deleteCount || 0}`);
 
     return new Response(JSON.stringify({
-      source: rssSuccess ? "RSS" : laminarUsed ? "Laminar" : "none",
+      source: "RSS",
       upserted: totalUpserted,
       skipped: totalSkipped,
       deleted: deleteCount || 0,
