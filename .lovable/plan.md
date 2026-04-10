@@ -1,40 +1,29 @@
 
 
-## Fix: Forenkle FH2-nøkkel UI-flyten
+## Fix: "Test tilkobling" should only appear after saving
 
-### Problemer i dag
-1. **"Test tilkobling" krever at man limer inn nøkkelen på nytt** — selv om den allerede er lagret i databasen. Grunnen: `handleTestFh2` sjekker `fh2Token === FH2_MASK` og avviser.
-2. **"Test" lagrer også nøkkelen** — forvirrende at test-knappen har en save-side-effect.
-3. **"Endre"-knappen er overflødig** — den gjør det samme som å klikke i feltet.
+### Problem
+When pasting a new FH2 key and clicking "Test" without saving first, the button hangs. The `handleTestFh2` saves the key then immediately calls `test-connection`, but the test may fail or hang because the DB hasn't fully processed the save.
 
-### Løsning
+### Solution
 
-**Fil: `src/components/admin/ChildCompaniesSection.tsx`**
+**File: `src/components/admin/ChildCompaniesSection.tsx`**
 
-1. **"Test tilkobling" skal fungere med lagret nøkkel**: Når `fh2Token === FH2_MASK`, kall `test-connection` direkte uten å først kalle `save-token` (nøkkelen er allerede i DB). Bare kall `save-token` + `test-connection` når brukeren har limt inn en ny nøkkel.
+1. **Hide "Test tilkobling" when the user has entered a new unsaved key** -- only show it when there's a saved key in DB (i.e. `fh2Token === FH2_MASK` or `fh2Connected` is true).
 
-2. **Fjern "Endre"-knappen**: Brukeren kan bare klikke i feltet for å redigere (onFocus-logikken finnes allerede).
+2. **After successful save (`handleSaveFh2`), auto-set `fh2Token` to `FH2_MASK`** so the Test button becomes visible.
 
-3. **Forenkle knappene til**:
-   - **"Lagre"** — kun synlig når brukeren har endret nøkkelen (dvs. `fh2Token !== FH2_MASK` og `fh2Token !== ""`)
-   - **"Test tilkobling"** — alltid tilgjengelig når det finnes en nøkkel (enten `FH2_MASK` eller ny inntastet)
-   - **"Slett"** — som i dag, kun synlig når tilkoblet
+3. **Simplify `handleTestFh2`** -- remove the save-token branch entirely. It should only call `test-connection` since the key is guaranteed to already be saved.
 
-### Tekniske endringer
+### UI button visibility logic:
+- **"Lagre"**: visible when `fh2Token !== FH2_MASK && fh2Token !== ""` (new key entered)
+- **"Test tilkobling"**: visible only when `fh2Token === FH2_MASK` (key is saved in DB)
+- **"Slett"**: visible when `fh2Connected`
 
-```
-handleTestFh2:
-  - Hvis fh2Token === FH2_MASK → kall kun "test-connection" (nøkkelen er allerede lagret)
-  - Hvis fh2Token er en ny verdi → kall "save-token" først, deretter "test-connection"
-  - Fjern sjekken som blokkerer FH2_MASK
+### Changes in `handleSaveFh2`:
+- After successful save, set `fh2Token(FH2_MASK)` and `fh2Editing.current = false` so the Test button appears
 
-handleSaveFh2:
-  - Fjern feilmelding om "Klikk Endre nøkkel først"
-  - Hvis fh2Token === FH2_MASK → vis toast "Nøkkelen er allerede lagret"
-
-UI:
-  - Fjern "Endre"-knappen helt
-  - "Lagre"-knappen: disabled når fh2Token === FH2_MASK eller tom
-  - "Test tilkobling": disabled kun under testing, ikke når fh2Token === FH2_MASK
-```
+### Changes in `handleTestFh2`:
+- Remove the `save-token` branch (lines 531-535)
+- Only call `test-connection`
 
