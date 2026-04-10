@@ -10,7 +10,6 @@ import { GlassCard } from "@/components/GlassCard";
 import { Loader2 } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
 import { exportToKMZ } from "@/lib/oppdragKmzExport";
-import { bufferPolyline, computeConvexHull, bufferPolygon } from "@/lib/soraGeometry";
 import type { SoraSettings } from "@/types/map";
 import { exportToPDF, DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdfExport";
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
