@@ -470,22 +470,26 @@ export const ChildCompaniesSection = () => {
     toast.success("Buffermodus lagret");
   };
 
+  const FH2_MASK = "••••••••";
+
   const handleSaveFh2 = async () => {
     if (!companyId) return;
-    setSavingFh2(true);
     const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
+    if (cleanToken === FH2_MASK) {
+      toast.error("Klikk \"Endre nøkkel\" først for å lime inn en ny nøkkel");
+      return;
+    }
+    setSavingFh2(true);
     try {
       if (cleanToken) {
-        // Save encrypted via RPC
         const { error } = await supabase.functions.invoke("flighthub2-proxy", {
           body: { action: "save-token", token: cleanToken },
         });
         if (error) throw error;
       } else {
-        // Delete token
         await (supabase as any).from("company_fh2_credentials").delete().eq("company_id", companyId);
       }
-      setFh2Token(cleanToken);
+      setFh2Token(cleanToken ? FH2_MASK : "");
       toast.success(cleanToken ? "FlightHub 2-nøkkel lagret (kryptert)" : "FlightHub 2-nøkkel fjernet");
     } catch (err: any) {
       toast.error(err?.message || "Kunne ikke lagre");
@@ -512,12 +516,15 @@ export const ChildCompaniesSection = () => {
 
   const handleTestFh2 = async () => {
     if (!fh2Token) { toast.error("Fyll inn organisasjonsnøkkel først"); return; }
+    const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
+    if (cleanToken === FH2_MASK) {
+      toast.error("Klikk \"Endre nøkkel\" først for å lime inn en ny nøkkel");
+      return;
+    }
     setTestingFh2(true);
     setFh2Connected(false);
     setFh2Projects([]);
     try {
-      // Save token first (encrypted), then test
-      const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
       await supabase.functions.invoke("flighthub2-proxy", {
         body: { action: "save-token", token: cleanToken },
       });
@@ -539,6 +546,7 @@ export const ChildCompaniesSection = () => {
         const projectNames: string[] = data.project_names || [];
         setFh2Projects(projectNames);
         setFh2Connected(true);
+        setFh2Token(FH2_MASK);
         toast.success(`Gratulerer! Du er tilkoblet din FH2-konto med ${data.project_count || 0} prosjekter`);
       } else if (data?.server_ok && !data?.token_ok) {
         toast.error("Server svarer, men nøkkelen ble avvist. Sjekk at nøkkelen er korrekt og ikke utløpt.", { duration: 10000 });
@@ -996,12 +1004,18 @@ export const ChildCompaniesSection = () => {
                     type={fh2ShowToken ? "text" : "password"}
                     value={fh2Token}
                     onChange={(e) => setFh2Token(e.target.value)}
+                    onFocus={() => { if (fh2Token === FH2_MASK) setFh2Token(""); }}
                     placeholder="Lim inn FlightHub Sync-nøkkel..."
                     className="h-8 text-sm font-mono"
                   />
                   <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
                     {fh2ShowToken ? "Skjul" : "Vis"}
                   </Button>
+                  {fh2Token === FH2_MASK && (
+                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2Token("")}>
+                      <Pencil className="h-3 w-3 mr-1" /> Endre
+                    </Button>
+                  )}
                 </div>
                 <p className="text-[10px] text-muted-foreground">
                   Bruk nøkkelen fra FlightHub 2 → Organisasjonsinnstillinger → FlightHub Sync → Organisasjonsnøkkel.
