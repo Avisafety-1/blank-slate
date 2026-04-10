@@ -66,6 +66,8 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [devices, setDevices] = useState<FH2Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [debugData, setDebugData] = useState<any>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   // Device detail
   const [detailDevice, setDetailDevice] = useState<FH2Device | null>(null);

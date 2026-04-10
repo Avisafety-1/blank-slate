@@ -651,7 +651,7 @@ Deno.serve(async (req: Request) => {
 
       for (const v of API_VARIANTS) {
         const orgUrl = v.name === "openapi-v0.1"
-          ? `${fh2BaseUrl}/openapi/v0.1/device?page=1&page_size=200`
+          ? `${fh2BaseUrl}/openapi/v0.1/device`
           : `${fh2BaseUrl}/manage/api/v1.0/device?page=1&page_size=200`;
 
         try {
@@ -662,16 +662,31 @@ Deno.serve(async (req: Request) => {
           try { orgData = JSON.parse(orgText); } catch { /* ignore */ }
 
           const rawOrgList = extractListPayload(orgData?.data);
-          const orgList = flattenDjiDeviceList(rawOrgList).map((device: any) => normalizeDevicePayload(device));
+          const flatList = flattenDjiDeviceList(rawOrgList);
+          const orgList = flatList.map((device: any) => normalizeDevicePayload(device));
+
+          // Raw debug info
+          const rawListSample = rawOrgList.slice(0, 3).map((item: any) => {
+            const keys = Object.keys(item || {});
+            return { _keys: keys, ...item };
+          });
+
           diagnostics.push({
             variant: v.name,
             stage: "org-device",
+            url: orgUrl,
             status: orgRes.status,
             code: orgData?.code ?? null,
-            count: orgList.length,
+            raw_data_type: typeof orgData?.data,
+            raw_data_keys: orgData?.data ? Object.keys(orgData.data) : null,
+            raw_list_length: rawOrgList.length,
+            flat_list_length: flatList.length,
+            normalized_count: orgList.length,
             message: orgData?.message ?? null,
+            raw_body_preview: orgText.substring(0, 1000),
+            raw_list_sample: rawListSample,
           });
-          console.log(`list-devices [${v.name}] org-device status=${orgRes.status} code=${orgData?.code} count=${orgList.length}`);
+          console.log(`list-devices [${v.name}] org-device status=${orgRes.status} code=${orgData?.code} raw=${rawOrgList.length} flat=${flatList.length} norm=${orgList.length}`);
 
           if (orgRes.ok && orgData?.code === 0 && orgList.length > 0) {
             return new Response(JSON.stringify({
