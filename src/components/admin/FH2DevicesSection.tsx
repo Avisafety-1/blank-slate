@@ -148,6 +148,8 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
       setTestLoading(false);
     }
   };
+
+  const openDeviceDetail = async (device: FH2Device) => {
     setDetailDevice(device);
     setDetailState(null);
     setDetailHms([]);
