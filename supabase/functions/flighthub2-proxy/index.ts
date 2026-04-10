@@ -330,23 +330,59 @@ Deno.serve(async (req: Request) => {
       return [];
     }
 
+    /**
+     * DJI OpenAPI v0.1 /device returns nested objects:
+     *   list: [{ gateway: { sn, callsign, device_model, ... }, drone: { sn, callsign, ... } }, ...]
+     * This flattens them into individual device records.
+     */
+    function flattenDjiDeviceList(rawList: any[]): any[] {
+      const result: any[] = [];
+      for (const item of rawList) {
+        if (item.gateway || item.drone) {
+          if (item.gateway) result.push({ ...item.gateway, _dji_role: "gateway" });
+          if (item.drone) result.push({ ...item.drone, _dji_role: "drone" });
+        } else {
+          result.push(item);
+        }
+      }
+      return result;
+    }
+
     function normalizeDevicePayload(device: any, project?: any): any {
-      return {
-        ...device,
-        device_sn: device.device_sn ?? device.sn ?? device.deviceSn ?? device.child_device_sn ?? "",
-        device_name: device.device_name ?? device.name ?? device.nickname ?? device.aircraft_name ?? "",
-        device_model: device.device_model ?? {
+      const sn = device.device_sn ?? device.sn ?? device.deviceSn ?? device.child_device_sn ?? "";
+      const name = device.device_name ?? device.callsign ?? device.name ?? device.nickname ?? device.aircraft_name ?? "";
+      const onlineStatus = typeof device.online_status === "number"
+        ? device.online_status
+        : device.device_online_status === true ? 1
+        : device.device_online_status === false ? 0
+        : device.status === "online" || device.is_online === true ? 1 : 0;
+
+      let deviceModel = device.device_model;
+      if (!deviceModel || typeof deviceModel !== "object") {
+        deviceModel = {
           model: device.device_model_name ?? device.model_name ?? device.model ?? device.product_name,
           key: device.device_model_key ?? device.model_key,
-        },
-        online_status:
-          typeof device.online_status === "number"
-            ? device.online_status
-            : device.status === "online" || device.is_online === true
-              ? 1
-              : 0,
-        type: device.type ?? device.device_type ?? device.product_type,
+        };
+      }
+
+      let deviceType = device.type ?? device.device_type ?? device.product_type;
+      if (deviceType == null) {
+        const cls = deviceModel?.class || device._dji_role;
+        if (cls === "drone") deviceType = 0;
+        else if (cls === "airport" || cls === "gateway" || cls === "dock") deviceType = 1;
+        else if (cls === "rc") deviceType = 56;
+      }
+
+      return {
+        ...device,
+        device_sn: sn,
+        device_name: name,
+        device_model: deviceModel,
+        online_status: onlineStatus,
+        type: deviceType,
         firmware_version: device.firmware_version ?? device.firmware ?? device.firmwareVersion,
+        mode_code: device.mode_code,
+        camera_list: device.camera_list,
         project_uuid: project?.uuid ?? project?.project_uuid ?? project?.workspace_uuid ?? device.project_uuid ?? device.workspace_uuid,
         project_name: project?.name ?? project?.workspace_name ?? project?.project_name ?? device.project_name ?? device.workspace_name,
       };
