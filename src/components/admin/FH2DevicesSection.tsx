@@ -230,12 +230,30 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
               <UserPlus className="h-3.5 w-3.5 mr-1" /> Legg til personell
             </Button>
           )}
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={testDeviceApi} disabled={testLoading}>
+            {testLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Radio className="h-3.5 w-3.5 mr-1" />}
+            Test enhets-API
+          </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={fetchDevices} disabled={loading}>
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
             {loaded ? "Oppdater" : "Hent enheter"}
           </Button>
         </div>
       </div>
+
+      {/* Test Device API Result */}
+      {testResult && (
+        <div className="space-y-1">
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => setShowTestResult(!showTestResult)}>
+            {showTestResult ? "Skjul" : "Vis"} test-resultat
+          </Button>
+          {showTestResult && (
+            <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-80 whitespace-pre-wrap break-all">
+              {JSON.stringify(testResult, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
 
       {loaded && devices.length > 0 && (
         <Table>
