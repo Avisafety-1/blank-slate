@@ -973,7 +973,9 @@ function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mod
   }
 
   (marker as any).addTo(layer);
-  (marker as any).bringToFront();
+  if (typeof (marker as any).bringToFront === 'function') {
+    (marker as any).bringToFront();
+  }
 }
 
 function buildNotamPopup(notam: any): string {
