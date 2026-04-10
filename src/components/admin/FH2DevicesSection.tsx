@@ -253,6 +253,20 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
         <p className="text-sm text-muted-foreground text-center py-4">Ingen enheter funnet.</p>
       )}
 
+      {/* Debug raw data panel */}
+      {debugData && (
+        <div className="space-y-1">
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => setShowDebug(!showDebug)}>
+            {showDebug ? "Skjul" : "Vis"} rå-data
+          </Button>
+          {showDebug && (
+            <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-60 whitespace-pre-wrap break-all">
+              {JSON.stringify(debugData, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+
       {/* Device Detail Dialog */}
       <Dialog open={!!detailDevice} onOpenChange={(open) => { if (!open) setDetailDevice(null); }}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
