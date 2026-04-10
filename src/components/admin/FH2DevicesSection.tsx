@@ -19,7 +19,7 @@ import { toast } from "sonner";
 interface FH2Device {
   device_sn: string;
   device_name: string;
-  device_model?: { model?: string; key?: string };
+  device_model?: { model?: string; key?: string; name?: string; class?: string };
   online_status?: number; // 0=offline, 1=online
   bound_status?: number;
   type?: number; // 0=drone, 1=dock, etc.
@@ -45,7 +45,7 @@ const extractDeviceList = (payload: any): FH2Device[] => {
 const normalizeDevice = (device: any): FH2Device => ({
   ...device,
   device_sn: device.device_sn ?? device.sn ?? device.deviceSn ?? device.child_device_sn ?? "",
-  device_name: device.device_name ?? device.name ?? device.nickname ?? device.aircraft_name ?? "",
+  device_name: device.device_name ?? device.callsign ?? device.name ?? device.nickname ?? device.aircraft_name ?? "",
   device_model: device.device_model ?? {
     model: device.device_model_name ?? device.model_name ?? device.model ?? device.product_name,
     key: device.device_model_key ?? device.model_key,
@@ -53,6 +53,8 @@ const normalizeDevice = (device: any): FH2Device => ({
   online_status:
     typeof device.online_status === "number"
       ? device.online_status
+      : device.device_online_status === true ? 1
+      : device.device_online_status === false ? 0
       : device.status === "online" || device.is_online === true
         ? 1
         : 0,
@@ -181,7 +183,7 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   };
 
   const getModelName = (device: FH2Device) =>
-    device.device_model?.model || device.model_name || device.device_name || "Ukjent";
+    device.device_model?.model || device.device_model?.name || device.model_name || device.device_name || "Ukjent";
 
   const isOnline = (device: FH2Device) => device.online_status === 1;
 
