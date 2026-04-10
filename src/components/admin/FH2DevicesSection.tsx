@@ -131,7 +131,23 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
     }
   };
 
-  const openDeviceDetail = async (device: FH2Device) => {
+  const testDeviceApi = async () => {
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+        body: { action: "test-device-api", deviceSn: "1581F8DBW255D00A2M0U" },
+      });
+      if (error) throw error;
+      setTestResult(data);
+      setShowTestResult(true);
+    } catch (err: any) {
+      setTestResult({ error: err?.message || "Feil ved test" });
+      setShowTestResult(true);
+    } finally {
+      setTestLoading(false);
+    }
+  };
     setDetailDevice(device);
     setDetailState(null);
     setDetailHms([]);
