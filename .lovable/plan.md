@@ -1,46 +1,40 @@
 
 
-## Analyse av test-resultatene
+## Plan: Test alle 14 prosjekter for enheter
 
-Resultatene er klare:
+### Problemet
+Vi har kun testet device-endepunktet for **1 av 14 prosjekter** ("Trening på bruk av Avisafe"). Dronen `1581F8DBW255D00A2M0U` kan ligge i et av de andre 13. I tillegg har `list-devices` aldri dukket opp i loggene, noe som tyder på at den koden kanskje aldri kjøres.
 
-| Endepunkt | Status | Resultat |
-|-----------|--------|----------|
-| `/device` (org-liste) | 200 | `data.list: null` — tom |
-| `/device/hms` | 200 | `data.list: null` — tom |
-| `/device/{sn}/state` | **403** | **Forbidden** |
+API-versjonen er bekreftet v0.1 — dokumentasjonen viser at disse endepunktene eksisterer:
+- `GET /openapi/v0.1/device` (org-nivå)
+- `GET /openapi/v0.1/project/device` (prosjekt-nivå, med `X-Project-Uuid`)
+- `GET /openapi/v0.1/device/hms` (HMS)
 
-### Konklusjon
+### Endringer
 
-API-nøkkelen (X-User-Token) har **ikke rettigheter til å se enheter på organisasjonsnivå**. Den kan liste prosjekter, men ikke enheter. `device_state` bekrefter dette med eksplisitt 403.
+**1. Utvide `test-device-api` i `flighthub2-proxy/index.ts`**
 
-### Hva koden allerede gjør
+Erstatte test #4 (som kun sjekker første prosjekt) med en loop over ALLE prosjekter:
 
-`list-devices` har faktisk en **prosjekt-fallback** som itererer over alle 14 prosjekter og kaller `/openapi/v0.1/project/device` med `X-Project-Uuid`-header for hvert prosjekt. Men test-device-api tester **ikke** dette endepunktet — den tester bare org-nivået.
+```
+// For hvert prosjekt: GET /openapi/v0.1/project/device med X-Project-Uuid
+results.all_projects = projects.map(p => ({
+  uuid: p.project_uuid,
+  name: p.name || p.project_name,
+  status: response.status,
+  device_count: parsed?.data?.list?.length ?? 0,
+  body_preview: text.substring(0, 500)
+}))
+```
 
-### Plan: Test prosjekt-nivå device-endepunkt
+Returnerer kompakt oppsummering per prosjekt: UUID, navn, HTTP-status, antall enheter, og rå body-preview (for de som har data).
 
-**1. Utvide `test-device-api` med et fjerde kall**
+**2. Ingen UI-endringer**
 
-Legge til test av `/openapi/v0.1/project/device` med `X-Project-Uuid` satt til det første prosjektet fra prosjektlisten. Dette tester om nøkkelen har device-tilgang *per prosjekt* selv om den ikke har det på org-nivå.
+`FH2DevicesSection.tsx` viser allerede hele `results`-objektet som rå JSON.
 
-Steg:
-- Hente prosjektliste (som allerede virker)
-- Ta første prosjekt sin UUID
-- Kalle `GET /openapi/v0.1/project/device` med `X-Project-Uuid: {uuid}`
-- Returnere rå-responsen
+**3. Deploy og test**
 
-**2. Oppdatere UI**
-
-Vise det fjerde resultatet i test-panelet. Ingen andre endringer.
-
-### Teknisk
-
-- Fil: `supabase/functions/flighthub2-proxy/index.ts` — utvide `test-device-api` action
-- Fil: `src/components/admin/FH2DevicesSection.tsx` — ingen endring nødvendig (viser allerede hele `results`-objektet)
-
-### Mulige utfall
-
-- Hvis prosjekt-device returnerer data: Problemet er at org-nivå ikke har tilgang, men prosjekt-nivå fungerer. Da bør `list-devices`-fallbacken allerede fungere — og vi trenger bare å finne hvorfor den ikke gjør det.
-- Hvis prosjekt-device også returnerer null: Nøkkelen mangler device-rettigheter helt. Da må Tensio oppdatere API-nøkkelen/brukerrettighetene i DJI FlightHub 2.
+### Forventet resultat
+Vi ser om noen av de 14 prosjektene inneholder enheter. Hvis alle returnerer `list: null`, er konklusjonen at FlightHub Sync ikke er aktivert eller at API-nøkkelen mangler device-rettigheter.
 
