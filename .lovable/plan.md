@@ -1,26 +1,33 @@
 
 
-## Fiks: Tillat overskrivning av FH2-nøkkel
+## Fiks: FH2-nøkkelfeltet tilbakestilles til maskert verdi
 
 ### Problem
-Når en FH2-nøkkel allerede er lagret, viser input-feltet den maskerte verdien `"••••••••"`. Hvis brukeren limer inn en ny nøkkel og trykker Lagre/Test, fungerer det teknisk — men det er to problemer:
-
-1. Hvis brukeren trykker "Lagre" uten å endre feltet, lagres den bokstavelige teksten `"••••••••"` som token, noe som ødelegger tilkoblingen
-2. UX-en gir ingen tydelig indikasjon på at man kan endre nøkkelen — det mangler en "Endre"-knapp
+Når brukeren klikker "Endre" eller fokuserer feltet, tømmes `fh2Token` korrekt. Men `fetchParentSettings()` kjøres på nytt via Supabase Realtime-kanalen (ved enhver UPDATE på `companies`-tabellen), og linje 288 setter `setFh2Token("••••••••")` tilbake — som overskriver brukerens tomme felt.
 
 ### Løsning
 
 **Fil: `src/components/admin/ChildCompaniesSection.tsx`**
 
-1. **Beskytt mot å lagre maskert verdi**: I `handleSaveFh2` og `handleTestFh2`, sjekk om verdien er plassholderen `"••••••••"` og avbryt med feilmelding
-2. **Legg til "Endre nøkkel"-knapp**: Når tilkoblet, vis en knapp som tømmer feltet slik at brukeren kan lime inn ny nøkkel
-3. **Auto-tøm ved fokus**: Når brukeren klikker i input-feltet og verdien er maskert, tøm feltet automatisk slik at det er klart for ny verdi
-4. **Etter vellykket lagring**: Sett feltet tilbake til `"••••••••"` for å indikere at en nøkkel er lagret
+1. Legg til en `useRef`-flagg `fh2Editing` som settes til `true` når brukeren klikker "Endre" eller fokuserer det maskerte feltet
+2. I `fetchParentSettings`, hopp over `setFh2Token("••••••••")` dersom `fh2Editing.current === true`
+3. Sett `fh2Editing` tilbake til `false` etter vellykket lagring/test eller ved avbrytelse (f.eks. en "Avbryt"-knapp)
+4. Oppdater `onFocus`-handleren og "Endre"-knappen til å sette `fh2Editing.current = true`
 
 ### Teknisk detalj
-- Konstant `FH2_MASK = "••••••••"` brukes for sammenligning
-- `handleSaveFh2`: Legg til guard `if (cleanToken === FH2_MASK) return toast.error("...")`
-- `handleTestFh2`: Samme guard
-- Ny knapp "Endre nøkkel" som setter `setFh2Token("")` og fokuserer input-feltet
-- `onFocus`-handler på input: Hvis `fh2Token === FH2_MASK`, sett `setFh2Token("")`
+```tsx
+const fh2Editing = useRef(false);
+
+// I fetchParentSettings, linje 288:
+if (hasOwnCred && !fh2Editing.current) setFh2Token("••••••••");
+
+// I onFocus og Endre-knapp:
+fh2Editing.current = true; setFh2Token("");
+
+// Etter lagring/test:
+fh2Editing.current = false;
+```
+
+### Filer som endres
+- `src/components/admin/ChildCompaniesSection.tsx`
 
