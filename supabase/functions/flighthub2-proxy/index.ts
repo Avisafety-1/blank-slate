@@ -625,7 +625,8 @@ Deno.serve(async (req: Request) => {
           let orgData: any = null;
           try { orgData = JSON.parse(orgText); } catch { /* ignore */ }
 
-          const orgList = extractListPayload(orgData?.data).map((device: any) => normalizeDevicePayload(device));
+          const rawOrgList = extractListPayload(orgData?.data);
+          const orgList = flattenDjiDeviceList(rawOrgList).map((device: any) => normalizeDevicePayload(device));
           diagnostics.push({
             variant: v.name,
             stage: "org-device",
@@ -668,7 +669,7 @@ Deno.serve(async (req: Request) => {
                 let projectData: any = null;
                 try { projectData = JSON.parse(projectText); } catch { /* ignore */ }
 
-                const projectDevices = extractListPayload(projectData?.data)
+                const projectDevices = flattenDjiDeviceList(extractListPayload(projectData?.data))
                   .map((device: any) => normalizeDevicePayload(device, project));
 
                 diagnostics.push({
