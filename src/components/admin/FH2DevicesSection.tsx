@@ -85,11 +85,16 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
 
   const fetchDevices = async () => {
     setLoading(true);
+    setDebugData(null);
     try {
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
         body: { action: "list-devices" },
       });
       if (error) throw error;
+
+      // Always save full response for debug
+      setDebugData(data);
+
       if (data?.ok === false) {
         setDevices([]);
         setLoaded(true);
