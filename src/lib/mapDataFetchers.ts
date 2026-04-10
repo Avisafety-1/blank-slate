@@ -932,24 +932,48 @@ export async function fetchNotams(params: {
 function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mode: string, renderer?: L.Renderer) {
   if (notam.center_lat == null || notam.center_lng == null) return;
 
-  const marker = L.circleMarker([notam.center_lat, notam.center_lng], {
-    pane,
-    renderer,
-    radius: 8,
-    fillColor: "#f39c12",
-    color: "#e67e22",
-    weight: 2,
-    fillOpacity: 0.6,
-    interactive: mode !== "routePlanning",
-    bubblingMouseEvents: false,
-  });
+  const isAerodrome = notam.scope === "A";
 
-  if (mode !== "routePlanning") {
-    marker.bindPopup(buildNotamPopup(notam));
+  let marker: L.Layer;
+  if (isAerodrome) {
+    // Use a pin icon for aerodrome NOTAMs
+    marker = L.marker([notam.center_lat, notam.center_lng], {
+      pane,
+      interactive: mode !== "routePlanning",
+      bubblingMouseEvents: false,
+      icon: L.divIcon({
+        className: 'notam-pin-icon',
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+          <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.27 21.73 0 14 0z" fill="#e67e22" stroke="#c0392b" stroke-width="1.5"/>
+          <circle cx="14" cy="13" r="6" fill="white" opacity="0.9"/>
+          <text x="14" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67e22" font-family="Arial,sans-serif">✈</text>
+        </svg>`,
+        iconSize: [28, 36] as any,
+        iconAnchor: [14, 36] as any,
+        popupAnchor: [0, -36] as any,
+      }),
+    });
+  } else {
+    // Use circle marker for other NOTAMs without geometry
+    marker = L.circleMarker([notam.center_lat, notam.center_lng], {
+      pane,
+      renderer,
+      radius: 8,
+      fillColor: "#f39c12",
+      color: "#e67e22",
+      weight: 2,
+      fillOpacity: 0.6,
+      interactive: mode !== "routePlanning",
+      bubblingMouseEvents: false,
+    });
   }
 
-  marker.addTo(layer);
-  marker.bringToFront();
+  if (mode !== "routePlanning") {
+    (marker as any).bindPopup(buildNotamPopup(notam));
+  }
+
+  (marker as any).addTo(layer);
+  (marker as any).bringToFront();
 }
 
 function buildNotamPopup(notam: any): string {
