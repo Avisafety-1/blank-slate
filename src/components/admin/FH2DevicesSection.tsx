@@ -69,6 +69,11 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [debugData, setDebugData] = useState<any>(null);
   const [showDebug, setShowDebug] = useState(false);
 
+  // Test device API debug
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [showTestResult, setShowTestResult] = useState(false);
+
   // Device detail
   const [detailDevice, setDetailDevice] = useState<FH2Device | null>(null);
   const [detailState, setDetailState] = useState<any>(null);
@@ -123,6 +128,24 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
       toast.error(err?.message || "Kunne ikke hente enheter");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const testDeviceApi = async () => {
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+        body: { action: "test-device-api", deviceSn: "1581F8DBW255D00A2M0U" },
+      });
+      if (error) throw error;
+      setTestResult(data);
+      setShowTestResult(true);
+    } catch (err: any) {
+      setTestResult({ error: err?.message || "Feil ved test" });
+      setShowTestResult(true);
+    } finally {
+      setTestLoading(false);
     }
   };
 
@@ -207,12 +230,30 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
               <UserPlus className="h-3.5 w-3.5 mr-1" /> Legg til personell
             </Button>
           )}
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={testDeviceApi} disabled={testLoading}>
+            {testLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Radio className="h-3.5 w-3.5 mr-1" />}
+            Test enhets-API
+          </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={fetchDevices} disabled={loading}>
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
             {loaded ? "Oppdater" : "Hent enheter"}
           </Button>
         </div>
       </div>
+
+      {/* Test Device API Result */}
+      {testResult && (
+        <div className="space-y-1">
+          <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={() => setShowTestResult(!showTestResult)}>
+            {showTestResult ? "Skjul" : "Vis"} test-resultat
+          </Button>
+          {showTestResult && (
+            <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-80 whitespace-pre-wrap break-all">
+              {JSON.stringify(testResult, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
 
       {loaded && devices.length > 0 && (
         <Table>

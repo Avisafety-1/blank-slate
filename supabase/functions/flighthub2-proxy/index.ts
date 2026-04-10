@@ -908,6 +908,52 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ─── Action: test-device-api (raw debug, no normalization) ───
+    if (action === "test-device-api") {
+      const testSn = params.deviceSn || "1581F8DBW255D00A2M0U";
+      const results: Record<string, any> = {};
+
+      // 1. GET /device (org-level device list)
+      try {
+        const url = `${fh2BaseUrl}/openapi/v0.1/device`;
+        const h = makeHeaders(NEW_API, false);
+        console.log(`[test-device-api] GET ${url}`);
+        const res = await safeFetch(url, { method: "GET", headers: h });
+        const text = await res.text();
+        results.device_list = { status: res.status, body: text.substring(0, 3000) };
+      } catch (err: any) {
+        results.device_list = { error: err.message };
+      }
+
+      // 2. GET /device/hms
+      try {
+        const url = `${fh2BaseUrl}/openapi/v0.1/device/hms?device_sn_list=${encodeURIComponent(testSn)}`;
+        const h = makeHeaders(NEW_API, true);
+        console.log(`[test-device-api] GET ${url}`);
+        const res = await safeFetch(url, { method: "GET", headers: h });
+        const text = await res.text();
+        results.device_hms = { status: res.status, body: text.substring(0, 3000) };
+      } catch (err: any) {
+        results.device_hms = { error: err.message };
+      }
+
+      // 3. GET /device/{sn}/state
+      try {
+        const url = `${fh2BaseUrl}/openapi/v0.1/device/${encodeURIComponent(testSn)}/state`;
+        const h = makeHeaders(NEW_API, true);
+        console.log(`[test-device-api] GET ${url}`);
+        const res = await safeFetch(url, { method: "GET", headers: h });
+        const text = await res.text();
+        results.device_state = { status: res.status, body: text.substring(0, 3000) };
+      } catch (err: any) {
+        results.device_state = { error: err.message };
+      }
+
+      return new Response(JSON.stringify({ ok: true, testSn, results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
