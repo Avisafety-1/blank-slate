@@ -117,9 +117,9 @@ export function OpenAIPMap({
         }
 
         if (!enabled && typeof layer.removeInteractiveTarget === "function" && el) {
-          layer.removeInteractiveTarget(el);
+          if (layer._map) layer.removeInteractiveTarget(el);
         } else if (enabled && typeof layer.addInteractiveTarget === "function" && el) {
-          layer.addInteractiveTarget(el);
+          if (layer._map) layer.addInteractiveTarget(el);
         }
       });
     },
