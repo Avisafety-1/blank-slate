@@ -308,17 +308,48 @@ Deno.serve(async (req: Request) => {
       return NEW_API; // default
     }
 
-    function makeHeaders(variant: ApiVariant, includeProject: boolean): Record<string, string> {
+    function makeHeaders(variant: ApiVariant, includeProject: boolean, forcedProjectUuid?: string): Record<string, string> {
       const h: Record<string, string> = {
         [variant.headerName]: fh2Token,
         "X-Request-Id": crypto.randomUUID(),
         "X-Language": "en",
       };
-      const effectiveProjUuid = projectUuid || jwtProjectUuid;
+      const effectiveProjUuid = forcedProjectUuid || projectUuid || jwtProjectUuid;
       if (includeProject && effectiveProjUuid && variant.projectHeaderName) {
         h[variant.projectHeaderName] = effectiveProjUuid;
       }
       return h;
+    }
+
+    function extractListPayload(value: any): any[] {
+      if (Array.isArray(value)) return value;
+      if (Array.isArray(value?.list)) return value.list;
+      if (Array.isArray(value?.devices)) return value.devices;
+      if (Array.isArray(value?.items)) return value.items;
+      if (Array.isArray(value?.records)) return value.records;
+      return [];
+    }
+
+    function normalizeDevicePayload(device: any, project?: any): any {
+      return {
+        ...device,
+        device_sn: device.device_sn ?? device.sn ?? device.deviceSn ?? device.child_device_sn ?? "",
+        device_name: device.device_name ?? device.name ?? device.nickname ?? device.aircraft_name ?? "",
+        device_model: device.device_model ?? {
+          model: device.device_model_name ?? device.model_name ?? device.model ?? device.product_name,
+          key: device.device_model_key ?? device.model_key,
+        },
+        online_status:
+          typeof device.online_status === "number"
+            ? device.online_status
+            : device.status === "online" || device.is_online === true
+              ? 1
+              : 0,
+        type: device.type ?? device.device_type ?? device.product_type,
+        firmware_version: device.firmware_version ?? device.firmware ?? device.firmwareVersion,
+        project_uuid: project?.uuid ?? project?.project_uuid ?? project?.workspace_uuid ?? device.project_uuid ?? device.workspace_uuid,
+        project_name: project?.name ?? project?.workspace_name ?? project?.project_name ?? device.project_name ?? device.workspace_name,
+      };
     }
 
     // ─── Action: test-connection ───
@@ -579,26 +610,146 @@ Deno.serve(async (req: Request) => {
 
     // ─── Action: list-devices ───
     if (action === "list-devices") {
+      const diagnostics: any[] = [];
+      let emptySuccessPayload: any = null;
+
       for (const v of API_VARIANTS) {
-        const url = v.name === "openapi-v0.1"
+        const orgUrl = v.name === "openapi-v0.1"
           ? `${fh2BaseUrl}/openapi/v0.1/device?page=1&page_size=200`
           : `${fh2BaseUrl}/manage/api/v1.0/device?page=1&page_size=200`;
+
         try {
-          const h = makeHeaders(v, true);
-          const res = await safeFetch(url, { method: "GET", headers: h });
-          const data = await res.json();
-          if (data.code === 0) {
-            return new Response(JSON.stringify({ ...data, _api_version: v.name }), {
+          const orgHeaders = makeHeaders(v, false);
+          const orgRes = await safeFetch(orgUrl, { method: "GET", headers: orgHeaders });
+          const orgText = await orgRes.text();
+          let orgData: any = null;
+          try { orgData = JSON.parse(orgText); } catch { /* ignore */ }
+
+          const orgList = extractListPayload(orgData?.data).map((device: any) => normalizeDevicePayload(device));
+          diagnostics.push({
+            variant: v.name,
+            stage: "org-device",
+            status: orgRes.status,
+            code: orgData?.code ?? null,
+            count: orgList.length,
+            message: orgData?.message ?? null,
+          });
+          console.log(`list-devices [${v.name}] org-device status=${orgRes.status} code=${orgData?.code} count=${orgList.length}`);
+
+          if (orgRes.ok && orgData?.code === 0 && orgList.length > 0) {
+            return new Response(JSON.stringify({
+              ...orgData,
+              data: { ...(orgData?.data || {}), list: orgList },
+              _api_version: v.name,
+              _source: "org-device",
+              diagnostics,
+            }), {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          console.log(`list-devices [${v.name}]: code=${data.code}`);
+
+          const projectAttempt = await tryListProjects(fh2BaseUrl, fh2Token, v, safeFetch);
+          const projects = extractListPayload(projectAttempt.data?.data);
+          const devicesByKey = new Map<string, any>();
+
+          if (projectAttempt.ok && projects.length > 0 && v.projectHeaderName) {
+            const projectDeviceUrl = v.name === "openapi-v0.1"
+              ? `${fh2BaseUrl}/openapi/v0.1/project/device?page=1&page_size=200`
+              : `${fh2BaseUrl}/manage/api/v1.0/project/device?page=1&page_size=200`;
+
+            for (const project of projects) {
+              const currentProjectUuid = project.uuid || project.project_uuid || project.workspace_uuid;
+              if (!currentProjectUuid) continue;
+
+              try {
+                const projectHeaders = makeHeaders(v, true, currentProjectUuid);
+                const projectRes = await safeFetch(projectDeviceUrl, { method: "GET", headers: projectHeaders });
+                const projectText = await projectRes.text();
+                let projectData: any = null;
+                try { projectData = JSON.parse(projectText); } catch { /* ignore */ }
+
+                const projectDevices = extractListPayload(projectData?.data)
+                  .map((device: any) => normalizeDevicePayload(device, project));
+
+                diagnostics.push({
+                  variant: v.name,
+                  stage: "project-device",
+                  project_uuid: currentProjectUuid,
+                  status: projectRes.status,
+                  code: projectData?.code ?? null,
+                  count: projectDevices.length,
+                  message: projectData?.message ?? null,
+                });
+                console.log(`list-devices [${v.name}] project-device project=${currentProjectUuid} status=${projectRes.status} code=${projectData?.code} count=${projectDevices.length}`);
+
+                if (projectRes.ok && projectData?.code === 0) {
+                  for (const device of projectDevices) {
+                    const key = device.device_sn || `${device.device_name}-${currentProjectUuid}`;
+                    if (key) devicesByKey.set(key, device);
+                  }
+                }
+              } catch (err) {
+                diagnostics.push({
+                  variant: v.name,
+                  stage: "project-device",
+                  project_uuid: currentProjectUuid,
+                  error: err.message,
+                });
+                console.log(`list-devices [${v.name}] project-device error for ${currentProjectUuid}: ${err.message}`);
+              }
+            }
+          } else {
+            diagnostics.push({
+              variant: v.name,
+              stage: "project-list",
+              status: projectAttempt.status,
+              code: projectAttempt.data?.code ?? null,
+              count: projects.length,
+              message: projectAttempt.data?.message ?? null,
+            });
+          }
+
+          if (devicesByKey.size > 0) {
+            return new Response(JSON.stringify({
+              code: 0,
+              message: "",
+              data: { list: Array.from(devicesByKey.values()) },
+              _api_version: v.name,
+              _source: "project-device-fallback",
+              diagnostics,
+            }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          if (orgRes.ok && orgData?.code === 0) {
+            emptySuccessPayload = {
+              ...orgData,
+              data: { ...(orgData?.data || {}), list: orgList },
+              _api_version: v.name,
+              _source: "empty-success",
+              diagnostics: [...diagnostics],
+            };
+          }
         } catch (err) {
+          diagnostics.push({ variant: v.name, stage: "org-device", error: err.message });
           console.log(`list-devices [${v.name}] error: ${err.message}`);
         }
       }
-      return new Response(JSON.stringify({ error: "Kunne ikke hente enheter" }), {
-        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+      if (emptySuccessPayload) {
+        return new Response(JSON.stringify(emptySuccessPayload), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        ok: false,
+        error: "Kunne ikke hente enheter fra FlightHub 2",
+        diagnostics,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 

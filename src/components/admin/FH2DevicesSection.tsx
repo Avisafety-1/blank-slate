@@ -33,6 +33,33 @@ interface FH2DevicesSectionProps {
   fh2Projects: string[];
 }
 
+const extractDeviceList = (payload: any): FH2Device[] => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.list)) return payload.list;
+  if (Array.isArray(payload?.devices)) return payload.devices;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.records)) return payload.records;
+  return [];
+};
+
+const normalizeDevice = (device: any): FH2Device => ({
+  ...device,
+  device_sn: device.device_sn ?? device.sn ?? device.deviceSn ?? device.child_device_sn ?? "",
+  device_name: device.device_name ?? device.name ?? device.nickname ?? device.aircraft_name ?? "",
+  device_model: device.device_model ?? {
+    model: device.device_model_name ?? device.model_name ?? device.model ?? device.product_name,
+    key: device.device_model_key ?? device.model_key,
+  },
+  online_status:
+    typeof device.online_status === "number"
+      ? device.online_status
+      : device.status === "online" || device.is_online === true
+        ? 1
+        : 0,
+  type: device.type ?? device.device_type ?? device.product_type,
+  firmware_version: device.firmware_version ?? device.firmware ?? device.firmwareVersion,
+});
+
 export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [devices, setDevices] = useState<FH2Device[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,10 +86,30 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
         body: { action: "list-devices" },
       });
       if (error) throw error;
-      const list = data?.data?.list || data?.data || [];
-      setDevices(list);
+      if (data?.ok === false) {
+        setDevices([]);
+        setLoaded(true);
+        console.error("FH2 list-devices diagnostics:", data?.diagnostics);
+        toast.error(data?.error || "Kunne ikke hente enheter");
+        return;
+      }
+
+      const uniqueDevices = Array.from(
+        new Map(
+          extractDeviceList(data?.data)
+            .map(normalizeDevice)
+            .filter((device) => device.device_sn || device.device_name)
+            .map((device) => [device.device_sn || device.device_name, device])
+        ).values()
+      );
+
+      if (data?.diagnostics) {
+        console.info("FH2 list-devices diagnostics:", data.diagnostics);
+      }
+
+      setDevices(uniqueDevices);
       setLoaded(true);
-      if (list.length === 0) toast("Ingen enheter funnet i FlightHub 2");
+      if (uniqueDevices.length === 0) toast("Ingen enheter funnet i FlightHub 2");
     } catch (err: any) {
       toast.error(err?.message || "Kunne ikke hente enheter");
     } finally {
