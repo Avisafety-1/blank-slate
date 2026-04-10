@@ -3601,6 +3601,30 @@ export type Database = {
         }
         Relationships: []
       }
+      notam_rss_feeds: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feed_url: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feed_url: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feed_url?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       notams: {
         Row: {
           center_lat: number | null

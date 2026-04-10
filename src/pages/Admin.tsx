@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio, Send, AlertTriangle, GraduationCap } from "lucide-react";
+import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio, Send, AlertTriangle, GraduationCap, Rss } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,6 +28,7 @@ import { CompanyManagementSection } from "@/components/admin/CompanyManagementSe
 import { CustomerManagementSection } from "@/components/admin/CustomerManagementSection";
 import { ChildCompaniesSection } from "@/components/admin/ChildCompaniesSection";
 import { CompanySoraConfigSection } from "@/components/admin/CompanySoraConfigSection";
+import { NotamRssFeedsSection } from "@/components/admin/NotamRssFeedsSection";
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 import { EmailSettingsDialog } from "@/components/admin/EmailSettingsDialog";
 import { BulkEmailSenderWithHistory } from "@/components/admin/BulkEmailSender";
@@ -689,6 +690,12 @@ const Admin = () => {
               <TabsTrigger value="calculator" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
                 <Calculator className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span>Kalkulator</span>
+              </TabsTrigger>
+            )}
+            {isSuperAdmin && (
+              <TabsTrigger value="notam-feeds" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+                <Rss className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span>NOTAM</span>
               </TabsTrigger>
             )}
           </TabsList>
@@ -1378,6 +1385,13 @@ const Admin = () => {
               <RevenueCalculator />
             </TabsContent>
           )}
+
+          {isSuperAdmin && (
+            <TabsContent value="notam-feeds" className="mt-4 sm:mt-8">
+              <NotamRssFeedsSection />
+            </TabsContent>
+          )}
+
 
           {!isChildCompany && (
             <TabsContent value="training" className="mt-4 sm:mt-8">
