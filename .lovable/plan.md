@@ -1,46 +1,46 @@
 
 
-## Plan: Test DJI HMS-endepunkt med kjent SN og fiks list-devices
+## Analyse av test-resultatene
 
-### Hva vi vet
-- **Loggene viser at `list-devices` aldri har blitt kalt** - kun `list-projects` og `upload-route` finnes i loggene
-- Token og base URL fungerer (upload-route og list-projects virker med `openapi-v0.1`)
-- Org UUID er `4593f426-e454-4ba5-8246-92b109bb0a12`
-- Kjent drone SN: `1581F8DBW255D00A2M0U`
-- Du er på auth-siden i preview, så jeg kan ikke teste via curl akkurat nå
+Resultatene er klare:
 
-### Mulig årsak til at list-devices aldri kalles
-Siden loggene er helt tomme for `list-devices`, kan det hende at:
-1. Edge-funksjonen krasjer på body-parsing før den når `list-devices`-logikken
-2. Eller at UI-et ikke sender kallet riktig etter redeployen
+| Endepunkt | Status | Resultat |
+|-----------|--------|----------|
+| `/device` (org-liste) | 200 | `data.list: null` — tom |
+| `/device/hms` | 200 | `data.list: null` — tom |
+| `/device/{sn}/state` | **403** | **Forbidden** |
 
-### Plan
+### Konklusjon
 
-**1. Legge til en ny debug-action `test-device-api`**
+API-nøkkelen (X-User-Token) har **ikke rettigheter til å se enheter på organisasjonsnivå**. Den kan liste prosjekter, men ikke enheter. `device_state` bekrefter dette med eksplisitt 403.
 
-En enkel action i `flighthub2-proxy` som tester tre DJI-endepunkter på én gang og returnerer rå-resultatene:
-- `GET /openapi/v0.1/device` (org-enheter)
-- `GET /openapi/v0.1/device/hms?device_sn_list=1581F8DBW255D00A2M0U` (HMS)
-- `GET /openapi/v0.1/device/1581F8DBW255D00A2M0U/state` (enhetsstatus)
+### Hva koden allerede gjør
 
-Returnerer rå HTTP-status + body for alle tre, uten noen normalisering.
+`list-devices` har faktisk en **prosjekt-fallback** som itererer over alle 14 prosjekter og kaller `/openapi/v0.1/project/device` med `X-Project-Uuid`-header for hvert prosjekt. Men test-device-api tester **ikke** dette endepunktet — den tester bare org-nivået.
 
-**2. Legge til en "Test enhets-API" knapp i `FH2DevicesSection.tsx`**
+### Plan: Test prosjekt-nivå device-endepunkt
 
-En ny knapp ved siden av "Hent enheter" som kaller `test-device-api` og viser rå-responsen direkte. Ingen parsing, ingen normalisering - bare rå JSON fra DJI.
+**1. Utvide `test-device-api` med et fjerde kall**
 
-**3. Redeploy og test**
+Legge til test av `/openapi/v0.1/project/device` med `X-Project-Uuid` satt til det første prosjektet fra prosjektlisten. Dette tester om nøkkelen har device-tilgang *per prosjekt* selv om den ikke har det på org-nivå.
 
-Etter deploy: trykk "Test enhets-API", og vi får svart-hvitt svar på:
-- Om `/device` returnerer tom liste eller data
-- Om HMS virker med den kjente SN-en
-- Om device state virker
+Steg:
+- Hente prosjektliste (som allerede virker)
+- Ta første prosjekt sin UUID
+- Kalle `GET /openapi/v0.1/project/device` med `X-Project-Uuid: {uuid}`
+- Returnere rå-responsen
+
+**2. Oppdatere UI**
+
+Vise det fjerde resultatet i test-panelet. Ingen andre endringer.
 
 ### Teknisk
-- Filer: `supabase/functions/flighthub2-proxy/index.ts`, `src/components/admin/FH2DevicesSection.tsx`
-- Ingen databaseendringer
-- Debug-actionen kan fjernes etterpå
 
-### Forventet resultat
-Vi ser nøyaktig hva DJI returnerer for hvert endepunkt og kan endelig avgjøre om det er rettighets- eller mappingproblem.
+- Fil: `supabase/functions/flighthub2-proxy/index.ts` — utvide `test-device-api` action
+- Fil: `src/components/admin/FH2DevicesSection.tsx` — ingen endring nødvendig (viser allerede hele `results`-objektet)
+
+### Mulige utfall
+
+- Hvis prosjekt-device returnerer data: Problemet er at org-nivå ikke har tilgang, men prosjekt-nivå fungerer. Da bør `list-devices`-fallbacken allerede fungere — og vi trenger bare å finne hvorfor den ikke gjør det.
+- Hvis prosjekt-device også returnerer null: Nøkkelen mangler device-rettigheter helt. Da må Tensio oppdatere API-nøkkelen/brukerrettighetene i DJI FlightHub 2.
 
