@@ -45,7 +45,7 @@ const extractDeviceList = (payload: any): FH2Device[] => {
 const normalizeDevice = (device: any): FH2Device => ({
   ...device,
   device_sn: device.device_sn ?? device.sn ?? device.deviceSn ?? device.child_device_sn ?? "",
-  device_name: device.device_name ?? device.name ?? device.nickname ?? device.aircraft_name ?? "",
+  device_name: device.device_name ?? device.callsign ?? device.name ?? device.nickname ?? device.aircraft_name ?? "",
   device_model: device.device_model ?? {
     model: device.device_model_name ?? device.model_name ?? device.model ?? device.product_name,
     key: device.device_model_key ?? device.model_key,
@@ -53,6 +53,8 @@ const normalizeDevice = (device: any): FH2Device => ({
   online_status:
     typeof device.online_status === "number"
       ? device.online_status
+      : device.device_online_status === true ? 1
+      : device.device_online_status === false ? 0
       : device.status === "online" || device.is_online === true
         ? 1
         : 0,
