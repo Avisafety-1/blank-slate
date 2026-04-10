@@ -617,7 +617,6 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
         onOpenChange={setFh2DialogOpen}
         route={currentRoute}
         soraSettings={soraSettings.enabled ? soraSettings : undefined}
-        soraBufferCoordinates={soraBufferCoords}
         droneModelName={soraDroneModel}
         pilotPosition={pilotPosition}
       />
