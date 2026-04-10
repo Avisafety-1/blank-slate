@@ -130,7 +130,7 @@ export function NotamRssFeedsSection() {
       </CardHeader>
       <CardContent className="space-y-4">
         {feeds.length === 0 && (
-          <p className="text-sm text-muted-foreground">Ingen feeder konfigurert. Laminar API brukes som fallback.</p>
+          <p className="text-sm text-muted-foreground">Ingen feeder konfigurert. Legg til minst én RSS-feed for å hente NOTAMs.</p>
         )}
         {feeds.map(feed => (
           <div key={feed.id} className="flex items-center gap-3 p-3 border rounded-lg">
