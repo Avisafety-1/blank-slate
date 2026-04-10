@@ -17,6 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
+import { FH2DevicesSection } from "./FH2DevicesSection";
 import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -1048,6 +1049,9 @@ export const ChildCompaniesSection = () => {
                   )}
                 </div>
               )}
+
+              {/* FH2 Devices Section */}
+              <FH2DevicesSection fh2Projects={fh2Projects} />
             </div>
           </CollapsibleContent>
         </GlassCard>

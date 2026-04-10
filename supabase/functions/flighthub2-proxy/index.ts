@@ -577,6 +577,134 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ─── Action: list-devices ───
+    if (action === "list-devices") {
+      for (const v of API_VARIANTS) {
+        const url = v.name === "openapi-v0.1"
+          ? `${fh2BaseUrl}/openapi/v0.1/device?page=1&page_size=200`
+          : `${fh2BaseUrl}/manage/api/v1.0/device?page=1&page_size=200`;
+        try {
+          const h = makeHeaders(v, true);
+          const res = await safeFetch(url, { method: "GET", headers: h });
+          const data = await res.json();
+          if (data.code === 0) {
+            return new Response(JSON.stringify({ ...data, _api_version: v.name }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          console.log(`list-devices [${v.name}]: code=${data.code}`);
+        } catch (err) {
+          console.log(`list-devices [${v.name}] error: ${err.message}`);
+        }
+      }
+      return new Response(JSON.stringify({ error: "Kunne ikke hente enheter" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Action: device-state ───
+    if (action === "device-state") {
+      const { deviceSn } = params;
+      if (!deviceSn) {
+        return new Response(JSON.stringify({ error: "deviceSn er påkrevd" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      for (const v of API_VARIANTS) {
+        const url = v.name === "openapi-v0.1"
+          ? `${fh2BaseUrl}/openapi/v0.1/device/${encodeURIComponent(deviceSn)}/state`
+          : `${fh2BaseUrl}/manage/api/v1.0/device/${encodeURIComponent(deviceSn)}/state`;
+        try {
+          const h = makeHeaders(v, true);
+          const res = await safeFetch(url, { method: "GET", headers: h });
+          const data = await res.json();
+          if (data.code === 0) {
+            return new Response(JSON.stringify(data), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          console.log(`device-state [${v.name}]: code=${data.code}`);
+        } catch (err) {
+          console.log(`device-state [${v.name}] error: ${err.message}`);
+        }
+      }
+      return new Response(JSON.stringify({ error: "Kunne ikke hente enhetsstatus" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Action: device-hms ───
+    if (action === "device-hms") {
+      const { deviceSnList } = params;
+      if (!deviceSnList) {
+        return new Response(JSON.stringify({ error: "deviceSnList er påkrevd" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      for (const v of API_VARIANTS) {
+        const url = v.name === "openapi-v0.1"
+          ? `${fh2BaseUrl}/openapi/v0.1/device/hms?device_sn_list=${encodeURIComponent(deviceSnList)}`
+          : `${fh2BaseUrl}/manage/api/v1.0/device/hms?device_sn_list=${encodeURIComponent(deviceSnList)}`;
+        try {
+          const h = makeHeaders(v, true);
+          const res = await safeFetch(url, { method: "GET", headers: h });
+          const data = await res.json();
+          if (data.code === 0) {
+            return new Response(JSON.stringify(data), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          console.log(`device-hms [${v.name}]: code=${data.code}`);
+        } catch (err) {
+          console.log(`device-hms [${v.name}] error: ${err.message}`);
+        }
+      }
+      return new Response(JSON.stringify({ error: "Kunne ikke hente HMS-data" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Action: add-project-member ───
+    if (action === "add-project-member") {
+      const { userId, role, nickname } = params;
+      if (!projectUuid || !userId) {
+        return new Response(JSON.stringify({ error: "projectUuid og userId er påkrevd" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      for (const v of API_VARIANTS) {
+        const url = v.name === "openapi-v0.1"
+          ? `${fh2BaseUrl}/openapi/v0.1/project/member`
+          : `${fh2BaseUrl}/manage/api/v1.0/project/member`;
+        try {
+          const h = { ...makeHeaders(v, true), "Content-Type": "application/json" };
+          // Ensure project header is set for this specific project
+          if (v.projectHeaderName) h[v.projectHeaderName] = projectUuid;
+          const res = await safeFetch(url, {
+            method: "PUT",
+            headers: h,
+            body: JSON.stringify({
+              user_id: userId,
+              role: role || "project-member",
+              nickname: nickname || "",
+            }),
+          });
+          const data = await res.json();
+          if (data.code === 0) {
+            return new Response(JSON.stringify(data), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          console.log(`add-project-member [${v.name}]: code=${data.code}, msg=${data.message}`);
+        } catch (err) {
+          console.log(`add-project-member [${v.name}] error: ${err.message}`);
+        }
+      }
+      return new Response(JSON.stringify({ error: "Kunne ikke legge til personell i prosjektet" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
