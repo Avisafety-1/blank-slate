@@ -1,45 +1,25 @@
 
 
-## Send SORA-buffersoner med forskjellige farger til FlightHub 2
+## Fix: Leaflet crash when toggling layers + route planning
 
-### Nåværende oppførsel
-Kun én samlet buffersone (flight geography + contingency + ground risk) sendes som én annotasjon med én farge (`#FF6B35`).
+### Problem
+When the user disables a map layer (e.g. RMZ/TMZ/ATZ) and then clicks "Ruteplanlegging", the app crashes with `TypeError: null is not an object (evaluating 'this._map._targets')`.
 
-### Ny oppførsel
-Tre separate annotasjoner sendes, hver med egen farge:
-- **Flight Geography** (innerst) — Blå (`#3B82F6`)
-- **Contingency Volume** (midten) — Gul/oransje (`#F59E0B`)
-- **Ground Risk Buffer** (ytterst) — Rød (`#EF4444`)
+**Root cause**: `setGeoJsonInteractivity` calls `layer.removeInteractiveTarget(el)` on layers that have been removed from the map. When a layer is removed, Leaflet sets `layer._map = null`, so accessing `this._map._targets` throws.
 
-### Endringer
+### Fix
 
-**1. `src/components/FlightHub2SendDialog.tsx`**
+**File: `src/components/OpenAIPMap.tsx`** (lines 119-122)
 
-- Endre props: erstatt `soraBufferCoordinates` med tre separate koordinatsett, eller beregn dem internt basert på `soraSettings`-avstandene og rutekoordinatene
-- Praktisk løsning: ta inn rutekoordinater + soraSettings, beregn tre buffersoner i dialogen med `bufferPolyline`/`bufferPolygon` fra `soraGeometry.ts`
-- Oppdater `handleSend` til å sende tre separate `create-annotation`-kall:
-  - `{routeName} – Flight Geography` med blå farge
-  - `{routeName} – Contingency Volume` med gul farge  
-  - `{routeName} – Ground Risk Buffer` med rød farge
-- Hver GeoJSON feature får sin farge i `properties.color`
-- Oppdater sjekkboks-teksten til å indikere at tre soner sendes
+Add a guard to check `layer._map` before calling `removeInteractiveTarget` / `addInteractiveTarget`:
 
-**2. `src/pages/Oppdrag.tsx`**
-
-- Forenkle: i stedet for å beregne én samlet buffer, send rutekoordinater og soraSettings direkte til dialogen (dialogen beregner selv)
-- Alternativt: beregn tre separate buffersoner her og pass dem som props
-
-**3. `src/pages/Kart.tsx`**
-
-- Samme tilpasning som Oppdrag.tsx — sørg for at soraSettings og rutedata sendes korrekt
-
-### Teknisk detalj
-Tre buffersoner beregnes med kumulative avstander:
-```
-flightGeo = bufferPolyline(coords, soraSettings.flightGeographyDistance)
-contingency = bufferPolyline(coords, flightGeographyDistance + contingencyDistance)
-groundRisk = bufferPolyline(coords, flightGeographyDistance + contingencyDistance + groundRiskDistance)
+```typescript
+if (!enabled && typeof layer.removeInteractiveTarget === "function" && el) {
+  if (layer._map) layer.removeInteractiveTarget(el);
+} else if (enabled && typeof layer.addInteractiveTarget === "function" && el) {
+  if (layer._map) layer.addInteractiveTarget(el);
+}
 ```
 
-Fargene settes i GeoJSON `properties.color` som allerede støttes av edge-funksjonen (sendes videre til FH2 API).
+This is a one-line-per-branch change that prevents the crash while preserving correct behavior for layers that are still on the map.
 
