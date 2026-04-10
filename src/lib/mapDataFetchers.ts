@@ -946,7 +946,7 @@ function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mod
         html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
           <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.27 21.73 0 14 0z" fill="#e67e22" stroke="#c0392b" stroke-width="1.5"/>
           <circle cx="14" cy="13" r="6" fill="white" opacity="0.9"/>
-          <text x="14" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67e22" font-family="Arial,sans-serif">✈</text>
+          <text x="14" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67e22" font-family="Arial,sans-serif">!</text>
         </svg>`,
         iconSize: [28, 36] as any,
         iconAnchor: [14, 36] as any,
