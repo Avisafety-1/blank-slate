@@ -477,7 +477,11 @@ export const ChildCompaniesSection = () => {
     if (!companyId) return;
     const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
     if (cleanToken === FH2_MASK) {
-      toast.error("Klikk \"Endre nøkkel\" først for å lime inn en ny nøkkel");
+      toast("Nøkkelen er allerede lagret");
+      return;
+    }
+    if (!cleanToken) {
+      toast.error("Fyll inn en nøkkel først");
       return;
     }
     setSavingFh2(true);
@@ -519,17 +523,16 @@ export const ChildCompaniesSection = () => {
   const handleTestFh2 = async () => {
     if (!fh2Token) { toast.error("Fyll inn organisasjonsnøkkel først"); return; }
     const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
-    if (cleanToken === FH2_MASK) {
-      toast.error("Klikk \"Endre nøkkel\" først for å lime inn en ny nøkkel");
-      return;
-    }
     setTestingFh2(true);
     setFh2Connected(false);
     setFh2Projects([]);
     try {
-      await supabase.functions.invoke("flighthub2-proxy", {
-        body: { action: "save-token", token: cleanToken },
-      });
+      // Only save if it's a new key (not the masked placeholder)
+      if (cleanToken !== FH2_MASK) {
+        await supabase.functions.invoke("flighthub2-proxy", {
+          body: { action: "save-token", token: cleanToken },
+        });
+      }
 
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
         body: { action: "test-connection" },
@@ -1014,11 +1017,6 @@ export const ChildCompaniesSection = () => {
                   <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
                     {fh2ShowToken ? "Skjul" : "Vis"}
                   </Button>
-                  {fh2Token === FH2_MASK && (
-                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => { fh2Editing.current = true; setFh2Token(""); }}>
-                      <Pencil className="h-3 w-3 mr-1" /> Endre
-                    </Button>
-                  )}
                 </div>
                 <p className="text-[10px] text-muted-foreground">
                   Bruk nøkkelen fra FlightHub 2 → Organisasjonsinnstillinger → FlightHub Sync → Organisasjonsnøkkel.
@@ -1026,9 +1024,11 @@ export const ChildCompaniesSection = () => {
               </div>
 
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
-                  {savingFh2 ? "Lagrer..." : "Lagre"}
-                </Button>
+                {fh2Token && fh2Token !== FH2_MASK && (
+                  <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
+                    {savingFh2 ? "Lagrer..." : "Lagre"}
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2 || !fh2Token} className="h-8">
                   {testingFh2 ? "Tester..." : "Test tilkobling"}
                 </Button>
