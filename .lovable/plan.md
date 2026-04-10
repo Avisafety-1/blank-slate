@@ -1,40 +1,32 @@
 
 
-## Plan: Test alle 14 prosjekter for enheter
+## Plan: Fjern Laminar/Cirium NOTAMs og fiks store sirkler
 
 ### Problemet
-Vi har kun testet device-endepunktet for **1 av 14 prosjekter** ("Trening på bruk av Avisafe"). Dronen `1581F8DBW255D00A2M0U` kan ligge i et av de andre 13. I tillegg har `list-devices` aldri dukket opp i loggene, noe som tyder på at den koden kanskje aldri kjøres.
-
-API-versjonen er bekreftet v0.1 — dokumentasjonen viser at disse endepunktene eksisterer:
-- `GET /openapi/v0.1/device` (org-nivå)
-- `GET /openapi/v0.1/project/device` (prosjekt-nivå, med `X-Project-Uuid`)
-- `GET /openapi/v0.1/device/hms` (HMS)
+1. **480 Laminar-NOTAMs** ligger fortsatt i databasen (source = null) og overlapper med de 93 RSS-NOTAMs fra notaminfo — dette gir duplikater
+2. Noen NOTAMs har Q-line-radius på 200-999 NM, som genererer enorme sirkler som dekker hele Norge (f.eks. A2288/26 med areal 10.6 billioner m²)
+3. Laminar/Cirium er for dyrt å beholde
 
 ### Endringer
 
-**1. Utvide `test-device-api` i `flighthub2-proxy/index.ts`**
-
-Erstatte test #4 (som kun sjekker første prosjekt) med en loop over ALLE prosjekter:
-
+**1. Slett Laminar-data fra databasen (migrasjon)**
+```sql
+DELETE FROM notams WHERE properties->>'source' IS DISTINCT FROM 'notaminfo';
 ```
-// For hvert prosjekt: GET /openapi/v0.1/project/device med X-Project-Uuid
-results.all_projects = projects.map(p => ({
-  uuid: p.project_uuid,
-  name: p.name || p.project_name,
-  status: response.status,
-  device_count: parsed?.data?.list?.length ?? 0,
-  body_preview: text.substring(0, 500)
-}))
-```
+Fjerner alle 480 Laminar-NOTAMs i ett steg.
 
-Returnerer kompakt oppsummering per prosjekt: UUID, navn, HTTP-status, antall enheter, og rå body-preview (for de som har data).
+**2. Fjern Laminar-fallback fra `fetch-notams/index.ts`**
+- Slett hele "Step 2: Fallback to Laminar" blokken (~50 linjer)
+- Fjern `laminarUsed`-variabelen
+- Forenkle responsen til kun RSS-kilde
 
-**2. Ingen UI-endringer**
+**3. Begrens sirkelradius i `createCirclePolygon`**
+- Sett maks radius til **25 NM** (~46 km). NOTAMs med større radius (typisk FIR-nivå NOTAMs som QRDCA, QRDTT) vises kun som center-markør, ikke som polygon
+- Dette forhindrer at enkeltstående NOTAMs visuelt dekker hele landet
 
-`FH2DevicesSection.tsx` viser allerede hele `results`-objektet som rå JSON.
+**4. Oppdater admin-UI tekst**
+- Fjern "Laminar API brukes som fallback" fra `NotamRssFeedsSection.tsx`
 
-**3. Deploy og test**
-
-### Forventet resultat
-Vi ser om noen av de 14 prosjektene inneholder enheter. Hvis alle returnerer `list: null`, er konklusjonen at FlightHub Sync ikke er aktivert eller at API-nøkkelen mangler device-rettigheter.
+### Teknisk detalj
+NOTAMs med stor radius er typisk FIR-NOTAMs (Flight Information Region) som gjelder hele luftrommet — disse er ikke relevante å tegne som polygon på kartet. Ved å begrense til 25 NM vises de i stedet som en oransje markør på senterpunktet.
 
