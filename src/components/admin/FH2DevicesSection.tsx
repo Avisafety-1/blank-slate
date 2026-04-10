@@ -19,7 +19,7 @@ import { toast } from "sonner";
 interface FH2Device {
   device_sn: string;
   device_name: string;
-  device_model?: { model?: string; key?: string };
+  device_model?: { model?: string; key?: string; name?: string; class?: string };
   online_status?: number; // 0=offline, 1=online
   bound_status?: number;
   type?: number; // 0=drone, 1=dock, etc.
