@@ -12,13 +12,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import { Save, Linkedin, Loader2, CheckCircle2 } from "lucide-react";
 import { BRAND_VOICE_DEFAULTS } from "./marketingPresets";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 
 const STORAGE_KEY = "avisafe-marketing-brand-settings";
 
 const platformIntegrations = [
-  { name: "LinkedIn", status: "Planlagt", desc: "Automatisk publisering kommer snart." },
+  { name: "LinkedIn", status: "Aktiv", desc: "OAuth 2.0-integrasjon med direkte publisering." },
   { name: "Facebook", status: "Aktiv", desc: "Direkte publisering via Graph API." },
   { name: "Instagram", status: "Aktiv", desc: "Direkte publisering via Instagram Graph API." },
   { name: "Blogg", status: "Planlagt", desc: "CMS-integrasjon kommer snart." },
@@ -26,6 +29,8 @@ const platformIntegrations = [
 ];
 
 export const MarketingSettings = () => {
+  const { companyId } = useAuth();
+  const [connectingLinkedin, setConnectingLinkedin] = useState(false);
   const [customRules, setCustomRules] = useState("");
   const [bannedPhrases, setBannedPhrases] = useState("");
   const [ctaStyle, setCtaStyle] = useState("soft");
@@ -55,6 +60,51 @@ export const MarketingSettings = () => {
       }
     } catch { /* ignore */ }
   }, []);
+
+  const { data: linkedinStatus } = useQuery({
+    queryKey: ["linkedin-status", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("linkedin-oauth", {
+        body: { companyId },
+        headers: { "x-action": "status" },
+      });
+      // The function uses query param, so call with fetch directly
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/linkedin-oauth?action=status`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId }),
+        }
+      );
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const handleConnectLinkedin = async () => {
+    setConnectingLinkedin(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/linkedin-oauth?action=authorize`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId }),
+        }
+      );
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "linkedin-oauth", "width=600,height=700");
+      } else {
+        toast.error(data.error || "Kunne ikke starte LinkedIn-kobling");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Feil ved LinkedIn-kobling");
+    } finally {
+      setConnectingLinkedin(false);
+    }
+  };
 
   const handleSave = () => {
     const settings = {
