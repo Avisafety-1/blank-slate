@@ -963,6 +963,17 @@ Anta alltid at piloten vil:
 - Gjennomføre visuell inspeksjon av dronen
 Disse skal kommenteres som forutsetninger i prerequisites.
 
+### DUGGPUNKT OG ISINGSRISIKO (VIKTIG — KORREKT LOGIKK)
+Værdata kan inneholde duggpunktstemperatur (dew_point_temperature).
+- LITEN differanse mellom lufttemperatur og duggpunkt = HØY risiko for kondens/ising/tåke
+- STOR differanse = LAV risiko (tørr luft, trygt)
+Terskler:
+- Differanse < 1°C: ADVARSEL — svært høy risiko for kondens, tåke og ising på sensorer/propeller/elektronikk
+- Differanse < 3°C: FORSIKTIGHET — moderat risiko, overvåk nøye
+- Differanse < 5°C: MERKNAD — noe forhøyet fuktighet
+- Differanse > 5°C: OK — lav isingsrisiko
+ALDRI si at høy differanse øker risikoen — det er FEIL. Høy differanse betyr tørr luft og er positivt.
+
 ${skipWeather ? '### VÆR-MERKNAD\nBruker har valgt å hoppe over værvurdering. Sett weather.score til 7, weather.go_decision til "BETINGET", og noter at vær må vurderes separat før flyging.' : ''}
 
 ### VLOS / BVLOS-VURDERING
