@@ -90,8 +90,8 @@ export async function fetchSsbPopulationGrid(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  // BBOX format: minLat,minLng,maxLat,maxLng,EPSG:4326
-  const bboxStr = `${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng},EPSG:4326`;
+  // BBOX format: minLng,minLat,maxLng,maxLat (lon/lat order for SSB WFS 1.1.0)
+  const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
   const url = `${supabaseUrl}/functions/v1/ssb-population?bbox=${encodeURIComponent(bboxStr)}`;
 
   const resp = await fetch(url, {
@@ -106,52 +106,17 @@ export async function fetchSsbPopulationGrid(
     throw new Error(`SSB population proxy error: ${resp.status} ${errBody}`);
   }
 
-  const geojson = await resp.json();
+  const data = await resp.json();
   const cells: SsbPopulationCell[] = [];
 
-  if (!geojson?.features) return cells;
+  if (!data?.features) return cells;
 
-  for (const feature of geojson.features) {
-    const props = feature.properties;
-    // The population field name may vary — try common variants
-    const pop =
-      props?.pop_tot ??
-      props?.antall_personer ??
-      props?.antpers ??
-      props?.sum_alle ??
-      props?.befolkning ??
-      props?.POP_TOT ??
-      0;
-
-    if (pop <= 0) continue;
-
-    // Get centroid from geometry (polygon or point)
-    let centroidLat = 0;
-    let centroidLng = 0;
-    const geom = feature.geometry;
-    if (geom?.type === "Point") {
-      [centroidLng, centroidLat] = geom.coordinates;
-    } else if (geom?.type === "Polygon" && geom.coordinates?.[0]) {
-      const ring = geom.coordinates[0];
-      let sumLat = 0, sumLng = 0;
-      for (const [lng, lat] of ring) {
-        sumLat += lat;
-        sumLng += lng;
-      }
-      centroidLat = sumLat / ring.length;
-      centroidLng = sumLng / ring.length;
-    } else if (geom?.type === "MultiPolygon" && geom.coordinates?.[0]?.[0]) {
-      const ring = geom.coordinates[0][0];
-      let sumLat = 0, sumLng = 0;
-      for (const [lng, lat] of ring) {
-        sumLat += lat;
-        sumLng += lng;
-      }
-      centroidLat = sumLat / ring.length;
-      centroidLng = sumLng / ring.length;
-    }
-
-    cells.push({ population: Number(pop), centroidLat, centroidLng });
+  for (const feature of data.features) {
+    cells.push({
+      population: feature.pop_tot,
+      centroidLat: feature.centroidLat,
+      centroidLng: feature.centroidLng,
+    });
   }
 
   return cells;
