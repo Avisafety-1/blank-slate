@@ -508,7 +508,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
   };
 
-  const exportToPdf = async (assessmentData: any, comments: Record<string, string>, assessmentCreatedAt?: string) => {
+  const exportToPdf = async (assessmentData: any, comments: Record<string, string>, assessmentCreatedAt?: string, exportType: 'ai' | 'sora' = 'ai', soraData?: any) => {
     if (!companyId) return;
     setExportingPdf(true);
     try {
@@ -525,10 +525,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         companyId,
         userId: user.id,
         createdAt: assessmentCreatedAt,
+        soraOutput: soraData,
+        exportType,
       });
       if (success) {
         queryClient.invalidateQueries({ queryKey: ["documents"] });
-        toast.success('Risikovurdering eksportert til PDF og lagret i Dokumenter');
+        const label = exportType === 'sora' ? 'SORA-analyse' : 'Risikovurdering';
+        toast.success(`${label} eksportert til PDF og lagret i Dokumenter`);
       } else {
         toast.error('Kunne ikke eksportere til PDF');
       }
@@ -890,8 +893,22 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             <TabsContent value="sora" className="h-full m-0">
               <ScrollArea className="h-[calc(90vh-220px)]">
                 {soraOutput ? (
-                  <div className="pr-4">
+                  <div className="pr-4 space-y-4">
                     <SoraResultView data={soraOutput} />
+                    <Button
+                      onClick={() => exportToPdf(currentAssessment || {}, categoryComments, undefined, 'sora', soraOutput)}
+                      disabled={exportingPdf}
+                      variant="outline"
+                      className="w-full"
+                      size="sm"
+                    >
+                      {exportingPdf ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <FileDown className="w-4 h-4 mr-2" />
+                      )}
+                      Eksporter SORA-analyse til PDF
+                    </Button>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-8">
