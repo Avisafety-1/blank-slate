@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
       const memberUrn = meData.id ? `urn:li:person:${meData.id}` : null;
 
       if (!memberUrn) {
-        console.error("Could not fetch LinkedIn member URN:", JSON.stringify(userinfo));
+        console.error("Could not fetch LinkedIn member URN:", JSON.stringify(meData));
         return new Response(
           `<html><body><h2>Kunne ikke hente LinkedIn-profil</h2><script>setTimeout(()=>window.close(),3000)</script></body></html>`,
           { headers: { "Content-Type": "text/html" } }
