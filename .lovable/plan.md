@@ -1,25 +1,26 @@
 
 
-# Plan: Add additional text support to field 447 (Reporting Entity)
+# Plan: Import VL391 RPAS/UAS values and fix prefix filter
 
-## What
-Field 447 (Reporting Entity) has ECCAIRS data type "Code and Additional Text", same as field 215 (Operator). Currently it's configured as a simple select (`content_object_array`). We should change it to `code_and_additional_text` with an additional text field for the company name — mirroring how field 215 works.
+## Problem
+Field 391 (Risk Classification / Phase of Flight) needs 128 RPAS/UAS values in the 1,000,000 series. These are missing from `eccairs.value_list_items`. The current `valueIdPrefix: '1'` filter is too broad — it matches the existing 10,000-series values too.
 
 ## Changes
 
-### 1. `src/config/eccairsFields.ts` — Update field 447 config
-- Change `format` from `'content_object_array'` to `'code_and_additional_text'`
-- Change `type` from `'select'` to `'code_and_text'`
-- Add `additionalTextField: 'Selskapsnavn'` (company name label)
-- Add `fixedLabel: 'Aircraft operator'` so the code label is human-readable
-- Keep `defaultValue: '6133'`
+### 1. Database migration — Insert 128 RPAS/UAS values
+Create a migration that inserts all values from the provided list into `eccairs.value_list_items` with:
+- `value_list_key = 'VL391'`
+- `value_list_name = 'VL391'`
+- `value_id` = the ID (e.g. `'1000000'`)
+- `value_synonym` = description (e.g. `'RPAS/UAS'`)
+- `value_description` = same as synonym
 
-### 2. `supabase/functions/_shared/eccairsPayload.js` — Add format override
-- Add `'447': 'code_and_additional_text'` to `FORMAT_OVERRIDES` so the payload builder generates the correct `{content: [id], additionalText: "..."}` structure.
+All 128 rows from: 1000000 (root), 16 level-2 items, ~80 level-3 items, ~13 level-4 items.
 
-### 3. Auto-fill company name
-- In the auto-mapping logic (`EccairsMappingDialog.tsx` or `eccairsAutoMapping.ts`), populate the additional text for field 447 with the company name from the user's profile/company settings, so it's pre-filled when opening the ECCAIRS dialog.
+### 2. `src/config/eccairsFields.ts` — Update prefix filter
+Change `valueIdPrefix` from `'1'` to `'100000'` so only the 1,000,000-series RPAS values appear (filtering out 10,000-series manned aircraft values).
 
-## Result
-Field 447 will render as a code+text field (like 215), with "Aircraft operator" as the fixed code label and a text input for the company/operator name. The payload will correctly include `additionalText` when sent to ECCAIRS.
+## Files to change
+- `supabase/migrations/<timestamp>_add_vl391_rpas_values.sql` (new)
+- `src/config/eccairsFields.ts` (one line)
 
