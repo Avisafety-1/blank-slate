@@ -1,80 +1,75 @@
 
 
-# Plan: Legge til strukturert bakkerisikoanalyse (iGRC/fGRC) i AI-risikovurderingen
+# Plan: Legg til SORA-kategorisering (Steg 0) og buffersone-sjekk
 
-## Bakgrunn
-Luftrisikoanalysen (AEC/ARC/TMPR) er allerede implementert som en egen collapsible seksjon. Nå skal vi gjøre det samme for bakkerisiko, basert på EASA SORA Steg 2 og 3: iboende bakkerisiko (iGRC) og endelig bakkerisiko (fGRC) med mitigeringer M1(A), M1(B), M1(C) og M2.
+## Hva skal bygges
+En ny ekspanderbar seksjon **under "Samlet score"** i risikovurderingen som:
 
-Systemet har allerede tilgjengelig: SSB befolkningstetthet, SSB arealbruk, dronens klasse/vekt, flyhøyde, og SORA-bufferdata.
+1. **Vurderer om SORA er påkrevd** basert på operasjonsdata (VLOS/BVLOS, høyde, vekt, avstandsregler, C-merking)
+2. **Klassifiserer operasjonen** i riktig kategori: Åpen (A1/A2/A3), STS-01/STS-02, eller Spesifikk (SORA påkrevd)
+3. **Beregner ALOS** (Attitude Line of Sight) basert på dronens karakteristiske dimensjon
+4. **Sjekker om SORA-buffersoner er beregnet** ved å se om `mission.route.soraSettings.enabled` er satt
+5. **Anbefaler SORA-bufferberegning** hvis påkrevd men ikke utført
 
 ## Endringer
 
-### 1. Utvide AI-prompten (Edge Function)
-I `supabase/functions/ai-risk-assessment/index.ts`, legge til en ny seksjon i system-prompten:
+### 1. AI-prompt (`ai-risk-assessment/index.ts`)
+Ny seksjon i system-prompten:
 
-**BAKKERISIKO — iGRC OG fGRC (EASA SORA Steg 2-3)**
+**KATEGORISERING — STEG 0: TRENGER OPERASJONEN SORA?**
 
 Instruere AI-en til å:
-- Bestemme dronens **karakteristiske dimensjon** og **maks hastighet** fra drone-data (bruk kolonnetabell for 1m/3m/8m/20m/40m)
-- Beregne **iGRC-fotavtrykk** (Flight Geography + Contingency Volume + Ground Risk Buffer)
-- Identifisere **høyeste befolkningstetthet** fra SSB-data (populationDensity.maxDensity) og mappe til riktig rad i iGRC-tabellen
-- Slå opp **iGRC-verdi** (1-10) fra tabellen (karakteristisk dimensjon × befolkningstetthet)
-- Vurdere **M1(A) Skjerming** (Low/Medium robusthet): boligområder med bygninger, MTOW <25kg
-- Vurdere **M1(B) Operasjonelle restriksjoner** (Medium/High): tid/sted-begrensninger, ~90%/~99% reduksjon
-- Vurdere **M1(C) Bakkeobservasjon** (Low): observatør som justerer flygemønster
-- Vurdere **M2 Redusert treffenergi** (Medium/High): fallskjerm eller annen energidempning
-- Beregne **fGRC** = iGRC minus reduksjoner fra tabellen (M1(A) Low=-1, Medium=-2; M1(B) Medium=-1, High=-2; M1(C) Low=-1; M2 Medium=-1, High=-2)
-- Sjekke at fGRC ikke er lavere enn "Controlled ground area"-verdien i kolonnen
+- Sjekke om operasjonen kan utføres i Åpen kategori (VLOS, <120m, <25kg, ingen slipp/farlig gods)
+- Bestemme underkategori A1/A2/A3 basert på avstandskrav og C-merking
+- Sjekke om STS-01 eller STS-02 er aktuelt (C5/C6-merking, kontrollert område)
+- Hvis verken Åpen eller STS: Operasjonen krever SORA
+- Beregne ALOS-avstand: Multirotor/helikopter: 327 × CD + 20m, Fastvinget: 490 × CD + 30m
+- Sjekke om SORA-buffersoner er beregnet (fra `mission.route.soraSettings`)
 
-### 2. Utvide JSON-responsen
-Nytt felt `ground_risk_analysis`:
-
+Nytt JSON-felt `operation_classification`:
 ```json
 {
-  "ground_risk_analysis": {
-    "characteristic_dimension": "3m",
-    "max_speed_category": "35 m/s",
-    "population_density_band": "< 500",
-    "population_density_description": "Spredt bebygd / boligområde med store tomter",
-    "population_density_value": 320,
-    "igrc": 5,
-    "igrc_reasoning": "Drone med 3m dimensjon, 35 m/s maks hastighet, over spredt bebygd område (<500 pers/km²)",
-    "mitigations": {
-      "m1a_sheltering": { "applicable": true, "robustness": "Low", "reduction": -1, "reasoning": "Operasjon over boligområde med bygninger som gir skjerming, drone <25 kg" },
-      "m1b_operational_restrictions": { "applicable": false, "robustness": null, "reduction": 0, "reasoning": "Ingen tid/sted-begrensninger dokumentert" },
-      "m1c_ground_observation": { "applicable": true, "robustness": "Low", "reduction": -1, "reasoning": "Observatør overvåker bakkeområdet under flyging" },
-      "m2_impact_reduction": { "applicable": false, "robustness": null, "reduction": 0, "reasoning": "Ingen fallskjerm eller energidempende system" }
-    },
-    "total_reduction": -2,
-    "fgrc": 3,
-    "fgrc_reasoning": "iGRC 5 redusert med -1 (M1A skjerming) og -1 (M1C bakkeobservasjon) = fGRC 3",
-    "controlled_ground_area": false
+  "operation_classification": {
+    "requires_sora": false,
+    "category": "Open",
+    "subcategory": "A2",
+    "reasoning": "VLOS, <120m, drone <25kg med C2-merking",
+    "alos_max_m": 347,
+    "alos_calculation": "327 × 1m + 20m = 347m",
+    "sora_buffers_calculated": true,
+    "sora_buffers_recommendation": null,
+    "sts_applicable": null,
+    "open_category_rules": ["Maks 30m fra utenforstående", "VLOS påkrevd", "1:1-regelen"]
   }
 }
 ```
 
-### 3. Ny frontend-komponent: `GroundRiskAnalysisSection.tsx`
-Samme mønster som `AirRiskAnalysisSection.tsx` — collapsible seksjon som viser:
-- iGRC-verdi med fargekode (1-3=grønn, 4-6=gul, 7+=rød)
-- Drone dimensjon/hastighet og befolkningstetthetsbånd
-- Mitigeringstabell med M1(A)/M1(B)/M1(C)/M2, robusthetsnivå og reduksjon
-- iGRC → fGRC visuell progresjon
-- Kontrollert bakkeområde-markering hvis relevant
+### 2. Kontekstdata
+Inkludere `mission.route.soraSettings` eksplisitt i kontekstdataen som sendes til AI, slik at den kan se om buffersoner er beregnet.
 
-### 4. Integrere i `RiskScoreCard.tsx`
-Vise `GroundRiskAnalysisSection` etter `mission_complexity`-kategorien (der bakkerisiko er mest relevant).
+### 3. Ny frontend-komponent: `OperationClassificationSection.tsx`
+Collapsible seksjon (samme mønster som Air/Ground Risk) som viser:
+- Kategori-badge (Åpen A1/A2/A3 = grønn, STS = gul, SORA = oransje/rød)
+- Begrunnelse for kategorisering
+- ALOS-avstand (hvis relevant)
+- Regler for underkategorien (fra tabellen brukeren lastet opp)
+- Varsel hvis SORA er påkrevd men buffersoner ikke er beregnet → "Anbefaler å utføre SORA-bufferberegning på kartet"
+- Varsel hvis SORA er påkrevd av selskapet som internkrav
+
+### 4. Plassering i `RiskScoreCard.tsx`
+Vises som ny seksjon **rett under "Samlet score"** (før kategori-scorene), da dette er den mest grunnleggende vurderingen.
 
 ## Tekniske endringer
 
 | Fil | Endring |
 |-----|---------|
-| `supabase/functions/ai-risk-assessment/index.ts` | Ny seksjon i system-prompt med iGRC-tabell og mitigeringer. Utvide JSON-respons med `ground_risk_analysis`. |
-| `src/components/dashboard/GroundRiskAnalysisSection.tsx` | Ny komponent (collapsible) for visning av iGRC/fGRC |
-| `src/components/dashboard/RiskScoreCard.tsx` | Legge til `groundRiskAnalysis` prop og vise etter mission_complexity |
-| `src/components/dashboard/RiskAssessmentDialog.tsx` | Sende `ground_risk_analysis` til RiskScoreCard |
+| `supabase/functions/ai-risk-assessment/index.ts` | Ny prompt-seksjon for Steg 0, inkludere soraSettings i kontekst, nytt JSON-felt `operation_classification` |
+| `src/components/dashboard/OperationClassificationSection.tsx` | Ny komponent |
+| `src/components/dashboard/RiskScoreCard.tsx` | Ny prop `operationClassification`, vise under samlet score |
+| `src/components/dashboard/RiskAssessmentDialog.tsx` | Sende `operation_classification` til RiskScoreCard |
 
 ## Omfang
 - Ingen databaseendringer
-- Bruker eksisterende SSB-data og dronedata
 - Deploy av edge function nødvendig
+- Bruker eksisterende data (droneinfo, VLOS/BVLOS, route.soraSettings)
 
