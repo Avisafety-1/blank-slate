@@ -87,7 +87,7 @@ export function EccairsMappingDialog({
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [additionalTextValues, setAdditionalTextValues] = useState<Record<string, string>>({});
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
-    () => new Set(COLLAPSIBLE_GROUPS)
+    () => new Set(getOrderedGroups().filter(g => g !== 'identification'))
   );
   const makeFieldKey = (field: EccairsFieldConfig) => 
     `${field.code}_${field.taxonomyCode}_${field.entityPath ?? 'top'}`;
@@ -531,34 +531,20 @@ export function EccairsMappingDialog({
 
     const icon = ECCAIRS_FIELD_GROUP_ICONS[group];
     const label = ECCAIRS_FIELD_GROUP_LABELS[group];
-    const isCollapsible = COLLAPSIBLE_GROUPS.has(group);
-
-    if (isCollapsible) {
-      const isOpen = !collapsedGroups.has(group);
-      return (
-        <Collapsible key={group} open={isOpen} onOpenChange={() => toggleCollapsed(group)}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-sm text-muted-foreground border-b pb-2 hover:text-foreground transition-colors cursor-pointer">
-            {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            <span>{icon} {label}</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-              {fields.map(field => renderField(field))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      );
-    }
+    const isOpen = !collapsedGroups.has(group);
 
     return (
-      <div key={group} className="space-y-4">
-        <h4 className="font-medium text-sm text-muted-foreground border-b pb-2">
-          {icon} {label}
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {fields.map(field => renderField(field))}
-        </div>
-      </div>
+      <Collapsible key={group} open={isOpen} onOpenChange={() => toggleCollapsed(group)}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-sm text-muted-foreground border-b pb-2 hover:text-foreground transition-colors cursor-pointer">
+          {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          <span>{icon} {label}</span>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+            {fields.map(field => renderField(field))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     );
   };
 
