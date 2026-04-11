@@ -18,16 +18,11 @@ export function useEccairsTaxonomy(valueListKey: string, search: string = "", en
     queryKey: ['eccairs-taxonomy', valueListKey, search, valueIdPrefix],
     queryFn: async () => {
       // Build query params
-      let url = `${SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description&limit=200`;
+      let url = `${SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description&limit=500`;
       
-      // Add value_id prefix filter if provided
+      // Add value_id prefix filter if provided (text LIKE)
       if (valueIdPrefix) {
-        // For numeric value_ids, use range filter to get all values starting with prefix
-        // e.g. prefix '100000' → range 1000000..1000999 (appending 0s and 9s to match length)
-        const pad = Math.max(0, 7 - valueIdPrefix.length);
-        const lower = valueIdPrefix + '0'.repeat(pad);
-        const upper = valueIdPrefix + '9'.repeat(pad);
-        url += `&and=(value_id.gte.${lower},value_id.lte.${upper})`;
+        url += `&value_id=like.${encodeURIComponent(valueIdPrefix)}*`;
       }
       
       // Add search filter if provided (server-side ILIKE)
