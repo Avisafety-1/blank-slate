@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2, Copy, Facebook, Instagram, ExternalLink, Clock, Calendar } from "lucide-react";
+import { Plus, Trash2, Edit, Loader2, Copy, Facebook, Instagram, Linkedin, ExternalLink, Clock, Calendar } from "lucide-react";
 import { DraftEditorDialog } from "./DraftEditorDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -18,6 +18,7 @@ export const MarketingDrafts = () => {
   const [editDraft, setEditDraft] = useState<any>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [publishingIgId, setPublishingIgId] = useState<string | null>(null);
+  const [publishingLiId, setPublishingLiId] = useState<string | null>(null);
   const [tab, setTab] = useState("all");
 
   const { data: drafts = [], isLoading } = useQuery({
@@ -153,6 +154,39 @@ export const MarketingDrafts = () => {
     }
   };
 
+  const handleQuickPublishLinkedin = async (draft: any) => {
+    setPublishingLiId(draft.id);
+    try {
+      const text = draft.content;
+      if (!text?.trim()) {
+        toast.error("Innlegget har ingen tekst");
+        return;
+      }
+      const { data: media } = await supabase
+        .from("marketing_media")
+        .select("file_url")
+        .eq("draft_id", draft.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const imageUrl = media?.[0]?.file_url || undefined;
+
+      const { data, error } = await supabase.functions.invoke("publish-linkedin", {
+        body: { text, imageUrl, draftId: draft.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
+      toast.success("Publisert til LinkedIn!", {
+        action: data.postUrl ? { label: "Åpne", onClick: () => window.open(data.postUrl, "_blank") } : undefined,
+      });
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke publisere til LinkedIn");
+    } finally {
+      setPublishingLiId(null);
+    }
+  };
+
   const statusLabels: Record<string, string> = {
     draft: "Utkast",
     review: "Gjennomgang",
@@ -258,6 +292,19 @@ export const MarketingDrafts = () => {
                     )}
                     Instagram
                   </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleQuickPublishLinkedin(draft)}
+                    disabled={publishingLiId === draft.id}
+                    className="gap-1 bg-[#0A66C2] hover:bg-[#0A66C2]/90 text-white text-xs h-7 px-2.5"
+                  >
+                    {publishingLiId === draft.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Linkedin className="w-3.5 h-3.5" />
+                    )}
+                    LinkedIn
+                  </Button>
                 </>
               )}
               {isPublished && (meta?.postUrl || meta?.facebook_post_url) && (
@@ -280,6 +327,17 @@ export const MarketingDrafts = () => {
                 >
                   <ExternalLink className="w-3 h-3" />
                   Instagram
+                </Button>
+              )}
+              {isPublished && meta?.linkedin_post_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(meta.linkedin_post_url, "_blank")}
+                  className="gap-1 text-xs h-7 px-2"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  LinkedIn
                 </Button>
               )}
               <div className="ml-auto flex gap-0.5">
