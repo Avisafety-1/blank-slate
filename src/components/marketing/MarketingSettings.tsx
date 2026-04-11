@@ -12,13 +12,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import { Save, Linkedin, Loader2, CheckCircle2 } from "lucide-react";
 import { BRAND_VOICE_DEFAULTS } from "./marketingPresets";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 
 const STORAGE_KEY = "avisafe-marketing-brand-settings";
 
 const platformIntegrations = [
-  { name: "LinkedIn", status: "Planlagt", desc: "Automatisk publisering kommer snart." },
+  { name: "LinkedIn", status: "Aktiv", desc: "OAuth 2.0-integrasjon med direkte publisering." },
   { name: "Facebook", status: "Aktiv", desc: "Direkte publisering via Graph API." },
   { name: "Instagram", status: "Aktiv", desc: "Direkte publisering via Instagram Graph API." },
   { name: "Blogg", status: "Planlagt", desc: "CMS-integrasjon kommer snart." },
@@ -26,6 +29,8 @@ const platformIntegrations = [
 ];
 
 export const MarketingSettings = () => {
+  const { companyId } = useAuth();
+  const [connectingLinkedin, setConnectingLinkedin] = useState(false);
   const [customRules, setCustomRules] = useState("");
   const [bannedPhrases, setBannedPhrases] = useState("");
   const [ctaStyle, setCtaStyle] = useState("soft");
@@ -55,6 +60,46 @@ export const MarketingSettings = () => {
       }
     } catch { /* ignore */ }
   }, []);
+
+  const { data: linkedinStatus } = useQuery({
+    queryKey: ["linkedin-status", companyId],
+    queryFn: async () => {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/linkedin-oauth?action=status`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId }),
+        }
+      );
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const handleConnectLinkedin = async () => {
+    setConnectingLinkedin(true);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/linkedin-oauth?action=authorize`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId }),
+        }
+      );
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, "linkedin-oauth", "width=600,height=700");
+      } else {
+        toast.error(data.error || "Kunne ikke starte LinkedIn-kobling");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Feil ved LinkedIn-kobling");
+    } finally {
+      setConnectingLinkedin(false);
+    }
+  };
 
   const handleSave = () => {
     const settings = {
@@ -189,6 +234,53 @@ export const MarketingSettings = () => {
               />
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* LinkedIn configuration */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Linkedin className="w-4 h-4" />
+            LinkedIn-konfigurasjon
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {linkedinStatus?.connected ? (
+            <div className="flex items-center gap-2 p-3 rounded-md bg-green-500/10 border border-green-500/20">
+              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <div>
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">Koblet til LinkedIn</p>
+                <p className="text-xs text-muted-foreground">
+                  {linkedinStatus.memberUrn}
+                  {linkedinStatus.expiresAt && ` · Utløper ${new Date(linkedinStatus.expiresAt).toLocaleDateString("nb-NO")}`}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="ml-auto text-xs" onClick={handleConnectLinkedin}>
+                Koble på nytt
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Koble til LinkedIn for å publisere innlegg direkte fra markedsføringsmodulen.
+              </p>
+              <Button
+                onClick={handleConnectLinkedin}
+                disabled={connectingLinkedin}
+                className="gap-2 bg-[#0A66C2] hover:bg-[#0A66C2]/90 text-white"
+              >
+                {connectingLinkedin ? <Loader2 className="w-4 h-4 animate-spin" /> : <Linkedin className="w-4 h-4" />}
+                Koble til LinkedIn
+              </Button>
+            </div>
+          )}
+          <div className="rounded-md bg-muted/30 border border-border p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">Oppsett:</p>
+            <p>1. Registrer redirect-URI i LinkedIn-appen din:</p>
+            <code className="block text-[10px] bg-muted p-1 rounded">{import.meta.env.VITE_SUPABASE_URL}/functions/v1/linkedin-oauth?action=callback</code>
+            <p>2. Sørg for at appen har <code>w_member_social</code>, <code>openid</code> og <code>profile</code> scopes</p>
+          </div>
         </CardContent>
       </Card>
 
