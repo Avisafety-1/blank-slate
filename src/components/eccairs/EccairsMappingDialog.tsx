@@ -385,7 +385,13 @@ export function EccairsMappingDialog({
           {field.helpText && (
             <p className="text-xs text-muted-foreground">{field.helpText}</p>
           )}
-          {field.code === 391 ? (
+          {field.code === 390 ? (
+            <EccairsEventTypeTreeSelect
+              value={getFieldValue(field) || null}
+              onChange={(val) => setFieldValue(field, val)}
+              placeholder={`Velg ${field.label.toLowerCase()}...`}
+            />
+          ) : field.code === 391 ? (
             <EccairsPhaseOfFlightSelect
               value={getFieldValue(field) || null}
               onChange={(val) => setFieldValue(field, val)}
