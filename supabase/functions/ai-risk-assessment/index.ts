@@ -799,7 +799,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
           soraSettings: (mission.route as any)?.soraSettings || null,
         },
         sora: mission.mission_sora?.[0],
-        company_requires_sora_on_missions: mission.require_sora_on_missions || false,
+        company_requires_sora_on_missions: companyRequireSora,
         customer: mission.customers?.navn,
       },
       weather: skipWeather ? { 
