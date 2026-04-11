@@ -784,8 +784,12 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         scheduledTime: mission.tidspunkt,
         endTime: mission.slutt_tidspunkt,
         riskLevel: mission.risk_nivå,
-        route: mission.route,
+        route: {
+          ...(mission.route as any),
+          soraSettings: (mission.route as any)?.soraSettings || null,
+        },
         sora: mission.mission_sora?.[0],
+        company_requires_sora_on_missions: mission.require_sora_on_missions || false,
         customer: mission.customers?.navn,
       },
       weather: skipWeather ? { 
