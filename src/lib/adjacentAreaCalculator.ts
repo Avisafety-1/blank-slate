@@ -87,8 +87,8 @@ export async function fetchSsbPopulationGrid(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
-  const { supabase } = await import("@/integrations/supabase/client");
-  const supabaseUrl = (supabase as any).supabaseUrl ?? "https://pmucsvrypogtttrajqxq.supabase.co";
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   // BBOX format: minLat,minLng,maxLat,maxLng,EPSG:4326
   const bboxStr = `${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng},EPSG:4326`;
@@ -97,7 +97,7 @@ export async function fetchSsbPopulationGrid(
   const resp = await fetch(url, {
     signal,
     headers: {
-      "apikey": (supabase as any).supabaseKey ?? "",
+      "apikey": supabaseKey,
     },
   });
 
