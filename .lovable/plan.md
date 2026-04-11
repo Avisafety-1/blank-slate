@@ -1,57 +1,64 @@
 
 
-# Plan: Collapsible tree for VL390 (Event Type) + insert missing RPAS values
+## Plan: LinkedIn Publishing Integration for /marketing
 
-## Problem
-1. VL390 has 3145 values shown as a flat list — needs a hierarchical tree like VL391
-2. RPAS-specific child values under `99010401` are **missing** from the database (the user provided 22 values: 1090000, 1091000, 99012383-99012386, 99200004-99200026)
+### Overview
+Add LinkedIn posting capability following the same pattern as Facebook/Instagram, but using LinkedIn's OAuth 2.0 (3-legged) flow since LinkedIn requires user-level authorization (unlike FB/IG which use page tokens).
 
-## Approach
+### Architecture
 
-### 1. Database migration — Insert missing RPAS Event Type values
-Insert the 22 RPAS-specific values the user provided into `eccairs.value_list_items` with `value_list_key = 'VL390'`. These are all level-4 children of `99010401` (RPAS Specific Events).
+```text
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  MarketingSettings │──>│ linkedin-oauth   │──>│ LinkedIn OAuth  │
+│  (Connect button)  │<──│ (edge function)  │<──│ Authorization   │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+                              │
+                              ▼
+                        ┌──────────────┐
+                        │ DB: encrypted │
+                        │ tokens table  │
+                        └──────────────┘
+                              │
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  MarketingDrafts  │──>│ publish-linkedin │──>│ LinkedIn REST   │
+│  (Publish button) │<──│ (edge function)  │<──│ API /rest/posts │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+```
 
-Values to insert:
-- 1090000: RPAS/UAS Excursion out of its operational volume
-- 1091000: RPAS/UAS Landing outside its safety zone
-- 99012383-99012386: Excursion, Landing, Loss of Link (designed/undesigned)
-- 99200004-99200026: Flight termination, Battery failure, Flight control failure, Ground control failure, Collision avoidance failure, Loss of Visual Contact, CMU, EMI, Airspace/Geo infringement, etc.
+### Steps
 
-Note: Some value_ids (1090000, 1091000) already exist with different descriptions (Equipment sub-items). These need to be handled — either update the existing rows or insert with VL390-specific entries. Since the table key is `(value_list_key, value_id)`, duplicate VL390 entries should be checked.
+**1. Add secrets** (LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET)
+- Client ID: `78ky284fr6x81w`
+- Client secret: user will provide via secret tool
 
-### 2. New component — `EccairsEventTypeTreeSelect.tsx`
-Create a dedicated tree component for VL390, similar to `EccairsPhaseOfFlightSelect.tsx`:
+**2. Database migration**
+- Create `linkedin_tokens` table (company_id, access_token encrypted, refresh_token encrypted, member_urn, expires_at, updated_at)
+- RLS: only company members can read their own tokens
 
-**Top-level nodes** (level 1, always visible):
-- Equipment (1000000)
-- Operational (99010158)
-- Personnel (99010159)  
-- Organisational (99010164)
-- RPAS Specific Events (99010401)
-- Consequential Events (3000000)
-- Any Other Events (99012035)
-- Unknown (99000000)
+**3. Edge function: `linkedin-oauth`**
+- Handles two actions: `authorize` (returns LinkedIn OAuth URL) and `callback` (exchanges code for tokens, stores encrypted in DB, fetches member URN via `/v2/userinfo`)
+- Redirect URI: `https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/linkedin-oauth?action=callback`
 
-**Parent-child derivation strategy:**
-- For Equipment (1xxxxxx): derive parent from numeric pattern (ATA chapters — zeros at end indicate parent level)
-- For 99010401 children: use a hardcoded PARENT_MAP linking the 22 RPAS values to `99010401`
-- For other 99xxxxxx values: group under their respective top-level parent using prefix patterns
+**4. Edge function: `publish-linkedin`**
+- Reads encrypted tokens from DB
+- Posts to LinkedIn REST API (`/rest/posts`) with `w_member_social` scope
+- Supports text-only and text+image posts (image requires upload via `/rest/images`)
+- Updates draft status/metadata like FB/IG pattern
 
-The component will:
-- Fetch all VL390 items (limit 500+, paginated if needed)
-- Build a tree with collapsible nodes
-- Support search with auto-expand
-- Auto-expand path to selected value
+**5. Update `publish-scheduled`**
+- Add LinkedIn branch for drafts with `platform === "linkedin"`
 
-### 3. Update `EccairsMappingDialog.tsx`
-Add a conditional check for `field.code === 390` to render `EccairsEventTypeTreeSelect` instead of the flat `EccairsTaxonomySelect`.
+**6. Frontend updates**
+- **MarketingSettings**: Change LinkedIn status from "Planlagt" to show a "Koble til LinkedIn" button + connection status
+- **MarketingDrafts**: Add LinkedIn publish button (blue `#0A66C2`) next to FB/IG buttons for approved drafts; add LinkedIn link for published drafts
+- **DraftEditorDialog**: Ensure "linkedin" is available as platform option (already is based on `createBlank`)
 
-### 4. No other VLs need tree structure now
-- VL430 (37 values) and VL32 (75 values) are small enough for flat lists
-- VL454 is already auto-suggested
+### Technical Details
 
-## Files to change
-- `supabase/migrations/<timestamp>_add_vl390_rpas_values.sql` (new)
-- `src/components/eccairs/EccairsEventTypeTreeSelect.tsx` (new)
-- `src/components/eccairs/EccairsMappingDialog.tsx` (add field 390 routing)
+- LinkedIn OAuth redirect URI must be registered in the LinkedIn app settings
+- Tokens encrypted with `pgp_sym_encrypt` using existing `FH2_ENCRYPTION_KEY` pattern
+- LinkedIn access tokens expire after 60 days; refresh tokens after 365 days
+- Member URN format: `urn:li:person:XXXXXXX`
+- Post creation payload: `{ author: memberUrn, lifecycleState: "PUBLISHED", visibility: "PUBLIC", commentary: text }`
+- Image posts require: initializeUpload → upload binary → create post with image reference
 
