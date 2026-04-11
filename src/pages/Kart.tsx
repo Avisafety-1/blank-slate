@@ -448,28 +448,52 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                 )}
               </div>
 
-              {/* Cancel & Save - always visible top-right */}
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelRoute}
-                  className="h-8 px-2 sm:px-3"
-                  title="Avbryt"
-                >
-                  <X className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">Avbryt</span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveRoute}
-                  disabled={currentRoute.coordinates.length < 2}
-                  className="h-8 px-2 sm:px-3"
-                  title="Lagre rute"
-                >
-                  <Save className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">Lagre</span>
-                </Button>
+              {/* Cancel/Save & Undo/Clear stacked on mobile, inline on desktop */}
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancelRoute}
+                    className="h-8 px-2 sm:px-3"
+                    title="Avbryt"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">Avbryt</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveRoute}
+                    disabled={currentRoute.coordinates.length < 2}
+                    className="h-8 px-2 sm:px-3"
+                    title="Lagre rute"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">Lagre</span>
+                  </Button>
+                </div>
+                <div className="flex sm:hidden items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUndoPoint}
+                    disabled={currentRoute.coordinates.length === 0}
+                    className="h-8 px-2"
+                    title="Angre siste punkt"
+                  >
+                    <Undo className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearRoute}
+                    disabled={currentRoute.coordinates.length === 0}
+                    className="h-8 px-2"
+                    title="Nullstill rute"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
             
@@ -550,31 +574,29 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                 </Button>
               )}
 
-              {/* Separator on mobile */}
+              {/* Undo & Clear - desktop only (mobile version is in top-right stack) */}
               <div className="hidden sm:block w-px h-5 bg-border" />
-
-              {/* Undo & Clear */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleUndoPoint}
                 disabled={currentRoute.coordinates.length === 0}
-                className="h-8 px-2 sm:px-3"
+                className="hidden sm:flex h-8 px-3"
                 title="Angre siste punkt"
               >
                 <Undo className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Angre</span>
+                <span className="ml-1">Angre</span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleClearRoute}
                 disabled={currentRoute.coordinates.length === 0}
-                className="h-8 px-2 sm:px-3"
+                className="hidden sm:flex h-8 px-3"
                 title="Nullstill rute"
               >
                 <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Nullstill</span>
+                <span className="ml-1">Nullstill</span>
               </Button>
             </div>
           </div>
