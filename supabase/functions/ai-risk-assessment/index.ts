@@ -71,6 +71,8 @@ serve(async (req) => {
 Du mottar en opprinnelig AI-risikovurdering og brukerens manuelle mitigeringer/forklaringer for 5 risikokategorier.
 Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjengelig informasjon.
 
+VIKTIG KONTEKST: Denne re-vurderingen ER selve den komplette SORA-analysen. Når den opprinnelige vurderingen sier "SORA er påkrevd" eller "manglende SORA", betyr det at DENNE outputen er løsningen på det kravet. Du skal IKKE gjenta bekymringer om "manglende SORA" eller "ufullstendig SORA" i summary eller andre felter — denne analysen MED dens SAIL, containment og OSO-output ER den fullstendige SORA-en.
+
 VIKTIG: Brukerens manuelle kommentarer kan inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC utover det AI-en opprinnelig beregnet. Du MÅ vurdere disse kommentarene som gyldige mitigeringer og justere fGRC/ARC deretter FØR du slår opp SAIL.
 
 ### STEG 7: SAIL-OPPSLAG (EKSAKT MATRISE)
@@ -201,7 +203,7 @@ Returner denne JSON-strukturen:
   "operational_limits": "<operative begrensninger og betingelser>",
   "overall_score": <number 1-10>,
   "recommendation": "<go|caution|no-go>",
-  "summary": "<kort oppsummering av SORA-vurderingen — MÅ kun nevne reelle bekymringer fra analysen, IKKE hallusinere risikoer som er vurdert som OK>"
+  "summary": "<kort oppsummering av SORA-vurderingen — dette ER den komplette SORA-analysen, IKKE referer til 'manglende SORA'. Fokuser på reelle risikoer, mitigeringer og SAIL-resultat>"
 }
 
 ### VURDERINGSPRINSIPPER
@@ -1095,7 +1097,7 @@ Pilotens input angir om operasjonen er VLOS eller BVLOS (isVlos-feltet i pilotIn
 Hvis BVLOS (isVlos = false):
 - Sjekk om SORA-analyse finnes (mission.sora). Hvis ingen SORA finnes:
   - IKKE skriv at "manglende SORA er en betydelig bekymring" eller lignende vage bekymringer.
-  - I stedet: legg til en konkret anbefaling: "SORA-analyse er påkrevd for BVLOS-operasjoner. Kommenter på identifiserte risikoer i denne analysen og kjør en re-vurdering etter at SORA er utført."
+  - I stedet: legg til en konkret anbefaling: "SORA-analyse påkrevd for BVLOS. Kommenter på identifiserte risikoer i denne analysen og kjør en re-vurdering — re-vurderingen vil generere den komplette SORA-analysen (SAIL, containment, OSO)."
   - Reduser overall_score med 3 og legg til NO-GO-anbefaling med samme tekst.
 - Krev spesifikke BVLOS-kompetanser (STS-02, BVLOS-sertifisering e.l.). Reduser pilot_experience score med 2 hvis mangler.
 - Vurder behov for C2-link (command & control), DAA (detect and avoid), og redundante systemer.
