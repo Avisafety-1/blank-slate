@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { EccairsTaxonomySelect } from "./EccairsTaxonomySelect";
 import { EccairsMultiSelect } from "./EccairsMultiSelect";
 import { EccairsPhaseOfFlightSelect } from "./EccairsPhaseOfFlightSelect";
+import { EccairsEventTypeTreeSelect } from "./EccairsEventTypeTreeSelect";
 
 import { useIncidentEccairsAttributes, AttributeData } from "@/hooks/useIncidentEccairsAttributes";
 import { 
@@ -384,7 +385,13 @@ export function EccairsMappingDialog({
           {field.helpText && (
             <p className="text-xs text-muted-foreground">{field.helpText}</p>
           )}
-          {field.code === 391 ? (
+          {field.code === 390 ? (
+            <EccairsEventTypeTreeSelect
+              value={getFieldValue(field) || null}
+              onChange={(val) => setFieldValue(field, val)}
+              placeholder={`Velg ${field.label.toLowerCase()}...`}
+            />
+          ) : field.code === 391 ? (
             <EccairsPhaseOfFlightSelect
               value={getFieldValue(field) || null}
               onChange={(val) => setFieldValue(field, val)}
