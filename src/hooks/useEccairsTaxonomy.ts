@@ -22,9 +22,7 @@ export function useEccairsTaxonomy(valueListKey: string, search: string = "", en
       
       // Add value_id prefix filter if provided — use range filter for numeric precision
       if (valueIdPrefix) {
-        const lower = valueIdPrefix.padEnd(10, '0');
-        const upper = (BigInt(valueIdPrefix) + 1n).toString().padEnd(10, '0');
-        url += `&value_id=gte.${lower}&value_id=lt.${upper}`;
+        url += `&and=(value_id.gte.${valueIdPrefix}${'0'.repeat(10 - valueIdPrefix.length)},value_id.lt.${(BigInt(valueIdPrefix) + 1n).toString()}${'0'.repeat(10 - valueIdPrefix.length)})`;
       }
       
       // Add search filter if provided (server-side ILIKE)
