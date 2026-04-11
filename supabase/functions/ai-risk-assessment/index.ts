@@ -1249,6 +1249,19 @@ Returner en JSON-respons med denne strukturen:
     "fgrc_reasoning": "<kort forklaring av fGRC-beregningen med mitigeringer>",
     "controlled_ground_area": <boolean — true hvis operasjon er over kontrollert bakkeområde>
   },
+  "operation_classification": {
+    "requires_sora": <boolean — true hvis operasjonen krever SORA>,
+    "category": "<Open|STS|Specific>",
+    "subcategory": "<A1|A2|A3|STS-01|STS-02|SORA — underkategori>",
+    "reasoning": "<kort begrunnelse for kategoriseringen>",
+    "alos_max_m": <beregnet ALOS-avstand i meter, eller null>,
+    "alos_calculation": "<formel brukt for ALOS, f.eks. '327 × 1m + 20m = 347m'>",
+    "sora_buffers_calculated": <boolean — true hvis mission.route.soraSettings.enabled === true>,
+    "sora_buffers_recommendation": "<anbefaling om bufferberegning hvis påkrevd men ikke utført, ellers null>",
+    "sts_applicable": "<beskrivelse av relevant STS hvis aktuelt, ellers null>",
+    "open_category_rules": ["<regler som gjelder for valgt underkategori>"],
+    "company_requires_sora": <boolean — true hvis selskapet krever SORA som internkrav uavhengig av kategori>
+  },
   "recommendations": [
     {
       "priority": "<high|medium|low>",
