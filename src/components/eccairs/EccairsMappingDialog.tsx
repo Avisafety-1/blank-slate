@@ -28,6 +28,7 @@ import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAut
 import { Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { usePlanGating } from "@/hooks/usePlanGating";
+import { supabase } from "@/integrations/supabase/client";
 
 interface IncidentComment {
   id: string;
