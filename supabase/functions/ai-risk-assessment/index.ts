@@ -1415,40 +1415,61 @@ Returner en JSON-respons med denne strukturen:
   "ai_disclaimer": "Vurderingen er basert på tilgjengelige data på vurderingstidspunktet. Endringer i input kan påvirke resultatet."
 }`;
 
-    // 9. Call AI
+    // 9. Call AI (with retry for transient 502/503 errors)
     console.log('Calling AI for risk assessment...');
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
+    const aiRequestBody = JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
     });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI gateway error:', aiResponse.status, errorText);
+    let aiResponse: Response | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: aiRequestBody,
+      });
+
+      if (aiResponse.ok || (aiResponse.status !== 502 && aiResponse.status !== 503)) {
+        break;
+      }
+      console.warn(`AI gateway returned ${aiResponse.status}, retrying (attempt ${attempt + 1})...`);
+      // Consume body before retry
+      await aiResponse.text();
+      if (attempt === 0) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    if (!aiResponse!.ok) {
+      const errorText = await aiResponse!.text();
+      console.error('AI gateway error:', aiResponse!.status, errorText);
       
-      if (aiResponse.status === 429) {
+      if (aiResponse!.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (aiResponse.status === 402) {
+      if (aiResponse!.status === 402) {
         return new Response(JSON.stringify({ error: 'AI credits exhausted, please add funds' }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      throw new Error(`AI gateway error: ${aiResponse.status}`);
+      if (aiResponse!.status === 502 || aiResponse!.status === 503) {
+        return new Response(JSON.stringify({ error: 'AI-tjenesten er midlertidig utilgjengelig. Prøv igjen om et øyeblikk.' }), {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw new Error(`AI gateway error: ${aiResponse!.status}`);
     }
 
     const aiData = await aiResponse.json();
