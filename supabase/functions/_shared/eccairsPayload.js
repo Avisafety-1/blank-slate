@@ -177,6 +177,7 @@ const FORCE_TOP_LEVEL = new Set(['432', '448']);
 // Format overrides - force correct format for attributes where DB rows may have wrong format
 // -------------------------
 const FORMAT_OVERRIDES = {
+  '447': 'code_and_additional_text', // Reporting entity - E2 spec: Code and Additional Text
   '454': 'code_and_additional_text', // State/area of occurrence - E2 spec: Code and Additional Text
   '495': 'content_object_array',   // Reporting form type - E2 expects content_object_array
   '1064': 'content_object_array',  // Parties informed - E2 expects content_object_array

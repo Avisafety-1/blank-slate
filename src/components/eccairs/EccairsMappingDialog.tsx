@@ -28,6 +28,7 @@ import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAut
 import { Loader2, Sparkles, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { usePlanGating } from "@/hooks/usePlanGating";
+import { supabase } from "@/integrations/supabase/client";
 
 interface IncidentComment {
   id: string;
@@ -160,8 +161,20 @@ export function EccairsMappingDialog({
     }
   }, [attributes, isLoading, open, incident]);
 
-  const applyAutoSuggestions = () => {
+  const applyAutoSuggestions = async () => {
     const suggestions = suggestEccairsMapping(incident);
+
+    // Fetch company name for field 447 (Reporting Entity) additional text
+    let companyName = '';
+    try {
+      const { data } = await supabase
+        .from('companies')
+        .select('navn')
+        .eq('id', incident.company_id)
+        .single();
+      if (data?.navn) companyName = data.navn;
+    } catch { /* ignore */ }
+
     const newValues: Record<string, string> = {};
     
     // Map suggestions to field values
@@ -238,6 +251,11 @@ export function EccairsMappingDialog({
         newValues[makeFieldKey(field)] = incident.drone_serial_number;
       } else if (field.defaultValue) {
         newValues[makeFieldKey(field)] = field.defaultValue;
+      }
+
+      // Auto-fill additional text for code_and_text fields with company name
+      if (companyName && field.type === 'code_and_text' && (field.code === 447 || field.code === 215)) {
+        setAdditionalTextValues(prev => ({ ...prev, [makeFieldKey(field)]: companyName }));
       }
     });
     
