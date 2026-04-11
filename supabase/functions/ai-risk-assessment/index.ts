@@ -1472,7 +1472,7 @@ Returner en JSON-respons med denne strukturen:
       throw new Error(`AI gateway error: ${aiResponse!.status}`);
     }
 
-    const aiData = await aiResponse.json();
+    const aiData = await aiResponse!.json();
     let aiContent = aiData.choices?.[0]?.message?.content;
     
     if (!aiContent) {
