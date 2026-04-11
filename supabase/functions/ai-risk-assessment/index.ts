@@ -203,7 +203,7 @@ Returner denne JSON-strukturen:
   "operational_limits": "<operative begrensninger og betingelser>",
   "overall_score": <number 1-10>,
   "recommendation": "<go|caution|no-go>",
-  "summary": "<kort oppsummering av SORA-vurderingen — MÅ kun nevne reelle bekymringer fra analysen, IKKE hallusinere risikoer som er vurdert som OK>"
+  "summary": "<kort oppsummering av SORA-vurderingen — dette ER den komplette SORA-analysen, IKKE referer til 'manglende SORA'. Fokuser på reelle risikoer, mitigeringer og SAIL-resultat>"
 }
 
 ### VURDERINGSPRINSIPPER
