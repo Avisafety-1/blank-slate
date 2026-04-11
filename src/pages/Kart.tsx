@@ -1,6 +1,8 @@
 import { OpenAIPMap, RouteData, RoutePoint, SoraSettings } from "@/components/OpenAIPMap";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
+import { AdjacentAreaPanel } from "@/components/AdjacentAreaPanel";
+import { calculateAdjacentRadius } from "@/lib/adjacentAreaCalculator";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 // soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
@@ -67,6 +69,8 @@ export default function KartPage() {
   });
   const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
   const [soraDroneModel, setSoraDroneModel] = useState<string | undefined>(undefined);
+  const [soraDroneMaxSpeed, setSoraDroneMaxSpeed] = useState<number | undefined>(undefined);
+  const [showAdjacentArea, setShowAdjacentArea] = useState(false);
 
   // Fetch drone model name when soraDroneId changes
   useEffect(() => {
