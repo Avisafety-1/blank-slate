@@ -515,9 +515,6 @@ export function EccairsMappingDialog({
   };
 
   // Render a group of fields
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
-    () => new Set(COLLAPSIBLE_GROUPS)
-  );
 
   const toggleCollapsed = (group: string) => {
     setCollapsedGroups(prev => {
