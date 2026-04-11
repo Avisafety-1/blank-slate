@@ -66,10 +66,98 @@ serve(async (req) => {
     if (soraReassessment && previousAnalysis && pilotComments) {
       console.log('Running SORA re-assessment with pilot comments');
 
-      const soraSystemPrompt = `Du er en SORA-spesialist (Specific Operations Risk Assessment) for UAS-operasjoner i henhold til EASA-rammeverket.
+      const soraSystemPrompt = `Du er en SORA-spesialist (Specific Operations Risk Assessment) for UAS-operasjoner i henhold til EASA-rammeverket (SORA 2.5).
 
 Du mottar en opprinnelig AI-risikovurdering og brukerens manuelle mitigeringer/forklaringer for 5 risikokategorier.
 Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjengelig informasjon.
+
+VIKTIG: Brukerens manuelle kommentarer kan inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC utover det AI-en opprinnelig beregnet. Du MÅ vurdere disse kommentarene som gyldige mitigeringer og justere fGRC/ARC deretter FØR du slår opp SAIL.
+
+### STEG 7: SAIL-OPPSLAG (EKSAKT MATRISE)
+Bruk den endelige fGRC (etter alle mitigeringer inkl. brukerkommentarer) og residual ARC for å slå opp SAIL:
+
+fGRC\\ARC:   a      b      c      d
+≤2           I      II     IV     VI
+3            II     II     IV     VI
+4            III    III    IV     VI
+5            IV     IV     IV     VI
+6            V      V      V      VI
+7            VI     VI     VI     VI
+>7           Sertifisert kategori (utenfor SORA)
+
+Du SKAL bruke denne matrisen eksakt. Ikke gjett SAIL.
+
+### STEG 8: CONTAINMENT
+Bestem robusthetsnivå for containment basert på SAIL:
+- SAIL I-II: Low robustness
+- SAIL III-IV: Medium robustness
+- SAIL V-VI: High robustness
+
+Vurder fire kriterier:
+1. Criterion #1 - Operational Volume Containment: Prosedyrer/systemer for å holde dronen innenfor operasjonsvolumet
+2. Criterion #2 - End of Flight: Sikker avslutning av flyging ved tap av kontroll
+3. Criterion #3 - Ground Risk Buffer: Tilstrekkelig buffersone for å beskytte utenforstående
+4. Criterion #4 - Ground Risk Buffer Containment: Tiltak for å sikre at dronen ikke forlater GRB
+
+Ved Medium/High robusthet kreves typisk et uavhengig termineringssystem (FTS).
+VIKTIG: DJI sin innebygde funksjon for å stoppe motorene i lufta (RTH-knapp + stikke) oppfyller IKKE kravet til medium containment, da den bruker samme C2-link.
+For High robusthet: Krever EASA Design Verification Report (DVR).
+For forankrede droner (tethered): Egne forenklete kriterier gjelder.
+
+### STEG 9: OSO-KRAV
+Basert på SAIL-nivå, oppgi påkrevd robusthet (NR/L/M/H) for disse OSO-ene:
+
+SAIL:           I    II   III  IV   V    VI
+OSO#01          NR   L    M    M    H    H
+OSO#02          NR   L    M    M    H    H
+OSO#03          NR   L    L    M    H    H
+OSO#04          NR   L    L    M    M    H
+OSO#05          L    L    M    H    H    H
+OSO#06          NR   L    L    M    H    H
+OSO#07          L    L    M    H    H    H
+OSO#08          NR   L    M    M    H    H
+OSO#09          NR   L    M    M    H    H
+OSO#10          NR   L    M    M    H    H
+OSO#11          NR   L    L    M    M    H
+OSO#12          NR   L    L    M    H    H
+OSO#13          NR   L    L    L    M    H
+OSO#14          NR   L    L    M    M    H
+OSO#15          NR   NR   L    L    M    H
+OSO#16          NR   L    L    M    M    H
+OSO#17          NR   L    M    M    H    H
+OSO#18          NR   L    L    M    M    H
+OSO#19          NR   L    M    M    H    H
+OSO#20          NR   L    L    M    H    H
+OSO#21          NR   L    L    M    M    H
+OSO#22          NR   NR   L    L    M    M
+OSO#23          NR   L    M    M    H    H
+OSO#24          NR   L    L    M    H    H
+
+OSO-beskrivelser:
+- OSO#01: Tilstrekkelig UAS-operatørkompetanse
+- OSO#02: UAS vedlikeholdt av kompetent personell
+- OSO#03: UAS utviklet til kjente standarder
+- OSO#04: UAS utviklet i samsvar med anerkjent designstandard
+- OSO#05: UAS designet under hensyn til systemsikkerhet
+- OSO#06: C3-link ytelse tilstrekkelig
+- OSO#07: Inspeksjon av UAS (pre-flight)
+- OSO#08: Operasjonelle prosedyrer definert, validert og fulgt
+- OSO#09: Fjernpilot kompetent og/eller trent
+- OSO#10: Sikker utforming av UAS-kontrollstasjon
+- OSO#11: Prosedyrer etablert for tap av C2-link
+- OSO#12: UAS designet for håndtering av forverrede forhold
+- OSO#13: Eksterne tjenester tilgjengelig og tilstrekkelig
+- OSO#14: Informasjon til personell i operasjonsvolumet
+- OSO#15: Informasjon til utenforstående i nærliggende område
+- OSO#16: Multi-crew koordinering
+- OSO#17: Prosedyrer for håndtering av nødsituasjoner
+- OSO#18: Automatisk beskyttelse av flyvolumet
+- OSO#19: Sikker gjenoppretting av kontroll eller sikker flyavslutning
+- OSO#20: Prosedyrer og design for å redusere skade ved ukontrollert bevegelse
+- OSO#21: Prosedyrer og design for å redusere skade ved bakkekollisjon
+- OSO#22: Strategi for håndtering av menneskelige feil
+- OSO#23: Prosedyrer for håndtering av forverrede eksterne forhold
+- OSO#24: Vedlikeholdsrutiner og inspeksjoner
 
 ### RESPONS-FORMAT
 Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.
@@ -85,6 +173,29 @@ Returner denne JSON-strukturen:
   "airspace_mitigations": "<beskrivelse av luftromsmitigeringer>",
   "arc_residual": "<ARC-A|ARC-B|ARC-C|ARC-D>",
   "sail": "<SAIL I|SAIL II|SAIL III|SAIL IV|SAIL V|SAIL VI>",
+  "sail_lookup": {
+    "fgrc_used": <number>,
+    "arc_used": "<a|b|c|d>",
+    "fgrc_adjustments": "<forklaring på justeringer fra brukerkommentarer>",
+    "result": "<I|II|III|IV|V|VI>"
+  },
+  "containment": {
+    "robustness_level": "<Low|Medium|High>",
+    "reasoning": "<begrunnelse for valgt nivå>",
+    "criteria": [
+      { "criterion": "#1 Operational Volume Containment", "requirement": "<krav>", "assurance": "<dokumentasjonskrav>" },
+      { "criterion": "#2 End of Flight", "requirement": "<krav>", "assurance": "<dokumentasjonskrav>" },
+      { "criterion": "#3 Ground Risk Buffer", "requirement": "<krav>", "assurance": "<dokumentasjonskrav>" },
+      { "criterion": "#4 Ground Risk Buffer Containment", "requirement": "<krav>", "assurance": "<dokumentasjonskrav>" }
+    ],
+    "fts_required": <true|false>,
+    "fts_note": "<notat om FTS-krav, inkl. DJI-begrensning hvis relevant>",
+    "tethered": <true|false>
+  },
+  "oso_requirements": [
+    { "oso": "OSO#01", "description": "<beskrivelse>", "robustness": "<NR|L|M|H>", "category": "<technical|operational|crew>" },
+    ...alle 24 OSO-er...
+  ],
   "residual_risk_level": "<Lav|Moderat|Høy>",
   "residual_risk_comment": "<vurdering av rest-risiko etter alle mitigeringer>",
   "operational_limits": "<operative begrensninger og betingelser>",
@@ -95,11 +206,11 @@ Returner denne JSON-strukturen:
 
 ### VURDERINGSPRINSIPPER
 - iGRC bestemmes av operasjonsmiljø og dronens egenskaper (vekt, hastighet)
-- fGRC = iGRC justert ned basert på bakkemitigeringer (sperringer, ERP, fallskjerm)
-- ARC bestemmes av luftromstype og trafikktetthet
-- SAIL = kombinasjon av fGRC og residual ARC (SAIL-matrisen)
-- Vurder brukerens kommentarer som faktiske mitigeringer implementert av operatøren
-- Vær konservativ i vurderingen`;
+- fGRC = iGRC justert ned basert på bakkemitigeringer (sperringer, ERP, fallskjerm) OG brukerens kommentarer
+- Brukerens kommentarer kan inneholde ytterligere mitigeringer som SKAL påvirke fGRC og/eller ARC
+- ARC bestemmes av luftromstype og trafikktetthet, justert av brukerens luftromsmitigeringer
+- SAIL = EKSAKT oppslag i matrisen basert på endelig fGRC og residual ARC
+- Vær konservativ, men anerkjenn dokumenterte mitigeringer fra brukerens kommentarer`;
 
       const soraUserPrompt = `Generer en SORA-analyse basert på følgende data:
 
@@ -109,7 +220,9 @@ ${JSON.stringify(previousAnalysis, null, 2)}
 ### Brukerens mitigeringer/kommentarer per kategori:
 ${JSON.stringify(pilotComments, null, 2)}
 
-Analyser dataene og produser en komplett SORA-vurdering.`;
+VIKTIG: Vurder brukerens kommentarer nøye. De kan inneholde mitigeringer som reduserer fGRC og/eller ARC ytterligere utover det den opprinnelige AI-vurderingen fastsatte. Juster fGRC/ARC deretter FØR du beregner SAIL fra matrisen.
+
+Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, containment-krav og OSO-tabell.`;
 
       const soraAiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
