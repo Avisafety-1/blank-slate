@@ -89,6 +89,8 @@ export function OpenAIPMap({
   const flightMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const soraSettingsRef = useRef(soraSettings);
   const soraLayerRef = useRef<L.LayerGroup | null>(null);
+  const adjacentAreaLayerRef = useRef<L.LayerGroup | null>(null);
+  const adjacentAreaRadiusMRef = useRef(adjacentAreaRadiusM);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
