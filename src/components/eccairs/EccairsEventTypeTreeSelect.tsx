@@ -185,8 +185,8 @@ export function EccairsEventTypeTreeSelect({
   const { data: selectedItem } = useEccairsTaxonomyItem("VL390", value, !!value);
 
   // Build tree
-  const tree = useMemo(() => {
-    if (!items) return [];
+  const { fullTree, rpasTree } = useMemo(() => {
+    if (!items) return { fullTree: [], rpasTree: [] };
     const allIds = new Set(items.map(i => i.value_id));
     const map = new Map<string, TreeNode>();
     for (const item of items) {
@@ -210,13 +210,32 @@ export function EccairsEventTypeTreeSelect({
     };
     sortChildren(roots);
 
-    // Order top-level categories
-    const order = ['99010158', '1000000', '3000000', '99010159', '99010164', '99012035', '99000000'];
-    const topMap = new Map(roots.filter(r => TOP_LEVEL_IDS.has(r.value_id)).map(r => [r.value_id, r]));
-    const rest = roots.filter(r => !TOP_LEVEL_IDS.has(r.value_id));
-    const ordered = order.filter(id => topMap.has(id)).map(id => topMap.get(id)!);
-    return [...ordered, ...rest];
+    // Build compact RPAS-focused tree:
+    // Show only the path: Operational → Balloon/Sailplane/RPAS → RPAS/UAS Specific Events
+    const rpasNode = map.get('99010401');
+    const balloonNode = map.get('2240000');
+    const operationalNode = map.get('99010158');
+
+    const compactTree: TreeNode[] = [];
+    if (rpasNode && balloonNode && operationalNode) {
+      // Create shallow copies showing only relevant children
+      const compactBalloon: TreeNode = {
+        ...balloonNode,
+        children: balloonNode.children.filter(c => c.value_id === '99010401'),
+      };
+      const compactOperational: TreeNode = {
+        ...operationalNode,
+        children: [compactBalloon],
+      };
+      compactTree.push(compactOperational);
+    } else if (rpasNode) {
+      compactTree.push(rpasNode);
+    }
+
+    return { fullTree: roots, rpasTree: compactTree };
   }, [items]);
+
+  const tree = rpasTree;
 
   // Filtered tree for search
   const filteredTree = useMemo(() => {
