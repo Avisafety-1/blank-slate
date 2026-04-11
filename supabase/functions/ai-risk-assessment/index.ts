@@ -662,12 +662,15 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         companySoraConfig = soraConfigData;
 
         // Fallback to parent company config if none found
+        let companyRequireSora = false;
         if (!companySoraConfig) {
           const { data: companyRow } = await supabase
             .from('companies')
-            .select('parent_company_id')
+            .select('parent_company_id, require_sora_on_missions')
             .eq('id', companyId)
             .maybeSingle();
+
+          companyRequireSora = !!(companyRow as any)?.require_sora_on_missions;
 
           if (companyRow?.parent_company_id) {
             const { data: parentConfig } = await supabase
@@ -680,6 +683,13 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
               console.log(`Using parent company SORA config (parent_id=${companyRow.parent_company_id})`);
             }
           }
+        } else {
+          const { data: companyRow } = await supabase
+            .from('companies')
+            .select('require_sora_on_missions')
+            .eq('id', companyId)
+            .maybeSingle();
+          companyRequireSora = !!(companyRow as any)?.require_sora_on_missions;
         }
 
         if (companySoraConfig?.linked_document_ids?.length > 0) {
