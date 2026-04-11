@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EccairsTaxonomySelect } from "./EccairsTaxonomySelect";
 import { EccairsMultiSelect } from "./EccairsMultiSelect";
+import { EccairsPhaseOfFlightSelect } from "./EccairsPhaseOfFlightSelect";
 
 import { useIncidentEccairsAttributes, AttributeData } from "@/hooks/useIncidentEccairsAttributes";
 import { 
@@ -383,7 +384,13 @@ export function EccairsMappingDialog({
           {field.helpText && (
             <p className="text-xs text-muted-foreground">{field.helpText}</p>
           )}
-          {isMultiSelect ? (
+          {field.code === 391 ? (
+            <EccairsPhaseOfFlightSelect
+              value={getFieldValue(field) || null}
+              onChange={(val) => setFieldValue(field, val)}
+              placeholder={`Velg ${field.label.toLowerCase()}...`}
+            />
+          ) : isMultiSelect ? (
             <EccairsMultiSelect
               valueListKey={getVLKey(field)}
               value={parseMultiSelectValue(getFieldValue(field))}
