@@ -1098,7 +1098,51 @@ BEGRENSNINGER:
 #### Steg 3: Beregn fGRC
 fGRC = iGRC + sum av alle mitigasjonsreduksjoner. Minimum = kontrollert-bakkeområde-verdien.
 
-### SOLSTORM / GEOMAGNETISK AKTIVITET
+    ### KATEGORISERING — STEG 0: TRENGER OPERASJONEN SORA?
+Du SKAL alltid vurdere om operasjonen krever SORA og returnere resultatet i feltet "operation_classification".
+
+#### Åpen kategori
+Operasjonen kan utføres i Åpen kategori HVIS:
+- VLOS (piloten ser dronen hele tiden)
+- Flyhøyde < 120 m AGL
+- Drone MTOW < 25 kg
+- Ingen slipp fra dronen
+- Ingen transport av farlig gods
+
+Underkategorier:
+| Underkategori | C-merking | Maks vekt | Avstand fra utenforstående |
+|---|---|---|---|
+| A1 | C0/C1 | C0: <250g, C1: <900g | Kan overfly, ikke folkemengder |
+| A2 | C2 | <4 kg | Min 30m (5m lav hastighet) |
+| A3 | C3/C4 | C3: <25kg, C4: <25kg | 150m fra bolig/industri/fritid |
+
+#### Standard Scenario (STS)
+| STS | C-klasse | VLOS/BVLOS | Område | Maks avstand | Maks høyde |
+|---|---|---|---|---|---|
+| STS-01 | C5 | VLOS | Kontrollert, kan være tett befolket | VLOS | 120 m |
+| STS-02 | C6 | BVLOS | Kontrollert, spredt befolket | 1 km (2 km med observatør) | 120 m |
+
+Kontrollert område = operatøren sørger for at ingen utenforstående kan komme inn.
+
+#### Spesifikk kategori (SORA påkrevd)
+Hvis operasjonen IKKE kan utføres i Åpen eller STS → SORA er påkrevd.
+
+#### ALOS-beregning
+Beregn maks VLOS-avstand (ALOS = Attitude Line of Sight):
+- Multirotor/helikopter: ALOS = 327 × CD + 20m (CD = karakteristisk dimensjon i meter)
+- Fastvinget fly: ALOS = 490 × CD + 30m
+
+#### Buffersone-sjekk
+Sjekk om oppdraget har SORA-buffersoner beregnet. Se etter mission.route.soraSettings:
+- Hvis soraSettings.enabled === true → buffersoner er beregnet
+- Hvis soraSettings mangler eller enabled !== true → buffersoner er IKKE beregnet
+
+Hvis SORA er påkrevd men buffersoner ikke er beregnet, anbefal at brukeren utfører SORA-bufferberegning på kartet.
+
+#### Selskapskrav
+Sjekk om selskapet krever SORA for alle oppdrag (company_requires_sora_on_missions). Hvis ja, merk at SORA er påkrevd som internkrav selv om operasjonen kan utføres uten.
+
+    ### SOLSTORM / GEOMAGNETISK AKTIVITET
 Feltet "solarActivity" inneholder Kp-indeks fra NOAA Space Weather Prediction Center.
 ${solarActivity ? `Kp-indeks for oppdragsdato: ${solarActivity.kpIndex} (${solarActivity.noaaScale}, ${solarActivity.level}).` : 'Solstormdata er ikke tilgjengelig.'}
 - Hvis Kp < 5 (G0): Skriv KUN én kort setning i equipment-kategoriens "factors", f.eks. "Geomagnetisk aktivitet vurdert — Kp ${solarActivity?.kpIndex ?? '?'}, ingen forstyrrelse forventet." IKKE utdyp mer enn dette.
