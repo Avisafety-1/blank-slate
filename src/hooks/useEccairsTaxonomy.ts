@@ -13,22 +13,28 @@ export interface EccairsValueListItem {
 }
 
 // Fetch items with optional search (server-side filtering)
+// valueIdPrefix supports two formats:
+//   - Simple prefix string (e.g. "1000") — server-side LIKE filter
+//   - Numeric range "min-max" (e.g. "1000000-1999999") — client-side numeric filter after broader server fetch
 export function useEccairsTaxonomy(valueListKey: string, search: string = "", enabled: boolean = true, valueIdPrefix: string = "") {
   return useQuery({
     queryKey: ['eccairs-taxonomy', valueListKey, search, valueIdPrefix],
     queryFn: async () => {
       // Build query params
-      let url = `${SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description&limit=100`;
+      let url = `${SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description&limit=500`;
       
-      // Add value_id prefix filter if provided
-      if (valueIdPrefix) {
-        url += `&value_id=like.${encodeURIComponent(valueIdPrefix)}*`;
+      // Parse range format "min-max" or plain prefix
+      const rangeMatch = valueIdPrefix.match(/^(\d+)-(\d+)$/);
+      const serverPrefix = rangeMatch ? valueIdPrefix.substring(0, 4) : valueIdPrefix;
+      
+      // Add value_id prefix filter if provided (text LIKE for server-side narrowing)
+      if (serverPrefix) {
+        url += `&value_id=like.${encodeURIComponent(serverPrefix)}*`;
       }
       
       // Add search filter if provided (server-side ILIKE)
       if (search.trim()) {
         const searchTerm = search.trim().toLowerCase();
-        // Use or filter for description and synonym
         url += `&or=(value_description.ilike.*${encodeURIComponent(searchTerm)}*,value_synonym.ilike.*${encodeURIComponent(searchTerm)}*)`;
       }
       
@@ -44,11 +50,23 @@ export function useEccairsTaxonomy(valueListKey: string, search: string = "", en
         throw new Error('Failed to fetch taxonomy');
       }
       
-      const items = await response.json() as EccairsValueListItem[];
+      let items = await response.json() as EccairsValueListItem[];
       // Filter out items without description
-      return items.filter(item => item.value_description && item.value_description.trim() !== '');
+      items = items.filter(item => item.value_description && item.value_description.trim() !== '');
+      
+      // Apply client-side numeric range filter if specified
+      if (rangeMatch) {
+        const min = parseInt(rangeMatch[1], 10);
+        const max = parseInt(rangeMatch[2], 10);
+        items = items.filter(item => {
+          const numId = parseInt(item.value_id, 10);
+          return numId >= min && numId <= max;
+        });
+      }
+      
+      return items;
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 60 * 5,
     enabled,
   });
 }
