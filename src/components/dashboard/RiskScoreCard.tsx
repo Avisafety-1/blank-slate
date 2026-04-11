@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AirRiskAnalysisSection } from "./AirRiskAnalysisSection";
+import { GroundRiskAnalysisSection } from "./GroundRiskAnalysisSection";
 
 interface CategoryScore {
   score: number;
@@ -38,6 +39,7 @@ interface RiskScoreCardProps {
   approvalReason?: string | null;
   approvalThreshold?: number | null;
   airRiskAnalysis?: any;
+  groundRiskAnalysis?: any;
 }
 
 export const RiskScoreCard = ({ 
@@ -54,7 +56,8 @@ export const RiskScoreCard = ({
   approvalStatus,
   approvalReason,
   approvalThreshold,
-  airRiskAnalysis
+  airRiskAnalysis,
+  groundRiskAnalysis
 }: RiskScoreCardProps) => {
   const { t } = useTranslation();
 
@@ -269,6 +272,13 @@ export const RiskScoreCard = ({
               {key === 'airspace' && airRiskAnalysis && (
                 <div className="mt-3">
                   <AirRiskAnalysisSection data={airRiskAnalysis} />
+                </div>
+              )}
+              
+              {/* Ground Risk Analysis section - shown after mission_complexity category */}
+              {key === 'mission_complexity' && groundRiskAnalysis && (
+                <div className="mt-3">
+                  <GroundRiskAnalysisSection data={groundRiskAnalysis} />
                 </div>
               )}
             </div>
