@@ -1221,6 +1221,7 @@ Returner en JSON-respons med denne strukturen:
     }
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
+    console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
 
     // 10. Save to database
     const { data: savedAssessment, error: saveError } = await supabase
