@@ -4,6 +4,7 @@ import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAler
 import { Textarea } from "@/components/ui/textarea";
 import { AirRiskAnalysisSection } from "./AirRiskAnalysisSection";
 import { GroundRiskAnalysisSection } from "./GroundRiskAnalysisSection";
+import { OperationClassificationSection } from "./OperationClassificationSection";
 
 interface CategoryScore {
   score: number;
@@ -40,6 +41,7 @@ interface RiskScoreCardProps {
   approvalThreshold?: number | null;
   airRiskAnalysis?: any;
   groundRiskAnalysis?: any;
+  operationClassification?: any;
 }
 
 export const RiskScoreCard = ({ 
@@ -57,7 +59,8 @@ export const RiskScoreCard = ({
   approvalReason,
   approvalThreshold,
   airRiskAnalysis,
-  groundRiskAnalysis
+  groundRiskAnalysis,
+  operationClassification
 }: RiskScoreCardProps) => {
   const { t } = useTranslation();
 
