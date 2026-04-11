@@ -61,6 +61,7 @@ export interface EccairsFieldConfig {
   autoFromField?: string; // Field from incident to auto-populate
   valueIdPrefix?: string; // Filter value_id by prefix (e.g. '1' for 1000000-series)
   fixedLabel?: string; // Override displayed label for selected value (when DB description is ambiguous)
+  maxValues?: number; // Max number of values allowed (for multi-select fields)
 }
 
 // Fields ordered logically by group
@@ -193,7 +194,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     group: 'classification',
     helpText: 'Velg hendelsestype fra ECCAIRS VL390-liste (Events entity)'
   },
-  { 
+  {
     code: 1072, 
     label: 'Deteksjonsfase', 
     taxonomyCode: '24',
@@ -201,7 +202,8 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     format: 'content_object_array',
     type: 'select',
     group: 'classification',
-    helpText: 'Fase da hendelsen ble oppdaget'
+    helpText: 'Fase da hendelsen ble oppdaget',
+    maxValues: 1
   },
   {
     code: 1088,
