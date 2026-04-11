@@ -87,7 +87,7 @@ function getCountyFromPostcode(postcode: string): string | null {
   
   // Østfold (nå Viken): 1500-1899
   if (postcodeNum >= 1500 && postcodeNum <= 1899) {
-    return '1112'; // Østfold
+    return '1122'; // Østfold
   }
   
   // Oppland (nå Innlandet): 2600-2999
@@ -97,7 +97,7 @@ function getCountyFromPostcode(postcode: string): string | null {
   
   // Telemark (nå Vestfold og Telemark): 3800-3999
   if (postcodeNum >= 3800 && postcodeNum <= 3999) {
-    return '1117'; // Telemark
+    return '1118'; // Telemark
   }
   
   // Aust-Agder (nå Agder): 4800-4999
