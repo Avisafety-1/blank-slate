@@ -1049,6 +1049,55 @@ Anbefal konkrete deteksjonssystemer basert på operasjonstype og luftrom:
 
 Hvis operasjonen er VLOS, sett vlos_exemption=true og forenkle TMPR-kravene.
 
+### BAKKERISIKO — iGRC OG fGRC (EASA SORA Steg 2-3)
+Du SKAL alltid utføre en strukturert bakkerisikoanalyse og returnere den i feltet "ground_risk_analysis".
+
+#### Steg 1: Bestem iGRC (Inherent Ground Risk Class)
+Bruk dronens karakteristiske dimensjon (diagonalt mellom propelltuppene for multirotor, vingespenn for fly) og maks hastighet.
+
+**iGRC-tabell (karakteristisk dimensjon × befolkningstetthet):**
+
+| Max dimensjon | ≤25 m/s | ≤35 m/s | ≤75 m/s | ≤120 m/s | ≤200 m/s |
+|---|---|---|---|---|---|
+| ≤1m | 1/2/3/4/5 | 1/2/3/5/6 | 2/3/4/6/7 | 3/4/5/7/8 | 4/5/6/8/9 |
+| ≤3m | 2/3/4/5/6 | 2/3/4/6/7 | 3/4/5/7/8 | 4/5/6/8/9 | 5/6/7/9/10 |
+| ≤8m | 3/4/5/6/7 | 3/4/5/7/8 | 4/5/6/8/9 | 5/6/7/9/10 | 6/7/8/10/10 |
+| ≤20m | 4/5/6/7/8 | 4/5/6/8/9 | 5/6/7/9/10 | 6/7/8/10/10 | 7/8/9/10/10 |
+| ≤40m | 5/6/7/8/9 | 5/6/7/9/10 | 6/7/8/10/10 | 7/8/9/10/10 | 8/9/10/10/10 |
+
+De 5 tallene per celle er for: Kontrollert bakkeområde / Tynt befolket (<100/km²) / Befolket (<500/km²) / Tett befolket (<1500/km²) / Folkemengder (>1500/km²).
+
+VIKTIG: En drone ≤250g med maks hastighet ≤25 m/s har alltid iGRC=1, uavhengig av befolkningstetthet (unntatt over folkemengder).
+
+Bruk kontekstdata:
+- primaryDrone/assignedDrones: Finn modell → estimer dimensjon og vekt
+- populationDensity.maxDensity: Befolkningstetthet
+- landUse: Arealbruk for kvalitativ vurdering
+
+#### Steg 2: Vurder mitigeringer (reduserer iGRC til fGRC)
+
+**M1(A) — Skjerming (reduserer antall eksponerte personer via bygninger):**
+- Low robusthet (-1): Flyr over område med strukturer som gir beskyttelse, drone <25 kg MTOM, ikke over folkemengder
+- Medium robusthet (-2): I tillegg begrenset flytid og dokumentert at flertallet er skjermet. Kan IKKE kombineres med M1(B).
+
+**M1(B) — Operasjonelle restriksjoner (tidspunkt/sted-begrensninger):**
+- Medium robusthet (-1): Reduksjon av eksponerte personer med ~90% via tid/sted-begrensninger
+- High robusthet (-2): Reduksjon med ~99%, validert av luftfartsmyndighet. Kan IKKE kombineres med M1(A) Medium.
+
+**M1(C) — Bakkeobservasjon (taktisk mitigering via observatør):**
+- Low robusthet (-1): Observatør overvåker overflyst område og pilot justerer flygemønster
+
+**M2 — Redusert treffenergi (fallskjerm e.l.):**
+- Medium robusthet (-1): MoC 2512 for energidempning
+- High robusthet (-2): EASA Design Verification Report (DVR)
+
+BEGRENSNINGER:
+- M1 kan IKKE redusere GRC lavere enn verdien for "Kontrollert bakkeområde" i tabellen
+- M1(A) Medium og M1(B) kan IKKE kombineres
+
+#### Steg 3: Beregn fGRC
+fGRC = iGRC + sum av alle mitigasjonsreduksjoner. Minimum = kontrollert-bakkeområde-verdien.
+
 ### SOLSTORM / GEOMAGNETISK AKTIVITET
 Feltet "solarActivity" inneholder Kp-indeks fra NOAA Space Weather Prediction Center.
 ${solarActivity ? `Kp-indeks for oppdragsdato: ${solarActivity.kpIndex} (${solarActivity.noaaScale}, ${solarActivity.level}).` : 'Solstormdata er ikke tilgjengelig.'}
@@ -1131,6 +1180,26 @@ Returner en JSON-respons med denne strukturen:
     "vlos_exemption": <true hvis VLOS — forenklet TMPR>,
     "traffic_types_to_consider": ["<relevante trafikktyper å vurdere i området, f.eks. ambulansehelikopter, småfly, paraglidere>"],
     "arc_reduction_reasoning": "<kort forklaring av hvorfor/hvordan ARC ble redusert, eller 'Ingen reduksjon' hvis iARC = residual ARC>"
+  },
+  "ground_risk_analysis": {
+    "characteristic_dimension": "<estimert største dimensjon, f.eks. '1m', '3m', '8m'>",
+    "max_speed_category": "<estimert maks hastighet, f.eks. '25 m/s', '35 m/s'>",
+    "drone_weight_kg": <estimert MTOW i kg>,
+    "population_density_band": "<Kontrollert bakkeområde|Tynt befolket (<100/km²)|Befolket (<500/km²)|Tett befolket (<1500/km²)|Folkemengder (>1500/km²)>",
+    "population_density_description": "<kort beskrivelse av området>",
+    "population_density_value": <befolkningstetthet per km², fra SSB-data eller estimat>,
+    "igrc": <number 1-10>,
+    "igrc_reasoning": "<kort forklaring av iGRC-beregningen>",
+    "mitigations": {
+      "m1a_sheltering": { "applicable": <boolean>, "robustness": "<Low|Medium|null>", "reduction": <0|-1|-2>, "reasoning": "<begrunnelse>" },
+      "m1b_operational_restrictions": { "applicable": <boolean>, "robustness": "<Medium|High|null>", "reduction": <0|-1|-2>, "reasoning": "<begrunnelse>" },
+      "m1c_ground_observation": { "applicable": <boolean>, "robustness": "<Low|null>", "reduction": <0|-1>, "reasoning": "<begrunnelse>" },
+      "m2_impact_reduction": { "applicable": <boolean>, "robustness": "<Medium|High|null>", "reduction": <0|-1|-2>, "reasoning": "<begrunnelse>" }
+    },
+    "total_reduction": <sum av alle reduksjoner, negativt tall>,
+    "fgrc": <endelig GRC>,
+    "fgrc_reasoning": "<kort forklaring av fGRC-beregningen med mitigeringer>",
+    "controlled_ground_area": <boolean — true hvis operasjon er over kontrollert bakkeområde>
   },
   "recommendations": [
     {
