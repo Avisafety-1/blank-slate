@@ -18,11 +18,13 @@ export function useEccairsTaxonomy(valueListKey: string, search: string = "", en
     queryKey: ['eccairs-taxonomy', valueListKey, search, valueIdPrefix],
     queryFn: async () => {
       // Build query params
-      let url = `${SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description&limit=100`;
+      let url = `${SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description&limit=200`;
       
-      // Add value_id prefix filter if provided
+      // Add value_id prefix filter if provided — use range filter for numeric precision
       if (valueIdPrefix) {
-        url += `&value_id=like.${encodeURIComponent(valueIdPrefix)}*`;
+        const lower = valueIdPrefix.padEnd(10, '0');
+        const upper = (BigInt(valueIdPrefix) + 1n).toString().padEnd(10, '0');
+        url += `&value_id=gte.${lower}&value_id=lt.${upper}`;
       }
       
       // Add search filter if provided (server-side ILIKE)
