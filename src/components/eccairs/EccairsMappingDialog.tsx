@@ -161,8 +161,20 @@ export function EccairsMappingDialog({
     }
   }, [attributes, isLoading, open, incident]);
 
-  const applyAutoSuggestions = () => {
+  const applyAutoSuggestions = async () => {
     const suggestions = suggestEccairsMapping(incident);
+
+    // Fetch company name for field 447 (Reporting Entity) additional text
+    let companyName = '';
+    try {
+      const { data } = await supabase
+        .from('companies')
+        .select('navn')
+        .eq('id', incident.company_id)
+        .single();
+      if (data?.navn) companyName = data.navn;
+    } catch { /* ignore */ }
+
     const newValues: Record<string, string> = {};
     
     // Map suggestions to field values
