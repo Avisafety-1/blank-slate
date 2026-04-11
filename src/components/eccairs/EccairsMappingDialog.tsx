@@ -85,8 +85,10 @@ export function EccairsMappingDialog({
   
   // Generic state: Record<`${code}_${taxonomyCode}_${entityPath}`, value>
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
-  // Additional text state for code_and_text fields: Record<fieldKey, additionalText>
   const [additionalTextValues, setAdditionalTextValues] = useState<Record<string, string>>({});
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(COLLAPSIBLE_GROUPS)
+  );
   const makeFieldKey = (field: EccairsFieldConfig) => 
     `${field.code}_${field.taxonomyCode}_${field.entityPath ?? 'top'}`;
 
