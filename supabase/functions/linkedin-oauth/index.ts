@@ -113,17 +113,64 @@ Deno.serve(async (req) => {
       const refreshToken = tokenData.refresh_token || null;
       const expiresIn = tokenData.expires_in || 5184000; // 60 days default
 
-      // Fetch member URN via /v2/me (doesn't require openid scope)
-      const meRes = await fetch("https://api.linkedin.com/v2/me", {
-        headers: { Authorization: `Bearer ${accessToken}` },
+      // Try multiple endpoints to fetch member URN
+      let memberUrn: string | null = null;
+
+      // Attempt 1: Community Management REST API
+      const restMeRes = await fetch("https://api.linkedin.com/rest/me", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "LinkedIn-Version": "202401",
+        },
       });
-      const meData = await meRes.json();
-      const memberUrn = meData.id ? `urn:li:person:${meData.id}` : null;
+      if (restMeRes.ok) {
+        const restMeData = await restMeRes.json();
+        console.log("REST /me response:", JSON.stringify(restMeData));
+        if (restMeData.sub) {
+          memberUrn = `urn:li:person:${restMeData.sub}`;
+        } else if (restMeData.id) {
+          memberUrn = `urn:li:person:${restMeData.id}`;
+        }
+      } else {
+        console.log("REST /me failed:", restMeRes.status, await restMeRes.text());
+      }
+
+      // Attempt 2: Legacy /v2/me
+      if (!memberUrn) {
+        const meRes = await fetch("https://api.linkedin.com/v2/me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          console.log("v2/me response:", JSON.stringify(meData));
+          if (meData.id) {
+            memberUrn = `urn:li:person:${meData.id}`;
+          }
+        } else {
+          console.log("v2/me failed:", meRes.status, await meRes.text());
+        }
+      }
+
+      // Attempt 3: /v2/userinfo (if openid scope happens to be available)
+      if (!memberUrn) {
+        const uiRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (uiRes.ok) {
+          const uiData = await uiRes.json();
+          console.log("userinfo response:", JSON.stringify(uiData));
+          if (uiData.sub) {
+            memberUrn = `urn:li:person:${uiData.sub}`;
+          }
+        } else {
+          console.log("userinfo failed:", uiRes.status, await uiRes.text());
+        }
+      }
 
       if (!memberUrn) {
-        console.error("Could not fetch LinkedIn member URN:", JSON.stringify(meData));
+        console.error("Could not fetch LinkedIn member URN from any endpoint");
         return new Response(
-          `<html><body><h2>Kunne ikke hente LinkedIn-profil</h2><script>setTimeout(()=>window.close(),3000)</script></body></html>`,
+          `<html><body><h2>Kunne ikke hente LinkedIn-profil. Sjekk at LinkedIn-appen har riktige produkter aktivert (Community Management API).</h2><script>setTimeout(()=>window.close(),5000)</script></body></html>`,
           { headers: { "Content-Type": "text/html" } }
         );
       }
