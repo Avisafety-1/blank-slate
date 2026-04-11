@@ -651,6 +651,7 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
     // 9d. Fetch company-specific SORA config
     let companySoraConfig: any = null;
     let linkedDocumentSummary = '';
+    let companyRequireSora = false;
     if (companyId) {
       try {
         const { data: soraConfigData } = await supabase
@@ -662,7 +663,6 @@ Analyser dataene og produser en komplett SORA-vurdering.`;
         companySoraConfig = soraConfigData;
 
         // Fallback to parent company config if none found
-        let companyRequireSora = false;
         if (!companySoraConfig) {
           const { data: companyRow } = await supabase
             .from('companies')
