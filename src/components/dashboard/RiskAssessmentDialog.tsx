@@ -1280,7 +1280,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                                 exportToPdf(
                                   assessment.ai_analysis,
                                   (assessment.pilot_comments as Record<string, string>) || {},
-                                  assessment.created_at
+                                  assessment.created_at,
+                                  assessment.sora_output ? 'sora' : 'ai',
+                                  assessment.sora_output || undefined
                                 );
                               }}
                               disabled={exportingPdf}
