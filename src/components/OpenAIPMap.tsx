@@ -53,6 +53,7 @@ interface OpenAIPMapProps {
   focusFlightId?: string | null;
   onFocusFlightHandled?: () => void;
   soraSettings?: SoraSettings;
+  adjacentAreaRadiusM?: number;
 }
 
 export function OpenAIPMap({ 
@@ -69,6 +70,7 @@ export function OpenAIPMap({
   focusFlightId,
   onFocusFlightHandled,
   soraSettings,
+  adjacentAreaRadiusM,
 }: OpenAIPMapProps) {
   const { user, companyLat, companyLon } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
