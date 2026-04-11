@@ -1093,7 +1093,10 @@ ${skipWeather ? '### VÆR-MERKNAD\nBruker har valgt å hoppe over værvurdering.
 Pilotens input angir om operasjonen er VLOS eller BVLOS (isVlos-feltet i pilotInputs).
 
 Hvis BVLOS (isVlos = false):
-- Krev SORA-analyse (mission.sora). Hvis ingen SORA finnes, reduser overall_score med 3 og legg til NO-GO-anbefaling.
+- Sjekk om SORA-analyse finnes (mission.sora). Hvis ingen SORA finnes:
+  - IKKE skriv at "manglende SORA er en betydelig bekymring" eller lignende vage bekymringer.
+  - I stedet: legg til en konkret anbefaling: "SORA-analyse er påkrevd for BVLOS-operasjoner. Kommenter på identifiserte risikoer i denne analysen og kjør en re-vurdering etter at SORA er utført."
+  - Reduser overall_score med 3 og legg til NO-GO-anbefaling med samme tekst.
 - Krev spesifikke BVLOS-kompetanser (STS-02, BVLOS-sertifisering e.l.). Reduser pilot_experience score med 2 hvis mangler.
 - Vurder behov for C2-link (command & control), DAA (detect and avoid), og redundante systemer.
 - Reduser mission_complexity score med 1-2 pga. økt operasjonell kompleksitet.
