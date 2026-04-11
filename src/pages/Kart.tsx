@@ -385,7 +385,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           {/* Mobile: stacked layout, Desktop: side-by-side */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             {/* Info section */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
               <Route className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
               <div className="min-w-0">
                 <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">Planlegg flyrute</h1>
@@ -448,9 +448,9 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
             </div>
             
             {/* Actions - responsive grid on mobile */}
-            <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2">
-              {/* Pilot position button */}
-              <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-between sm:justify-end gap-1 sm:gap-2">
+              {/* Pilot & tools */}
+              <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
                 <Button
                   variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                   size="sm"
@@ -528,7 +528,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
               </div>
 
               {/* Undo & Clear grouped together */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
                   size="sm"
@@ -554,7 +554,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
               </div>
               
               {/* Cancel & Save grouped together */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
                   size="sm"
