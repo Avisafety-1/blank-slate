@@ -1,27 +1,46 @@
 
 
-# Plan: Fix State/Area of Occurrence (field 454) county mappings
+# Plan: Fix JSON array parsing for content_object_array and code_and_additional_text
 
 ## Problem
-The postcode-to-county auto-mapping in `eccairsAutoMapping.ts` has incorrect value IDs for two counties:
-- **Telemark**: mapped to `1117` (Svalbard) instead of `1118` (Telemark)
-- **Østfold**: mapped to `1112` (Oppland) instead of `1122` (Østfold)
+Fields 454, 1064, 495, 1072 store `value_id` as JSON array strings (e.g. `'["1116"]'`). The `selectionToE2Value` function calls `asInt(valueId)` which returns `null` for these, causing all four fields to be rejected.
 
-The field 454 UI itself already works correctly — it uses `EccairsMultiSelect` with `VL454` taxonomy which contains all Norwegian counties (1103-1122). The auto-fill logic already suggests `['179' (Norway), countyId]` based on the incident's postcode.
+## Solution
 
-## What already works
-- Field 454 is configured as `content_object_array` → renders with `EccairsMultiSelect`
-- All 20 Norwegian counties exist in the `eccairs.value_list_items` table (VL454, IDs 1103-1122)
-- Auto-mapping extracts postcode from `lokasjon` and maps to Norway + county
-- Users can manually search and select any country/region from VL454
+### File: `supabase/functions/_shared/eccairsPayload.js`
 
-## Changes
+1. **Add shared helper `parseValueIds(valueId)`** that:
+   - Tries `JSON.parse` if string starts with `[`
+   - Returns array of integers (via `asInt`) filtering out nulls
+   - Falls back to `[asInt(valueId)]` for plain strings
+   - Returns `null` if no valid integers found
 
-### File: `src/lib/eccairsAutoMapping.ts`
-- Fix `POSTCODE_TO_COUNTY` default map: key `'4'` should map to `1121` (Vest-Agder) — this is already correct
-- Fix Telemark: change `1117` → `1118`
-- Fix Østfold: change `1112` → `1122`
-- Fix Nord-Trøndelag comment: value `1111` is correct per DB
+2. **Update `content_object_array` branch** (line 281-285):
+   - Use `parseValueIds(sel.valueId)` instead of `asInt(sel.valueId)`
+   - Map each integer to `{ content: [n] }`
 
-No other files need changes — the field is already properly configured and rendered.
+3. **Update `code_and_additional_text` branch** (line 301-308):
+   - Use `parseValueIds(sel.valueId)` instead of `asInt(sel.valueId)`
+   - Map each integer to `{ content: [n], additionalText: sel.text }` (text on first item only)
+
+4. **Add field 454 to `FORMAT_OVERRIDES`** as `'code_and_additional_text'` per ECCAIRS spec ("Code and Additional Text" data type).
+
+### Helper function:
+```javascript
+function parseValueIds(valueId) {
+  if (!valueId) return null;
+  try {
+    if (typeof valueId === 'string' && valueId.startsWith('[')) {
+      const arr = JSON.parse(valueId);
+      const ids = (Array.isArray(arr) ? arr : [arr]).map(v => asInt(v)).filter(n => n != null);
+      return ids.length > 0 ? ids : null;
+    }
+  } catch (e) { /* fall through */ }
+  const n = asInt(valueId);
+  return n != null ? [n] : null;
+}
+```
+
+### Expected result
+Fields 454, 1064, 495, 1072 will no longer appear in `rejected`. Edge function redeploy required (automatic).
 
