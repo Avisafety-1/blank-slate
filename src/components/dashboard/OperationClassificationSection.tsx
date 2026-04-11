@@ -50,7 +50,10 @@ export const OperationClassificationSection = ({ data }: OperationClassification
                 {data.category}{data.subcategory ? ` — ${data.subcategory}` : ''}
               </span>
             )}
-            {data.requires_sora && (
+            {data.requires_sora && data.sora_buffers_calculated && (
+              <Badge variant="default" className="text-[10px] bg-green-600">SORA utført</Badge>
+            )}
+            {data.requires_sora && !data.sora_buffers_calculated && (
               <Badge variant="destructive" className="text-[10px]">SORA påkrevd</Badge>
             )}
             {data.requires_sora === false && (
