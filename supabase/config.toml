@@ -135,6 +135,12 @@ verify_jwt = false
 [functions.publish-instagram]
 verify_jwt = false
 
+[functions.linkedin-oauth]
+verify_jwt = false
+
+[functions.publish-linkedin]
+verify_jwt = false
+
 [functions.check-subscription]
 verify_jwt = false
 

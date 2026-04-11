@@ -5245,6 +5245,15 @@ export type Database = {
           id: string
         }[]
       }
+      get_linkedin_token: {
+        Args: { p_company_id: string; p_encryption_key: string }
+        Returns: {
+          access_token: string
+          expires_at: string
+          member_urn: string
+          refresh_token: string
+        }[]
+      }
       get_mission_approvers: {
         Args: { target_company_id: string }
         Returns: {
@@ -5989,6 +5998,17 @@ export type Database = {
           p_table_name: string
         }
         Returns: string
+      }
+      upsert_linkedin_token: {
+        Args: {
+          p_access_token: string
+          p_company_id: string
+          p_encryption_key: string
+          p_expires_at: string
+          p_member_urn: string
+          p_refresh_token: string
+        }
+        Returns: undefined
       }
       upsert_naturvern_zone: {
         Args: {

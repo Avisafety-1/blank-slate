@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
 
     const IG_ACCESS_TOKEN = Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN")?.trim();
     const IG_ACCOUNT_ID = Deno.env.get("INSTAGRAM_BUSINESS_ACCOUNT_ID")?.trim();
+    const ENCRYPTION_KEY = Deno.env.get("FH2_ENCRYPTION_KEY");
 
     for (const draft of drafts) {
       try {
@@ -76,7 +77,112 @@ Deno.serve(async (req) => {
 
         const draftPlatform = draft.platform || "facebook";
 
-        if (draftPlatform === "instagram") {
+        if (draftPlatform === "linkedin") {
+          // LinkedIn publishing
+          if (!ENCRYPTION_KEY) {
+            results.push({ id: draft.id, error: "Encryption key not configured" });
+            continue;
+          }
+
+          const { data: tokenRow, error: tokenErr } = await supabase.rpc("get_linkedin_token", {
+            p_company_id: draft.company_id,
+            p_encryption_key: ENCRYPTION_KEY,
+          });
+
+          if (tokenErr || !tokenRow || tokenRow.length === 0) {
+            results.push({ id: draft.id, error: "LinkedIn not connected for this company" });
+            continue;
+          }
+
+          const liToken = tokenRow[0];
+          const LI_API = "https://api.linkedin.com";
+
+          let postPayload: any = {
+            author: liToken.member_urn,
+            lifecycleState: "PUBLISHED",
+            visibility: "PUBLIC",
+            commentary: text,
+            distribution: {
+              feedDistribution: "MAIN_FEED",
+              targetEntities: [],
+              thirdPartyDistributionChannels: [],
+            },
+          };
+
+          // Handle image
+          if (imageUrl) {
+            const initRes = await fetch(`${LI_API}/rest/images?action=initializeUpload`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${liToken.access_token}`,
+                "Content-Type": "application/json",
+                "LinkedIn-Version": "202401",
+                "X-Restli-Protocol-Version": "2.0.0",
+              },
+              body: JSON.stringify({ initializeUploadRequest: { owner: liToken.member_urn } }),
+            });
+            const initData = await initRes.json();
+            if (!initRes.ok || !initData.value?.uploadUrl) {
+              console.error(`LinkedIn image init error for draft ${draft.id}:`, JSON.stringify(initData));
+              results.push({ id: draft.id, error: "LinkedIn image upload init failed" });
+              continue;
+            }
+            const imgRes = await fetch(imageUrl);
+            const imgBlob = await imgRes.blob();
+            const uploadRes = await fetch(initData.value.uploadUrl, {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${liToken.access_token}`,
+                "Content-Type": imgBlob.type || "image/jpeg",
+              },
+              body: imgBlob,
+            });
+            if (!uploadRes.ok) {
+              results.push({ id: draft.id, error: "LinkedIn image upload failed" });
+              continue;
+            }
+            postPayload.content = { media: { title: "Image", id: initData.value.image } };
+          }
+
+          const postRes = await fetch(`${LI_API}/rest/posts`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${liToken.access_token}`,
+              "Content-Type": "application/json",
+              "LinkedIn-Version": "202401",
+              "X-Restli-Protocol-Version": "2.0.0",
+            },
+            body: JSON.stringify(postPayload),
+          });
+
+          if (!postRes.ok) {
+            const postErr = await postRes.json();
+            console.error(`LinkedIn post error for draft ${draft.id}:`, JSON.stringify(postErr));
+            results.push({ id: draft.id, error: postErr?.message || "LinkedIn post error" });
+            continue;
+          }
+
+          const postUrn = postRes.headers.get("x-restli-id") || "";
+          const liPostUrl = postUrn ? `https://www.linkedin.com/feed/update/${postUrn}/` : "";
+
+          await supabase
+            .from("marketing_drafts")
+            .update({
+              status: "published",
+              published_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              metadata: {
+                ...(draft.metadata || {}),
+                linkedin_post_urn: postUrn,
+                linkedin_post_url: liPostUrl,
+              },
+            })
+            .eq("id", draft.id);
+
+          console.log(`Published draft ${draft.id} -> LinkedIn post ${postUrn}`);
+          results.push({ id: draft.id, success: true, postUrn, platform: "linkedin" });
+
+        } else if (draftPlatform === "instagram") {
           // Instagram publishing
           if (!IG_ACCESS_TOKEN || !IG_ACCOUNT_ID) {
             results.push({ id: draft.id, error: "Instagram not configured" });
