@@ -81,34 +81,29 @@ interface SsbPopulationCell {
 
 /**
  * Fetch SSB 1 km² population grid cells within a bounding box.
- * Uses the SSB WFS endpoint.
+ * Uses a Supabase edge function proxy to avoid CORS issues with SSB WFS.
  */
 export async function fetchSsbPopulationGrid(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
-  // SSB WFS endpoint for 1km population grid
-  const baseUrl = "https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett";
+  const { supabase } = await import("@/integrations/supabase/client");
+  const supabaseUrl = (supabase as any).supabaseUrl ?? "https://pmucsvrypogtttrajqxq.supabase.co";
 
-  // Build BBOX filter in EPSG:4326 (lat/lng) — WFS 2.0 uses axis order lat,lon for EPSG:4326
+  // BBOX format: minLat,minLng,maxLat,maxLng,EPSG:4326
   const bboxStr = `${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng},EPSG:4326`;
+  const url = `${supabaseUrl}/functions/v1/ssb-population?bbox=${encodeURIComponent(bboxStr)}`;
 
-  const params = new URLSearchParams({
-    service: "WFS",
-    version: "2.0.0",
-    request: "GetFeature",
-    typeNames: "ms:befolkning_1km_2025",
-    outputFormat: "application/json",
-    srsName: "EPSG:4326",
-    bbox: bboxStr,
-    count: "10000",
+  const resp = await fetch(url, {
+    signal,
+    headers: {
+      "apikey": (supabase as any).supabaseKey ?? "",
+    },
   });
 
-  const url = `${baseUrl}?${params.toString()}`;
-  const resp = await fetch(url, { signal });
-
   if (!resp.ok) {
-    throw new Error(`SSB WFS error: ${resp.status} ${resp.statusText}`);
+    const errBody = await resp.text().catch(() => "");
+    throw new Error(`SSB population proxy error: ${resp.status} ${errBody}`);
   }
 
   const geojson = await resp.json();
