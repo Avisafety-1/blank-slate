@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { EccairsTaxonomySelect } from "./EccairsTaxonomySelect";
 import { EccairsMultiSelect } from "./EccairsMultiSelect";
+import { EccairsPhaseOfFlightSelect } from "./EccairsPhaseOfFlightSelect";
 
 import { useIncidentEccairsAttributes, AttributeData } from "@/hooks/useIncidentEccairsAttributes";
 import { 
