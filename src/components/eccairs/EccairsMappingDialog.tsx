@@ -371,6 +371,7 @@ export function EccairsMappingDialog({
               value={parseMultiSelectValue(getFieldValue(field))}
               onChange={(vals) => setFieldValue(field, JSON.stringify(vals))}
               placeholder={`Velg ${field.label.toLowerCase()}...`}
+              maxItems={field.maxValues || 5}
             />
           ) : (
             <EccairsTaxonomySelect
