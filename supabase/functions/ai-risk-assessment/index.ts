@@ -201,7 +201,7 @@ Returner denne JSON-strukturen:
   "operational_limits": "<operative begrensninger og betingelser>",
   "overall_score": <number 1-10>,
   "recommendation": "<go|caution|no-go>",
-  "summary": "<kort oppsummering av SORA-vurderingen>"
+  "summary": "<kort oppsummering av SORA-vurderingen — MÅ kun nevne reelle bekymringer fra analysen, IKKE hallusinere risikoer som er vurdert som OK>"
 }
 
 ### VURDERINGSPRINSIPPER
@@ -1286,6 +1286,14 @@ ${solarActivity ? `Kp-indeks for oppdragsdato: ${solarActivity.kpIndex} (${solar
 - Hvis Kp < 5 (G0): Skriv KUN én kort setning i equipment-kategoriens "factors", f.eks. "Geomagnetisk aktivitet vurdert — Kp ${solarActivity?.kpIndex ?? '?'}, ingen forstyrrelse forventet." IKKE utdyp mer enn dette.
 - Hvis Kp 5–6 (G1–G2): Advarsel i equipment "concerns" om mulig GPS/GNSS-degradering. Reduser equipment score med 1 poeng.
 - Hvis Kp 7+ (G3+): Sterk advarsel. Reduser equipment score med 2–3 poeng. Vurder caution eller no-go avhengig av total risiko.
+
+### REGLER FOR SUMMARY (Foreslått konklusjon)
+- Summary SKAL KUN omtale bekymringer som faktisk er reflektert i kategori-scorene og concerns-listene.
+- Summary MÅ IKKE nevne risikoer som analysen selv har vurdert som tilfredsstillende/OK. Eksempel: Hvis duggpunkt-differansen er >4°C og weather-kategorien beskriver dette som "tilfredsstillende" eller "lav risiko", skal summary IKKE nevne duggpunkt som en bekymring.
+- Summary MÅ IKKE nevne temaer som ikke finnes i datagrunnlaget eller som ikke er analysert (f.eks. "hviletid", "søvn", "fatigue" med mindre dette eksplisitt er vurdert i en kategori).
+- Summary skal kort oppsummere: (1) hovedbeslutning (go/caution/no-go), (2) de 2-3 viktigste reelle bekymringene hentet direkte fra concerns-listene, (3) de viktigste positive faktorene.
+- Summary SKAL være konsistent med recommendation-feltet, overall_score, og de individuelle kategori-vurderingene. Ingen selvmotsigelser.
+- Ikke gjenta informasjon som allerede er godt dekket i kategoriene — hold summary kort og presist.
 
 ### RESPONS-FORMAT
 Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
