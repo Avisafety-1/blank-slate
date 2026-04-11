@@ -1,29 +1,25 @@
 
 
-## Plan: Use 250m SSB Population Grid for Adjacent Area Calculation
+## Plan: Optimize Route Planner Toolbar for Mobile
 
-### What changes
+### Problem
+On mobile (390px wide), the route planning toolbar has too many buttons in a horizontal row, causing overflow. The buttons include: Pilot, Import KML, IPPC, Sensor, FH2, Undo, Clear, Cancel, Save — all in one line.
 
-The adjacent area calculation currently uses the `befolkning_1km_2025` SSB layer (1 km² grid cells). We switch the WFS query to use `befolkning_250m_2025` (250m grid cells, ~62,500 m² each) for more precise density calculations near urban areas. The existing WMS map layer stays on 1km.
+### Solution
+Wrap the action buttons into multiple rows on mobile using `flex-wrap`, and make the info indicators (SafeSky area, VLOS) also wrap properly. Specifically:
 
-Since each 250m cell covers 1/16 of a 1km cell, the population values are already per-cell (not per km²), so the math remains the same: sum all population in the donut, divide by donut area in km².
+### Changes to `src/pages/Kart.tsx`
 
-### Files to modify
+1. **Action buttons container** (line ~451): Change from single-row flex to `flex flex-wrap` so buttons wrap to a second row on narrow screens instead of overflowing.
 
-1. **`supabase/functions/ssb-population/index.ts`**
-   - Change `typeNames=befolkning_1km_2025` → `typeNames=befolkning_250m_2025`
-   - Increase `maxFeatures` from 10,000 to 50,000 (16x more cells possible)
-   - Add a query param `resolution=250` so we can extend later
+2. **Info section** (line ~388): Add `flex-wrap` so the SafeSky area badge and VLOS indicator wrap below the title on mobile instead of extending the row.
 
-2. **`src/components/AdjacentAreaPanel.tsx`**
-   - Add info text indicating the calculation uses 250m SSB grid resolution for improved accuracy
-   - Example: "Beregningen bruker SSB 250m befolkningsrutenett for høyere presisjon."
+3. **Group the tool buttons more tightly**: Merge the middle groups (Pilot, KML, IPPC, Sensor, FH2) into one wrapping container, and keep Undo/Clear and Cancel/Save as compact icon-only groups on mobile.
 
-3. **`src/lib/adjacentAreaCalculator.ts`**
-   - No logic changes needed — the density math (total pop / area km²) works regardless of cell size
+4. **Reduce padding/gaps on mobile**: Use `gap-1` instead of `gap-1.5` on mobile for tighter spacing.
 
-### Steps
-1. Update edge function to query 250m layer, redeploy
-2. Test the endpoint with curl to verify SSB returns data for the 250m layer
-3. Add info text to the panel UI
+The key CSS changes:
+- Outer actions div: `flex flex-wrap items-center gap-1 sm:gap-2`
+- Remove the nested `<div>` groupings on mobile so all buttons can flow freely and wrap naturally
+- Keep icon-only buttons on mobile (already done via `hidden sm:inline` on labels)
 
