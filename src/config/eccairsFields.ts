@@ -528,7 +528,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     format: 'value_list_int_array',
     type: 'select',
     group: 'analysis',
-    valueIdPrefix: '100000',
+    valueIdPrefix: '1000000-1999999',
     helpText: 'Risikoklassifisering av hendelsen — kun RPAS-relevante verdier (VL391)'
   },
   {
