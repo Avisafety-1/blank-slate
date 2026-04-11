@@ -341,7 +341,7 @@ export function EccairsEventTypeTreeSelect({
             className="h-11 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
-        <ScrollArea className="max-h-[300px]">
+        <ScrollArea className="h-[300px]">
           <div className="p-1">
             {isLoading ? (
               <div className="p-4 text-sm text-muted-foreground">Laster...</div>
