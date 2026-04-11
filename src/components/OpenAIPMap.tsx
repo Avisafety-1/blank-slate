@@ -9,7 +9,7 @@ import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
-import { renderSoraZones } from "@/lib/soraGeometry";
+import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Re-export types for backward compatibility
