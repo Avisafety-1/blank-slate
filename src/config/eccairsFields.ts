@@ -11,35 +11,38 @@ export type EccairsFormat =
 
 export type EccairsFieldGroup = 
   | 'identification'
-  | 'location'
   | 'classification'
+  | 'location'
   | 'aircraft'
   | 'airspace'
   | 'damage'
   | 'narrative'
+  | 'reporting'
   | 'analysis'
   | 'birdstrike';
 
 export const ECCAIRS_FIELD_GROUP_LABELS: Record<EccairsFieldGroup, string> = {
   identification: 'Grunnleggende identifikasjon',
-  location: 'Lokasjon og geografi',
   classification: 'Hendelsesklassifisering',
-  aircraft: 'Luftfartøy',
+  location: 'Lokasjon og geografi',
+  aircraft: 'Luftfartøy (RPAS/UAS)',
   airspace: 'Luftrom',
   damage: 'Skade og konsekvenser',
-  narrative: 'Narrativ',
+  narrative: 'Narrativ og beskrivelse',
+  reporting: 'Rapportering',
   analysis: 'Analyse og oppfølging',
   birdstrike: 'Fuglekollisjon (Birdstrike)',
 };
 
 export const ECCAIRS_FIELD_GROUP_ICONS: Record<EccairsFieldGroup, string> = {
   identification: '📋',
-  location: '📍',
   classification: '⚠️',
+  location: '📍',
   aircraft: '🚁',
   airspace: '🌐',
   damage: '💥',
   narrative: '📝',
+  reporting: '📨',
   analysis: '🔍',
   birdstrike: '🐦',
 };
@@ -442,7 +445,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     autoFromField: 'beskrivelse'
   },
 
-  // ===== REPORTING HISTORY GROUP (Entity 53) =====
+  // ===== REPORTING GROUP (Entity 53) =====
   {
     code: 447,
     label: 'Rapporteringsenhet (Reporting Entity)',
@@ -450,7 +453,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: '53',
     format: 'code_and_additional_text',
     type: 'code_and_text',
-    group: 'narrative',
+    group: 'reporting',
     helpText: 'Organisasjon/enhet som rapporterer hendelsen (VL447) — Operatøren som sender rapporten. Skriv inn selskapsnavn i tekstfeltet.',
     defaultValue: '6133',
     additionalTextField: 'Selskapsnavn',
@@ -463,7 +466,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: '53',
     format: 'value_list_int_array',
     type: 'select',
-    group: 'narrative',
+    group: 'reporting',
     helpText: 'Kilde for rapporten (VL476)'
   },
   {
@@ -473,7 +476,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: '53',
     format: 'content_object_array',
     type: 'select',
-    group: 'narrative',
+    group: 'reporting',
     helpText: 'Type rapporteringsskjema (VL495)'
   },
   {
@@ -483,7 +486,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: '53',
     format: 'value_list_int_array',
     type: 'select',
-    group: 'narrative',
+    group: 'reporting',
     defaultValue: '7',
     helpText: 'Status på rapporten (VL800) - Draft = 7'
   },
@@ -494,7 +497,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: '53',
     format: 'local_date',
     type: 'date',
-    group: 'narrative',
+    group: 'reporting',
     helpText: 'Dato for rapportering',
     autoFromField: 'hendelsestidspunkt'
   },
@@ -505,7 +508,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: '53',
     format: 'raw_json',
     type: 'hidden',
-    group: 'narrative',
+    group: 'reporting',
     helpText: 'Vedlegg/ressurslenker til rapporten (Eccairs Resource Locator)'
   },
   {
@@ -515,7 +518,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     entityPath: '53',
     format: 'content_object_array',
     type: 'select',
-    group: 'narrative',
+    group: 'reporting',
     helpText: 'Parter som er informert om hendelsen (VL1064)'
   },
 
@@ -634,6 +637,8 @@ export function getFieldsByGroup(group: EccairsFieldGroup): EccairsFieldConfig[]
 }
 
 export function getOrderedGroups(): EccairsFieldGroup[] {
-  // Return groups in the order they should appear
-  return ['identification', 'location', 'classification', 'aircraft', 'airspace', 'damage', 'narrative', 'analysis', 'birdstrike'];
+  return ['identification', 'classification', 'location', 'aircraft', 'airspace', 'damage', 'narrative', 'reporting', 'analysis', 'birdstrike'];
 }
+
+/** Groups that should be rendered as collapsible sections */
+export const COLLAPSIBLE_GROUPS: Set<EccairsFieldGroup> = new Set(['birdstrike']);
