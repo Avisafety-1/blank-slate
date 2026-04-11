@@ -965,28 +965,89 @@ Hvis VLOS (isVlos = true):
 - Standard vurdering uten ekstra BVLOS-krav.
 - Observer-behov vurderes basert på observerCount.
 
-### AREALBRUK OG GROUND RISK (SSB-data)
-Hvis feltet "landUse" finnes i kontekstdataene, bruk dette som PRIMÆRKILDE for ground risk-vurdering i mission_complexity-kategorien:
-- groundRiskClassification "high": Boligområder eller offentlige institusjoner i operasjonsområdet. Reduser mission_complexity score med 2-3 poeng. List kategoriene i complexity_factors og legg til spesifikke concerns.
-- groundRiskClassification "moderate": Næring, industri eller transport i området. Reduser mission_complexity score med 1-2 poeng.
-- groundRiskClassification "low": Ubebodd/fritidsområde — ingen ekstra reduksjon.
-- Hvis landUse er null (data utilgjengelig) OG proximityToPeople IKKE er "ssb_data", fall tilbake på pilotens manuelle input om "proximityToPeople".
-- Hvis proximityToPeople er "ssb_data": Bruk KUN SSB-data (landUse og populationDensity) som autoritativ kilde for nærhet til mennesker. Ikke bruk noen manuell fallback — SSB-dataene er den eneste kilden for denne vurderingen. Hvis SSB-data mangler, noter dette som en begrensning i vurderingen.
-- Hvis proximityToPeople er "none", "few" eller "many": Piloten har manuelt overstyrt SSB-data med lokal kunnskap. Bruk pilotens vurdering som primærkilde, men sammenlign med SSB-data hvis tilgjengelig og noter eventuelle avvik.
-Arealbrukskategoriene og featureCount gir detaljert informasjon om hva som finnes i området — bruk dette til å gi konkrete anbefalinger i recommendations.
+### LUFTRISIKO — AEC, ARC OG TMPR (EASA SORA)
+Du SKAL alltid utføre en strukturert luftrisikoanalyse og returnere den i feltet "air_risk_analysis".
 
-### BEFOLKNINGSTETTHET OG SORA GRC (SSB befolkningsgitter-data)
-Feltet "populationDensity" inneholder faktiske personantall per km² hentet fra SSBs befolkningsgitter. Dette er OBLIGATORISK input for SORA Ground Risk Class (GRC):
+#### Steg 1: Bestem AEC (Air Encounter Category)
+Bruk følgende tabell basert på luftromsklasse, høyde og lokasjon:
 
-- Tetthet 1500+ pers/km²: Tett bybebyggelse. Legg til +2 på baseline iGRC. Angi environment som "Tettbygd". Reduser mission_complexity score med 3 poeng. Krev spesifikke tiltak: sperringer, beredskapsplan, koordinering med grunneier/politi.
-- Tetthet 500–1499 pers/km²: Befolket område. Legg til +1 på baseline iGRC. Reduser mission_complexity score med 2 poeng. Krev tiltak: buffersoner, kommunikasjon med berørte.
-- Tetthet 100–499 pers/km²: Spredt bebyggelse. Ingen GRC-økning, men noter i concerns. Reduser mission_complexity score med 1 poeng.
-- Tetthet under 100 pers/km²: Lav tetthet — ingen ekstra GRC-tillegg.
-- Hvis befolkningsdata mangler: bruk arealbruksdata og pilotens input som fallback.
+| AEC | Beskrivelse | ARC |
+|-----|------------|-----|
+| AEC 1 | Luftrom klasse A (IFR only) | ARC-d |
+| AEC 2 | Luftrom klasse B (alle separert) | ARC-d |
+| AEC 3 | Luftrom klasse C, over 500 ft | ARC-d |
+| AEC 4 | Luftrom klasse C, under 500 ft | ARC-c |
+| AEC 5 | Luftrom klasse D, over 500 ft | ARC-d |
+| AEC 6 | Luftrom klasse D, under 500 ft | ARC-c |
+| AEC 7 | Luftrom klasse E/F, over 500 ft | ARC-c |
+| AEC 8 | Luftrom klasse E/F, under 500 ft | ARC-b |
+| AEC 9 | Luftrom klasse G, over 500 ft, Mode-S/TMZ | ARC-c |
+| AEC 10 | Luftrom klasse G, over 500 ft, uten Mode-S | ARC-c |
+| AEC 11 | Luftrom klasse G, under 500 ft, urbant | ARC-b |
+| AEC 12 | Luftrom klasse G, under 500 ft, landlig | ARC-b |
 
-VIKTIG: Oppgi alltid befolkningstettheten i naturlig tekst i "actual_conditions", f.eks. "Maks befolkningstetthet i området er ca. 21 personer per km²". Nevn også GRC-påvirkningen på forståelig norsk i complexity_factors.
+Bruk kontekstdata:
+- airspace.warnings: Sjekk om CTR/TIZ (kontrollert luftrom) er i nærheten → klasse D typisk
+- pilotInputs.flightHeight: Over/under 500 ft (~150m)
+- landUse/populationDensity: Urbant vs landlig
+- Hvis ingen spesifikke luftromsadvarsler: Anta klasse G (ukontrollert)
 
-VIKTIG SPRÅKREGEL: Bruk ALDRI tekniske variabelnavn som "landUse.groundRiskClassification", "maxDensity", "grcImpact", "grcIncrement", "populationDensity" eller lignende i output-teksten. Skriv ALT på naturlig, forståelig norsk som en pilot uten teknisk bakgrunn kan forstå. Eksempel: IKKE skriv "landUse.groundRiskClassification='low'" — skriv i stedet "Arealbruken i området er klassifisert som lav risiko (ubebygd/fritidsområde)".
+#### Steg 2: Bestem initiell ARC (iARC)
+Sett iARC direkte fra AEC-tabellen ovenfor.
+
+#### Steg 3: Vurder strategiske mitigeringer (kan redusere ARC)
+Strategiske mitigeringer kan redusere ARC med opptil 2 nivåer totalt:
+
+**Operasjonelle restriksjoner (maks 2 nivåer reduksjon):**
+- Avgrensning av operasjonsområdet til område med lite bemannet trafikk
+- Tidspunkt valgt med lav trafikkforventning (tidlig morgen, sein kveld, vinter)
+- Kort eksponering i luftrommet (kort flygetid)
+
+**Regler og luftromsstruktur (maks 1 ekstra nivå, KUN under 500 ft):**
+- NOTAM publisert 12+ timer før (obligatorisk for BVLOS uten observatør)
+- Elektronisk synlighet (ADS-B/ADS-L sender, SafeSky)
+- Klarering fra kontrolltårn (Ninox drone)
+- Koordinering med lufttrafikktjeneste
+
+**Luftromsanalyse:**
+- For å redusere til ARC-c: Vis at operasjonsvolumet har trafikk som ARC-c luftrom
+- For å redusere til ARC-b: Vis at det tilsvarer luftrom under 500 ft i landlige områder
+- For å redusere til ARC-a: Vis at det tilsvarer segregert luftrom (fareområde, svært lav høyde nær hindre)
+
+Atypisk luftrom (ARC-a) er definert som luftrom der risiko for kollisjon mellom drone og bemannet luftfart er akseptabelt lav uten taktiske mitigeringer. Eksempler: reservert luftrom, operasjoner i svært lav høyde nær objekter/bakken (under 30m over bakken, eller innenfor 30m fra hindre under 20m, eller innenfor 15m fra hindre over 20m).
+
+#### Steg 4: Bestem residual ARC
+Sett residual ARC etter å ha vurdert alle relevante mitigeringer.
+
+#### Steg 5: Bestem TMPR-nivå og krav
+Basert på residual ARC og flygemodus:
+
+| Residual ARC | TMPR-nivå | Robusthetsnivå |
+|---|---|---|
+| ARC-d | High | Høy |
+| ARC-c | Medium | Middels |
+| ARC-b | Low | Lav |
+| ARC-a | None | Ingen krav |
+
+VLOS-operasjon eller BVLOS med luftromsobservatør anses som akseptabel taktisk mitigering for alle ARC-klasser.
+
+For BVLOS uten observatør, angi spesifikke TMPR-krav for de 5 funksjonene:
+- **Detect**: Hvordan detektere bemannet trafikk (ADS-B mottaker, SafeSky, Flightradar24, FLARM/ADS-L)
+- **Decide**: Dokumentert unnvikelsesprosedyre
+- **Command**: C2-link latenskrav
+- **Execute**: Dronens evne til å utføre unnvikelsesmanøver
+- **Feedback Loop**: Oppdateringsrate og latens for posisjonsinformasjon
+
+#### Steg 6: Deteksjonsanbefalinger
+Anbefal konkrete deteksjonssystemer basert på operasjonstype og luftrom:
+- Innebygd ADS-B mottaker (1090 MHz)
+- ADS-L mottaker (868 MHz, for seilfly/FLARM)
+- SafeSky (app-basert posisjonsdeling)
+- Flightradar24 (sjekk dekningsgrad for operasjonsområdet)
+- Luftromsobservatør (maks 1-3 km fra observatør)
+- Flyradio (lytte på relevant frekvens nær landingsplasser)
+
+Hvis operasjonen er VLOS, sett vlos_exemption=true og forenkle TMPR-kravene.
 
 ### SOLSTORM / GEOMAGNETISK AKTIVITET
 Feltet "solarActivity" inneholder Kp-indeks fra NOAA Space Weather Prediction Center.
@@ -1050,6 +1111,26 @@ Returner en JSON-respons med denne strukturen:
       "factors": ["<positive faktorer>"],
       "concerns": ["<bekymringer>"]
     }
+  },
+  "air_risk_analysis": {
+    "aec": "<AEC 1-12>",
+    "aec_reasoning": "<kort forklaring av hvorfor denne AEC ble valgt basert på luftrom, høyde og lokasjon>",
+    "initial_arc": "<ARC-a|ARC-b|ARC-c|ARC-d>",
+    "strategic_mitigations_applied": ["<liste over relevante strategiske mitigeringer som er vurdert/anbefalt>"],
+    "strategic_mitigations_not_applied": ["<mitigeringer som IKKE er tilgjengelig eller relevant>"],
+    "residual_arc": "<ARC-a|ARC-b|ARC-c|ARC-d>",
+    "tmpr_level": "<High|Medium|Low|None>",
+    "tmpr_requirements": {
+      "detect": "<krav til deteksjon av bemannet trafikk, eller 'Ikke påkrevd' for ARC-a/VLOS>",
+      "decide": "<krav til beslutningsprosedyre>",
+      "command": "<krav til C2-link>",
+      "execute": "<krav til unnvikelsesevne>",
+      "feedback_loop": "<krav til oppdateringsrate>"
+    },
+    "detection_recommendations": ["<konkrete anbefalte deteksjonssystemer>"],
+    "vlos_exemption": <true hvis VLOS — forenklet TMPR>,
+    "traffic_types_to_consider": ["<relevante trafikktyper å vurdere i området, f.eks. ambulansehelikopter, småfly, paraglidere>"],
+    "arc_reduction_reasoning": "<kort forklaring av hvorfor/hvordan ARC ble redusert, eller 'Ingen reduksjon' hvis iARC = residual ARC>"
   },
   "recommendations": [
     {
