@@ -252,6 +252,11 @@ export function EccairsMappingDialog({
       } else if (field.defaultValue) {
         newValues[makeFieldKey(field)] = field.defaultValue;
       }
+
+      // Auto-fill additional text for code_and_text fields with company name
+      if (companyName && field.type === 'code_and_text' && (field.code === 447 || field.code === 215)) {
+        setAdditionalTextValues(prev => ({ ...prev, [makeFieldKey(field)]: companyName }));
+      }
     });
     
     setFieldValues(newValues);
