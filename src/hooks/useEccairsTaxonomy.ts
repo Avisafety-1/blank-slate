@@ -22,7 +22,9 @@ export function useEccairsTaxonomy(valueListKey: string, search: string = "", en
       
       // Add value_id prefix filter if provided — use range filter for numeric precision
       if (valueIdPrefix) {
-        url += `&and=(value_id.gte.${valueIdPrefix}${'0'.repeat(10 - valueIdPrefix.length)},value_id.lt.${(BigInt(valueIdPrefix) + 1n).toString()}${'0'.repeat(10 - valueIdPrefix.length)})`;
+        // Use text LIKE for short prefixes, but for 6+ digit prefixes use range filter
+        // to correctly match all values (e.g. '100000' should match 1000000-1000999)
+        url += `&value_id=like.${encodeURIComponent(valueIdPrefix)}*`;
       }
       
       // Add search filter if provided (server-side ILIKE)
