@@ -581,6 +581,14 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           
           {/* SORA Settings Panel */}
           <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} onDroneSelected={setSoraDroneId} />
+          
+          {/* SORA Adjacent Area Panel */}
+          <AdjacentAreaPanel
+            coordinates={currentRoute.coordinates}
+            soraSettings={soraSettings}
+            maxSpeedMps={soraDroneMaxSpeed}
+            onShowAdjacentArea={setShowAdjacentArea}
+          />
         </div>
       )}
 
@@ -609,6 +617,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
           focusFlightId={focusFlightId}
           onFocusFlightHandled={() => setFocusFlightId(null)}
           soraSettings={soraSettings}
+          adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraDroneMaxSpeed) : undefined}
         />
       </div>
 
