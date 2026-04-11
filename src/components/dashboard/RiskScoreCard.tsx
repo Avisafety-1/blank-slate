@@ -213,6 +213,11 @@ export const RiskScoreCard = ({
         </div>
       </div>
 
+      {/* Operation Classification - Step 0 */}
+      {operationClassification && (
+        <OperationClassificationSection data={operationClassification} />
+      )}
+
       {/* Category Scores */}
       <div className="space-y-3">
         {Object.entries(categories).map(([key, category]) => {
