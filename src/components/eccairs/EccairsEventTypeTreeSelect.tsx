@@ -12,17 +12,43 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const SUPABASE_URL = "https://pmucsvrypogtttrajqxq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtdWNzdnJ5cG9ndHR0cmFqcXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyMjcyMDEsImV4cCI6MjA3OTgwMzIwMX0.DMr5OjalAbZKedx0zqcTBWe5eMTrjlXIw384ycvX8dE";
 
-// Top-level category IDs for VL390
+// Actual top-level categories (matching ECCAIRS official tree)
 const TOP_LEVEL_IDS = new Set([
+  '99010158',  // Operational
   '1000000',   // Equipment
   '3000000',   // Consequential Events
-  '99000000',  // Unknown
-  '99010158',  // Operational
   '99010159',  // Personnel
   '99010164',  // Organisational
-  '99010401',  // RPAS Specific Events
   '99012035',  // Any Other Events
+  '99000000',  // Unknown
 ]);
+
+// Explicit parent mappings for structural nodes that don't follow numeric zeroing.
+// This mirrors the official ECCAIRS VL390 hierarchy.
+const PARENT_MAP: Record<string, string> = {
+  // Children of Operational (99010158)
+  '2000000': '99010158',   // Aircraft Flight Operations
+  '4000000': '99010158',   // Air Navigation Services
+  '5000000': '99010158',   // Aerodrome Operations
+  '7000000': '99010158',   // Regulatory
+  '99010103': '99010158',  // Aircraft Maintenance
+  '99012033': '99010158',  // Aircraft Design
+  '99012034': '99010158',  // Aircraft Production
+  '2240000': '99010158',   // Balloon/Sailplane/RPAS Specific Events
+  '2250000': '99010158',   // Balloon specific events
+
+  // Children of Balloon/Sailplane/RPAS Specific Events (2240000)
+  '2240100': '2240000',    // Winch launching related event
+  '2240200': '2240000',    // Sailplane/Glider Towing
+  '2240300': '2240000',    // Glider - Missing Lift
+  '99010401': '2240000',   // RPAS/UAS Specific Events
+
+  // Children of Personnel (99010159)
+  '99010160': '99010159',  // Experience and Knowledge Events
+  '99010161': '99010159',  // Physiological Events
+  '99010162': '99010159',  // Situational Awareness and Sensory Events
+  '99010163': '99010159',  // Personnel Task Performance Events
+};
 
 // RPAS-specific children of 99010401
 const RPAS_CHILDREN = new Set([
@@ -33,11 +59,8 @@ const RPAS_CHILDREN = new Set([
   '99200023', '99200025', '99200026',
 ]);
 
-// Known level-2 children for each top-level group (99xxxxxx series)
-// Operational (99010158) children: 99010165–99010207 range roughly
-// Personnel (99010159) children: 99010160–99010163
-// Organisational (99010164) children: 99010165–99010207 (ATM-related)
-// These are derived by examining the database structure
+// Organisational children range: 99010165–99010207
+const isOrganisationalChild = (num: number) => num >= 99010165 && num <= 99010207;
 
 interface TreeNode {
   value_id: string;
@@ -54,11 +77,13 @@ interface EccairsEventTypeTreeSelectProps {
 
 /**
  * Derive the parent ID for a given VL390 value_id.
- * Equipment (1xxxxxx): ATA-chapter numeric hierarchy (trailing zeros = parent level).
- * 99xxxxxx: grouped under top-level categories by known ranges.
+ * Uses explicit PARENT_MAP first, then numeric zeroing patterns.
  */
-function deriveParent(valueId: string): string | null {
+function deriveParent(valueId: string, allIds: Set<string>): string | null {
   if (TOP_LEVEL_IDS.has(valueId)) return null;
+
+  // Explicit mapping takes priority
+  if (PARENT_MAP[valueId]) return PARENT_MAP[valueId];
 
   // RPAS children → 99010401
   if (RPAS_CHILDREN.has(valueId)) return '99010401';
@@ -66,63 +91,48 @@ function deriveParent(valueId: string): string | null {
   const num = parseInt(valueId, 10);
   if (isNaN(num)) return null;
 
-  // Equipment tree (1,000,001 – 1,999,999): derive parent by zeroing trailing digits
-  if (num > 1000000 && num < 2000000) {
-    // Find parent by zeroing last non-zero digit group
-    const s = valueId.padStart(7, '0');
-    // Try progressively broader parents
-    for (let zeros = 1; zeros <= 5; zeros++) {
-      const parentStr = s.substring(0, 7 - zeros) + '0'.repeat(zeros);
-      const parentNum = parseInt(parentStr, 10);
-      if (parentNum !== num && parentNum >= 1000000) {
-        return parentNum.toString();
+  // Organisational children (99010165–99010207) → 99010164
+  if (isOrganisationalChild(num)) return '99010164';
+
+  // Numeric ranges (1xxxxxx–7xxxxxx): use zeroing pattern to find parent
+  const ranges = [
+    [1000000, 2000000],
+    [2000000, 3000000],
+    [3000000, 4000000],
+    [4000000, 5000000],
+    [5000000, 6000000],
+    [7000000, 8000000],
+  ] as const;
+
+  for (const [rangeStart, rangeEnd] of ranges) {
+    if (num > rangeStart && num < rangeEnd) {
+      const s = valueId.padStart(7, '0');
+      for (let zeros = 1; zeros <= 5; zeros++) {
+        const parentStr = s.substring(0, 7 - zeros) + '0'.repeat(zeros);
+        const parentNum = parseInt(parentStr, 10);
+        if (parentNum !== num && parentNum >= rangeStart && allIds.has(parentNum.toString())) {
+          return parentNum.toString();
+        }
       }
+      return rangeStart.toString();
     }
-    return '1000000';
   }
 
-  // Consequential Events children (3,000,001 – 3,999,999)
-  if (num > 3000000 && num < 4000000) {
-    // Similar zeroing approach
-    const s = valueId.padStart(7, '0');
-    for (let zeros = 1; zeros <= 5; zeros++) {
-      const parentStr = s.substring(0, 7 - zeros) + '0'.repeat(zeros);
-      const parentNum = parseInt(parentStr, 10);
-      if (parentNum !== num && parentNum >= 3000000) {
-        return parentNum.toString();
-      }
-    }
-    return '3000000';
-  }
-
-  // 99xxxxxx series: group under top-level categories
+  // 99xxxxxx items not explicitly mapped → default to Operational
   if (num >= 99000000 && num < 100000000) {
-    // Personnel children
-    if (num >= 99010160 && num <= 99010163) return '99010159';
-    // Organisational children
-    if (num >= 99010165 && num <= 99010207) return '99010164';
-    // Operational: anything else in 99010xxx range not already covered
-    if (num > 99010207 && num < 99010401) return '99010158';
-    if (num > 99010401 && num < 99012035) return '99010158';
-    // After Any Other Events
-    if (num > 99012035 && num < 99200000) return '99012035';
-    // 99200000+ not in RPAS set → Operational
-    if (num >= 99200000 && !RPAS_CHILDREN.has(valueId)) return '99010158';
-    // Fallback
-    if (num > 99000000 && num < 99010158) return '99000000';
     return '99010158';
   }
 
   return null;
 }
 
-/** Build a reverse parent map for path-to-root lookups */
+/** Build ancestor path for a value (for auto-expanding) */
 function getAncestors(valueId: string, allIds: Set<string>): string[] {
   const path: string[] = [];
   let current = valueId;
   let safety = 0;
   while (safety++ < 10) {
-    const parent = deriveParent(current);
+    const parent = deriveParent(current, allIds);
     if (!parent || !allIds.has(parent)) break;
     path.push(parent);
     current = parent;
@@ -134,7 +144,6 @@ function useVL390Items(enabled: boolean) {
   return useQuery({
     queryKey: ['eccairs-vl390-all'],
     queryFn: async () => {
-      // Fetch in batches since there are ~3100+ items
       const allItems: Array<{ value_id: string; label: string }> = [];
       const batchSize = 1000;
       for (let offset = 0; offset < 5000; offset += batchSize) {
@@ -187,7 +196,7 @@ export function EccairsEventTypeTreeSelect({
     const roots: TreeNode[] = [];
     for (const item of items) {
       const node = map.get(item.value_id)!;
-      const parentId = deriveParent(item.value_id);
+      const parentId = deriveParent(item.value_id, allIds);
       if (parentId && map.has(parentId)) {
         map.get(parentId)!.children.push(node);
       } else {
@@ -201,8 +210,8 @@ export function EccairsEventTypeTreeSelect({
     };
     sortChildren(roots);
 
-    // Move top-level categories to front in a specific order
-    const order = ['1000000', '99010158', '99010159', '99010164', '99010401', '3000000', '99012035', '99000000'];
+    // Order top-level categories
+    const order = ['99010158', '1000000', '3000000', '99010159', '99010164', '99012035', '99000000'];
     const topMap = new Map(roots.filter(r => TOP_LEVEL_IDS.has(r.value_id)).map(r => [r.value_id, r]));
     const rest = roots.filter(r => !TOP_LEVEL_IDS.has(r.value_id));
     const ordered = order.filter(id => topMap.has(id)).map(id => topMap.get(id)!);
