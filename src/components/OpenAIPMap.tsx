@@ -9,7 +9,7 @@ import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
-import { renderSoraZones } from "@/lib/soraGeometry";
+import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Re-export types for backward compatibility
@@ -53,6 +53,7 @@ interface OpenAIPMapProps {
   focusFlightId?: string | null;
   onFocusFlightHandled?: () => void;
   soraSettings?: SoraSettings;
+  adjacentAreaRadiusM?: number;
 }
 
 export function OpenAIPMap({ 
@@ -69,6 +70,7 @@ export function OpenAIPMap({
   focusFlightId,
   onFocusFlightHandled,
   soraSettings,
+  adjacentAreaRadiusM,
 }: OpenAIPMapProps) {
   const { user, companyLat, companyLon } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +89,8 @@ export function OpenAIPMap({
   const flightMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const soraSettingsRef = useRef(soraSettings);
   const soraLayerRef = useRef<L.LayerGroup | null>(null);
+  const adjacentAreaLayerRef = useRef<L.LayerGroup | null>(null);
+  const adjacentAreaRadiusMRef = useRef(adjacentAreaRadiusM);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
@@ -303,15 +307,30 @@ export function OpenAIPMap({
     if (sora?.enabled && points.length >= 1) {
       renderSoraZones(points, sora, soraLayerRef.current);
     }
+
+    // Adjacent area zone
+    if (!adjacentAreaLayerRef.current) {
+      adjacentAreaLayerRef.current = L.layerGroup();
+      if (leafletMapRef.current) {
+        adjacentAreaLayerRef.current.addTo(leafletMapRef.current);
+      }
+    }
+    adjacentAreaLayerRef.current.clearLayers();
+
+    const adjRadius = adjacentAreaRadiusMRef.current;
+    if (adjRadius && adjRadius > 0 && sora?.enabled && points.length >= 1) {
+      renderAdjacentAreaZone(points, adjRadius, adjacentAreaLayerRef.current);
+    }
   }, []);
 
   // Sync soraSettings ref and redraw
   useEffect(() => {
     soraSettingsRef.current = soraSettings;
+    adjacentAreaRadiusMRef.current = adjacentAreaRadiusM;
     if (routeLayerRef.current && leafletMapRef.current) {
       updateRouteDisplay();
     }
-  }, [soraSettings, updateRouteDisplay]);
+  }, [soraSettings, adjacentAreaRadiusM, updateRouteDisplay]);
 
   // Sync mode ref and toggle interactivity
   useEffect(() => {

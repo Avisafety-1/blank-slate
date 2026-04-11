@@ -325,3 +325,35 @@ export function renderSoraZones(
       .bindPopup(`<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`).addTo(layer);
   }
 }
+
+/**
+ * Render the SORA 2.5 adjacent area boundary on the map.
+ * Draws a dashed circle at the adjacent area radius from the route centroid.
+ */
+export function renderAdjacentAreaZone(
+  coordinates: RoutePoint[],
+  adjacentRadiusM: number,
+  layer: L.LayerGroup
+) {
+  if (coordinates.length < 1 || adjacentRadiusM <= 0) return;
+
+  const validCoords = coordinates.filter(
+    p => p && isFinite(p.lat) && isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
+  );
+  if (validCoords.length < 1) return;
+
+  // Use centroid as center
+  const lat = validCoords.reduce((s, p) => s + p.lat, 0) / validCoords.length;
+  const lng = validCoords.reduce((s, p) => s + p.lng, 0) / validCoords.length;
+
+  L.circle([lat, lng], {
+    radius: adjacentRadiusM,
+    color: '#3b82f6',
+    weight: 2,
+    fillColor: '#3b82f6',
+    fillOpacity: 0.06,
+    dashArray: '8, 6',
+  })
+    .bindPopup(`<strong>Tilstøtende område</strong><br/>Radius: ${(adjacentRadiusM / 1000).toFixed(1)} km`)
+    .addTo(layer);
+}
