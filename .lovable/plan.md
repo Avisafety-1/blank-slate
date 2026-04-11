@@ -1,33 +1,27 @@
 
 
-# Plan: Forbedre kvaliteten på "Foreslått konklusjon"
+# Plan: Fix State/Area of Occurrence (field 454) county mappings
 
-## Problemet
-AI-ens `summary`-felt (vist som "Foreslått konklusjon") inneholder feilaktige påstander som:
-- Nevner duggpunkt-bekymring når analysen selv sier differansen er tilfredsstillende (10°C > 4°C)
-- Nevner pilothviletid som aldri er vurdert i analysen
-- Generelt "hallusinerer" bekymringer som ikke finnes i de faktiske kategori-vurderingene
+## Problem
+The postcode-to-county auto-mapping in `eccairsAutoMapping.ts` has incorrect value IDs for two counties:
+- **Telemark**: mapped to `1117` (Svalbard) instead of `1118` (Telemark)
+- **Østfold**: mapped to `1112` (Oppland) instead of `1122` (Østfold)
 
-## Løsning
-Legge til eksplisitte regler i system-prompten for hvordan `summary` skal skrives.
+The field 454 UI itself already works correctly — it uses `EccairsMultiSelect` with `VL454` taxonomy which contains all Norwegian counties (1103-1122). The auto-fill logic already suggests `['179' (Norway), countyId]` based on the incident's postcode.
 
-### Endring i `supabase/functions/ai-risk-assessment/index.ts`
+## What already works
+- Field 454 is configured as `content_object_array` → renders with `EccairsMultiSelect`
+- All 20 Norwegian counties exist in the `eccairs.value_list_items` table (VL454, IDs 1103-1122)
+- Auto-mapping extracts postcode from `lokasjon` and maps to Norway + county
+- Users can manually search and select any country/region from VL454
 
-Legge til en ny seksjon i `systemPrompt` (før `### RESPONS-FORMAT`):
+## Changes
 
-**REGLER FOR SUMMARY (Foreslått konklusjon):**
-- Summary SKAL kun omtale bekymringer som faktisk er reflektert i kategori-scorene og concerns-listene
-- Summary MÅ IKKE nevne risikoer som analysen selv har vurdert som tilfredsstillende/OK
-- Eksempel: Hvis duggpunkt-differansen er >5°C og weather-kategorien sier "tilfredsstillende", skal summary IKKE nevne duggpunkt som en bekymring
-- Summary MÅ IKKE nevne temaer som ikke er analysert (f.eks. "hviletid" hvis dette ikke er i datagrunnlaget)
-- Summary skal kort oppsummere: (1) hovedbeslutning (go/caution/no-go), (2) de 2-3 viktigste reelle bekymringene fra concerns, (3) de viktigste positive faktorene
-- Summary skal være konsistent med recommendation-feltet og overall_score
+### File: `src/lib/eccairsAutoMapping.ts`
+- Fix `POSTCODE_TO_COUNTY` default map: key `'4'` should map to `1121` (Vest-Agder) — this is already correct
+- Fix Telemark: change `1117` → `1118`
+- Fix Østfold: change `1112` → `1122`
+- Fix Nord-Trøndelag comment: value `1111` is correct per DB
 
-## Filer som endres
-
-| Fil | Endring |
-|-----|---------|
-| `supabase/functions/ai-risk-assessment/index.ts` | Ny prompt-seksjon med regler for summary-kvalitet |
-
-Deploy av edge function nødvendig.
+No other files need changes — the field is already properly configured and rendered.
 
