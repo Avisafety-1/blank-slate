@@ -64,11 +64,6 @@ export const MarketingSettings = () => {
   const { data: linkedinStatus } = useQuery({
     queryKey: ["linkedin-status", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("linkedin-oauth", {
-        body: { companyId },
-        headers: { "x-action": "status" },
-      });
-      // The function uses query param, so call with fetch directly
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/linkedin-oauth?action=status`,
         {
