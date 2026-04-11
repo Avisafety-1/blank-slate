@@ -810,6 +810,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       approvalThreshold={currentAssessment._approvalThreshold}
                       airRiskAnalysis={currentAssessment.air_risk_analysis}
                       groundRiskAnalysis={currentAssessment.ground_risk_analysis}
+                      operationClassification={currentAssessment.operation_classification}
                     />
 
                     {/* Save comments button */}
