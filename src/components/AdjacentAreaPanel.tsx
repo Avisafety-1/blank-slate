@@ -105,6 +105,7 @@ export function AdjacentAreaPanel({
         <p className="text-xs text-muted-foreground">
           SORA 2.5 krever vurdering av gjennomsnittlig befolkningstetthet i tilstøtende område
           (fra bakkerisikobuffer til {radiusKm} km radius).
+          Beregningen bruker SSB 250m befolkningsrutenett for høyere presisjon enn kartlagets 1 km rutenett.
         </p>
 
         {/* Containment level selector */}
