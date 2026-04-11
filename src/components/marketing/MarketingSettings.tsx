@@ -242,6 +242,53 @@ export const MarketingSettings = () => {
         </CardContent>
       </Card>
 
+      {/* LinkedIn configuration */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Linkedin className="w-4 h-4" />
+            LinkedIn-konfigurasjon
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {linkedinStatus?.connected ? (
+            <div className="flex items-center gap-2 p-3 rounded-md bg-green-500/10 border border-green-500/20">
+              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              <div>
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">Koblet til LinkedIn</p>
+                <p className="text-xs text-muted-foreground">
+                  {linkedinStatus.memberUrn}
+                  {linkedinStatus.expiresAt && ` · Utløper ${new Date(linkedinStatus.expiresAt).toLocaleDateString("nb-NO")}`}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="ml-auto text-xs" onClick={handleConnectLinkedin}>
+                Koble på nytt
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Koble til LinkedIn for å publisere innlegg direkte fra markedsføringsmodulen.
+              </p>
+              <Button
+                onClick={handleConnectLinkedin}
+                disabled={connectingLinkedin}
+                className="gap-2 bg-[#0A66C2] hover:bg-[#0A66C2]/90 text-white"
+              >
+                {connectingLinkedin ? <Loader2 className="w-4 h-4 animate-spin" /> : <Linkedin className="w-4 h-4" />}
+                Koble til LinkedIn
+              </Button>
+            </div>
+          )}
+          <div className="rounded-md bg-muted/30 border border-border p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">Oppsett:</p>
+            <p>1. Registrer redirect-URI i LinkedIn-appen din:</p>
+            <code className="block text-[10px] bg-muted p-1 rounded">{import.meta.env.VITE_SUPABASE_URL}/functions/v1/linkedin-oauth?action=callback</code>
+            <p>2. Sørg for at appen har <code>w_member_social</code>, <code>openid</code> og <code>profile</code> scopes</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Facebook configuration */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
