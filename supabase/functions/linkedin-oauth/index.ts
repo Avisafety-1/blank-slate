@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
         `&client_id=${CLIENT_ID}` +
         `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
         `&state=${encodeURIComponent(state)}` +
-        `&scope=w_member_social%20openid%20profile`;
+        `&scope=w_member_social`;
 
       return new Response(JSON.stringify({ url: authUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -113,12 +113,12 @@ Deno.serve(async (req) => {
       const refreshToken = tokenData.refresh_token || null;
       const expiresIn = tokenData.expires_in || 5184000; // 60 days default
 
-      // Fetch member URN via userinfo
-      const userinfoRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+      // Fetch member URN via /v2/me (doesn't require openid scope)
+      const meRes = await fetch("https://api.linkedin.com/v2/me", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const userinfo = await userinfoRes.json();
-      const memberUrn = userinfo.sub ? `urn:li:person:${userinfo.sub}` : null;
+      const meData = await meRes.json();
+      const memberUrn = meData.id ? `urn:li:person:${meData.id}` : null;
 
       if (!memberUrn) {
         console.error("Could not fetch LinkedIn member URN:", JSON.stringify(userinfo));
