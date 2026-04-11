@@ -2807,6 +2807,47 @@ export type Database = {
           },
         ]
       }
+      linkedin_tokens: {
+        Row: {
+          access_token_encrypted: string
+          company_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          member_urn: string
+          refresh_token_encrypted: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted: string
+          company_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          member_urn: string
+          refresh_token_encrypted?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string
+          company_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          member_urn?: string
+          refresh_token_encrypted?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linkedin_tokens_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_viewer_heartbeats: {
         Row: {
           created_at: string
