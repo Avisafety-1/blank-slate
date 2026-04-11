@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { EccairsTaxonomySelect } from "./EccairsTaxonomySelect";
 import { EccairsMultiSelect } from "./EccairsMultiSelect";
 import { EccairsPhaseOfFlightSelect } from "./EccairsPhaseOfFlightSelect";
+import { EccairsEventTypeTreeSelect } from "./EccairsEventTypeTreeSelect";
 
 import { useIncidentEccairsAttributes, AttributeData } from "@/hooks/useIncidentEccairsAttributes";
 import { 
