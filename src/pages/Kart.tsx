@@ -74,9 +74,16 @@ export default function KartPage() {
 
   // Fetch drone model name when soraDroneId changes
   useEffect(() => {
-    if (!soraDroneId) { setSoraDroneModel(undefined); return; }
+    if (!soraDroneId) { setSoraDroneModel(undefined); setSoraDroneMaxSpeed(undefined); return; }
     supabase.from('drones').select('modell').eq('id', soraDroneId).single().then(({ data }) => {
       setSoraDroneModel(data?.modell || undefined);
+      // Also fetch max speed from drone_models catalog
+      if (data?.modell) {
+        supabase.from('drone_models').select('max_wind_mps, name').ilike('name', `%${data.modell}%`).limit(1).single().then(({ data: model }) => {
+          // Use a rough estimate: max speed ≈ 2× max wind rating, or fallback to undefined
+          setSoraDroneMaxSpeed(model?.max_wind_mps ? model.max_wind_mps * 2 : undefined);
+        });
+      }
     });
   }, [soraDroneId]);
 
