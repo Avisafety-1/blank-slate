@@ -179,7 +179,7 @@ export function EccairsEventTypeTreeSelect({
 }: EccairsEventTypeTreeSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(['99010158', '2240000', '99010401']));
 
   const { data: items, isLoading } = useVL390Items(open);
   const { data: selectedItem } = useEccairsTaxonomyItem("VL390", value, !!value);
