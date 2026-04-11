@@ -241,6 +241,8 @@ export function EccairsEventTypeTreeSelect({
   const filteredTree = useMemo(() => {
     if (!search.trim()) return tree;
     const term = search.toLowerCase();
+    // When searching, search across ALL items (fullTree), not just RPAS
+    const sourceTree = fullTree.length > 0 ? fullTree : tree;
     const filterNodes = (nodes: TreeNode[]): TreeNode[] =>
       nodes.reduce<TreeNode[]>((acc, node) => {
         const childMatches = filterNodes(node.children);
