@@ -20,11 +20,14 @@ export function useEccairsTaxonomy(valueListKey: string, search: string = "", en
       // Build query params
       let url = `${SUPABASE_URL}/rest/v1/value_list_items?value_list_key=eq.${encodeURIComponent(valueListKey)}&order=value_description&limit=200`;
       
-      // Add value_id prefix filter if provided — use range filter for numeric precision
+      // Add value_id prefix filter if provided
       if (valueIdPrefix) {
-        // Use text LIKE for short prefixes, but for 6+ digit prefixes use range filter
-        // to correctly match all values (e.g. '100000' should match 1000000-1000999)
-        url += `&value_id=like.${encodeURIComponent(valueIdPrefix)}*`;
+        // For numeric value_ids, use range filter to get all values starting with prefix
+        // e.g. prefix '100000' → range 1000000..1000999 (appending 0s and 9s to match length)
+        const pad = Math.max(0, 7 - valueIdPrefix.length);
+        const lower = valueIdPrefix + '0'.repeat(pad);
+        const upper = valueIdPrefix + '9'.repeat(pad);
+        url += `&and=(value_id.gte.${lower},value_id.lte.${upper})`;
       }
       
       // Add search filter if provided (server-side ILIKE)
