@@ -118,11 +118,9 @@ function deriveParent(valueId: string, allIds: Set<string>): string | null {
     }
   }
 
-  // 99xxxxxx items not explicitly mapped → default to Operational
-  if (num >= 99000000 && num < 100000000) {
-    return '99010158';
-  }
-
+  // 99xxxxxx items without explicit mapping: leave as root-level.
+  // They are findable via search. Without ECCAIRS parent_id data,
+  // we cannot accurately place them in the hierarchy.
   return null;
 }
 
