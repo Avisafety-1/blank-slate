@@ -29,7 +29,11 @@ serve(async (req) => {
 
     // bbox expected: minLng,minLat,maxLng,maxLat
     // SSB WFS 1.1.0 with EPSG:4326 uses lon,lat order in bbox
-    const wfsUrl = `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett?service=WFS&version=1.1.0&request=GetFeature&typeNames=befolkning_1km_2025&srsName=EPSG:4326&bbox=${bbox}&maxFeatures=10000`;
+    const resolution = url.searchParams.get("resolution") || "250";
+    const typeName = resolution === "1000" ? "befolkning_1km_2025" : "befolkning_250m_2025";
+    const maxFeatures = resolution === "1000" ? 10000 : 50000;
+
+    const wfsUrl = `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett?service=WFS&version=1.1.0&request=GetFeature&typeNames=${typeName}&srsName=EPSG:4326&bbox=${bbox}&maxFeatures=${maxFeatures}`;
 
     console.log("Fetching SSB WFS:", wfsUrl);
 
