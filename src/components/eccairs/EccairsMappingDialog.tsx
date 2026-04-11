@@ -23,11 +23,14 @@ import {
   EccairsFieldConfig, 
   EccairsFieldGroup,
   ECCAIRS_FIELD_GROUP_LABELS,
+  ECCAIRS_FIELD_GROUP_ICONS,
+  COLLAPSIBLE_GROUPS,
   getOrderedGroups,
   getFieldsByGroup
 } from "@/config/eccairsFields";
 import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAutoMapping";
-import { Loader2, Sparkles, AlertTriangle } from "lucide-react";
+import { Loader2, Sparkles, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import { supabase } from "@/integrations/supabase/client";
@@ -510,14 +513,48 @@ export function EccairsMappingDialog({
   };
 
   // Render a group of fields
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(COLLAPSIBLE_GROUPS)
+  );
+
+  const toggleCollapsed = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  };
+
   const renderGroup = (group: EccairsFieldGroup) => {
     const fields = getFieldsByGroup(group).filter(f => f.type !== 'hidden');
     if (fields.length === 0) return null;
 
+    const icon = ECCAIRS_FIELD_GROUP_ICONS[group];
+    const label = ECCAIRS_FIELD_GROUP_LABELS[group];
+    const isCollapsible = COLLAPSIBLE_GROUPS.has(group);
+
+    if (isCollapsible) {
+      const isOpen = !collapsedGroups.has(group);
+      return (
+        <Collapsible key={group} open={isOpen} onOpenChange={() => toggleCollapsed(group)}>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-sm text-muted-foreground border-b pb-2 hover:text-foreground transition-colors cursor-pointer">
+            {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            <span>{icon} {label}</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+              {fields.map(field => renderField(field))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      );
+    }
+
     return (
       <div key={group} className="space-y-4">
         <h4 className="font-medium text-sm text-muted-foreground border-b pb-2">
-          {ECCAIRS_FIELD_GROUP_LABELS[group]}
+          {icon} {label}
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {fields.map(field => renderField(field))}
