@@ -223,9 +223,7 @@ export async function computeAdjacentAreaDensity(
   const outerDist = innerDist + adjacentRadiusM;
 
   const innerPoly = makeBuffer(coords, sora, innerDist);
-  const rawOuterPoly = makeBuffer(coords, sora, outerDist);
-  // Collapse overlapping corridors into a single outer boundary (same as map rendering)
-  const outerPoly = rawOuterPoly.length >= 3 ? computeConvexHull(rawOuterPoly) : rawOuterPoly;
+  const outerPoly = makeBuffer(coords, sora, outerDist);
 
   // Bounding box from actual polygon
   const bbox = bboxFromPolygon(outerPoly);
