@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
@@ -67,6 +68,7 @@ export const ExpandedMapDialog = ({
   missionId,
   onSoraUpdated,
 }: ExpandedMapDialogProps) => {
+  const { companyId } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
