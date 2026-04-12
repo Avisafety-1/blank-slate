@@ -57,17 +57,20 @@ export default function KartPage() {
   const kmlInputRef = useRef<HTMLInputElement>(null);
   const [importingKml, setImportingKml] = useState(false);
   
-  // SORA settings - default buffer mode loaded from company config
+  // SORA settings - company defaults loaded from company config
   const [companyBufferMode, setCompanyBufferMode] = useState<"corridor" | "convexHull">("corridor");
-  const [soraSettings, setSoraSettings] = useState<SoraSettings>({
+  const [companyFlightAltitude, setCompanyFlightAltitude] = useState(120);
+  const [companyFlightGeography, setCompanyFlightGeography] = useState(0);
+  const defaultSoraSettings = useMemo<SoraSettings>(() => ({
     enabled: false,
-    flightAltitude: 120,
-    flightGeographyDistance: 0,
+    flightAltitude: companyFlightAltitude,
+    flightGeographyDistance: companyFlightGeography,
     contingencyDistance: 50,
     contingencyHeight: 30,
     groundRiskDistance: 100,
-    bufferMode: "corridor",
-  });
+    bufferMode: companyBufferMode,
+  }), [companyBufferMode, companyFlightAltitude, companyFlightGeography]);
+  const [soraSettings, setSoraSettings] = useState<SoraSettings>(defaultSoraSettings);
   const [soraDroneId, setSoraDroneId] = useState<string | null>(null);
   const [soraDroneModel, setSoraDroneModel] = useState<string | undefined>(undefined);
   const [soraDroneMaxSpeed, setSoraDroneMaxSpeed] = useState<number | undefined>(undefined);
@@ -117,10 +120,12 @@ export default function KartPage() {
           setSoraSettings(prev => prev.bufferMode === "corridor" ? { ...prev, bufferMode: mode } : prev);
         }
         if (data?.default_flight_geography_m != null && data.default_flight_geography_m > 0) {
+          setCompanyFlightGeography(data.default_flight_geography_m);
           setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
         }
         if (data?.default_flight_altitude_m != null && data.default_flight_altitude_m > 0) {
-          setSoraSettings(prev => prev.flightAltitude === 0 ? { ...prev, flightAltitude: data.default_flight_altitude_m } : prev);
+          setCompanyFlightAltitude(data.default_flight_altitude_m);
+          setSoraSettings(prev => prev.flightAltitude === 120 ? { ...prev, flightAltitude: data.default_flight_altitude_m } : prev);
         }
       });
     // Check if FlightHub 2 is configured (edge function handles parent fallback)
@@ -225,7 +230,7 @@ export default function KartPage() {
       setEditingMissionId(null);
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
       setPilotPosition(undefined);
-setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: companyBufferMode });
+      setSoraSettings(defaultSoraSettings);
       return;
     }
 
@@ -273,9 +278,9 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
     if (route?.soraSettings) {
       setSoraSettings(route.soraSettings);
     } else {
-      setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: companyBufferMode });
+      setSoraSettings(defaultSoraSettings);
     }
-  }, []);
+  }, [defaultSoraSettings]);
 
   const handleCancelRoute = () => {
     if (routePlanningState) {
