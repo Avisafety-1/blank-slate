@@ -1,5 +1,5 @@
 import L from "leaflet";
-import * as polygonClipping from "polygon-clipping";
+import polygonClipping from "polygon-clipping";
 import type { MultiPolygon as ClipMultiPolygon, Polygon as ClipPolygon, Ring as ClipRing } from "polygon-clipping";
 
 interface RoutePoint {
