@@ -1,46 +1,33 @@
 
 
-## Plan: Align Population Calculation with Polygon Geometry
+## Plan: Add Default Flight Geography Area to Company Settings
 
-### Problem
-The population density calculation in `adjacentAreaCalculator.ts` still uses the old circle-based approach: it computes a centroid, then filters SSB cells by haversine distance from that centroid (lines 210-226). For long routes, the actual adjacent area is an elongated corridor-shaped polygon (as now drawn on the map), but the calculation uses a circular donut that misses cells along the route's length.
+### What changes
+Add a new company-level setting for "Standard Flight Geography Area" (in meters) alongside the existing "Standard SORA-buffersone" setting. This default value will be used when initializing SORA settings for new routes.
 
-The area calculation (lines 228-231) also uses circular `π·r²` formulas instead of the actual polygon area.
+### Database
+Add column `default_flight_geography_m` (integer, default 0) to `company_sora_config` table.
 
-### Solution
-Reuse the same buffered polygon geometry from `soraGeometry.ts` to do point-in-polygon filtering of SSB cells, and compute the actual polygon area.
+### UI Changes
 
-### Changes
+**`src/components/admin/ChildCompaniesSection.tsx`**
+- Add state `defaultFlightGeographyM` (number, default 0)
+- Fetch it alongside `default_buffer_mode` from `company_sora_config`
+- Add a new UI block inside the SORA buffer section (after the buffer mode radio group): a slider (0-200m) with label "Standard Flight Geography Area (m)" and current value display
+- Save via upsert to `company_sora_config` on change
 
-**1. `src/lib/adjacentAreaCalculator.ts`**
-- Import `bufferPolyline`, `bufferPolygon`, `computeConvexHull` from `soraGeometry.ts` and `mapGeometry.ts`
-- Replace `outerBufferRadius` / `adjacentBbox` / haversine-circle filtering with:
-  - Build inner polygon (ground risk buffer) using same logic as `renderAdjacentAreaZone`
-  - Build outer polygon (adjacent area) using same logic
-  - Compute bounding box from the outer polygon vertices (not from centroid + radius)
-  - Filter SSB cells using point-in-polygon: cell is in adjacent area if it's **inside outer polygon AND outside inner polygon**
-- Replace circular area formula with actual polygon area using shoelace formula (import `calculatePolygonAreaKm2` from `mapGeometry.ts` or compute inline)
-- Add a simple ray-casting point-in-polygon helper function
+### Consumer Changes
 
-**2. `src/lib/soraGeometry.ts`**
-- Export `bufferPolygon` helper (if not already exported) so the calculator can reuse it
+**`src/pages/Kart.tsx`**
+- Fetch `default_flight_geography_m` alongside `default_buffer_mode` from `company_sora_config`
+- Use it as the initial `flightGeographyDistance` value in `soraSettings` (instead of hardcoded 0)
 
-### Implementation detail
-```
-// Pseudocode for new filtering logic:
-const innerPoly = makeBuffer(coords, sora, fgDist + cDist + grDist);
-const outerPoly = makeBuffer(coords, sora, fgDist + cDist + grDist + adjacentRadiusM);
-const bbox = bboxFromPolygon(outerPoly);
-const cells = await fetchSsbPopulationGrid(bbox, signal);
+**`src/components/dashboard/ExpandedMapDialog.tsx`**
+- Same: apply company default for `flightGeographyDistance` in the default SORA settings
 
-for (cell of cells) {
-  if (pointInPolygon(cell, outerPoly) && !pointInPolygon(cell, innerPoly)) {
-    totalPop += cell.population;
-  }
-}
-
-const adjacentAreaKm2 = polygonAreaKm2(outerPoly) - polygonAreaKm2(innerPoly);
-```
-
-This ensures the population calculation matches the purple polygon shown on the map exactly.
+### Summary of files
+1. **Migration**: Add `default_flight_geography_m` column
+2. **ChildCompaniesSection.tsx**: New slider UI + save logic
+3. **Kart.tsx**: Read and apply default
+4. **ExpandedMapDialog.tsx**: Read and apply default
 
