@@ -82,6 +82,22 @@ export const ExpandedMapDialog = ({
 
   const defaultSora: SoraSettings = { enabled: false, flightAltitude: 120, flightGeographyDistance: 0, contingencyDistance: 50, contingencyHeight: 30, groundRiskDistance: 100, bufferMode: "corridor" };
   const [soraSettings, setSoraSettings] = useState<SoraSettings>(route?.soraSettings ?? defaultSora);
+
+  // Apply company default flight geography
+  useEffect(() => {
+    if (route?.soraSettings) return; // Don't override saved settings
+    if (!companyId) return;
+    (supabase as any)
+      .from("company_sora_config")
+      .select("default_flight_geography_m")
+      .eq("company_id", companyId)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (data?.default_flight_geography_m > 0) {
+          setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
+        }
+      });
+  }, [companyId, route?.soraSettings]);
   const [soraDirty, setSoraDirty] = useState(false);
   const [soraSaving, setSoraSaving] = useState(false);
   const [soraDroneId, setSoraDroneId] = useState<string | null>(route?.soraSettings?.droneId ?? null);

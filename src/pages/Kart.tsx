@@ -107,7 +107,7 @@ export default function KartPage() {
     if (!companyId) return;
     (supabase as any)
       .from("company_sora_config")
-      .select("default_buffer_mode")
+      .select("default_buffer_mode, default_flight_geography_m")
       .eq("company_id", companyId)
       .maybeSingle()
       .then(({ data }: any) => {
@@ -115,6 +115,9 @@ export default function KartPage() {
           const mode = data.default_buffer_mode as "corridor" | "convexHull";
           setCompanyBufferMode(mode);
           setSoraSettings(prev => prev.bufferMode === "corridor" ? { ...prev, bufferMode: mode } : prev);
+        }
+        if (data?.default_flight_geography_m != null && data.default_flight_geography_m > 0) {
+          setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
         }
       });
     // Check if FlightHub 2 is configured (edge function handles parent fallback)
