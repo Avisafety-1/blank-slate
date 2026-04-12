@@ -1,58 +1,46 @@
 
 
-## Plan: Merge SORA Volume and Adjacent Area Headers onto One Line
+## Plan: Align Population Calculation with Polygon Geometry
 
-### What changes
+### Problem
+The population density calculation in `adjacentAreaCalculator.ts` still uses the old circle-based approach: it computes a centroid, then filters SSB cells by haversine distance from that centroid (lines 210-226). For long routes, the actual adjacent area is an elongated corridor-shaped polygon (as now drawn on the map), but the calculation uses a circular donut that misses cells along the route's length.
 
-Currently, `SoraSettingsPanel` and `AdjacentAreaPanel` are two separate `Collapsible` components stacked vertically, each with its own full-width trigger line. When SORA is enabled, Adjacent Area appears on a second line below.
+The area calculation (lines 228-231) also uses circular `π·r²` formulas instead of the actual polygon area.
 
-**Goal**: Combine both trigger headers into a single row. "SORA volum" (renamed from "SORA Operasjonelt volum") on the left with its enable switch, and the Adjacent Area trigger on the right — all on one line. Each still expands its own collapsible content below.
+### Solution
+Reuse the same buffered polygon geometry from `soraGeometry.ts` to do point-in-polygon filtering of SSB cells, and compute the actual polygon area.
 
-### Files to modify
+### Changes
 
-**1. `src/pages/Kart.tsx`** (lines ~579-588)
-- Wrap both `SoraSettingsPanel` and `AdjacentAreaPanel` in a single container div
-- Both components remain independent but are laid out so their triggers share one row
+**1. `src/lib/adjacentAreaCalculator.ts`**
+- Import `bufferPolyline`, `bufferPolygon`, `computeConvexHull` from `soraGeometry.ts` and `mapGeometry.ts`
+- Replace `outerBufferRadius` / `adjacentBbox` / haversine-circle filtering with:
+  - Build inner polygon (ground risk buffer) using same logic as `renderAdjacentAreaZone`
+  - Build outer polygon (adjacent area) using same logic
+  - Compute bounding box from the outer polygon vertices (not from centroid + radius)
+  - Filter SSB cells using point-in-polygon: cell is in adjacent area if it's **inside outer polygon AND outside inner polygon**
+- Replace circular area formula with actual polygon area using shoelace formula (import `calculatePolygonAreaKm2` from `mapGeometry.ts` or compute inline)
+- Add a simple ray-casting point-in-polygon helper function
 
-**2. `src/components/SoraSettingsPanel.tsx`**
-- Rename label from "SORA Operasjonelt volum" → "SORA volum" (line 153)
-
-**3. Structural approach**
-- Instead of two full-width collapsibles stacked, create a shared header row in `Kart.tsx` that contains:
-  - Left side: "SORA volum" label + enable Switch + chevron (opens SORA settings)
-  - Right side: "Tilstøtende" button/trigger with pass/fail badge + chevron (opens Adjacent Area panel)
-- Both collapsible contents render below this shared row
-- This requires extracting the trigger UI from both components and managing open states at the parent level, OR making the components accept a `renderTrigger` prop
-
-**Simpler approach**: Restructure the two components so their Collapsible triggers sit inside a shared flex row in `Kart.tsx`. Each component exports its trigger and content separately, or we compose them differently.
-
-**Pragmatic approach**: 
-- Make `SoraSettingsPanel` render its trigger inline (shorter label)
-- Make `AdjacentAreaPanel` render inline next to it by wrapping both in a `flex` row in `Kart.tsx`
-- Use CSS: wrap both components in a div where triggers are `inline-flex` and contents span full width below
-
-Since both are `Collapsible` components with block-level triggers, the cleanest approach is:
-1. In `Kart.tsx`, wrap both in a flex container
-2. Refactor both components to accept an `inline` or `compact` mode where the trigger is not full-width
-3. Or better: extract trigger buttons to `Kart.tsx` and pass `open`/`onOpenChange` as props to both panels, rendering only their content
+**2. `src/lib/soraGeometry.ts`**
+- Export `bufferPolygon` helper (if not already exported) so the calculator can reuse it
 
 ### Implementation detail
+```
+// Pseudocode for new filtering logic:
+const innerPoly = makeBuffer(coords, sora, fgDist + cDist + grDist);
+const outerPoly = makeBuffer(coords, sora, fgDist + cDist + grDist + adjacentRadiusM);
+const bbox = bboxFromPolygon(outerPoly);
+const cells = await fetchSsbPopulationGrid(bbox, signal);
 
-**`Kart.tsx`**: 
-- Add state: `soraOpen`, `adjacentOpen` 
-- Render a single shared header row with both triggers side by side
-- Render `SoraSettingsPanel` content (when soraOpen) and `AdjacentAreaPanel` content (when adjacentOpen) below
+for (cell of cells) {
+  if (pointInPolygon(cell, outerPoly) && !pointInPolygon(cell, innerPoly)) {
+    totalPop += cell.population;
+  }
+}
 
-**`SoraSettingsPanel`**:
-- Accept `open`/`onOpenChange` props and expose content without its own trigger
-- Or add a `renderTriggerOnly` mode
-- Rename to "SORA volum"
+const adjacentAreaKm2 = polygonAreaKm2(outerPoly) - polygonAreaKm2(innerPoly);
+```
 
-**`AdjacentAreaPanel`**:
-- Accept `open`/`onOpenChange` props and expose content without its own trigger
-- Shorten label to "Tilstøtende" on mobile
-
-### Result
-One horizontal line: `[SORA volum] [switch] [▼]  ···  [👥 Tilstøtende] [OK badge] [▼]`
-Content panels expand below this shared row.
+This ensures the population calculation matches the purple polygon shown on the map exactly.
 
