@@ -63,7 +63,7 @@ export const ChildCompaniesSection = () => {
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
-  const [defaultContingencyHeightM, setDefaultContingencyHeightM] = useState(30);
+  const [defaultFlightAltitudeM, setDefaultFlightAltitudeM] = useState(30);
   const [applySettingsToChildren, setApplySettingsToChildren] = useState(false);
   const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
   const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
@@ -321,8 +321,8 @@ export const ChildCompaniesSection = () => {
     if (soraData?.default_flight_geography_m != null) {
       setDefaultFlightGeographyM(soraData.default_flight_geography_m);
     }
-    if (soraData?.default_contingency_height_m != null) {
-      setDefaultContingencyHeightM(soraData.default_contingency_height_m);
+    if (soraData?.default_flight_altitude_m != null) {
+      setDefaultFlightAltitudeM(soraData.default_flight_altitude_m);
     }
   };
 
@@ -494,16 +494,16 @@ export const ChildCompaniesSection = () => {
     toast.success("Standard Flight Geography lagret");
   };
 
-  const handleChangeDefaultContingencyHeight = async (value: number) => {
+  const handleChangeDefaultFlightAltitude = async (value: number) => {
     if (!companyId) return;
-    setDefaultContingencyHeightM(value);
+    setDefaultFlightAltitudeM(value);
     setSavingSettings(true);
     await (supabase as any)
       .from("company_sora_config")
-      .upsert({ company_id: companyId, default_contingency_height_m: value }, { onConflict: 'company_id' });
+      .upsert({ company_id: companyId, default_flight_altitude_m: value }, { onConflict: 'company_id' });
     setSavingSettings(false);
     invalidateCompanySettingsCache();
-    toast.success("Standard bufferhøyde lagret");
+    toast.success("Standard flyhøyde lagret");
   };
 
   const FH2_MASK = "••••••••";
@@ -862,7 +862,7 @@ export const ChildCompaniesSection = () => {
                 <div className="space-y-1.5 pt-2 border-t border-border/50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Standard bufferhøyde (m)</Label>
+                      <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <button type="button" className="inline-flex">
@@ -870,18 +870,18 @@ export const ChildCompaniesSection = () => {
                           </button>
                         </PopoverTrigger>
                         <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                          Høyden på buffersonen (contingency volume) over planlagt flyhøyde. Brukes som standardverdi ved nye ruter.
+                          Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.
                         </PopoverContent>
                       </Popover>
                     </div>
-                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{defaultContingencyHeightM}m</span>
+                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{defaultFlightAltitudeM}m</span>
                   </div>
                   <Slider
                     min={0}
                     max={120}
                     step={1}
-                    value={[defaultContingencyHeightM]}
-                    onValueChange={([v]) => handleChangeDefaultContingencyHeight(v)}
+                    value={[defaultFlightAltitudeM]}
+                    onValueChange={([v]) => handleChangeDefaultFlightAltitude(v)}
                     disabled={savingSettings}
                     className="[&_[role=slider]]:bg-blue-600"
                   />

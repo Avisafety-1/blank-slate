@@ -632,7 +632,7 @@ export type Database = {
           company_id: string
           created_at: string
           default_buffer_mode: string
-          default_contingency_height_m: number
+          default_flight_altitude_m: number
           default_flight_geography_m: number
           id: string
           linked_document_ids: string[]
@@ -660,7 +660,7 @@ export type Database = {
           company_id: string
           created_at?: string
           default_buffer_mode?: string
-          default_contingency_height_m?: number
+          default_flight_altitude_m?: number
           default_flight_geography_m?: number
           id?: string
           linked_document_ids?: string[]
@@ -688,7 +688,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           default_buffer_mode?: string
-          default_contingency_height_m?: number
+          default_flight_altitude_m?: number
           default_flight_geography_m?: number
           id?: string
           linked_document_ids?: string[]

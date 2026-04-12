@@ -107,7 +107,7 @@ export default function KartPage() {
     if (!companyId) return;
     (supabase as any)
       .from("company_sora_config")
-      .select("default_buffer_mode, default_flight_geography_m, default_contingency_height_m")
+      .select("default_buffer_mode, default_flight_geography_m, default_flight_altitude_m")
       .eq("company_id", companyId)
       .maybeSingle()
       .then(({ data }: any) => {
@@ -119,8 +119,8 @@ export default function KartPage() {
         if (data?.default_flight_geography_m != null && data.default_flight_geography_m > 0) {
           setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
         }
-        if (data?.default_contingency_height_m != null) {
-          setSoraSettings(prev => prev.contingencyHeight === 30 ? { ...prev, contingencyHeight: data.default_contingency_height_m } : prev);
+        if (data?.default_flight_altitude_m != null && data.default_flight_altitude_m > 0) {
+          setSoraSettings(prev => prev.flightAltitude === 0 ? { ...prev, flightAltitude: data.default_flight_altitude_m } : prev);
         }
       });
     // Check if FlightHub 2 is configured (edge function handles parent fallback)
