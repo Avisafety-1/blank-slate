@@ -62,6 +62,7 @@ export const ChildCompaniesSection = () => {
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
+  const [defaultContingencyHeightM, setDefaultContingencyHeightM] = useState(30);
   const [applySettingsToChildren, setApplySettingsToChildren] = useState(false);
   const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
   const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
@@ -310,7 +311,7 @@ export const ChildCompaniesSection = () => {
     // Fetch default buffer mode from sora config
     const { data: soraData } = await (supabase as any)
       .from("company_sora_config")
-      .select("default_buffer_mode, default_flight_geography_m")
+      .select("default_buffer_mode, default_flight_geography_m, default_contingency_height_m")
       .eq("company_id", companyId)
       .maybeSingle();
     if (soraData?.default_buffer_mode) {
@@ -318,6 +319,9 @@ export const ChildCompaniesSection = () => {
     }
     if (soraData?.default_flight_geography_m != null) {
       setDefaultFlightGeographyM(soraData.default_flight_geography_m);
+    }
+    if (soraData?.default_contingency_height_m != null) {
+      setDefaultContingencyHeightM(soraData.default_contingency_height_m);
     }
   };
 
@@ -487,6 +491,18 @@ export const ChildCompaniesSection = () => {
     setSavingSettings(false);
     invalidateCompanySettingsCache();
     toast.success("Standard Flight Geography lagret");
+  };
+
+  const handleChangeDefaultContingencyHeight = async (value: number) => {
+    if (!companyId) return;
+    setDefaultContingencyHeightM(value);
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("company_sora_config")
+      .upsert({ company_id: companyId, default_contingency_height_m: value }, { onConflict: 'company_id' });
+    setSavingSettings(false);
+    invalidateCompanySettingsCache();
+    toast.success("Standard bufferhøyde lagret");
   };
 
   const FH2_MASK = "••••••••";
@@ -817,7 +833,17 @@ export const ChildCompaniesSection = () => {
                 </RadioGroup>
                 <div className="space-y-1.5 pt-2 border-t border-border/50">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[250px] text-xs">
+                          Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                     <span className="text-xs font-mono text-green-600 dark:text-green-400">{defaultFlightGeographyM}m</span>
                   </div>
                   <Slider
@@ -828,6 +854,31 @@ export const ChildCompaniesSection = () => {
                     onValueChange={([v]) => handleChangeDefaultFlightGeography(v)}
                     disabled={savingSettings}
                     className="[&_[role=slider]]:bg-green-600"
+                  />
+                </div>
+                <div className="space-y-1.5 pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Label className="text-xs text-muted-foreground">Standard bufferhøyde (m)</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[250px] text-xs">
+                          Høyden på buffersonen (contingency volume) over planlagt flyhøyde. Brukes som standardverdi ved nye ruter.
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{defaultContingencyHeightM}m</span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={120}
+                    step={1}
+                    value={[defaultContingencyHeightM]}
+                    onValueChange={([v]) => handleChangeDefaultContingencyHeight(v)}
+                    disabled={savingSettings}
+                    className="[&_[role=slider]]:bg-blue-600"
                   />
                 </div>
               </div>
