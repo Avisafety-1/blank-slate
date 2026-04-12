@@ -601,7 +601,10 @@ export default function KartPage() {
                 <span className="text-sm font-medium text-foreground">SORA volum</span>
                 <Switch
                   checked={soraSettings.enabled}
-                  onCheckedChange={(checked) => setSoraSettings((s) => ({ ...s, enabled: checked }))}
+                  onCheckedChange={(checked) => {
+                    setSoraSettings((s) => ({ ...s, enabled: checked }));
+                    if (!checked) setShowAdjacentArea(false);
+                  }}
                   onClick={(e) => e.stopPropagation()}
                   className="scale-90"
                 />
