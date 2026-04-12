@@ -383,7 +383,7 @@ export function renderAdjacentAreaZone(
       color: '#8b5cf6',
       weight: 2,
       fillColor: '#8b5cf6',
-      fillOpacity: 0.05,
+      fillOpacity: 0.15,
       dashArray: '10, 6',
     })
       .bindPopup(`<strong>Tilstøtende område</strong><br/>Radius: ${(adjacentRadiusM / 1000).toFixed(1)} km`)
