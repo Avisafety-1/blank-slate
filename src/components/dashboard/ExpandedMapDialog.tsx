@@ -91,12 +91,15 @@ export const ExpandedMapDialog = ({
     if (!companyId) return;
     (supabase as any)
       .from("company_sora_config")
-      .select("default_flight_geography_m")
+      .select("default_flight_geography_m, default_contingency_height_m")
       .eq("company_id", companyId)
       .maybeSingle()
       .then(({ data }: any) => {
         if (data?.default_flight_geography_m > 0) {
           setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
+        }
+        if (data?.default_contingency_height_m != null) {
+          setSoraSettings(prev => prev.contingencyHeight === 30 ? { ...prev, contingencyHeight: data.default_contingency_height_m } : prev);
         }
       });
   }, [companyId, route?.soraSettings]);
