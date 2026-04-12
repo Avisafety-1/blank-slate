@@ -603,17 +603,19 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
                 <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", soraOpen && "rotate-180")} />
               </button>
 
-              {/* Right: Adjacent area trigger (only when SORA enabled) */}
-              {soraSettings.enabled && (
-                <button
-                  onClick={() => setAdjacentOpen((o) => !o)}
-                  className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-                >
-                  <Users className="h-3.5 w-3.5 text-blue-500" />
-                  <span className="text-xs font-medium text-foreground">Tilstøtende</span>
-                  <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", adjacentOpen && "rotate-180")} />
-                </button>
-              )}
+              {/* Right: Adjacent area trigger (visible but greyed out when SORA disabled) */}
+              <button
+                onClick={() => soraSettings.enabled && setAdjacentOpen((o) => !o)}
+                className={cn(
+                  "flex items-center gap-1.5 transition-opacity",
+                  soraSettings.enabled ? "hover:opacity-80 cursor-pointer" : "opacity-40 cursor-not-allowed"
+                )}
+                disabled={!soraSettings.enabled}
+              >
+                <Users className="h-3.5 w-3.5 text-blue-500" />
+                <span className="text-xs font-medium text-foreground">Tilstøtende</span>
+                <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", adjacentOpen && soraSettings.enabled && "rotate-180")} />
+              </button>
             </div>
 
             {/* SORA Settings content */}
