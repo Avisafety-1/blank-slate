@@ -625,6 +625,7 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
               />
             )}
           </div>
+        </div>
       )}
 
       {/* Map Content */}
