@@ -72,6 +72,8 @@ export default function KartPage() {
   const [soraDroneModel, setSoraDroneModel] = useState<string | undefined>(undefined);
   const [soraDroneMaxSpeed, setSoraDroneMaxSpeed] = useState<number | undefined>(undefined);
   const [showAdjacentArea, setShowAdjacentArea] = useState(false);
+  const [soraOpen, setSoraOpen] = useState(false);
+  const [adjacentOpen, setAdjacentOpen] = useState(false);
 
   // Fetch drone model name when soraDroneId changes
   useEffect(() => {
@@ -577,17 +579,52 @@ setSoraSettings({ enabled: false, flightAltitude: 120, flightGeographyDistance: 
             </div>
           </div>
           
-          {/* SORA Settings Panel */}
-          <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} onDroneSelected={setSoraDroneId} />
-          
-          {/* SORA Adjacent Area Panel */}
-          <AdjacentAreaPanel
-            coordinates={currentRoute.coordinates}
-            soraSettings={soraSettings}
-            maxSpeedMps={soraDroneMaxSpeed}
-            onShowAdjacentArea={setShowAdjacentArea}
-          />
-        </div>
+          {/* SORA shared header row */}
+          <div className="border-t border-border">
+            <div className="flex items-center justify-between px-3 py-2 sm:px-4">
+              {/* Left: SORA volum trigger */}
+              <button
+                onClick={() => setSoraOpen((o) => !o)}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
+                <span className="text-sm font-medium text-foreground">SORA volum</span>
+                <Switch
+                  checked={soraSettings.enabled}
+                  onCheckedChange={(checked) => setSoraSettings((s) => ({ ...s, enabled: checked }))}
+                  onClick={(e) => e.stopPropagation()}
+                  className="scale-90"
+                />
+                <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", soraOpen && "rotate-180")} />
+              </button>
+
+              {/* Right: Adjacent area trigger (only when SORA enabled) */}
+              {soraSettings.enabled && (
+                <button
+                  onClick={() => setAdjacentOpen((o) => !o)}
+                  className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                >
+                  <Users className="h-3.5 w-3.5 text-blue-500" />
+                  <span className="text-xs font-medium text-foreground">Tilstøtende</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", adjacentOpen && "rotate-180")} />
+                </button>
+              )}
+            </div>
+
+            {/* SORA Settings content */}
+            <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} onDroneSelected={setSoraDroneId} open={soraOpen} onOpenChange={setSoraOpen} />
+
+            {/* Adjacent Area content */}
+            {soraSettings.enabled && (
+              <AdjacentAreaPanel
+                coordinates={currentRoute.coordinates}
+                soraSettings={soraSettings}
+                maxSpeedMps={soraDroneMaxSpeed}
+                onShowAdjacentArea={setShowAdjacentArea}
+                open={adjacentOpen}
+                onOpenChange={setAdjacentOpen}
+              />
+            )}
+          </div>
       )}
 
       {/* Map Content */}
