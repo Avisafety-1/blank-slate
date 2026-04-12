@@ -507,33 +507,12 @@ export default function KartPage() {
                   className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
                   title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
                 >
-                  Sensor
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelRoute}
-                  className="h-8 px-2 sm:px-3"
-                  title="Avbryt"
-                >
-                  <X className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">Avbryt</span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveRoute}
-                  disabled={currentRoute.coordinates.length < 2}
-                  className="h-8 px-2 sm:px-3"
-                  title="Lagre rute"
-                >
-                  <Save className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">Lagre</span>
+                Sensor
                 </Button>
               </div>
             </div>
             
-            {/* Bottom row: route editing tools */}
+            {/* Bottom row: route editing tools + Cancel/Save */}
             <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
               <Button
                 variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
@@ -551,8 +530,6 @@ export default function KartPage() {
                 </span>
               </Button>
 
-
-
               {/* FlightHub 2 */}
               {hasFH2Token && currentRoute.coordinates.length >= 2 && (
                 <Button
@@ -567,7 +544,7 @@ export default function KartPage() {
                 </Button>
               )}
 
-              {/* Undo & Clear - inline with other tool buttons */}
+              {/* Undo & Clear */}
               <Button
                 variant="outline"
                 size="sm"
@@ -590,6 +567,30 @@ export default function KartPage() {
                 <Trash2 className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Nullstill</span>
               </Button>
+
+              {/* Cancel & Save */}
+              <div className="ml-auto flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelRoute}
+                  className="h-8 px-2 sm:px-3"
+                  title="Avbryt"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Avbryt</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveRoute}
+                  disabled={currentRoute.coordinates.length < 2}
+                  className="h-8 px-2 sm:px-3"
+                  title="Lagre rute"
+                >
+                  <Save className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Lagre</span>
+                </Button>
+              </div>
             </div>
           </div>
           
