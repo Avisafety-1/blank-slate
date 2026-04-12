@@ -90,6 +90,10 @@ export function AdjacentAreaPanel({
     onShowAdjacentArea?.(showOnMap);
   }, [showOnMap, onShowAdjacentArea]);
 
+  useEffect(() => {
+    onResultChange?.(result);
+  }, [result, onResultChange]);
+
   if (!soraSettings.enabled) return null;
 
   const radiusKm = (calculateAdjacentRadius(maxSpeedMps) / 1000).toFixed(1);
