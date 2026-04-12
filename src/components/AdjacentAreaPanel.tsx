@@ -19,6 +19,8 @@ interface AdjacentAreaPanelProps {
   soraSettings: SoraSettings;
   maxSpeedMps?: number;
   onShowAdjacentArea?: (show: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function AdjacentAreaPanel({
@@ -26,8 +28,12 @@ export function AdjacentAreaPanel({
   soraSettings,
   maxSpeedMps,
   onShowAdjacentArea,
+  open: controlledOpen,
+  onOpenChange,
 }: AdjacentAreaPanelProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [containmentLevel, setContainmentLevel] = useState<ContainmentLevel>("low");
   const [result, setResult] = useState<AdjacentAreaResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -81,27 +87,8 @@ export function AdjacentAreaPanel({
 
   const radiusKm = (calculateAdjacentRadius(maxSpeedMps) / 1000).toFixed(1);
 
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 bg-muted/60 hover:bg-muted rounded-lg text-sm font-medium transition-colors">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-blue-500" />
-          <span>SORA Tilstøtende område</span>
-          {result && !loading && (
-            <span className={cn(
-              "ml-1 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
-              result.pass
-                ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
-                : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
-            )}>
-              {result.pass ? "OK" : "OVER"}
-            </span>
-          )}
-        </div>
-        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
-      </CollapsibleTrigger>
-
-      <CollapsibleContent className="px-3 py-3 space-y-3 text-sm">
+  const contentJsx = (
+    <div className="px-3 py-3 space-y-3 text-sm">
         <p className="text-xs text-muted-foreground">
           SORA 2.5 krever vurdering av gjennomsnittlig befolkningstetthet i tilstøtende område
           (fra bakkerisikobuffer til {radiusKm} km radius).
@@ -192,6 +179,39 @@ export function AdjacentAreaPanel({
             Planlegg en rute for å beregne tilstøtende område.
           </p>
         ) : null}
+    </div>
+  );
+
+  // Export result and loading for parent trigger badge
+  const badgeJsx = result && !loading ? (
+    <span className={cn(
+      "ml-1 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+      result.pass
+        ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
+        : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+    )}>
+      {result.pass ? "OK" : "OVER"}
+    </span>
+  ) : null;
+
+  // Controlled mode: render content only
+  if (controlledOpen !== undefined) {
+    return open ? contentJsx : null;
+  }
+
+  // Standalone mode
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 bg-muted/60 hover:bg-muted rounded-lg text-sm font-medium transition-colors">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-blue-500" />
+          <span>Tilstøtende område</span>
+          {badgeJsx}
+        </div>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {contentJsx}
       </CollapsibleContent>
     </Collapsible>
   );
