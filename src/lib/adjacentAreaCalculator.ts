@@ -223,7 +223,8 @@ export async function computeAdjacentAreaDensity(
   const outerDist = innerDist + adjacentRadiusM;
 
   const innerPoly = makeBuffer(coords, sora, innerDist);
-  const outerPoly = makeBuffer(coords, sora, outerDist);
+  const rawOuterPoly = makeBuffer(coords, sora, outerDist);
+  const outerPoly = rawOuterPoly.length >= 3 ? computeConvexHull(rawOuterPoly) : rawOuterPoly;
 
   // Bounding box from actual polygon
   const bbox = bboxFromPolygon(outerPoly);
