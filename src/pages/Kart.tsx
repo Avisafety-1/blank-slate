@@ -641,6 +641,7 @@ export default function KartPage() {
                 coordinates={currentRoute.coordinates}
                 soraSettings={soraSettings}
                 maxSpeedMps={soraDroneMaxSpeed}
+                active={showAdjacentArea}
                 onShowAdjacentArea={setShowAdjacentArea}
                 onResultChange={setAdjacentResult}
                 open={adjacentOpen}
