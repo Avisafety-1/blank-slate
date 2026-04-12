@@ -37,7 +37,7 @@ export function AdjacentAreaPanel({
   const [containmentLevel, setContainmentLevel] = useState<ContainmentLevel>("low");
   const [result, setResult] = useState<AdjacentAreaResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showOnMap, setShowOnMap] = useState(false);
+  const [showOnMap, setShowOnMap] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
 
   // Auto-compute when inputs change and panel is open
