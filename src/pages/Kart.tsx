@@ -527,7 +527,7 @@ export default function KartPage() {
             </div>
             
             {/* Bottom row: route editing tools + Cancel/Save */}
-            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+            <div className="flex items-center justify-end gap-1 sm:gap-1.5">
               <Button
                 variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                 size="sm"
@@ -544,7 +544,6 @@ export default function KartPage() {
                 </span>
               </Button>
 
-              {/* Undo & Clear */}
               <Button
                 variant="outline"
                 size="sm"
@@ -568,29 +567,26 @@ export default function KartPage() {
                 <span className="hidden sm:inline ml-1">Nullstill</span>
               </Button>
 
-              {/* Cancel & Save */}
-              <div className="ml-auto flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelRoute}
-                  className="h-8 px-2 sm:px-3"
-                  title="Avbryt"
-                >
-                  <X className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">Avbryt</span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveRoute}
-                  disabled={currentRoute.coordinates.length < 2}
-                  className="h-8 px-2 sm:px-3"
-                  title="Lagre rute"
-                >
-                  <Save className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">Lagre</span>
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelRoute}
+                className="h-8 px-2 sm:px-3"
+                title="Avbryt"
+              >
+                <X className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Avbryt</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveRoute}
+                disabled={currentRoute.coordinates.length < 2}
+                className="h-8 px-2 sm:px-3"
+                title="Lagre rute"
+              >
+                <Save className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Lagre</span>
+              </Button>
             </div>
           </div>
           
