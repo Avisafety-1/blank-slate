@@ -21,6 +21,7 @@ import { CompanyManagementDialog } from "./CompanyManagementDialog";
 import { FH2DevicesSection } from "./FH2DevicesSection";
 import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -835,16 +836,16 @@ export const ChildCompaniesSection = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="inline-flex">
                             <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[250px] text-xs">
-                            Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
+                          Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <span className="text-xs font-mono text-green-600 dark:text-green-400">{defaultFlightGeographyM}m</span>
                   </div>
@@ -862,16 +863,16 @@ export const ChildCompaniesSection = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <Label className="text-xs text-muted-foreground">Standard bufferhøyde (m)</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="inline-flex">
                             <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[250px] text-xs">
-                            Høyden på buffersonen (contingency volume) over planlagt flyhøyde. Brukes som standardverdi ved nye ruter.
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
+                          Høyden på buffersonen (contingency volume) over planlagt flyhøyde. Brukes som standardverdi ved nye ruter.
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{defaultContingencyHeightM}m</span>
                   </div>
