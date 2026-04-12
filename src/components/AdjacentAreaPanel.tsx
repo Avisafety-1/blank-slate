@@ -107,6 +107,8 @@ export function AdjacentAreaPanel({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="low">Low (&lt; 50 pers/km²)</SelectItem>
+              <SelectItem value="low500">Low (&lt; 500 pers/km²)</SelectItem>
+              <SelectItem value="low5000">Low (&lt; 5 000 pers/km²)</SelectItem>
               <SelectItem value="medium">Medium (&lt; 50 000 pers/km²)</SelectItem>
               <SelectItem value="high">High (ingen grense)</SelectItem>
             </SelectContent>

@@ -35,14 +35,14 @@ export interface AdjacentAreaResult {
   /** Whether the density is within the threshold */
   pass: boolean;
   /** Containment level used */
-  containmentLevel: "low" | "medium" | "high";
+  containmentLevel: ContainmentLevel;
   /** Human-readable status text */
   statusText: string;
   /** Loading / error state */
   error?: string;
 }
 
-export type ContainmentLevel = "low" | "medium" | "high";
+export type ContainmentLevel = "low" | "low500" | "low5000" | "medium" | "high";
 
 type RouteMultiPolygon = RoutePoint[][];
 
@@ -52,6 +52,8 @@ type RouteMultiPolygon = RoutePoint[][];
 
 const DENSITY_THRESHOLDS: Record<ContainmentLevel, number> = {
   low: 50,
+  low500: 500,
+  low5000: 5_000,
   medium: 50_000,
   high: Infinity,
 };
