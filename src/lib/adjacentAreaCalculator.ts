@@ -7,10 +7,11 @@
  *
  * The adjacent area extends from the outer edge of the ground risk buffer
  * to a radius determined by max(5 km, distance drone can fly in 3 minutes).
- * For drones > 250 g the minimum is always 5 km.
+ * Population filtering uses polygon-based geometry matching the map visualization.
  */
 
 import type { RoutePoint, SoraSettings } from "@/types/map";
+import { bufferPolyline, bufferPolygon, computeConvexHull } from "@/lib/soraGeometry";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -41,13 +42,12 @@ export type ContainmentLevel = "low" | "medium" | "high";
 
 /* ------------------------------------------------------------------ */
 /*  SORA 2.5 adjacent area thresholds (simplified, UA < 3 m)          */
-/*  Source: Luftfartstilsynet SORA 2.5 calculator                     */
 /* ------------------------------------------------------------------ */
 
 const DENSITY_THRESHOLDS: Record<ContainmentLevel, number> = {
   low: 50,
   medium: 50_000,
-  high: Infinity, // no upper limit
+  high: Infinity,
 };
 
 export function getDensityThreshold(level: ContainmentLevel): number {
@@ -58,15 +58,90 @@ export function getDensityThreshold(level: ContainmentLevel): number {
 /*  Adjacent area radius                                               */
 /* ------------------------------------------------------------------ */
 
-/**
- * Calculate the adjacent area radius.
- * Formula: max(5000, min(35000, maxSpeed_mps * 180))
- * For drones > 250 g the minimum is 5 km.
- */
 export function calculateAdjacentRadius(maxSpeedMps: number | undefined): number {
   const speed = maxSpeedMps ?? 0;
-  const distIn3Min = speed * 180; // 3 minutes
+  const distIn3Min = speed * 180;
   return Math.max(5000, Math.min(35000, distIn3Min));
+}
+
+/* ------------------------------------------------------------------ */
+/*  Geometry helpers                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Ray-casting point-in-polygon test */
+function pointInPolygon(point: RoutePoint, polygon: RoutePoint[]): boolean {
+  let inside = false;
+  const n = polygon.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = polygon[i].lng, yi = polygon[i].lat;
+    const xj = polygon[j].lng, yj = polygon[j].lat;
+    if (
+      yi > point.lat !== yj > point.lat &&
+      point.lng < ((xj - xi) * (point.lat - yi)) / (yj - yi) + xi
+    ) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Shoelace formula for polygon area in km² (lat/lng coordinates) */
+function polygonAreaKm2(polygon: RoutePoint[]): number {
+  if (polygon.length < 3) return 0;
+  const avgLat = polygon.reduce((s, p) => s + p.lat, 0) / polygon.length;
+  const latScale = 111.320; // km per degree latitude
+  const lngScale = 111.320 * Math.cos(avgLat * Math.PI / 180); // km per degree longitude
+
+  let area = 0;
+  const n = polygon.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const xi = polygon[i].lng * lngScale;
+    const yi = polygon[i].lat * latScale;
+    const xj = polygon[j].lng * lngScale;
+    const yj = polygon[j].lat * latScale;
+    area += xi * yj - xj * yi;
+  }
+  return Math.abs(area) / 2;
+}
+
+/** Compute bounding box from polygon vertices */
+function bboxFromPolygon(polygon: RoutePoint[]) {
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const p of polygon) {
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+    if (p.lng < minLng) minLng = p.lng;
+    if (p.lng > maxLng) maxLng = p.lng;
+  }
+  return { minLat, maxLat, minLng, maxLng };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Buffer builder (mirrors renderAdjacentAreaZone logic)              */
+/* ------------------------------------------------------------------ */
+
+function makeBuffer(
+  coords: RoutePoint[],
+  sora: SoraSettings,
+  dist: number
+): RoutePoint[] {
+  if (dist <= 0) return coords;
+
+  const refPoint = coords[0];
+  const avgLat = coords.reduce((s, p) => s + p.lat, 0) / coords.length;
+
+  const isClosedRoute =
+    coords.length >= 3 &&
+    coords[0].lat === coords[coords.length - 1].lat &&
+    coords[0].lng === coords[coords.length - 1].lng;
+
+  const mode = sora.bufferMode ?? "corridor";
+  if (mode === "convexHull" || isClosedRoute) {
+    const hull = computeConvexHull(coords);
+    return bufferPolygon(hull, dist, refPoint, avgLat);
+  }
+  return bufferPolyline(coords, dist, 16, refPoint, avgLat);
 }
 
 /* ------------------------------------------------------------------ */
@@ -79,10 +154,6 @@ interface SsbPopulationCell {
   centroidLng: number;
 }
 
-/**
- * Fetch SSB 1 km² population grid cells within a bounding box.
- * Uses a Supabase edge function proxy to avoid CORS issues with SSB WFS.
- */
 export async function fetchSsbPopulationGrid(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   signal?: AbortSignal
@@ -90,15 +161,12 @@ export async function fetchSsbPopulationGrid(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  // BBOX format: minLng,minLat,maxLng,maxLat (lon/lat order for SSB WFS 1.1.0)
   const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
   const url = `${supabaseUrl}/functions/v1/ssb-population?bbox=${encodeURIComponent(bboxStr)}`;
 
   const resp = await fetch(url, {
     signal,
-    headers: {
-      "apikey": supabaseKey,
-    },
+    headers: { "apikey": supabaseKey },
   });
 
   if (!resp.ok) {
@@ -108,7 +176,6 @@ export async function fetchSsbPopulationGrid(
 
   const data = await resp.json();
   const cells: SsbPopulationCell[] = [];
-
   if (!data?.features) return cells;
 
   for (const feature of data.features) {
@@ -118,7 +185,6 @@ export async function fetchSsbPopulationGrid(
       centroidLng: feature.centroidLng,
     });
   }
-
   return cells;
 }
 
@@ -126,64 +192,6 @@ export async function fetchSsbPopulationGrid(
 /*  Core computation                                                   */
 /* ------------------------------------------------------------------ */
 
-/**
- * Compute the centroid of a set of route points.
- */
-function routeCentroid(coords: RoutePoint[]): RoutePoint {
-  const n = coords.length;
-  const lat = coords.reduce((s, p) => s + p.lat, 0) / n;
-  const lng = coords.reduce((s, p) => s + p.lng, 0) / n;
-  return { lat, lng };
-}
-
-/**
- * Haversine distance between two points, in meters.
- */
-function haversineM(a: RoutePoint, b: RoutePoint): number {
-  const R = 6371000;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const sinLat = Math.sin(dLat / 2);
-  const sinLng = Math.sin(dLng / 2);
-  const h =
-    sinLat * sinLat +
-    Math.cos((a.lat * Math.PI) / 180) *
-      Math.cos((b.lat * Math.PI) / 180) *
-      sinLng * sinLng;
-  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
-
-/**
- * Calculate the bounding box that covers the adjacent area.
- */
-function adjacentBbox(center: RoutePoint, radiusM: number) {
-  const dLat = radiusM / 111320;
-  const dLng = radiusM / (111320 * Math.cos((center.lat * Math.PI) / 180));
-  return {
-    minLat: center.lat - dLat,
-    maxLat: center.lat + dLat,
-    minLng: center.lng - dLng,
-    maxLng: center.lng + dLng,
-  };
-}
-
-/**
- * Calculate the maximum distance from centroid to any route point,
- * plus the full SORA buffer (flightGeo + contingency + groundRisk).
- */
-function outerBufferRadius(coords: RoutePoint[], sora: SoraSettings): number {
-  const center = routeCentroid(coords);
-  let maxDist = 0;
-  for (const p of coords) {
-    const d = haversineM(center, p);
-    if (d > maxDist) maxDist = d;
-  }
-  return maxDist + sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
-}
-
-/**
- * Main entry: compute adjacent area population density.
- */
 export async function computeAdjacentAreaDensity(
   coords: RoutePoint[],
   sora: SoraSettings,
@@ -207,27 +215,36 @@ export async function computeAdjacentAreaDensity(
     };
   }
 
-  const center = routeCentroid(coords);
-  const innerRadiusM = outerBufferRadius(coords, sora);
+  // Build inner polygon (ground risk buffer boundary)
+  const fgDist = sora.flightGeographyDistance;
+  const cDist = sora.contingencyDistance;
+  const grDist = sora.groundRiskDistance;
+  const innerDist = fgDist + cDist + grDist;
+  const outerDist = innerDist + adjacentRadiusM;
 
-  // Bounding box for the full adjacent area
-  const bbox = adjacentBbox(center, adjacentRadiusM);
+  const innerPoly = makeBuffer(coords, sora, innerDist);
+  const rawOuterPoly = makeBuffer(coords, sora, outerDist);
+  // Collapse overlapping corridors into a single outer boundary (same as map rendering)
+  const outerPoly = rawOuterPoly.length >= 3 ? computeConvexHull(rawOuterPoly) : rawOuterPoly;
+
+  // Bounding box from actual polygon
+  const bbox = bboxFromPolygon(outerPoly);
 
   // Fetch SSB data
   const cells = await fetchSsbPopulationGrid(bbox, signal);
 
-  // Filter cells that are inside adjacent area (between inner and outer radius)
+  // Filter cells using polygon-based point-in-polygon
   let totalPop = 0;
   for (const cell of cells) {
-    const dist = haversineM(center, { lat: cell.centroidLat, lng: cell.centroidLng });
-    if (dist >= innerRadiusM && dist <= adjacentRadiusM) {
+    const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
+    if (pointInPolygon(pt, outerPoly) && !pointInPolygon(pt, innerPoly)) {
       totalPop += cell.population;
     }
   }
 
-  // Calculate donut area
-  const outerAreaKm2 = (Math.PI * adjacentRadiusM * adjacentRadiusM) / 1e6;
-  const innerAreaKm2 = (Math.PI * innerRadiusM * innerRadiusM) / 1e6;
+  // Calculate actual polygon areas
+  const outerAreaKm2 = polygonAreaKm2(outerPoly);
+  const innerAreaKm2 = polygonAreaKm2(innerPoly);
   const adjacentAreaKm2 = Math.max(outerAreaKm2 - innerAreaKm2, 0.01);
 
   const avgDensity = totalPop / adjacentAreaKm2;
