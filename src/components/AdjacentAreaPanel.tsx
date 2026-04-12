@@ -80,11 +80,9 @@ export function AdjacentAreaPanel({
     return () => ctrl.abort();
   }, [open, coordinates, soraSettings, maxSpeedMps, containmentLevel]);
 
-  // Only notify parent when showOnMap changes from user interaction, not on mount
-  const mountedRef = useRef(false);
   useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
+    if (!adjacentMountedRef.current) {
+      adjacentMountedRef.current = true;
       return;
     }
     onShowAdjacentArea?.(showOnMap);
