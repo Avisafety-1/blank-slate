@@ -468,12 +468,12 @@ export default function KartPage() {
             </div>
 
             {/* Row 2: SafeSky/VLOS badges + route tools */}
-            <div className="flex items-center justify-between gap-1">
+            <div className="flex items-center justify-between gap-2 sm:gap-1">
               {/* Left: status badges */}
               <div className="flex items-center gap-1 min-w-0 overflow-x-auto">
                 {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
                   <div className={cn(
-                    "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium shrink-0",
+                    "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium",
                     currentRoute.areaKm2 <= 50 
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                       : currentRoute.areaKm2 <= 150
@@ -487,9 +487,15 @@ export default function KartPage() {
                     ) : (
                       <XCircle className="h-3 w-3 shrink-0" />
                     )}
-                    <span className="leading-tight whitespace-nowrap">
-                      {currentRoute.areaKm2.toFixed(2)} km²
-                      {currentRoute.areaKm2 > 150 && " – for stort for SafeSky"}
+                    <span className="leading-tight">
+                      <span>{currentRoute.areaKm2.toFixed(2)} km²</span>
+                      {currentRoute.areaKm2 > 150 && (
+                        <>
+                          <br className="sm:hidden" />
+                          <span className="hidden sm:inline"> – </span>
+                          <span>for stort for SafeSky</span>
+                        </>
+                      )}
                       {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
                     </span>
                   </div>
