@@ -312,7 +312,7 @@ export const ChildCompaniesSection = () => {
     // Fetch default buffer mode from sora config
     const { data: soraData } = await (supabase as any)
       .from("company_sora_config")
-      .select("default_buffer_mode, default_flight_geography_m, default_contingency_height_m")
+      .select("default_buffer_mode, default_flight_geography_m, default_flight_altitude_m")
       .eq("company_id", companyId)
       .maybeSingle();
     if (soraData?.default_buffer_mode) {
