@@ -1,4 +1,6 @@
 import L from "leaflet";
+import * as polygonClipping from "polygon-clipping";
+import type { MultiPolygon as ClipMultiPolygon, Polygon as ClipPolygon, Ring as ClipRing } from "polygon-clipping";
 
 interface RoutePoint {
   lat: number;
@@ -250,6 +252,75 @@ export function bufferPolygon(hull: RoutePoint[], distanceMeters: number, refPoi
   return result.length >= 3 ? result : hull;
 }
 
+function closeClipRing(points: RoutePoint[]): ClipRing {
+  const ring = points.map(p => [p.lng, p.lat] as [number, number]);
+  if (ring.length === 0) return ring;
+  const [firstLng, firstLat] = ring[0];
+  const [lastLng, lastLat] = ring[ring.length - 1];
+  if (firstLng !== lastLng || firstLat !== lastLat) {
+    ring.push([firstLng, firstLat]);
+  }
+  return ring;
+}
+
+function fromClipMultiPolygon(multiPolygon: ClipMultiPolygon): RoutePoint[][] {
+  return multiPolygon
+    .map(polygon => polygon[0] ?? [])
+    .map(ring => {
+      const normalizedRing =
+        ring.length > 1 &&
+        ring[0][0] === ring[ring.length - 1][0] &&
+        ring[0][1] === ring[ring.length - 1][1]
+          ? ring.slice(0, -1)
+          : ring;
+
+      return normalizedRing.map(([lng, lat]) => ({ lat, lng }));
+    })
+    .filter(polygon => polygon.length >= 3);
+}
+
+export function mergeBufferedCorridorPolygons(
+  points: RoutePoint[],
+  distanceMeters: number,
+  numCapSegments = 16,
+  refPointOverride?: RoutePoint,
+  avgLatOverride?: number
+): RoutePoint[][] {
+  if (points.length === 0 || distanceMeters <= 0) return [];
+  if (points.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return [];
+
+  const refPoint = refPointOverride ?? points[0];
+  const avgLat = avgLatOverride ?? points.reduce((s, p) => s + p.lat, 0) / points.length;
+  const clipPolygons: ClipPolygon[] = [];
+
+  for (const point of points) {
+    const circle = bufferPolyline([point], distanceMeters, numCapSegments, refPoint, avgLat);
+    if (circle.length >= 3) {
+      clipPolygons.push([closeClipRing(circle)]);
+    }
+  }
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const start = points[i];
+    const end = points[i + 1];
+    if (start.lat === end.lat && start.lng === end.lng) continue;
+
+    const segmentBuffer = bufferPolyline([start, end], distanceMeters, numCapSegments, refPoint, avgLat);
+    if (segmentBuffer.length >= 3) {
+      clipPolygons.push([closeClipRing(segmentBuffer)]);
+    }
+  }
+
+  if (clipPolygons.length === 0) return [];
+
+  let merged: ClipMultiPolygon = [clipPolygons[0]];
+  for (let i = 1; i < clipPolygons.length; i++) {
+    merged = polygonClipping.union(merged, clipPolygons[i]);
+  }
+
+  return fromClipMultiPolygon(merged);
+}
+
 export function renderSoraZones(
   coordinates: RoutePoint[],
   sora: SoraSettings,
@@ -351,14 +422,20 @@ export function renderAdjacentAreaZone(
     validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
     validCoords[0].lng === validCoords[validCoords.length - 1].lng;
 
-  function makeAdjacentBuffer(dist: number): RoutePoint[] {
-    if (dist <= 0) return validCoords;
+  function makeAdjacentBuffer(dist: number): RoutePoint[][] {
+    if (dist <= 0) return [validCoords];
     const mode = sora?.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      return bufferPolygon(hull, dist, refPoint, avgLat);
+      return [bufferPolygon(hull, dist, refPoint, avgLat)];
     }
-    return bufferPolyline(validCoords, dist, 16, refPoint, avgLat);
+    return mergeBufferedCorridorPolygons(validCoords, dist, 16, refPoint, avgLat);
+  }
+
+  function safeLatLngs(zone: RoutePoint[]): [number, number][] {
+    return zone
+      .map(p => [p.lat, p.lng] as [number, number])
+      .filter(([lat, lng]) => isFinite(lat) && isFinite(lng));
   }
 
   // Total offset = all SORA buffer layers + adjacent area radius
@@ -367,18 +444,11 @@ export function renderAdjacentAreaZone(
   const grDist = sora?.groundRiskDistance ?? 0;
   const totalOffset = fgDist + cDist + grDist + adjacentRadiusM;
 
-  const rawZone = makeAdjacentBuffer(totalOffset);
-  // Merge overlapping corridor segments into a single clean outer boundary
-  const adjacentZone = rawZone.length >= 3 ? computeConvexHull(rawZone) : rawZone;
+  const adjacentZones = makeAdjacentBuffer(totalOffset);
+  for (const adjacentZone of adjacentZones) {
+    const adjacentLatLngs = safeLatLngs(adjacentZone);
+    if (adjacentLatLngs.length < 3) continue;
 
-  function safeLatLngs(zone: RoutePoint[]): [number, number][] {
-    return zone
-      .map(p => [p.lat, p.lng] as [number, number])
-      .filter(([lat, lng]) => isFinite(lat) && isFinite(lng));
-  }
-
-  const adjacentLatLngs = safeLatLngs(adjacentZone);
-  if (adjacentLatLngs.length >= 3) {
     L.polygon(adjacentLatLngs, {
       color: '#8b5cf6',
       weight: 2,
