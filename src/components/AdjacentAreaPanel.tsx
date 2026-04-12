@@ -39,6 +39,7 @@ export function AdjacentAreaPanel({
   const [loading, setLoading] = useState(false);
   const [showOnMap, setShowOnMap] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
+  const adjacentMountedRef = useRef(false);
 
   // Auto-compute when inputs change and panel is open
   useEffect(() => {
@@ -80,6 +81,10 @@ export function AdjacentAreaPanel({
   }, [open, coordinates, soraSettings, maxSpeedMps, containmentLevel]);
 
   useEffect(() => {
+    if (!adjacentMountedRef.current) {
+      adjacentMountedRef.current = true;
+      return;
+    }
     onShowAdjacentArea?.(showOnMap);
   }, [showOnMap, onShowAdjacentArea]);
 
