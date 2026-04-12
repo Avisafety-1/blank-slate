@@ -29,6 +29,7 @@ export function AdjacentAreaPanel({
   coordinates,
   soraSettings,
   maxSpeedMps,
+  active = false,
   onShowAdjacentArea,
   onResultChange,
   open: controlledOpen,
@@ -44,10 +45,10 @@ export function AdjacentAreaPanel({
   const abortRef = useRef<AbortController | null>(null);
   const adjacentMountedRef = useRef(false);
 
-  // Auto-compute when inputs change and panel is open
+  // Auto-compute when active (switch on) and inputs change
   useEffect(() => {
-    if (!open || !soraSettings.enabled || coordinates.length < 1) {
-      setResult(null);
+    if (!active || !soraSettings.enabled || coordinates.length < 1) {
+      if (!active) setResult(null);
       return;
     }
 
@@ -81,7 +82,7 @@ export function AdjacentAreaPanel({
       });
 
     return () => ctrl.abort();
-  }, [open, coordinates, soraSettings, maxSpeedMps, containmentLevel]);
+  }, [active, coordinates, soraSettings, maxSpeedMps, containmentLevel]);
 
   useEffect(() => {
     if (!adjacentMountedRef.current) {
