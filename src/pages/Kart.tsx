@@ -75,6 +75,7 @@ export default function KartPage() {
   const [soraDroneModel, setSoraDroneModel] = useState<string | undefined>(undefined);
   const [soraDroneMaxSpeed, setSoraDroneMaxSpeed] = useState<number | undefined>(undefined);
   const [showAdjacentArea, setShowAdjacentArea] = useState(false);
+  const [adjacentResult, setAdjacentResult] = useState<{ pass: boolean } | null>(null);
   const [soraOpen, setSoraOpen] = useState(false);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
 
@@ -621,7 +622,10 @@ export default function KartPage() {
                 disabled={!soraSettings.enabled}
               >
                 <Users className="h-3.5 w-3.5 text-blue-500" />
-                <span className="text-xs font-medium text-foreground">Tilstøtende</span>
+                <span className={cn(
+                  "text-xs font-medium",
+                  adjacentResult == null ? "text-foreground" : adjacentResult.pass ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                )}>Tilstøtende</span>
                 <Switch
                   checked={showAdjacentArea}
                   onCheckedChange={(checked) => {
@@ -646,6 +650,7 @@ export default function KartPage() {
                 soraSettings={soraSettings}
                 maxSpeedMps={soraDroneMaxSpeed}
                 onShowAdjacentArea={setShowAdjacentArea}
+                onResultChange={setAdjacentResult}
                 open={adjacentOpen}
                 onOpenChange={setAdjacentOpen}
               />
