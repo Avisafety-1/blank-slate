@@ -265,7 +265,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400">{suggestion.suggested_flight_geography_m}m</p>
+              <p className="text-lg font-bold text-green-600 dark:text-green-400">{settings.flightGeographyDistance}m</p>
               <p className="text-[10px] text-muted-foreground">Flight geo</p>
             </div>
             <div>
