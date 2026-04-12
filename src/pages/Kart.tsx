@@ -397,11 +397,10 @@ export default function KartPage() {
       {/* Route Planning Controls - shown below header when active */}
       {isRoutePlanning && (
         <div className="bg-background border-b border-border px-3 py-2 sm:px-4 sm:py-3 flex-shrink-0 max-h-[50vh] overflow-y-auto">
-          {/* Mobile: stacked layout, Desktop: side-by-side */}
-          <div className="flex flex-col gap-2">
-            {/* Top row: info + cancel/save */}
+          <div className="flex flex-col gap-1">
+            {/* Row 1: Route info + external links */}
             <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1 overflow-x-auto">
+              <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
                 <Route className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                 <div className="min-w-0">
                   <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">Planlegg flyrute</h1>
@@ -410,60 +409,8 @@ export default function KartPage() {
                     {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
                   </p>
                 </div>
-                
-                {/* SafeSky advisory area indicator */}
-                {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium",
-                    currentRoute.areaKm2 <= 50 
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : currentRoute.areaKm2 <= 150
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                  )}>
-                    {currentRoute.areaKm2 <= 50 ? (
-                      <CheckCircle2 className="h-3 w-3 shrink-0" />
-                    ) : currentRoute.areaKm2 <= 150 ? (
-                      <AlertTriangle className="h-3 w-3 shrink-0" />
-                    ) : (
-                      <XCircle className="h-3 w-3 shrink-0" />
-                    )}
-                    <span className="leading-tight">
-                      {currentRoute.areaKm2.toFixed(2)} km²
-                      {currentRoute.areaKm2 > 150 && (
-                        <>
-                          <br className="sm:hidden" />
-                          <span className="hidden sm:inline"> – </span>
-                          <span>for stort for SafeSky</span>
-                        </>
-                      )}
-                      {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
-                    </span>
-                  </div>
-                )}
-
-                {/* VLOS indicator */}
-                {vlisInfo && (
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium",
-                    vlisInfo.isWithinVLOS
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                  )}>
-                    {vlisInfo.isWithinVLOS ? (
-                      <CheckCircle2 className="h-3 w-3 shrink-0" />
-                    ) : (
-                      <AlertTriangle className="h-3 w-3 shrink-0" />
-                    )}
-                    <span className="leading-tight">
-                      {vlisInfo.maxDistanceMeters}m
-                      {!vlisInfo.isWithinVLOS && ` (${vlisInfo.pointsOutside} utenfor)`}
-                    </span>
-                  </div>
-                )}
               </div>
 
-              {/* External links & import + Cancel/Save - top-right */}
               <div className="flex items-center gap-1 shrink-0">
                 {/* KML Import */}
                 <input
@@ -487,8 +434,6 @@ export default function KartPage() {
                   <Upload className="h-4 w-4" />
                   <span className="hidden sm:inline ml-1">{importingKml ? 'Importerer…' : 'KML'}</span>
                 </Button>
-
-                {/* NOTAM link */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -498,8 +443,6 @@ export default function KartPage() {
                 >
                   IPPC
                 </Button>
-
-                {/* Sensor zone application link */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -507,10 +450,8 @@ export default function KartPage() {
                   className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
                   title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
                 >
-                Sensor
+                  Sensor
                 </Button>
-
-                {/* FlightHub 2 */}
                 {hasFH2Token && currentRoute.coordinates.length >= 2 && (
                   <Button
                     variant="outline"
@@ -525,68 +466,114 @@ export default function KartPage() {
                 )}
               </div>
             </div>
-            
-            {/* Bottom row: route editing tools + Cancel/Save */}
-            <div className="flex items-center justify-end gap-1 sm:gap-1.5">
-              <Button
-                variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
-                size="sm"
-                onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
-                className={cn(
-                  "h-8 px-2 sm:px-3",
-                  isPlacingPilot && "animate-pulse"
+
+            {/* Row 2: SafeSky/VLOS badges + route tools */}
+            <div className="flex items-center justify-between gap-1">
+              {/* Left: status badges */}
+              <div className="flex items-center gap-1 min-w-0 overflow-x-auto">
+                {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
+                  <div className={cn(
+                    "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium shrink-0",
+                    currentRoute.areaKm2 <= 50 
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : currentRoute.areaKm2 <= 150
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  )}>
+                    {currentRoute.areaKm2 <= 50 ? (
+                      <CheckCircle2 className="h-3 w-3 shrink-0" />
+                    ) : currentRoute.areaKm2 <= 150 ? (
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <XCircle className="h-3 w-3 shrink-0" />
+                    )}
+                    <span className="leading-tight whitespace-nowrap">
+                      {currentRoute.areaKm2.toFixed(2)} km²
+                      {currentRoute.areaKm2 > 150 && " – for stort for SafeSky"}
+                      {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
+                    </span>
+                  </div>
                 )}
-                title={pilotPosition ? "Fjern pilotposisjon" : isPlacingPilot ? "Klikk på kartet..." : "Plasser pilot"}
-              >
-                <MapPin className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">
-                  {pilotPosition ? "Fjern pilot" : isPlacingPilot ? "Klikk..." : "Pilot"}
-                </span>
-              </Button>
+                {vlisInfo && (
+                  <div className={cn(
+                    "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium shrink-0",
+                    vlisInfo.isWithinVLOS
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  )}>
+                    {vlisInfo.isWithinVLOS ? (
+                      <CheckCircle2 className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                    )}
+                    <span className="leading-tight whitespace-nowrap">
+                      {vlisInfo.maxDistanceMeters}m
+                      {!vlisInfo.isWithinVLOS && ` (${vlisInfo.pointsOutside} utenfor)`}
+                    </span>
+                  </div>
+                )}
+              </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleUndoPoint}
-                disabled={currentRoute.coordinates.length === 0}
-                className="h-8 px-2 sm:px-3"
-                title="Angre siste punkt"
-              >
-                <Undo className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Angre</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearRoute}
-                disabled={currentRoute.coordinates.length === 0}
-                className="h-8 px-2 sm:px-3"
-                title="Nullstill rute"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Nullstill</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelRoute}
-                className="h-8 px-2 sm:px-3"
-                title="Avbryt"
-              >
-                <X className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Avbryt</span>
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveRoute}
-                disabled={currentRoute.coordinates.length < 2}
-                className="h-8 px-2 sm:px-3"
-                title="Lagre rute"
-              >
-                <Save className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Lagre</span>
-              </Button>
+              {/* Right: route editing tools */}
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
+                  className={cn(
+                    "h-8 px-2 sm:px-3",
+                    isPlacingPilot && "animate-pulse"
+                  )}
+                  title={pilotPosition ? "Fjern pilotposisjon" : isPlacingPilot ? "Klikk på kartet..." : "Plasser pilot"}
+                >
+                  <MapPin className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">
+                    {pilotPosition ? "Fjern pilot" : isPlacingPilot ? "Klikk..." : "Pilot"}
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUndoPoint}
+                  disabled={currentRoute.coordinates.length === 0}
+                  className="h-8 px-2 sm:px-3"
+                  title="Angre siste punkt"
+                >
+                  <Undo className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Angre</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearRoute}
+                  disabled={currentRoute.coordinates.length === 0}
+                  className="h-8 px-2 sm:px-3"
+                  title="Nullstill rute"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Nullstill</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelRoute}
+                  className="h-8 px-2 sm:px-3"
+                  title="Avbryt"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Avbryt</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveRoute}
+                  disabled={currentRoute.coordinates.length < 2}
+                  className="h-8 px-2 sm:px-3"
+                  title="Lagre rute"
+                >
+                  <Save className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Lagre</span>
+                </Button>
+              </div>
             </div>
           </div>
           
