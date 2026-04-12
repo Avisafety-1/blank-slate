@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import {
@@ -60,6 +61,7 @@ export const ChildCompaniesSection = () => {
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
+  const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
   const [applySettingsToChildren, setApplySettingsToChildren] = useState(false);
   const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
   const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
@@ -308,11 +310,14 @@ export const ChildCompaniesSection = () => {
     // Fetch default buffer mode from sora config
     const { data: soraData } = await (supabase as any)
       .from("company_sora_config")
-      .select("default_buffer_mode")
+      .select("default_buffer_mode, default_flight_geography_m")
       .eq("company_id", companyId)
       .maybeSingle();
     if (soraData?.default_buffer_mode) {
       setDefaultBufferMode(soraData.default_buffer_mode);
+    }
+    if (soraData?.default_flight_geography_m != null) {
+      setDefaultFlightGeographyM(soraData.default_flight_geography_m);
     }
   };
 
@@ -470,6 +475,18 @@ export const ChildCompaniesSection = () => {
     setDefaultBufferMode(mode);
     invalidateCompanySettingsCache();
     toast.success("Buffermodus lagret");
+  };
+
+  const handleChangeDefaultFlightGeography = async (value: number) => {
+    if (!companyId) return;
+    setDefaultFlightGeographyM(value);
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("company_sora_config")
+      .upsert({ company_id: companyId, default_flight_geography_m: value }, { onConflict: 'company_id' });
+    setSavingSettings(false);
+    invalidateCompanySettingsCache();
+    toast.success("Standard Flight Geography lagret");
   };
 
   const FH2_MASK = "••••••••";
@@ -798,6 +815,21 @@ export const ChildCompaniesSection = () => {
                     <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
                   </div>
                 </RadioGroup>
+                <div className="space-y-1.5 pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
+                    <span className="text-xs font-mono text-green-600 dark:text-green-400">{defaultFlightGeographyM}m</span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={200}
+                    step={1}
+                    value={[defaultFlightGeographyM]}
+                    onValueChange={([v]) => handleChangeDefaultFlightGeography(v)}
+                    disabled={savingSettings}
+                    className="[&_[role=slider]]:bg-green-600"
+                  />
+                </div>
               </div>
               {/* Settings propagation toggle */}
               <div className="border-t pt-2 flex items-center justify-between">
