@@ -35,7 +35,7 @@ export interface AdjacentAreaResult {
   /** Whether the density is within the threshold */
   pass: boolean;
   /** Containment level used */
-  containmentLevel: "low" | "medium" | "high";
+  containmentLevel: ContainmentLevel;
   /** Human-readable status text */
   statusText: string;
   /** Loading / error state */
