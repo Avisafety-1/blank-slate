@@ -11,7 +11,11 @@
  */
 
 import type { RoutePoint, SoraSettings } from "@/types/map";
-import { bufferPolyline, bufferPolygon, computeConvexHull } from "@/lib/soraGeometry";
+import {
+  bufferPolygon,
+  computeConvexHull,
+  mergeBufferedCorridorPolygons,
+} from "@/lib/soraGeometry";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -39,6 +43,8 @@ export interface AdjacentAreaResult {
 }
 
 export type ContainmentLevel = "low" | "medium" | "high";
+
+type RouteMultiPolygon = RoutePoint[][];
 
 /* ------------------------------------------------------------------ */
 /*  SORA 2.5 adjacent area thresholds (simplified, UA < 3 m)          */
@@ -68,13 +74,15 @@ export function calculateAdjacentRadius(maxSpeedMps: number | undefined): number
 /*  Geometry helpers                                                   */
 /* ------------------------------------------------------------------ */
 
-/** Ray-casting point-in-polygon test */
 function pointInPolygon(point: RoutePoint, polygon: RoutePoint[]): boolean {
   let inside = false;
   const n = polygon.length;
   for (let i = 0, j = n - 1; i < n; j = i++) {
-    const xi = polygon[i].lng, yi = polygon[i].lat;
-    const xj = polygon[j].lng, yj = polygon[j].lat;
+    const xi = polygon[i].lng;
+    const yi = polygon[i].lat;
+    const xj = polygon[j].lng;
+    const yj = polygon[j].lat;
+
     if (
       yi > point.lat !== yj > point.lat &&
       point.lng < ((xj - xi) * (point.lat - yi)) / (yj - yi) + xi
@@ -85,12 +93,15 @@ function pointInPolygon(point: RoutePoint, polygon: RoutePoint[]): boolean {
   return inside;
 }
 
-/** Shoelace formula for polygon area in km² (lat/lng coordinates) */
+function pointInMultiPolygon(point: RoutePoint, polygons: RouteMultiPolygon): boolean {
+  return polygons.some(polygon => pointInPolygon(point, polygon));
+}
+
 function polygonAreaKm2(polygon: RoutePoint[]): number {
   if (polygon.length < 3) return 0;
   const avgLat = polygon.reduce((s, p) => s + p.lat, 0) / polygon.length;
-  const latScale = 111.320; // km per degree latitude
-  const lngScale = 111.320 * Math.cos(avgLat * Math.PI / 180); // km per degree longitude
+  const latScale = 111.320;
+  const lngScale = 111.320 * Math.cos(avgLat * Math.PI / 180);
 
   let area = 0;
   const n = polygon.length;
@@ -105,15 +116,25 @@ function polygonAreaKm2(polygon: RoutePoint[]): number {
   return Math.abs(area) / 2;
 }
 
-/** Compute bounding box from polygon vertices */
-function bboxFromPolygon(polygon: RoutePoint[]) {
-  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-  for (const p of polygon) {
-    if (p.lat < minLat) minLat = p.lat;
-    if (p.lat > maxLat) maxLat = p.lat;
-    if (p.lng < minLng) minLng = p.lng;
-    if (p.lng > maxLng) maxLng = p.lng;
+function multiPolygonAreaKm2(polygons: RouteMultiPolygon): number {
+  return polygons.reduce((sum, polygon) => sum + polygonAreaKm2(polygon), 0);
+}
+
+function bboxFromPolygons(polygons: RouteMultiPolygon) {
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+
+  for (const polygon of polygons) {
+    for (const point of polygon) {
+      if (point.lat < minLat) minLat = point.lat;
+      if (point.lat > maxLat) maxLat = point.lat;
+      if (point.lng < minLng) minLng = point.lng;
+      if (point.lng > maxLng) maxLng = point.lng;
+    }
   }
+
   return { minLat, maxLat, minLng, maxLng };
 }
 
@@ -125,8 +146,8 @@ function makeBuffer(
   coords: RoutePoint[],
   sora: SoraSettings,
   dist: number
-): RoutePoint[] {
-  if (dist <= 0) return coords;
+): RouteMultiPolygon {
+  if (dist <= 0) return [coords];
 
   const refPoint = coords[0];
   const avgLat = coords.reduce((s, p) => s + p.lat, 0) / coords.length;
@@ -139,9 +160,10 @@ function makeBuffer(
   const mode = sora.bufferMode ?? "corridor";
   if (mode === "convexHull" || isClosedRoute) {
     const hull = computeConvexHull(coords);
-    return bufferPolygon(hull, dist, refPoint, avgLat);
+    return [bufferPolygon(hull, dist, refPoint, avgLat)];
   }
-  return bufferPolyline(coords, dist, 16, refPoint, avgLat);
+
+  return mergeBufferedCorridorPolygons(coords, dist, 16, refPoint, avgLat);
 }
 
 /* ------------------------------------------------------------------ */
@@ -166,7 +188,7 @@ export async function fetchSsbPopulationGrid(
 
   const resp = await fetch(url, {
     signal,
-    headers: { "apikey": supabaseKey },
+    headers: { apikey: supabaseKey },
   });
 
   if (!resp.ok) {
@@ -185,6 +207,7 @@ export async function fetchSsbPopulationGrid(
       centroidLng: feature.centroidLng,
     });
   }
+
   return cells;
 }
 
@@ -215,35 +238,28 @@ export async function computeAdjacentAreaDensity(
     };
   }
 
-  // Build inner polygon (ground risk buffer boundary)
   const fgDist = sora.flightGeographyDistance;
   const cDist = sora.contingencyDistance;
   const grDist = sora.groundRiskDistance;
   const innerDist = fgDist + cDist + grDist;
   const outerDist = innerDist + adjacentRadiusM;
 
-  const innerPoly = makeBuffer(coords, sora, innerDist);
-  const rawOuterPoly = makeBuffer(coords, sora, outerDist);
-  const outerPoly = rawOuterPoly.length >= 3 ? computeConvexHull(rawOuterPoly) : rawOuterPoly;
+  const innerPolys = makeBuffer(coords, sora, innerDist);
+  const outerPolys = makeBuffer(coords, sora, outerDist);
+  const bbox = bboxFromPolygons(outerPolys);
 
-  // Bounding box from actual polygon
-  const bbox = bboxFromPolygon(outerPoly);
-
-  // Fetch SSB data
   const cells = await fetchSsbPopulationGrid(bbox, signal);
 
-  // Filter cells using polygon-based point-in-polygon
   let totalPop = 0;
   for (const cell of cells) {
     const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
-    if (pointInPolygon(pt, outerPoly) && !pointInPolygon(pt, innerPoly)) {
+    if (pointInMultiPolygon(pt, outerPolys) && !pointInMultiPolygon(pt, innerPolys)) {
       totalPop += cell.population;
     }
   }
 
-  // Calculate actual polygon areas
-  const outerAreaKm2 = polygonAreaKm2(outerPoly);
-  const innerAreaKm2 = polygonAreaKm2(innerPoly);
+  const outerAreaKm2 = multiPolygonAreaKm2(outerPolys);
+  const innerAreaKm2 = multiPolygonAreaKm2(innerPolys);
   const adjacentAreaKm2 = Math.max(outerAreaKm2 - innerAreaKm2, 0.01);
 
   const avgDensity = totalPop / adjacentAreaKm2;
