@@ -463,8 +463,53 @@ export default function KartPage() {
                 )}
               </div>
 
-              {/* Cancel & Save - top-right */}
+              {/* External links & import + Cancel/Save - top-right */}
               <div className="flex items-center gap-1 shrink-0">
+                {/* KML Import */}
+                <input
+                  ref={kmlInputRef}
+                  type="file"
+                  accept=".kml,.kmz"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleKmlImport(file);
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => kmlInputRef.current?.click()}
+                  disabled={importingKml}
+                  className="h-8 px-2 sm:px-3"
+                  title="Importer KML/KMZ-fil"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">{importingKml ? 'Importerer…' : 'KML'}</span>
+                </Button>
+
+                {/* NOTAM link */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenNotam}
+                  className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
+                  title="Sjekk NOTAM (åpner ippc.no)"
+                >
+                  IPPC
+                </Button>
+
+                {/* Sensor zone application link */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
+                  className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
+                  title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
+                >
+                  Sensor
+                </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -488,7 +533,7 @@ export default function KartPage() {
               </div>
             </div>
             
-            {/* Bottom row: tool buttons + undo/clear */}
+            {/* Bottom row: route editing tools */}
             <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
               <Button
                 variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
@@ -506,50 +551,7 @@ export default function KartPage() {
                 </span>
               </Button>
 
-              {/* KML Import */}
-              <input
-                ref={kmlInputRef}
-                type="file"
-                accept=".kml,.kmz"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleKmlImport(file);
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => kmlInputRef.current?.click()}
-                disabled={importingKml}
-                className="h-8 px-2 sm:px-3"
-                title="Importer KML/KMZ-fil"
-              >
-                <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">{importingKml ? 'Importerer…' : 'Importer KML'}</span>
-              </Button>
 
-              {/* NOTAM link */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenNotam}
-                className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
-                title="Sjekk NOTAM (åpner ippc.no)"
-              >
-                IPPC
-              </Button>
-
-              {/* Sensor zone application link */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
-                className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
-                title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
-              >
-                Sensor
-              </Button>
 
               {/* FlightHub 2 */}
               {hasFH2Token && currentRoute.coordinates.length >= 2 && (
