@@ -144,7 +144,6 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     setManualOverride(false);
     onChange({
       ...settings,
-      flightGeographyDistance: suggestion.suggested_flight_geography_m,
       contingencyDistance: suggestion.suggested_contingency_buffer_m,
       groundRiskDistance: suggestion.suggested_ground_risk_buffer_m,
     });
