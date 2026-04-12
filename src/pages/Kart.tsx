@@ -396,7 +396,7 @@ export default function KartPage() {
     <div className="flex-1 min-h-0 flex flex-col w-full">
       {/* Route Planning Controls - shown below header when active */}
       {isRoutePlanning && (
-        <div className="bg-background border-b border-border px-3 py-2 sm:px-4 sm:py-3 flex-shrink-0 max-h-[50vh] overflow-y-auto">
+        <div className="bg-background border-b border-border px-3 pt-2 pb-3 sm:px-4 sm:pt-3 sm:pb-4 flex-shrink-0 max-h-[50vh] overflow-y-auto">
           <div className="flex flex-col gap-1">
             {/* Row 1: Route info + external links */}
             <div className="flex items-center justify-between gap-1.5">
