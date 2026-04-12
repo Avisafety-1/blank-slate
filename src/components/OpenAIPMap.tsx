@@ -319,7 +319,7 @@ export function OpenAIPMap({
 
     const adjRadius = adjacentAreaRadiusMRef.current;
     if (adjRadius && adjRadius > 0 && sora?.enabled && points.length >= 1) {
-      renderAdjacentAreaZone(points, adjRadius, adjacentAreaLayerRef.current);
+      renderAdjacentAreaZone(points, adjRadius, adjacentAreaLayerRef.current, sora);
     }
   }, []);
 

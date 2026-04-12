@@ -328,12 +328,13 @@ export function renderSoraZones(
 
 /**
  * Render the SORA 2.5 adjacent area boundary on the map.
- * Draws a dashed circle at the adjacent area radius from the route centroid.
+ * Draws a buffered polygon that follows the ground risk buffer contour.
  */
 export function renderAdjacentAreaZone(
   coordinates: RoutePoint[],
   adjacentRadiusM: number,
-  layer: L.LayerGroup
+  layer: L.LayerGroup,
+  sora?: SoraSettings
 ) {
   if (coordinates.length < 1 || adjacentRadiusM <= 0) return;
 
@@ -342,18 +343,48 @@ export function renderAdjacentAreaZone(
   );
   if (validCoords.length < 1) return;
 
-  // Use centroid as center
-  const lat = validCoords.reduce((s, p) => s + p.lat, 0) / validCoords.length;
-  const lng = validCoords.reduce((s, p) => s + p.lng, 0) / validCoords.length;
+  const refPoint = validCoords[0];
+  const avgLat = validCoords.reduce((s, p) => s + p.lat, 0) / validCoords.length;
 
-  L.circle([lat, lng], {
-    radius: adjacentRadiusM,
-    color: '#3b82f6',
-    weight: 2,
-    fillColor: '#3b82f6',
-    fillOpacity: 0.06,
-    dashArray: '8, 6',
-  })
-    .bindPopup(`<strong>Tilstøtende område</strong><br/>Radius: ${(adjacentRadiusM / 1000).toFixed(1)} km`)
-    .addTo(layer);
+  const isClosedRoute =
+    validCoords.length >= 3 &&
+    validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
+    validCoords[0].lng === validCoords[validCoords.length - 1].lng;
+
+  function makeAdjacentBuffer(dist: number): RoutePoint[] {
+    if (dist <= 0) return validCoords;
+    const mode = sora?.bufferMode ?? "corridor";
+    if (mode === "convexHull" || isClosedRoute) {
+      const hull = computeConvexHull(validCoords);
+      return bufferPolygon(hull, dist, refPoint, avgLat);
+    }
+    return bufferPolyline(validCoords, dist, 16, refPoint, avgLat);
+  }
+
+  // Total offset = all SORA buffer layers + adjacent area radius
+  const fgDist = sora?.flightGeographyDistance ?? 0;
+  const cDist = sora?.contingencyDistance ?? 0;
+  const grDist = sora?.groundRiskDistance ?? 0;
+  const totalOffset = fgDist + cDist + grDist + adjacentRadiusM;
+
+  const adjacentZone = makeAdjacentBuffer(totalOffset);
+
+  function safeLatLngs(zone: RoutePoint[]): [number, number][] {
+    return zone
+      .map(p => [p.lat, p.lng] as [number, number])
+      .filter(([lat, lng]) => isFinite(lat) && isFinite(lng));
+  }
+
+  const adjacentLatLngs = safeLatLngs(adjacentZone);
+  if (adjacentLatLngs.length >= 3) {
+    L.polygon(adjacentLatLngs, {
+      color: '#8b5cf6',
+      weight: 2,
+      fillColor: '#8b5cf6',
+      fillOpacity: 0.05,
+      dashArray: '10, 6',
+    })
+      .bindPopup(`<strong>Tilstøtende område</strong><br/>Radius: ${(adjacentRadiusM / 1000).toFixed(1)} km`)
+      .addTo(layer);
+  }
 }
