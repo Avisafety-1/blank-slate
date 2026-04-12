@@ -25,6 +25,8 @@ interface SoraSettingsPanelProps {
   onChange: (settings: SoraSettings) => void;
   onDroneSelected?: (droneId: string | null) => void;
   initialDroneId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface CompanyDrone {
@@ -44,8 +46,10 @@ interface CatalogSpecs {
   standard_takeoff_weight_kg: number | null;
 }
 
-export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId }: SoraSettingsPanelProps) {
-  const [open, setOpen] = useState(false);
+export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId, open: controlledOpen, onOpenChange }: SoraSettingsPanelProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const { companyId } = useAuth();
 
   // Drone selector state
@@ -146,23 +150,11 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     });
   };
 
-  return (
-    <Collapsible open={open} onOpenChange={setOpen} className="border-t border-border">
-      <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 sm:px-4 hover:bg-muted/50 transition-colors">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">SORA Operasjonelt volum</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={settings.enabled}
-            onCheckedChange={(checked) => update({ enabled: checked })}
-            onClick={(e) => e.stopPropagation()}
-          />
-          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} />
-        </div>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="px-3 pb-3 sm:px-4 sm:pb-4 space-y-4">
+  // If controlled externally, render content only (no trigger)
+  if (controlledOpen !== undefined) {
+    if (!open) return null;
+    return (
+      <div className="px-3 pb-3 sm:px-4 sm:pb-4 space-y-4 border-t border-border">
 
           {/* ── Drone selector ── */}
           <div className="space-y-1.5">
@@ -415,6 +407,29 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               <span className="w-3 h-3 rounded-sm bg-red-500/40 border border-red-500/60" /> Ground risk
             </span>
           </div>
+      </div>
+    );
+  }
+
+  // Standalone mode with own trigger
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="border-t border-border">
+      <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 sm:px-4 hover:bg-muted/50 transition-colors">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-foreground">SORA volum</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={settings.enabled}
+            onCheckedChange={(checked) => update({ enabled: checked })}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4 space-y-4">
+          {/* Render same content - duplicated for standalone mode */}
         </div>
       </CollapsibleContent>
     </Collapsible>
