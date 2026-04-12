@@ -19,6 +19,7 @@ interface AdjacentAreaPanelProps {
   soraSettings: SoraSettings;
   maxSpeedMps?: number;
   onShowAdjacentArea?: (show: boolean) => void;
+  onResultChange?: (result: AdjacentAreaResult | null) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -28,6 +29,7 @@ export function AdjacentAreaPanel({
   soraSettings,
   maxSpeedMps,
   onShowAdjacentArea,
+  onResultChange,
   open: controlledOpen,
   onOpenChange,
 }: AdjacentAreaPanelProps) {
