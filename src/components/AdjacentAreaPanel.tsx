@@ -18,6 +18,7 @@ interface AdjacentAreaPanelProps {
   coordinates: RoutePoint[];
   soraSettings: SoraSettings;
   maxSpeedMps?: number;
+  active?: boolean;
   onShowAdjacentArea?: (show: boolean) => void;
   onResultChange?: (result: AdjacentAreaResult | null) => void;
   open?: boolean;
