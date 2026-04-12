@@ -367,7 +367,9 @@ export function renderAdjacentAreaZone(
   const grDist = sora?.groundRiskDistance ?? 0;
   const totalOffset = fgDist + cDist + grDist + adjacentRadiusM;
 
-  const adjacentZone = makeAdjacentBuffer(totalOffset);
+  const rawZone = makeAdjacentBuffer(totalOffset);
+  // Merge overlapping corridor segments into a single clean outer boundary
+  const adjacentZone = rawZone.length >= 3 ? computeConvexHull(rawZone) : rawZone;
 
   function safeLatLngs(zone: RoutePoint[]): [number, number][] {
     return zone
