@@ -473,7 +473,7 @@ export default function KartPage() {
               <div className="flex items-center gap-1 min-w-0 overflow-x-auto">
                 {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
                   <div className={cn(
-                    "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium shrink-0",
+                    "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium",
                     currentRoute.areaKm2 <= 50 
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                       : currentRoute.areaKm2 <= 150
