@@ -74,8 +74,8 @@ export function AdjacentAreaPanel({
   }, [open, coordinates, soraSettings, maxSpeedMps, containmentLevel]);
 
   useEffect(() => {
-    onShowAdjacentArea?.(showOnMap && open);
-  }, [showOnMap, open, onShowAdjacentArea]);
+    onShowAdjacentArea?.(showOnMap);
+  }, [showOnMap, onShowAdjacentArea]);
 
   if (!soraSettings.enabled) return null;
 
