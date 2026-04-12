@@ -37,7 +37,7 @@ export function AdjacentAreaPanel({
   const [containmentLevel, setContainmentLevel] = useState<ContainmentLevel>("low");
   const [result, setResult] = useState<AdjacentAreaResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showOnMap, setShowOnMap] = useState(false);
+  const [showOnMap, setShowOnMap] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
 
   // Auto-compute when inputs change and panel is open
@@ -161,18 +161,6 @@ export function AdjacentAreaPanel({
               <p className="text-xs text-destructive">{result.error}</p>
             )}
 
-            {/* Toggle map visualization */}
-            <div className="flex items-center justify-between pt-1">
-              <Label className="text-xs flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5" />
-                Vis på kart
-              </Label>
-              <Switch
-                checked={showOnMap}
-                onCheckedChange={setShowOnMap}
-                className="scale-90"
-              />
-            </div>
           </div>
         ) : coordinates.length < 1 ? (
           <p className="text-xs text-muted-foreground italic py-2">

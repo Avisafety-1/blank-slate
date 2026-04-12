@@ -601,7 +601,10 @@ export default function KartPage() {
                 <span className="text-sm font-medium text-foreground">SORA volum</span>
                 <Switch
                   checked={soraSettings.enabled}
-                  onCheckedChange={(checked) => setSoraSettings((s) => ({ ...s, enabled: checked }))}
+                  onCheckedChange={(checked) => {
+                    setSoraSettings((s) => ({ ...s, enabled: checked }));
+                    if (!checked) setShowAdjacentArea(false);
+                  }}
                   onClick={(e) => e.stopPropagation()}
                   className="scale-90"
                 />
@@ -619,6 +622,16 @@ export default function KartPage() {
               >
                 <Users className="h-3.5 w-3.5 text-blue-500" />
                 <span className="text-xs font-medium text-foreground">Tilstøtende</span>
+                <Switch
+                  checked={showAdjacentArea}
+                  onCheckedChange={(checked) => {
+                    setShowAdjacentArea(checked);
+                    if (checked) setAdjacentOpen(true);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="scale-90"
+                  disabled={!soraSettings.enabled}
+                />
                 <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", adjacentOpen && soraSettings.enabled && "rotate-180")} />
               </button>
             </div>
