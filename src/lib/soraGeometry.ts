@@ -352,77 +352,102 @@ export function renderSoraZones(
     validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
     validCoords[0].lng === validCoords[validCoords.length - 1].lng;
 
-  // Buffer each segment individually — returns separate corridor rings.
-  // Each 2-point bufferPolyline already has rounded end caps covering waypoints.
-  // Rendered as a single multi-ring L.polygon to avoid double-fill at overlaps,
-  // while NOT merging into one shape (which fills enclosed interior on crossing routes).
-  function makeSegmentBuffers(dist: number): RoutePoint[][] {
-    if (dist <= 0) return [validCoords];
+  function toMergedLeafletLatLngs(multiPolygon: ClipMultiPolygon): [number, number][][][] {
+    return multiPolygon
+      .map(polygon =>
+        polygon
+          .map(ring => {
+            const normalizedRing =
+              ring.length > 1 &&
+              ring[0][0] === ring[ring.length - 1][0] &&
+              ring[0][1] === ring[ring.length - 1][1]
+                ? ring.slice(0, -1)
+                : ring;
+
+            return normalizedRing
+              .map(([lng, lat]) => [lat, lng] as [number, number])
+              .filter(([lat, lng]) => isFinite(lat) && isFinite(lng));
+          })
+          .filter(ring => ring.length >= 3)
+      )
+      .filter(polygon => polygon.length > 0);
+  }
+
+  function makeMergedBufferLatLngs(dist: number): [number, number][][][] {
+    if (dist <= 0) {
+      const latLngs = safeLatLngs(validCoords);
+      return latLngs.length >= 3 ? [[latLngs]] : [];
+    }
+
     const mode = sora.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      return [bufferPolygon(hull, dist, refPoint, avgLat)];
+      const latLngs = safeLatLngs(bufferPolygon(hull, dist, refPoint, avgLat));
+      return latLngs.length >= 3 ? [[latLngs]] : [];
     }
-    // Single point → circle
+
+    const clipPolygons: ClipPolygon[] = [];
+
     if (validCoords.length === 1) {
       const circle = bufferPolyline([validCoords[0]], dist, 16, refPoint, avgLat);
-      return circle.length >= 3 ? [circle] : [validCoords];
+      if (circle.length >= 3) {
+        clipPolygons.push([closeClipRing(circle)]);
+      }
+    } else {
+      for (let i = 0; i < validCoords.length - 1; i++) {
+        const start = validCoords[i];
+        const end = validCoords[i + 1];
+        if (start.lat === end.lat && start.lng === end.lng) continue;
+
+        const segmentBuffer = bufferPolyline([start, end], dist, 16, refPoint, avgLat);
+        if (segmentBuffer.length >= 3) {
+          clipPolygons.push([closeClipRing(segmentBuffer)]);
+        }
+      }
     }
-    const rings: RoutePoint[][] = [];
-    // Buffer each segment as a corridor (includes rounded end caps)
-    for (let i = 0; i < validCoords.length - 1; i++) {
-      const a = validCoords[i];
-      const b = validCoords[i + 1];
-      if (a.lat === b.lat && a.lng === b.lng) continue;
-      const seg = bufferPolyline([a, b], dist, 16, refPoint, avgLat);
-      if (seg.length >= 3) rings.push(seg);
-    }
-    return rings.length > 0 ? rings : [validCoords];
+
+    if (clipPolygons.length === 0) return [];
+
+    const merged = polygonClipping.union(...clipPolygons);
+    return toMergedLeafletLatLngs(merged);
   }
 
-  // Helper: render all buffer rings as a single multi-ring L.polygon
-  // so overlapping areas don't get double-filled (single SVG path).
-  function addMultiRingZone(
-    rings: RoutePoint[][],
+  function addMergedZone(
+    zoneLatLngs: [number, number][][][],
     style: L.PolylineOptions,
     popupHtml: string
   ) {
-    const allLatLngs: [number, number][][] = [];
-    for (const ring of rings) {
-      const latLngs = safeLatLngs(ring);
-      if (latLngs.length >= 3) allLatLngs.push(latLngs);
-    }
-    if (allLatLngs.length > 0) {
-      L.polygon(allLatLngs, style).bindPopup(popupHtml).addTo(layer);
+    if (zoneLatLngs.length > 0) {
+      L.polygon(zoneLatLngs, style).bindPopup(popupHtml).addTo(layer);
     }
   }
 
   // Flight Geography Area (innermost layer, only when > 0)
   if (sora.flightGeographyDistance > 0) {
-    addMultiRingZone(
-      makeSegmentBuffers(sora.flightGeographyDistance),
+    addMergedZone(
+      makeMergedBufferLatLngs(sora.flightGeographyDistance),
       { color: '#16a34a', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 },
       `<strong>Flight Geography Area</strong><br/>${sora.flightGeographyDistance}m`
     );
   }
 
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
-  addMultiRingZone(
-    makeSegmentBuffers(1),
+  addMergedZone(
+    makeMergedBufferLatLngs(1),
     { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 },
     `<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`
   );
 
   // Yellow contingency area
-  addMultiRingZone(
-    makeSegmentBuffers(sora.flightGeographyDistance + sora.contingencyDistance),
+  addMergedZone(
+    makeMergedBufferLatLngs(sora.flightGeographyDistance + sora.contingencyDistance),
     { color: '#eab308', weight: 2, fillColor: '#eab308', fillOpacity: 0.15, dashArray: '6, 4' },
     `<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`
   );
 
   // Red ground risk buffer
-  addMultiRingZone(
-    makeSegmentBuffers(sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance),
+  addMergedZone(
+    makeMergedBufferLatLngs(sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance),
     { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12, dashArray: '6, 4' },
     `<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`
   );
