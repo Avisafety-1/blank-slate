@@ -1530,6 +1530,7 @@ export type Database = {
           oppdatert_dato: string
           opprettet_dato: string
           payload: number | null
+          post_flight_checklist_id: string | null
           registration_number: string | null
           serienummer: string
           sist_inspeksjon: string | null
@@ -1565,6 +1566,7 @@ export type Database = {
           oppdatert_dato?: string
           opprettet_dato?: string
           payload?: number | null
+          post_flight_checklist_id?: string | null
           registration_number?: string | null
           serienummer: string
           sist_inspeksjon?: string | null
@@ -1600,6 +1602,7 @@ export type Database = {
           oppdatert_dato?: string
           opprettet_dato?: string
           payload?: number | null
+          post_flight_checklist_id?: string | null
           registration_number?: string | null
           serienummer?: string
           sist_inspeksjon?: string | null
@@ -1624,6 +1627,13 @@ export type Database = {
           {
             foreignKeyName: "drones_operations_checklist_id_fkey"
             columns: ["operations_checklist_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drones_post_flight_checklist_id_fkey"
+            columns: ["post_flight_checklist_id"]
             isOneToOne: false
             referencedRelation: "documents"
             referencedColumns: ["id"]
