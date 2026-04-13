@@ -172,7 +172,7 @@ export const MissionStatusDropdown = ({
     }
   };
 
-  const handleChecklistCompleted = async () => {
+  const handleChecklistCompleted = async (_checklistId: string) => {
     const nextIndex = currentChecklistIndex + 1;
     if (nextIndex < postFlightChecklistIds.length) {
       setCurrentChecklistIndex(nextIndex);
