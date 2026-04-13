@@ -1,34 +1,40 @@
 
 
-## Plan: Vis personell fra underavdelinger og tilby drone-synlighet
+## Plan: Flyg dronemarkør øverst på kartet
 
 ### Problem
-`AddPersonnelToDroneDialog` henter kun personell fra brukerens aktive `companyId`. Personell i underavdelinger vises ikke. Når en person fra en underavdeling legges til, bør brukeren spørres om dronen skal gjøres synlig for den avdelingen.
+Når et oppdrag publiseres til SafeSky, vises dronen i `safeskyPane` (z-index 698). Den interne pilotposisjons-markøren har **ingen pane** spesifisert, så den havner i Leaflets standard `markerPane` (z-index 600) — under alle luftromslagene. Dette gjør at man ikke kan klikke på egen drone.
 
-### Endringer
+### Løsning
+Én liten endring i `src/lib/mapDataFetchers.ts`:
 
-#### 1. `AddPersonnelToDroneDialog.tsx` - Hent personell fra hele hierarkiet
-- Bruk `get_user_visible_company_ids` RPC for å hente alle selskaps-IDer i hierarkiet
-- Hent personell med `.in("company_id", visibleIds)` i stedet for `.eq("company_id", companyId)`
-- Inkluder `company_id` og selskapsnavn i person-interfacet for å vise avdelingstilhørighet
-- Vis avdelingsnavn som badge/tekst på hvert personell-kort
+1. Legg til `pane: 'safeskyPane'` (eller et nytt, enda høyere pane) på pilotposisjons-markøren slik at den alltid ligger øverst og er klikkbar.
 
-#### 2. `AddPersonnelToDroneDialog.tsx` - Bekreftelsesdialog for synlighet
-- Legg til en `AlertDialog` som vises når valgt person tilhører en annen avdeling enn dronens eier
-- Tekst: "Ønsker du å gjøre dronen synlig for [avdelingsnavn]?"
-- Ved "Ja": Insert i `drone_department_visibility` for den avdelingen, deretter legg til personellet
-- Ved "Nei": Legg til personellet uten å endre synlighet
+Konkret: Endre markøren på linje ~712 fra:
+```typescript
+const marker = L.marker([flight.start_lat, flight.start_lng], { 
+  icon: pilotIcon, 
+  interactive: mode !== 'routePlanning' 
+});
+```
+til:
+```typescript
+const marker = L.marker([flight.start_lat, flight.start_lng], { 
+  icon: pilotIcon, 
+  interactive: mode !== 'routePlanning',
+  pane: 'safeskyPane'
+});
+```
 
-#### 3. `AddPersonnelToDroneDialog.tsx` - Props og interface
-- Legg til ny prop `droneCompanyId` fra `DroneDetailDialog` (dronens eier-selskap)
-- Legg til prop `onVisibilityChanged` callback for å oppdatere `useDepartmentVisibility`-staten i `DroneDetailDialog`
+Alternativt kan vi opprette et eget `liveFlightPane` med z-index 699 (over SafeSky men under popups) for å holde hierarkiet rent. Da vises egne droner alltid over SafeSky-trafikk.
 
-#### 4. `DroneDetailDialog.tsx` - Oppdatert integrasjon
-- Pass `droneCompanyId` og `onVisibilityChanged` til `AddPersonnelToDroneDialog`
-- Ved visibility-endring: re-fetch department visibility data via `deptVis`
+### Anbefaling
+Eget pane `liveFlightPane` med z-index 699. Fordel: egne droner skiller seg visuelt fra ekstern trafikk og er alltid klikkbare.
 
-### Teknisk detalj
-- Henter selskapsnavn via join: `profiles` → `companies(id, navn)` 
-- Sjekker eksisterende synlighet i `drone_department_visibility` før prompt (hvis allerede synlig, ingen prompt)
-- Bruker `AlertDialog` fra shadcn for bekreftelsen
+### Berørte filer
+- `src/components/OpenAIPMap.tsx` — opprett `liveFlightPane` med z-index 699 i `paneConfig`
+- `src/lib/mapDataFetchers.ts` — sett `pane: 'liveFlightPane'` på pilotmarkørene (~linje 712)
+
+### Omfang
+Svært liten endring — 2 linjer i 2 filer.
 
