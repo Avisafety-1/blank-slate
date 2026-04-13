@@ -408,7 +408,10 @@ export function renderSoraZones(
 
     if (clipPolygons.length === 0) return [];
 
-    const merged = polygonClipping.union(...clipPolygons);
+    const merged = clipPolygons.slice(1).reduce<ClipMultiPolygon>(
+      (acc, polygon) => polygonClipping.union(acc, polygon),
+      [clipPolygons[0]]
+    );
     return toMergedLeafletLatLngs(merged);
   }
 
