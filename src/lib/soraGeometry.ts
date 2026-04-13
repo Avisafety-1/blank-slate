@@ -352,7 +352,9 @@ export function renderSoraZones(
     validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
     validCoords[0].lng === validCoords[validCoords.length - 1].lng;
 
-  // Returns merged (non-overlapping) polygon rings for a given buffer distance
+  // Returns clean (non-self-intersecting) polygon rings for a given buffer distance.
+  // Uses bufferPolyline for the whole route to keep the corridor shape (no interior fill),
+  // then resolves self-intersections via polygon-clipping union.
   function makeBufferMerged(dist: number): RoutePoint[][] {
     if (dist <= 0) return [validCoords];
     const mode = sora.bufferMode ?? "corridor";
@@ -360,8 +362,17 @@ export function renderSoraZones(
       const hull = computeConvexHull(validCoords);
       return [bufferPolygon(hull, dist, refPoint, avgLat)];
     }
-    // Use merged corridor polygons to avoid overlapping segments
-    return mergeBufferedCorridorPolygons(validCoords, dist, 16, refPoint, avgLat);
+    // Buffer the entire polyline as one corridor polygon
+    const corridor = bufferPolyline(validCoords, dist, 16, refPoint, avgLat);
+    if (corridor.length < 3) return [corridor];
+    // Use polygon-clipping union on the single polygon to resolve self-intersections
+    try {
+      const ring = closeClipRing(corridor);
+      const cleaned = polygonClipping.union([ring]);
+      return fromClipMultiPolygon(cleaned);
+    } catch {
+      return [corridor];
+    }
   }
 
   // Helper: render all merged polygon rings with the same style
@@ -389,7 +400,7 @@ export function renderSoraZones(
 
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
   addMergedZone(
-    mergeBufferedCorridorPolygons(validCoords, 1, 16, refPoint, avgLat),
+    makeBufferMerged(1),
     { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 },
     `<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`
   );
