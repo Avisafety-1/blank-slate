@@ -1883,8 +1883,17 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         open={addPersonnelDialogOpen}
         onOpenChange={setAddPersonnelDialogOpen}
         droneId={drone?.id || ""}
+        droneCompanyId={drone?.company_id || companyId || ""}
         existingPersonnelIds={linkedPersonnel.map((link) => link.profile?.id).filter(Boolean)}
         onPersonnelAdded={fetchLinkedPersonnel}
+        onVisibilityChanged={() => {
+          // Re-fetch department visibility state
+          if (drone?.id && companyId) {
+            deptVis.handleToggleAll(false);
+            // Trigger re-fetch by toggling open state effect
+            window.dispatchEvent(new CustomEvent('drone-visibility-changed', { detail: { droneId: drone.id } }));
+          }
+        }}
       />
 
       <DroneLogbookDialog
