@@ -61,12 +61,36 @@ export const AddPersonnelToDroneDialog = ({
     }
   }, [open, companyId, existingPersonnelIds]);
 
+  const getHierarchyCompanyIds = async (): Promise<string[]> => {
+    if (!companyId) return [];
+
+    // Check if current company has a parent
+    const { data: ownCompany } = await supabase
+      .from("companies")
+      .select("id, parent_company_id")
+      .eq("id", companyId)
+      .single();
+
+    const parentId = ownCompany?.parent_company_id || companyId;
+
+    // Get all children of the root
+    const { data: children } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("parent_company_id", parentId);
+
+    const ids = [parentId];
+    if (children) {
+      ids.push(...children.map(c => c.id));
+    }
+    return [...new Set(ids)];
+  };
+
   const fetchAvailablePersonnel = async () => {
     if (!companyId) return;
 
-    // Get all visible company IDs in hierarchy
-    const { data: visibleIds } = await supabase.rpc("get_user_visible_company_ids");
-    if (!visibleIds || visibleIds.length === 0) return;
+    const visibleIds = await getHierarchyCompanyIds();
+    if (visibleIds.length === 0) return;
 
     const { data, error } = await supabase
       .from("profiles")
@@ -80,7 +104,6 @@ export const AddPersonnelToDroneDialog = ({
       return;
     }
 
-    // Map and filter out already linked personnel
     const availablePersonnel = (data || [])
       .filter((p) => !existingPersonnelIds.includes(p.id))
       .map((p) => ({
