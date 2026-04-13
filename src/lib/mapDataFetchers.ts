@@ -451,7 +451,58 @@ export async function fetchDroneTelemetry(params: {
         { autoPan: false, keepInView: false }
       );
       marker.addTo(droneLayer);
-...
+    });
+  } catch (err) {
+    console.error('Feil ved henting av dronetelemetri:', err);
+  }
+}
+
+export async function fetchActiveAdvisories(params: {
+  activeAdvisoryLayer: L.LayerGroup;
+  flightMarkersRef: React.MutableRefObject<Map<string, L.Marker>>;
+}) {
+  const { activeAdvisoryLayer, flightMarkersRef } = params;
+  try {
+    const { data: activeFlights, error } = await supabase
+      .from('active_flights')
+      .select('id, mission_id, publish_mode, route_data')
+      .eq('publish_mode', 'advisory');
+    
+    if (error) {
+      console.error('Error fetching active advisories:', error);
+      return;
+    }
+    
+    activeAdvisoryLayer.clearLayers();
+    for (const [key] of flightMarkersRef.current) {
+      if (key.startsWith('advisory_')) flightMarkersRef.current.delete(key);
+    }
+    
+    for (const flight of activeFlights || []) {
+      const route = flight.route_data as any;
+      if (!route?.coordinates || route.coordinates.length < 3) continue;
+      
+      const polygonCoords = route.coordinates.map((p: any) => [p.lat, p.lng] as [number, number]);
+      
+      const polygon = L.polygon(polygonCoords, {
+        color: '#10b981',
+        weight: 2,
+        fillColor: '#10b981',
+        fillOpacity: 0.25,
+        interactive: true,
+      });
+      
+      polygon.bindPopup(`
+        <div>
+          <strong>🛸 Aktiv flytur</strong><br/>
+          <span style="color: #10b981; font-size: 11px;">Advisory publisert til SafeSky</span>
+        </div>
+      `);
+      
+      polygon.addTo(activeAdvisoryLayer);
+
+      const centLat = polygonCoords.reduce((s: number, c: [number, number]) => s + c[0], 0) / polygonCoords.length;
+      const centLng = polygonCoords.reduce((s: number, c: [number, number]) => s + c[1], 0) / polygonCoords.length;
       const droneIcon = L.divIcon({
         className: '',
         html: `<img src="${droneAnimatedIcon}" style="width:70px;height:70px;" />`,
