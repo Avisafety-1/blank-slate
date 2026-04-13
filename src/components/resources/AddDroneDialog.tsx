@@ -50,6 +50,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [calculatedNextInspection, setCalculatedNextInspection] = useState<string>("");
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
   const [selectedOpsChecklistId, setSelectedOpsChecklistId] = useState<string>("");
+  const [selectedPostFlightChecklistId, setSelectedPostFlightChecklistId] = useState<string>("");
   const [droneCount, setDroneCount] = useState(0);
   const terminology = useTerminology();
   const { checklists } = useChecklists();
@@ -124,6 +125,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       setCalculatedNextInspection("");
       setSelectedChecklistId("");
       setSelectedOpsChecklistId("");
+      setSelectedPostFlightChecklistId("");
     } else if (defaultValues) {
       if (defaultValues.modell) setModell(defaultValues.modell);
       if (defaultValues.merknader) setMerknader(defaultValues.merknader);
@@ -213,6 +215,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         inspection_interval_days: inspectionIntervalDays ? parseInt(inspectionIntervalDays) : null,
         sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
         operations_checklist_id: selectedOpsChecklistId && selectedOpsChecklistId !== "none" ? selectedOpsChecklistId : null,
+        post_flight_checklist_id: selectedPostFlightChecklistId && selectedPostFlightChecklistId !== "none" ? selectedPostFlightChecklistId : null,
       }]).select().single();
 
       if (error) {
@@ -230,6 +233,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         setCalculatedNextInspection("");
         setSelectedChecklistId("");
         setSelectedOpsChecklistId("");
+        setSelectedPostFlightChecklistId("");
         setSelectedModelId("");
         setModell("");
         setKlasse("");
@@ -482,6 +486,29 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
                 Kobles automatisk til oppdrag når dronen legges til
+              </p>
+            </div>
+          )}
+
+          {/* Post flight checklist selection */}
+          {checklists.length > 0 && (
+            <div className="border-t pt-4 mt-4">
+              <Label htmlFor="post_flight_checklist">Post flight sjekkliste</Label>
+              <Select value={selectedPostFlightChecklistId} onValueChange={setSelectedPostFlightChecklistId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Velg post flight sjekkliste (valgfritt)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                  {checklists.map((checklist) => (
+                    <SelectItem key={checklist.id} value={checklist.id}>
+                      {checklist.tittel}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Vises som bekreftelsesdialog når oppdrag fullføres
               </p>
             </div>
           )}
