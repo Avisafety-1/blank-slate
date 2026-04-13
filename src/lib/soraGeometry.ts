@@ -352,49 +352,61 @@ export function renderSoraZones(
     validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
     validCoords[0].lng === validCoords[validCoords.length - 1].lng;
 
-  function makeBuffer(dist: number): RoutePoint[] {
-    if (dist <= 0) return validCoords;
+  // Returns merged (non-overlapping) polygon rings for a given buffer distance
+  function makeBufferMerged(dist: number): RoutePoint[][] {
+    if (dist <= 0) return [validCoords];
     const mode = sora.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      return bufferPolygon(hull, dist, refPoint, avgLat);
+      return [bufferPolygon(hull, dist, refPoint, avgLat)];
     }
-    return bufferPolyline(validCoords, dist, 16, refPoint, avgLat);
+    // Use merged corridor polygons to avoid overlapping segments
+    return mergeBufferedCorridorPolygons(validCoords, dist, 16, refPoint, avgLat);
   }
 
-  // Flight Geography Area (new innermost layer, only when > 0)
-  if (sora.flightGeographyDistance > 0) {
-    const fgaZone = makeBuffer(sora.flightGeographyDistance);
-    const fgaLatLngs = safeLatLngs(fgaZone);
-    if (fgaLatLngs.length >= 3) {
-      L.polygon(fgaLatLngs, { color: '#16a34a', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 })
-        .bindPopup(`<strong>Flight Geography Area</strong><br/>${sora.flightGeographyDistance}m`).addTo(layer);
+  // Helper: render all merged polygon rings with the same style
+  function addMergedZone(
+    zones: RoutePoint[][],
+    style: L.PolylineOptions,
+    popupHtml: string
+  ) {
+    for (const zone of zones) {
+      const latLngs = safeLatLngs(zone);
+      if (latLngs.length >= 3) {
+        L.polygon(latLngs, style).bindPopup(popupHtml).addTo(layer);
+      }
     }
+  }
+
+  // Flight Geography Area (innermost layer, only when > 0)
+  if (sora.flightGeographyDistance > 0) {
+    addMergedZone(
+      makeBufferMerged(sora.flightGeographyDistance),
+      { color: '#16a34a', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 },
+      `<strong>Flight Geography Area</strong><br/>${sora.flightGeographyDistance}m`
+    );
   }
 
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
-  const flightGeo = bufferPolyline(validCoords, 1, 16, refPoint, avgLat);
-  const flightGeoLatLngs = safeLatLngs(flightGeo);
-  if (flightGeoLatLngs.length >= 3) {
-    L.polygon(flightGeoLatLngs, { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 })
-      .bindPopup(`<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`).addTo(layer);
-  }
+  addMergedZone(
+    mergeBufferedCorridorPolygons(validCoords, 1, 16, refPoint, avgLat),
+    { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 },
+    `<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`
+  );
 
-  // Yellow contingency area — offset from flightGeographyDistance
-  const contingencyZone = makeBuffer(sora.flightGeographyDistance + sora.contingencyDistance);
-  const contingencyLatLngs = safeLatLngs(contingencyZone);
-  if (contingencyLatLngs.length >= 3) {
-    L.polygon(contingencyLatLngs, { color: '#eab308', weight: 2, fillColor: '#eab308', fillOpacity: 0.15, dashArray: '6, 4' })
-      .bindPopup(`<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`).addTo(layer);
-  }
+  // Yellow contingency area
+  addMergedZone(
+    makeBufferMerged(sora.flightGeographyDistance + sora.contingencyDistance),
+    { color: '#eab308', weight: 2, fillColor: '#eab308', fillOpacity: 0.15, dashArray: '6, 4' },
+    `<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`
+  );
 
-  // Red ground risk buffer — offset from flightGeographyDistance + contingencyDistance
-  const groundRiskZone = makeBuffer(sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance);
-  const groundRiskLatLngs = safeLatLngs(groundRiskZone);
-  if (groundRiskLatLngs.length >= 3) {
-    L.polygon(groundRiskLatLngs, { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12, dashArray: '6, 4' })
-      .bindPopup(`<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`).addTo(layer);
-  }
+  // Red ground risk buffer
+  addMergedZone(
+    makeBufferMerged(sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance),
+    { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12, dashArray: '6, 4' },
+    `<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`
+  );
 }
 
 /**
