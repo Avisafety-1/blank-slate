@@ -1350,6 +1350,39 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Post-flight checklist prompt */}
+      <AlertDialog open={postFlightPromptOpen} onOpenChange={setPostFlightPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Post flight sjekkliste</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dronen har en post flight sjekkliste. Vil du utføre den nå eller senere?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={handlePostFlightExecuteLater}>
+              Utfør senere
+            </Button>
+            <Button onClick={handlePostFlightExecuteNow}>
+              Utfør nå
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Post-flight checklist execution */}
+      {postFlightExecOpen && postFlightChecklistId && (
+        <ChecklistExecutionDialog
+          open={postFlightExecOpen}
+          onOpenChange={(open) => {
+            if (!open) handlePostFlightChecklistCancelled();
+          }}
+          checklistId={postFlightChecklistId}
+          itemName="Post flight"
+          onComplete={handlePostFlightChecklistCompleted}
+        />
+      )}
     </Dialog>
   );
 };
