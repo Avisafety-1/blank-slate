@@ -436,7 +436,11 @@ export async function fetchDroneTelemetry(params: {
         popupAnchor: [0, -35],
       });
       
-      const marker = L.marker([t.lat, t.lon], { icon, interactive: modeRef.current !== 'routePlanning' });
+      const marker = L.marker([t.lat, t.lon], {
+        icon,
+        interactive: modeRef.current !== 'routePlanning',
+        pane: 'liveFlightPane'
+      });
       const updatedTime = t.created_at ? new Date(t.created_at).toLocaleTimeString('no-NO') : 'Ukjent';
       marker.bindPopup(
         `<div>
@@ -506,7 +510,11 @@ export async function fetchActiveAdvisories(params: {
         iconAnchor: [35, 35],
         popupAnchor: [0, -35],
       });
-      const centroidMarker = L.marker([centLat, centLng], { icon: droneIcon, interactive: true });
+      const centroidMarker = L.marker([centLat, centLng], {
+        icon: droneIcon,
+        interactive: true,
+        pane: 'liveFlightPane'
+      });
       centroidMarker.bindPopup(`
         <div>
           <strong>🛸 Aktiv flytur</strong><br/>
