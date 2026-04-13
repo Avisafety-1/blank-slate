@@ -1883,7 +1883,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         open={addPersonnelDialogOpen}
         onOpenChange={setAddPersonnelDialogOpen}
         droneId={drone?.id || ""}
-        droneCompanyId={drone?.company_id || companyId || ""}
+        droneCompanyId={companyId || ""}
         existingPersonnelIds={linkedPersonnel.map((link) => link.profile?.id).filter(Boolean)}
         onPersonnelAdded={fetchLinkedPersonnel}
         onVisibilityChanged={() => {
