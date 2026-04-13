@@ -711,7 +711,8 @@ export async function fetchPilotPositions(params: {
       
       const marker = L.marker([flight.start_lat, flight.start_lng], { 
         icon: pilotIcon, 
-        interactive: mode !== 'routePlanning' 
+        interactive: mode !== 'routePlanning',
+        pane: 'liveFlightPane'
       });
       
       const startTime = flight.start_time ? new Date(flight.start_time).toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' }) : 'Ukjent';
