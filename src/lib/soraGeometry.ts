@@ -353,6 +353,7 @@ export function renderSoraZones(
     validCoords[0].lng === validCoords[validCoords.length - 1].lng;
 
   // Buffer each segment individually — returns separate corridor rings.
+  // Each 2-point bufferPolyline already has rounded end caps covering waypoints.
   // Rendered as a single multi-ring L.polygon to avoid double-fill at overlaps,
   // while NOT merging into one shape (which fills enclosed interior on crossing routes).
   function makeSegmentBuffers(dist: number): RoutePoint[][] {
@@ -362,13 +363,13 @@ export function renderSoraZones(
       const hull = computeConvexHull(validCoords);
       return [bufferPolygon(hull, dist, refPoint, avgLat)];
     }
-    const rings: RoutePoint[][] = [];
-    // Buffer each waypoint as a circle (for rounded joins)
-    for (const point of validCoords) {
-      const circle = bufferPolyline([point], dist, 16, refPoint, avgLat);
-      if (circle.length >= 3) rings.push(circle);
+    // Single point → circle
+    if (validCoords.length === 1) {
+      const circle = bufferPolyline([validCoords[0]], dist, 16, refPoint, avgLat);
+      return circle.length >= 3 ? [circle] : [validCoords];
     }
-    // Buffer each segment as a corridor
+    const rings: RoutePoint[][] = [];
+    // Buffer each segment as a corridor (includes rounded end caps)
     for (let i = 0; i < validCoords.length - 1; i++) {
       const a = validCoords[i];
       const b = validCoords[i + 1];
