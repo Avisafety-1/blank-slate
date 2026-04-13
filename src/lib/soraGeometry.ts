@@ -400,7 +400,7 @@ export function renderSoraZones(
 
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
   addMergedZone(
-    mergeBufferedCorridorPolygons(validCoords, 1, 16, refPoint, avgLat),
+    makeBufferMerged(1),
     { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 },
     `<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`
   );
