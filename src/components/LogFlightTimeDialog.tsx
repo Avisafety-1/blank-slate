@@ -933,6 +933,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     // Treat cancel as "execute later"
     await handlePostFlightExecuteLater();
   };
+  const selectedDrone = drones.find(d => d.id === formData.droneId);
   const selectedPilot = personnel.find(p => p.id === formData.pilotId);
 
   // Build flight time summary
