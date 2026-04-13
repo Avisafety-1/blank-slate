@@ -26,6 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Package, Info, ChevronDown, AlertTriangle } from "lucide-react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
+import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 import { format } from "date-fns";
 
 interface FlightTrackPosition {
@@ -199,6 +200,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+
+  // Post-flight checklist state
+  const [postFlightPromptOpen, setPostFlightPromptOpen] = useState(false);
+  const [postFlightChecklistId, setPostFlightChecklistId] = useState<string | null>(null);
+  const [postFlightMissionId, setPostFlightMissionId] = useState<string | null>(null);
+  const [postFlightExecOpen, setPostFlightExecOpen] = useState(false);
 
   // Check if this dialog was opened from an active flight timer
   const isFromActiveTimer = prefilledDuration !== undefined;
@@ -796,6 +803,26 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       } else {
         toast.success("Flytid logget!");
       }
+
+      // Check if selected drone has a post-flight checklist
+      let foundPostFlightChecklistId: string | null = null;
+      if (formData.droneId) {
+        const { data: droneData } = await supabase
+          .from("drones")
+          .select("post_flight_checklist_id")
+          .eq("id", formData.droneId)
+          .single();
+        foundPostFlightChecklistId = (droneData as any)?.post_flight_checklist_id || null;
+      }
+
+      if (foundPostFlightChecklistId) {
+        // Show post-flight checklist prompt instead of closing immediately
+        setPostFlightChecklistId(foundPostFlightChecklistId);
+        setPostFlightMissionId(missionIdToUse || null);
+        setIsSubmitting(false);
+        setPostFlightPromptOpen(true);
+        return; // Don't close dialog yet
+      }
       
       // Reset form
       setFormData({
@@ -825,6 +852,87 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     }
   };
 
+  const resetAndClose = () => {
+    setFormData({
+      droneId: "",
+      missionId: "",
+      pilotId: "",
+      departureLocation: "",
+      landingLocation: "",
+      flightDurationMinutes: 0,
+      movements: 1,
+      flightDate: new Date().toISOString().split('T')[0],
+      notes: "",
+      markMissionCompleted: false,
+    });
+    setSelectedEquipment([]);
+    setLinkedPersonnel([]);
+    setStartTime("");
+    setEndTime("");
+    setPostFlightChecklistId(null);
+    setPostFlightMissionId(null);
+    onOpenChange(false);
+    onFlightLogged?.();
+  };
+
+  const handlePostFlightExecuteNow = () => {
+    setPostFlightPromptOpen(false);
+    setPostFlightExecOpen(true);
+  };
+
+  const handlePostFlightExecuteLater = async () => {
+    setPostFlightPromptOpen(false);
+    // Add checklist to mission's checklist_ids as pending (gray badge)
+    if (postFlightMissionId && postFlightChecklistId) {
+      try {
+        const { data: missionData } = await supabase
+          .from("missions")
+          .select("checklist_ids")
+          .eq("id", postFlightMissionId)
+          .single();
+        const existingIds: string[] = (missionData as any)?.checklist_ids || [];
+        const merged = [...new Set([...existingIds, postFlightChecklistId])];
+        await supabase
+          .from("missions")
+          .update({ checklist_ids: merged })
+          .eq("id", postFlightMissionId);
+      } catch (e) {
+        console.warn("Could not add post-flight checklist to mission:", e);
+      }
+    }
+    resetAndClose();
+  };
+
+  const handlePostFlightChecklistCompleted = async (_checklistId: string) => {
+    setPostFlightExecOpen(false);
+    // Mark checklist as completed on mission
+    if (postFlightMissionId && postFlightChecklistId) {
+      try {
+        const { data: missionData } = await supabase
+          .from("missions")
+          .select("checklist_ids, checklist_completed_ids")
+          .eq("id", postFlightMissionId)
+          .single();
+        const existingIds: string[] = (missionData as any)?.checklist_ids || [];
+        const existingCompleted: string[] = (missionData as any)?.checklist_completed_ids || [];
+        const mergedIds = [...new Set([...existingIds, postFlightChecklistId])];
+        const mergedCompleted = [...new Set([...existingCompleted, postFlightChecklistId])];
+        await supabase
+          .from("missions")
+          .update({ checklist_ids: mergedIds, checklist_completed_ids: mergedCompleted })
+          .eq("id", postFlightMissionId);
+      } catch (e) {
+        console.warn("Could not update post-flight checklist on mission:", e);
+      }
+    }
+    resetAndClose();
+  };
+
+  const handlePostFlightChecklistCancelled = async () => {
+    setPostFlightExecOpen(false);
+    // Treat cancel as "execute later"
+    await handlePostFlightExecuteLater();
+  };
   const selectedDrone = drones.find(d => d.id === formData.droneId);
   const selectedPilot = personnel.find(p => p.id === formData.pilotId);
 
@@ -1242,6 +1350,39 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Post-flight checklist prompt */}
+      <AlertDialog open={postFlightPromptOpen} onOpenChange={setPostFlightPromptOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Post flight sjekkliste</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dronen har en post flight sjekkliste. Vil du utføre den nå eller senere?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={handlePostFlightExecuteLater}>
+              Utfør senere
+            </Button>
+            <Button onClick={handlePostFlightExecuteNow}>
+              Utfør nå
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Post-flight checklist execution */}
+      {postFlightExecOpen && postFlightChecklistId && (
+        <ChecklistExecutionDialog
+          open={postFlightExecOpen}
+          onOpenChange={(open) => {
+            if (!open) handlePostFlightChecklistCancelled();
+          }}
+          checklistId={postFlightChecklistId}
+          itemName="Post flight"
+          onComplete={handlePostFlightChecklistCompleted}
+        />
+      )}
     </Dialog>
   );
 };
