@@ -352,69 +352,76 @@ export function renderSoraZones(
     validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
     validCoords[0].lng === validCoords[validCoords.length - 1].lng;
 
-  // Returns clean (non-self-intersecting) polygon rings for a given buffer distance.
-  // Uses bufferPolyline for the whole route to keep the corridor shape (no interior fill),
-  // then resolves self-intersections via polygon-clipping union.
-  function makeBufferMerged(dist: number): RoutePoint[][] {
+  // Buffer each segment individually — returns separate corridor rings.
+  // Rendered as a single multi-ring L.polygon to avoid double-fill at overlaps,
+  // while NOT merging into one shape (which fills enclosed interior on crossing routes).
+  function makeSegmentBuffers(dist: number): RoutePoint[][] {
     if (dist <= 0) return [validCoords];
     const mode = sora.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
       return [bufferPolygon(hull, dist, refPoint, avgLat)];
     }
-    // Buffer the entire polyline as one corridor polygon
-    const corridor = bufferPolyline(validCoords, dist, 16, refPoint, avgLat);
-    if (corridor.length < 3) return [corridor];
-    // Use polygon-clipping union on the single polygon to resolve self-intersections
-    try {
-      const ring = closeClipRing(corridor);
-      const cleaned = polygonClipping.union([ring]);
-      return fromClipMultiPolygon(cleaned);
-    } catch {
-      return [corridor];
+    const rings: RoutePoint[][] = [];
+    // Buffer each waypoint as a circle (for rounded joins)
+    for (const point of validCoords) {
+      const circle = bufferPolyline([point], dist, 16, refPoint, avgLat);
+      if (circle.length >= 3) rings.push(circle);
     }
+    // Buffer each segment as a corridor
+    for (let i = 0; i < validCoords.length - 1; i++) {
+      const a = validCoords[i];
+      const b = validCoords[i + 1];
+      if (a.lat === b.lat && a.lng === b.lng) continue;
+      const seg = bufferPolyline([a, b], dist, 16, refPoint, avgLat);
+      if (seg.length >= 3) rings.push(seg);
+    }
+    return rings.length > 0 ? rings : [validCoords];
   }
 
-  // Helper: render all merged polygon rings with the same style
-  function addMergedZone(
-    zones: RoutePoint[][],
+  // Helper: render all buffer rings as a single multi-ring L.polygon
+  // so overlapping areas don't get double-filled (single SVG path).
+  function addMultiRingZone(
+    rings: RoutePoint[][],
     style: L.PolylineOptions,
     popupHtml: string
   ) {
-    for (const zone of zones) {
-      const latLngs = safeLatLngs(zone);
-      if (latLngs.length >= 3) {
-        L.polygon(latLngs, style).bindPopup(popupHtml).addTo(layer);
-      }
+    const allLatLngs: [number, number][][] = [];
+    for (const ring of rings) {
+      const latLngs = safeLatLngs(ring);
+      if (latLngs.length >= 3) allLatLngs.push(latLngs);
+    }
+    if (allLatLngs.length > 0) {
+      L.polygon(allLatLngs, style).bindPopup(popupHtml).addTo(layer);
     }
   }
 
   // Flight Geography Area (innermost layer, only when > 0)
   if (sora.flightGeographyDistance > 0) {
-    addMergedZone(
-      makeBufferMerged(sora.flightGeographyDistance),
+    addMultiRingZone(
+      makeSegmentBuffers(sora.flightGeographyDistance),
       { color: '#16a34a', weight: 2, fillColor: '#22c55e', fillOpacity: 0.25 },
       `<strong>Flight Geography Area</strong><br/>${sora.flightGeographyDistance}m`
     );
   }
 
   // Flight geography: the minimal corridor (just the route itself, with 1m buffer for fill)
-  addMergedZone(
-    makeBufferMerged(1),
+  addMultiRingZone(
+    makeSegmentBuffers(1),
     { color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.10 },
     `<strong>Flight Geography</strong><br/>Høyde: ${sora.flightAltitude}m`
   );
 
   // Yellow contingency area
-  addMergedZone(
-    makeBufferMerged(sora.flightGeographyDistance + sora.contingencyDistance),
+  addMultiRingZone(
+    makeSegmentBuffers(sora.flightGeographyDistance + sora.contingencyDistance),
     { color: '#eab308', weight: 2, fillColor: '#eab308', fillOpacity: 0.15, dashArray: '6, 4' },
     `<strong>Contingency Area</strong><br/>${sora.contingencyDistance}m`
   );
 
   // Red ground risk buffer
-  addMergedZone(
-    makeBufferMerged(sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance),
+  addMultiRingZone(
+    makeSegmentBuffers(sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance),
     { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.12, dashArray: '6, 4' },
     `<strong>Ground Risk Buffer</strong><br/>${sora.groundRiskDistance}m`
   );
