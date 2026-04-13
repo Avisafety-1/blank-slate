@@ -26,6 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Package, Info, ChevronDown, AlertTriangle } from "lucide-react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
+import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 import { format } from "date-fns";
 
 interface FlightTrackPosition {
@@ -199,6 +200,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+
+  // Post-flight checklist state
+  const [postFlightPromptOpen, setPostFlightPromptOpen] = useState(false);
+  const [postFlightChecklistId, setPostFlightChecklistId] = useState<string | null>(null);
+  const [postFlightMissionId, setPostFlightMissionId] = useState<string | null>(null);
+  const [postFlightExecOpen, setPostFlightExecOpen] = useState(false);
 
   // Check if this dialog was opened from an active flight timer
   const isFromActiveTimer = prefilledDuration !== undefined;
