@@ -1,33 +1,34 @@
 
 
-## Plan: Add Default Flight Geography Area to Company Settings
+## Plan: Vis personell fra underavdelinger og tilby drone-synlighet
 
-### What changes
-Add a new company-level setting for "Standard Flight Geography Area" (in meters) alongside the existing "Standard SORA-buffersone" setting. This default value will be used when initializing SORA settings for new routes.
+### Problem
+`AddPersonnelToDroneDialog` henter kun personell fra brukerens aktive `companyId`. Personell i underavdelinger vises ikke. Når en person fra en underavdeling legges til, bør brukeren spørres om dronen skal gjøres synlig for den avdelingen.
 
-### Database
-Add column `default_flight_geography_m` (integer, default 0) to `company_sora_config` table.
+### Endringer
 
-### UI Changes
+#### 1. `AddPersonnelToDroneDialog.tsx` - Hent personell fra hele hierarkiet
+- Bruk `get_user_visible_company_ids` RPC for å hente alle selskaps-IDer i hierarkiet
+- Hent personell med `.in("company_id", visibleIds)` i stedet for `.eq("company_id", companyId)`
+- Inkluder `company_id` og selskapsnavn i person-interfacet for å vise avdelingstilhørighet
+- Vis avdelingsnavn som badge/tekst på hvert personell-kort
 
-**`src/components/admin/ChildCompaniesSection.tsx`**
-- Add state `defaultFlightGeographyM` (number, default 0)
-- Fetch it alongside `default_buffer_mode` from `company_sora_config`
-- Add a new UI block inside the SORA buffer section (after the buffer mode radio group): a slider (0-200m) with label "Standard Flight Geography Area (m)" and current value display
-- Save via upsert to `company_sora_config` on change
+#### 2. `AddPersonnelToDroneDialog.tsx` - Bekreftelsesdialog for synlighet
+- Legg til en `AlertDialog` som vises når valgt person tilhører en annen avdeling enn dronens eier
+- Tekst: "Ønsker du å gjøre dronen synlig for [avdelingsnavn]?"
+- Ved "Ja": Insert i `drone_department_visibility` for den avdelingen, deretter legg til personellet
+- Ved "Nei": Legg til personellet uten å endre synlighet
 
-### Consumer Changes
+#### 3. `AddPersonnelToDroneDialog.tsx` - Props og interface
+- Legg til ny prop `droneCompanyId` fra `DroneDetailDialog` (dronens eier-selskap)
+- Legg til prop `onVisibilityChanged` callback for å oppdatere `useDepartmentVisibility`-staten i `DroneDetailDialog`
 
-**`src/pages/Kart.tsx`**
-- Fetch `default_flight_geography_m` alongside `default_buffer_mode` from `company_sora_config`
-- Use it as the initial `flightGeographyDistance` value in `soraSettings` (instead of hardcoded 0)
+#### 4. `DroneDetailDialog.tsx` - Oppdatert integrasjon
+- Pass `droneCompanyId` og `onVisibilityChanged` til `AddPersonnelToDroneDialog`
+- Ved visibility-endring: re-fetch department visibility data via `deptVis`
 
-**`src/components/dashboard/ExpandedMapDialog.tsx`**
-- Same: apply company default for `flightGeographyDistance` in the default SORA settings
-
-### Summary of files
-1. **Migration**: Add `default_flight_geography_m` column
-2. **ChildCompaniesSection.tsx**: New slider UI + save logic
-3. **Kart.tsx**: Read and apply default
-4. **ExpandedMapDialog.tsx**: Read and apply default
+### Teknisk detalj
+- Henter selskapsnavn via join: `profiles` → `companies(id, navn)` 
+- Sjekker eksisterende synlighet i `drone_department_visibility` før prompt (hvis allerede synlig, ingen prompt)
+- Bruker `AlertDialog` fra shadcn for bekreftelsen
 
