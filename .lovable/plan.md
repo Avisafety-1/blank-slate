@@ -1,40 +1,38 @@
 
 
-## Plan: Flyg dronemarkør øverst på kartet
+## Plan: Post Flight Checklist på drone-kort
 
-### Problem
-Når et oppdrag publiseres til SafeSky, vises dronen i `safeskyPane` (z-index 698). Den interne pilotposisjons-markøren har **ingen pane** spesifisert, så den havner i Leaflets standard `markerPane` (z-index 600) — under alle luftromslagene. Dette gjør at man ikke kan klikke på egen drone.
+### Oversikt
+Legg til et nytt felt `post_flight_checklist_id` på droner. Når et oppdrag settes til "Fullført" og tilknyttede droner har en post-flight-sjekkliste, vises en bekreftelsesdialog: "Utfør post flight checklist" eller "Utfør senere". Velger man "senere", legges sjekklisten til oppdragets `checklist_ids` som ufullført (grå badge). Utfører man den, blir den grønn.
 
-### Løsning
-Én liten endring i `src/lib/mapDataFetchers.ts`:
+### Endringer
 
-1. Legg til `pane: 'safeskyPane'` (eller et nytt, enda høyere pane) på pilotposisjons-markøren slik at den alltid ligger øverst og er klikkbar.
+#### 1. Database-migrasjon
+- Legg til `post_flight_checklist_id UUID REFERENCES documents(id)` på `drones`-tabellen
 
-Konkret: Endre markøren på linje ~712 fra:
-```typescript
-const marker = L.marker([flight.start_lat, flight.start_lng], { 
-  icon: pilotIcon, 
-  interactive: mode !== 'routePlanning' 
-});
-```
-til:
-```typescript
-const marker = L.marker([flight.start_lat, flight.start_lng], { 
-  icon: pilotIcon, 
-  interactive: mode !== 'routePlanning',
-  pane: 'safeskyPane'
-});
-```
+#### 2. `DroneDetailDialog.tsx` — nytt felt i UI
+- Legg til et tredje sjekkliste-felt "Post flight sjekkliste" under operasjonssjekklisten
+- Samme select-mønster som `operations_checklist_id`
+- Lagre/laste `post_flight_checklist_id` i formData og save-logikken
 
-Alternativt kan vi opprette et eget `liveFlightPane` med z-index 699 (over SafeSky men under popups) for å holde hierarkiet rent. Da vises egne droner alltid over SafeSky-trafikk.
+#### 3. `AddDroneDialog.tsx` — nytt felt ved opprettelse
+- Legg til select for post flight checklist, tilsvarende operations-feltet
 
-### Anbefaling
-Eget pane `liveFlightPane` med z-index 699. Fordel: egne droner skiller seg visuelt fra ekstern trafikk og er alltid klikkbare.
+#### 4. `MissionStatusDropdown.tsx` — bekreftelsesdialog ved fullføring
+- Når status endres til "Fullført": hent tilknyttede droner via `mission_drones`, sjekk om noen har `post_flight_checklist_id`
+- Hvis ja: vis en `AlertDialog` med to valg:
+  - **"Utfør nå"** → åpne `ChecklistExecutionDialog`, deretter fullfør
+  - **"Utfør senere"** → legg sjekkliste-IDene til oppdragets `checklist_ids` (men ikke `checklist_completed_ids`), fullfør oppdraget
+- Hvis ingen post-flight-sjekklister finnes, fullfør som normalt
 
-### Berørte filer
-- `src/components/OpenAIPMap.tsx` — opprett `liveFlightPane` med z-index 699 i `paneConfig`
-- `src/lib/mapDataFetchers.ts` — sett `pane: 'liveFlightPane'` på pilotmarkørene (~linje 712)
+#### 5. Oppdragskortet (`MissionCard.tsx`) — eksisterende badge-logikk håndterer resten
+- Allerede implementert: sjekklister i `checklist_ids` som ikke er i `checklist_completed_ids` vises som grå badge. Når utført → grønn. Ingen endring nødvendig her.
+
+### Teknisk detalj
+- `MissionStatusDropdown` utvides med intern state for å vise AlertDialog og eventuelt ChecklistExecutionDialog
+- Post-flight-sjekkliste-IDer hentes via: `SELECT d.post_flight_checklist_id FROM mission_drones md JOIN drones d ON d.id = md.drone_id WHERE md.mission_id = ? AND d.post_flight_checklist_id IS NOT NULL`
+- Ved "utfør senere": oppdater `missions.checklist_ids` med UNION av eksisterende + post-flight-IDer
 
 ### Omfang
-Svært liten endring — 2 linjer i 2 filer.
+Middels endring — 1 migrasjon, 4 filer.
 
