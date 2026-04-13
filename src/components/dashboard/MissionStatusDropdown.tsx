@@ -275,8 +275,8 @@ export const MissionStatusDropdown = ({
             if (!open) handleChecklistCancelled();
           }}
           checklistId={postFlightChecklistIds[currentChecklistIndex]}
-          missionId={missionId}
-          onCompleted={handleChecklistCompleted}
+          itemName="Post flight"
+          onComplete={handleChecklistCompleted}
         />
       )}
     </>
