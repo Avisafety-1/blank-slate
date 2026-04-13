@@ -1,38 +1,45 @@
 
 
-## Plan: Post Flight Checklist på drone-kort
+## Plan: Post flight checklist ved logging av flytur
 
-### Oversikt
-Legg til et nytt felt `post_flight_checklist_id` på droner. Når et oppdrag settes til "Fullført" og tilknyttede droner har en post-flight-sjekkliste, vises en bekreftelsesdialog: "Utfør post flight checklist" eller "Utfør senere". Velger man "senere", legges sjekklisten til oppdragets `checklist_ids` som ufullført (grå badge). Utfører man den, blir den grønn.
+### Problem
+Post-flight-sjekkliste-logikken ble kun implementert i `MissionStatusDropdown` (manuell statusendring). Når man logger flytur via `LogFlightTimeDialog` og krysser av "Marker oppdrag som fullført", oppdateres oppdraget direkte til "Fullført" uten å sjekke om dronen har en post-flight-sjekkliste. Sjekkliste-IDen legges aldri til oppdragets `checklist_ids`, så ingen badge vises på oppdragskortet.
 
-### Endringer
+### Løsning
+Utvide `LogFlightTimeDialog` med samme post-flight-sjekklistelogikk som i `MissionStatusDropdown`:
 
-#### 1. Database-migrasjon
-- Legg til `post_flight_checklist_id UUID REFERENCES documents(id)` på `drones`-tabellen
+#### 1. `LogFlightTimeDialog.tsx` — legg til post-flight-sjekkliste-flyt
 
-#### 2. `DroneDetailDialog.tsx` — nytt felt i UI
-- Legg til et tredje sjekkliste-felt "Post flight sjekkliste" under operasjonssjekklisten
-- Samme select-mønster som `operations_checklist_id`
-- Lagre/laste `post_flight_checklist_id` i formData og save-logikken
+Etter at flyloggen er lagret og oppdraget skal markeres som fullført (linje ~783-798):
 
-#### 3. `AddDroneDialog.tsx` — nytt felt ved opprettelse
-- Legg til select for post flight checklist, tilsvarende operations-feltet
+- Hent `post_flight_checklist_id` fra valgt drone (`formData.droneId`)
+- Hvis den finnes: vis en `AlertDialog` med "Utfør nå" / "Utfør senere"
+  - **Utfør nå**: Åpne `ChecklistExecutionDialog`, deretter lukk dialogen
+  - **Utfør senere**: Legg sjekkliste-IDen til oppdragets `checklist_ids` (men ikke `checklist_completed_ids`), slik at den vises som grå badge
+- Legg også til sjekkliste-IDen til `checklist_ids` ved auto-genererte oppdrag (linje ~700-722)
 
-#### 4. `MissionStatusDropdown.tsx` — bekreftelsesdialog ved fullføring
-- Når status endres til "Fullført": hent tilknyttede droner via `mission_drones`, sjekk om noen har `post_flight_checklist_id`
-- Hvis ja: vis en `AlertDialog` med to valg:
-  - **"Utfør nå"** → åpne `ChecklistExecutionDialog`, deretter fullfør
-  - **"Utfør senere"** → legg sjekkliste-IDene til oppdragets `checklist_ids` (men ikke `checklist_completed_ids`), fullfør oppdraget
-- Hvis ingen post-flight-sjekklister finnes, fullfør som normalt
+Ny state som trengs:
+- `postFlightPromptOpen` (boolean)
+- `postFlightChecklistId` (string | null)
+- `postFlightMissionId` (string | null)
+- `postFlightExecOpen` (boolean)
 
-#### 5. Oppdragskortet (`MissionCard.tsx`) — eksisterende badge-logikk håndterer resten
-- Allerede implementert: sjekklister i `checklist_ids` som ikke er i `checklist_completed_ids` vises som grå badge. Når utført → grønn. Ingen endring nødvendig her.
+#### 2. Også håndter tilfellet uten "marker som fullført"
 
-### Teknisk detalj
-- `MissionStatusDropdown` utvides med intern state for å vise AlertDialog og eventuelt ChecklistExecutionDialog
-- Post-flight-sjekkliste-IDer hentes via: `SELECT d.post_flight_checklist_id FROM mission_drones md JOIN drones d ON d.id = md.drone_id WHERE md.mission_id = ? AND d.post_flight_checklist_id IS NOT NULL`
-- Ved "utfør senere": oppdater `missions.checklist_ids` med UNION av eksisterende + post-flight-IDer
+Selv om brukeren ikke krysser av for å fullføre oppdraget, bør post-flight-sjekklisten likevel tilbys etter logging. Sjekklisten er knyttet til dronen, ikke oppdraget. Så prompten skal komme uansett når dronen har en `post_flight_checklist_id`.
+
+Flyten blir:
+1. Flylogg lagres (som nå)
+2. Oppdrag oppdateres om valgt (som nå)
+3. Sjekk om valgt drone har `post_flight_checklist_id`
+4. Hvis ja → vis prompt
+5. Hvis "utfør nå" → åpne `ChecklistExecutionDialog`
+6. Hvis "utfør senere" og det finnes et tilknyttet oppdrag → legg til i oppdragets `checklist_ids`
+7. Lukk dialogen og kall `onFlightLogged`
+
+### Berørte filer
+- `src/components/LogFlightTimeDialog.tsx` — hovedendring: post-flight-sjekkliste-prompt + execution etter submit
 
 ### Omfang
-Middels endring — 1 migrasjon, 4 filer.
+Middels — 1 fil, men krever ny state og dialog-logikk i en allerede stor komponent.
 
