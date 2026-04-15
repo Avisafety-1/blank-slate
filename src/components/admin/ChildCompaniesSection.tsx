@@ -1152,6 +1152,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       </Collapsible>
 
       {departmentsEnabled && (
+      <>
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
           <div>
