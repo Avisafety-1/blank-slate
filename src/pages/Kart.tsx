@@ -416,6 +416,11 @@ export default function KartPage() {
                   <div className="min-w-0 flex-1">
                     <h1 className="truncate text-sm font-semibold text-foreground">Planlegg flyrute</h1>
 
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
+                      {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
+                    </p>
+
                     {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
                       <div
                         className={cn(
@@ -441,11 +446,6 @@ export default function KartPage() {
                         </span>
                       </div>
                     )}
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
-                      {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
-                    </p>
                   </div>
                 </div>
 
