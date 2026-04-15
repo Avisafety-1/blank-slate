@@ -1766,7 +1766,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           <ChevronDown className="h-4 w-4 shrink-0 opacity-50 ml-1" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
+                      <PopoverContent className="w-[min(var(--radix-popover-trigger-width),calc(100vw-2rem))] p-2" align="start">
                         <div className="space-y-1 max-h-48 overflow-y-auto">
                           {checklists.map((checklist) => (
                             <label key={checklist.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
