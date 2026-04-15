@@ -519,15 +519,6 @@ export default function KartPage() {
 
                 <div className="ml-auto flex shrink-0 items-center gap-1 self-start">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
-                    className="h-8 px-1.5 text-[10px]"
-                    title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
-                  >
-                    Sensor
-                  </Button>
-                  <Button
                     variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                     size="sm"
                     onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
