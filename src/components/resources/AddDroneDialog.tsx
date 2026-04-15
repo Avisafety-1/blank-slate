@@ -4,6 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
@@ -471,30 +474,37 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
               <Label>Operasjonssjekklister</Label>
-              <div className="mt-2 space-y-1 max-h-40 overflow-y-auto border rounded-md p-2">
-                {checklists.map((checklist) => (
-                  <label key={checklist.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                    <input
-                      type="checkbox"
-                      checked={selectedOpsChecklistIds.includes(checklist.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedOpsChecklistIds(prev => [...prev, checklist.id]);
-                        } else {
-                          setSelectedOpsChecklistIds(prev => prev.filter(id => id !== checklist.id));
-                        }
-                      }}
-                      className="rounded border-input"
-                    />
-                    {checklist.tittel}
-                  </label>
-                ))}
-              </div>
-              {selectedOpsChecklistIds.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {selectedOpsChecklistIds.length} sjekkliste(r) valgt
-                </p>
-              )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between font-normal mt-1">
+                    <span className="truncate">
+                      {selectedOpsChecklistIds.length > 0
+                        ? `${selectedOpsChecklistIds.length} sjekkliste(r) valgt`
+                        : "Velg operasjonssjekklister (valgfritt)"}
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {checklists.map((checklist) => (
+                      <label key={checklist.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                        <Checkbox
+                          checked={selectedOpsChecklistIds.includes(checklist.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedOpsChecklistIds(prev => [...prev, checklist.id]);
+                            } else {
+                              setSelectedOpsChecklistIds(prev => prev.filter(id => id !== checklist.id));
+                            }
+                          }}
+                        />
+                        {checklist.tittel}
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <p className="text-xs text-muted-foreground mt-1">
                 Kobles automatisk til oppdrag når dronen legges til
               </p>
