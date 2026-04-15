@@ -1763,7 +1763,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
+                      <PopoverContent className="w-[min(--radix-popover-trigger-width,calc(100vw-2rem))] max-w-sm p-2" align="start">
                         <div className="space-y-1 max-h-60 overflow-y-auto">
                           {checklists.map((checklist) => {
                             const isSelected = ((formData as any).operations_checklist_ids || []).includes(checklist.id);
