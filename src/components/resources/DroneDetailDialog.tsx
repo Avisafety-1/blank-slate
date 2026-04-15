@@ -7,13 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck, ClipboardList } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck } from "lucide-react";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
@@ -58,7 +57,7 @@ interface Drone {
   varsel_timer: number | null;
   varsel_oppdrag: number | null;
   sjekkliste_id: string | null;
-  operations_checklist_ids: string[] | null;
+  operations_checklist_id: string | null;
   post_flight_checklist_id: string | null;
   technical_responsible_id: string | null;
 }
@@ -135,7 +134,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     varsel_timer: "",
     varsel_oppdrag: "",
     sjekkliste_id: "",
-    operations_checklist_ids: [] as string[],
+    operations_checklist_id: "",
     post_flight_checklist_id: "",
   });
 
@@ -198,7 +197,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         varsel_timer: drone.varsel_timer !== null ? String(drone.varsel_timer) : "",
         varsel_oppdrag: drone.varsel_oppdrag !== null ? String(drone.varsel_oppdrag) : "",
     sjekkliste_id: drone.sjekkliste_id || "",
-    operations_checklist_ids: (drone as any).operations_checklist_ids || [],
+    operations_checklist_id: (drone as any).operations_checklist_id || "",
     post_flight_checklist_id: (drone as any).post_flight_checklist_id || "",
   });
   setFormTechnicalResponsibleId(drone.technical_responsible_id || null);
@@ -704,7 +703,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
           varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
           sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
-          operations_checklist_ids: (formData as any).operations_checklist_ids?.length > 0 ? (formData as any).operations_checklist_ids : [],
+          operations_checklist_id: formData.operations_checklist_id && formData.operations_checklist_id !== "none" ? formData.operations_checklist_id : null,
           post_flight_checklist_id: formData.post_flight_checklist_id && formData.post_flight_checklist_id !== "none" ? formData.post_flight_checklist_id : null,
           technical_responsible_id: formTechnicalResponsibleId || null,
         })
@@ -781,7 +780,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="box-border w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] max-h-[90vh] overflow-x-hidden overflow-y-auto p-4 sm:w-[95vw] sm:max-w-2xl sm:p-6">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -1492,7 +1491,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="modell">Modell</Label>
                   <Input
@@ -1530,7 +1529,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="klasse">Klasse</Label>
                   <Select value={formData.klasse || ""} onValueChange={(value) => setFormData({ ...formData, klasse: value })}>
@@ -1558,7 +1557,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="vekt">Vekt MTOM (kg)</Label>
                   <Input
@@ -1583,7 +1582,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="flyvetimer">Flyvetimer</Label>
                   <Input
@@ -1620,7 +1619,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-4 pt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="sist_inspeksjon">Sist inspeksjon</Label>
                       <Input
@@ -1642,7 +1641,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="inspection_start_date">Startdato</Label>
                       <Input 
@@ -1663,7 +1662,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="inspection_interval_hours">Flytimer mellom inspeksjoner</Label>
                       <Input 
@@ -1686,7 +1685,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
                       <Input 
@@ -1752,44 +1751,25 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       Hvis valgt, må sjekklisten fullføres før inspeksjon registreres
                     </p>
                   </div>
-                  <Collapsible className="border-t pt-4">
-                    <Label htmlFor="operations_checklist">Operasjonssjekklister</Label>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="outline" type="button" className="mt-1 h-10 w-full justify-between font-normal min-w-0">
-                        {((formData as any).operations_checklist_ids || []).length > 0
-                          ? `${((formData as any).operations_checklist_ids || []).length} valgt`
-                          : "Velg operasjonssjekklister (valgfritt)"}
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform [[data-state=open]>&]:rotate-180" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 overflow-hidden rounded-md border border-border bg-background">
-                      <div className="max-h-60 space-y-1 overflow-y-auto overflow-x-hidden p-2">
-                        {checklists.map((checklist) => {
-                          const isSelected = ((formData as any).operations_checklist_ids || []).includes(checklist.id);
-                          return (
-                            <label key={checklist.id} className="flex w-full min-w-0 items-start gap-2 cursor-pointer rounded px-2 py-1.5 transition-colors hover:bg-muted/50">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  const current: string[] = (formData as any).operations_checklist_ids || [];
-                                  const updated = e.target.checked
-                                    ? [...current, checklist.id]
-                                    : current.filter((id: string) => id !== checklist.id);
-                                  setFormData({ ...formData, operations_checklist_ids: updated } as any);
-                                }}
-                                className="mt-0.5 shrink-0 rounded border-border"
-                              />
-                              <span className="min-w-0 whitespace-normal break-words text-sm">{checklist.tittel}</span>
-                            </label>
-                          );
-                        })}
-                        {checklists.length === 0 && (
-                          <p className="p-2 text-xs text-muted-foreground">Ingen sjekklister tilgjengelig</p>
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                  <div className="border-t pt-4">
+                    <Label htmlFor="operations_checklist">Operasjonssjekkliste</Label>
+                    <Select value={formData.operations_checklist_id} onValueChange={(value) => setFormData({ ...formData, operations_checklist_id: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Velg operasjonssjekkliste (valgfritt)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                        {checklists.map((checklist) => (
+                          <SelectItem key={checklist.id} value={checklist.id}>
+                            {checklist.tittel}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Kobles automatisk til oppdrag når dronen legges til
+                    </p>
+                  </div>
                   <div className="border-t pt-4">
                     <Label htmlFor="post_flight_checklist">Post flight sjekkliste</Label>
                     <Select value={formData.post_flight_checklist_id} onValueChange={(value) => setFormData({ ...formData, post_flight_checklist_id: value })}>

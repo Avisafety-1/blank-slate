@@ -1527,7 +1527,6 @@ export type Database = {
           modell: string
           neste_inspeksjon: string | null
           operations_checklist_id: string | null
-          operations_checklist_ids: string[] | null
           oppdatert_dato: string
           opprettet_dato: string
           payload: number | null
@@ -1564,7 +1563,6 @@ export type Database = {
           modell: string
           neste_inspeksjon?: string | null
           operations_checklist_id?: string | null
-          operations_checklist_ids?: string[] | null
           oppdatert_dato?: string
           opprettet_dato?: string
           payload?: number | null
@@ -1601,7 +1599,6 @@ export type Database = {
           modell?: string
           neste_inspeksjon?: string | null
           operations_checklist_id?: string | null
-          operations_checklist_ids?: string[] | null
           oppdatert_dato?: string
           opprettet_dato?: string
           payload?: number | null

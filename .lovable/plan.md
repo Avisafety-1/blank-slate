@@ -1,25 +1,43 @@
 
 
-## Fix: Mobilbredde for "Rediger drone"-modus i DroneDetailDialog
+## Plan: Fix document DELETE RLS policies
 
-Problemet er at redigeringsmodus (isEditing) bruker faste `grid-cols-2` og `grid-cols-3` uten responsive breakpoints. På 390px viewport blir to kolonner med input-felter for smale.
+### Problem
+Two issues prevent document deletion:
 
-Endringen gjelder KUN edit-mode grids i DroneDetailDialog.tsx — visningsmodus (read-only) forblir uendret.
+1. The DELETE policy "Admins can delete documents in own company" checks `has_role(auth.uid(), 'admin')` but users with the `'administrator'` enum value are not matched — only `'admin'` is. The frontend treats both as admin (line 494 in AuthContext), but RLS does not.
 
-### Endringer i `src/components/resources/DroneDetailDialog.tsx`
+2. The superadmin DELETE policy checks `company_id = get_user_company_id(auth.uid())`, which returns the superadmin's own company (Avisafe). When viewing Kystvakten documents, this check fails because the documents belong to a different company_id.
 
-**1. Rediger-grids (6 steder, ca. linje 1495-1688)**
+### Solution — 1 migration
 
-Alle edit-mode `grid-cols-2 gap-4` endres til `grid-cols-1 sm:grid-cols-2 gap-4`:
-- Modell / Serienummer (~linje 1495)
-- Klasse / Kjøpsdato (~linje 1533)
-- Vekt / Payload (~linje 1561)
-- Flyvetimer / Status (~linje 1586)
-- Inspeksjon datoer (~linje 1623, 1645, 1666)
+Update the three DELETE policies on `documents`:
 
-**2. Varsel-grid (linje 1689)**
+#### 1. "Admins can delete documents in own company"
+Change from:
+```sql
+has_role(auth.uid(), 'admin') AND company_id = get_user_company_id(auth.uid())
+```
+To:
+```sql
+(has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'administrator'))
+AND company_id = get_user_company_id(auth.uid())
+```
 
-`grid-cols-3 gap-4` endres til `grid-cols-1 sm:grid-cols-3 gap-4`
+#### 2. "Superadmins can delete all documents"
+Change from:
+```sql
+is_superadmin(auth.uid()) AND company_id = get_user_company_id(auth.uid())
+```
+To:
+```sql
+is_superadmin(auth.uid())
+```
+This lets superadmins delete documents from any company, matching their broad SELECT access.
 
-Disse endringene gjør at feltene stables vertikalt på mobil og vises side-om-side på bredere skjermer, uten å endre visningsmodus eller annen funksjonalitet.
+#### 3. Also fix UPDATE policies (same pattern)
+The "Admins can update" policy has the same `'admin'`-only issue — add `'administrator'` there too. The superadmin UPDATE policy already has a broader "global visibility" variant, so no change needed there.
+
+### Scope
+Minimal — 1 migration, no code changes. Fixes both the administrator role gap and the cross-company superadmin restriction.
 
