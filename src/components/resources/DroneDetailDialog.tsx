@@ -1757,13 +1757,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     <Label>Operasjonssjekklister</Label>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full min-w-0 justify-between font-normal mt-1" disabled={!isEditing}>
-                          <span className="truncate text-left">
+                        <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
+                          <span className="min-w-0 flex-1 truncate text-left">
                             {(formData.operations_checklist_ids || []).length > 0
                               ? `${(formData.operations_checklist_ids || []).length} sjekkliste(r) valgt`
                               : "Velg sjekklister (valgfritt)"}
                           </span>
-                          <ChevronDown className="h-4 w-4 shrink-0 opacity-50 ml-1" />
+                          <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[min(var(--radix-popover-trigger-width),calc(100vw-2rem))] p-2" align="start">
