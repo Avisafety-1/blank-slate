@@ -730,13 +730,13 @@ export default function KartPage() {
           
           {/* SORA shared header row */}
           <div className="border-t border-border">
-            <div className="flex items-center justify-end gap-4 px-3 py-2 sm:px-4">
+            <div className="flex items-center justify-end gap-2 sm:gap-4 px-3 py-1 sm:py-2 sm:px-4">
               {/* Left: SORA volum trigger */}
               <button
                 onClick={() => setSoraOpen((o) => !o)}
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity"
               >
-                <span className="text-sm font-medium text-foreground">SORA volum</span>
+                <span className="text-sm font-medium text-foreground"><span className="sm:hidden">Buffer</span><span className="hidden sm:inline">SORA volum</span></span>
                 <Switch
                   checked={soraSettings.enabled}
                   onCheckedChange={(checked) => {
