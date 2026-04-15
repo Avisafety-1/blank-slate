@@ -467,23 +467,34 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             </div>
           )}
           
-          {/* Operations checklist selection */}
+          {/* Operations checklist multi-select */}
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <Label htmlFor="ops_checklist">Operasjonssjekkliste</Label>
-              <Select value={selectedOpsChecklistId} onValueChange={setSelectedOpsChecklistId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Velg operasjonssjekkliste (valgfritt)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
-                  {checklists.map((checklist) => (
-                    <SelectItem key={checklist.id} value={checklist.id}>
-                      {checklist.tittel}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Operasjonssjekklister</Label>
+              <div className="mt-2 space-y-1 max-h-40 overflow-y-auto border rounded-md p-2">
+                {checklists.map((checklist) => (
+                  <label key={checklist.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selectedOpsChecklistIds.includes(checklist.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedOpsChecklistIds(prev => [...prev, checklist.id]);
+                        } else {
+                          setSelectedOpsChecklistIds(prev => prev.filter(id => id !== checklist.id));
+                        }
+                      }}
+                      className="rounded border-input"
+                    />
+                    {checklist.tittel}
+                  </label>
+                ))}
+              </div>
+              {selectedOpsChecklistIds.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {selectedOpsChecklistIds.length} sjekkliste(r) valgt
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 Kobles automatisk til oppdrag når dronen legges til
               </p>
