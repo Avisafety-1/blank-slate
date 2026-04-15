@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -1753,32 +1755,38 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </div>
                   <div className="border-t pt-4">
                     <Label>Operasjonssjekklister</Label>
-                    <div className="mt-2 space-y-1 max-h-40 overflow-y-auto border rounded-md p-2">
-                      {checklists.map((checklist) => (
-                        <label key={checklist.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                          <input
-                            type="checkbox"
-                            checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
-                            onChange={(e) => {
-                              const current = formData.operations_checklist_ids || [];
-                              if (e.target.checked) {
-                                setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
-                              } else {
-                                setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
-                              }
-                            }}
-                            disabled={!isEditing}
-                            className="rounded border-input"
-                          />
-                          {checklist.tittel}
-                        </label>
-                      ))}
-                    </div>
-                    {(formData.operations_checklist_ids || []).length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {(formData.operations_checklist_ids || []).length} sjekkliste(r) valgt
-                      </p>
-                    )}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between font-normal mt-1" disabled={!isEditing}>
+                          <span className="truncate">
+                            {(formData.operations_checklist_ids || []).length > 0
+                              ? `${(formData.operations_checklist_ids || []).length} sjekkliste(r) valgt`
+                              : "Velg operasjonssjekklister (valgfritt)"}
+                          </span>
+                          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                          {checklists.map((checklist) => (
+                            <label key={checklist.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                              <Checkbox
+                                checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
+                                onCheckedChange={(checked) => {
+                                  const current = formData.operations_checklist_ids || [];
+                                  if (checked) {
+                                    setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
+                                  } else {
+                                    setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
+                                  }
+                                }}
+                              />
+                              {checklist.tittel}
+                            </label>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     <p className="text-xs text-muted-foreground mt-1">
                       Kobles automatisk til oppdrag når dronen legges til
                     </p>
