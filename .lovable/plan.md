@@ -1,40 +1,27 @@
 
 
-## Plan: Automatisk daglig NOTAM-synkronisering kl 05:00
+## Plan: "Mitt selskap"-tab alltid synlig, avdelingsseksjon styrt av toggle
 
-### Tilnærming
-Sett opp en `pg_cron`-jobb som kaller `fetch-notams` Edge Function hver dag kl 05:00 UTC (07:00 norsk sommertid / 06:00 vintertid). Bruker `pg_net` for HTTP-kallet.
+### Problem
+Taben "Mitt selskap" (`child-companies`) i Admin vises kun når `departmentsEnabled` er true (eller bruker er superadmin). Ønsket er at taben alltid skal vises for alle admins, men at seksjonen "Avdelinger" (opprette/administrere underavdelinger) nederst i taben kun vises når `departmentsEnabled` er aktivert av superadmin.
 
 ### Endringer
 
-#### 1. Aktiver pg_cron og pg_net (hvis ikke allerede aktivert)
-SQL via Supabase insert-verktøy:
-```sql
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
-```
+#### 1. `src/pages/Admin.tsx`
+- Fjern `departmentsEnabled`-betingelsen fra TabsTrigger og TabsContent for `child-companies`-taben, slik at den alltid vises for alle admins (ikke bare superadmins og de med departments enabled)
+- Betingelsen `{(isSuperAdmin || (!isChildCompany && departmentsEnabled))}` erstattes med `{(isSuperAdmin || !isChildCompany)}` — eller bare fjernes helt slik at alle admins ser taben
+- Send `departmentsEnabled` som prop til `ChildCompaniesSection`
 
-#### 2. Opprett cron-jobb
-SQL via Supabase insert-verktøy (ikke migrasjon, da den inneholder prosjektspesifikke verdier):
-```sql
-SELECT cron.schedule(
-  'notam-daily-sync',
-  '0 5 * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/fetch-notams',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}'::jsonb,
-    body := '{}'::jsonb
-  ) AS request_id;
-  $$
-);
-```
+#### 2. `src/components/admin/ChildCompaniesSection.tsx`
+- Ta imot ny prop `departmentsEnabled: boolean`
+- Wrap "Avdelinger"-seksjonen (GlassCard med "Ny avdeling"-knapp, tabellen, og CompanyManagementDialog) i en `{departmentsEnabled && (...)}` betingelse
+- Selskapsinnstillinger-seksjonen (øverst) forblir alltid synlig
 
 ### Resultat
-- NOTAMs synkroniseres automatisk kl 05:00 UTC hver dag
-- Manuell "Synk nå"-knappen beholdes for on-demand-synk
-- Ingen kodeendringer nødvendig — kun database-konfigurasjon
+- Alle admins (ikke underavdelinger) ser alltid "Mitt selskap"-taben
+- Selskapsinnstillinger (FH2, roller, varsler osv.) er alltid tilgjengelige
+- Muligheten til å opprette/administrere avdelinger vises kun når superadmin har aktivert `departments_enabled` for selskapet
 
 ### Omfang
-Minimal — kun SQL-kommandoer, ingen filendringer.
+Minimal — 2 filer, kun betingelsesendringer.
 
