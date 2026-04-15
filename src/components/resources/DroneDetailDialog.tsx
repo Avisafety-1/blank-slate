@@ -1756,19 +1756,22 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     <Label htmlFor="operations_checklist">Operasjonssjekklister</Label>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-10 mt-1">
+                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-10 mt-1 min-w-0">
                           {((formData as any).operations_checklist_ids || []).length > 0
                             ? `${((formData as any).operations_checklist_ids || []).length} valgt`
                             : "Velg operasjonssjekklister (valgfritt)"}
                           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[min(--radix-popover-trigger-width,calc(100vw-2rem))] max-w-sm p-2" align="start">
-                        <div className="space-y-1 max-h-60 overflow-y-auto">
+                      <PopoverContent
+                        className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-x-hidden p-2 sm:w-[var(--radix-popover-trigger-width)] sm:max-w-sm"
+                        align="start"
+                      >
+                        <div className="max-h-60 space-y-1 overflow-y-auto overflow-x-hidden">
                           {checklists.map((checklist) => {
                             const isSelected = ((formData as any).operations_checklist_ids || []).includes(checklist.id);
                             return (
-                              <label key={checklist.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-2 py-1.5 transition-colors">
+                              <label key={checklist.id} className="flex w-full min-w-0 items-start gap-2 cursor-pointer rounded px-2 py-1.5 transition-colors hover:bg-muted/50">
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
@@ -1779,14 +1782,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                                       : current.filter((id: string) => id !== checklist.id);
                                     setFormData({ ...formData, operations_checklist_ids: updated } as any);
                                   }}
-                                  className="rounded border-border"
+                                  className="mt-0.5 shrink-0 rounded border-border"
                                 />
-                                <span className="text-sm">{checklist.tittel}</span>
+                                <span className="min-w-0 whitespace-normal break-words text-sm">{checklist.tittel}</span>
                               </label>
                             );
                           })}
                           {checklists.length === 0 && (
-                            <p className="text-xs text-muted-foreground p-2">Ingen sjekklister tilgjengelig</p>
+                            <p className="p-2 text-xs text-muted-foreground">Ingen sjekklister tilgjengelig</p>
                           )}
                         </div>
                       </PopoverContent>
