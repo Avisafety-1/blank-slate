@@ -1752,20 +1752,32 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     </p>
                   </div>
                   <div className="border-t pt-4">
-                    <Label htmlFor="operations_checklist">Operasjonssjekkliste</Label>
-                    <Select value={formData.operations_checklist_id} onValueChange={(value) => setFormData({ ...formData, operations_checklist_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Velg operasjonssjekkliste (valgfritt)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Ingen sjekkliste</SelectItem>
-                        {checklists.map((checklist) => (
-                          <SelectItem key={checklist.id} value={checklist.id}>
-                            {checklist.tittel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="operations_checklist">Operasjonssjekklister</Label>
+                    <div className="space-y-2 mt-2">
+                      {checklists.map((checklist) => {
+                        const isSelected = ((formData as any).operations_checklist_ids || []).includes(checklist.id);
+                        return (
+                          <label key={checklist.id} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const current: string[] = (formData as any).operations_checklist_ids || [];
+                                const updated = e.target.checked
+                                  ? [...current, checklist.id]
+                                  : current.filter((id: string) => id !== checklist.id);
+                                setFormData({ ...formData, operations_checklist_ids: updated } as any);
+                              }}
+                              className="rounded border-border"
+                            />
+                            <span className="text-sm">{checklist.tittel}</span>
+                          </label>
+                        );
+                      })}
+                      {checklists.length === 0 && (
+                        <p className="text-xs text-muted-foreground">Ingen sjekklister tilgjengelig</p>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       Kobles automatisk til oppdrag når dronen legges til
                     </p>
