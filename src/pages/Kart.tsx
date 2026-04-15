@@ -574,7 +574,7 @@ export default function KartPage() {
           
           {/* SORA shared header row */}
           <div className="border-t border-border">
-            <div className="flex items-center justify-between px-3 py-2 sm:px-4">
+            <div className="flex items-center justify-end gap-4 px-3 py-2 sm:px-4">
               {/* Left: SORA volum trigger */}
               <button
                 onClick={() => setSoraOpen((o) => !o)}
