@@ -400,7 +400,7 @@ export default function KartPage() {
           <div className="flex flex-col gap-1">
             {/* Route info + all buttons on one row */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-auto">
+              <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
                 <Route className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                 <div className="min-w-0">
                   <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">Planlegg flyrute</h1>
