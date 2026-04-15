@@ -44,7 +44,11 @@ interface ChildCompany {
   parent_company_id?: string | null;
 }
 
-export const ChildCompaniesSection = () => {
+interface ChildCompaniesSectionProps {
+  departmentsEnabled: boolean;
+}
+
+export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSectionProps) => {
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
   const soraApprovalEnabled = useSoraApprovalEnabled();
@@ -1147,6 +1151,8 @@ export const ChildCompaniesSection = () => {
         </GlassCard>
       </Collapsible>
 
+      {departmentsEnabled && (
+      <>
       <GlassCard>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -1257,6 +1263,8 @@ export const ChildCompaniesSection = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>
+      )}
     </div>
   );
 };
