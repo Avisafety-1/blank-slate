@@ -1751,22 +1751,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       Hvis valgt, må sjekklisten fullføres før inspeksjon registreres
                     </p>
                   </div>
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <button type="button" className="flex items-center gap-2 w-full border-t pt-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                        <ClipboardList className="w-4 h-4" />
-                        Operasjonssjekklister
-                        {((formData as any).operations_checklist_ids || []).length > 0 && (
-                          <Badge variant="secondary" className="ml-1 text-xs">{((formData as any).operations_checklist_ids || []).length}</Badge>
-                        )}
-                        <ChevronDown className="w-4 h-4 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
-                      </button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-2 pt-3">
+                  <div className="border-t pt-4">
+                    <Label htmlFor="operations_checklist">Operasjonssjekklister</Label>
+                    <div className="mt-2 space-y-2 border rounded-md p-3">
                       {checklists.map((checklist) => {
                         const isSelected = ((formData as any).operations_checklist_ids || []).includes(checklist.id);
                         return (
-                          <label key={checklist.id} className="flex items-center gap-2 cursor-pointer">
+                          <label key={checklist.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5 transition-colors">
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -1786,11 +1777,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       {checklists.length === 0 && (
                         <p className="text-xs text-muted-foreground">Ingen sjekklister tilgjengelig</p>
                       )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Kobles automatisk til oppdrag når dronen legges til
-                      </p>
-                    </CollapsibleContent>
-                  </Collapsible>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Kobles automatisk til oppdrag når dronen legges til
+                    </p>
+                  </div>
                   <div className="border-t pt-4">
                     <Label htmlFor="post_flight_checklist">Post flight sjekkliste</Label>
                     <Select value={formData.post_flight_checklist_id} onValueChange={(value) => setFormData({ ...formData, post_flight_checklist_id: value })}>
