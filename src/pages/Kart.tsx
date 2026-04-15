@@ -467,7 +467,7 @@ export default function KartPage() {
                 </div>
               </div>
 
-              <div className="mt-1.5 flex items-center gap-2">
+              <div className="mt-0.5 flex items-center gap-2">
                 <div className="min-w-0 flex flex-1 flex-wrap items-center gap-1.5">
                   {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
                     <div
@@ -730,7 +730,7 @@ export default function KartPage() {
           
           {/* SORA shared header row */}
           <div className="border-t border-border">
-            <div className="flex items-center justify-end gap-2 sm:gap-4 px-3 py-1 sm:py-2 sm:px-4">
+            <div className="flex items-center justify-end gap-2 sm:gap-4 px-3 py-0.5 sm:py-2 sm:px-4">
               {/* Left: SORA volum trigger */}
               <button
                 onClick={() => setSoraOpen((o) => !o)}
