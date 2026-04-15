@@ -469,6 +469,15 @@ export default function KartPage() {
                   >
                     IPPC
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
+                    className="h-8 px-1.5 text-[10px]"
+                    title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
+                  >
+                    Sensor
+                  </Button>
                   {hasFH2Token && currentRoute.coordinates.length >= 2 && (
                     <Button
                       variant="outline"
