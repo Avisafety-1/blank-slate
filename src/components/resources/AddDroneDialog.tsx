@@ -476,13 +476,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
               <Label>Operasjonssjekklister</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between font-normal mt-1">
-                    <span className="truncate">
+                  <Button variant="outline" className="w-full min-w-0 justify-between font-normal mt-1">
+                    <span className="truncate text-left">
                       {selectedOpsChecklistIds.length > 0
                         ? `${selectedOpsChecklistIds.length} sjekkliste(r) valgt`
-                        : "Velg operasjonssjekklister (valgfritt)"}
+                        : "Velg sjekklister (valgfritt)"}
                     </span>
-                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50 ml-1" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
