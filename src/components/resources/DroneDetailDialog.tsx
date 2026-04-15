@@ -1492,7 +1492,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="modell">Modell</Label>
                   <Input
@@ -1530,7 +1530,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="klasse">Klasse</Label>
                   <Select value={formData.klasse || ""} onValueChange={(value) => setFormData({ ...formData, klasse: value })}>
@@ -1558,7 +1558,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="vekt">Vekt MTOM (kg)</Label>
                   <Input
@@ -1583,7 +1583,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="flyvetimer">Flyvetimer</Label>
                   <Input
@@ -1620,7 +1620,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-4 pt-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="sist_inspeksjon">Sist inspeksjon</Label>
                       <Input
@@ -1642,7 +1642,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="inspection_start_date">Startdato</Label>
                       <Input 
@@ -1663,7 +1663,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="inspection_interval_hours">Flytimer mellom inspeksjoner</Label>
                       <Input 
@@ -1686,7 +1686,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
                       <Input 
