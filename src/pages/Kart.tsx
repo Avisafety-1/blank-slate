@@ -420,32 +420,6 @@ export default function KartPage() {
                       {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
                       {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
                     </p>
-
-                    {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
-                      <div
-                        className={cn(
-                          "mt-1 inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-medium",
-                          currentRoute.areaKm2 <= 50
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            : currentRoute.areaKm2 <= 150
-                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                        )}
-                      >
-                        {currentRoute.areaKm2 <= 50 ? (
-                          <CheckCircle2 className="h-3 w-3 shrink-0" />
-                        ) : currentRoute.areaKm2 <= 150 ? (
-                          <AlertTriangle className="h-3 w-3 shrink-0" />
-                        ) : (
-                          <XCircle className="h-3 w-3 shrink-0" />
-                        )}
-                        <span className="leading-tight break-words">
-                          <span>{currentRoute.areaKm2.toFixed(2)} km²</span>
-                          {currentRoute.areaKm2 > 150 && <span> – for stort for SafeSky</span>}
-                          {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -493,8 +467,33 @@ export default function KartPage() {
                 </div>
               </div>
 
-              <div className="mt-2 flex items-start gap-2">
-                <div className="min-w-0 flex-1">
+              <div className="mt-1.5 flex items-center gap-2">
+                <div className="min-w-0 flex flex-1 flex-wrap items-center gap-1.5">
+                  {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
+                    <div
+                      className={cn(
+                        "inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-medium",
+                        currentRoute.areaKm2 <= 50
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          : currentRoute.areaKm2 <= 150
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      )}
+                    >
+                      {currentRoute.areaKm2 <= 50 ? (
+                        <CheckCircle2 className="h-3 w-3 shrink-0" />
+                      ) : currentRoute.areaKm2 <= 150 ? (
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                      ) : (
+                        <XCircle className="h-3 w-3 shrink-0" />
+                      )}
+                      <span className="leading-tight break-words">
+                        <span>{currentRoute.areaKm2.toFixed(2)} km²</span>
+                        {currentRoute.areaKm2 > 150 && <span> – for stort for SafeSky</span>}
+                        {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
+                      </span>
+                    </div>
+                  )}
                   {vlisInfo && (
                     <div
                       className={cn(
@@ -517,7 +516,7 @@ export default function KartPage() {
                   )}
                 </div>
 
-                <div className="ml-auto flex shrink-0 items-center gap-1 self-start">
+                <div className="ml-auto flex shrink-0 items-center gap-1 self-center">
                   <Button
                     variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                     size="sm"
