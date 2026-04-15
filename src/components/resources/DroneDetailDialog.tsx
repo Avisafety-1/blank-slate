@@ -1752,52 +1752,44 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       Hvis valgt, må sjekklisten fullføres før inspeksjon registreres
                     </p>
                   </div>
-                  <div className="border-t pt-4">
+                  <Collapsible className="border-t pt-4">
                     <Label htmlFor="operations_checklist">Operasjonssjekklister</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-10 mt-1 min-w-0">
-                          {((formData as any).operations_checklist_ids || []).length > 0
-                            ? `${((formData as any).operations_checklist_ids || []).length} valgt`
-                            : "Velg operasjonssjekklister (valgfritt)"}
-                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-x-hidden p-2 sm:w-[var(--radix-popover-trigger-width)] sm:max-w-sm"
-                        align="start"
-                      >
-                        <div className="max-h-60 space-y-1 overflow-y-auto overflow-x-hidden">
-                          {checklists.map((checklist) => {
-                            const isSelected = ((formData as any).operations_checklist_ids || []).includes(checklist.id);
-                            return (
-                              <label key={checklist.id} className="flex w-full min-w-0 items-start gap-2 cursor-pointer rounded px-2 py-1.5 transition-colors hover:bg-muted/50">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={(e) => {
-                                    const current: string[] = (formData as any).operations_checklist_ids || [];
-                                    const updated = e.target.checked
-                                      ? [...current, checklist.id]
-                                      : current.filter((id: string) => id !== checklist.id);
-                                    setFormData({ ...formData, operations_checklist_ids: updated } as any);
-                                  }}
-                                  className="mt-0.5 shrink-0 rounded border-border"
-                                />
-                                <span className="min-w-0 whitespace-normal break-words text-sm">{checklist.tittel}</span>
-                              </label>
-                            );
-                          })}
-                          {checklists.length === 0 && (
-                            <p className="p-2 text-xs text-muted-foreground">Ingen sjekklister tilgjengelig</p>
-                          )}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Kobles automatisk til oppdrag når dronen legges til
-                    </p>
-                  </div>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" type="button" className="mt-1 h-10 w-full justify-between font-normal min-w-0">
+                        {((formData as any).operations_checklist_ids || []).length > 0
+                          ? `${((formData as any).operations_checklist_ids || []).length} valgt`
+                          : "Velg operasjonssjekklister (valgfritt)"}
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform [[data-state=open]>&]:rotate-180" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 overflow-hidden rounded-md border border-border bg-background">
+                      <div className="max-h-60 space-y-1 overflow-y-auto overflow-x-hidden p-2">
+                        {checklists.map((checklist) => {
+                          const isSelected = ((formData as any).operations_checklist_ids || []).includes(checklist.id);
+                          return (
+                            <label key={checklist.id} className="flex w-full min-w-0 items-start gap-2 cursor-pointer rounded px-2 py-1.5 transition-colors hover:bg-muted/50">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  const current: string[] = (formData as any).operations_checklist_ids || [];
+                                  const updated = e.target.checked
+                                    ? [...current, checklist.id]
+                                    : current.filter((id: string) => id !== checklist.id);
+                                  setFormData({ ...formData, operations_checklist_ids: updated } as any);
+                                }}
+                                className="mt-0.5 shrink-0 rounded border-border"
+                              />
+                              <span className="min-w-0 whitespace-normal break-words text-sm">{checklist.tittel}</span>
+                            </label>
+                          );
+                        })}
+                        {checklists.length === 0 && (
+                          <p className="p-2 text-xs text-muted-foreground">Ingen sjekklister tilgjengelig</p>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                   <div className="border-t pt-4">
                     <Label htmlFor="post_flight_checklist">Post flight sjekkliste</Label>
                     <Select value={formData.post_flight_checklist_id} onValueChange={(value) => setFormData({ ...formData, post_flight_checklist_id: value })}>
