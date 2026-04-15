@@ -416,6 +416,11 @@ export default function KartPage() {
                   <div className="min-w-0 flex-1">
                     <h1 className="truncate text-sm font-semibold text-foreground">Planlegg flyrute</h1>
 
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
+                      {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
+                    </p>
+
                     {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
                       <div
                         className={cn(
@@ -441,11 +446,6 @@ export default function KartPage() {
                         </span>
                       </div>
                     )}
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
-                      {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
-                    </p>
                   </div>
                 </div>
 
@@ -468,6 +468,15 @@ export default function KartPage() {
                     title="Sjekk NOTAM (åpner ippc.no)"
                   >
                     IPPC
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
+                    className="h-8 px-1.5 text-[10px]"
+                    title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
+                  >
+                    Sensor
                   </Button>
                   {hasFH2Token && currentRoute.coordinates.length >= 2 && (
                     <Button
@@ -509,15 +518,6 @@ export default function KartPage() {
                 </div>
 
                 <div className="ml-auto flex shrink-0 items-center gap-1 self-start">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
-                    className="h-8 px-1.5 text-[10px]"
-                    title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
-                  >
-                    Sensor
-                  </Button>
                   <Button
                     variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                     size="sm"
