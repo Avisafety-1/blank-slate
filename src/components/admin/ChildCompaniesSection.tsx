@@ -1263,6 +1263,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>
       )}
     </div>
   );
