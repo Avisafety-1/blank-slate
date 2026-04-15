@@ -397,25 +397,188 @@ export default function KartPage() {
       {/* Route Planning Controls - shown below header when active */}
       {isRoutePlanning && (
         <div className="bg-background border-b border-border px-3 pt-2 pb-3 sm:px-4 sm:pt-3 sm:pb-4 flex-shrink-0 max-h-[50vh] overflow-y-auto">
-          <div className="flex flex-col gap-1">
-            {/* Route info + all buttons on one row */}
-            <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex flex-col gap-2">
+            <input
+              ref={kmlInputRef}
+              type="file"
+              accept=".kml,.kmz"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleKmlImport(file);
+              }}
+            />
+
+            <div className="sm:hidden">
+              <div className="flex items-start gap-2">
+                <div className="flex min-w-0 flex-1 items-start gap-1.5">
+                  <Route className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <h1 className="font-semibold text-foreground text-sm truncate">Planlegg flyrute</h1>
+
+                    {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
+                      <div className={cn(
+                        "mt-1 inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-medium",
+                        currentRoute.areaKm2 <= 50
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          : currentRoute.areaKm2 <= 150
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      )}>
+                        {currentRoute.areaKm2 <= 50 ? (
+                          <CheckCircle2 className="h-3 w-3 shrink-0" />
+                        ) : currentRoute.areaKm2 <= 150 ? (
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                        ) : (
+                          <XCircle className="h-3 w-3 shrink-0" />
+                        )}
+                        <span className="leading-tight break-words">
+                          <span>{currentRoute.areaKm2.toFixed(2)} km²</span>
+                          {currentRoute.areaKm2 > 150 && <span> – for stort for SafeSky</span>}
+                          {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
+                        </span>
+                      </div>
+                    )}
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
+                      {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="ml-auto flex shrink-0 items-center gap-1 self-start">
+                  <Button
+                    variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
+                    className={cn(
+                      "h-8 px-2",
+                      isPlacingPilot && "animate-pulse"
+                    )}
+                    title={pilotPosition ? "Fjern pilotposisjon" : isPlacingPilot ? "Klikk på kartet..." : "Plasser pilot"}
+                  >
+                    <MapPin className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUndoPoint}
+                    disabled={currentRoute.coordinates.length === 0}
+                    className="h-8 px-2"
+                    title="Angre siste punkt"
+                  >
+                    <Undo className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancelRoute}
+                    className="h-8 px-2"
+                    title="Avbryt"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveRoute}
+                    disabled={currentRoute.coordinates.length < 2}
+                    className="h-8 px-2"
+                    title="Lagre rute"
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                {vlisInfo && (
+                  <div className={cn(
+                    "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium shrink-0",
+                    vlisInfo.isWithinVLOS
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  )}>
+                    {vlisInfo.isWithinVLOS ? (
+                      <CheckCircle2 className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                    )}
+                    <span className="leading-tight whitespace-nowrap">
+                      {vlisInfo.maxDistanceMeters}m
+                      {!vlisInfo.isWithinVLOS && ` (${vlisInfo.pointsOutside} utenfor)`}
+                    </span>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => kmlInputRef.current?.click()}
+                  disabled={importingKml}
+                  className="h-8 px-2"
+                  title="Importer KML/KMZ-fil"
+                >
+                  <Upload className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenNotam}
+                  className="h-8 px-1.5 text-[10px]"
+                  title="Sjekk NOTAM (åpner ippc.no)"
+                >
+                  IPPC
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
+                  className="h-8 px-1.5 text-[10px]"
+                  title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
+                >
+                  Sensor
+                </Button>
+                {hasFH2Token && currentRoute.coordinates.length >= 2 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFh2DialogOpen(true)}
+                    className="h-8 px-1.5 text-[10px]"
+                    title="Send rute og SORA-korridor til DJI FlightHub 2"
+                  >
+                    <Send className="h-3 w-3 mr-0.5" />
+                    FH2
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearRoute}
+                  disabled={currentRoute.coordinates.length === 0}
+                  className="h-8 px-2"
+                  title="Nullstill rute"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
               <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-auto">
                 <Route className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                 <div className="min-w-0">
                   <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">Planlegg flyrute</h1>
                   <p className="text-xs text-muted-foreground">
-                    {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''} 
+                    {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
                     {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
                   </p>
                 </div>
               </div>
 
-              {/* Status badges */}
               {currentRoute.coordinates.length >= 3 && currentRoute.areaKm2 !== undefined && (
                 <div className={cn(
                   "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium",
-                  currentRoute.areaKm2 <= 50 
+                  currentRoute.areaKm2 <= 50
                     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                     : currentRoute.areaKm2 <= 150
                       ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
@@ -432,7 +595,6 @@ export default function KartPage() {
                     <span>{currentRoute.areaKm2.toFixed(2)} km²</span>
                     {currentRoute.areaKm2 > 150 && (
                       <>
-                        <br className="sm:hidden" />
                         <span className="hidden sm:inline"> – </span>
                         <span>for stort for SafeSky</span>
                       </>
@@ -460,17 +622,6 @@ export default function KartPage() {
                 </div>
               )}
 
-              {/* All action buttons */}
-              <input
-                ref={kmlInputRef}
-                type="file"
-                accept=".kml,.kmz"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleKmlImport(file);
-                }}
-              />
               <Button
                 variant="outline"
                 size="sm"
