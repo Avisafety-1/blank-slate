@@ -1,27 +1,43 @@
 
 
-## Plan: "Mitt selskap"-tab alltid synlig, avdelingsseksjon styrt av toggle
+## Plan: Fix document DELETE RLS policies
 
 ### Problem
-Taben "Mitt selskap" (`child-companies`) i Admin vises kun når `departmentsEnabled` er true (eller bruker er superadmin). Ønsket er at taben alltid skal vises for alle admins, men at seksjonen "Avdelinger" (opprette/administrere underavdelinger) nederst i taben kun vises når `departmentsEnabled` er aktivert av superadmin.
+Two issues prevent document deletion:
 
-### Endringer
+1. The DELETE policy "Admins can delete documents in own company" checks `has_role(auth.uid(), 'admin')` but users with the `'administrator'` enum value are not matched — only `'admin'` is. The frontend treats both as admin (line 494 in AuthContext), but RLS does not.
 
-#### 1. `src/pages/Admin.tsx`
-- Fjern `departmentsEnabled`-betingelsen fra TabsTrigger og TabsContent for `child-companies`-taben, slik at den alltid vises for alle admins (ikke bare superadmins og de med departments enabled)
-- Betingelsen `{(isSuperAdmin || (!isChildCompany && departmentsEnabled))}` erstattes med `{(isSuperAdmin || !isChildCompany)}` — eller bare fjernes helt slik at alle admins ser taben
-- Send `departmentsEnabled` som prop til `ChildCompaniesSection`
+2. The superadmin DELETE policy checks `company_id = get_user_company_id(auth.uid())`, which returns the superadmin's own company (Avisafe). When viewing Kystvakten documents, this check fails because the documents belong to a different company_id.
 
-#### 2. `src/components/admin/ChildCompaniesSection.tsx`
-- Ta imot ny prop `departmentsEnabled: boolean`
-- Wrap "Avdelinger"-seksjonen (GlassCard med "Ny avdeling"-knapp, tabellen, og CompanyManagementDialog) i en `{departmentsEnabled && (...)}` betingelse
-- Selskapsinnstillinger-seksjonen (øverst) forblir alltid synlig
+### Solution — 1 migration
 
-### Resultat
-- Alle admins (ikke underavdelinger) ser alltid "Mitt selskap"-taben
-- Selskapsinnstillinger (FH2, roller, varsler osv.) er alltid tilgjengelige
-- Muligheten til å opprette/administrere avdelinger vises kun når superadmin har aktivert `departments_enabled` for selskapet
+Update the three DELETE policies on `documents`:
 
-### Omfang
-Minimal — 2 filer, kun betingelsesendringer.
+#### 1. "Admins can delete documents in own company"
+Change from:
+```sql
+has_role(auth.uid(), 'admin') AND company_id = get_user_company_id(auth.uid())
+```
+To:
+```sql
+(has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'administrator'))
+AND company_id = get_user_company_id(auth.uid())
+```
+
+#### 2. "Superadmins can delete all documents"
+Change from:
+```sql
+is_superadmin(auth.uid()) AND company_id = get_user_company_id(auth.uid())
+```
+To:
+```sql
+is_superadmin(auth.uid())
+```
+This lets superadmins delete documents from any company, matching their broad SELECT access.
+
+#### 3. Also fix UPDATE policies (same pattern)
+The "Admins can update" policy has the same `'admin'`-only issue — add `'administrator'` there too. The superadmin UPDATE policy already has a broader "global visibility" variant, so no change needed there.
+
+### Scope
+Minimal — 1 migration, no code changes. Fixes both the administrator role gap and the cross-company superadmin restriction.
 
