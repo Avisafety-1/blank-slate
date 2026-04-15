@@ -57,7 +57,7 @@ interface Drone {
   varsel_timer: number | null;
   varsel_oppdrag: number | null;
   sjekkliste_id: string | null;
-  operations_checklist_id: string | null;
+  operations_checklist_ids: string[] | null;
   post_flight_checklist_id: string | null;
   technical_responsible_id: string | null;
 }
@@ -134,7 +134,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     varsel_timer: "",
     varsel_oppdrag: "",
     sjekkliste_id: "",
-    operations_checklist_id: "",
+    operations_checklist_ids: [] as string[],
     post_flight_checklist_id: "",
   });
 
@@ -197,7 +197,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         varsel_timer: drone.varsel_timer !== null ? String(drone.varsel_timer) : "",
         varsel_oppdrag: drone.varsel_oppdrag !== null ? String(drone.varsel_oppdrag) : "",
     sjekkliste_id: drone.sjekkliste_id || "",
-    operations_checklist_id: (drone as any).operations_checklist_id || "",
+    operations_checklist_ids: (drone as any).operations_checklist_ids || [],
     post_flight_checklist_id: (drone as any).post_flight_checklist_id || "",
   });
   setFormTechnicalResponsibleId(drone.technical_responsible_id || null);
@@ -703,7 +703,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
           varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
           sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
-          operations_checklist_id: formData.operations_checklist_id && formData.operations_checklist_id !== "none" ? formData.operations_checklist_id : null,
+          operations_checklist_ids: formData.operations_checklist_ids.length > 0 ? formData.operations_checklist_ids : null,
           post_flight_checklist_id: formData.post_flight_checklist_id && formData.post_flight_checklist_id !== "none" ? formData.post_flight_checklist_id : null,
           technical_responsible_id: formTechnicalResponsibleId || null,
         })
@@ -1752,20 +1752,33 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     </p>
                   </div>
                   <div className="border-t pt-4">
-                    <Label htmlFor="operations_checklist">Operasjonssjekkliste</Label>
-                    <Select value={formData.operations_checklist_id} onValueChange={(value) => setFormData({ ...formData, operations_checklist_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Velg operasjonssjekkliste (valgfritt)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Ingen sjekkliste</SelectItem>
-                        {checklists.map((checklist) => (
-                          <SelectItem key={checklist.id} value={checklist.id}>
-                            {checklist.tittel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Operasjonssjekklister</Label>
+                    <div className="mt-2 space-y-1 max-h-40 overflow-y-auto border rounded-md p-2">
+                      {checklists.map((checklist) => (
+                        <label key={checklist.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                          <input
+                            type="checkbox"
+                            checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
+                            onChange={(e) => {
+                              const current = formData.operations_checklist_ids || [];
+                              if (e.target.checked) {
+                                setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
+                              } else {
+                                setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
+                              }
+                            }}
+                            disabled={!isEditing}
+                            className="rounded border-input"
+                          />
+                          {checklist.tittel}
+                        </label>
+                      ))}
+                    </div>
+                    {(formData.operations_checklist_ids || []).length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {(formData.operations_checklist_ids || []).length} sjekkliste(r) valgt
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
                       Kobles automatisk til oppdrag når dronen legges til
                     </p>

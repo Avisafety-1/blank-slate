@@ -49,7 +49,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [inspectionIntervalDays, setInspectionIntervalDays] = useState<string>("");
   const [calculatedNextInspection, setCalculatedNextInspection] = useState<string>("");
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
-  const [selectedOpsChecklistId, setSelectedOpsChecklistId] = useState<string>("");
+  const [selectedOpsChecklistIds, setSelectedOpsChecklistIds] = useState<string[]>([]);
   const [selectedPostFlightChecklistId, setSelectedPostFlightChecklistId] = useState<string>("");
   const [droneCount, setDroneCount] = useState(0);
   const terminology = useTerminology();
@@ -124,7 +124,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       setInspectionIntervalDays("");
       setCalculatedNextInspection("");
       setSelectedChecklistId("");
-      setSelectedOpsChecklistId("");
+      setSelectedOpsChecklistIds([]);
       setSelectedPostFlightChecklistId("");
     } else if (defaultValues) {
       if (defaultValues.modell) setModell(defaultValues.modell);
@@ -214,7 +214,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         inspection_start_date: inspectionStartDate || null,
         inspection_interval_days: inspectionIntervalDays ? parseInt(inspectionIntervalDays) : null,
         sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
-        operations_checklist_id: selectedOpsChecklistId && selectedOpsChecklistId !== "none" ? selectedOpsChecklistId : null,
+        operations_checklist_ids: selectedOpsChecklistIds.length > 0 ? selectedOpsChecklistIds : null,
         post_flight_checklist_id: selectedPostFlightChecklistId && selectedPostFlightChecklistId !== "none" ? selectedPostFlightChecklistId : null,
       }]).select().single();
 
@@ -232,7 +232,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         setInspectionIntervalDays("");
         setCalculatedNextInspection("");
         setSelectedChecklistId("");
-        setSelectedOpsChecklistId("");
+        setSelectedOpsChecklistIds([]);
         setSelectedPostFlightChecklistId("");
         setSelectedModelId("");
         setModell("");
@@ -467,23 +467,34 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             </div>
           )}
           
-          {/* Operations checklist selection */}
+          {/* Operations checklist multi-select */}
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <Label htmlFor="ops_checklist">Operasjonssjekkliste</Label>
-              <Select value={selectedOpsChecklistId} onValueChange={setSelectedOpsChecklistId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Velg operasjonssjekkliste (valgfritt)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
-                  {checklists.map((checklist) => (
-                    <SelectItem key={checklist.id} value={checklist.id}>
-                      {checklist.tittel}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Operasjonssjekklister</Label>
+              <div className="mt-2 space-y-1 max-h-40 overflow-y-auto border rounded-md p-2">
+                {checklists.map((checklist) => (
+                  <label key={checklist.id} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selectedOpsChecklistIds.includes(checklist.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedOpsChecklistIds(prev => [...prev, checklist.id]);
+                        } else {
+                          setSelectedOpsChecklistIds(prev => prev.filter(id => id !== checklist.id));
+                        }
+                      }}
+                      className="rounded border-input"
+                    />
+                    {checklist.tittel}
+                  </label>
+                ))}
+              </div>
+              {selectedOpsChecklistIds.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {selectedOpsChecklistIds.length} sjekkliste(r) valgt
+                </p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 Kobles automatisk til oppdrag når dronen legges til
               </p>

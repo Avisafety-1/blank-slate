@@ -579,15 +579,15 @@ export const AddMissionDialog = ({
             .filter(d => d.kategori === "sjekklister")
             .map(d => d.id);
 
-          // Fetch operations_checklist_id from selected drones
+          // Fetch operations_checklist_ids from selected drones
           let droneOpsChecklistIds: string[] = [];
           if (selectedDrones.length > 0) {
             const { data: droneRows } = await (supabase as any)
               .from("drones")
-              .select("operations_checklist_id")
+              .select("operations_checklist_ids")
               .in("id", selectedDrones)
-              .not("operations_checklist_id", "is", null);
-            droneOpsChecklistIds = (droneRows || []).map((d: any) => d.operations_checklist_id);
+              .not("operations_checklist_ids", "is", null);
+            droneOpsChecklistIds = (droneRows || []).flatMap((d: any) => d.operations_checklist_ids || []);
           }
 
           // Fetch current checklist_ids from mission
@@ -703,15 +703,15 @@ export const AddMissionDialog = ({
             return doc?.kategori === "sjekklister";
           });
 
-          // Fetch operations_checklist_id from selected drones
+          // Fetch operations_checklist_ids from selected drones
           let droneOpsChecklistIds: string[] = [];
           if (selectedDrones.length > 0) {
             const { data: droneRows } = await (supabase as any)
               .from("drones")
-              .select("operations_checklist_id")
+              .select("operations_checklist_ids")
               .in("id", selectedDrones)
-              .not("operations_checklist_id", "is", null);
-            droneOpsChecklistIds = (droneRows || []).map((d: any) => d.operations_checklist_id);
+              .not("operations_checklist_ids", "is", null);
+            droneOpsChecklistIds = (droneRows || []).flatMap((d: any) => d.operations_checklist_ids || []);
           }
 
           const allChecklistIds = [...new Set([...checklistDocIds, ...droneOpsChecklistIds])];
