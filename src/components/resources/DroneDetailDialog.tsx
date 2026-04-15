@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck } from "lucide-react";
+import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck, ClipboardList } from "lucide-react";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
