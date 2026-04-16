@@ -127,6 +127,23 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           if (data?.navn) setCompanyName(data.navn);
         });
     }
+
+    // Auto-fill contact name & phone with logged-in user's profile
+    if (user?.id) {
+      (supabase as any)
+        .from("profiles")
+        .select("full_name, telefon")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }: any) => {
+          if (data?.full_name && !mission.notam_realtime_contact_name) {
+            setContactName(data.full_name);
+          }
+          if (data?.telefon && !mission.notam_realtime_contact_phone) {
+            setContactPhone(data.telefon);
+          }
+        });
+    }
   }, [open, mission?.id]);
 
   const toggleDay = (day: string) => {
