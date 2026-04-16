@@ -215,6 +215,23 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
       });
     }
 
+    // NOTAM circle
+    if (notam && notam.lat && notam.lng && notam.radiusNm > 0) {
+      const radiusMeters = notam.radiusNm * 1852;
+      const notamCircle = L.circle([notam.lat, notam.lng], {
+        radius: radiusMeters,
+        color: '#f59e0b',
+        weight: 2,
+        fillColor: '#f59e0b',
+        fillOpacity: 0.1,
+        dashArray: '6, 4',
+      }).addTo(map);
+      notamCircle.bindPopup(`<div style="font-size:12px;max-width:300px;white-space:pre-wrap;font-family:monospace;"><strong>NOTAM</strong><hr style="margin:4px 0"/>${notam.text}</div>`);
+      const cb = notamCircle.getBounds();
+      allPoints.push([cb.getSouthWest().lat, cb.getSouthWest().lng]);
+      allPoints.push([cb.getNorthEast().lat, cb.getNorthEast().lng]);
+    }
+
     if (allPoints.length > 1) {
       const bounds = L.latLngBounds(allPoints);
       map.fitBounds(bounds, { padding: [30, 30], maxZoom: 18 });
