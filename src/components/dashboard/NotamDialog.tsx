@@ -282,7 +282,14 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     const body = encodeURIComponent(
       `Hei.\n\nVi ønsker å publisere følgende NOTAM:\n\n${generatedText}\n\nMvh\n${userName}${companyName ? `, ${companyName}` : ""}`
     );
-    window.open(`mailto:hauggard@gmail.com?subject=${subject}&body=${body}`, "_self");
+    const mailtoUrl = `mailto:hauggard@gmail.com?subject=${subject}&body=${body}`;
+    const link = document.createElement("a");
+    link.href = mailtoUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
     toast.success("NOTAM sendt inn");
     onSaved?.();
