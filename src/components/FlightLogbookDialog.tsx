@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
 
 interface FlightLogbookDialogProps {
   open: boolean;
@@ -368,8 +368,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         startY: profileFlyvetimer > 0 ? 62 : 55,
         head: [["Dato", "Avgang", "Landing", "Varighet", "Drone", "Oppdrag"]],
         body: tableData,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [59, 130, 246] }
+        styles: { fontSize: 8, font: getPdfFontName() },
+        headStyles: { fillColor: [59, 130, 246], font: getPdfFontName() }
       });
 
       if (signatureUrl) {

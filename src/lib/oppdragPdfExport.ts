@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import { generateMissionMapSnapshot } from "@/lib/mapSnapshotUtils";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -211,7 +211,7 @@ export const exportToPDF = async (
         head: [["Nivå", "Sone", "Avstand", "Melding"]],
         body: airspaceData,
         theme: "grid",
-        styles: { fontSize: 8, cellPadding: 2 },
+        styles: { fontSize: 8, cellPadding: 2, font: getPdfFontName() },
         columnStyles: {
           0: { fontStyle: "bold", cellWidth: 25 },
           1: { cellWidth: 35 },
@@ -241,7 +241,7 @@ export const exportToPDF = async (
         head: [],
         body: routeInfo,
         theme: "grid",
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9, font: getPdfFontName() },
         columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
       });
       
@@ -258,7 +258,7 @@ export const exportToPDF = async (
         head: [["Punkt", "Breddegrad", "Lengdegrad"]],
         body: coordData,
         theme: "grid",
-        styles: { fontSize: 8 },
+        styles: { fontSize: 8, font: getPdfFontName() },
         columnStyles: { 
           0: { cellWidth: 20 },
           1: { cellWidth: 50 },
@@ -293,7 +293,7 @@ export const exportToPDF = async (
         head: [],
         body: basicInfo,
         theme: "grid",
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9, font: getPdfFontName() },
         columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
       });
       
@@ -322,7 +322,7 @@ export const exportToPDF = async (
         head: [],
         body: customerInfo,
         theme: "grid",
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9, font: getPdfFontName() },
         columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
       });
       
@@ -345,7 +345,7 @@ export const exportToPDF = async (
         head: [["Navn"]],
         body: personnelData,
         theme: "grid",
-        styles: { fontSize: 9 }
+        styles: { fontSize: 9, font: getPdfFontName() }
       });
       
       yPos = (pdf as any).lastAutoTable.finalY + 10;
@@ -368,7 +368,7 @@ export const exportToPDF = async (
         head: [["Modell", "Serienummer"]],
         body: dronesData,
         theme: "grid",
-        styles: { fontSize: 9 }
+        styles: { fontSize: 9, font: getPdfFontName() }
       });
       
       yPos = (pdf as any).lastAutoTable.finalY + 10;
@@ -396,7 +396,7 @@ export const exportToPDF = async (
         head: [["Navn", "Type"]],
         body: equipmentData,
         theme: "grid",
-        styles: { fontSize: 9 }
+        styles: { fontSize: 9, font: getPdfFontName() }
       });
       
       yPos = (pdf as any).lastAutoTable.finalY + 10;
@@ -456,7 +456,7 @@ export const exportToPDF = async (
         head: [],
         body: soraSummary,
         theme: "grid",
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9, font: getPdfFontName() },
         columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
       });
       yPos = (pdf as any).lastAutoTable.finalY + 5;
@@ -473,7 +473,7 @@ export const exportToPDF = async (
           head: [],
           body: envInfo,
           theme: "grid",
-          styles: { fontSize: 9 },
+          styles: { fontSize: 9, font: getPdfFontName() },
           columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
         });
         yPos = (pdf as any).lastAutoTable.finalY + 5;
@@ -492,7 +492,7 @@ export const exportToPDF = async (
           head: [["Bakkebasert risiko (GRC)", ""]],
           body: grcInfo,
           theme: "grid",
-          styles: { fontSize: 9 },
+          styles: { fontSize: 9, font: getPdfFontName() },
           columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
         });
         yPos = (pdf as any).lastAutoTable.finalY + 5;
@@ -511,7 +511,7 @@ export const exportToPDF = async (
           head: [["Luftromsrisiko (ARC)", ""]],
           body: arcInfo,
           theme: "grid",
-          styles: { fontSize: 9 },
+          styles: { fontSize: 9, font: getPdfFontName() },
           columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
         });
         yPos = (pdf as any).lastAutoTable.finalY + 5;
@@ -529,7 +529,7 @@ export const exportToPDF = async (
           head: [],
           body: residualInfo,
           theme: "grid",
-          styles: { fontSize: 9 },
+          styles: { fontSize: 9, font: getPdfFontName() },
           columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
         });
         yPos = (pdf as any).lastAutoTable.finalY + 5;
@@ -582,7 +582,7 @@ export const exportToPDF = async (
           head: [],
           body: riskInfo,
           theme: "grid",
-          styles: { fontSize: 9 },
+          styles: { fontSize: 9, font: getPdfFontName() },
           columnStyles: { 0: { fontStyle: "bold", cellWidth: 45 } }
         });
         
@@ -678,7 +678,7 @@ export const exportToPDF = async (
         head: [["Tittel", "Alvorlighet", "Status", "Hovedårsak", "Tidspunkt"]],
         body: incidentData,
         theme: "grid",
-        styles: { fontSize: 8 },
+        styles: { fontSize: 8, font: getPdfFontName() },
         columnStyles: {
           0: { cellWidth: 50 },
           1: { cellWidth: 25 },
@@ -748,7 +748,7 @@ export const exportToPDF = async (
         head: [["Dato", "Flytid", "Pilot", "Drone", "SafeSky", "Sjekklister"]],
         body: flightData,
         theme: "grid",
-        styles: { fontSize: 8 },
+        styles: { fontSize: 8, font: getPdfFontName() },
         columnStyles: {
           0: { cellWidth: 32 },
           1: { cellWidth: 18 },

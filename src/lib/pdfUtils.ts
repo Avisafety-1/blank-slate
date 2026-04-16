@@ -8,6 +8,7 @@ import robotoBoldUrl from "@/assets/fonts/Roboto-Bold.ttf";
 
 let fontsLoaded = false;
 export const arePdfFontsLoaded = () => fontsLoaded;
+export const getPdfFontName = () => fontsLoaded ? 'Roboto' : 'helvetica';
 let robotoRegularBase64: string | null = null;
 let robotoBoldBase64: string | null = null;
 

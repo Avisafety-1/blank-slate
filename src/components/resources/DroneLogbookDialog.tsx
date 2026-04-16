@@ -35,7 +35,7 @@ import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialo
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
-import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
 
 interface DroneLogbookDialogProps {
   open: boolean;
@@ -398,10 +398,10 @@ export const DroneLogbookDialog = ({
 
       autoTable(pdf, {
         startY: 45,
-        head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utfort av']],
+        head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utført av']],
         body: tableData,
-        styles: { fontSize: 8, cellPadding: 2 },
-        headStyles: { fillColor: [59, 130, 246] },
+        styles: { fontSize: 8, cellPadding: 2, font: getPdfFontName() },
+        headStyles: { fillColor: [59, 130, 246], font: getPdfFontName() },
         columnStyles: {
           0: { cellWidth: 30 },
           1: { cellWidth: 25 },
