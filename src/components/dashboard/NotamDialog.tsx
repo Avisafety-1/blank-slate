@@ -163,30 +163,32 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const generatedText = useMemo(() => {
     const lines: string[] = [];
 
-    if (scheduleType === "daily" && scheduleDays.length > 0) {
+    const datePrefix = startDate && endDate
+      ? `${formatDateNotam(startDate)}-${formatDateNotam(endDate)} `
+      : startDate
+      ? `${formatDateNotam(startDate)} `
+      : endDate
+      ? `?-${formatDateNotam(endDate)} `
+      : "";
+
+    if (scheduleType === "daily") {
       const sorted = ALL_DAYS.filter((d) => scheduleDays.includes(d));
-      let dayStr: string;
+      let dayStr = "";
       if (sorted.length === 7) {
         dayStr = "DAILY";
       } else if (sorted.length >= 2) {
         const indices = sorted.map((d) => ALL_DAYS.indexOf(d));
         const isConsecutive = indices.every((v, i) => i === 0 || v === indices[i - 1] + 1);
         dayStr = isConsecutive ? `${sorted[0]}-${sorted[sorted.length - 1]}` : sorted.join(" ");
-      } else {
-        dayStr = sorted.join(" ");
+      } else if (sorted.length === 1) {
+        dayStr = sorted[0];
       }
-      const datePrefix = startDate && endDate
-        ? `${formatDateNotam(startDate)}-${formatDateNotam(endDate)} `
-        : startDate
-        ? `${formatDateNotam(startDate)} `
-        : "";
-      lines.push(`${datePrefix}${dayStr} ${timeFrom}-${timeTo}`);
-    } else if (scheduleType === "daterange" && (startDate || endDate)) {
-      const from = startDate ? formatDateNotam(startDate) : "?";
-      const to = endDate ? formatDateNotam(endDate) : "?";
-      lines.push(`${from}-${to}`);
+      const timePart = dayStr ? `${dayStr} ${timeFrom}-${timeTo}` : `${timeFrom}-${timeTo}`;
+      lines.push(`${datePrefix}${timePart}`);
+    } else if (scheduleType === "daterange") {
+      lines.push(datePrefix.trim() || `${timeFrom}-${timeTo}`);
     } else {
-      lines.push(`${timeFrom}-${timeTo}`);
+      lines.push(`${datePrefix}${timeFrom}-${timeTo}`);
     }
 
     lines.push(`Unmanned ACFT (${operationType}) will take place in ${areaName}`);
