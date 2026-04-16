@@ -46,7 +46,7 @@ const FIELDS = [
   // Home position
   "HOME.latitude","HOME.longitude","HOME.height [m]","HOME.goHomeStatus",
   // Weather
-  "WEATHER.windDirection","WEATHER.windSpeed [m/s]",
+  "WEATHER.windDirection","WEATHER.windSpeed [m/s]","WEATHER.maxWindSpeed [m/s]",
   "CUSTOM.dateTime","CUSTOM.date [UTC]","CUSTOM.updateTime [UTC]",
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxHeight [m]","DETAILS.maxHorizontalSpeed [m/s]","DETAILS.maxVerticalSpeed [m/s]","DETAILS.maxDistance [m]",
@@ -299,6 +299,19 @@ function parseCsvToResult(csvText: string) {
   const homeHeightIdx = findHeaderIndex(headers, "HOME.height [m]");
   const weatherWindDirIdx = findHeaderIndex(headers, "WEATHER.windDirection");
   const weatherWindSpeedIdx = findHeaderIndex(headers, "WEATHER.windSpeed [m/s]");
+  const weatherMaxWindSpeedIdx = findHeaderIndex(headers, "WEATHER.maxWindSpeed [m/s]");
+
+  // Cardinal direction to degrees mapping
+  const cardinalToDeg: Record<string, number> = {
+    N: 0, NNE: 22.5, NE: 45, ENE: 67.5, E: 90, ESE: 112.5, SE: 135, SSE: 157.5,
+    S: 180, SSW: 202.5, SW: 225, WSW: 247.5, W: 270, WNW: 292.5, NW: 315, NNW: 337.5,
+  };
+  const parseWindDir = (raw: string | undefined): number | undefined => {
+    if (!raw || raw === "") return undefined;
+    const num = parseFloat(raw);
+    if (!isNaN(num)) return num;
+    return cardinalToDeg[raw.toUpperCase().trim()];
+  };
 
   const positions: Array<Record<string, any>> = [];
   let maxSpeed = 0;
@@ -475,7 +488,10 @@ function parseCsvToResult(csvText: string) {
       if (ps(flycStateIdx)) point.flycState = ps(flycStateIdx);
       if (ps(groundOrSkyIdx)) point.groundOrSky = ps(groundOrSkyIdx);
       if (pf(weatherWindSpeedIdx) !== undefined) point.windSpeed = pf(weatherWindSpeedIdx);
-      if (pf(weatherWindDirIdx) !== undefined) point.windDir = pf(weatherWindDirIdx);
+      if (pf(weatherMaxWindSpeedIdx) !== undefined) point.maxWindSpeed = pf(weatherMaxWindSpeedIdx);
+      const windDirRaw = weatherWindDirIdx >= 0 ? cols[weatherWindDirIdx]?.trim() : undefined;
+      const windDirParsed = parseWindDir(windDirRaw);
+      if (windDirParsed !== undefined) point.windDir = windDirParsed;
       // Dual-battery telemetry per point
       if (isDualBattery) {
         if (pf(batt1ChargeIdx) !== undefined) point.battery1 = pf(batt1ChargeIdx);

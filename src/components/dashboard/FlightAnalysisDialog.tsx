@@ -6,7 +6,7 @@ import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
 
 const Drone3DViewer = lazy(() => import("./Drone3DViewer").then(m => ({ default: m.Drone3DViewer })));
-import { BarChart3, AlertTriangle, Gauge } from "lucide-react";
+import { BarChart3, AlertTriangle, Gauge, Wind } from "lucide-react";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
 import "leaflet/dist/leaflet.css";
 
