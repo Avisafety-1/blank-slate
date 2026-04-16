@@ -1,43 +1,58 @@
 
 
-## Plan: Fix document DELETE RLS policies
+## Plan: Allow Parent Company Admins to Manage Competencies Across Hierarchy
 
 ### Problem
-Two issues prevent document deletion:
+Current RLS policies on `personnel_competencies` use `get_user_company_id()` which only matches the admin's own company. Parent company admins cannot add/update/delete competencies for users in sub-departments.
 
-1. The DELETE policy "Admins can delete documents in own company" checks `has_role(auth.uid(), 'admin')` but users with the `'administrator'` enum value are not matched — only `'admin'` is. The frontend treats both as admin (line 494 in AuthContext), but RLS does not.
+### Solution
+Update three RLS policies to use `get_user_visible_company_ids()` instead of `get_user_company_id()`, matching the pattern already used by the SELECT policy.
 
-2. The superadmin DELETE policy checks `company_id = get_user_company_id(auth.uid())`, which returns the superadmin's own company (Avisafe). When viewing Kystvakten documents, this check fails because the documents belong to a different company_id.
+### Database Migration
 
-### Solution — 1 migration
+Replace three policies:
 
-Update the three DELETE policies on `documents`:
-
-#### 1. "Admins can delete documents in own company"
-Change from:
 ```sql
-has_role(auth.uid(), 'admin') AND company_id = get_user_company_id(auth.uid())
-```
-To:
-```sql
-(has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'administrator'))
-AND company_id = get_user_company_id(auth.uid())
+-- 1. INSERT policy: allow admins to create competencies for users in visible companies
+DROP POLICY "Admins can create competencies in own company" ON public.personnel_competencies;
+CREATE POLICY "Admins can create competencies in visible companies"
+  ON public.personnel_competencies FOR INSERT TO authenticated
+  WITH CHECK (
+    (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'saksbehandler'::app_role))
+    AND EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = personnel_competencies.profile_id
+        AND profiles.company_id = ANY(get_user_visible_company_ids(auth.uid()))
+    )
+  );
+
+-- 2. UPDATE policy
+DROP POLICY "Admins can update competencies in own company" ON public.personnel_competencies;
+CREATE POLICY "Admins can update competencies in visible companies"
+  ON public.personnel_competencies FOR UPDATE TO authenticated
+  USING (
+    (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'saksbehandler'::app_role))
+    AND EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = personnel_competencies.profile_id
+        AND profiles.company_id = ANY(get_user_visible_company_ids(auth.uid()))
+    )
+  );
+
+-- 3. DELETE policy
+DROP POLICY "Admins can delete competencies in own company" ON public.personnel_competencies;
+CREATE POLICY "Admins can delete competencies in visible companies"
+  ON public.personnel_competencies FOR DELETE TO authenticated
+  USING (
+    has_role(auth.uid(), 'admin'::app_role)
+    AND EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = personnel_competencies.profile_id
+        AND profiles.company_id = ANY(get_user_visible_company_ids(auth.uid()))
+    )
+  );
 ```
 
-#### 2. "Superadmins can delete all documents"
-Change from:
-```sql
-is_superadmin(auth.uid()) AND company_id = get_user_company_id(auth.uid())
-```
-To:
-```sql
-is_superadmin(auth.uid())
-```
-This lets superadmins delete documents from any company, matching their broad SELECT access.
-
-#### 3. Also fix UPDATE policies (same pattern)
-The "Admins can update" policy has the same `'admin'`-only issue — add `'administrator'` there too. The superadmin UPDATE policy already has a broader "global visibility" variant, so no change needed there.
-
-### Scope
-Minimal — 1 migration, no code changes. Fixes both the administrator role gap and the cross-company superadmin restriction.
+### No Frontend Changes Needed
+The UI already shows personnel from sub-departments via `get_user_visible_company_ids()`. The only blocker is the RLS policies rejecting the insert/update/delete operations.
 
