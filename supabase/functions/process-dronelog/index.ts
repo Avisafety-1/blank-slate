@@ -136,7 +136,7 @@ function parseCsvToResult(csvText: string) {
   // Battery extended
   const battFullCapIdx = findHeaderIndex(headers, "BATTERY.fullCapacity [mAh]");
   const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
-  const battLifeIdx = findHeaderIndex(headers, "BATTERY.relativeCapacity");
+  const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
   const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
   const battMaxTempIdx = findHeaderIndex(headers, "BATTERY.maxTemperature [C]");
   const battMinTempIdx = findHeaderIndex(headers, "BATTERY.minTemperature [C]");
