@@ -244,6 +244,51 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
   };
 
+  const handleSubmit = async () => {
+    if (!mission?.id) return;
+    setSubmitting(true);
+    const { error } = await (supabase as any)
+      .from("missions")
+      .update({
+        notam_text: generatedText,
+        notam_operation_type: operationType,
+        notam_start_utc: startDate?.toISOString() || null,
+        notam_end_utc: endDate?.toISOString() || null,
+        notam_schedule_type: scheduleType,
+        notam_schedule_days: scheduleDays,
+        notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
+        notam_area_name: areaName,
+        notam_center_lat_wgs84: centerLat,
+        notam_center_lon_wgs84: centerLng,
+        notam_radius_nm: radiusNm,
+        notam_max_agl_ft: maxAglFt,
+        notam_submitter_company: companyName,
+        notam_realtime_contact_name: contactName,
+        notam_realtime_contact_phone: contactPhone,
+        notam_submitted_at: new Date().toISOString(),
+      })
+      .eq("id", mission.id);
+
+    setSubmitting(false);
+    if (error) {
+      toast.error("Kunne ikke sende NOTAM");
+      console.error(error);
+      return;
+    }
+
+    // Build mailto link
+    const userName = contactName || "";
+    const subject = encodeURIComponent(`UAS Notam request, ${companyName}`);
+    const body = encodeURIComponent(
+      `Hei.\n\nVi ønsker å publisere følgende NOTAM:\n\n${generatedText}\n\nMvh\n${userName}${companyName ? `, ${companyName}` : ""}`
+    );
+    window.open(`mailto:hauggard@gmail.com?subject=${subject}&body=${body}`, "_self");
+
+    toast.success("NOTAM sendt inn");
+    onSaved?.();
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
