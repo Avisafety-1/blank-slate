@@ -6,7 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Copy, Save } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, Copy, Save, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -38,6 +43,13 @@ const toNotamCoord = (lat: number, lng: number): string => {
   return `${formatDMS(lat, true)} ${formatDMS(lng, false)}`;
 };
 
+const formatDateNotam = (d: Date) => {
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = d.getUTCFullYear();
+  return `${dd}.${mm}.${yyyy}`;
+};
+
 export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialogProps) => {
   const { companyId } = useAuth();
 
@@ -47,20 +59,24 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const [centerLng, setCenterLng] = useState<number | null>(null);
   const [radiusNm, setRadiusNm] = useState(0.5);
   const [maxAglFt, setMaxAglFt] = useState(400);
-  const [scheduleType, setScheduleType] = useState<"continuous" | "daily">("daily");
+  // "daily" = specific days with time window (phone manned during window)
+  // "daterange" = date range only (phone manned 24/7)
+  const [scheduleType, setScheduleType] = useState<"daily" | "daterange">("daily");
   const [scheduleDays, setScheduleDays] = useState<string[]>(["MON", "TUE", "WED", "THU", "FRI"]);
   const [timeFrom, setTimeFrom] = useState("0800");
   const [timeTo, setTimeTo] = useState("1600");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [vhfFrequency, setVhfFrequency] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Pre-fill from mission data
   useEffect(() => {
     if (!open || !mission) return;
 
-    // If mission already has notam data, load it
     if (mission.notam_text) {
       setOperationType(mission.notam_operation_type || "BVLOS");
       setAreaName(mission.notam_area_name || mission.lokasjon || "");
@@ -75,11 +91,13 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
         setTimeFrom(windows[0].from || "0800");
         setTimeTo(windows[0].to || "1600");
       }
+      setStartDate(mission.notam_start_utc ? new Date(mission.notam_start_utc) : undefined);
+      setEndDate(mission.notam_end_utc ? new Date(mission.notam_end_utc) : undefined);
       setContactName(mission.notam_realtime_contact_name || "");
       setContactPhone(mission.notam_realtime_contact_phone || "");
       setCompanyName(mission.notam_submitter_company || "");
+      setVhfFrequency(windows?.[0]?.vhf || "");
     } else {
-      // Default from mission
       setAreaName(mission.lokasjon || "");
       setCenterLat(mission.latitude ?? null);
       setCenterLng(mission.longitude ?? null);
@@ -90,12 +108,14 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       setScheduleDays(["MON", "TUE", "WED", "THU", "FRI"]);
       setTimeFrom("0800");
       setTimeTo("1600");
+      setStartDate(mission.tidspunkt ? new Date(mission.tidspunkt) : undefined);
+      setEndDate(mission.slutt_tidspunkt ? new Date(mission.slutt_tidspunkt) : undefined);
       setContactName("");
       setContactPhone("");
       setCompanyName("");
+      setVhfFrequency("");
     }
 
-    // Fetch company name
     if (companyId && !mission.notam_submitter_company) {
       supabase
         .from("companies")
@@ -114,18 +134,40 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     );
   };
 
+  // Contact availability description
+  const contactAvailabilityNote = useMemo(() => {
+    if (scheduleType === "daterange") {
+      if (startDate && endDate) {
+        return `Telefonnummeret skal være døgnbemannet fra ${formatDateNotam(startDate)} kl. 00:00 til ${formatDateNotam(endDate)} kl. 23:59.`;
+      }
+      return "Telefonnummeret skal være døgnbemannet i hele perioden.";
+    }
+    // daily
+    const sorted = ALL_DAYS.filter((d) => scheduleDays.includes(d));
+    if (sorted.length > 0) {
+      let dayStr: string;
+      if (sorted.length === 7) dayStr = "alle dager";
+      else if (sorted.length >= 2) {
+        const indices = sorted.map((d) => ALL_DAYS.indexOf(d));
+        const isConsecutive = indices.every((v, i) => i === 0 || v === indices[i - 1] + 1);
+        dayStr = isConsecutive ? `${sorted[0]}-${sorted[sorted.length - 1]}` : sorted.join(", ");
+      } else {
+        dayStr = sorted[0];
+      }
+      return `Telefonnummeret skal være bemannet ${dayStr} kl. ${timeFrom}-${timeTo}.`;
+    }
+    return null;
+  }, [scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate]);
+
   const generatedText = useMemo(() => {
     const lines: string[] = [];
 
-    // Schedule line
     if (scheduleType === "daily" && scheduleDays.length > 0) {
       const sorted = ALL_DAYS.filter((d) => scheduleDays.includes(d));
-      // Compress consecutive days
       let dayStr: string;
       if (sorted.length === 7) {
         dayStr = "DAILY";
       } else if (sorted.length >= 2) {
-        // Check if consecutive
         const indices = sorted.map((d) => ALL_DAYS.indexOf(d));
         const isConsecutive = indices.every((v, i) => i === 0 || v === indices[i - 1] + 1);
         dayStr = isConsecutive ? `${sorted[0]}-${sorted[sorted.length - 1]}` : sorted.join(" ");
@@ -133,30 +175,32 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
         dayStr = sorted.join(" ");
       }
       lines.push(`${dayStr} ${timeFrom}-${timeTo}`);
+    } else if (scheduleType === "daterange" && startDate && endDate) {
+      lines.push(`${formatDateNotam(startDate)}-${formatDateNotam(endDate)}`);
     } else {
       lines.push(`${timeFrom}-${timeTo}`);
     }
 
-    // Activity line
     lines.push(`Unmanned ACFT (${operationType}) will take place in ${areaName}`);
 
-    // Position
     if (centerLat != null && centerLng != null) {
       lines.push(`PSN ${toNotamCoord(centerLat, centerLng)}, radius ${radiusNm} NM.`);
     }
 
-    // Height
     lines.push(`MAX HGT ${maxAglFt} FT AGL.`);
 
-    // Contact
     if (contactName || companyName) {
       const who = companyName || contactName;
       const tel = contactPhone ? `, tel ${contactPhone}` : "";
       lines.push(`For realtime status ctc ${who}${tel}`);
     }
 
+    if (vhfFrequency.trim()) {
+      lines.push(`VHF ${vhfFrequency.trim()}`);
+    }
+
     return lines.join("\n");
-  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, contactName, contactPhone, companyName]);
+  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, contactName, contactPhone, companyName, vhfFrequency]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
@@ -171,9 +215,11 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       .update({
         notam_text: generatedText,
         notam_operation_type: operationType,
+        notam_start_utc: startDate?.toISOString() || null,
+        notam_end_utc: endDate?.toISOString() || null,
         notam_schedule_type: scheduleType,
         notam_schedule_days: scheduleDays,
-        notam_schedule_windows: [{ from: timeFrom, to: timeTo }],
+        notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
         notam_area_name: areaName,
         notam_center_lat_wgs84: centerLat,
         notam_center_lon_wgs84: centerLng,
@@ -266,42 +312,102 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
             </div>
           </div>
 
-          {/* Schedule */}
+          {/* Schedule type */}
           <div className="space-y-1.5">
             <Label>Tidsplan</Label>
             <Select value={scheduleType} onValueChange={(v) => setScheduleType(v as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">Daglig (velg dager)</SelectItem>
-                <SelectItem value="continuous">Kontinuerlig</SelectItem>
+                <SelectItem value="daily">Daglig med klokkeslett (telefon bemannet i tidsvindu)</SelectItem>
+                <SelectItem value="daterange">Datoperiode (telefon døgnbemannet)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {scheduleType === "daily" && (
-            <div className="flex flex-wrap gap-2">
-              {ALL_DAYS.map((day) => (
-                <label key={day} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={scheduleDays.includes(day)}
-                    onCheckedChange={() => toggleDay(day)}
-                  />
-                  {day}
-                </label>
-              ))}
-            </div>
-          )}
-
+          {/* Date pickers */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Fra (UTC)</Label>
-              <Input value={timeFrom} onChange={(e) => setTimeFrom(e.target.value)} placeholder="0800" />
+              <Label>Fra dato</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "dd.MM.yyyy", { locale: nb }) : "Velg dato"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-1.5">
-              <Label>Til (UTC)</Label>
-              <Input value={timeTo} onChange={(e) => setTimeTo(e.target.value)} placeholder="1600" />
+              <Label>Til dato</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "dd.MM.yyyy", { locale: nb }) : "Velg dato"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
+
+          {/* Day selection (daily mode) */}
+          {scheduleType === "daily" && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {ALL_DAYS.map((day) => (
+                  <label key={day} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={scheduleDays.includes(day)}
+                      onCheckedChange={() => toggleDay(day)}
+                    />
+                    {day}
+                  </label>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Fra kl. (UTC)</Label>
+                  <Input value={timeFrom} onChange={(e) => setTimeFrom(e.target.value)} placeholder="0800" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Til kl. (UTC)</Label>
+                  <Input value={timeTo} onChange={(e) => setTimeTo(e.target.value)} placeholder="1600" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Contact availability info */}
+          {contactAvailabilityNote && (
+            <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/30 text-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <span className="text-amber-900 dark:text-amber-100">{contactAvailabilityNote}</span>
+            </div>
+          )}
 
           {/* Contact */}
           <div className="space-y-1.5">
@@ -310,13 +416,27 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Kontaktperson</Label>
+              <Label>Kontaktperson (direkte)</Label>
               <Input value={contactName} onChange={(e) => setContactName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Telefon</Label>
+              <Label>Telefon (direkte linje)</Label>
               <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+47 123 45 678" />
             </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Telefonnummeret skal gå direkte til personen som kan avklare status og stanse flygning. Ikke bruk sentralbord.
+          </p>
+
+          {/* VHF frequency */}
+          <div className="space-y-1.5">
+            <Label>VHF-frekvens (valgfritt)</Label>
+            <Input
+              value={vhfFrequency}
+              onChange={(e) => setVhfFrequency(e.target.value)}
+              placeholder="f.eks. 123.450 MHz"
+            />
+            <p className="text-xs text-muted-foreground">VHF-frekvens erstatter ikke telefonnummer.</p>
           </div>
 
           {/* Generated NOTAM */}
