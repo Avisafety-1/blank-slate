@@ -619,4 +619,5 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       }}
     />
     </>
+  );
 };
