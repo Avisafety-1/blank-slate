@@ -185,7 +185,7 @@ export const EquipmentLogbookDialog = ({
               id: `flight-${log.id}`,
               type: 'flight',
               date: new Date(log.flight_date),
-              title: `Flytur: ${log.departure_location} → ${log.landing_location}`,
+              title: `Flytur: ${log.departure_location} -> ${log.landing_location}`,
               description: `${log.flight_duration_minutes} min, ${log.movements} bevegelser${log.notes ? ` - ${log.notes}` : ''}`,
               userName: userMap.get(log.user_id) || 'Ukjent',
               icon: <Plane className="w-4 h-4" />,
