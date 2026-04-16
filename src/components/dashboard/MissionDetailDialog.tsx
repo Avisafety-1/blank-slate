@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route, BarChart3 } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route, BarChart3, Radio } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +22,7 @@ import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
+import { NotamDialog } from "./NotamDialog";
 
 type Mission = any;
 
@@ -94,6 +95,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
+  const [notamDialogOpen, setNotamDialogOpen] = useState(false);
 
   // Reset cached warnings when mission changes
   useEffect(() => {
@@ -198,6 +200,15 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             >
               <ShieldCheck className="w-4 h-4 mr-2" />
               Risikovurdering
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setNotamDialogOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <Radio className="w-4 h-4 mr-2" />
+              NOTAM
             </Button>
           </DialogHeader>
         
