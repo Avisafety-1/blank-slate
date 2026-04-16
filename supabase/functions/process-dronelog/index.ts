@@ -21,7 +21,7 @@ const FIELDS = [
   "OSD.isCompassError","OSD.voltageWarning",
   // Battery (single-battery drones)
   "BATTERY.chargeLevel","BATTERY.temperature [C]","BATTERY.voltage [V]","BATTERY.current [A]","BATTERY.timesCharged",
-  "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.relativeCapacity","BATTERY.status",
+  "BATTERY.fullCapacity [mAh]","BATTERY.currentCapacity [mAh]","BATTERY.relativeCapacity","BATTERY.status","BATTERY.status.RAW",
   "BATTERY.cellVoltage1 [V]","BATTERY.cellVoltage2 [V]","BATTERY.cellVoltage3 [V]",
   "BATTERY.cellVoltage4 [V]","BATTERY.cellVoltage5 [V]","BATTERY.cellVoltage6 [V]",
   "BATTERY.cellVoltageDeviation [V]","BATTERY.isCellVoltageDeviationHigh","BATTERY.maxCellVoltageDeviation [V]",
@@ -136,8 +136,8 @@ function parseCsvToResult(csvText: string) {
   // Battery extended
   const battFullCapIdx = findHeaderIndex(headers, "BATTERY.fullCapacity [mAh]");
   const battCurrCapIdx = findHeaderIndex(headers, "BATTERY.currentCapacity [mAh]");
-  const battLifeIdx = findHeaderIndex(headers, "BATTERY.life [%]");
   const battStatusIdx = findHeaderIndex(headers, "BATTERY.status");
+  const battStatusRawIdx = findHeaderIndex(headers, "BATTERY.status.RAW");
   const battMaxTempIdx = findHeaderIndex(headers, "BATTERY.maxTemperature [C]");
   const battMinTempIdx = findHeaderIndex(headers, "BATTERY.minTemperature [C]");
   // Individual cell voltage indices for manual deviation fallback
@@ -221,8 +221,11 @@ function parseCsvToResult(csvText: string) {
   console.log("Battery SN indices — batterySN:", detBatterySNIdx, "batterySerial:", detBatterySerialIdx, "resolved:", batterySN);
   const batteryFullCap = battFullCapIdx >= 0 ? parseFloat(firstRow[battFullCapIdx]) : NaN;
   const batteryCurrCap = battCurrCapIdx >= 0 ? parseFloat(firstRow[battCurrCapIdx]) : NaN;
-  const batteryLife = battLifeIdx >= 0 ? parseFloat(firstRow[battLifeIdx]) : NaN;
   const batteryStatus = battStatusIdx >= 0 ? firstRow[battStatusIdx] : "";
+  const batteryStatusRaw = battStatusRawIdx >= 0 ? parseFloat(firstRow[battStatusRawIdx]) : NaN;
+  // Derive battery health: prefer BATTERY.status.RAW (numeric), fall back to parsing BATTERY.status
+  const batteryHealth = !isNaN(batteryStatusRaw) ? batteryStatusRaw
+    : (!isNaN(parseFloat(batteryStatus)) ? parseFloat(batteryStatus) : NaN);
   // BATTERY.maxTemperature/minTemperature summary fields (constant per flight)
   const battSummaryMaxTemp = battMaxTempIdx >= 0 ? parseFloat(firstRow[battMaxTempIdx]) : NaN;
   const battSummaryMinTemp = battMinTempIdx >= 0 ? parseFloat(firstRow[battMinTempIdx]) : NaN;
@@ -628,7 +631,7 @@ function parseCsvToResult(csvText: string) {
     maxGpsSatellites: maxGpsSats > 0 ? maxGpsSats : null,
     // Battery extended
     batterySN: batterySN || null,
-    batteryHealth: !isNaN(batteryLife) ? Math.round(batteryLife * 10) / 10 : null,
+    batteryHealth: !isNaN(batteryHealth) ? Math.round(batteryHealth * 10) / 10 : null,
     batteryFullCapacity: !isNaN(batteryFullCap) ? Math.round(batteryFullCap) : null,
     batteryCurrentCapacity: !isNaN(batteryCurrCap) ? Math.round(batteryCurrCap) : null,
     batteryStatus: batteryStatus || null,
