@@ -3422,6 +3422,22 @@ export type Database = {
           longitude: number | null
           merknader: string | null
           ninox_approved: boolean | null
+          notam_area_name: string | null
+          notam_center_lat_wgs84: number | null
+          notam_center_lon_wgs84: number | null
+          notam_end_utc: string | null
+          notam_max_agl_ft: number | null
+          notam_operation_type: string | null
+          notam_radius_nm: number | null
+          notam_realtime_contact_name: string | null
+          notam_realtime_contact_phone: string | null
+          notam_schedule_days: string[] | null
+          notam_schedule_type: string | null
+          notam_schedule_windows: Json | null
+          notam_start_utc: string | null
+          notam_submitter_company: string | null
+          notam_submitter_name: string | null
+          notam_text: string | null
           oppdatert_dato: string
           opprettet_dato: string
           risk_nivå: string
@@ -3451,6 +3467,22 @@ export type Database = {
           longitude?: number | null
           merknader?: string | null
           ninox_approved?: boolean | null
+          notam_area_name?: string | null
+          notam_center_lat_wgs84?: number | null
+          notam_center_lon_wgs84?: number | null
+          notam_end_utc?: string | null
+          notam_max_agl_ft?: number | null
+          notam_operation_type?: string | null
+          notam_radius_nm?: number | null
+          notam_realtime_contact_name?: string | null
+          notam_realtime_contact_phone?: string | null
+          notam_schedule_days?: string[] | null
+          notam_schedule_type?: string | null
+          notam_schedule_windows?: Json | null
+          notam_start_utc?: string | null
+          notam_submitter_company?: string | null
+          notam_submitter_name?: string | null
+          notam_text?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
           risk_nivå?: string
@@ -3480,6 +3512,22 @@ export type Database = {
           longitude?: number | null
           merknader?: string | null
           ninox_approved?: boolean | null
+          notam_area_name?: string | null
+          notam_center_lat_wgs84?: number | null
+          notam_center_lon_wgs84?: number | null
+          notam_end_utc?: string | null
+          notam_max_agl_ft?: number | null
+          notam_operation_type?: string | null
+          notam_radius_nm?: number | null
+          notam_realtime_contact_name?: string | null
+          notam_realtime_contact_phone?: string | null
+          notam_schedule_days?: string[] | null
+          notam_schedule_type?: string | null
+          notam_schedule_windows?: Json | null
+          notam_start_utc?: string | null
+          notam_submitter_company?: string | null
+          notam_submitter_name?: string | null
+          notam_text?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
           risk_nivå?: string

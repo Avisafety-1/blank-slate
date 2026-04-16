@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Plus, FileText, Brain, Building2 } from "lucide-react";
+import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -319,6 +319,12 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       >
                         <Brain className="w-3 h-3 mr-1" />
                         {missionAIRisks[mission.id].overall_score.toFixed(1)}
+                      </Badge>
+                    )}
+                    {mission.notam_text && (
+                      <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap">
+                        <Radio className="w-3 h-3 mr-1" />
+                        NOTAM
                       </Badge>
                     )}
                   </div>

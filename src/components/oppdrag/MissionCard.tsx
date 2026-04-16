@@ -20,7 +20,7 @@ import {
   MapPin, Calendar, Users, Plane, Package, FileText, Download,
   Edit, AlertTriangle, Route, Ruler, Navigation, Clock, Radio,
   ClipboardCheck, Trash2, ShieldCheck, Brain, ChevronDown, Info,
-  Send, CheckCircle2, Upload, Building2, BarChart3
+  Send, CheckCircle2, Upload, Building2, BarChart3, Radio as RadioIcon
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +56,7 @@ export interface MissionCardProps {
   onEdit: (mission: Mission) => void;
   onDelete: (mission: Mission) => void;
   onNewRiskAssessment: (mission: Mission) => void;
+  onNotam?: (mission: Mission) => void;
   onSubmitForApproval: (mission: Mission) => void;
   onExportPdf: (mission: Mission) => void;
   onExportKmz: (mission: Mission) => void;
@@ -82,6 +83,7 @@ export const MissionCard = ({
   onEdit,
   onDelete,
   onNewRiskAssessment,
+  onNotam,
   onSubmitForApproval,
   onExportPdf,
   onExportKmz,
@@ -207,6 +209,12 @@ export const MissionCard = ({
                   : 'Utfør sjekkliste/r'}
               </Badge>
             )}
+            {mission.notam_text && (
+              <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 border-green-500/30">
+                <RadioIcon className="h-3 w-3 mr-1" />
+                NOTAM
+              </Badge>
+            )}
             {has5kmZone && (
               <Badge
                 variant="outline"
@@ -242,6 +250,12 @@ export const MissionCard = ({
               <ShieldCheck className="h-4 w-4 mr-2" />
               Ny risikovurdering
             </DropdownMenuItem>
+            {onNotam && (
+              <DropdownMenuItem onClick={() => onNotam(mission)}>
+                <RadioIcon className="h-4 w-4 mr-2" />
+                NOTAM
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => onChecklistPicker(mission)}>
               <ClipboardCheck className="h-4 w-4 mr-2" />
               Tilknytt sjekkliste
