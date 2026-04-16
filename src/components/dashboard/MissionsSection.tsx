@@ -322,7 +322,11 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       </Badge>
                     )}
                     {mission.notam_text && (
-                      <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap">
+                      <Badge className={`${
+                        mission.notam_submitted_at
+                          ? 'bg-green-500/20 text-green-700 dark:text-green-300'
+                          : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                      } text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
                         <Radio className="w-3 h-3 mr-1" />
                         NOTAM
                       </Badge>

@@ -210,7 +210,15 @@ export const MissionCard = ({
               </Badge>
             )}
             {mission.notam_text && (
-              <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 border-green-500/30">
+              <Badge
+                variant="outline"
+                className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
+                  mission.notam_submitted_at
+                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
+                    : 'bg-amber-500/20 text-amber-900 border-amber-500/30'
+                }`}
+                onClick={(e) => { e.stopPropagation(); onNotam?.(mission); }}
+              >
                 <RadioIcon className="h-3 w-3 mr-1" />
                 NOTAM
               </Badge>
