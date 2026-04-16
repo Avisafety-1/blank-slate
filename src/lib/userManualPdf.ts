@@ -1,5 +1,5 @@
 import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, checkPageBreak } from "./pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, checkPageBreak, getPdfFontName } from "./pdfUtils";
 
 interface Section {
   title: string;
@@ -490,7 +490,7 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
           head: [item.headers.map(h => sanitizeForPdf(h))],
           body: item.rows.map(row => row.map(cell => sanitizeForPdf(cell))),
           margin: { left: 14, right: 14 },
-          styles: { fontSize: 9, cellPadding: 3 },
+          styles: { fontSize: 9, cellPadding: 3, font: getPdfFontName() },
           headStyles: { fillColor: [59, 130, 246], textColor: 255 },
           alternateRowStyles: { fillColor: [245, 247, 250] },
         });
