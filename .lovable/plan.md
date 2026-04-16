@@ -1,36 +1,42 @@
 
 
-## Fix: Use BATTERY.status for Battery Health
+## Wind Arrow Indicator on Flight Analysis Map
 
-### Problem
-The previous fix changed the battery health field to `BATTERY.life [%]`, but this field is **not included in the FIELDS list** sent to the DroneLog API — so it never appears in the CSV response, meaning `batteryHealth` would always be `null`.
-
-The correct field for battery health is `BATTERY.status` (and/or `BATTERY.status.RAW`), as confirmed by you.
-
-### Current State
-- `BATTERY.status` is already requested from the API (line 24 in FIELDS)
-- `battStatusIdx` is already parsed (line 140)
-- `batteryStatus` is already read from the CSV (line 225) as a **string**
-- It's returned in the result object as `batteryStatus` (line 634)
-- But it's never used for `batteryHealth` — instead the non-existent `BATTERY.life [%]` is used
-
-### What We Need to Know
-`BATTERY.status` is a string field. To store it as `battery_health_pct` (a numeric percentage), we need to understand what values it returns. Possible scenarios:
-- It could be a numeric string like `"96"` → parse directly
-- It could be a status string like `"Normal"` / `"Good"` → need mapping logic
-- `BATTERY.status.RAW` might be a separate numeric field
+### What We're Building
+A compact wind indicator overlay on the top-left of the flight analysis map showing an arrow pointing in the wind direction with speed in m/s. Updates as the user scrubs through the timeline.
 
 ### Changes
 
-**File: `supabase/functions/process-dronelog/index.ts`**
+**1. Edge Function: Add `WEATHER.maxWindSpeed [m/s]` to API fields**
+- File: `supabase/functions/process-dronelog/index.ts`
+- Add `"WEATHER.maxWindSpeed [m/s]"` to the FIELDS constant
+- Parse it alongside existing wind fields and store as `maxWindSpeed` on each position point
+- Handle `WEATHER.windDirection` potentially returning cardinal strings (N, S, SE, NW) — add a cardinal-to-degrees converter, fall back to `parseFloat` if already numeric
+- Deploy the updated function
 
-1. **Add `BATTERY.status.RAW` to FIELDS list** (line 24) — this may provide a numeric health value
-2. **Add header index** for `BATTERY.status.RAW`
-3. **Update `batteryHealth` derivation** (line 631): Try `BATTERY.status.RAW` first (parse as number), fall back to parsing `BATTERY.status` if it's numeric
-4. **Remove the unused `BATTERY.life [%]` index** (line 139) since this field is not in the FIELDS list
+**2. Flight Analysis Dialog: Wind arrow overlay**
+- File: `src/components/dashboard/FlightAnalysisDialog.tsx`
+- Add a wind indicator widget in the top-left overlay area (alongside speed trail and warnings buttons)
+- Shows when the current position has `windSpeed` or `windDir` data
+- Visual: A small rounded card with a rotated arrow SVG (pointing in wind direction) and speed text like "4.2 m/s"
+- Arrow rotation: CSS `rotate(Xdeg)` where X = windDir (meteorological convention: direction wind blows FROM, so arrow points downwind)
 
-**Deploy** the updated edge function.
+**3. TelemetryPoint type update**
+- File: `src/components/dashboard/FlightAnalysisTimeline.tsx`
+- Add `maxWindSpeed?: number` to the TelemetryPoint interface (optional, for future chart use)
 
-### Risk
-If `BATTERY.status.RAW` is not a recognized field by DroneLog API, it will simply not appear in the CSV (no error). The fallback to `BATTERY.status` string parsing ensures we still capture data. If neither yields a numeric value, `batteryHealth` will be `null` (safe).
+### Wind Arrow Design
+```text
+┌──────────────┐
+│   ↓  4.2 m/s │  (arrow rotates with windDir)
+│   NW         │  (cardinal label)
+└──────────────┘
+```
+Small glassmorphism card (~80x40px), positioned below the speed/warning buttons in the top-left stack. The arrow is an SVG that rotates based on `windDir`. Cardinal direction derived from degrees for display.
+
+### Cardinal Direction Handling
+Since `WEATHER.windDirection` may return "N", "NE", "SE" etc. instead of degrees, the parser will:
+- Try `parseFloat` first — if numeric, use as-is
+- If not numeric, map cardinal to degrees (N=0, NE=45, E=90, etc.)
+- Store as numeric degrees in the position data
 
