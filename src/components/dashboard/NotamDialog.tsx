@@ -128,9 +128,19 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       setVhfFrequency(windows?.[0]?.vhf || "");
     } else {
       setAreaName(mission.lokasjon || "");
-      setCenterLat(mission.latitude ?? null);
-      setCenterLng(mission.longitude ?? null);
-      setRadiusNm(0.5);
+      const cLat = mission.latitude ?? null;
+      const cLng = mission.longitude ?? null;
+      setCenterLat(cLat);
+      setCenterLng(cLng);
+
+      // Auto-compute radius from route coordinates if available
+      const routeCoords = mission.route?.coordinates as Array<{ lat: number; lng: number }> | undefined;
+      let computedRadius: number | null = null;
+      if (cLat != null && cLng != null && routeCoords?.length) {
+        computedRadius = computeRouteRadiusNm(cLat, cLng, routeCoords);
+      }
+      setRadiusNm(computedRadius ?? 0.5);
+
       setMaxAglFt(400);
       setOperationType("BVLOS");
       setScheduleType("daily");
