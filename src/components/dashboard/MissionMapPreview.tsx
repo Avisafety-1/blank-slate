@@ -42,14 +42,22 @@ interface FlightTrack {
   flightDate?: string;
 }
 
+interface NotamData {
+  lat: number;
+  lng: number;
+  radiusNm: number;
+  text: string;
+}
+
 interface MissionMapPreviewProps {
   latitude: number;
   longitude: number;
   route?: RouteData | null;
   flightTracks?: FlightTrack[] | null;
+  notam?: NotamData | null;
 }
 
-export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: MissionMapPreviewProps) => {
+export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, notam }: MissionMapPreviewProps) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
@@ -106,6 +114,24 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
     });
 
     L.marker([latitude, longitude], { icon }).addTo(map).bindPopup("Oppdragsposisjon");
+
+    // NOTAM circle
+    if (notam && notam.lat && notam.lng && notam.radiusNm > 0) {
+      const radiusMeters = notam.radiusNm * 1852;
+      const notamCircle = L.circle([notam.lat, notam.lng], {
+        radius: radiusMeters,
+        color: '#f59e0b',
+        weight: 2,
+        fillColor: '#f59e0b',
+        fillOpacity: 0.1,
+        dashArray: '6, 4',
+      }).addTo(map);
+      notamCircle.bindPopup(`<div style="font-size:12px;max-width:300px;white-space:pre-wrap;font-family:monospace;"><strong>NOTAM</strong><hr style="margin:4px 0"/>${notam.text}</div>`);
+      // Include in bounds
+      const circleBounds = notamCircle.getBounds();
+      allPoints.push([circleBounds.getSouthWest().lat, circleBounds.getSouthWest().lng]);
+      allPoints.push([circleBounds.getNorthEast().lat, circleBounds.getNorthEast().lng]);
+    }
 
     const allPoints: [number, number][] = [[latitude, longitude]];
 
@@ -304,7 +330,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks }: 
         // Suppress Leaflet _leaflet_pos errors during rapid unmount
       }
     };
-  }, [isVisible, latitude, longitude, route, flightTracks]);
+  }, [isVisible, latitude, longitude, route, flightTracks, notam]);
 
   return (
     <div ref={containerRef} className="relative w-full h-full rounded-lg overflow-hidden border border-border">
