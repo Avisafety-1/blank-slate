@@ -45,6 +45,13 @@ interface FlightTrack {
   flightDate?: string;
 }
 
+interface NotamData {
+  lat: number;
+  lng: number;
+  radiusNm: number;
+  text: string;
+}
+
 interface ExpandedMapDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -55,6 +62,7 @@ interface ExpandedMapDialogProps {
   missionTitle?: string;
   missionId?: string;
   onSoraUpdated?: () => void;
+  notam?: NotamData | null;
 }
 
 export const ExpandedMapDialog = ({
@@ -67,6 +75,7 @@ export const ExpandedMapDialog = ({
   missionTitle,
   missionId,
   onSoraUpdated,
+  notam,
 }: ExpandedMapDialogProps) => {
   const { companyId } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -394,6 +403,23 @@ export const ExpandedMapDialog = ({
               });
             }
           });
+        }
+
+        // NOTAM circle
+        if (notam && notam.lat && notam.lng && notam.radiusNm > 0) {
+          const radiusMeters = notam.radiusNm * 1852;
+          const notamCircle = L.circle([notam.lat, notam.lng], {
+            radius: radiusMeters,
+            color: '#f59e0b',
+            weight: 2,
+            fillColor: '#f59e0b',
+            fillOpacity: 0.1,
+            dashArray: '6, 4',
+          }).addTo(map);
+          notamCircle.bindPopup(`<div style="font-size:12px;max-width:300px;white-space:pre-wrap;font-family:monospace;"><strong>NOTAM</strong><hr style="margin:4px 0"/>${notam.text}</div>`);
+          const cb = notamCircle.getBounds();
+          allPoints.push([cb.getSouthWest().lat, cb.getSouthWest().lng]);
+          allPoints.push([cb.getNorthEast().lat, cb.getNorthEast().lng]);
         }
 
         if (allPoints.length > 1) {
