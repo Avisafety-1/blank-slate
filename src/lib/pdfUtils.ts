@@ -98,6 +98,7 @@ export const sanitizeForPdf = (text: string | null | undefined): string => {
   if (!text) return '';
   return text
     // Special punctuation that can cause issues
+    .replace(/→/g, '->').replace(/←/g, '<-')
     .replace(/–/g, '-').replace(/—/g, '-')
     .replace(/'/g, "'").replace(/'/g, "'")
     .replace(/"/g, '"').replace(/"/g, '"')
