@@ -50,6 +50,34 @@ const formatDateNotam = (d: Date) => {
   return `${dd}.${mm}.${yyyy}`;
 };
 
+// Haversine distance in meters between two lat/lng points
+const haversineMeters = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+};
+
+// Compute NOTAM radius in NM = max distance from center to any route point + 0.2 NM buffer
+const computeRouteRadiusNm = (
+  centerLat: number,
+  centerLng: number,
+  coords: Array<{ lat: number; lng: number }>
+): number | null => {
+  if (!coords?.length) return null;
+  let maxMeters = 0;
+  for (const c of coords) {
+    const d = haversineMeters(centerLat, centerLng, c.lat, c.lng);
+    if (d > maxMeters) maxMeters = d;
+  }
+  const maxNm = maxMeters / 1852;
+  return Math.round((maxNm + 0.2) * 10) / 10;
+};
+
 export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialogProps) => {
   const { companyId, user } = useAuth();
 
@@ -100,9 +128,19 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       setVhfFrequency(windows?.[0]?.vhf || "");
     } else {
       setAreaName(mission.lokasjon || "");
-      setCenterLat(mission.latitude ?? null);
-      setCenterLng(mission.longitude ?? null);
-      setRadiusNm(0.5);
+      const cLat = mission.latitude ?? null;
+      const cLng = mission.longitude ?? null;
+      setCenterLat(cLat);
+      setCenterLng(cLng);
+
+      // Auto-compute radius from route coordinates if available
+      const routeCoords = mission.route?.coordinates as Array<{ lat: number; lng: number }> | undefined;
+      let computedRadius: number | null = null;
+      if (cLat != null && cLng != null && routeCoords?.length) {
+        computedRadius = computeRouteRadiusNm(cLat, cLng, routeCoords);
+      }
+      setRadiusNm(computedRadius ?? 0.5);
+
       setMaxAglFt(400);
       setOperationType("BVLOS");
       setScheduleType("daily");
