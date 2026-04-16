@@ -343,7 +343,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     const userName = contactName || "";
     const subjectText = `UAS Notam request, ${companyName}`;
     const bodyText = `Hei.\n\nVi ønsker å publisere følgende NOTAM:\n\n${generatedText}\n\nMvh\n${userName}${companyName ? `, ${companyName}` : ""}`;
-    const mailtoUrl = `mailto:hauggard@gmail.com?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
+    const mailtoUrl = `mailto:nof@avinor.no?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
 
     // Try opening mailto – works in production but not in iframe/preview
     const isInIframe = window.self !== window.top;
@@ -358,7 +358,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
 
     // Always copy full email details to clipboard as fallback
-    const clipboardText = `Til: hauggard@gmail.com\nEmne: ${subjectText}\n\n${bodyText}`;
+    const clipboardText = `Til: nof@avinor.no\nEmne: ${subjectText}\n\n${bodyText}`;
     await navigator.clipboard.writeText(clipboardText);
 
     if (isInIframe) {
