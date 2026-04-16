@@ -175,10 +175,16 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       } else {
         dayStr = sorted.join(" ");
       }
-      const datePrefix = startDate && endDate ? `${formatDateNotam(startDate)}-${formatDateNotam(endDate)} ` : "";
+      const datePrefix = startDate && endDate
+        ? `${formatDateNotam(startDate)}-${formatDateNotam(endDate)} `
+        : startDate
+        ? `${formatDateNotam(startDate)} `
+        : "";
       lines.push(`${datePrefix}${dayStr} ${timeFrom}-${timeTo}`);
-    } else if (scheduleType === "daterange" && startDate && endDate) {
-      lines.push(`${formatDateNotam(startDate)}-${formatDateNotam(endDate)}`);
+    } else if (scheduleType === "daterange" && (startDate || endDate)) {
+      const from = startDate ? formatDateNotam(startDate) : "?";
+      const to = endDate ? formatDateNotam(endDate) : "?";
+      lines.push(`${from}-${to}`);
     } else {
       lines.push(`${timeFrom}-${timeTo}`);
     }
