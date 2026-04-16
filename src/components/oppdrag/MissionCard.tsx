@@ -589,6 +589,12 @@ export const MissionCard = ({
                         flightDate: log.flight_date,
                       })) || null
                   }
+                  notam={mission.notam_text ? {
+                    lat: mission.notam_center_lat_wgs84 ?? effectiveLat,
+                    lng: mission.notam_center_lon_wgs84 ?? effectiveLng,
+                    radiusNm: mission.notam_radius_nm ?? 0.5,
+                    text: mission.notam_text,
+                  } : null}
                 />
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
                   <span className="bg-background/90 px-2 py-1 rounded text-xs font-medium">Klikk for å forstørre</span>
@@ -841,6 +847,12 @@ export const MissionCard = ({
       missionTitle={mission.tittel}
       missionId={mission.id}
       onSoraUpdated={fetchMissions}
+      notam={mission.notam_text ? {
+        lat: mission.notam_center_lat_wgs84 ?? mission.latitude,
+        lng: mission.notam_center_lon_wgs84 ?? mission.longitude,
+        radiusNm: mission.notam_radius_nm ?? 0.5,
+        text: mission.notam_text,
+      } : null}
     />
     </>
   );
