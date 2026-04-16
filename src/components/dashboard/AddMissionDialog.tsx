@@ -1338,7 +1338,7 @@ export const AddMissionDialog = ({
                       {drones.map((drone) => (
                         <CommandItem
                           key={drone.id}
-                          value={`${drone.modell} ${drone.registrering}`}
+                          value={`${drone.modell} ${drone.registreringsnummer || ''}`}
                           onSelect={() => toggleDrone(drone.id)}
                         >
                           <Check
@@ -1347,7 +1347,7 @@ export const AddMissionDialog = ({
                               selectedDrones.includes(drone.id) ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {drone.modell} ({drone.registrering})
+                          {drone.modell}{drone.registreringsnummer ? ` (${drone.registreringsnummer})` : ''}
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -1366,7 +1366,7 @@ export const AddMissionDialog = ({
                   return (
                     <div key={id}>
                       <div className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm w-fit">
-                        <span>{drone?.modell} ({drone?.registrering})</span>
+                        <span>{drone?.modell}{drone?.registreringsnummer ? ` (${drone.registreringsnummer})` : ''}</span>
                         <ResourceConflictIndicator conflicts={conflicts} />
                         <button
                           type="button"
