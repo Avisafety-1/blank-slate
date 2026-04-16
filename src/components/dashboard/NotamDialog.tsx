@@ -492,6 +492,10 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
             <Textarea value={generatedText} readOnly className="font-mono text-sm min-h-[120px]" />
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            NOTAM skal normalt kun sendes inn ved BVLOS eller operasjoner over 120m. «Send inn» åpner din e-postapplikasjon med en ferdig formulert tekst.
+          </p>
+
           {/* Actions */}
           <div className="flex flex-wrap gap-2 justify-end">
             <Button variant="outline" size="sm" onClick={handleCopy}>
