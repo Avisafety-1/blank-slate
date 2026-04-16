@@ -36,6 +36,11 @@ const getEventColor = (type: string) => {
   return 'hsl(25, 95%, 53%)'; // APP_WARNING / info / message
 };
 
+const degreesToCardinal = (deg: number): string => {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(((deg % 360 + 360) % 360) / 22.5) % 16];
+};
+
 const getSpeedColor = (speed: number, maxSpeed: number) => {
   if (maxSpeed <= 0) return 'hsl(142, 76%, 36%)';
   const ratio = Math.min(speed / maxSpeed, 1);
@@ -429,6 +434,35 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                 </Button>
               )}
             </div>
+          )}
+
+          {/* Wind indicator */}
+          {mapReady && positions[currentIndex]?.windDir !== undefined && (
+            (() => {
+              const current = positions[currentIndex];
+              const windDeg = current.windDir ?? 0;
+              const windSpd = current.maxWindSpeed ?? current.windSpeed;
+              const cardinal = degreesToCardinal(windDeg);
+              return (
+                <div className="absolute top-12 left-2 z-10 bg-background/80 backdrop-blur-sm rounded-lg px-2 py-1.5 flex items-center gap-1.5 border border-border shadow-md">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    style={{ transform: `rotate(${windDeg + 180}deg)` }}
+                    className="text-primary shrink-0"
+                  >
+                    <path d="M10 2 L14 14 L10 11 L6 14 Z" fill="currentColor" />
+                  </svg>
+                  <div className="flex flex-col leading-none">
+                    {windSpd !== undefined && (
+                      <span className="text-[11px] font-semibold text-foreground">{windSpd.toFixed(1)} m/s</span>
+                    )}
+                    <span className="text-[9px] text-muted-foreground">{cardinal}</span>
+                  </div>
+                </div>
+              );
+            })()
           )}
 
           {/* Speed legend */}
