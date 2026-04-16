@@ -495,8 +495,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           {/* Actions */}
           <div className="flex flex-wrap gap-2 justify-end">
             <Button variant="outline" size="sm" onClick={handleCopy}>
-              <Copy className="w-4 h-4 mr-1.5" />
-              Kopier
+              <Copy className="w-4 h-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Kopier</span>
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving}>
               <Save className="w-4 h-4 mr-1.5" />
