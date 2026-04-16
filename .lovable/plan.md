@@ -1,58 +1,18 @@
 
 
-## Plan: Allow Parent Company Admins to Manage Competencies Across Hierarchy
+## Fix: Show drone registration number in mission drone list
 
 ### Problem
-Current RLS policies on `personnel_competencies` use `get_user_company_id()` which only matches the admin's own company. Parent company admins cannot add/update/delete competencies for users in sub-departments.
+In the mission dialog drone selector, the code references `drone.registrering` which is not a valid field. The actual database column is `registreringsnummer`. This results in drones showing as e.g. "DJI Matrice ()" with empty parentheses.
 
 ### Solution
-Update three RLS policies to use `get_user_visible_company_ids()` instead of `get_user_company_id()`, matching the pattern already used by the SELECT policy.
+Replace `drone.registrering` with `drone.registreringsnummer` in three places in `AddMissionDialog.tsx`, and conditionally show the parentheses only when `registreringsnummer` is set.
 
-### Database Migration
+### Changes
 
-Replace three policies:
+**File: `src/components/dashboard/AddMissionDialog.tsx`**
 
-```sql
--- 1. INSERT policy: allow admins to create competencies for users in visible companies
-DROP POLICY "Admins can create competencies in own company" ON public.personnel_competencies;
-CREATE POLICY "Admins can create competencies in visible companies"
-  ON public.personnel_competencies FOR INSERT TO authenticated
-  WITH CHECK (
-    (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'saksbehandler'::app_role))
-    AND EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = personnel_competencies.profile_id
-        AND profiles.company_id = ANY(get_user_visible_company_ids(auth.uid()))
-    )
-  );
-
--- 2. UPDATE policy
-DROP POLICY "Admins can update competencies in own company" ON public.personnel_competencies;
-CREATE POLICY "Admins can update competencies in visible companies"
-  ON public.personnel_competencies FOR UPDATE TO authenticated
-  USING (
-    (has_role(auth.uid(), 'admin'::app_role) OR has_role(auth.uid(), 'saksbehandler'::app_role))
-    AND EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = personnel_competencies.profile_id
-        AND profiles.company_id = ANY(get_user_visible_company_ids(auth.uid()))
-    )
-  );
-
--- 3. DELETE policy
-DROP POLICY "Admins can delete competencies in own company" ON public.personnel_competencies;
-CREATE POLICY "Admins can delete competencies in visible companies"
-  ON public.personnel_competencies FOR DELETE TO authenticated
-  USING (
-    has_role(auth.uid(), 'admin'::app_role)
-    AND EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = personnel_competencies.profile_id
-        AND profiles.company_id = ANY(get_user_visible_company_ids(auth.uid()))
-    )
-  );
-```
-
-### No Frontend Changes Needed
-The UI already shows personnel from sub-departments via `get_user_visible_company_ids()`. The only blocker is the RLS policies rejecting the insert/update/delete operations.
+1. **Line 1341** — Command search value: change `drone.registrering` to `drone.registreringsnummer`
+2. **Line 1350** — Display text: change `{drone.modell} ({drone.registrering})` to conditionally show registration number only if it exists: `{drone.modell}{drone.registreringsnummer ? ` (${drone.registreringsnummer})` : ''}`
+3. **Line 1369** — Selected drone badge: same conditional pattern for `drone?.registreringsnummer`
 
