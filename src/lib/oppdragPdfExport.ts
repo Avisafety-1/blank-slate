@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import { generateMissionMapSnapshot } from "@/lib/mapSnapshotUtils";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
