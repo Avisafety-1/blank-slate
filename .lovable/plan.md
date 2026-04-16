@@ -1,18 +1,25 @@
 
 
-## Fix: Show drone registration number in mission drone list
+## Fix: Battery Health Reading Wrong Field
 
 ### Problem
-In the mission dialog drone selector, the code references `drone.registrering` which is not a valid field. The actual database column is `registreringsnummer`. This results in drones showing as e.g. "DJI Matrice ()" with empty parentheses.
+Battery health for TB100 1-3 shows incorrect values (e.g. 52%) because the code reads the wrong DroneLog API field.
 
-### Solution
-Replace `drone.registrering` with `drone.registreringsnummer` in three places in `AddMissionDialog.tsx`, and conditionally show the parentheses only when `registreringsnummer` is set.
+In `process-dronelog/index.ts` line 139, battery health is read from `BATTERY.relativeCapacity` — which is the **charge level at the start of recording** (state of charge), NOT the battery lifetime health. The correct field is `BATTERY.life [%]`, which is already requested from the API but never read from the CSV response.
 
-### Changes
+Evidence: TB100 2 shows 52% "health" on April 13 (= charge level when log started), while it had 98% on April 2 (= different charge level at that recording start).
 
-**File: `src/components/dashboard/AddMissionDialog.tsx`**
+### Fix
 
-1. **Line 1341** — Command search value: change `drone.registrering` to `drone.registreringsnummer`
-2. **Line 1350** — Display text: change `{drone.modell} ({drone.registrering})` to conditionally show registration number only if it exists: `{drone.modell}{drone.registreringsnummer ? ` (${drone.registreringsnummer})` : ''}`
-3. **Line 1369** — Selected drone badge: same conditional pattern for `drone?.registreringsnummer`
+**File: `supabase/functions/process-dronelog/index.ts`** (line 139)
+- Change `findHeaderIndex(headers, "BATTERY.relativeCapacity")` to `findHeaderIndex(headers, "BATTERY.life [%]")`
+
+**File: `supabase/functions/dji-auto-sync/index.ts`**
+- Same field name fix if present
+
+**File: `supabase/functions/dji-process-single/index.ts`**
+- This function does not parse `BATTERY.life [%]` at all currently, but it does not set battery health either — no change needed.
+
+### After Deploy
+The existing incorrect values on the three TB100 batteries will need to be corrected. This can happen automatically when new flight logs are processed, or you can manually clear the `battery_health_pct` on the equipment records.
 
