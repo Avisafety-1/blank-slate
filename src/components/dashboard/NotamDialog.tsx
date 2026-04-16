@@ -51,7 +51,7 @@ const formatDateNotam = (d: Date) => {
 };
 
 export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialogProps) => {
-  const { companyId } = useAuth();
+  const { companyId, user } = useAuth();
 
   const [operationType, setOperationType] = useState("BVLOS");
   const [areaName, setAreaName] = useState("");
