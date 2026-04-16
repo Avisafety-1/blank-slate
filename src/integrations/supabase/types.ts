@@ -3435,6 +3435,7 @@ export type Database = {
           notam_schedule_type: string | null
           notam_schedule_windows: Json | null
           notam_start_utc: string | null
+          notam_submitted_at: string | null
           notam_submitter_company: string | null
           notam_submitter_name: string | null
           notam_text: string | null
@@ -3480,6 +3481,7 @@ export type Database = {
           notam_schedule_type?: string | null
           notam_schedule_windows?: Json | null
           notam_start_utc?: string | null
+          notam_submitted_at?: string | null
           notam_submitter_company?: string | null
           notam_submitter_name?: string | null
           notam_text?: string | null
@@ -3525,6 +3527,7 @@ export type Database = {
           notam_schedule_type?: string | null
           notam_schedule_windows?: Json | null
           notam_start_utc?: string | null
+          notam_submitted_at?: string | null
           notam_submitter_company?: string | null
           notam_submitter_name?: string | null
           notam_text?: string | null

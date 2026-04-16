@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Copy, Save, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Copy, Save, AlertTriangle, Send } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const [companyName, setCompanyName] = useState("");
   const [vhfFrequency, setVhfFrequency] = useState("");
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Pre-fill from mission data
   useEffect(() => {
@@ -174,7 +175,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       } else {
         dayStr = sorted.join(" ");
       }
-      lines.push(`${dayStr} ${timeFrom}-${timeTo}`);
+      const datePrefix = startDate && endDate ? `${formatDateNotam(startDate)}-${formatDateNotam(endDate)} ` : "";
+      lines.push(`${datePrefix}${dayStr} ${timeFrom}-${timeTo}`);
     } else if (scheduleType === "daterange" && startDate && endDate) {
       lines.push(`${formatDateNotam(startDate)}-${formatDateNotam(endDate)}`);
     } else {
@@ -240,6 +242,51 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       onSaved?.();
       onOpenChange(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    if (!mission?.id) return;
+    setSubmitting(true);
+    const { error } = await (supabase as any)
+      .from("missions")
+      .update({
+        notam_text: generatedText,
+        notam_operation_type: operationType,
+        notam_start_utc: startDate?.toISOString() || null,
+        notam_end_utc: endDate?.toISOString() || null,
+        notam_schedule_type: scheduleType,
+        notam_schedule_days: scheduleDays,
+        notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
+        notam_area_name: areaName,
+        notam_center_lat_wgs84: centerLat,
+        notam_center_lon_wgs84: centerLng,
+        notam_radius_nm: radiusNm,
+        notam_max_agl_ft: maxAglFt,
+        notam_submitter_company: companyName,
+        notam_realtime_contact_name: contactName,
+        notam_realtime_contact_phone: contactPhone,
+        notam_submitted_at: new Date().toISOString(),
+      })
+      .eq("id", mission.id);
+
+    setSubmitting(false);
+    if (error) {
+      toast.error("Kunne ikke sende NOTAM");
+      console.error(error);
+      return;
+    }
+
+    // Build mailto link
+    const userName = contactName || "";
+    const subject = encodeURIComponent(`UAS Notam request, ${companyName}`);
+    const body = encodeURIComponent(
+      `Hei.\n\nVi ønsker å publisere følgende NOTAM:\n\n${generatedText}\n\nMvh\n${userName}${companyName ? `, ${companyName}` : ""}`
+    );
+    window.open(`mailto:hauggard@gmail.com?subject=${subject}&body=${body}`, "_self");
+
+    toast.success("NOTAM sendt inn");
+    onSaved?.();
+    onOpenChange(false);
   };
 
   return (
@@ -454,6 +501,10 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
             <Button onClick={handleSave} disabled={saving}>
               <Save className="w-4 h-4 mr-2" />
               {saving ? "Lagrer…" : "Lagre"}
+            </Button>
+            <Button onClick={handleSubmit} disabled={submitting} variant="default" className="bg-green-600 hover:bg-green-700">
+              <Send className="w-4 h-4 mr-2" />
+              {submitting ? "Sender…" : "Send inn"}
             </Button>
           </div>
         </div>
