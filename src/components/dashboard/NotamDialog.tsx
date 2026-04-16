@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Copy, Save, AlertTriangle } from "lucide-react";
+import { CalendarIcon, Copy, Save, AlertTriangle, Send } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const [companyName, setCompanyName] = useState("");
   const [vhfFrequency, setVhfFrequency] = useState("");
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Pre-fill from mission data
   useEffect(() => {
@@ -174,7 +175,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       } else {
         dayStr = sorted.join(" ");
       }
-      lines.push(`${dayStr} ${timeFrom}-${timeTo}`);
+      const datePrefix = startDate && endDate ? `${formatDateNotam(startDate)}-${formatDateNotam(endDate)} ` : "";
+      lines.push(`${datePrefix}${dayStr} ${timeFrom}-${timeTo}`);
     } else if (scheduleType === "daterange" && startDate && endDate) {
       lines.push(`${formatDateNotam(startDate)}-${formatDateNotam(endDate)}`);
     } else {
@@ -454,6 +456,10 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
             <Button onClick={handleSave} disabled={saving}>
               <Save className="w-4 h-4 mr-2" />
               {saving ? "Lagrer…" : "Lagre"}
+            </Button>
+            <Button onClick={handleSubmit} disabled={submitting} variant="default" className="bg-green-600 hover:bg-green-700">
+              <Send className="w-4 h-4 mr-2" />
+              {submitting ? "Sender…" : "Send inn"}
             </Button>
           </div>
         </div>
