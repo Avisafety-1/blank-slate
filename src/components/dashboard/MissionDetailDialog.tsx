@@ -403,7 +403,17 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={() => setExpandedMapOpen(true)}
               >
-                <MissionMapPreview latitude={currentMission.latitude} longitude={currentMission.longitude} route={currentMission.route as any} />
+                <MissionMapPreview
+                  latitude={currentMission.latitude}
+                  longitude={currentMission.longitude}
+                  route={currentMission.route as any}
+                  notam={currentMission.notam_text ? {
+                    lat: currentMission.notam_center_lat_wgs84 ?? currentMission.latitude,
+                    lng: currentMission.notam_center_lon_wgs84 ?? currentMission.longitude,
+                    radiusNm: currentMission.notam_radius_nm ?? 0.5,
+                    text: currentMission.notam_text,
+                  } : null}
+                />
               </div>
             </div>
           )}
@@ -495,6 +505,12 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         missionTitle={currentMission.tittel}
         missionId={currentMission.id}
         onSoraUpdated={onMissionUpdated}
+        notam={currentMission.notam_text ? {
+          lat: currentMission.notam_center_lat_wgs84 ?? currentMission.latitude,
+          lng: currentMission.notam_center_lon_wgs84 ?? currentMission.longitude,
+          radiusNm: currentMission.notam_radius_nm ?? 0.5,
+          text: currentMission.notam_text,
+        } : null}
       />
     )}
 
