@@ -278,20 +278,31 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
     // Build mailto link
     const userName = contactName || "";
-    const subject = encodeURIComponent(`UAS Notam request, ${companyName}`);
-    const body = encodeURIComponent(
-      `Hei.\n\nVi ønsker å publisere følgende NOTAM:\n\n${generatedText}\n\nMvh\n${userName}${companyName ? `, ${companyName}` : ""}`
-    );
-    const mailtoUrl = `mailto:hauggard@gmail.com?subject=${subject}&body=${body}`;
-    const link = document.createElement("a");
-    link.href = mailtoUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const subjectText = `UAS Notam request, ${companyName}`;
+    const bodyText = `Hei.\n\nVi ønsker å publisere følgende NOTAM:\n\n${generatedText}\n\nMvh\n${userName}${companyName ? `, ${companyName}` : ""}`;
+    const mailtoUrl = `mailto:hauggard@gmail.com?subject=${encodeURIComponent(subjectText)}&body=${encodeURIComponent(bodyText)}`;
 
-    toast.success("NOTAM sendt inn");
+    // Try opening mailto – works in production but not in iframe/preview
+    const isInIframe = window.self !== window.top;
+    if (!isInIframe) {
+      const link = document.createElement("a");
+      link.href = mailtoUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Always copy full email details to clipboard as fallback
+    const clipboardText = `Til: hauggard@gmail.com\nEmne: ${subjectText}\n\n${bodyText}`;
+    await navigator.clipboard.writeText(clipboardText);
+
+    if (isInIframe) {
+      toast.success("E-posttekst kopiert til utklippstavlen (mailto fungerer ikke i preview-modus)");
+    } else {
+      toast.success("NOTAM sendt inn – e-postvindu åpnet");
+    }
     onSaved?.();
     onOpenChange(false);
   };
