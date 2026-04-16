@@ -45,7 +45,7 @@ import {
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
 
 interface KPIData {
   totalMissions: number;
