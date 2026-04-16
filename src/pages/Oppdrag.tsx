@@ -16,6 +16,7 @@ import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
+import { NotamDialog } from "@/components/dashboard/NotamDialog";
 import { useAuth } from "@/contexts/AuthContext";
 
 type Mission = any;
@@ -63,6 +64,8 @@ const Oppdrag = () => {
   const [hasFh2Connection, setHasFh2Connection] = useState(false);
   const [fh2DialogOpen, setFh2DialogOpen] = useState(false);
   const [fh2Mission, setFh2Mission] = useState<Mission | null>(null);
+  const [notamDialogOpen, setNotamDialogOpen] = useState(false);
+  const [notamMission, setNotamMission] = useState<Mission | null>(null);
 
   // Check FH2 connection (edge function handles parent fallback)
   useEffect(() => {
@@ -399,6 +402,10 @@ const Oppdrag = () => {
                     }}
                     hasFh2Connection={hasFh2Connection}
                     onSendToFH2={handleSendToFH2}
+                    onNotam={(m) => {
+                      setNotamMission(m);
+                      setNotamDialogOpen(true);
+                    }}
                   />
                 ))}
                 {hasMore && (
@@ -521,6 +528,16 @@ const Oppdrag = () => {
             />
           );
         })()}
+
+        <NotamDialog
+          open={notamDialogOpen}
+          onOpenChange={setNotamDialogOpen}
+          mission={notamMission}
+          onSaved={() => {
+            data.fetchMissions();
+            setNotamMission(null);
+          }}
+        />
       </div>
     </div>
   );

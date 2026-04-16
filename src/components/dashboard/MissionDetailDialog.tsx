@@ -605,6 +605,18 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       flightDate={undefined}
       droneName={currentMission?.tittel}
     />
+
+    <NotamDialog
+      open={notamDialogOpen}
+      onOpenChange={setNotamDialogOpen}
+      mission={currentMission}
+      onSaved={() => {
+        onMissionUpdated?.();
+        // Re-fetch live mission
+        supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
+          if (data) setLiveMission(data);
+        });
+      }}
+    />
     </>
-  );
 };
