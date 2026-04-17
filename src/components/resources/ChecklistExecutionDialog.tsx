@@ -95,17 +95,20 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     fetchTitles();
   }, [open, checklistIds.join(",")]);
 
-  // Fetch items or image for active checklist
+  // Fetch items or file for active checklist
   useEffect(() => {
     if (!open || !activeChecklistId) return;
     const fetchData = async () => {
       setIsLoading(true);
-      setImageUrl(null);
+      setFileUrl(null);
+      setFileMode(null);
+      setFileName(null);
+      setLoadError(null);
       setManuallyCompleted(false);
       try {
         const { data, error } = await supabase
           .from("documents")
-          .select("beskrivelse, fil_url")
+          .select("beskrivelse, fil_url, fil_navn")
           .eq("id", activeChecklistId)
           .single();
         if (error) throw error;
@@ -113,21 +116,34 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         const parsed = tryParseChecklistItems(data?.beskrivelse ?? null);
         if (parsed) {
           setItems(parsed);
-          setImageUrl(null);
+          setFileUrl(null);
         } else if (data?.fil_url) {
           setItems([]);
-          // Generate signed URL
-          const { data: signedData } = await supabase.storage
-            .from("documents")
-            .createSignedUrl(data.fil_url, 3600);
-          setImageUrl(signedData?.signedUrl ?? null);
+          setFileName(data.fil_navn ?? null);
+          const mode = getFileMode(data.fil_navn, data.fil_url);
+          setFileMode(mode);
+
+          // External URL — use directly
+          if (data.fil_url.startsWith('http://') || data.fil_url.startsWith('https://')) {
+            setFileUrl(data.fil_url);
+          } else {
+            const { data: signedData, error: signedError } = await supabase.storage
+              .from("documents")
+              .createSignedUrl(data.fil_url, 3600);
+            if (signedError) {
+              console.error("[ChecklistExecutionDialog] createSignedUrl failed:", signedError, "path:", data.fil_url);
+              setLoadError("Kunne ikke laste sjekklistefilen. Sjekk at den er delt riktig, eller kontakt admin.");
+            } else {
+              setFileUrl(signedData?.signedUrl ?? null);
+            }
+          }
         } else {
           setItems([]);
-          setImageUrl(null);
         }
-      } catch {
+      } catch (err) {
+        console.error("[ChecklistExecutionDialog] fetch failed:", err);
         setItems([]);
-        setImageUrl(null);
+        setLoadError("Kunne ikke laste sjekklisten. Kontakt admin.");
       } finally {
         setIsLoading(false);
       }
