@@ -1766,8 +1766,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[min(var(--radix-popover-trigger-width),calc(100vw-2rem))] p-2" align="start">
-                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                      <PopoverContent
+                        className="w-[min(var(--radix-popover-trigger-width),calc(100vw-2rem))] p-2"
+                        align="start"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                       >
+                        <div
+                          className="space-y-1 max-h-48 overflow-y-auto overscroll-contain"
+                          style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
+                        >
                           {checklists.map((checklist) => (
                             <label key={checklist.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
                               <Checkbox
