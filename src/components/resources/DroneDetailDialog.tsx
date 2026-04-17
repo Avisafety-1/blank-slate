@@ -178,7 +178,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     if (!drone) return;
     const targetDepts = await getCurrentDroneVisibilityDeptIds();
     if (targetDepts.length === 0) return;
-    const missing = await checkDroneResourceVisibility(drone.id, targetDepts);
+    const missing = await checkDroneResourceVisibility(drone.id, targetDepts, {
+      droneCompanyId: drone.company_id,
+      technicalResponsibleId: drone.technical_responsible_id,
+    });
     if (missing.length === 0) return;
     setVisibilityWarning({
       missing,
@@ -760,7 +763,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       // Check resource visibility before persisting department-visibility changes
       const targetDepts = getTargetDeptIds();
       if (targetDepts.length > 0) {
-        const missing = await checkDroneResourceVisibility(drone.id, targetDepts);
+        const missing = await checkDroneResourceVisibility(drone.id, targetDepts, {
+          droneCompanyId: drone.company_id,
+          technicalResponsibleId: formTechnicalResponsibleId,
+        });
         if (missing.length > 0) {
           // Pause save and let user decide
           await new Promise<void>((resolve) => {

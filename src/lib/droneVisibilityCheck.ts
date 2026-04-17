@@ -20,12 +20,18 @@ export interface DepartmentInfo {
 /**
  * Check whether all resources linked to a drone are visible to the given target departments.
  * Returns one entry per (resource, missing-dept) gap.
+ *
+ * Exception: a personnel link is ignored if the person is the drone's technical responsible
+ * AND belongs to the drone's owner company (i.e. the company sharing the drone downward).
  */
 export async function checkDroneResourceVisibility(
   droneId: string,
   targetDeptIds: string[],
+  options?: { droneCompanyId?: string | null; technicalResponsibleId?: string | null },
 ): Promise<MissingVisibility[]> {
   if (!droneId || targetDeptIds.length === 0) return [];
+  const droneCompanyId = options?.droneCompanyId ?? null;
+  const technicalResponsibleId = options?.technicalResponsibleId ?? null;
 
   const missing: MissingVisibility[] = [];
 
@@ -106,6 +112,15 @@ export async function checkDroneResourceVisibility(
   for (const link of persLinks || []) {
     const p = link.profile;
     if (!p) continue;
+    // Exception: technical responsible belonging to the drone's owner company is OK
+    if (
+      technicalResponsibleId &&
+      p.id === technicalResponsibleId &&
+      droneCompanyId &&
+      p.company_id === droneCompanyId
+    ) {
+      continue;
+    }
     const missingFor = targetDeptIds.filter((d) => d !== p.company_id);
     if (missingFor.length > 0) {
       missing.push({
