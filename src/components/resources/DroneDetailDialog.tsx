@@ -295,20 +295,33 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     }
   };
 
-  // Fetch technical responsible persons for the dropdown
+  // Fetch technical responsible persons for the dropdown — includes drone owner company
+  // AND all departments the drone is shared with (drone_department_visibility)
   useEffect(() => {
     if (!companyId) return;
     const fetchTechPersons = async () => {
+      const companyIds = new Set<string>([companyId]);
+      if (drone?.company_id) companyIds.add(drone.company_id);
+      if (drone?.id) {
+        const { data: visRows } = await (supabase as any)
+          .from("drone_department_visibility")
+          .select("company_id")
+          .eq("drone_id", drone.id);
+        for (const r of visRows || []) companyIds.add(r.company_id);
+      }
       const { data } = await (supabase as any)
         .from("profiles")
         .select("id, full_name")
-        .eq("company_id", companyId)
+        .in("company_id", Array.from(companyIds))
         .eq("is_technical_responsible", true)
         .eq("approved", true);
-      setTechnicalResponsiblePersons(data || []);
+      // Deduplicate by id
+      const map = new Map<string, { id: string; full_name: string | null }>();
+      for (const p of data || []) map.set(p.id, p);
+      setTechnicalResponsiblePersons(Array.from(map.values()));
     };
     fetchTechPersons();
-  }, [companyId]);
+  }, [companyId, drone?.id, drone?.company_id]);
 
   const fetchTechnicalResponsibleName = async () => {
     if (!drone?.technical_responsible_id) { setTechnicalResponsibleName(null); return; }
