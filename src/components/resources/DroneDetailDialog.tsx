@@ -756,8 +756,31 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
       if (error) throw error;
 
-      // Save department visibility
-      await deptVis.saveVisibility();
+      // Check resource visibility before persisting department-visibility changes
+      const targetDepts = getTargetDeptIds();
+      if (targetDepts.length > 0) {
+        const missing = await checkDroneResourceVisibility(drone.id, targetDepts);
+        if (missing.length > 0) {
+          // Pause save and let user decide
+          await new Promise<void>((resolve) => {
+            setVisibilityWarning({
+              missing,
+              onContinue: async () => {
+                await deptVis.saveVisibility();
+                resolve();
+              },
+              onCancel: () => {
+                // Skip visibility save but keep drone update
+                resolve();
+              },
+            });
+          });
+        } else {
+          await deptVis.saveVisibility();
+        }
+      } else {
+        await deptVis.saveVisibility();
+      }
 
       toast.success(`${terminology.vehicle} oppdatert`);
       setIsEditing(false);
