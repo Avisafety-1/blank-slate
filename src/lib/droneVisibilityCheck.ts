@@ -112,6 +112,15 @@ export async function checkDroneResourceVisibility(
   for (const link of persLinks || []) {
     const p = link.profile;
     if (!p) continue;
+    // Exception: technical responsible belonging to the drone's owner company is OK
+    if (
+      technicalResponsibleId &&
+      p.id === technicalResponsibleId &&
+      droneCompanyId &&
+      p.company_id === droneCompanyId
+    ) {
+      continue;
+    }
     const missingFor = targetDeptIds.filter((d) => d !== p.company_id);
     if (missingFor.length > 0) {
       missing.push({
