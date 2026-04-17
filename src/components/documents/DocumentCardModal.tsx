@@ -667,6 +667,25 @@ const DocumentCardModal = ({
                 </div>
               )}
 
+              {!readOnly && isParentCompany && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="edit-visible-children-doc">Synlig for alle avdelinger</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Deles automatisk med alle underavdelinger
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="edit-visible-children-doc"
+                    checked={visibleToChildren}
+                    onCheckedChange={setVisibleToChildren}
+                  />
+                </div>
+              )}
+
               <DialogFooter className="gap-2">
                 {isAdmin && !isCreating && (
                   <Button
