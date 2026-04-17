@@ -21,12 +21,21 @@ self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
+// Allow page to trigger SKIP_WAITING explicitly during force-reload flow
+self.addEventListener('message', (event) => {
+  if ((event as ExtendableMessageEvent).data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('activate', (event) => {
-  self.clients.claim();
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(key => caches.delete(key)))
-    )
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then(keys =>
+        Promise.all(keys.map(key => caches.delete(key)))
+      ),
+    ])
   );
 });
 
