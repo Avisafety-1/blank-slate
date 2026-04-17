@@ -105,6 +105,33 @@ const DocumentCardModal = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [isParentCompany, setIsParentCompany] = useState(false);
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+
+  // Detect if current company is a parent company
+  useEffect(() => {
+    if (!companyId || !isOpen) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('parent_company_id', companyId)
+        .limit(1);
+      setIsParentCompany((data?.length ?? 0) > 0);
+    };
+    check();
+  }, [companyId, isOpen]);
+
+  // Sync visibleToChildren state with document
+  useEffect(() => {
+    if (isOpen) {
+      if (document) {
+        setVisibleToChildren(!!document.visible_to_children);
+      } else if (isCreating) {
+        setVisibleToChildren(false);
+      }
+    }
+  }, [document, isOpen, isCreating]);
 
   // Parse checklist JSON when document loads
   useEffect(() => {
