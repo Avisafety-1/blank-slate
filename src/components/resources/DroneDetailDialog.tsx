@@ -1759,7 +1759,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     <Label>Operasjonssjekklister</Label>
                     {isMobile ? (
                       <Dialog>
-                        <PopoverTrigger asChild>
+                        <DialogTrigger asChild>
                           <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
                             <span className="min-w-0 flex-1 truncate text-left">
                               {(formData.operations_checklist_ids || []).length > 0
@@ -1768,7 +1768,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             </span>
                             <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
-                        </PopoverTrigger>
+                        </DialogTrigger>
                         <DialogContent className="w-[95vw] max-w-md p-0 gap-0">
                           <DialogHeader className="px-4 py-3 border-b">
                             <DialogTitle className="text-base">Operasjonssjekklister</DialogTitle>
