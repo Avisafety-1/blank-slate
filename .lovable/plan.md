@@ -1,11 +1,4 @@
 
+Brukeren vil at avdelings-synlighet (`visible_to_children`-bryteren som finnes i `DocumentUploadDialog`) også skal kunne endres når man **redigerer** et eksisterende dokument — ikke bare ved opplasting.
 
-## Endre NOTAM e-postadresse
-
-### Endring
-Oppdater e-postadressen for NOTAM-innsending fra `hauggard@gmail.com` til `nof@avinor.no` i `NotamDialog.tsx`.
-
-### Tekniske detaljer
-- Linje 346: Endre `mailto:hauggard@gmail.com` til `mailto:nof@avinor.no`
-- Linje 361: Endre `Til: hauggard@gmail.com` til `Til: nof@avinor.no`
-
+Jeg må sjekke `DocumentCardModal.tsx` for å forstå dagens redigeringsflyt.
