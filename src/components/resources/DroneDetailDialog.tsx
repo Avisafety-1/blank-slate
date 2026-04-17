@@ -784,6 +784,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         : "ok"
     : "ok";
 
+  const isSharedFromParent = !!drone.company_id && !!companyId && drone.company_id !== companyId;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
