@@ -42,7 +42,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Upload, Trash2, Plus, ChevronUp, ChevronDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { CalendarIcon, Upload, Trash2, Plus, ChevronUp, ChevronDown, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -103,6 +105,33 @@ const DocumentCardModal = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [isParentCompany, setIsParentCompany] = useState(false);
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+
+  // Detect if current company is a parent company
+  useEffect(() => {
+    if (!companyId || !isOpen) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('parent_company_id', companyId)
+        .limit(1);
+      setIsParentCompany((data?.length ?? 0) > 0);
+    };
+    check();
+  }, [companyId, isOpen]);
+
+  // Sync visibleToChildren state with document
+  useEffect(() => {
+    if (isOpen) {
+      if (document) {
+        setVisibleToChildren(!!(document as any).visible_to_children);
+      } else if (isCreating) {
+        setVisibleToChildren(false);
+      }
+    }
+  }, [document, isOpen, isCreating]);
 
   // Parse checklist JSON when document loads
   useEffect(() => {
@@ -286,6 +315,7 @@ const DocumentCardModal = ({
         opprettet_av: userData.user?.email || null,
         versjon: isCreating ? "1.0" : newVersion,
         oppdatert_dato: new Date().toISOString(),
+        visible_to_children: isParentCompany ? visibleToChildren : false,
       };
 
       if (isCreating) {
@@ -634,6 +664,25 @@ const DocumentCardModal = ({
                     <Upload className="mr-2 h-4 w-4" />
                     Åpne nettside
                   </Button>
+                </div>
+              )}
+
+              {!readOnly && isParentCompany && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="edit-visible-children-doc">Synlig for alle avdelinger</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Deles automatisk med alle underavdelinger
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="edit-visible-children-doc"
+                    checked={visibleToChildren}
+                    onCheckedChange={setVisibleToChildren}
+                  />
                 </div>
               )}
 
