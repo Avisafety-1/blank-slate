@@ -164,7 +164,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     });
   };
 
-  const allItemsChecked = isImageMode
+  const allItemsChecked = isFileMode
     ? manuallyCompleted
     : items.length > 0 && checkedItems.size === items.length;
   const checkedCount = checkedItems.size;
@@ -229,7 +229,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         )}
 
         {/* Progress bar — only for JSON checklists */}
-        {!isImageMode && !isLoading && items.length > 0 && (
+        {!isFileMode && !isLoading && items.length > 0 && (
           <div className="space-y-1 flex-shrink-0">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Fremgang</span>
@@ -249,17 +249,35 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">Laster sjekkliste...</p>
             </div>
-          ) : isImageMode ? (
-            /* Image-based checklist */
+          ) : isFileMode ? (
+            /* File-based checklist (image or document) */
             <div className="space-y-4 py-2">
-              <div className="rounded-lg border overflow-hidden">
-                <img
-                  src={imageUrl!}
-                  alt={checklistTitles[activeChecklistId] || "Sjekkliste"}
-                  className="w-full h-auto cursor-pointer"
-                  onClick={() => window.open(imageUrl!, '_blank')}
-                />
-              </div>
+              {fileMode === "image" ? (
+                <div className="rounded-lg border overflow-hidden">
+                  <img
+                    src={fileUrl!}
+                    alt={checklistTitles[activeChecklistId] || "Sjekkliste"}
+                    className="w-full h-auto cursor-pointer"
+                    onClick={() => window.open(fileUrl!, '_blank')}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
+                  <FileText className="w-12 h-12 text-primary" />
+                  <div className="text-center">
+                    <p className="font-medium text-sm">{fileName || "Sjekklistefil"}</p>
+                    <p className="text-xs text-muted-foreground">Åpne dokumentet for å gjennomgå sjekklisten</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => window.open(fileUrl!, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Åpne sjekkliste
+                  </Button>
+                </div>
+              )}
               <Button
                 variant={manuallyCompleted ? "default" : "outline"}
                 className="w-full gap-2"
@@ -277,6 +295,11 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                   </>
                 )}
               </Button>
+            </div>
+          ) : loadError ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2 text-center px-4">
+              <AlertTriangle className="w-8 h-8 text-destructive" />
+              <p className="text-sm text-destructive font-medium">{loadError}</p>
             </div>
           ) : items.length === 0 ? (
             <div className="flex items-center justify-center py-8">
@@ -341,7 +364,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <CheckCircle2 className="w-4 h-4" />
                 Fullfør
               </>
-            ) : isImageMode ? (
+            ) : isFileMode ? (
               "Marker sjekklisten som utført"
             ) : (
               `Kryss av alle punkter (${checkedCount}/${totalCount})`
