@@ -126,7 +126,7 @@ const DocumentCardModal = ({
   useEffect(() => {
     if (isOpen) {
       if (document) {
-        setVisibleToChildren(!!document.visible_to_children);
+        setVisibleToChildren(!!(document as any).visible_to_children);
       } else if (isCreating) {
         setVisibleToChildren(false);
       }
