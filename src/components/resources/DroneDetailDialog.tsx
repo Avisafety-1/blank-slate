@@ -35,6 +35,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 interface Drone {
   id: string;
+  company_id?: string;
+  companies?: { navn?: string | null } | null;
   modell: string;
   serienummer: string;
   internal_serial: string | null;
