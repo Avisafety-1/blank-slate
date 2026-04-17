@@ -1935,7 +1935,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           
           <div className="flex gap-2 ml-auto">
             {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)}>Rediger</Button>
+              <Button onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>Rediger</Button>
             ) : (
               <>
                 <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
