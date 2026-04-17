@@ -1,77 +1,109 @@
 
 
-## Mål
-Teknisk ansvarlig på en drone skal kunne utføre inspeksjon (manuell + via sjekkliste) selv om dronen er eid av et annet selskap (f.eks. mor-avdeling) og delt nedover.
+## Problem
+"Send oppdateringssignal" trigger reload, men brukerne får fortsatt gammel JS/CSS. Endringer i f.eks. `DroneDetailDialog` vises ikke selv etter klikk på "Oppdater nå".
+
+## Hypoteser
+
+1. **Service worker serverer cachet `index.html`** → samme hash-baserte JS-filer lastes på nytt fra cache. `clearAllCaches()` sletter Cache Storage *før* reload, men hvis SW har `skipWaiting` ikke aktivert, vil den gamle SW fortsatt kontrollere siden ved reload og re-cache umiddelbart.
+
+2. **`window.location.reload()` bruker cache** → bør være `reload(true)` (deprecated) eller bedre: navigere til URL med cache-buster.
+
+3. **Vite PWA `injectManifest` med precache** → precachede assets (hashede JS-bundles) serveres fra Cache Storage. Når SW oppdateres må den ta kontroll (`clients.claim()`) ellers fortsetter gammel SW å servere gamle assets.
+
+4. **Browser HTTP-cache på `index.html`** → hvis serveren ikke setter `Cache-Control: no-cache` på index.html, henter browseren samme HTML med samme asset-referanser.
 
 ## Utforskning nødvendig
 
-Sjekke:
-1. RLS-policy på `drones` UPDATE — hvem kan oppdatere `sist_inspeksjon`, `neste_inspeksjon`, `hours_at_last_inspection` osv.
-2. RLS-policy på `drone_inspections` INSERT
-3. Hvordan teknisk ansvarlig er lagret på drone-raden (sannsynligvis `technical_responsible_id` eller lignende)
-4. UI-gating i `DroneDetailDialog` / `ChecklistExecutionDialog` — om "Utfør inspeksjon"-knappen vises for teknisk ansvarlig på en delt drone
+Lese:
+- `src/sw.ts` — sjekke `skipWaiting`/`clients.claim`, precache-strategi, hvordan oppdatering håndteres
+- `vite.config.ts` — PWA-konfig (registerType, injectManifest options)
+- `index.html` — meta cache-control tags
+- `src/hooks/useForceReload.ts` — reload-flyt (allerede sett, men verifisere rekkefølge)
 
-## Forventet rotårsak
+## Forventet løsning
 
-Sannsynlig mønster (gjentar fra tidligere DJI-loggsak):
-- `drones` UPDATE-policy krever `company_id = profile.company_id` → teknisk ansvarlig i underavdeling kan ikke oppdatere mor-avdelingens drone
-- `drone_inspections` INSERT krever samme → kan ikke logge inspeksjonen
-- UI skjuler kanskje også knappen basert på eierskap, ikke teknisk ansvar
+**Tre-lags fix:**
+
+1. **SW må aktivere ny versjon før reload**
+   - Etter `reg.update()`, vent på `installing`/`waiting` worker
+   - Send `SKIP_WAITING`-melding til waiting worker
+   - Vent på `controllerchange`-event før reload
+   - Slik blir den nye SW-en aktiv *før* siden lastes på nytt → den serverer nye assets
+
+2. **Hard reload med cache-buster**
+   - Bruk `window.location.href = window.location.pathname + '?v=' + Date.now()` i stedet for `reload()`
+   - Tvinger ny HTTP-request, omgår browser-cache for index.html
+
+3. **Verifisere at SW har `self.skipWaiting()` + `clients.claim()`**
+   - Hvis ikke: legge til i `src/sw.ts`
 
 ## Plan
 
-### 1. Database-revisjon
-Hent RLS-policyer for `drones` (UPDATE) og `drone_inspections` (INSERT). Sjekk hvilken kolonne som lagrer teknisk ansvarlig (sannsynligvis `teknisk_ansvarlig_id` eller `technical_responsible_id`).
+### Endringer
 
-### 2. Migrasjon — utvid policyer
-Mønster:
-```sql
--- drones UPDATE: tillat eier ELLER teknisk ansvarlig
-CREATE POLICY "Tech responsible can update assigned drone"
-ON public.drones FOR UPDATE TO authenticated
-USING (
-  company_id = ANY(get_user_visible_company_ids(auth.uid()))
-  OR teknisk_ansvarlig_id = auth.uid()
-)
-WITH CHECK (
-  company_id = ANY(get_user_visible_company_ids(auth.uid()))
-  OR teknisk_ansvarlig_id = auth.uid()
-);
+**`src/hooks/useForceReload.ts`** — endre `clearAllCaches()` + `performReload()`:
+```ts
+async function activateNewSW() {
+  const reg = await navigator.serviceWorker?.getRegistration();
+  if (!reg) return;
+  await reg.update();
+  
+  // Hvis det finnes en waiting worker, be den ta over
+  const waiting = reg.waiting;
+  if (waiting) {
+    return new Promise<void>((resolve) => {
+      const onChange = () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', onChange);
+        resolve();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', onChange);
+      waiting.postMessage({ type: 'SKIP_WAITING' });
+      // Timeout etter 3s for å unngå hang
+      setTimeout(resolve, 3000);
+    });
+  }
+}
 
--- drone_inspections INSERT: tillat hvis bruker er teknisk ansvarlig på dronen
-CREATE POLICY "Tech responsible can log inspections"
-ON public.drone_inspections FOR INSERT TO authenticated
-WITH CHECK (
-  user_id = auth.uid()
-  AND (
-    company_id = (SELECT company_id FROM profiles WHERE id = auth.uid())
-    OR drone_id IN (SELECT id FROM drones WHERE teknisk_ansvarlig_id = auth.uid())
-  )
-);
+export async function performReload() {
+  // ... sync queue, persist version (uendret)
+  await clearAllCaches();
+  await activateNewSW();           // ← ny: vent på ny SW
+  // Cache-buster URL i stedet for reload()
+  const url = new URL(window.location.href);
+  url.searchParams.set('_v', Date.now().toString());
+  window.location.replace(url.toString());
+}
 ```
 
-Behold eksisterende policyer — legg til som tillegg, ikke erstatt.
+**`src/sw.ts`** — verifisere/legge til:
+```ts
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+```
+(legges kun til hvis ikke allerede tilstede — utforsker først)
 
-### 3. Frontend-justering i `DroneDetailDialog`
-Sørge for at "Utfør inspeksjon"-knappen og sjekkliste-utførelse er synlig hvis:
-- Bruker er admin i eier-/synlig selskap, **ELLER**
-- Bruker er teknisk ansvarlig på dronen (uavhengig av selskap)
+**`index.html`** — verifisere at det ikke ligger aggressiv caching i meta. Vurdere å legge til:
+```html
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+```
+på index.html (ikke på assets).
 
-Sjekke samme gating i `ChecklistExecutionDialog` for inspeksjons-sjekklister.
-
-### 4. `performDroneInspection` (`src/lib/droneInspection.ts`)
-Verifisere at `companyId` som sendes inn er **brukerens** selskap (ikke dronens), slik at INSERT-policyen passerer. Hvis koden i dag sender dronens `company_id` → endre til brukerens.
-
-### 5. Verifisering
-- Logg inn som teknisk ansvarlig i underavdeling
-- Åpne delt drone fra mor-avdeling
-- Kjør "Utfør inspeksjon" (manuell) → skal lagre + oppdatere `sist_inspeksjon`
-- Kjør inspeksjons-sjekkliste → skal fullføre + opprette `drone_inspections`-rad
-- Bekreft at andre brukere i underavdelingen (uten teknisk ansvar) **ikke** kan utføre inspeksjon
+### Verifisering
+1. Gjør en synlig endring i `DroneDetailDialog` (f.eks. label-tekst)
+2. Klikk "Send oppdateringssignal" som superadmin
+3. Banner vises hos testbruker → klikk "Oppdater nå"
+4. Bekreft at endringen vises umiddelbart uten manuell hard-refresh
+5. Test både i vanlig browser og som installert PWA
 
 ### Filer
-- Migrasjon: utvid `drones` UPDATE og `drone_inspections` INSERT policyer
-- `src/components/resources/DroneDetailDialog.tsx`: utvid gating for inspeksjons-UI
-- `src/components/resources/ChecklistExecutionDialog.tsx`: samme gating hvis nødvendig
-- `src/lib/droneInspection.ts`: verifiser at brukerens `companyId` brukes
+- `src/hooks/useForceReload.ts` (kjernefiks)
+- `src/sw.ts` (legg til SKIP_WAITING + clients.claim hvis mangler)
+- `index.html` (cache-control meta hvis nødvendig)
 
