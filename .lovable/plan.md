@@ -1,57 +1,59 @@
 
 
-## Rotårsak (bekreftet)
+## Mål
+Verifisere at en underavdeling kan skrive loggføringsoppføringer (flytur, vedlikehold, manuelt) på en drone som er eid av mor-avdeling og delt nedover via `drone_department_visibility`.
 
-`storage.objects` SELECT for `documents`-bøtten bruker `get_user_visible_company_ids(auth.uid())`, som returnerer:
-- Eget selskap + barn (hvis admin), eller
-- Kun eget selskap
+## Utforskning
 
-Den returnerer **ikke mor-selskapet**. Filen for sjekklisten ligger i `af43f04e-.../...` (mor-selskapet "Moderavdeling"), mens brukeren er i en underavdeling. Derfor feiler `createSignedUrl` → ny feilmelding "Kunne ikke laste sjekklistefilen".
+Jeg må sjekke RLS-policyer på følgende tabeller:
+- `flight_logs` (DJI auto-sync + manuell loggføring)
+- `drone_log_entries` / `drone_logbook_entries` (loggbok)
+- `pending_dji_logs` (DJI auto-sync ventende)
+- Eventuelt `mission_drones` for tilkobling
 
-`documents`-tabellen har derimot en ekstra SELECT-klausul som tillater visning når `visible_to_children=true AND company_id = parent`. Det er denne logikken som mangler i storage-policyen.
+Vil sammenligne INSERT/UPDATE-policyer mot SELECT-arven (`get_user_visible_drone_ids` eller lignende) for å se om de speiler hverandre.
 
-## Løsning
+## Forventet rotårsak
 
-Speil `documents`-tabellens SELECT-logikk i `storage.objects`-policyen for `documents`-bøtten. Ingen "synlig for alle" — kun samme arv-regel som allerede finnes på dokument-raden:
+Sannsynlig mønster: SELECT-policyer bruker `get_user_visible_company_ids()` eller `drone_department_visibility`-join, men INSERT-policyer sjekker bare `company_id = profile.company_id` på selve drone-raden. Det betyr at hvis dronen har `company_id = mor`, vil en bruker i barn-selskap ikke kunne sette inn loggrader fordi WITH CHECK feiler.
 
-> Bruker kan signere fil hvis filen ligger i en mappe (`{company_id}`) som enten:
-> - er i `get_user_visible_company_ids(auth.uid())`, **ELLER**
-> - er mor-selskapet til brukerens selskap **OG** det finnes en dokument-rad med `fil_url = name AND visible_to_children = true`
+## Plan
 
-Den andre delen sjekker at det faktisk finnes en delt dokument-rad som peker på filen — så vi gir ikke generell lesetilgang til hele mor-selskapets storage-mappe, kun til filer som er eksplisitt delt via `visible_to_children=true`.
+### 1. Database-revisjon (read-only via supabase--read_query)
+Hent alle RLS-policyer for de fire tabellene over. Sjekk:
+- INSERT WITH CHECK
+- UPDATE USING/WITH CHECK
+- Hvilke helper-funksjoner brukes
 
-### Migrasjon
+### 2. Identifisere gap
+For hver tabell der INSERT/UPDATE feiler for delt drone:
+- Lag migrasjon som speiler arve-logikken fra SELECT-policyen (uten å løsne på selskapsisolasjon)
+- Mønster: bruker kan skrive loggrad hvis `drone_id` er synlig via `drone_department_visibility` ELLER eies av et selskap i `get_user_visible_company_ids`
 
+### 3. Frontend-sjekk
+Bekrefte at `LogFlightTimeDialog`, `DroneLogbookDialog`, `process-dronelog` og `dji-process-single` faktisk setter `company_id` på loggraden til **brukerens** selskap (ikke dronens). Hvis de setter dronens `company_id`, kan rader bli "fanget" i mor-selskapet og bli usynlige for barn etterpå.
+
+### 4. Migrasjon (kun ved behov)
+Eksempel-mønster:
 ```sql
-DROP POLICY "Users can read own company documents" ON storage.objects;
-
-CREATE POLICY "Users can read own company documents"
-ON storage.objects FOR SELECT
-USING (
-  bucket_id = 'documents' AND (
-    -- Eget eller barn-selskap (eksisterende regel)
-    (storage.foldername(name))[1] IN (
-      SELECT unnest(get_user_visible_company_ids(auth.uid()))::text
-    )
-    OR
-    -- Delt fra mor via visible_to_children
-    EXISTS (
-      SELECT 1 FROM public.documents d
-      WHERE d.fil_url = storage.objects.name
-        AND d.visible_to_children = true
-        AND d.company_id = get_parent_company_id(
-          (SELECT company_id FROM profiles WHERE id = auth.uid())
-        )
-    )
+CREATE POLICY "Users can insert flight_logs for visible drones"
+ON public.flight_logs FOR INSERT TO authenticated
+WITH CHECK (
+  user_id = auth.uid()
+  AND (
+    drone_id IS NULL
+    OR drone_id IN (SELECT id FROM drones WHERE company_id = ANY(get_user_visible_company_ids(auth.uid())))
+    OR drone_id IN (SELECT drone_id FROM drone_department_visibility WHERE company_id = (SELECT company_id FROM profiles WHERE id = auth.uid()))
   )
 );
 ```
 
-### Filer
-- Ny migrasjon for `storage.objects` SELECT-policy på `documents`-bøtten
-- Ingen UI-endringer trengs — `ChecklistExecutionDialog` håndterer allerede PDF-modus korrekt fra forrige iterasjon
+### 5. Verifisering
+- Logg inn som bruker i underavdeling
+- Velg drone delt fra mor → kjør "Logg flytid" → skal lagres
+- Sjekk at oppføringen vises i drone-loggboken etterpå (SELECT-arven fungerer allerede iht. memory)
 
-### Verifisering
-- Åpne oppdrag i underavdeling med sjekkliste fra mor-selskap → PDF-knapp + "Marker utført" skal vises
-- Verifiser at andre filer i mor-selskapet (uten `visible_to_children=true`) fortsatt er blokkert
+### Filer
+- Migrasjon for berørte INSERT/UPDATE-policyer (flight_logs, drone_log_entries, pending_dji_logs)
+- Eventuelt mindre justering i edge functions hvis `company_id` settes feil
 
