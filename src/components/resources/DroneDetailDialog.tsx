@@ -816,6 +816,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               }
             </p>
           )}
+          {isSharedFromParent && (
+            <p className="text-xs text-muted-foreground mt-1 rounded-md bg-muted px-2 py-1.5">
+              🔒 Denne {terminology.vehicleLower} er delt fra {drone.companies?.navn ? `mor-selskapet «${drone.companies.navn}»` : "mor-selskapet"} og kan kun redigeres derfra.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="space-y-4">
