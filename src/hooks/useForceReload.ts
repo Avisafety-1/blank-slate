@@ -145,7 +145,6 @@ export async function performReload() {
   }
 
   await clearAllCaches();
-  await activateNewSW();
 
   // Hard navigation with cache-buster to bypass HTTP cache for index.html
   const url = new URL(window.location.href);
