@@ -54,14 +54,17 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  // Image-based checklist state
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // File-based checklist state (image OR document)
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [fileMode, setFileMode] = useState<FileMode>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [manuallyCompleted, setManuallyCompleted] = useState(false);
 
   const completedChecklistIds = new Set(completedIds);
   const checkedItems: Set<string> = checkedByTab[activeChecklistId] ?? new Set();
 
-  const isImageMode = imageUrl !== null && items.length === 0;
+  const isFileMode = fileUrl !== null && items.length === 0;
 
   const prevOpenRef = useRef(false);
   useEffect(() => {
