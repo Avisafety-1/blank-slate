@@ -35,6 +35,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 interface Drone {
   id: string;
+  company_id?: string;
+  companies?: { navn?: string | null } | null;
   modell: string;
   serienummer: string;
   internal_serial: string | null;
@@ -782,6 +784,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         : "ok"
     : "ok";
 
+  const isSharedFromParent = !!drone.company_id && !!companyId && drone.company_id !== companyId;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -812,6 +816,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 ? `⚠️ Payload overskredet! Utstyrsvekt: ${totalEquipmentWeight.toFixed(2)} kg / Payload: ${drone.payload} kg`
                 : `⚠️ Nær payload-grense. Utstyrsvekt: ${totalEquipmentWeight.toFixed(2)} kg / Payload: ${drone.payload} kg`
               }
+            </p>
+          )}
+          {isSharedFromParent && (
+            <p className="text-xs text-muted-foreground mt-1 rounded-md bg-muted px-2 py-1.5">
+              🔒 Denne {terminology.vehicleLower} er delt fra {drone.companies?.navn ? `mor-selskapet «${drone.companies.navn}»` : "mor-selskapet"} og kan kun redigeres derfra.
             </p>
           )}
         </DialogHeader>
@@ -1926,7 +1935,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           
           <div className="flex gap-2 ml-auto">
             {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)}>Rediger</Button>
+              <Button onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>Rediger</Button>
             ) : (
               <>
                 <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
