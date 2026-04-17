@@ -1,0 +1,1 @@
+UPDATE public.app_config SET value = '24', updated_at = now() WHERE key = 'app_version';
