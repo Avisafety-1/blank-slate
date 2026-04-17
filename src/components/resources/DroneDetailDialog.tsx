@@ -2030,6 +2030,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         onEquipmentAdded={() => {
           fetchLinkedEquipment();
           fetchLinkedDronetags();
+          checkVisibilityAfterAdd();
         }}
         dronePayload={drone?.payload ?? null}
         currentEquipmentWeight={linkedEquipment.reduce((sum, link) => sum + (link.equipment?.vekt || 0), 0)}
@@ -2041,7 +2042,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         droneId={drone?.id || ""}
         droneCompanyId={companyId || ""}
         existingPersonnelIds={linkedPersonnel.map((link) => link.profile?.id).filter(Boolean)}
-        onPersonnelAdded={fetchLinkedPersonnel}
+        onPersonnelAdded={() => {
+          fetchLinkedPersonnel();
+          checkVisibilityAfterAdd();
+        }}
         onVisibilityChanged={() => {
           // Re-fetch department visibility state
           if (drone?.id && companyId) {
@@ -2154,6 +2158,23 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {visibilityWarning && (
+        <ResourceVisibilityWarningDialog
+          open={!!visibilityWarning}
+          onOpenChange={(o) => { if (!o) setVisibilityWarning(null); }}
+          missing={visibilityWarning.missing}
+          departments={deptVis.childDepartments}
+          onContinue={async () => {
+            await visibilityWarning.onContinue();
+            setVisibilityWarning(null);
+          }}
+          onCancel={() => {
+            visibilityWarning.onCancel();
+            setVisibilityWarning(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 };
