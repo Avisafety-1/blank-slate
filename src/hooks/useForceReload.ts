@@ -62,15 +62,16 @@ async function clearAllCaches() {
     console.log('[ForceReload] Cleared localStorage caches');
   } catch {}
 
-  // 4. Trigger service worker update (registration check only — activation handled separately)
+  // 4. Unregister all service workers — forces a fresh registration on next navigation,
+  // guaranteeing new chunks are fetched (no inherited precache buckets serving stale assets)
   try {
-    const reg = await navigator.serviceWorker?.ready;
-    if (reg) {
-      await reg.update();
-      console.log('[ForceReload] Triggered SW update');
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+      console.log(`[ForceReload] Unregistered ${regs.length} service worker(s)`);
     }
   } catch (e) {
-    console.warn('[ForceReload] Could not update SW:', e);
+    console.warn('[ForceReload] Could not unregister SW:', e);
   }
 }
 
