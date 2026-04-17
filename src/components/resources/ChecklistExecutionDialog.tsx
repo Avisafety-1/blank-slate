@@ -3,7 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
-import { CheckCircle2, Circle, ClipboardCheck, ImageIcon } from "lucide-react";
+import { CheckCircle2, Circle, ClipboardCheck, ImageIcon, FileText, ExternalLink, AlertTriangle } from "lucide-react";
+
+type FileMode = "image" | "document" | null;
+
+const getFileMode = (fileName: string | null | undefined, fileUrl: string | null | undefined): FileMode => {
+  const source = (fileName || fileUrl || "").toLowerCase();
+  const ext = source.split('.').pop()?.split('?')[0];
+  if (!ext) return null;
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return "image";
+  return "document";
+};
 
 interface ChecklistItem {
   id: string;
