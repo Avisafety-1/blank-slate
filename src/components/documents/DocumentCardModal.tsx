@@ -315,6 +315,7 @@ const DocumentCardModal = ({
         opprettet_av: userData.user?.email || null,
         versjon: isCreating ? "1.0" : newVersion,
         oppdatert_dato: new Date().toISOString(),
+        visible_to_children: isParentCompany ? visibleToChildren : false,
       };
 
       if (isCreating) {
