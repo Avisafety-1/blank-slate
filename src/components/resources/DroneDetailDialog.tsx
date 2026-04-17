@@ -26,6 +26,8 @@ import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useDepartmentVisibility } from "@/hooks/useDepartmentVisibility";
+import { checkDroneResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
+import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
@@ -147,6 +149,43 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
   const [accessoryToMaintain, setAccessoryToMaintain] = useState<Accessory | null>(null);
   const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
+  const [visibilityWarning, setVisibilityWarning] = useState<{
+    missing: MissingVisibility[];
+    onContinue: () => void | Promise<void>;
+    onCancel: () => void;
+  } | null>(null);
+
+  // Resolve the target department list for visibility checks
+  const getTargetDeptIds = (): string[] => {
+    if (!deptVis.hasDepartments) return [];
+    return deptVis.allSelected
+      ? deptVis.childDepartments.map((d) => d.id)
+      : deptVis.selectedDeptIds;
+  };
+
+  // Get currently-saved visibility (from DB) for post-add checks
+  const getCurrentDroneVisibilityDeptIds = async (): Promise<string[]> => {
+    if (!drone) return [];
+    const { data } = await (supabase as any)
+      .from("drone_department_visibility")
+      .select("company_id")
+      .eq("drone_id", drone.id);
+    return (data || []).map((r: any) => r.company_id);
+  };
+
+  // After adding a resource on an already-shared drone, check if visibility gap exists
+  const checkVisibilityAfterAdd = async () => {
+    if (!drone) return;
+    const targetDepts = await getCurrentDroneVisibilityDeptIds();
+    if (targetDepts.length === 0) return;
+    const missing = await checkDroneResourceVisibility(drone.id, targetDepts);
+    if (missing.length === 0) return;
+    setVisibilityWarning({
+      missing,
+      onContinue: () => {},
+      onCancel: () => {},
+    });
+  };
 
   // Update local drone state when prop changes
   useEffect(() => {
@@ -470,6 +509,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     } else {
       toast.success(`${newDocs.length} dokument(er) tilknyttet`);
       fetchLinkedDocuments();
+      checkVisibilityAfterAdd();
     }
   };
 
@@ -717,8 +757,31 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
       if (error) throw error;
 
-      // Save department visibility
-      await deptVis.saveVisibility();
+      // Check resource visibility before persisting department-visibility changes
+      const targetDepts = getTargetDeptIds();
+      if (targetDepts.length > 0) {
+        const missing = await checkDroneResourceVisibility(drone.id, targetDepts);
+        if (missing.length > 0) {
+          // Pause save and let user decide
+          await new Promise<void>((resolve) => {
+            setVisibilityWarning({
+              missing,
+              onContinue: async () => {
+                await deptVis.saveVisibility();
+                resolve();
+              },
+              onCancel: () => {
+                // Skip visibility save but keep drone update
+                resolve();
+              },
+            });
+          });
+        } else {
+          await deptVis.saveVisibility();
+        }
+      } else {
+        await deptVis.saveVisibility();
+      }
 
       toast.success(`${terminology.vehicle} oppdatert`);
       setIsEditing(false);
@@ -1967,6 +2030,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         onEquipmentAdded={() => {
           fetchLinkedEquipment();
           fetchLinkedDronetags();
+          checkVisibilityAfterAdd();
         }}
         dronePayload={drone?.payload ?? null}
         currentEquipmentWeight={linkedEquipment.reduce((sum, link) => sum + (link.equipment?.vekt || 0), 0)}
@@ -1978,7 +2042,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         droneId={drone?.id || ""}
         droneCompanyId={companyId || ""}
         existingPersonnelIds={linkedPersonnel.map((link) => link.profile?.id).filter(Boolean)}
-        onPersonnelAdded={fetchLinkedPersonnel}
+        onPersonnelAdded={() => {
+          fetchLinkedPersonnel();
+          checkVisibilityAfterAdd();
+        }}
         onVisibilityChanged={() => {
           // Re-fetch department visibility state
           if (drone?.id && companyId) {
@@ -2091,6 +2158,23 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {visibilityWarning && (
+        <ResourceVisibilityWarningDialog
+          open={!!visibilityWarning}
+          onOpenChange={(o) => { if (!o) setVisibilityWarning(null); }}
+          missing={visibilityWarning.missing}
+          departments={deptVis.childDepartments}
+          onContinue={async () => {
+            await visibilityWarning.onContinue();
+            setVisibilityWarning(null);
+          }}
+          onCancel={() => {
+            visibilityWarning.onCancel();
+            setVisibilityWarning(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 };
