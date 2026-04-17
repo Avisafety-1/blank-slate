@@ -149,6 +149,43 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
   const [accessoryToMaintain, setAccessoryToMaintain] = useState<Accessory | null>(null);
   const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
+  const [visibilityWarning, setVisibilityWarning] = useState<{
+    missing: MissingVisibility[];
+    onContinue: () => void | Promise<void>;
+    onCancel: () => void;
+  } | null>(null);
+
+  // Resolve the target department list for visibility checks
+  const getTargetDeptIds = (): string[] => {
+    if (!deptVis.hasDepartments) return [];
+    return deptVis.allSelected
+      ? deptVis.childDepartments.map((d) => d.id)
+      : deptVis.selectedDeptIds;
+  };
+
+  // Get currently-saved visibility (from DB) for post-add checks
+  const getCurrentDroneVisibilityDeptIds = async (): Promise<string[]> => {
+    if (!drone) return [];
+    const { data } = await (supabase as any)
+      .from("drone_department_visibility")
+      .select("company_id")
+      .eq("drone_id", drone.id);
+    return (data || []).map((r: any) => r.company_id);
+  };
+
+  // After adding a resource on an already-shared drone, check if visibility gap exists
+  const checkVisibilityAfterAdd = async () => {
+    if (!drone) return;
+    const targetDepts = await getCurrentDroneVisibilityDeptIds();
+    if (targetDepts.length === 0) return;
+    const missing = await checkDroneResourceVisibility(drone.id, targetDepts);
+    if (missing.length === 0) return;
+    setVisibilityWarning({
+      missing,
+      onContinue: () => {},
+      onCancel: () => {},
+    });
+  };
 
   // Update local drone state when prop changes
   useEffect(() => {
