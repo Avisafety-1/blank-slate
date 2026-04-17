@@ -377,17 +377,35 @@ Deno.serve(async (req) => {
 
     const parsed = await uploadAndParse(dronelogKey, bytes, ext, logId);
 
+    // Build search list: own + parent (so shared drones/batteries from a parent
+    // company are auto-matched in child departments).
+    const searchCompanyIds: string[] = [pendingLog.company_id];
+    {
+      const { data: own } = await serviceClient
+        .from("companies")
+        .select("parent_company_id")
+        .eq("id", pendingLog.company_id)
+        .maybeSingle();
+      if (own?.parent_company_id) searchCompanyIds.push(own.parent_company_id);
+    }
+
     // Auto-match drone by serial
     let matchedDroneId: string | null = null;
     if (parsed.aircraftSN) {
       const { data: drones } = await serviceClient
         .from("drones")
-        .select("id, serienummer, internal_serial")
-        .eq("company_id", pendingLog.company_id);
+        .select("id, serienummer, internal_serial, company_id")
+        .in("company_id", searchCompanyIds);
 
       if (drones) {
         const snLower = parsed.aircraftSN.toLowerCase();
-        const match = drones.find(d =>
+        const ownMatch = drones.find(d =>
+          d.company_id === pendingLog.company_id && (
+            d.serienummer.toLowerCase() === snLower ||
+            (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
+          )
+        );
+        const match = ownMatch || drones.find(d =>
           d.serienummer.toLowerCase() === snLower ||
           (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
         );
@@ -400,13 +418,19 @@ Deno.serve(async (req) => {
     if (parsed.batterySN) {
       const { data: batteries } = await serviceClient
         .from("equipment")
-        .select("id, serienummer, internal_serial")
-        .eq("company_id", pendingLog.company_id)
+        .select("id, serienummer, internal_serial, company_id")
+        .in("company_id", searchCompanyIds)
         .ilike("type", "batteri");
 
       if (batteries) {
         const bsnLower = parsed.batterySN.toLowerCase();
-        const match = batteries.find(b =>
+        const ownMatch = batteries.find(b =>
+          b.company_id === pendingLog.company_id && (
+            b.serienummer.toLowerCase() === bsnLower ||
+            (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
+          )
+        );
+        const match = ownMatch || batteries.find(b =>
           b.serienummer.toLowerCase() === bsnLower ||
           (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
         );

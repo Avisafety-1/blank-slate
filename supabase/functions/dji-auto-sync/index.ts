@@ -304,6 +304,19 @@ async function downloadAndParseLog(
 
 // ── Auto-match drone/battery by serial ──
 
+// Build list of company_ids that should be searched: own + parent (so shared
+// drones/batteries from a parent company are auto-matched in child departments).
+async function getSearchCompanyIds(serviceClient: any, companyId: string): Promise<string[]> {
+  const ids = new Set<string>([companyId]);
+  const { data: own } = await serviceClient
+    .from("companies")
+    .select("parent_company_id")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (own?.parent_company_id) ids.add(own.parent_company_id);
+  return Array.from(ids);
+}
+
 async function matchDroneAndBattery(
   serviceClient: any,
   companyId: string,
@@ -312,36 +325,51 @@ async function matchDroneAndBattery(
   let matchedDroneId: string | null = null;
   let matchedBatteryId: string | null = null;
 
+  const searchIds = await getSearchCompanyIds(serviceClient, companyId);
+
   if (parsed.aircraftSN) {
     const { data: drones } = await serviceClient
       .from("drones")
-      .select("id, serienummer, internal_serial")
-      .eq("company_id", companyId);
+      .select("id, serienummer, internal_serial, company_id")
+      .in("company_id", searchIds);
 
     if (drones) {
       const snLower = parsed.aircraftSN.toLowerCase();
-      const match = drones.find((d: any) =>
+      // Prefer match in own company, then parent
+      const ownMatch = drones.find((d: any) =>
+        d.company_id === companyId && (
+          d.serienummer.toLowerCase() === snLower ||
+          (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
+        )
+      );
+      const anyMatch = ownMatch || drones.find((d: any) =>
         d.serienummer.toLowerCase() === snLower ||
         (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
       );
-      if (match) matchedDroneId = match.id;
+      if (anyMatch) matchedDroneId = anyMatch.id;
     }
   }
 
   if (parsed.batterySN) {
     const { data: batteries } = await serviceClient
       .from("equipment")
-      .select("id, serienummer, internal_serial")
-      .eq("company_id", companyId)
+      .select("id, serienummer, internal_serial, company_id")
+      .in("company_id", searchIds)
       .ilike("type", "batteri");
 
     if (batteries) {
       const bsnLower = parsed.batterySN.toLowerCase();
-      const match = batteries.find((b: any) =>
+      const ownMatch = batteries.find((b: any) =>
+        b.company_id === companyId && (
+          b.serienummer.toLowerCase() === bsnLower ||
+          (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
+        )
+      );
+      const anyMatch = ownMatch || batteries.find((b: any) =>
         b.serienummer.toLowerCase() === bsnLower ||
         (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
       );
-      if (match) matchedBatteryId = match.id;
+      if (anyMatch) matchedBatteryId = anyMatch.id;
     }
   }
 
