@@ -509,6 +509,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     } else {
       toast.success(`${newDocs.length} dokument(er) tilknyttet`);
       fetchLinkedDocuments();
+      checkVisibilityAfterAdd();
     }
   };
 
