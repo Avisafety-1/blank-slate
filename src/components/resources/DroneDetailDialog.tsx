@@ -83,6 +83,7 @@ interface DroneDetailDialogProps {
 
 export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onDroneUpdated }: DroneDetailDialogProps) => {
   const { user, companyId, isAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const terminology = useTerminology();
   const { checklists } = useChecklists();
