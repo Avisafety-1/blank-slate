@@ -26,6 +26,8 @@ import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useDepartmentVisibility } from "@/hooks/useDepartmentVisibility";
+import { checkDroneResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
+import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
