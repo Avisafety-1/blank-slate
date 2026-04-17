@@ -1,11 +1,8 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute, createHandlerBoundToURL, cleanupOutdatedCaches } from 'workbox-precaching';
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 
 declare const self: ServiceWorkerGlobalScope;
-
-// Remove outdated precache buckets when a new SW activates — prevents stale chunks
-cleanupOutdatedCaches();
 
 // PWA Precaching - this will be replaced by the build tool with the list of assets
 precacheAndRoute(self.__WB_MANIFEST);
@@ -24,21 +21,12 @@ self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-// Allow page to trigger SKIP_WAITING explicitly during force-reload flow
-self.addEventListener('message', (event) => {
-  if ((event as ExtendableMessageEvent).data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
 self.addEventListener('activate', (event) => {
+  self.clients.claim();
   event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      caches.keys().then(keys =>
-        Promise.all(keys.map(key => caches.delete(key)))
-      ),
-    ])
+    caches.keys().then(keys =>
+      Promise.all(keys.map(key => caches.delete(key)))
+    )
   );
 });
 

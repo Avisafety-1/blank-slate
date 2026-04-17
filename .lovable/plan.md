@@ -1,69 +1,77 @@
 
 
-## Problem
-Etter "Oppdater nå" oppdateres deler av appen, men `DroneDetailDialog` viser fortsatt gammel versjon (mangler "teknisk ansvarlig fra delte avdelinger"-endringen).
+## Mål
+Teknisk ansvarlig på en drone skal kunne utføre inspeksjon (manuell + via sjekkliste) selv om dronen er eid av et annet selskap (f.eks. mor-avdeling) og delt nedover.
 
-## Hypotese
-Sannsynligvis to ting:
+## Utforskning nødvendig
 
-1. **Lazy-loaded chunk er fortsatt cachet i Cache Storage / HTTP cache.** `DroneDetailDialog` lastes trolig som en separat chunk (dynamic import via routing eller Suspense). Hvis precache fra gammel SW serverer den gamle chunk-hashen — eller hvis browser disk-cache returnerer gammel bundle — så får vi gammel komponent selv om `index.html` er fersk.
+Sjekke:
+1. RLS-policy på `drones` UPDATE — hvem kan oppdatere `sist_inspeksjon`, `neste_inspeksjon`, `hours_at_last_inspection` osv.
+2. RLS-policy på `drone_inspections` INSERT
+3. Hvordan teknisk ansvarlig er lagret på drone-raden (sannsynligvis `technical_responsible_id` eller lignende)
+4. UI-gating i `DroneDetailDialog` / `ChecklistExecutionDialog` — om "Utfør inspeksjon"-knappen vises for teknisk ansvarlig på en delt drone
 
-2. **Den gamle SW-en (uten `SKIP_WAITING`-handler) tok kontroll igjen ved reload** før den nye fikk aktivert seg, fordi `clearAllCaches()` ble kjørt på gammel kode-vei (uten `activateNewSW`). Resultat: nye `index.html` ble lastet, men gamle precachede asset-chunks ble servert fra ny SW som arvet samme precache-manifest, eller browseren brukte memory/disk cache.
+## Forventet rotårsak
 
-3. **Mulig: React Query / komponent-state holder gammel modul i minnet** — usannsynlig etter full `location.replace`, men verdt å bekrefte.
-
-## Utforskning
-
-Trenger å bekrefte:
-- Hvordan `DroneDetailDialog` lastes (statisk import vs `lazy()`) → påvirker om den ligger i hovedbundel eller egen chunk
-- Om Vite PWA precache inkluderer alle chunks (typisk ja via `__WB_MANIFEST`)
-- Om noen sider gjør `import()` til komponenten
+Sannsynlig mønster (gjentar fra tidligere DJI-loggsak):
+- `drones` UPDATE-policy krever `company_id = profile.company_id` → teknisk ansvarlig i underavdeling kan ikke oppdatere mor-avdelingens drone
+- `drone_inspections` INSERT krever samme → kan ikke logge inspeksjonen
+- UI skjuler kanskje også knappen basert på eierskap, ikke teknisk ansvar
 
 ## Plan
 
-### Steg 1 — Diagnose (lese-only nå)
-- Lese `vite.config.ts` for å bekrefte PWA precache-omfang og om `cleanupOutdatedCaches: true` er satt
-- Søke etter hvordan `DroneDetailDialog` importeres (statisk vs dynamisk)
-- Lese `src/main.tsx` for SW-registrering og `registerType`
+### 1. Database-revisjon
+Hent RLS-policyer for `drones` (UPDATE) og `drone_inspections` (INSERT). Sjekk hvilken kolonne som lagrer teknisk ansvarlig (sannsynligvis `teknisk_ansvarlig_id` eller `technical_responsible_id`).
 
-### Steg 2 — Fix (når godkjent)
+### 2. Migrasjon — utvid policyer
+Mønster:
+```sql
+-- drones UPDATE: tillat eier ELLER teknisk ansvarlig
+CREATE POLICY "Tech responsible can update assigned drone"
+ON public.drones FOR UPDATE TO authenticated
+USING (
+  company_id = ANY(get_user_visible_company_ids(auth.uid()))
+  OR teknisk_ansvarlig_id = auth.uid()
+)
+WITH CHECK (
+  company_id = ANY(get_user_visible_company_ids(auth.uid()))
+  OR teknisk_ansvarlig_id = auth.uid()
+);
 
-**A. Sikre at gammel precache slettes ved SW-aktivering**
-I `src/sw.ts`: legg til `cleanupOutdatedCaches()` fra `workbox-precaching` slik at gamle precache-buckets fjernes når ny SW aktiveres. Uten dette kan workbox holde flere precache-versjoner samtidig og servere feil chunk.
-
-```ts
-import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
-cleanupOutdatedCaches();
-precacheAndRoute(self.__WB_MANIFEST);
+-- drone_inspections INSERT: tillat hvis bruker er teknisk ansvarlig på dronen
+CREATE POLICY "Tech responsible can log inspections"
+ON public.drone_inspections FOR INSERT TO authenticated
+WITH CHECK (
+  user_id = auth.uid()
+  AND (
+    company_id = (SELECT company_id FROM profiles WHERE id = auth.uid())
+    OR drone_id IN (SELECT id FROM drones WHERE teknisk_ansvarlig_id = auth.uid())
+  )
+);
 ```
 
-**B. Tving full re-fetch av alle JS/CSS chunks ved reload**
-I `clearAllCaches()` i `useForceReload.ts`: i tillegg til `caches.delete`, eksplisitt unregistrere SW og la den nye registrere seg på nytt. Dette er det "atomare" alternativet:
+Behold eksisterende policyer — legg til som tillegg, ikke erstatt.
 
-```ts
-// Etter caches.delete: avregistrer SW slik at neste navigasjon registrerer fersk
-const regs = await navigator.serviceWorker.getRegistrations();
-await Promise.all(regs.map(r => r.unregister()));
-```
+### 3. Frontend-justering i `DroneDetailDialog`
+Sørge for at "Utfør inspeksjon"-knappen og sjekkliste-utførelse er synlig hvis:
+- Bruker er admin i eier-/synlig selskap, **ELLER**
+- Bruker er teknisk ansvarlig på dronen (uavhengig av selskap)
 
-Avveining: brukeren mister offline-cache i ett sekund, men får garantert fersk kode. Egnet for force-reload-flow (engangs).
+Sjekke samme gating i `ChecklistExecutionDialog` for inspeksjons-sjekklister.
 
-**C. Bumpe app_version på nytt for å trigge banner**
-Kjøre ny migrasjon som setter `app_version = '24'` slik at brukerne som fortsatt sitter på v23 (med ufullstendig fix) får ny reload — denne gangen vil den faktisk dra ned `DroneDetailDialog`-endringen fordi gammel SW blir avregistrert.
+### 4. `performDroneInspection` (`src/lib/droneInspection.ts`)
+Verifisere at `companyId` som sendes inn er **brukerens** selskap (ikke dronens), slik at INSERT-policyen passerer. Hvis koden i dag sender dronens `company_id` → endre til brukerens.
 
-**D. Legge til version-query på dynamiske imports (valgfritt, hvis A+B ikke holder)**
-Vites hash-baserte filnavn skal i teorien gjøre dette unødvendig — hver kodendring gir ny hash. Hvis chunken faktisk fikk ny hash men gammel SW serverer den fra gammel precache-bucket, løser (A) det. Hvis chunken IKKE fikk ny hash (uvanlig), trenger vi å undersøke build-output.
-
-### Verifisering
-1. Etter fix: gjør liten synlig endring i `DroneDetailDialog` (f.eks. ekstra space i en label)
-2. Bumpe `app_version`
-3. På testbruker (på gammel versjon): banner → "Oppdater nå"
-4. Åpne DroneDetailDialog → bekreft endringen synlig
-5. DevTools → Application → Service Workers: bekreft at kun én aktiv SW finnes, ingen "waiting"
-6. DevTools → Application → Cache Storage: bekreft kun én precache-bucket med ny hash
+### 5. Verifisering
+- Logg inn som teknisk ansvarlig i underavdeling
+- Åpne delt drone fra mor-avdeling
+- Kjør "Utfør inspeksjon" (manuell) → skal lagre + oppdatere `sist_inspeksjon`
+- Kjør inspeksjons-sjekkliste → skal fullføre + opprette `drone_inspections`-rad
+- Bekreft at andre brukere i underavdelingen (uten teknisk ansvar) **ikke** kan utføre inspeksjon
 
 ### Filer
-- `src/sw.ts` — `cleanupOutdatedCaches()`
-- `src/hooks/useForceReload.ts` — unregister SW i clearAllCaches
-- Ny migrasjon — bumpe `app_version` til `'24'`
+- Migrasjon: utvid `drones` UPDATE og `drone_inspections` INSERT policyer
+- `src/components/resources/DroneDetailDialog.tsx`: utvid gating for inspeksjons-UI
+- `src/components/resources/ChecklistExecutionDialog.tsx`: samme gating hvis nødvendig
+- `src/lib/droneInspection.ts`: verifiser at brukerens `companyId` brukes
 

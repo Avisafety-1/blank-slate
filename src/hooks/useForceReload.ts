@@ -62,55 +62,15 @@ async function clearAllCaches() {
     console.log('[ForceReload] Cleared localStorage caches');
   } catch {}
 
-  // 4. Unregister all service workers — forces a fresh registration on next navigation,
-  // guaranteeing new chunks are fetched (no inherited precache buckets serving stale assets)
+  // 4. Trigger service worker update
   try {
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r => r.unregister()));
-      console.log(`[ForceReload] Unregistered ${regs.length} service worker(s)`);
+    const reg = await navigator.serviceWorker?.ready;
+    if (reg) {
+      await reg.update();
+      console.log('[ForceReload] Triggered SW update');
     }
   } catch (e) {
-    console.warn('[ForceReload] Could not unregister SW:', e);
-  }
-}
-
-/**
- * Activate any waiting service worker before reloading so the new SW
- * controls the page on next navigation and serves fresh assets.
- */
-async function activateNewSW(): Promise<void> {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.getRegistration();
-    if (!reg) return;
-
-    // Trigger an update check; this populates reg.installing/waiting if a new SW exists
-    try { await reg.update(); } catch {}
-
-    const waiting = reg.waiting || reg.installing;
-    if (!waiting) return;
-
-    await new Promise<void>((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        navigator.serviceWorker.removeEventListener('controllerchange', finish);
-        resolve();
-      };
-      navigator.serviceWorker.addEventListener('controllerchange', finish);
-      try {
-        waiting.postMessage({ type: 'SKIP_WAITING' });
-      } catch (e) {
-        console.warn('[ForceReload] postMessage SKIP_WAITING failed:', e);
-      }
-      // Safety timeout — don't hang the reload
-      setTimeout(finish, 3000);
-    });
-    console.log('[ForceReload] New SW activated');
-  } catch (e) {
-    console.warn('[ForceReload] activateNewSW failed:', e);
+    console.warn('[ForceReload] Could not update SW:', e);
   }
 }
 
@@ -145,11 +105,7 @@ export async function performReload() {
   }
 
   await clearAllCaches();
-
-  // Hard navigation with cache-buster to bypass HTTP cache for index.html
-  const url = new URL(window.location.href);
-  url.searchParams.set('_v', Date.now().toString());
-  window.location.replace(url.toString());
+  window.location.reload();
 }
 
 export function useForceReload() {
