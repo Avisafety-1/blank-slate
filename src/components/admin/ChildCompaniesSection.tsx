@@ -545,6 +545,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .eq("parent_company_id", companyId);
     }
     setSavingCallsign(false);
+    callsignEditing.current = false;
     invalidateCompanySettingsCache();
     toast.success("SafeSky-callsign lagret");
   };
