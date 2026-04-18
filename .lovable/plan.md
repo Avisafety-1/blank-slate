@@ -1,77 +1,43 @@
 
 
-## Mål
-Teknisk ansvarlig på en drone skal kunne utføre inspeksjon (manuell + via sjekkliste) selv om dronen er eid av et annet selskap (f.eks. mor-avdeling) og delt nedover.
+## Problem
+På mobil er "Legg til innlegg"-skjemaet i loggbok-dialogene ikke scrollbart. Skjemaet (Type, Dato, Tittel, Beskrivelse, Bilde, Lagre/Avbryt) ligger som et fast blokk *over* Tabs/ScrollArea inne i en `max-h-[90vh] flex flex-col`-dialog. Når bilde-forhåndsvisning legges til, presses bunnen (Bilde-label + Lagre/Avbryt-knapper) ut av synlig område — synlig i skjermbildet hvor "Bilde (valgfritt)" og bildet er klippet av telefonens navigasjonsfelt.
 
-## Utforskning nødvendig
+Berørte filer (samme mønster):
+- `src/components/resources/DroneLogbookDialog.tsx`
+- `src/components/resources/EquipmentLogbookDialog.tsx`
+- `src/components/FlightLogbookDialog.tsx`
 
-Sjekke:
-1. RLS-policy på `drones` UPDATE — hvem kan oppdatere `sist_inspeksjon`, `neste_inspeksjon`, `hours_at_last_inspection` osv.
-2. RLS-policy på `drone_inspections` INSERT
-3. Hvordan teknisk ansvarlig er lagret på drone-raden (sannsynligvis `technical_responsible_id` eller lignende)
-4. UI-gating i `DroneDetailDialog` / `ChecklistExecutionDialog` — om "Utfør inspeksjon"-knappen vises for teknisk ansvarlig på en delt drone
+## Løsning
+Gjør "Legg til innlegg"-skjemaet scrollbart på mobil, og sørg for at Lagre/Avbryt alltid er synlig.
 
-## Forventet rotårsak
+### Endringer per dialog (samme oppskrift)
 
-Sannsynlig mønster (gjentar fra tidligere DJI-loggsak):
-- `drones` UPDATE-policy krever `company_id = profile.company_id` → teknisk ansvarlig i underavdeling kan ikke oppdatere mor-avdelingens drone
-- `drone_inspections` INSERT krever samme → kan ikke logge inspeksjonen
-- UI skjuler kanskje også knappen basert på eierskap, ikke teknisk ansvar
+1. **Wrap skjema-blokken i en scrollbar container** når `showAddEntry` er åpen:
+   - Legg til `max-h-[60vh] overflow-y-auto` på den ytre `<div>` rundt skjemaet, slik at hele skjemaet (inkl. bilde + knapper) kan scrolles på små skjermer.
+   - Behold knappradene (`Lagre`/`Avbryt`) *inne i* skjemaet slik at de scroller med — alternativt sticky bunn (`sticky bottom-0 bg-muted/30 pt-2`).
 
-## Plan
+2. **Reduser bilde-preview-høyden litt på mobil** slik at det tar mindre vertikal plass:
+   - Endre `h-24` → `h-20 sm:h-24` på `<img>`.
 
-### 1. Database-revisjon
-Hent RLS-policyer for `drones` (UPDATE) og `drone_inspections` (INSERT). Sjekk hvilken kolonne som lagrer teknisk ansvarlig (sannsynligvis `teknisk_ansvarlig_id` eller `technical_responsible_id`).
+3. **Skjul Tabs/historikk-listen mens man legger til innlegg på mobil**, slik at hele dialog-høyden blir tilgjengelig for skjemaet:
+   - Wrap `<Tabs ...>` med `className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}`.
+   - På desktop fortsetter alt som før (begge synlig).
 
-### 2. Migrasjon — utvid policyer
-Mønster:
-```sql
--- drones UPDATE: tillat eier ELLER teknisk ansvarlig
-CREATE POLICY "Tech responsible can update assigned drone"
-ON public.drones FOR UPDATE TO authenticated
-USING (
-  company_id = ANY(get_user_visible_company_ids(auth.uid()))
-  OR teknisk_ansvarlig_id = auth.uid()
-)
-WITH CHECK (
-  company_id = ANY(get_user_visible_company_ids(auth.uid()))
-  OR teknisk_ansvarlig_id = auth.uid()
-);
+4. **Sticky knapprad** i skjema-blokken slik at Lagre/Avbryt alltid er innenfor scroll-vinduet:
+   ```
+   <div className="flex gap-2 sticky bottom-0 bg-muted/30 pt-2 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-1">
+   ```
 
--- drone_inspections INSERT: tillat hvis bruker er teknisk ansvarlig på dronen
-CREATE POLICY "Tech responsible can log inspections"
-ON public.drone_inspections FOR INSERT TO authenticated
-WITH CHECK (
-  user_id = auth.uid()
-  AND (
-    company_id = (SELECT company_id FROM profiles WHERE id = auth.uid())
-    OR drone_id IN (SELECT id FROM drones WHERE teknisk_ansvarlig_id = auth.uid())
-  )
-);
-```
+### Verifisering
+- Mobil 360×640: åpne drone-loggbok → "Legg til innlegg" → fyll Tittel + Beskrivelse + last opp bilde → bekreft at hele skjemaet kan scrolles og at Lagre/Avbryt-knappene er synlige og klikkbare.
+- Gjenta for utstyr-loggbok og flight-loggbok.
+- Desktop: bekreft at Tabs/historikk fortsatt vises ved siden av/under skjemaet uten layout-regresjon.
 
-Behold eksisterende policyer — legg til som tillegg, ikke erstatt.
+### Filer som endres
+- `src/components/resources/DroneLogbookDialog.tsx`
+- `src/components/resources/EquipmentLogbookDialog.tsx`
+- `src/components/FlightLogbookDialog.tsx`
 
-### 3. Frontend-justering i `DroneDetailDialog`
-Sørge for at "Utfør inspeksjon"-knappen og sjekkliste-utførelse er synlig hvis:
-- Bruker er admin i eier-/synlig selskap, **ELLER**
-- Bruker er teknisk ansvarlig på dronen (uavhengig av selskap)
-
-Sjekke samme gating i `ChecklistExecutionDialog` for inspeksjons-sjekklister.
-
-### 4. `performDroneInspection` (`src/lib/droneInspection.ts`)
-Verifisere at `companyId` som sendes inn er **brukerens** selskap (ikke dronens), slik at INSERT-policyen passerer. Hvis koden i dag sender dronens `company_id` → endre til brukerens.
-
-### 5. Verifisering
-- Logg inn som teknisk ansvarlig i underavdeling
-- Åpne delt drone fra mor-avdeling
-- Kjør "Utfør inspeksjon" (manuell) → skal lagre + oppdatere `sist_inspeksjon`
-- Kjør inspeksjons-sjekkliste → skal fullføre + opprette `drone_inspections`-rad
-- Bekreft at andre brukere i underavdelingen (uten teknisk ansvar) **ikke** kan utføre inspeksjon
-
-### Filer
-- Migrasjon: utvid `drones` UPDATE og `drone_inspections` INSERT policyer
-- `src/components/resources/DroneDetailDialog.tsx`: utvid gating for inspeksjons-UI
-- `src/components/resources/ChecklistExecutionDialog.tsx`: samme gating hvis nødvendig
-- `src/lib/droneInspection.ts`: verifiser at brukerens `companyId` brukes
+Ingen DB- eller logikk-endringer — kun mobil-layout-fix.
 
