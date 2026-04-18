@@ -13,7 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User } from "lucide-react";
+import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User, Pencil } from "lucide-react";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
+import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
@@ -56,7 +58,10 @@ interface PersonnelLogEntry {
 
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const queryClient = useQueryClient();
+  const [editingFlightLogId, setEditingFlightLogId] = useState<string | null>(null);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [flightLogs, setFlightLogs] = useState<FlightLog[]>([]);
   const [personnelLogs, setPersonnelLogs] = useState<PersonnelLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
