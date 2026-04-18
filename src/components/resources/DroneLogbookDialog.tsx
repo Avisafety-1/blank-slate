@@ -548,7 +548,7 @@ export const DroneLogbookDialog = ({
                     <img
                       src={imagePreviewUrl}
                       alt="Forhåndsvisning"
-                      className="h-24 w-auto rounded-md border object-cover"
+                      className="h-20 sm:h-24 w-auto rounded-md border object-cover"
                     />
                     <button
                       type="button"
@@ -585,7 +585,7 @@ export const DroneLogbookDialog = ({
             </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}>
             <TabsList className="flex w-full overflow-x-auto no-scrollbar">
               <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
               <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Fly</TabsTrigger>
