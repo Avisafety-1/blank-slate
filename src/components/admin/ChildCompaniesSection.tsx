@@ -74,6 +74,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [missionRoles, setMissionRoles] = useState<{id: string; name: string}[]>([]);
   const [newRoleName, setNewRoleName] = useState("");
   const [savingRole, setSavingRole] = useState(false);
+  // SafeSky callsign state
+  const [callsignPrefix, setCallsignPrefix] = useState("");
+  const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration'>('counter');
+  const [callsignPropagate, setCallsignPropagate] = useState(false);
+  const [savingCallsign, setSavingCallsign] = useState(false);
 
   // ── Flight alerts state ──
   const ALERT_TYPES = [
@@ -275,7 +280,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_base_url")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -286,6 +291,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
+      setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
+      setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter');
+      setCallsignPropagate((data as any).safesky_callsign_propagate ?? false);
 
       // Check if FH2 credentials exist (own or inherited via parent)
       const { data: cred } = await (supabase as any)
@@ -508,6 +516,34 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     invalidateCompanySettingsCache();
     toast.success("Standard flyhøyde lagret");
+  };
+
+  const handleSaveCallsign = async () => {
+    if (!companyId) return;
+    setSavingCallsign(true);
+    const payload: any = {
+      safesky_callsign_prefix: callsignPrefix.trim() || null,
+      safesky_callsign_variable: callsignVariable,
+      safesky_callsign_propagate: callsignPropagate,
+    };
+    const { error } = await supabase.from("companies").update(payload).eq("id", companyId);
+    if (error) {
+      setSavingCallsign(false);
+      toast.error("Kunne ikke lagre SafeSky-callsign");
+      return;
+    }
+    if (callsignPropagate) {
+      await supabase
+        .from("companies")
+        .update({
+          safesky_callsign_prefix: payload.safesky_callsign_prefix,
+          safesky_callsign_variable: payload.safesky_callsign_variable,
+        } as any)
+        .eq("parent_company_id", companyId);
+    }
+    setSavingCallsign(false);
+    invalidateCompanySettingsCache();
+    toast.success("SafeSky-callsign lagret");
   };
 
   const FH2_MASK = "••••••••";
@@ -905,6 +941,68 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   onCheckedChange={handleToggleApplySettingsToChildren}
                   disabled={savingSettings}
                 />
+              </div>
+              {/* SafeSky callsign */}
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="space-y-1">
+                  <div className="font-medium text-sm">SafeSky callsign</div>
+                  <div className="text-xs text-muted-foreground">
+                    Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">Callsign-prefix</Label>
+                  <Input
+                    id="callsign-prefix"
+                    value={callsignPrefix}
+                    onChange={(e) => setCallsignPrefix(e.target.value)}
+                    placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
+                    maxLength={50}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
+                  <RadioGroup
+                    value={callsignVariable}
+                    onValueChange={(v) => setCallsignVariable(v as 'counter' | 'drone_registration')}
+                    className="flex flex-col sm:flex-row gap-2"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="counter" id="cs-counter" />
+                      <Label htmlFor="cs-counter" className="text-xs cursor-pointer">Teller (01, 02, …)</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="drone_registration" id="cs-drone" />
+                      <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Forhåndsvisning: <span className="font-mono text-foreground">
+                    {((callsignPrefix.trim() || parentCompanyName || 'avisafe').toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
+                      + (callsignVariable === 'drone_registration' ? 'LNABCD' : '01')}
+                  </span>
+                </div>
+                <div className="border-t pt-2 flex items-center justify-between">
+                  <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Propager prefix og variabel til alle avdelinger
+                    </div>
+                  </Label>
+                  <Switch
+                    id="callsign-propagate"
+                    checked={callsignPropagate}
+                    onCheckedChange={setCallsignPropagate}
+                    disabled={savingCallsign}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleSaveCallsign} disabled={savingCallsign}>
+                    {savingCallsign ? "Lagrer…" : "Lagre callsign-innstillinger"}
+                  </Button>
+                </div>
               </div>
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <div className="flex items-center gap-2">
