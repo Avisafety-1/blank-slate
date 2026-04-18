@@ -74,6 +74,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [missionRoles, setMissionRoles] = useState<{id: string; name: string}[]>([]);
   const [newRoleName, setNewRoleName] = useState("");
   const [savingRole, setSavingRole] = useState(false);
+  // SafeSky callsign state
+  const [callsignPrefix, setCallsignPrefix] = useState("");
+  const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration'>('counter');
+  const [callsignPropagate, setCallsignPropagate] = useState(false);
+  const [savingCallsign, setSavingCallsign] = useState(false);
 
   // ── Flight alerts state ──
   const ALERT_TYPES = [
