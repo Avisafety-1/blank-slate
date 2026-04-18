@@ -40,6 +40,9 @@ interface Company {
   selskapstype?: string | null;
   stripe_exempt?: boolean;
   parent_company_id?: string | null;
+  safesky_callsign_prefix?: string | null;
+  safesky_callsign_variable?: string | null;
+  safesky_callsign_propagate?: boolean | null;
 }
 
 interface CompanyManagementDialogProps {
@@ -96,6 +99,9 @@ export const CompanyManagementDialog = ({
   const [stripeExempt, setStripeExempt] = useState(false);
   const [departmentsEnabled, setDepartmentsEnabled] = useState(false);
   const [allCompanies, setAllCompanies] = useState<{id: string; navn: string}[]>([]);
+  const [callsignPrefix, setCallsignPrefix] = useState("");
+  const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration'>('counter');
+  const [callsignPropagate, setCallsignPropagate] = useState(false);
   const { isSuperAdmin } = useAuth();
   const isCreating = !company;
 
@@ -130,6 +136,9 @@ export const CompanyManagementDialog = ({
       if (company) {
         setStripeExempt(company.stripe_exempt ?? false);
         setDepartmentsEnabled((company as any).departments_enabled ?? false);
+        setCallsignPrefix(company.safesky_callsign_prefix ?? "");
+        setCallsignVariable(((company.safesky_callsign_variable as any) || 'counter'));
+        setCallsignPropagate(company.safesky_callsign_propagate ?? false);
         form.reset({
           navn: company.navn,
           selskapstype: (company.selskapstype as 'droneoperator' | 'flyselskap') || "droneoperator",
@@ -144,6 +153,9 @@ export const CompanyManagementDialog = ({
       } else {
         setStripeExempt(false);
         setDepartmentsEnabled(false);
+        setCallsignPrefix("");
+        setCallsignVariable('counter');
+        setCallsignPropagate(false);
         form.reset({
           navn: "",
           selskapstype: "droneoperator",
@@ -195,6 +207,9 @@ export const CompanyManagementDialog = ({
         stripe_exempt: inheritedStripeExempt,
         parent_company_id: parentId,
         departments_enabled: departmentsEnabled,
+        safesky_callsign_prefix: callsignPrefix.trim() || null,
+        safesky_callsign_variable: callsignVariable,
+        safesky_callsign_propagate: callsignPropagate,
       };
 
       if (isCreating) {
@@ -434,6 +449,70 @@ export const CompanyManagementDialog = ({
                 />
               </div>
             )}
+
+            {/* SafeSky callsign */}
+            <div className="rounded-lg border p-4 space-y-4">
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium">SafeSky callsign</h4>
+                <p className="text-xs text-muted-foreground">
+                  Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="callsign_prefix" className="text-sm font-medium">Callsign-prefix</label>
+                <Input
+                  id="callsign_prefix"
+                  value={callsignPrefix}
+                  onChange={(e) => setCallsignPrefix(e.target.value)}
+                  placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
+                  maxLength={50}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Variabel (suffiks)</label>
+                <RadioGroup
+                  value={callsignVariable}
+                  onValueChange={(v) => setCallsignVariable(v as 'counter' | 'drone_registration')}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                >
+                  <div className="flex items-start gap-2 rounded-md border p-3">
+                    <RadioGroupItem value="counter" id="cs_counter" className="mt-0.5" />
+                    <label htmlFor="cs_counter" className="text-sm cursor-pointer">
+                      <div className="font-medium">Teller</div>
+                      <div className="text-xs text-muted-foreground">01, 02, 03 …</div>
+                    </label>
+                  </div>
+                  <div className="flex items-start gap-2 rounded-md border p-3">
+                    <RadioGroupItem value="drone_registration" id="cs_drone" className="mt-0.5" />
+                    <label htmlFor="cs_drone" className="text-sm cursor-pointer">
+                      <div className="font-medium">Drone-registreringsnummer</div>
+                      <div className="text-xs text-muted-foreground">f.eks. LN-ABCD</div>
+                    </label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                Forhåndsvisning: <span className="font-mono text-foreground">
+                  {((callsignPrefix.trim() || (company?.navn || 'avisafe')).toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
+                    + (callsignVariable === 'drone_registration' ? 'LNABCD' : '01')}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div className="space-y-0.5">
+                  <label htmlFor="callsign_propagate" className="text-sm font-medium">Gjelder for alle underavdelinger</label>
+                  <p className="text-xs text-muted-foreground">Propager prefix og variabel til alle underselskap</p>
+                </div>
+                <Switch
+                  id="callsign_propagate"
+                  checked={callsignPropagate}
+                  onCheckedChange={setCallsignPropagate}
+                />
+              </div>
+            </div>
 
             <DialogFooter>
               <Button

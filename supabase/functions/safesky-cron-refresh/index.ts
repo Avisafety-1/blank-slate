@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
         try {
           const { data: mission, error: missionError } = await supabase
             .from('missions')
-            .select('id, tittel, route, company_id')
+            .select('id, tittel, route, company_id, drone_id')
             .eq('id', missionId)
             .single();
 
@@ -258,30 +258,60 @@ Deno.serve(async (req) => {
           const advisoryId = `AVS_${missionId.substring(0, 8)}`;
           const polygonCoordinates = routeToPolygon(route);
 
-          // Dynamic callsign: company name + sequential number
+          // Dynamic callsign: configurable prefix + variable suffix (counter or drone reg.nr)
           let callSign = 'avisafe01';
           try {
             const { data: company } = await supabase
               .from('companies')
-              .select('navn')
+              .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable')
               .eq('id', mission.company_id)
               .single();
 
-            const companyName = company?.navn || 'avisafe';
-            const sanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe';
+            let companyName = company?.navn || 'avisafe';
+            let prefix = company?.safesky_callsign_prefix as string | null | undefined;
+            let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
 
-            const { data: companyFlights } = await supabase
-              .from('active_flights')
-              .select('mission_id')
-              .eq('company_id', mission.company_id)
-              .eq('publish_mode', 'advisory')
-              .order('start_time', { ascending: true });
+            if (company?.parent_company_id) {
+              const { data: parentCompany } = await supabase
+                .from('companies')
+                .select('navn, safesky_callsign_prefix, safesky_callsign_variable')
+                .eq('id', company.parent_company_id)
+                .single();
+              if (parentCompany?.navn) companyName = parentCompany.navn;
+              if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
+              if ((!company?.safesky_callsign_variable) && parentCompany?.safesky_callsign_variable) {
+                variable = parentCompany.safesky_callsign_variable;
+              }
+            }
 
-            const index = companyFlights
-              ? companyFlights.findIndex(f => f.mission_id === missionId) + 1
-              : 1;
-            callSign = sanitized + String(index > 0 ? index : 1).padStart(2, '0');
-            console.log(`Cron callsign: ${callSign} (company: ${companyName}, index: ${index})`);
+            const sanitized = (prefix || companyName).toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe';
+
+            let suffix = '01';
+            if (variable === 'drone_registration' && mission.drone_id) {
+              const { data: drone } = await supabase
+                .from('drones')
+                .select('registration_number, serienummer')
+                .eq('id', mission.drone_id)
+                .single();
+              const reg = drone?.registration_number || drone?.serienummer || '';
+              const cleaned = reg.replace(/[^a-z0-9]/gi, '');
+              suffix = cleaned || '01';
+            } else {
+              const { data: companyFlights } = await supabase
+                .from('active_flights')
+                .select('mission_id')
+                .eq('company_id', mission.company_id)
+                .eq('publish_mode', 'advisory')
+                .order('start_time', { ascending: true });
+
+              const index = companyFlights
+                ? companyFlights.findIndex(f => f.mission_id === missionId) + 1
+                : 1;
+              suffix = String(index > 0 ? index : 1).padStart(2, '0');
+            }
+
+            callSign = sanitized + suffix;
+            console.log(`Cron callsign: ${callSign} (prefix=${prefix || companyName}, variable=${variable}, suffix=${suffix})`);
           } catch (err) {
             console.warn('Cron callsign generation failed, using fallback:', err);
           }
