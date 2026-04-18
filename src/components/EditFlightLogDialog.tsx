@@ -74,12 +74,20 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
         setOriginalPilotId(currentPilot);
         setPilotId(currentPilot);
 
-        // Fetch personnel within visible companies (RLS on profiles handles scoping)
+        // Fetch personnel from log's company + all sub-departments (hierarchy)
         const targetCompany = (fl as any).company_id || companyId;
+        const companyIds = new Set<string>([targetCompany]);
+        if (targetCompany) {
+          const { data: children } = await supabase
+            .from("companies")
+            .select("id")
+            .eq("parent_company_id", targetCompany);
+          (children || []).forEach((c: any) => companyIds.add(c.id));
+        }
         const { data: profs } = await supabase
           .from("profiles")
           .select("id, full_name, company_id")
-          .eq("company_id", targetCompany)
+          .in("company_id", Array.from(companyIds))
           .order("full_name");
         if (!cancelled) setPersons((profs || []) as any);
       } catch (e: any) {
