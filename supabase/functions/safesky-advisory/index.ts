@@ -414,51 +414,69 @@ Deno.serve(async (req) => {
       const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
       console.log(`Advisory AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
 
-      // Dynamic callsign: use parent company name if child, else own name
+      // Dynamic callsign: configurable prefix + variable suffix (counter or drone reg.nr)
       let callSign = 'avisafe01';
       try {
         const { data: company } = await supabase
           .from('companies')
-          .select('navn, parent_company_id')
+          .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable')
           .eq('id', mission.company_id)
           .single();
 
         let companyName = company?.navn || 'avisafe';
+        let prefix = company?.safesky_callsign_prefix as string | null | undefined;
+        let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
 
-        // If this is a child company, use the parent company's name for callsign
+        // If this is a child company, fall back to parent for name + callsign settings
         if (company?.parent_company_id) {
           const { data: parentCompany } = await supabase
             .from('companies')
-            .select('navn')
+            .select('navn, safesky_callsign_prefix, safesky_callsign_variable')
             .eq('id', company.parent_company_id)
             .single();
-          if (parentCompany?.navn) {
-            companyName = parentCompany.navn;
+          if (parentCompany?.navn) companyName = parentCompany.navn;
+          if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
+          if ((!company?.safesky_callsign_variable) && parentCompany?.safesky_callsign_variable) {
+            variable = parentCompany.safesky_callsign_variable;
           }
         }
 
-        const sanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe';
+        const sanitized = (prefix || companyName).toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe';
 
-        // Count active advisory flights across the parent and all its children
-        const parentId = company?.parent_company_id || mission.company_id;
-        const { data: siblingCompanies } = await supabase
-          .from('companies')
-          .select('id')
-          .eq('parent_company_id', parentId);
-        const hierarchyIds = [parentId, ...(siblingCompanies || []).map(c => c.id)];
+        let suffix = '01';
+        if (variable === 'drone_registration' && mission.drone_id) {
+          const { data: drone } = await supabase
+            .from('drones')
+            .select('registration_number, serienummer')
+            .eq('id', mission.drone_id)
+            .single();
+          const reg = drone?.registration_number || drone?.serienummer || '';
+          const cleaned = reg.replace(/[^a-z0-9]/gi, '');
+          suffix = cleaned || '01';
+        } else {
+          // counter — count active advisory flights across the parent and all its children
+          const parentId = company?.parent_company_id || mission.company_id;
+          const { data: siblingCompanies } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('parent_company_id', parentId);
+          const hierarchyIds = [parentId, ...(siblingCompanies || []).map(c => c.id)];
 
-        const { data: companyFlights } = await supabase
-          .from('active_flights')
-          .select('mission_id')
-          .in('company_id', hierarchyIds)
-          .eq('publish_mode', 'advisory')
-          .order('start_time', { ascending: true });
+          const { data: companyFlights } = await supabase
+            .from('active_flights')
+            .select('mission_id')
+            .in('company_id', hierarchyIds)
+            .eq('publish_mode', 'advisory')
+            .order('start_time', { ascending: true });
 
-        const index = companyFlights
-          ? companyFlights.findIndex(f => f.mission_id === missionId) + 1
-          : 1;
-        callSign = sanitized + String(index > 0 ? index : 1).padStart(2, '0');
-        console.log(`Generated callsign: ${callSign} (company: ${companyName}, index: ${index})`);
+          const index = companyFlights
+            ? companyFlights.findIndex(f => f.mission_id === missionId) + 1
+            : 1;
+          suffix = String(index > 0 ? index : 1).padStart(2, '0');
+        }
+
+        callSign = sanitized + suffix;
+        console.log(`Generated callsign: ${callSign} (prefix=${prefix || companyName}, variable=${variable}, suffix=${suffix})`);
       } catch (err) {
         console.warn('Callsign generation failed, using fallback:', err);
       }
