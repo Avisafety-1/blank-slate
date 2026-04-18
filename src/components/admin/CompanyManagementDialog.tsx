@@ -147,9 +147,6 @@ export const CompanyManagementDialog = ({
       } else {
         setStripeExempt(false);
         setDepartmentsEnabled(false);
-        setCallsignPrefix("");
-        setCallsignVariable('counter');
-        setCallsignPropagate(false);
         form.reset({
           navn: "",
           selskapstype: "droneoperator",
