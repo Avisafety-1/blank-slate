@@ -63,6 +63,10 @@ interface LogEntry {
   flightTrack?: any;
   incidentId?: string;
   flightDate?: string;
+  // Admin/edit metadata
+  flightLogId?: string;
+  manualEntryId?: string;
+  rawEntry?: { entry_type: string | null; title: string; description: string | null; entry_date: string };
 }
 
 export const DroneLogbookDialog = ({ 
@@ -73,11 +77,14 @@ export const DroneLogbookDialog = ({
   flyvetimer 
 }: DroneLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const terminology = useTerminology();
   const navigate = useNavigate();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+  const [editingFlightLogId, setEditingFlightLogId] = useState<string | null>(null);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
