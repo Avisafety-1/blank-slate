@@ -273,25 +273,40 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     }
     setIsSavingEntry(true);
     try {
-      const { data: inserted, error } = await (supabase as any)
-        .from("personnel_log_entries")
-        .insert({
-          profile_id: personId,
-          company_id: companyId,
-          user_id: user.id,
-          entry_date: newEntry.entry_date,
-          entry_type: newEntry.entry_type,
-          title: newEntry.title.trim(),
-          description: newEntry.description.trim() || null,
-        })
-        .select("id")
-        .single();
+      let entryId = editingEntryId;
 
-      if (error) throw error;
+      if (editingEntryId) {
+        const { error } = await (supabase as any)
+          .from("personnel_log_entries")
+          .update({
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .eq("id", editingEntryId);
+        if (error) throw error;
+      } else {
+        const { data: inserted, error } = await (supabase as any)
+          .from("personnel_log_entries")
+          .insert({
+            profile_id: personId,
+            company_id: companyId,
+            user_id: user.id,
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        entryId = inserted?.id;
+      }
 
-      if (imageFile && inserted?.id) {
+      if (imageFile && entryId) {
         const ext = imageFile.name.split('.').pop();
-        const filePath = `${companyId}/personnel-${inserted.id}-${Date.now()}.${ext}`;
+        const filePath = `${companyId}/personnel-${entryId}-${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("logbook-images")
           .upload(filePath, imageFile, { contentType: imageFile.type });
@@ -302,21 +317,35 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           await (supabase as any)
             .from("personnel_log_entries")
             .update({ image_url: filePath })
-            .eq("id", inserted.id);
+            .eq("id", entryId);
         }
       }
 
-      toast.success("Innlegg lagt til");
+      toast.success(editingEntryId ? "Innlegg oppdatert" : "Innlegg lagt til");
       setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
       clearImage();
       setShowAddEntry(false);
+      setEditingEntryId(null);
       fetchPersonnelLogs();
     } catch (error: any) {
-      console.error("Error adding entry:", error);
-      toast.error(`Kunne ikke legge til innlegg: ${error.message}`);
+      console.error("Error saving entry:", error);
+      toast.error(`Kunne ikke lagre innlegg: ${error.message}`);
     } finally {
       setIsSavingEntry(false);
     }
+  };
+
+  const handleEditEntry = (entry: PersonnelLogEntry) => {
+    setEditingEntryId(entry.id);
+    setNewEntry({
+      entry_type: entry.entry_type || "merknad",
+      title: entry.title,
+      description: entry.description || "",
+      entry_date: entry.entry_date.split('T')[0],
+    });
+    clearImage();
+    setShowAddEntry(true);
+    setShowAddHours(false);
   };
 
   const handleDeleteEntry = async (entryId: string) => {
