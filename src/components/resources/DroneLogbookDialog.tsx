@@ -31,7 +31,10 @@ import {
   ZoomIn,
   BarChart3,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
+import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -60,6 +63,10 @@ interface LogEntry {
   flightTrack?: any;
   incidentId?: string;
   flightDate?: string;
+  // Admin/edit metadata
+  flightLogId?: string;
+  manualEntryId?: string;
+  rawEntry?: { entry_type: string | null; title: string; description: string | null; entry_date: string };
 }
 
 export const DroneLogbookDialog = ({ 
@@ -70,11 +77,14 @@ export const DroneLogbookDialog = ({
   flyvetimer 
 }: DroneLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const terminology = useTerminology();
   const navigate = useNavigate();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+  const [editingFlightLogId, setEditingFlightLogId] = useState<string | null>(null);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -169,6 +179,7 @@ export const DroneLogbookDialog = ({
               },
             },
             flightDate: log.flight_date,
+            flightLogId: log.id,
           });
         });
       }
@@ -265,6 +276,8 @@ export const DroneLogbookDialog = ({
             badgeText: entry.entry_type || 'Merknad',
             imageUrl: imagePublicUrl,
             incidentId: incidentIdMatch?.[1] || undefined,
+            manualEntryId: entry.id,
+            rawEntry: { entry_type: entry.entry_type, title: entry.title, description: entry.description, entry_date: entry.entry_date },
           });
         }
       }
@@ -303,53 +316,80 @@ export const DroneLogbookDialog = ({
     }
     setIsSaving(true);
     try {
-      // Insert entry first to get the id
-      const { data: inserted, error } = await (supabase as any)
-        .from("drone_log_entries")
-        .insert({
-          drone_id: droneId,
-          company_id: companyId,
-          user_id: user.id,
-          entry_date: newEntry.entry_date,
-          entry_type: newEntry.entry_type,
-          title: newEntry.title.trim(),
-          description: newEntry.description.trim() || null,
-        })
-        .select("id")
-        .single();
+      let entryId = editingEntryId;
 
-      if (error) throw error;
+      if (editingEntryId) {
+        const { error } = await (supabase as any)
+          .from("drone_log_entries")
+          .update({
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .eq("id", editingEntryId);
+        if (error) throw error;
+      } else {
+        const { data: inserted, error } = await (supabase as any)
+          .from("drone_log_entries")
+          .insert({
+            drone_id: droneId,
+            company_id: companyId,
+            user_id: user.id,
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        entryId = inserted?.id;
+      }
 
       // Upload image if selected
-      if (imageFile && inserted?.id) {
+      if (imageFile && entryId) {
         const ext = imageFile.name.split('.').pop();
-        const filePath = `${companyId}/drone-${inserted.id}-${Date.now()}.${ext}`;
+        const filePath = `${companyId}/drone-${entryId}-${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("logbook-images")
           .upload(filePath, imageFile, { contentType: imageFile.type });
-        
+
         if (uploadError) {
           toast.error("Innlegg lagret, men bilde kunne ikke lastes opp");
         } else {
-          // Update entry with image_url
           await (supabase as any)
             .from("drone_log_entries")
             .update({ image_url: filePath })
-            .eq("id", inserted.id);
+            .eq("id", entryId);
         }
       }
 
-      toast.success("Innlegg lagt til");
+      toast.success(editingEntryId ? "Innlegg oppdatert" : "Innlegg lagt til");
       setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
       clearImage();
       setShowAddEntry(false);
+      setEditingEntryId(null);
       fetchAllLogs();
     } catch (error: any) {
-      console.error("Error adding entry:", error);
-      toast.error(`Kunne ikke legge til innlegg: ${error.message}`);
+      console.error("Error saving entry:", error);
+      toast.error(`Kunne ikke lagre innlegg: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleEditManualEntry = (log: LogEntry) => {
+    if (!log.manualEntryId || !log.rawEntry) return;
+    setEditingEntryId(log.manualEntryId);
+    setNewEntry({
+      entry_type: log.rawEntry.entry_type || "merknad",
+      title: log.rawEntry.title,
+      description: log.rawEntry.description || "",
+      entry_date: log.rawEntry.entry_date.split('T')[0],
+    });
+    clearImage();
+    setShowAddEntry(true);
   };
 
   const handleDeleteEntry = async (logId: string) => {
@@ -578,9 +618,9 @@ export const DroneLogbookDialog = ({
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
-                  {isSaving ? "Lagrer..." : "Lagre"}
+                  {isSaving ? "Lagrer..." : (editingEntryId ? "Oppdater" : "Lagre")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
+                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>Avbryt</Button>
               </div>
             </div>
           )}
@@ -628,13 +668,35 @@ export const DroneLogbookDialog = ({
                                 </p>
                               </div>
                                 {log.type === 'manual' && !log.incidentId && log.badgeText !== 'hendelse' && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
+                                    title="Rediger"
+                                    onClick={() => handleEditManualEntry(log)}
+                                  >
+                                    <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive shrink-0"
+                                    onClick={() => handleDeleteEntry(log.id)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {log.type === 'flight' && isAdmin && log.flightLogId && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive shrink-0"
-                                  onClick={() => handleDeleteEntry(log.id)}
+                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
+                                  title="Rediger flylogg (admin)"
+                                  onClick={() => setEditingFlightLogId(log.flightLogId!)}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </Button>
                               )}
                               {log.incidentId && (
@@ -730,6 +792,13 @@ export const DroneLogbookDialog = ({
         flightTrack={analysisTrack}
         flightDate={analysisDate}
         droneName={droneModell}
+      />
+
+      <EditFlightLogDialog
+        open={!!editingFlightLogId}
+        onOpenChange={(o) => { if (!o) setEditingFlightLogId(null); }}
+        flightLogId={editingFlightLogId}
+        onSaved={() => fetchAllLogs()}
       />
     </>
   );

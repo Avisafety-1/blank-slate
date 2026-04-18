@@ -35,7 +35,9 @@ import {
   Thermometer,
   Zap,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
@@ -74,6 +76,8 @@ interface LogEntry {
   badgeText: string;
   imageUrl?: string;
   incidentId?: string;
+  manualEntryId?: string;
+  rawEntry?: { entry_type: string | null; title: string; description: string | null; entry_date: string };
 }
 
 export const EquipmentLogbookDialog = ({ 
@@ -86,10 +90,12 @@ export const EquipmentLogbookDialog = ({
   equipmentSerienummer,
 }: EquipmentLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const navigate = useNavigate();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -272,6 +278,8 @@ export const EquipmentLogbookDialog = ({
             badgeText: entry.entry_type || 'Merknad',
             imageUrl: imagePublicUrl,
             incidentId: incidentIdMatch?.[1] || undefined,
+            manualEntryId: entry.id,
+            rawEntry: { entry_type: entry.entry_type, title: entry.title, description: entry.description, entry_date: entry.entry_date },
           });
         }
       }
@@ -310,25 +318,39 @@ export const EquipmentLogbookDialog = ({
     }
     setIsSaving(true);
     try {
-      const { data: inserted, error } = await (supabase as any)
-        .from("equipment_log_entries")
-        .insert({
-          equipment_id: equipmentId,
-          company_id: companyId,
-          user_id: user.id,
-          entry_date: newEntry.entry_date,
-          entry_type: newEntry.entry_type,
-          title: newEntry.title.trim(),
-          description: newEntry.description.trim() || null,
-        })
-        .select("id")
-        .single();
+      let entryId = editingEntryId;
+      if (editingEntryId) {
+        const { error } = await (supabase as any)
+          .from("equipment_log_entries")
+          .update({
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .eq("id", editingEntryId);
+        if (error) throw error;
+      } else {
+        const { data: inserted, error } = await (supabase as any)
+          .from("equipment_log_entries")
+          .insert({
+            equipment_id: equipmentId,
+            company_id: companyId,
+            user_id: user.id,
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        entryId = inserted?.id;
+      }
 
-      if (error) throw error;
-
-      if (imageFile && inserted?.id) {
+      if (imageFile && entryId) {
         const ext = imageFile.name.split('.').pop();
-        const filePath = `${companyId}/equipment-${inserted.id}-${Date.now()}.${ext}`;
+        const filePath = `${companyId}/equipment-${entryId}-${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("logbook-images")
           .upload(filePath, imageFile, { contentType: imageFile.type });
@@ -339,21 +361,35 @@ export const EquipmentLogbookDialog = ({
           await (supabase as any)
             .from("equipment_log_entries")
             .update({ image_url: filePath })
-            .eq("id", inserted.id);
+            .eq("id", entryId);
         }
       }
 
-      toast.success("Innlegg lagt til");
+      toast.success(editingEntryId ? "Innlegg oppdatert" : "Innlegg lagt til");
       setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
       clearImage();
       setShowAddEntry(false);
+      setEditingEntryId(null);
       fetchAllLogs();
     } catch (error: any) {
-      console.error("Error adding entry:", error);
-      toast.error(`Kunne ikke legge til innlegg: ${error.message}`);
+      console.error("Error saving entry:", error);
+      toast.error(`Kunne ikke lagre innlegg: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleEditManualEntry = (log: LogEntry) => {
+    if (!log.manualEntryId || !log.rawEntry) return;
+    setEditingEntryId(log.manualEntryId);
+    setNewEntry({
+      entry_type: log.rawEntry.entry_type || "merknad",
+      title: log.rawEntry.title,
+      description: log.rawEntry.description || "",
+      entry_date: log.rawEntry.entry_date.split('T')[0],
+    });
+    clearImage();
+    setShowAddEntry(true);
   };
 
   const handleDeleteEntry = async (logId: string) => {

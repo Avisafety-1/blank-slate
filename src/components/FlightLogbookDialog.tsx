@@ -13,7 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User } from "lucide-react";
+import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User, Pencil } from "lucide-react";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
+import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
@@ -56,7 +58,10 @@ interface PersonnelLogEntry {
 
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const queryClient = useQueryClient();
+  const [editingFlightLogId, setEditingFlightLogId] = useState<string | null>(null);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [flightLogs, setFlightLogs] = useState<FlightLog[]>([]);
   const [personnelLogs, setPersonnelLogs] = useState<PersonnelLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -268,25 +273,40 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     }
     setIsSavingEntry(true);
     try {
-      const { data: inserted, error } = await (supabase as any)
-        .from("personnel_log_entries")
-        .insert({
-          profile_id: personId,
-          company_id: companyId,
-          user_id: user.id,
-          entry_date: newEntry.entry_date,
-          entry_type: newEntry.entry_type,
-          title: newEntry.title.trim(),
-          description: newEntry.description.trim() || null,
-        })
-        .select("id")
-        .single();
+      let entryId = editingEntryId;
 
-      if (error) throw error;
+      if (editingEntryId) {
+        const { error } = await (supabase as any)
+          .from("personnel_log_entries")
+          .update({
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .eq("id", editingEntryId);
+        if (error) throw error;
+      } else {
+        const { data: inserted, error } = await (supabase as any)
+          .from("personnel_log_entries")
+          .insert({
+            profile_id: personId,
+            company_id: companyId,
+            user_id: user.id,
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        entryId = inserted?.id;
+      }
 
-      if (imageFile && inserted?.id) {
+      if (imageFile && entryId) {
         const ext = imageFile.name.split('.').pop();
-        const filePath = `${companyId}/personnel-${inserted.id}-${Date.now()}.${ext}`;
+        const filePath = `${companyId}/personnel-${entryId}-${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("logbook-images")
           .upload(filePath, imageFile, { contentType: imageFile.type });
@@ -297,21 +317,35 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           await (supabase as any)
             .from("personnel_log_entries")
             .update({ image_url: filePath })
-            .eq("id", inserted.id);
+            .eq("id", entryId);
         }
       }
 
-      toast.success("Innlegg lagt til");
+      toast.success(editingEntryId ? "Innlegg oppdatert" : "Innlegg lagt til");
       setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
       clearImage();
       setShowAddEntry(false);
+      setEditingEntryId(null);
       fetchPersonnelLogs();
     } catch (error: any) {
-      console.error("Error adding entry:", error);
-      toast.error(`Kunne ikke legge til innlegg: ${error.message}`);
+      console.error("Error saving entry:", error);
+      toast.error(`Kunne ikke lagre innlegg: ${error.message}`);
     } finally {
       setIsSavingEntry(false);
     }
+  };
+
+  const handleEditEntry = (entry: PersonnelLogEntry) => {
+    setEditingEntryId(entry.id);
+    setNewEntry({
+      entry_type: entry.entry_type || "merknad",
+      title: entry.title,
+      description: entry.description || "",
+      entry_date: entry.entry_date.split('T')[0],
+    });
+    clearImage();
+    setShowAddEntry(true);
+    setShowAddHours(false);
   };
 
   const handleDeleteEntry = async (entryId: string) => {
@@ -602,9 +636,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                 </div>
                 <div className="flex gap-2 sticky bottom-0 bg-muted/30 pt-2 -mx-3 px-3 pb-1">
                   <Button size="sm" onClick={handleAddEntry} disabled={isSavingEntry}>
-                    {isSavingEntry ? "Lagrer..." : "Lagre"}
+                    {isSavingEntry ? "Lagrer..." : (editingEntryId ? "Oppdater" : "Lagre")}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>Avbryt</Button>
                 </div>
               </div>
             )}
@@ -642,7 +676,20 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                               {format(new Date(log.flight_date), "d. MMMM yyyy", { locale: nb })}
                             </span>
                           </div>
-                          <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                title="Rediger flylogg (admin)"
+                                onClick={() => setEditingFlightLogId(log.id)}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -729,14 +776,27 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                               </button>
                             )}
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                            onClick={() => handleDeleteEntry(entry.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {(isAdmin || entry.id) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                onClick={() => handleEditEntry(entry)}
+                                title="Rediger"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteEntry(entry.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -778,6 +838,13 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           </DialogContent>
         </Dialog>
       )}
+
+      <EditFlightLogDialog
+        open={!!editingFlightLogId}
+        onOpenChange={(o) => { if (!o) setEditingFlightLogId(null); }}
+        flightLogId={editingFlightLogId}
+        onSaved={() => { fetchFlightLogs(); fetchPersonnelLogs(); fetchProfileData(); }}
+      />
     </>
   );
 };
