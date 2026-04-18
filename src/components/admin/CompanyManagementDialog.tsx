@@ -40,9 +40,6 @@ interface Company {
   selskapstype?: string | null;
   stripe_exempt?: boolean;
   parent_company_id?: string | null;
-  safesky_callsign_prefix?: string | null;
-  safesky_callsign_variable?: string | null;
-  safesky_callsign_propagate?: boolean | null;
 }
 
 interface CompanyManagementDialogProps {
