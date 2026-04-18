@@ -316,53 +316,80 @@ export const DroneLogbookDialog = ({
     }
     setIsSaving(true);
     try {
-      // Insert entry first to get the id
-      const { data: inserted, error } = await (supabase as any)
-        .from("drone_log_entries")
-        .insert({
-          drone_id: droneId,
-          company_id: companyId,
-          user_id: user.id,
-          entry_date: newEntry.entry_date,
-          entry_type: newEntry.entry_type,
-          title: newEntry.title.trim(),
-          description: newEntry.description.trim() || null,
-        })
-        .select("id")
-        .single();
+      let entryId = editingEntryId;
 
-      if (error) throw error;
+      if (editingEntryId) {
+        const { error } = await (supabase as any)
+          .from("drone_log_entries")
+          .update({
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .eq("id", editingEntryId);
+        if (error) throw error;
+      } else {
+        const { data: inserted, error } = await (supabase as any)
+          .from("drone_log_entries")
+          .insert({
+            drone_id: droneId,
+            company_id: companyId,
+            user_id: user.id,
+            entry_date: newEntry.entry_date,
+            entry_type: newEntry.entry_type,
+            title: newEntry.title.trim(),
+            description: newEntry.description.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        entryId = inserted?.id;
+      }
 
       // Upload image if selected
-      if (imageFile && inserted?.id) {
+      if (imageFile && entryId) {
         const ext = imageFile.name.split('.').pop();
-        const filePath = `${companyId}/drone-${inserted.id}-${Date.now()}.${ext}`;
+        const filePath = `${companyId}/drone-${entryId}-${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("logbook-images")
           .upload(filePath, imageFile, { contentType: imageFile.type });
-        
+
         if (uploadError) {
           toast.error("Innlegg lagret, men bilde kunne ikke lastes opp");
         } else {
-          // Update entry with image_url
           await (supabase as any)
             .from("drone_log_entries")
             .update({ image_url: filePath })
-            .eq("id", inserted.id);
+            .eq("id", entryId);
         }
       }
 
-      toast.success("Innlegg lagt til");
+      toast.success(editingEntryId ? "Innlegg oppdatert" : "Innlegg lagt til");
       setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
       clearImage();
       setShowAddEntry(false);
+      setEditingEntryId(null);
       fetchAllLogs();
     } catch (error: any) {
-      console.error("Error adding entry:", error);
-      toast.error(`Kunne ikke legge til innlegg: ${error.message}`);
+      console.error("Error saving entry:", error);
+      toast.error(`Kunne ikke lagre innlegg: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleEditManualEntry = (log: LogEntry) => {
+    if (!log.manualEntryId || !log.rawEntry) return;
+    setEditingEntryId(log.manualEntryId);
+    setNewEntry({
+      entry_type: log.rawEntry.entry_type || "merknad",
+      title: log.rawEntry.title,
+      description: log.rawEntry.description || "",
+      entry_date: log.rawEntry.entry_date.split('T')[0],
+    });
+    clearImage();
+    setShowAddEntry(true);
   };
 
   const handleDeleteEntry = async (logId: string) => {
