@@ -968,7 +968,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
                   <RadioGroup
                     value={callsignVariable}
-                    onValueChange={(v) => setCallsignVariable(v as 'counter' | 'drone_registration')}
+                    onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration'); }}
                     className="flex flex-col sm:flex-row gap-2"
                   >
                     <div className="flex items-center gap-1.5">
