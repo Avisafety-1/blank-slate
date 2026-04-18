@@ -280,7 +280,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_base_url")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -291,6 +291,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
+      setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
+      setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter');
+      setCallsignPropagate((data as any).safesky_callsign_propagate ?? false);
 
       // Check if FH2 credentials exist (own or inherited via parent)
       const { data: cred } = await (supabase as any)
