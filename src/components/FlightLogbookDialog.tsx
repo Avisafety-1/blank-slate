@@ -600,7 +600,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                     onChange={handleImageSelect}
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 sticky bottom-0 bg-muted/30 pt-2 -mx-3 px-3 pb-1">
                   <Button size="sm" onClick={handleAddEntry} disabled={isSavingEntry}>
                     {isSavingEntry ? "Lagrer..." : "Lagre"}
                   </Button>
