@@ -22,8 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Plane, Radio } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
