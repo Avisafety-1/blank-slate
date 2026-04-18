@@ -133,10 +133,14 @@ export const DroneLogbookDialog = ({
 
       if (flightLogs) {
         const flightLogIds = flightLogs.map(f => f.id);
-        const userIds = [...new Set(flightLogs.map(f => f.user_id))];
 
-        const [{ data: profiles }, { data: flightEvents }] = await Promise.all([
-          supabase.from("profiles").select("id, full_name").in("id", userIds),
+        const [{ data: pilotLinks }, { data: flightEvents }] = await Promise.all([
+          flightLogIds.length > 0
+            ? (supabase as any)
+                .from('flight_log_personnel')
+                .select('flight_log_id, profile_id')
+                .in('flight_log_id', flightLogIds)
+            : Promise.resolve({ data: [] as any[] }),
           flightLogIds.length > 0
             ? supabase
                 .from('flight_events' as any)
@@ -146,6 +150,16 @@ export const DroneLogbookDialog = ({
             : Promise.resolve({ data: [] as any[] }),
         ]);
 
+        const pilotByLogId = new Map<string, string>();
+        (pilotLinks || []).forEach((p: any) => {
+          if (!pilotByLogId.has(p.flight_log_id)) pilotByLogId.set(p.flight_log_id, p.profile_id);
+        });
+
+        const allUserIds = new Set<string>();
+        flightLogs.forEach(f => { if (f.user_id) allUserIds.add(f.user_id); });
+        pilotByLogId.forEach(pid => allUserIds.add(pid));
+
+        const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", Array.from(allUserIds));
         const userMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
         const eventsByLogId = new Map<string, any[]>();
         (flightEvents || []).forEach((event: any) => {
@@ -162,7 +176,7 @@ export const DroneLogbookDialog = ({
             date: new Date(log.flight_date),
             title: `Flytur: ${log.departure_location} -> ${log.landing_location}`,
             description: `${log.flight_duration_minutes} min, ${log.movements} bevegelser${log.notes ? ` - ${log.notes}` : ''}`,
-            userName: userMap.get(log.user_id) || 'Ukjent',
+            userName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || 'Ukjent',
             icon: <Plane className="w-4 h-4" />,
             badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
             badgeText: 'Flytur',
