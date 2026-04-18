@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
         try {
           const { data: mission, error: missionError } = await supabase
             .from('missions')
-            .select('id, tittel, route, company_id, drone_id')
+            .select('id, tittel, route, company_id')
             .eq('id', missionId)
             .single();
 
