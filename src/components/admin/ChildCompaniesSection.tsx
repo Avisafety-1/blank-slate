@@ -997,7 +997,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <Switch
                     id="callsign-propagate"
                     checked={callsignPropagate}
-                    onCheckedChange={setCallsignPropagate}
+                    onCheckedChange={(c) => { callsignEditing.current = true; setCallsignPropagate(c); }}
                     disabled={savingCallsign}
                   />
                 </div>
