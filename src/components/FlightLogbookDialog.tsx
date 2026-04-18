@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -518,7 +519,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             )}
 
             {showAddEntry && (
-              <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+              <div className="border rounded-lg p-3 space-y-3 bg-muted/30 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Type</Label>
@@ -571,7 +572,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                       <img
                         src={imagePreviewUrl}
                         alt="Forhåndsvisning"
-                        className="h-24 w-auto rounded-md border object-cover"
+                        className="h-20 sm:h-24 w-auto rounded-md border object-cover"
                       />
                       <button
                         type="button"
@@ -599,7 +600,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                     onChange={handleImageSelect}
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 sticky bottom-0 bg-muted/30 pt-2 -mx-3 px-3 pb-1">
                   <Button size="sm" onClick={handleAddEntry} disabled={isSavingEntry}>
                     {isSavingEntry ? "Lagrer..." : "Lagre"}
                   </Button>
@@ -609,7 +610,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             )}
           </div>
 
-          <Tabs defaultValue="flyturer" className="mt-2">
+          <Tabs defaultValue="flyturer" className={cn("mt-2", showAddEntry && "hidden sm:block")}>
             <TabsList className="w-full">
               <TabsTrigger value="flyturer" className="flex-1">Flyturer</TabsTrigger>
               <TabsTrigger value="innlegg" className="flex-1">

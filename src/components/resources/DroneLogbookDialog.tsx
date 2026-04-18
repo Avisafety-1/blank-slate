@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
@@ -493,7 +494,7 @@ export const DroneLogbookDialog = ({
           </div>
 
           {showAddEntry && (
-            <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30">
+            <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs sm:text-sm">Type</Label>
@@ -547,7 +548,7 @@ export const DroneLogbookDialog = ({
                     <img
                       src={imagePreviewUrl}
                       alt="Forhåndsvisning"
-                      className="h-24 w-auto rounded-md border object-cover"
+                      className="h-20 sm:h-24 w-auto rounded-md border object-cover"
                     />
                     <button
                       type="button"
@@ -584,7 +585,7 @@ export const DroneLogbookDialog = ({
             </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}>
             <TabsList className="flex w-full overflow-x-auto no-scrollbar">
               <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
               <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Fly</TabsTrigger>
