@@ -79,6 +79,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration'>('counter');
   const [callsignPropagate, setCallsignPropagate] = useState(false);
   const [savingCallsign, setSavingCallsign] = useState(false);
+  const callsignEditing = useRef(false);
 
   // ── Flight alerts state ──
   const ALERT_TYPES = [
@@ -291,9 +292,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
-      setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
-      setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter');
-      setCallsignPropagate((data as any).safesky_callsign_propagate ?? false);
+      if (!callsignEditing.current) {
+        setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
+        setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter');
+        setCallsignPropagate((data as any).safesky_callsign_propagate ?? false);
+      }
 
       // Check if FH2 credentials exist (own or inherited via parent)
       const { data: cred } = await (supabase as any)
@@ -542,6 +545,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .eq("parent_company_id", companyId);
     }
     setSavingCallsign(false);
+    callsignEditing.current = false;
     invalidateCompanySettingsCache();
     toast.success("SafeSky-callsign lagret");
   };
@@ -955,7 +959,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <Input
                     id="callsign-prefix"
                     value={callsignPrefix}
-                    onChange={(e) => setCallsignPrefix(e.target.value)}
+                    onChange={(e) => { callsignEditing.current = true; setCallsignPrefix(e.target.value); }}
                     placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
                     maxLength={50}
                     className="h-8 text-sm"
@@ -965,7 +969,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
                   <RadioGroup
                     value={callsignVariable}
-                    onValueChange={(v) => setCallsignVariable(v as 'counter' | 'drone_registration')}
+                    onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration'); }}
                     className="flex flex-col sm:flex-row gap-2"
                   >
                     <div className="flex items-center gap-1.5">
@@ -994,7 +998,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <Switch
                     id="callsign-propagate"
                     checked={callsignPropagate}
-                    onCheckedChange={setCallsignPropagate}
+                    onCheckedChange={(c) => { callsignEditing.current = true; setCallsignPropagate(c); }}
                     disabled={savingCallsign}
                   />
                 </div>
