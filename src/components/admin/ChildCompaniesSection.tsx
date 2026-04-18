@@ -942,6 +942,68 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   disabled={savingSettings}
                 />
               </div>
+              {/* SafeSky callsign */}
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="space-y-1">
+                  <div className="font-medium text-sm">SafeSky callsign</div>
+                  <div className="text-xs text-muted-foreground">
+                    Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">Callsign-prefix</Label>
+                  <Input
+                    id="callsign-prefix"
+                    value={callsignPrefix}
+                    onChange={(e) => setCallsignPrefix(e.target.value)}
+                    placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
+                    maxLength={50}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
+                  <RadioGroup
+                    value={callsignVariable}
+                    onValueChange={(v) => setCallsignVariable(v as 'counter' | 'drone_registration')}
+                    className="flex flex-col sm:flex-row gap-2"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="counter" id="cs-counter" />
+                      <Label htmlFor="cs-counter" className="text-xs cursor-pointer">Teller (01, 02, …)</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="drone_registration" id="cs-drone" />
+                      <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Forhåndsvisning: <span className="font-mono text-foreground">
+                    {((callsignPrefix.trim() || parentCompanyName || 'avisafe').toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
+                      + (callsignVariable === 'drone_registration' ? 'LNABCD' : '01')}
+                  </span>
+                </div>
+                <div className="border-t pt-2 flex items-center justify-between">
+                  <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Propager prefix og variabel til alle avdelinger
+                    </div>
+                  </Label>
+                  <Switch
+                    id="callsign-propagate"
+                    checked={callsignPropagate}
+                    onCheckedChange={setCallsignPropagate}
+                    disabled={savingCallsign}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={handleSaveCallsign} disabled={savingCallsign}>
+                    {savingCallsign ? "Lagrer…" : "Lagre callsign-innstillinger"}
+                  </Button>
+                </div>
+              </div>
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <div className="flex items-center gap-2">
                   <UserCog className="h-4 w-4 text-muted-foreground" />
