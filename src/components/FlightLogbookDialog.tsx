@@ -676,7 +676,20 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                               {format(new Date(log.flight_date), "d. MMMM yyyy", { locale: nb })}
                             </span>
                           </div>
-                          <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
+                            {isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                title="Rediger flylogg (admin)"
+                                onClick={() => setEditingFlightLogId(log.id)}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -763,14 +776,27 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                               </button>
                             )}
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                            onClick={() => handleDeleteEntry(entry.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {(isAdmin || entry.id) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                onClick={() => handleEditEntry(entry)}
+                                title="Rediger"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteEntry(entry.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -812,6 +838,13 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           </DialogContent>
         </Dialog>
       )}
+
+      <EditFlightLogDialog
+        open={!!editingFlightLogId}
+        onOpenChange={(o) => { if (!o) setEditingFlightLogId(null); }}
+        flightLogId={editingFlightLogId}
+        onSaved={() => { fetchFlightLogs(); fetchPersonnelLogs(); fetchProfileData(); }}
+      />
     </>
   );
 };
