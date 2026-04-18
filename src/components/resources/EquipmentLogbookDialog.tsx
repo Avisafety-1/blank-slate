@@ -35,7 +35,9 @@ import {
   Thermometer,
   Zap,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
@@ -74,6 +76,8 @@ interface LogEntry {
   badgeText: string;
   imageUrl?: string;
   incidentId?: string;
+  manualEntryId?: string;
+  rawEntry?: { entry_type: string | null; title: string; description: string | null; entry_date: string };
 }
 
 export const EquipmentLogbookDialog = ({ 
@@ -86,10 +90,12 @@ export const EquipmentLogbookDialog = ({
   equipmentSerienummer,
 }: EquipmentLogbookDialogProps) => {
   const { user, companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const navigate = useNavigate();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
