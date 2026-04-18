@@ -793,6 +793,13 @@ export const DroneLogbookDialog = ({
         flightDate={analysisDate}
         droneName={droneModell}
       />
+
+      <EditFlightLogDialog
+        open={!!editingFlightLogId}
+        onOpenChange={(o) => { if (!o) setEditingFlightLogId(null); }}
+        flightLogId={editingFlightLogId}
+        onSaved={() => fetchAllLogs()}
+      />
     </>
   );
 };
