@@ -958,7 +958,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <Input
                     id="callsign-prefix"
                     value={callsignPrefix}
-                    onChange={(e) => setCallsignPrefix(e.target.value)}
+                    onChange={(e) => { callsignEditing.current = true; setCallsignPrefix(e.target.value); }}
                     placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
                     maxLength={50}
                     className="h-8 text-sm"
