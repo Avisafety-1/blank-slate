@@ -207,6 +207,9 @@ export const CompanyManagementDialog = ({
         stripe_exempt: inheritedStripeExempt,
         parent_company_id: parentId,
         departments_enabled: departmentsEnabled,
+        safesky_callsign_prefix: callsignPrefix.trim() || null,
+        safesky_callsign_variable: callsignVariable,
+        safesky_callsign_propagate: callsignPropagate,
       };
 
       if (isCreating) {
