@@ -1,34 +1,36 @@
 
 
-Issue: User set custom SafeSky callsign prefix in company settings, but published callsign was still `avisafe01` (default). Edge function logs confirm: `Cron callsign: avisafe01 (company: Avisafe, index: 1)` and `Generated callsign: avisafe01 (company: Avisafe, index: 0)`.
+## Analyse
 
-Looking at the cron function code (already shown in current-code), it DOES read `safesky_callsign_prefix` and `safesky_callsign_variable` columns. So the read logic looks correct there.
+Tre problemer i nåværende `src/sw.ts`:
+1. `createHandlerBoundToURL('/index.html')` server precached HTML → gamle sider etter deploy.
+2. `activate`-handleren wiper ALLE caches (også den nye precachen som nettopp ble installert) → ødelegger Workbox sin egen versjonering.
+3. Ingen `controllerchange`-lytter på klientsiden → bruker må manuelt reloade.
 
-Let me check the advisory function to see if it was updated similarly, and verify the DB has the prefix saved.
+Ingen Supabase/API-caching i dag — bra, beholdes slik.
 
-Likely causes:
-1. The `safesky-advisory` function (publishing path) may not have been updated to read the new columns — the log shows `Generated callsign: avisafe01 (company: Avisafe, index: 0)` which matches old format string `"company: X, index: Y"`, suggesting old code path.
-2. Or the value wasn't saved to DB (ChildCompaniesSection save logic issue).
-3. Or it's reading from wrong company (mission's company_id vs current selected company).
+## Endringer
 
-Need to verify by reading both files and DB.
+**`src/sw.ts`**
+- Fjern `createHandlerBoundToURL` + `NavigationRoute`-blokken.
+- Legg til `NetworkFirst`-route for `request.mode === 'navigate'` med `cacheName: 'html-cache'` og `networkTimeoutSeconds: 2`.
+- Importer og kall `cleanupOutdatedCaches()` fra `workbox-precaching` (rett etter `precacheAndRoute`).
+- Fjern `caches.keys()...delete`-loopen i `activate`. Behold `skipWaiting()` i install og `clients.claim()` i activate.
+- Behold push/notification-handlere uendret.
 
-## Plan
+**`src/main.tsx`**
+- Legg til en `controllerchange`-lytter som kaller `window.location.reload()` én gang (guard mot reload-loop med en lokal flagg).
 
-**Diagnose**
-1. Read `supabase/functions/safesky-advisory/index.ts` callsign block — verify it uses `safesky_callsign_prefix`/`safesky_callsign_variable`.
-2. Read `src/components/admin/ChildCompaniesSection.tsx` save handler — verify it actually persists the values.
-3. Query DB: `SELECT id, navn, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate FROM companies` to check if the value is stored.
+**`src/hooks/useForceReload.ts`** (relatert hygiene)
+- `clearAllCaches()` sletter i dag alle Cache Storage-keys ved manuell "Oppdater nå". Behold for manuell flow (brukerinitiert), men la den naturlige SW-oppdateringen håndtere normalfall — ingen endring nødvendig her.
 
-**Fix (most likely)**
-- If `safesky-advisory` was missed in earlier edit: update the callsign-generation block to mirror the cron logic (read prefix + variable, fall back to parent, build callsign from sanitized prefix + counter/drone reg suffix).
-- If save handler is broken: fix the update payload in `ChildCompaniesSection.tsx`.
-- If mission belongs to a different company than the one configured: use mission's `company_id` (with parent fallback) consistently — already what cron does, but confirm.
+## Resultat
+- Navigasjoner går alltid mot nett først (2s timeout → fallback til cache offline).
+- Statisk JS/CSS/bilder fortsatt precached og raske.
+- Ingen Supabase-caching (uendret).
+- Ny SW → automatisk reload via `controllerchange`.
 
-**Verify**
-- Set prefix=`testop`, start mission, check edge logs show `Generated callsign: testop01`.
-- Confirm SafeSky receives `testop01` in published advisory.
-
-**Files to touch (likely 1)**
-- `supabase/functions/safesky-advisory/index.ts` — sync callsign logic with cron version.
+## Filer som endres
+- `src/sw.ts`
+- `src/main.tsx`
 
