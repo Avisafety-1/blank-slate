@@ -133,9 +133,6 @@ export const CompanyManagementDialog = ({
       if (company) {
         setStripeExempt(company.stripe_exempt ?? false);
         setDepartmentsEnabled((company as any).departments_enabled ?? false);
-        setCallsignPrefix(company.safesky_callsign_prefix ?? "");
-        setCallsignVariable(((company.safesky_callsign_variable as any) || 'counter'));
-        setCallsignPropagate(company.safesky_callsign_propagate ?? false);
         form.reset({
           navn: company.navn,
           selskapstype: (company.selskapstype as 'droneoperator' | 'flyselskap') || "droneoperator",
