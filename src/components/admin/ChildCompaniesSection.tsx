@@ -518,6 +518,34 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     toast.success("Standard flyhøyde lagret");
   };
 
+  const handleSaveCallsign = async () => {
+    if (!companyId) return;
+    setSavingCallsign(true);
+    const payload: any = {
+      safesky_callsign_prefix: callsignPrefix.trim() || null,
+      safesky_callsign_variable: callsignVariable,
+      safesky_callsign_propagate: callsignPropagate,
+    };
+    const { error } = await supabase.from("companies").update(payload).eq("id", companyId);
+    if (error) {
+      setSavingCallsign(false);
+      toast.error("Kunne ikke lagre SafeSky-callsign");
+      return;
+    }
+    if (callsignPropagate) {
+      await supabase
+        .from("companies")
+        .update({
+          safesky_callsign_prefix: payload.safesky_callsign_prefix,
+          safesky_callsign_variable: payload.safesky_callsign_variable,
+        } as any)
+        .eq("parent_company_id", companyId);
+    }
+    setSavingCallsign(false);
+    invalidateCompanySettingsCache();
+    toast.success("SafeSky-callsign lagret");
+  };
+
   const FH2_MASK = "••••••••";
 
   const handleSaveFh2 = async () => {
