@@ -31,7 +31,10 @@ import {
   ZoomIn,
   BarChart3,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
+import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
