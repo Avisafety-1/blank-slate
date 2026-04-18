@@ -411,6 +411,9 @@ export type Database = {
           require_mission_approval: boolean
           require_sora_on_missions: boolean
           require_sora_steps: number
+          safesky_callsign_prefix: string | null
+          safesky_callsign_propagate: boolean
+          safesky_callsign_variable: string
           selskapstype: string | null
           show_all_airspace_warnings: boolean
           stripe_exempt: boolean
@@ -446,6 +449,9 @@ export type Database = {
           require_mission_approval?: boolean
           require_sora_on_missions?: boolean
           require_sora_steps?: number
+          safesky_callsign_prefix?: string | null
+          safesky_callsign_propagate?: boolean
+          safesky_callsign_variable?: string
           selskapstype?: string | null
           show_all_airspace_warnings?: boolean
           stripe_exempt?: boolean
@@ -481,6 +487,9 @@ export type Database = {
           require_mission_approval?: boolean
           require_sora_on_missions?: boolean
           require_sora_steps?: number
+          safesky_callsign_prefix?: string | null
+          safesky_callsign_propagate?: boolean
+          safesky_callsign_variable?: string
           selskapstype?: string | null
           show_all_airspace_warnings?: boolean
           stripe_exempt?: boolean
