@@ -636,9 +636,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                 </div>
                 <div className="flex gap-2 sticky bottom-0 bg-muted/30 pt-2 -mx-3 px-3 pb-1">
                   <Button size="sm" onClick={handleAddEntry} disabled={isSavingEntry}>
-                    {isSavingEntry ? "Lagrer..." : "Lagre"}
+                    {isSavingEntry ? "Lagrer..." : (editingEntryId ? "Oppdater" : "Lagre")}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>Avbryt</Button>
                 </div>
               </div>
             )}
