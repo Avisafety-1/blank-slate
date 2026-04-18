@@ -176,7 +176,7 @@ export const DroneLogbookDialog = ({
             date: new Date(log.flight_date),
             title: `Flytur: ${log.departure_location} -> ${log.landing_location}`,
             description: `${log.flight_duration_minutes} min, ${log.movements} bevegelser${log.notes ? ` - ${log.notes}` : ''}`,
-            userName: userMap.get(log.user_id) || 'Ukjent',
+            userName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || 'Ukjent',
             icon: <Plane className="w-4 h-4" />,
             badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
             badgeText: 'Flytur',
