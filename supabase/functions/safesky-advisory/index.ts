@@ -356,7 +356,7 @@ Deno.serve(async (req) => {
 
       const { data: mission, error: missionError } = await supabase
         .from('missions')
-        .select('id, tittel, route, latitude, longitude, company_id, drone_id')
+        .select('id, tittel, route, latitude, longitude, company_id')
         .eq('id', missionId)
         .single();
 
@@ -447,15 +447,23 @@ Deno.serve(async (req) => {
         const sanitized = rawPrefix.replace(/[^a-zA-Z0-9]/g, '') || 'avisafe';
 
         let suffix = '01';
-        if (variable === 'drone_registration' && mission.drone_id) {
-          const { data: drone } = await supabase
-            .from('drones')
-            .select('registration_number, serienummer')
-            .eq('id', mission.drone_id)
-            .single();
-          const reg = drone?.registration_number || drone?.serienummer || '';
-          const cleaned = reg.replace(/[^a-z0-9]/gi, '');
-          suffix = cleaned || '01';
+        if (variable === 'drone_registration') {
+          const { data: missionDrone } = await supabase
+            .from('mission_drones')
+            .select('drone_id')
+            .eq('mission_id', missionId)
+            .limit(1)
+            .maybeSingle();
+          if (missionDrone?.drone_id) {
+            const { data: drone } = await supabase
+              .from('drones')
+              .select('registration_number, serienummer')
+              .eq('id', missionDrone.drone_id)
+              .single();
+            const reg = drone?.registration_number || drone?.serienummer || '';
+            const cleaned = reg.replace(/[^a-z0-9]/gi, '');
+            suffix = cleaned || '01';
+          }
         } else {
           // counter — count active advisory flights across the parent and all its children
           const parentId = company?.parent_company_id || mission.company_id;
