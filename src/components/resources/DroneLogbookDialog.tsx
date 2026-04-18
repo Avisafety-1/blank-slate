@@ -179,6 +179,7 @@ export const DroneLogbookDialog = ({
               },
             },
             flightDate: log.flight_date,
+            flightLogId: log.id,
           });
         });
       }
@@ -275,6 +276,8 @@ export const DroneLogbookDialog = ({
             badgeText: entry.entry_type || 'Merknad',
             imageUrl: imagePublicUrl,
             incidentId: incidentIdMatch?.[1] || undefined,
+            manualEntryId: entry.id,
+            rawEntry: { entry_type: entry.entry_type, title: entry.title, description: entry.description, entry_date: entry.entry_date },
           });
         }
       }
