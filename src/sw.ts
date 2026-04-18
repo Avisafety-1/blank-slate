@@ -1,20 +1,23 @@
 /// <reference lib="webworker" />
-import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
-import { registerRoute, NavigationRoute } from 'workbox-routing';
+import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { NetworkFirst } from 'workbox-strategies';
 
 declare const self: ServiceWorkerGlobalScope;
 
 // PWA Precaching - this will be replaced by the build tool with the list of assets
 precacheAndRoute(self.__WB_MANIFEST);
+cleanupOutdatedCaches();
 
-// SPA navigation fallback: serve cached index.html for all navigation requests
-// Without this, refreshing on /ressurser or any sub-route while offline fails
-const navigationHandler = createHandlerBoundToURL('/index.html');
-const navigationRoute = new NavigationRoute(navigationHandler, {
-  // Don't intercept API calls or static assets
-  denylist: [/^\/api\//, /^\/supabase\//, /\.\w+$/],
-});
-registerRoute(navigationRoute);
+// Navigation requests: always try network first (with short timeout), fall back to cache offline.
+// This prevents stale HTML being served from precache after a deploy.
+registerRoute(
+  ({ request }) => request.mode === 'navigate',
+  new NetworkFirst({
+    cacheName: 'html-cache',
+    networkTimeoutSeconds: 2,
+  })
+);
 
 // Force immediate activation of new SW versions
 self.addEventListener('install', () => {
@@ -22,12 +25,7 @@ self.addEventListener('install', () => {
 });
 
 self.addEventListener('activate', (event) => {
-  self.clients.claim();
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(key => caches.delete(key)))
-    )
-  );
+  event.waitUntil(self.clients.claim());
 });
 
 // Push notification handler
