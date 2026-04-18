@@ -99,6 +99,9 @@ export const CompanyManagementDialog = ({
   const [stripeExempt, setStripeExempt] = useState(false);
   const [departmentsEnabled, setDepartmentsEnabled] = useState(false);
   const [allCompanies, setAllCompanies] = useState<{id: string; navn: string}[]>([]);
+  const [callsignPrefix, setCallsignPrefix] = useState("");
+  const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration'>('counter');
+  const [callsignPropagate, setCallsignPropagate] = useState(false);
   const { isSuperAdmin } = useAuth();
   const isCreating = !company;
 
