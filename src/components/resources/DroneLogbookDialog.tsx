@@ -618,9 +618,9 @@ export const DroneLogbookDialog = ({
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
-                  {isSaving ? "Lagrer..." : "Lagre"}
+                  {isSaving ? "Lagrer..." : (editingEntryId ? "Oppdater" : "Lagre")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
+                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>Avbryt</Button>
               </div>
             </div>
           )}
@@ -668,13 +668,35 @@ export const DroneLogbookDialog = ({
                                 </p>
                               </div>
                                 {log.type === 'manual' && !log.incidentId && log.badgeText !== 'hendelse' && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
+                                    title="Rediger"
+                                    onClick={() => handleEditManualEntry(log)}
+                                  >
+                                    <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive shrink-0"
+                                    onClick={() => handleDeleteEntry(log.id)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {log.type === 'flight' && isAdmin && log.flightLogId && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive shrink-0"
-                                  onClick={() => handleDeleteEntry(log.id)}
+                                  className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
+                                  title="Rediger flylogg (admin)"
+                                  onClick={() => setEditingFlightLogId(log.flightLogId!)}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </Button>
                               )}
                               {log.incidentId && (
