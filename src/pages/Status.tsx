@@ -21,7 +21,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon, ChevronRight, ChevronLeft } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, subMonths, startOfMonth, endOfMonth, startOfYear, parseISO, isValid } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -105,6 +107,22 @@ const Status = () => {
     ninetyDays: 0,
   });
 
+  // Deviation reports view state
+  const [activeView, setActiveView] = useState<"operational" | "deviation">("operational");
+  const [deviationReports, setDeviationReports] = useState<Array<{
+    id: string;
+    mission_id: string | null;
+    category_path: string[];
+    comment: string | null;
+    created_at: string;
+    reported_by: string | null;
+    reporter_name?: string | null;
+  }>>([]);
+  const [flightLogsCount, setFlightLogsCount] = useState(0);
+  const [deviationDrillPath, setDeviationDrillPath] = useState<string[]>([]);
+  const [deviationPage, setDeviationPage] = useState(1);
+  const [companySettings, setCompanySettings] = useState<{ deviation_report_enabled: boolean }>({ deviation_report_enabled: false });
+
   useEffect(() => {
     if (!user) {
       navigate("/auth");
@@ -128,6 +146,7 @@ const Status = () => {
         fetchIncidentStatistics(),
         fetchResourceStatistics(),
         fetchDocumentStatistics(),
+        fetchDeviationStatistics(),
       ]);
       // Cache all state after successful fetch
       if (companyId) {
@@ -385,7 +404,50 @@ const Status = () => {
       else if (expiryDate > sixtyDays && expiryDate <= ninetyDays) ninetyCount++;
     });
 
-    setExpiringDocs({ thirtyDays: thirtyCount, sixtyDays: sixtyCount, ninetyDays: ninetyCount });
+  };
+
+  const fetchDeviationStatistics = async () => {
+    if (!companyId) return;
+    const { startDate, endDate } = getDateFilter();
+
+    // Fetch company setting
+    const { data: companyData } = await supabase
+      .from("companies")
+      .select("deviation_report_enabled")
+      .eq("id", companyId)
+      .single();
+    setCompanySettings({ deviation_report_enabled: (companyData as any)?.deviation_report_enabled ?? false });
+
+    // Fetch reports in period
+    const { data: reports, error } = await (supabase as any)
+      .from("mission_deviation_reports")
+      .select("id, mission_id, category_path, comment, created_at, reported_by")
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", endDate.toISOString())
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[Deviation] fetch error", error);
+      setDeviationReports([]);
+      return;
+    }
+
+    const rows = (reports || []) as any[];
+    const ids = Array.from(new Set(rows.map((r) => r.reported_by).filter(Boolean) as string[]));
+    let nameMap: Record<string, string> = {};
+    if (ids.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      nameMap = Object.fromEntries((profs || []).map((p: any) => [p.id, p.full_name]));
+    }
+    setDeviationReports(rows.map((r) => ({ ...r, reporter_name: r.reported_by ? nameMap[r.reported_by] : null })));
+
+    // Total flight logs in period for ratio KPI
+    const { count } = await supabase
+      .from("flight_logs")
+      .select("id", { count: "exact", head: true })
+      .gte("flight_date", startDate.toISOString().slice(0, 10))
+      .lte("flight_date", endDate.toISOString().slice(0, 10));
+    setFlightLogsCount(count || 0);
   };
 
   if (loading) {
@@ -508,6 +570,31 @@ const Status = () => {
       ];
       const wsExpiringDocs = XLSX.utils.aoa_to_sheet(expiringDocsData);
       XLSX.utils.book_append_sheet(wb, wsExpiringDocs, "Dokumenter som utløper");
+
+      // Deviation Reports
+      const deviationSummary = [
+        ["Avviksrapporter (sammendrag)", ""],
+        ["Totalt antall avvik", deviationReports.length],
+        ["Unike flyturer med avvik", new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size],
+        ["Unike piloter", new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size],
+        [],
+        ["Hovedkategori", "Antall"],
+        ...Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
+          const root = r.category_path[0] || "Ukategorisert";
+          acc[root] = (acc[root] || 0) + 1;
+          return acc;
+        }, {})).map(([name, value]) => [name, value]),
+        [],
+        ["Dato", "Pilot", "Kategori", "Kommentar"],
+        ...deviationReports.map(r => [
+          format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
+          r.reporter_name || "Ukjent",
+          r.category_path.join(" > "),
+          r.comment || "",
+        ]),
+      ];
+      const wsDeviation = XLSX.utils.aoa_to_sheet(deviationSummary);
+      XLSX.utils.book_append_sheet(wb, wsDeviation, "Avviksrapporter");
 
       // Generate filename with date
       const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.xlsx`;
@@ -642,6 +729,28 @@ const Status = () => {
       sections.push(["Innen 30 dager", String(expiringDocs.thirtyDays)]);
       sections.push(["Innen 60 dager", String(expiringDocs.sixtyDays)]);
       sections.push(["Innen 90 dager", String(expiringDocs.ninetyDays)]);
+      sections.push([]);
+
+      // Deviation Reports
+      sections.push(["Avviksrapporter (sammendrag)", ""]);
+      sections.push(["Totalt antall avvik", String(deviationReports.length)]);
+      sections.push(["Unike flyturer med avvik", String(new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size)]);
+      sections.push(["Unike piloter", String(new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size)]);
+      sections.push([]);
+      sections.push(["Hovedkategori", "Antall"]);
+      Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
+        const root = r.category_path[0] || "Ukategorisert";
+        acc[root] = (acc[root] || 0) + 1;
+        return acc;
+      }, {})).forEach(([name, value]) => sections.push([name, String(value)]));
+      sections.push([]);
+      sections.push(["Dato", "Pilot", "Kategori", "Kommentar"]);
+      deviationReports.forEach(r => sections.push([
+        format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
+        r.reporter_name || "Ukjent",
+        r.category_path.join(" > "),
+        r.comment || "",
+      ]));
 
       const bom = "\uFEFF";
       const csvContent = bom + sections.map(row => row.join(sep)).join("\n");
@@ -1054,6 +1163,46 @@ const Status = () => {
         headStyles: { fillColor: COLORS.primary },
       });
 
+      // Deviation Reports section
+      if (deviationReports.length > 0) {
+        doc.addPage();
+        yPos = 20;
+        doc.setFontSize(16);
+        setFontStyle(doc, "bold");
+        doc.text("Avviksrapporter", 20, yPos);
+        yPos += 10;
+
+        const rootCounts: Record<string, number> = {};
+        deviationReports.forEach(r => {
+          const root = r.category_path[0] || "Ukategorisert";
+          rootCounts[root] = (rootCounts[root] || 0) + 1;
+        });
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Hovedkategori', 'Antall']],
+          body: Object.entries(rootCounts).map(([k, v]) => [k, v.toString()]),
+          theme: 'grid',
+          headStyles: { fillColor: COLORS.warning },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Dato', 'Pilot', 'Kategori', 'Kommentar']],
+          body: deviationReports.map(r => [
+            format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
+            sanitizeForPdf(r.reporter_name || "Ukjent"),
+            sanitizeForPdf(r.category_path.join(" > ")),
+            sanitizeForPdf(r.comment || ""),
+          ]),
+          theme: 'striped',
+          headStyles: { fillColor: COLORS.warning },
+          styles: { fontSize: 8, cellPadding: 2 },
+          columnStyles: { 3: { cellWidth: 60 } },
+        });
+      }
+
       // Generate PDF blob
       const pdfBlob = doc.output('blob');
       const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.pdf`;
@@ -1227,6 +1376,21 @@ const Status = () => {
             </div>
           </div>
         </div>
+          <ToggleGroup
+            type="single"
+            value={activeView}
+            onValueChange={(v) => v && setActiveView(v as "operational" | "deviation")}
+            className="justify-start"
+          >
+            <ToggleGroupItem value="operational" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
+              Operativt
+            </ToggleGroupItem>
+            <ToggleGroupItem value="deviation" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
+              Avviksrapporter
+            </ToggleGroupItem>
+          </ToggleGroup>
+
+        {activeView === "operational" && (<>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1679,6 +1843,203 @@ const Status = () => {
             </div>
           </GlassCard>
         </div>
+        </>)}
+
+        {activeView === "deviation" && (() => {
+          const monthsToShow = getMonthsToShow();
+          const { endDate } = getDateFilter();
+          const monthlyMap: Record<string, number> = {};
+          for (let i = monthsToShow - 1; i >= 0; i--) {
+            const d = subMonths(endDate, i);
+            monthlyMap[format(d, "MMM yyyy", { locale: nb })] = 0;
+          }
+          deviationReports.forEach((r) => {
+            const k = format(new Date(r.created_at), "MMM yyyy", { locale: nb });
+            if (monthlyMap[k] !== undefined) monthlyMap[k]++;
+          });
+          const monthlyData = Object.entries(monthlyMap).map(([month, count]) => ({ month, count }));
+
+          const filtered = deviationReports.filter((r) =>
+            deviationDrillPath.every((seg, i) => r.category_path[i] === seg)
+          );
+          const level = deviationDrillPath.length;
+          const distMap: Record<string, number> = {};
+          filtered.forEach((r) => {
+            const seg = r.category_path[level];
+            if (seg) distMap[seg] = (distMap[seg] || 0) + 1;
+          });
+          const distData = Object.entries(distMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+
+          const rootMap: Record<string, number> = {};
+          deviationReports.forEach((r) => {
+            const root = r.category_path[0] || "Ukategorisert";
+            rootMap[root] = (rootMap[root] || 0) + 1;
+          });
+          const rootData = Object.entries(rootMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+
+          const uniqueFlights = new Set(deviationReports.map((r) => r.mission_id).filter(Boolean)).size;
+          const uniquePilots = new Set(deviationReports.map((r) => r.reported_by).filter(Boolean)).size;
+          const avgPerFlight = flightLogsCount > 0 ? (deviationReports.length / flightLogsCount).toFixed(2) : "0";
+
+          const PAGE_SIZE = 20;
+          const totalPages = Math.max(1, Math.ceil(deviationReports.length / PAGE_SIZE));
+          const pageRows = deviationReports.slice((deviationPage - 1) * PAGE_SIZE, deviationPage * PAGE_SIZE);
+
+          return (
+            <div className="space-y-6">
+              {!companySettings.deviation_report_enabled && (
+                <GlassCard className="p-6">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    <div>
+                      <p className="text-foreground font-medium">Avviksrapportering er ikke aktivert</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Aktiver «Avviksrapport ved endt flytur» under selskapsinnstillinger.
+                      </p>
+                      <Button variant="link" className="px-0 mt-2" onClick={() => navigate("/admin")}>
+                        Gå til selskapsinnstillinger
+                      </Button>
+                    </div>
+                  </div>
+                </GlassCard>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <GlassCard className="p-6">
+                  <p className="text-sm text-muted-foreground">Totalt antall avvik</p>
+                  <p className="text-3xl font-bold text-foreground">{deviationReports.length}</p>
+                </GlassCard>
+                <GlassCard className="p-6">
+                  <p className="text-sm text-muted-foreground">Unike flyturer med avvik</p>
+                  <p className="text-3xl font-bold text-foreground">{uniqueFlights}</p>
+                </GlassCard>
+                <GlassCard className="p-6">
+                  <p className="text-sm text-muted-foreground">Unike piloter</p>
+                  <p className="text-3xl font-bold text-foreground">{uniquePilots}</p>
+                </GlassCard>
+                <GlassCard className="p-6">
+                  <p className="text-sm text-muted-foreground">Snitt per flytur</p>
+                  <p className="text-3xl font-bold text-foreground">{avgPerFlight}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{flightLogsCount} flyturer i perioden</p>
+                </GlassCard>
+              </div>
+
+              {deviationReports.length === 0 ? (
+                <GlassCard className="p-8 text-center">
+                  <p className="text-muted-foreground">Ingen avviksrapporter i valgt periode.</p>
+                </GlassCard>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <GlassCard className="p-6">
+                      <h2 className="text-xl font-semibold mb-4 text-foreground">Avvik per måned</h2>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={monthlyData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                          <YAxis stroke="hsl(var(--muted-foreground))" />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                          <Bar dataKey="count" fill={COLORS.warning} name="Avvik" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </GlassCard>
+
+                    <GlassCard className="p-6">
+                      <h2 className="text-xl font-semibold mb-4 text-foreground">Topp-kategorier (rotnivå)</h2>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie data={rootData} cx="50%" cy="50%" labelLine={false} label={(e: any) => `${e.name}: ${e.value}`} outerRadius={80} dataKey="value">
+                            {rootData.map((_, idx) => (
+                              <Cell key={idx} fill={Object.values(COLORS)[idx % Object.values(COLORS).length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </GlassCard>
+                  </div>
+
+                  <GlassCard className="p-6">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                      <h2 className="text-xl font-semibold text-foreground">Underkategori-fordeling</h2>
+                      {deviationDrillPath.length > 0 && (
+                        <Button variant="outline" size="sm" onClick={() => setDeviationDrillPath((p) => p.slice(0, -1))}>
+                          <ChevronLeft className="w-4 h-4 mr-1" /> Tilbake
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1 mb-4 text-sm">
+                      <button onClick={() => setDeviationDrillPath([])} className="text-primary hover:underline">Alle</button>
+                      {deviationDrillPath.map((seg, i) => (
+                        <span key={i} className="flex items-center gap-1">
+                          <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                          <button onClick={() => setDeviationDrillPath(deviationDrillPath.slice(0, i + 1))} className="text-primary hover:underline">{seg}</button>
+                        </span>
+                      ))}
+                    </div>
+                    {distData.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-8 text-center">Ingen dypere kategorier å vise.</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={Math.max(300, distData.length * 35)}>
+                        <BarChart data={distData} layout="vertical" onClick={(e: any) => {
+                          const label = e?.activeLabel;
+                          if (label) setDeviationDrillPath((p) => [...p, label]);
+                        }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
+                          <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" width={180} tick={{ fontSize: 12 }} />
+                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                          <Bar dataKey="value" fill={COLORS.primary} name="Antall" cursor="pointer" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2">Tips: Klikk på en bar for å borre ned.</p>
+                  </GlassCard>
+
+                  <GlassCard className="p-6">
+                    <h2 className="text-xl font-semibold mb-4 text-foreground">Detaljer ({deviationReports.length})</h2>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Dato</TableHead>
+                          <TableHead>Pilot</TableHead>
+                          <TableHead>Kategori</TableHead>
+                          <TableHead>Kommentar</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pageRows.map((r) => (
+                          <TableRow key={r.id} className={r.mission_id ? "cursor-pointer" : ""} onClick={() => r.mission_id && navigate(`/oppdrag?id=${r.mission_id}`)}>
+                            <TableCell className="whitespace-nowrap">{format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb })}</TableCell>
+                            <TableCell>{r.reporter_name || "Ukjent"}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-1">
+                                {r.category_path.map((seg, i) => (
+                                  <span key={i} className="flex items-center gap-1">
+                                    {i > 0 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+                                    <span>{seg}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground italic">{r.comment || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-4">
+                        <Button variant="outline" size="sm" disabled={deviationPage === 1} onClick={() => setDeviationPage((p) => p - 1)}>Forrige</Button>
+                        <span className="text-sm text-muted-foreground">Side {deviationPage} av {totalPages}</span>
+                        <Button variant="outline" size="sm" disabled={deviationPage === totalPages} onClick={() => setDeviationPage((p) => p + 1)}>Neste</Button>
+                      </div>
+                    )}
+                  </GlassCard>
+                </>
+              )}
+            </div>
+          );
+        })()}
       </main>
       </div>
     </div>
