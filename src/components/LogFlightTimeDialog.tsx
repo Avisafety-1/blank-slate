@@ -938,7 +938,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         console.warn("Could not add post-flight checklist to mission:", e);
       }
     }
-    resetAndClose();
+    await finishFlow(postFlightMissionId, null);
   };
 
   const handlePostFlightChecklistCompleted = async (_checklistId: string) => {
