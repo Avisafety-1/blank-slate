@@ -209,6 +209,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
   const [postFlightMissionId, setPostFlightMissionId] = useState<string | null>(null);
   const [postFlightExecOpen, setPostFlightExecOpen] = useState(false);
 
+  // Deviation report state
+  const companySettings = useCompanySettings();
+  const [deviationDialogOpen, setDeviationDialogOpen] = useState(false);
+  const [deviationMissionId, setDeviationMissionId] = useState<string | null>(null);
+  const [deviationFlightLogId, setDeviationFlightLogId] = useState<string | null>(null);
+
   // Check if this dialog was opened from an active flight timer
   const isFromActiveTimer = prefilledDuration !== undefined;
 
