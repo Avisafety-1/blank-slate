@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Send, Users, UserCog, Eye, Loader2, Code, Eye as EyeIcon, Globe, FlaskConical } from "lucide-react";
+import { Send, Users, UserCog, Eye, Loader2, Code, Eye as EyeIcon, Globe, FlaskConical, Image as ImageIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
