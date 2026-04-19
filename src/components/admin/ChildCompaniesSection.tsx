@@ -65,6 +65,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
+  const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
   const [defaultFlightAltitudeM, setDefaultFlightAltitudeM] = useState(30);
