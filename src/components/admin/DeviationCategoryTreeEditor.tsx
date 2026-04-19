@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Ch
 import { toast } from "sonner";
 
 const AVISAFE_PRESET: { label: string; children?: string[] }[] = [
-  { label: "Ingen avvik" },
+  
   { label: "Klima", children: ["Ising (propell/kontrollflater)", "Nedbør (regn/yr/vått vær)", "Vind og vindkast"] },
   { label: "Teknisk svikt", children: ["Kompassforstyrrelse", "GNSS (forstyrrelse/tap av signal)", "Programvare", "Radiokontakt (C2)", "Batteri", "Flysensor", "Strukturell", "Kommunikasjon (Multi-CREW)", "Montering"] },
   { label: "Nærhet (separasjon)", children: ["Annen drone (UA)", "Småfly (GA)", "Trafikkfly"] },

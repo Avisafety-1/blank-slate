@@ -3129,6 +3129,7 @@ export type Database = {
           company_id: string
           created_at: string
           flight_log_id: string | null
+          flight_phase: string | null
           id: string
           mission_id: string
           reported_by: string | null
@@ -3140,6 +3141,7 @@ export type Database = {
           company_id: string
           created_at?: string
           flight_log_id?: string | null
+          flight_phase?: string | null
           id?: string
           mission_id: string
           reported_by?: string | null
@@ -3151,6 +3153,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           flight_log_id?: string | null
+          flight_phase?: string | null
           id?: string
           mission_id?: string
           reported_by?: string | null
