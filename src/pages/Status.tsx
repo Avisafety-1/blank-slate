@@ -404,7 +404,50 @@ const Status = () => {
       else if (expiryDate > sixtyDays && expiryDate <= ninetyDays) ninetyCount++;
     });
 
-    setExpiringDocs({ thirtyDays: thirtyCount, sixtyDays: sixtyCount, ninetyDays: ninetyCount });
+  };
+
+  const fetchDeviationStatistics = async () => {
+    if (!companyId) return;
+    const { startDate, endDate } = getDateFilter();
+
+    // Fetch company setting
+    const { data: companyData } = await supabase
+      .from("companies")
+      .select("deviation_report_enabled")
+      .eq("id", companyId)
+      .single();
+    setCompanySettings({ deviation_report_enabled: (companyData as any)?.deviation_report_enabled ?? false });
+
+    // Fetch reports in period
+    const { data: reports, error } = await (supabase as any)
+      .from("mission_deviation_reports")
+      .select("id, mission_id, category_path, comment, created_at, reported_by")
+      .gte("created_at", startDate.toISOString())
+      .lte("created_at", endDate.toISOString())
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[Deviation] fetch error", error);
+      setDeviationReports([]);
+      return;
+    }
+
+    const rows = (reports || []) as any[];
+    const ids = Array.from(new Set(rows.map((r) => r.reported_by).filter(Boolean) as string[]));
+    let nameMap: Record<string, string> = {};
+    if (ids.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      nameMap = Object.fromEntries((profs || []).map((p: any) => [p.id, p.full_name]));
+    }
+    setDeviationReports(rows.map((r) => ({ ...r, reporter_name: r.reported_by ? nameMap[r.reported_by] : null })));
+
+    // Total flight logs in period for ratio KPI
+    const { count } = await supabase
+      .from("flight_logs")
+      .select("id", { count: "exact", head: true })
+      .gte("flight_date", startDate.toISOString().slice(0, 10))
+      .lte("flight_date", endDate.toISOString().slice(0, 10));
+    setFlightLogsCount(count || 0);
   };
 
   if (loading) {
