@@ -1289,6 +1289,21 @@ const Status = () => {
             </div>
           </div>
         </div>
+          <ToggleGroup
+            type="single"
+            value={activeView}
+            onValueChange={(v) => v && setActiveView(v as "operational" | "deviation")}
+            className="justify-start"
+          >
+            <ToggleGroupItem value="operational" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
+              Operativt
+            </ToggleGroupItem>
+            <ToggleGroupItem value="deviation" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
+              Avviksrapporter
+            </ToggleGroupItem>
+          </ToggleGroup>
+
+        {activeView === "operational" && (<>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
