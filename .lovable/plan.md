@@ -1,83 +1,62 @@
 
 
-## Plan: Avviksrapport ved avsluttet flytur
+## Plan: Avviksrapport-statistikk på /status
 
 ### Mål
-Selskap kan slå på en valgfri "Avviksrapport"-funksjon. Når en flytur avsluttes, får piloten en pop-up: "Ønsker du å rapportere noe fra flyturen?". Ved Ja → hierarkisk valgliste (selskapet konfigurerer kategoriene/underkategoriene selv, vilkårlig dybde) + kommentarfelt. Rapporten lagres på oppdragskortet.
+Legg til en topp-knapp på `/status` som veksler mellom to statistikk-vyer:
+1. **Operativ statistikk** (eksisterende innhold — uendret)
+2. **Avviksrapporter** (ny vy basert på `mission_deviation_reports`)
 
-### Database (migrasjoner)
+### Toggle UI
+Øverst i `Status.tsx` (ved siden av tidsperiodevelgeren) legges en `Tabs`/`ToggleGroup` med to alternativer: "Operativt" og "Avviksrapporter". Default = Operativt. Eksisterende periodevelger og eksport gjelder for begge vyer.
 
-**1. `companies.deviation_report_enabled boolean default false`** — feature toggle.
+### Avviksrapport-vy — innhold
 
-**2. `deviation_report_categories`** — tre-struktur per selskap:
+Henter `mission_deviation_reports` filtrert på `created_at` innen valgt periode + selskapets synlige `company_id`-er (via `get_user_visible_company_ids`). Bruker `category_path` (text[]) direkte — reflekterer dermed automatisk hva selskapet har konfigurert.
+
+**KPI-rad (4 kort):**
+- Totalt antall avvik i perioden
+- Antall unike flyturer med avvik
+- Antall unike piloter som har rapportert
+- Snitt avvik per flytur (avvik / flightlogger i perioden)
+
+**Graf 1 — Avvik per måned** (BarChart, samme stil som `incidentsByMonth`).
+
+**Graf 2 — Topp-kategorier (rotnivå)** — PieChart eller horisontal BarChart som grupperer på `category_path[0]`. Viser hvilke hovedkategorier som er hyppigst.
+
+**Graf 3 — Underkategori-fordeling med drill-down:**
+- Viser BarChart over `category_path[0]`-nivå.
+- Klikk på en bar = drill ned, viser fordeling av `category_path[1]` for den valgte rot-kategorien.
+- "Tilbake"-knapp + breadcrumb i toppen av kortet.
+- Fortsetter rekursivt så lenge det finnes dypere nivåer i dataene.
+
+**Tabell — Detaljer:** Liste under grafene med kolonner: dato · pilotnavn · breadcrumb-sti · kommentar. Sortert nyest først, paginering 20 per side. Klikk på rad åpner tilhørende oppdrag (navigate til `/oppdrag` eller `MissionDetailDialog`).
+
+### Datafetching
+Ny funksjon `fetchDeviationStatistics()` kalles parallelt i `fetchAllStatistics()` (men bare når toggle er aktiv eller for å unngå unødig last: kall den lazy ved første visning av fanen og ved periode-/companyId-endring).
+
+```ts
+const { data } = await supabase
+  .from("mission_deviation_reports")
+  .select("id, mission_id, category_path, comment, created_at, reported_by")
+  .gte("created_at", startDate.toISOString())
+  .lte("created_at", endDate.toISOString());
 ```
-id uuid PK
-company_id uuid → companies(id)
-parent_id uuid NULL → deviation_report_categories(id) ON DELETE CASCADE
-label text
-sort_order int
-created_at timestamptz
-```
-Indeks på (company_id, parent_id). RLS: select/insert/update/delete via `get_user_visible_company_ids()` + admin-rolle for skriving.
+Pilotnavn hentes separat fra `profiles` (samme mønster som vi nettopp innførte i `DeviationReportsSection`).
 
-**3. `mission_deviation_reports`** — selve rapporten:
-```
-id uuid PK
-mission_id uuid → missions(id) ON DELETE CASCADE
-flight_log_id uuid NULL → flight_logs(id)
-company_id uuid
-reported_by uuid → profiles(id)
-category_path text[]   -- f.eks. ['Teknisk','Batteri','Spenningsfall']
-category_ids uuid[]    -- speilet for sporbarhet
-comment text
-created_at timestamptz default now()
-```
-RLS: lese for synlige selskap; insert for innlogget bruker i eget selskap.
+### Eksport
+Excel- og PDF-eksport utvides med ekstra arknavn/seksjon "Avviksrapporter" som inkluderer:
+- Avvik per måned
+- Topp-kategorier (rotnivå)
+- Full liste (dato, pilot, sti, kommentar)
 
-### Selskapsinnstillinger UI
+Inkluderes uavhengig av aktiv fane (eksport tar alt).
 
-I `ChildCompaniesSection.tsx` (under «Mitt selskap») legges en ny ekspanderbar seksjon **"Avviksrapport ved flytur"**:
-- Switch: aktiver funksjonen (`deviation_report_enabled`).
-- Når aktivert: tre-editor for kategorier.
-  - Ny komponent `DeviationCategoryTreeEditor.tsx` — viser nestet liste med +/redigér/slett per node, "Legg til underkategori" på hver node. Ingen dybdebegrensning.
-  - Drag-håndtak utelates i v1 — bruk `sort_order` via opp/ned-piler.
-- Propageringstoggle "Gjelder for alle underavdelinger" (samme mønster som øvrige settings).
+### Tomtilstand
+Hvis selskapet ikke har `deviation_report_enabled` eller ingen rapporter i perioden: vis informasjons-kort med tekst "Ingen avviksrapporter i valgt periode" og lenke til selskapsinnstillinger hvis funksjonen er av.
 
-### Pilot-flyt (pop-up etter flytur)
+### Filer som endres
+- `src/pages/Status.tsx` — toggle, ny vy-seksjon, ny fetch-funksjon, utvidet eksport
 
-I `LogFlightTimeDialog.tsx`, etter vellykket lagring av flightlog (rett før `onFlightLogged()` kalles):
-- Hvis `companyId` har `deviation_report_enabled=true` og minst én rotkategori finnes → åpne ny dialog `DeviationReportDialog`.
-
-Ny komponent `src/components/DeviationReportDialog.tsx`:
-1. **Steg 1 — Ja/Nei-prompt:** "Ønsker du å rapportere noe fra flyturen?" → Nei lukker, Ja går til steg 2.
-2. **Steg 2 — Hierarkisk valg:** Viser barna til gjeldende node (start = roten). Klikk på et valg = drill ned. Når noden ikke har barn = bladnode. "Tilbake"-knapp + breadcrumb viser valgt sti.
-3. **Felles kommentarfelt** (Textarea) synlig hele tiden under listen.
-4. **Lagre**-knapp (aktiv så snart minst én kategori er valgt). Kan lagres på en mellomnode hvis brukeren velger «Lagre her» — eller alltid kreve bladnode? → vi lar **Lagre** være tilgjengelig på alle nivåer (fleksibelt).
-5. Insert i `mission_deviation_reports` med `category_path`, `category_ids`, `comment`, `mission_id` (fra flightlog), `flight_log_id`.
-
-### Visning på oppdragskortet
-
-I `MissionDetailDialog.tsx` legges en ny seksjon **"Avviksrapporter"** (bare synlig hvis det finnes rapporter):
-- Henter `mission_deviation_reports` for `mission.id`.
-- Liste-element: dato · pilotnavn · breadcrumb (`Teknisk › Batteri › Spenningsfall`) · kommentar.
-- Badge med antall ved fanen/seksjonsoverskrift.
-
-### Filer som opprettes/endres
-
-**Nye:**
-- `src/components/admin/DeviationCategoryTreeEditor.tsx`
-- `src/components/DeviationReportDialog.tsx`
-- migrasjon: `companies.deviation_report_enabled`, `deviation_report_categories`, `mission_deviation_reports` + RLS
-
-**Endres:**
-- `src/components/admin/ChildCompaniesSection.tsx` — ny seksjon
-- `src/hooks/useCompanySettings.ts` — eksponer `deviation_report_enabled`
-- `src/components/LogFlightTimeDialog.tsx` — utløse dialog etter lagring (med mission_id + flight_log_id)
-- `src/components/dashboard/MissionDetailDialog.tsx` — vise rapporter
-
-### Edge cases
-- Funksjon av: hopp helt over pop-up.
-- Ingen kategorier definert: vis informasjons-toast til admin når toggle slås på, og hopp over pop-up for piloter.
-- Offline: rapporten legges i `offlineQueue` (samme mønster som flightlog).
-- Flytur uten tilknyttet oppdrag: rapporten lagres med `mission_id` til den auto-opprettede "Flytur …"-missionen som allerede genereres i LogFlightTimeDialog.
+Ingen nye komponenter trengs (alt holder seg innenfor Status-siden for enkelhet og konsistens med eksisterende mønster).
 
