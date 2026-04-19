@@ -461,9 +461,25 @@ export const BulkEmailSender = () => {
 
             <TabsContent value="html" className="mt-3 sm:mt-4">
               <div className="space-y-2">
-                <Label htmlFor="bulk-content" className="text-xs sm:text-sm">
-                  E-post innhold (HTML)
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="bulk-content" className="text-xs sm:text-sm">
+                    E-post innhold (HTML)
+                  </Label>
+                  <Label
+                    htmlFor="bulk-html-image-upload"
+                    className="inline-flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-border hover:bg-accent/10"
+                  >
+                    <ImageIcon className="h-3 w-3" />
+                    Last opp bilde
+                    <input
+                      id="bulk-html-image-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleHtmlImageUpload}
+                    />
+                  </Label>
+                </div>
                 <textarea
                   id="bulk-content"
                   value={content}
