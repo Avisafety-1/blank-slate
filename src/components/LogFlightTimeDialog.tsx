@@ -687,9 +687,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         setLinkedPersonnel([]);
         setStartTime("");
         setEndTime("");
-        
-        onOpenChange(false);
-        onFlightLogged?.();
+
+        await finishFlow(formData.missionId || null, offlineFlightLogId);
       } catch (error: any) {
         console.error("Error queuing flight log offline:", error);
         toast.error(`Kunne ikke lagre flylogg lokalt: ${error.message}`);
@@ -849,9 +848,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       setLinkedPersonnel([]);
       setStartTime("");
       setEndTime("");
-      
-      onOpenChange(false);
-      onFlightLogged?.();
+
+      await finishFlow(missionIdToUse || null, flightLog?.id || null);
     } catch (error: any) {
       console.error("Error logging flight time:", error);
       toast.error(`Kunne ikke logge flytid: ${error.message}`);
