@@ -35,6 +35,7 @@ interface DbCategory {
 
 interface Props {
   companyId: string;
+  readOnly?: boolean;
 }
 
 function buildTree(rows: DbCategory[]): CategoryNode[] {
