@@ -328,10 +328,16 @@ export const DeviationCategoryTreeEditor = ({ companyId }: Props) => {
         )}
       </div>
       {addingUnder !== "root" && (
-        <Button size="sm" variant="outline" onClick={() => setAddingUnder("root")}>
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          Legg til rotkategori
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={() => setAddingUnder("root")}>
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Legg til rotkategori
+          </Button>
+          <Button size="sm" variant="outline" onClick={applyAviSafePreset}>
+            <Sparkles className="w-3.5 h-3.5 mr-1" />
+            Bruk forslag fra AviSafe
+          </Button>
+        </div>
       )}
     </div>
   );
