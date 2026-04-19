@@ -909,24 +909,39 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     <div className="font-medium text-sm flex items-center gap-1.5">
                       <AlertTriangle className="w-4 h-4" />
                       Avviksrapport ved flytur
+                      {parentDeviationCompanyId && (
+                        <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground border rounded px-1.5 py-0.5">
+                          Arvet fra morselskap
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste.
+                      {parentDeviationCompanyId
+                        ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
+                        : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
                     </div>
                   </Label>
                   <Switch
                     id="deviation-report"
                     checked={deviationReportEnabled}
                     onCheckedChange={handleToggleDeviationReport}
-                    disabled={savingSettings}
+                    disabled={savingSettings || !!parentDeviationCompanyId}
                   />
                 </div>
-                {deviationReportEnabled && companyId && (
+                {deviationReportEnabled && companyId && !parentDeviationCompanyId && (
                   <div className="pt-2 border-t border-border/50">
                     <p className="text-xs font-medium text-muted-foreground mb-2">
                       Kategorier (ubegrenset antall nivåer):
                     </p>
                     <DeviationCategoryTreeEditor companyId={companyId} />
+                  </div>
+                )}
+                {deviationReportEnabled && parentDeviationCompanyId && (
+                  <div className="pt-2 border-t border-border/50">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      Kategorier (arvet — kun lesetilgang):
+                    </p>
+                    <DeviationCategoryTreeEditor companyId={parentDeviationCompanyId} readOnly />
                   </div>
                 )}
               </div>
