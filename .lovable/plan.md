@@ -1,62 +1,58 @@
 
 
-## Plan: Avviksrapport-statistikk på /status
+## Plan: AviSafe-forslag for avvikshierarki
 
 ### Mål
-Legg til en topp-knapp på `/status` som veksler mellom to statistikk-vyer:
-1. **Operativ statistikk** (eksisterende innhold — uendret)
-2. **Avviksrapporter** (ny vy basert på `mission_deviation_reports`)
+Legg til en knapp "Bruk forslag fra AviSafe" i `DeviationCategoryTreeEditor`. Når den trykkes, fylles treet med en standard hierarkisk liste basert på AviSafe-malen (fra opplastet bilde). Brukeren kan etterpå redigere/slette/legge til som vanlig.
 
-### Toggle UI
-Øverst i `Status.tsx` (ved siden av tidsperiodevelgeren) legges en `Tabs`/`ToggleGroup` med to alternativer: "Operativt" og "Avviksrapporter". Default = Operativt. Eksisterende periodevelger og eksport gjelder for begge vyer.
+### Tolkning av bildet → naturlig hierarki
+Bildet viser en flat liste med tydelige prefikser (KLIMA, SVIKT, NÆRHET, OVERSKRIDELSE, PIC). Disse prefiksene blir naturlige rotkategorier, og elementene under blir underkategorier:
 
-### Avviksrapport-vy — innhold
+- **Ingen avvik**
+- **Klima**
+  - Ising (propell/kontrollflater)
+  - Nedbør (regn/yr/vått vær)
+  - Vind og vindkast
+- **Teknisk svikt**
+  - Kompassforstyrrelse
+  - GNSS (forstyrrelse/tap av signal)
+  - Programvare
+  - Radiokontakt (C2)
+  - Batteri
+  - Flysensor
+  - Strukturell
+  - Kommunikasjon (Multi-CREW)
+  - Montering
+- **Nærhet (separasjon)**
+  - Annen drone (UA)
+  - Småfly (GA)
+  - Trafikkfly
+- **Overskridelse**
+  - Autorisasjon
+  - Avstandsbegrensning (horisontal)
+  - Energireserve
+  - Høydebegrensning (vertikal)
+  - Luftromsavgrensning (Airspace Infringement)
+  - MTOM
+  - Radiorekkevidde (BRLOS)
+  - VLOS (BLOS)
+- **Pilot (PIC)**
+  - Forstyrrelse under operasjon
+  - Ukvalifisert
+  - Udyktig (IMSAFE)
+- **Mangelfull lysføring**
+- **(N)MAC fugl** (kollisjon/nær kollisjon med fugl)
+- **Annet** (beskriv i kommentarfelt)
 
-Henter `mission_deviation_reports` filtrert på `created_at` innen valgt periode + selskapets synlige `company_id`-er (via `get_user_visible_company_ids`). Bruker `category_path` (text[]) direkte — reflekterer dermed automatisk hva selskapet har konfigurert.
-
-**KPI-rad (4 kort):**
-- Totalt antall avvik i perioden
-- Antall unike flyturer med avvik
-- Antall unike piloter som har rapportert
-- Snitt avvik per flytur (avvik / flightlogger i perioden)
-
-**Graf 1 — Avvik per måned** (BarChart, samme stil som `incidentsByMonth`).
-
-**Graf 2 — Topp-kategorier (rotnivå)** — PieChart eller horisontal BarChart som grupperer på `category_path[0]`. Viser hvilke hovedkategorier som er hyppigst.
-
-**Graf 3 — Underkategori-fordeling med drill-down:**
-- Viser BarChart over `category_path[0]`-nivå.
-- Klikk på en bar = drill ned, viser fordeling av `category_path[1]` for den valgte rot-kategorien.
-- "Tilbake"-knapp + breadcrumb i toppen av kortet.
-- Fortsetter rekursivt så lenge det finnes dypere nivåer i dataene.
-
-**Tabell — Detaljer:** Liste under grafene med kolonner: dato · pilotnavn · breadcrumb-sti · kommentar. Sortert nyest først, paginering 20 per side. Klikk på rad åpner tilhørende oppdrag (navigate til `/oppdrag` eller `MissionDetailDialog`).
-
-### Datafetching
-Ny funksjon `fetchDeviationStatistics()` kalles parallelt i `fetchAllStatistics()` (men bare når toggle er aktiv eller for å unngå unødig last: kall den lazy ved første visning av fanen og ved periode-/companyId-endring).
-
-```ts
-const { data } = await supabase
-  .from("mission_deviation_reports")
-  .select("id, mission_id, category_path, comment, created_at, reported_by")
-  .gte("created_at", startDate.toISOString())
-  .lte("created_at", endDate.toISOString());
-```
-Pilotnavn hentes separat fra `profiles` (samme mønster som vi nettopp innførte i `DeviationReportsSection`).
-
-### Eksport
-Excel- og PDF-eksport utvides med ekstra arknavn/seksjon "Avviksrapporter" som inkluderer:
-- Avvik per måned
-- Topp-kategorier (rotnivå)
-- Full liste (dato, pilot, sti, kommentar)
-
-Inkluderes uavhengig av aktiv fane (eksport tar alt).
-
-### Tomtilstand
-Hvis selskapet ikke har `deviation_report_enabled` eller ingen rapporter i perioden: vis informasjons-kort med tekst "Ingen avviksrapporter i valgt periode" og lenke til selskapsinnstillinger hvis funksjonen er av.
+### UI-endring
+I `DeviationCategoryTreeEditor.tsx`:
+- Ny knapp "Bruk forslag fra AviSafe" (Sparkles-ikon) ved siden av "Legg til rotkategori".
+- Vises alltid; men hvis treet allerede har kategorier → bekreftelsesdialog: "Dette legger til AviSafe-forslagene. Eksisterende kategorier beholdes. Fortsette?" (vi appender, sletter ikke).
+- Innsetting skjer i én batch via `insert([...])` med beregnede `parent_id`/`sort_order`. Roter får `sort_order` etter eksisterende roter; barn knyttes via inserted IDs returnert fra Supabase (insert med `.select()`).
+- Etter vellykket insert: `fetchRows()` + toast "Forslag lagt til".
 
 ### Filer som endres
-- `src/pages/Status.tsx` — toggle, ny vy-seksjon, ny fetch-funksjon, utvidet eksport
+- `src/components/admin/DeviationCategoryTreeEditor.tsx` — ny preset-konstant + handler + knapp.
 
-Ingen nye komponenter trengs (alt holder seg innenfor Status-siden for enkelhet og konsistens med eksisterende mønster).
+Ingen DB-endringer. Ingen andre filer berøres.
 
