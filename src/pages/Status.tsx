@@ -571,6 +571,31 @@ const Status = () => {
       const wsExpiringDocs = XLSX.utils.aoa_to_sheet(expiringDocsData);
       XLSX.utils.book_append_sheet(wb, wsExpiringDocs, "Dokumenter som utløper");
 
+      // Deviation Reports
+      const deviationSummary = [
+        ["Avviksrapporter (sammendrag)", ""],
+        ["Totalt antall avvik", deviationReports.length],
+        ["Unike flyturer med avvik", new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size],
+        ["Unike piloter", new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size],
+        [],
+        ["Hovedkategori", "Antall"],
+        ...Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
+          const root = r.category_path[0] || "Ukategorisert";
+          acc[root] = (acc[root] || 0) + 1;
+          return acc;
+        }, {})).map(([name, value]) => [name, value]),
+        [],
+        ["Dato", "Pilot", "Kategori", "Kommentar"],
+        ...deviationReports.map(r => [
+          format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
+          r.reporter_name || "Ukjent",
+          r.category_path.join(" > "),
+          r.comment || "",
+        ]),
+      ];
+      const wsDeviation = XLSX.utils.aoa_to_sheet(deviationSummary);
+      XLSX.utils.book_append_sheet(wb, wsDeviation, "Avviksrapporter");
+
       // Generate filename with date
       const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.xlsx`;
       
