@@ -107,6 +107,22 @@ const Status = () => {
     ninetyDays: 0,
   });
 
+  // Deviation reports view state
+  const [activeView, setActiveView] = useState<"operational" | "deviation">("operational");
+  const [deviationReports, setDeviationReports] = useState<Array<{
+    id: string;
+    mission_id: string | null;
+    category_path: string[];
+    comment: string | null;
+    created_at: string;
+    reported_by: string | null;
+    reporter_name?: string | null;
+  }>>([]);
+  const [flightLogsCount, setFlightLogsCount] = useState(0);
+  const [deviationDrillPath, setDeviationDrillPath] = useState<string[]>([]);
+  const [deviationPage, setDeviationPage] = useState(1);
+  const [companySettings, setCompanySettings] = useState<{ deviation_report_enabled: boolean }>({ deviation_report_enabled: false });
+
   useEffect(() => {
     if (!user) {
       navigate("/auth");
