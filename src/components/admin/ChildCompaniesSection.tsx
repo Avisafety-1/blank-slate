@@ -284,7 +284,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -294,7 +294,19 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
-      setDeviationReportEnabled((data as any).deviation_report_enabled ?? false);
+      // For deviation report: child departments inherit toggle from parent
+      const parentId = (data as any).parent_company_id as string | null;
+      setParentDeviationCompanyId(parentId);
+      if (parentId) {
+        const { data: parent } = await supabase
+          .from("companies")
+          .select("deviation_report_enabled")
+          .eq("id", parentId)
+          .maybeSingle();
+        setDeviationReportEnabled((parent as any)?.deviation_report_enabled ?? false);
+      } else {
+        setDeviationReportEnabled((data as any).deviation_report_enabled ?? false);
+      }
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
       if (!callsignEditing.current) {
         setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
