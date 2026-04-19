@@ -891,6 +891,33 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 )}
               </div>
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4" />
+                      Avviksrapport ved flytur
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste.
+                    </div>
+                  </Label>
+                  <Switch
+                    id="deviation-report"
+                    checked={deviationReportEnabled}
+                    onCheckedChange={handleToggleDeviationReport}
+                    disabled={savingSettings}
+                  />
+                </div>
+                {deviationReportEnabled && companyId && (
+                  <div className="pt-2 border-t border-border/50">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      Kategorier (ubegrenset antall nivåer):
+                    </p>
+                    <DeviationCategoryTreeEditor companyId={companyId} />
+                  </div>
+                )}
+              </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <Label className="flex-1">
                   <div className="font-medium text-sm">Standard SORA-buffersone</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
