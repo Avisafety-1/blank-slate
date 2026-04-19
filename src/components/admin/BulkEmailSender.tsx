@@ -95,6 +95,52 @@ export const BulkEmailSender = () => {
     }
   };
 
+  const uploadImageFile = async (file: File): Promise<string | null> => {
+    if (!companyId) {
+      toast.error("Ingen bedrift valgt");
+      return null;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Kun bildefiler er tillatt");
+      return null;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Bildet er for stort (maks 5 MB)");
+      return null;
+    }
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${companyId}/bulk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("email-images").upload(path, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+    if (error) {
+      toast.error("Kunne ikke laste opp bilde: " + error.message);
+      return null;
+    }
+    const { data } = supabase.storage.from("email-images").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const handleQuillImageUpload = () => {
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
+    input.click();
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const url = await uploadImageFile(file);
+      if (!url) return;
+      const editor = quillRef.current?.getEditor();
+      if (!editor) return;
+      const range = editor.getSelection(true);
+      editor.insertEmbed(range.index, "image", url, "user");
+      editor.setSelection(range.index + 1, 0);
+      toast.success("Bilde lagt til");
+    };
+  };
+
   const modules = useMemo(
     () => ({
       toolbar: {
@@ -104,12 +150,15 @@ export const BulkEmailSender = () => {
           [{ color: [] }, { background: [] }],
           [{ list: "ordered" }, { list: "bullet" }],
           [{ align: [] }],
-          ["link"],
+          ["link", "image"],
           ["clean"],
         ],
+        handlers: {
+          image: handleQuillImageUpload,
+        },
       },
     }),
-    []
+    [companyId]
   );
 
   const formats = [
@@ -124,7 +173,19 @@ export const BulkEmailSender = () => {
     "bullet",
     "align",
     "link",
+    "image",
   ];
+
+  const handleHtmlImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const url = await uploadImageFile(file);
+    if (!url) return;
+    const imgTag = `<img src="${url}" alt="" style="max-width:100%;height:auto;" />`;
+    setContent((prev) => prev + "\n" + imgTag);
+    toast.success("Bilde lagt til i HTML");
+  };
 
   const wrapContentInEmailTemplate = (htmlContent: string) => {
     return `<!DOCTYPE html>
