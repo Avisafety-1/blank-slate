@@ -162,6 +162,46 @@ export const DeviationCategoryTreeEditor = ({ companyId }: Props) => {
     fetchRows();
   };
 
+  const applyAviSafePreset = async () => {
+    if (rows.length > 0) {
+      if (!confirm("Dette legger til AviSafe-forslagene som nye kategorier. Eksisterende kategorier beholdes. Fortsette?")) return;
+    }
+    const existingRoots = rows.filter((r) => r.parent_id === null).length;
+    const rootRows = AVISAFE_PRESET.map((p, i) => ({
+      company_id: companyId,
+      parent_id: null as string | null,
+      label: p.label,
+      sort_order: existingRoots + i,
+    }));
+    const { data: insertedRoots, error: rootErr } = await (supabase as any)
+      .from("deviation_report_categories")
+      .insert(rootRows)
+      .select("id, label, sort_order");
+    if (rootErr || !insertedRoots) {
+      toast.error("Kunne ikke legge til forslag");
+      return;
+    }
+    const childRows: any[] = [];
+    AVISAFE_PRESET.forEach((p, i) => {
+      if (!p.children?.length) return;
+      const parent = insertedRoots.find((r: any) => r.label === p.label && r.sort_order === existingRoots + i);
+      if (!parent) return;
+      p.children.forEach((c, ci) => {
+        childRows.push({ company_id: companyId, parent_id: parent.id, label: c, sort_order: ci });
+      });
+    });
+    if (childRows.length) {
+      const { error: childErr } = await (supabase as any).from("deviation_report_categories").insert(childRows);
+      if (childErr) {
+        toast.error("Rotkategorier lagt til, men feilet på underkategorier");
+        fetchRows();
+        return;
+      }
+    }
+    toast.success("AviSafe-forslag lagt til");
+    fetchRows();
+  };
+
   const renderNode = (node: CategoryNode, depth: number) => {
     const hasChildren = node.children.length > 0;
     const isOpen = expanded.has(node.id);
