@@ -11,7 +11,7 @@ interface Report {
   comment: string | null;
   created_at: string;
   reported_by: string | null;
-  profiles?: { full_name: string | null } | null;
+  reporter_name?: string | null;
 }
 
 interface Props {
@@ -26,15 +26,33 @@ export const DeviationReportsSection = ({ missionId, open }: Props) => {
   useEffect(() => {
     if (!open || !missionId) return;
     setLoading(true);
-    (supabase as any)
-      .from("mission_deviation_reports")
-      .select("id, category_path, comment, created_at, reported_by, profiles:reported_by(full_name)")
-      .eq("mission_id", missionId)
-      .order("created_at", { ascending: false })
-      .then(({ data }: any) => {
-        setReports(data || []);
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from("mission_deviation_reports")
+        .select("id, category_path, comment, created_at, reported_by")
+        .eq("mission_id", missionId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("[DeviationReports] fetch error", error);
+        setReports([]);
         setLoading(false);
-      });
+        return;
+      }
+
+      const rows: Report[] = data || [];
+      const ids = Array.from(new Set(rows.map((r) => r.reported_by).filter(Boolean) as string[]));
+      let nameMap: Record<string, string> = {};
+      if (ids.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", ids);
+        nameMap = Object.fromEntries((profs || []).map((p: any) => [p.id, p.full_name]));
+      }
+      setReports(rows.map((r) => ({ ...r, reporter_name: r.reported_by ? nameMap[r.reported_by] : null })));
+      setLoading(false);
+    })();
   }, [missionId, open]);
 
   if (loading || reports.length === 0) return null;
@@ -51,7 +69,7 @@ export const DeviationReportsSection = ({ missionId, open }: Props) => {
           <div key={r.id} className="rounded-md border bg-muted/30 p-3 space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                {r.profiles?.full_name || "Ukjent pilot"} ·{" "}
+                {r.reporter_name || "Ukjent pilot"} ·{" "}
                 {format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb })}
               </span>
             </div>
