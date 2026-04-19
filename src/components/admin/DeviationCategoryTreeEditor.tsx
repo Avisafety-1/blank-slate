@@ -2,8 +2,20 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Check, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+
+const AVISAFE_PRESET: { label: string; children?: string[] }[] = [
+  { label: "Ingen avvik" },
+  { label: "Klima", children: ["Ising (propell/kontrollflater)", "Nedbør (regn/yr/vått vær)", "Vind og vindkast"] },
+  { label: "Teknisk svikt", children: ["Kompassforstyrrelse", "GNSS (forstyrrelse/tap av signal)", "Programvare", "Radiokontakt (C2)", "Batteri", "Flysensor", "Strukturell", "Kommunikasjon (Multi-CREW)", "Montering"] },
+  { label: "Nærhet (separasjon)", children: ["Annen drone (UA)", "Småfly (GA)", "Trafikkfly"] },
+  { label: "Overskridelse", children: ["Autorisasjon", "Avstandsbegrensning (horisontal)", "Energireserve", "Høydebegrensning (vertikal)", "Luftromsavgrensning (Airspace Infringement)", "MTOM", "Radiorekkevidde (BRLOS)", "VLOS (BLOS)"] },
+  { label: "Pilot (PIC)", children: ["Forstyrrelse under operasjon", "Ukvalifisert", "Udyktig (IMSAFE)"] },
+  { label: "Mangelfull lysføring" },
+  { label: "(N)MAC fugl (kollisjon/nær kollisjon med fugl)" },
+  { label: "Annet (beskriv i kommentarfelt)" },
+];
 
 interface CategoryNode {
   id: string;
@@ -147,6 +159,46 @@ export const DeviationCategoryTreeEditor = ({ companyId }: Props) => {
       .from("deviation_report_categories")
       .update({ sort_order: a.sort_order })
       .eq("id", b.id);
+    fetchRows();
+  };
+
+  const applyAviSafePreset = async () => {
+    if (rows.length > 0) {
+      if (!confirm("Dette legger til AviSafe-forslagene som nye kategorier. Eksisterende kategorier beholdes. Fortsette?")) return;
+    }
+    const existingRoots = rows.filter((r) => r.parent_id === null).length;
+    const rootRows = AVISAFE_PRESET.map((p, i) => ({
+      company_id: companyId,
+      parent_id: null as string | null,
+      label: p.label,
+      sort_order: existingRoots + i,
+    }));
+    const { data: insertedRoots, error: rootErr } = await (supabase as any)
+      .from("deviation_report_categories")
+      .insert(rootRows)
+      .select("id, label, sort_order");
+    if (rootErr || !insertedRoots) {
+      toast.error("Kunne ikke legge til forslag");
+      return;
+    }
+    const childRows: any[] = [];
+    AVISAFE_PRESET.forEach((p, i) => {
+      if (!p.children?.length) return;
+      const parent = insertedRoots.find((r: any) => r.label === p.label && r.sort_order === existingRoots + i);
+      if (!parent) return;
+      p.children.forEach((c, ci) => {
+        childRows.push({ company_id: companyId, parent_id: parent.id, label: c, sort_order: ci });
+      });
+    });
+    if (childRows.length) {
+      const { error: childErr } = await (supabase as any).from("deviation_report_categories").insert(childRows);
+      if (childErr) {
+        toast.error("Rotkategorier lagt til, men feilet på underkategorier");
+        fetchRows();
+        return;
+      }
+    }
+    toast.success("AviSafe-forslag lagt til");
     fetchRows();
   };
 
@@ -316,10 +368,16 @@ export const DeviationCategoryTreeEditor = ({ companyId }: Props) => {
         )}
       </div>
       {addingUnder !== "root" && (
-        <Button size="sm" variant="outline" onClick={() => setAddingUnder("root")}>
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          Legg til rotkategori
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={() => setAddingUnder("root")}>
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Legg til rotkategori
+          </Button>
+          <Button size="sm" variant="outline" onClick={applyAviSafePreset}>
+            <Sparkles className="w-3.5 h-3.5 mr-1" />
+            Bruk forslag fra AviSafe
+          </Button>
+        </div>
       )}
     </div>
   );
