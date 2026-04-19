@@ -27,6 +27,8 @@ import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Packag
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
+import { DeviationReportDialog } from "./DeviationReportDialog";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { format } from "date-fns";
 
 interface FlightTrackPosition {
