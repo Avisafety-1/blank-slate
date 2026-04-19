@@ -27,6 +27,8 @@ import { Clock, Plane, MapPin, Navigation, User, CheckCircle, Map, Timer, Packag
 import { useTerminology } from "@/hooks/useTerminology";
 import { LocationPickerDialog } from "./LocationPickerDialog";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
+import { DeviationReportDialog } from "./DeviationReportDialog";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { format } from "date-fns";
 
 interface FlightTrackPosition {
@@ -206,6 +208,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
   const [postFlightChecklistId, setPostFlightChecklistId] = useState<string | null>(null);
   const [postFlightMissionId, setPostFlightMissionId] = useState<string | null>(null);
   const [postFlightExecOpen, setPostFlightExecOpen] = useState(false);
+
+  // Deviation report state
+  const companySettings = useCompanySettings();
+  const [deviationDialogOpen, setDeviationDialogOpen] = useState(false);
+  const [deviationMissionId, setDeviationMissionId] = useState<string | null>(null);
+  const [deviationFlightLogId, setDeviationFlightLogId] = useState<string | null>(null);
 
   // Check if this dialog was opened from an active flight timer
   const isFromActiveTimer = prefilledDuration !== undefined;
@@ -679,9 +687,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         setLinkedPersonnel([]);
         setStartTime("");
         setEndTime("");
-        
-        onOpenChange(false);
-        onFlightLogged?.();
+
+        await finishFlow(formData.missionId || null, offlineFlightLogId);
       } catch (error: any) {
         console.error("Error queuing flight log offline:", error);
         toast.error(`Kunne ikke lagre flylogg lokalt: ${error.message}`);
@@ -841,9 +848,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       setLinkedPersonnel([]);
       setStartTime("");
       setEndTime("");
-      
-      onOpenChange(false);
-      onFlightLogged?.();
+
+      await finishFlow(missionIdToUse || null, flightLog?.id || null);
     } catch (error: any) {
       console.error("Error logging flight time:", error);
       toast.error(`Kunne ikke logge flytid: ${error.message}`);
@@ -852,7 +858,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     }
   };
 
-  const resetAndClose = () => {
+  const resetFormState = () => {
     setFormData({
       droneId: "",
       missionId: "",
@@ -871,6 +877,38 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     setEndTime("");
     setPostFlightChecklistId(null);
     setPostFlightMissionId(null);
+  };
+
+  const finishFlow = async (missionIdForReport: string | null, flightLogIdForReport: string | null) => {
+    // If feature enabled, mission exists, and at least one category configured → show deviation dialog
+    if (
+      companySettings.deviation_report_enabled &&
+      missionIdForReport &&
+      companyId &&
+      navigator.onLine
+    ) {
+      try {
+        const { count } = await (supabase as any)
+          .from("deviation_report_categories")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId);
+        if ((count || 0) > 0) {
+          setDeviationMissionId(missionIdForReport);
+          setDeviationFlightLogId(flightLogIdForReport);
+          setDeviationDialogOpen(true);
+          return; // wait for deviation dialog to call onDone
+        }
+      } catch {
+        // fall through
+      }
+    }
+    resetFormState();
+    onOpenChange(false);
+    onFlightLogged?.();
+  };
+
+  const resetAndClose = () => {
+    resetFormState();
     onOpenChange(false);
     onFlightLogged?.();
   };
@@ -900,7 +938,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         console.warn("Could not add post-flight checklist to mission:", e);
       }
     }
-    resetAndClose();
+    await finishFlow(postFlightMissionId, null);
   };
 
   const handlePostFlightChecklistCompleted = async (_checklistId: string) => {
@@ -925,7 +963,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         console.warn("Could not update post-flight checklist on mission:", e);
       }
     }
-    resetAndClose();
+    await finishFlow(postFlightMissionId, null);
   };
 
   const handlePostFlightChecklistCancelled = async () => {
@@ -1383,6 +1421,21 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           onComplete={handlePostFlightChecklistCompleted}
         />
       )}
+
+      {/* Deviation report after flight */}
+      <DeviationReportDialog
+        open={deviationDialogOpen}
+        onOpenChange={setDeviationDialogOpen}
+        missionId={deviationMissionId}
+        flightLogId={deviationFlightLogId}
+        onDone={() => {
+          setDeviationMissionId(null);
+          setDeviationFlightLogId(null);
+          resetFormState();
+          onOpenChange(false);
+          onFlightLogged?.();
+        }}
+      />
     </Dialog>
   );
 };

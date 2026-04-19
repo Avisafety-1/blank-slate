@@ -8,6 +8,7 @@ interface CompanySettings {
   require_mission_approval: boolean;
   require_sora_on_missions: boolean;
   require_sora_steps: number;
+  deviation_report_enabled: boolean;
 }
 
 const defaultSettings: CompanySettings = {
@@ -16,6 +17,7 @@ const defaultSettings: CompanySettings = {
   require_mission_approval: false,
   require_sora_on_missions: false,
   require_sora_steps: 1,
+  deviation_report_enabled: false,
 };
 
 // Simple in-memory cache keyed by companyId
@@ -34,7 +36,7 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 
   const promise = (supabase
     .from("companies")
-    .select("show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps")
+    .select("show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled")
     .eq("id", companyId)
     .single() as any)
     .then(({ data }: any) => {
@@ -44,6 +46,7 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
         require_mission_approval: data?.require_mission_approval ?? false,
         require_sora_on_missions: data?.require_sora_on_missions ?? false,
         require_sora_steps: data?.require_sora_steps ?? 1,
+        deviation_report_enabled: data?.deviation_report_enabled ?? false,
       };
       cache[companyId] = { settings: s, ts: Date.now() };
       return s;

@@ -392,6 +392,7 @@ export type Database = {
           billing_user_id: string | null
           created_at: string
           departments_enabled: boolean
+          deviation_report_enabled: boolean
           dji_auto_sync_enabled: boolean
           dji_flightlog_enabled: boolean
           dji_sync_from_date: string | null
@@ -430,6 +431,7 @@ export type Database = {
           billing_user_id?: string | null
           created_at?: string
           departments_enabled?: boolean
+          deviation_report_enabled?: boolean
           dji_auto_sync_enabled?: boolean
           dji_flightlog_enabled?: boolean
           dji_sync_from_date?: string | null
@@ -468,6 +470,7 @@ export type Database = {
           billing_user_id?: string | null
           created_at?: string
           departments_enabled?: boolean
+          deviation_report_enabled?: boolean
           dji_auto_sync_enabled?: boolean
           dji_flightlog_enabled?: boolean
           dji_sync_from_date?: string | null
@@ -850,6 +853,48 @@ export type Database = {
             columns: ["intern_poc_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deviation_report_categories: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          label: string
+          parent_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          label: string
+          parent_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          parent_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deviation_report_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deviation_report_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "deviation_report_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -3072,6 +3117,64 @@ export type Database = {
             columns: ["draft_id"]
             isOneToOne: false
             referencedRelation: "marketing_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_deviation_reports: {
+        Row: {
+          category_ids: string[]
+          category_path: string[]
+          comment: string | null
+          company_id: string
+          created_at: string
+          flight_log_id: string | null
+          id: string
+          mission_id: string
+          reported_by: string | null
+        }
+        Insert: {
+          category_ids?: string[]
+          category_path?: string[]
+          comment?: string | null
+          company_id: string
+          created_at?: string
+          flight_log_id?: string | null
+          id?: string
+          mission_id: string
+          reported_by?: string | null
+        }
+        Update: {
+          category_ids?: string[]
+          category_path?: string[]
+          comment?: string | null
+          company_id?: string
+          created_at?: string
+          flight_log_id?: string | null
+          id?: string
+          mission_id?: string
+          reported_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_deviation_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_deviation_reports_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_deviation_reports_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

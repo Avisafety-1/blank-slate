@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
 import { FH2DevicesSection } from "./FH2DevicesSection";
-import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send } from "lucide-react";
+import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle } from "lucide-react";
+import { DeviationCategoryTreeEditor } from "./DeviationCategoryTreeEditor";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -65,6 +66,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
+  const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
   const [defaultFlightAltitudeM, setDefaultFlightAltitudeM] = useState(30);
@@ -281,7 +283,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -291,6 +293,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
+      setDeviationReportEnabled((data as any).deviation_report_enabled ?? false);
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
       if (!callsignEditing.current) {
         setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
@@ -457,6 +460,39 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setRequireSoraOnMissions(checked);
     invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
+  };
+
+  const handleToggleDeviationReport = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ deviation_report_enabled: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+    if (applySettingsToChildren) {
+      await supabase
+        .from("companies")
+        .update({ deviation_report_enabled: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+    setSavingSettings(false);
+    setDeviationReportEnabled(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+    if (checked) {
+      const { count } = await (supabase as any)
+        .from("deviation_report_categories")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId);
+      if ((count || 0) === 0) {
+        toast.info("Husk å definere kategorier nedenfor – ellers vises ingen pop-up til pilotene.");
+      }
+    }
   };
 
   const handleChangeSoraSteps = async (steps: number) => {
@@ -643,7 +679,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setSavingSettings(true);
       await supabase
         .from("companies")
-        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps } as any)
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
         .eq("parent_company_id", companyId);
       setSavingSettings(false);
       toast.success("Selskapsinnstillinger anvendt på alle avdelinger");
@@ -851,6 +887,33 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
                       </div>
                     </RadioGroup>
+                  </div>
+                )}
+              </div>
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4" />
+                      Avviksrapport ved flytur
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste.
+                    </div>
+                  </Label>
+                  <Switch
+                    id="deviation-report"
+                    checked={deviationReportEnabled}
+                    onCheckedChange={handleToggleDeviationReport}
+                    disabled={savingSettings}
+                  />
+                </div>
+                {deviationReportEnabled && companyId && (
+                  <div className="pt-2 border-t border-border/50">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      Kategorier (ubegrenset antall nivåer):
+                    </p>
+                    <DeviationCategoryTreeEditor companyId={companyId} />
                   </div>
                 )}
               </div>
