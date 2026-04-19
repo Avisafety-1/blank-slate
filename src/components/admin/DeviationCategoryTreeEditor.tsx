@@ -372,7 +372,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
           </div>
         )}
       </div>
-      {addingUnder !== "root" && (
+      {!readOnly && addingUnder !== "root" && (
         <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" onClick={() => setAddingUnder("root")}>
             <Plus className="w-3.5 h-3.5 mr-1" />
