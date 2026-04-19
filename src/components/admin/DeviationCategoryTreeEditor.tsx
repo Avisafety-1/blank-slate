@@ -35,6 +35,7 @@ interface DbCategory {
 
 interface Props {
   companyId: string;
+  readOnly?: boolean;
 }
 
 function buildTree(rows: DbCategory[]): CategoryNode[] {
@@ -56,7 +57,7 @@ function buildTree(rows: DbCategory[]): CategoryNode[] {
   return roots;
 }
 
-export const DeviationCategoryTreeEditor = ({ companyId }: Props) => {
+export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Props) => {
   const [rows, setRows] = useState<DbCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -245,42 +246,46 @@ export const DeviationCategoryTreeEditor = ({ companyId }: Props) => {
           ) : (
             <>
               <span className="flex-1 text-sm">{node.label}</span>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, -1)} title="Flytt opp">
-                <ArrowUp className="w-3.5 h-3.5" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, 1)} title="Flytt ned">
-                <ArrowDown className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => setAddingUnder(node.id)}
-                title="Legg til underkategori"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => {
-                  setEditingId(node.id);
-                  setEditValue(node.label);
-                }}
-                title="Rediger"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-destructive"
-                onClick={() => deleteNode(node.id)}
-                title="Slett"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {!readOnly && (
+                <>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, -1)} title="Flytt opp">
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, 1)} title="Flytt ned">
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => setAddingUnder(node.id)}
+                    title="Legg til underkategori"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      setEditingId(node.id);
+                      setEditValue(node.label);
+                    }}
+                    title="Rediger"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-destructive"
+                    onClick={() => deleteNode(node.id)}
+                    title="Slett"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -367,7 +372,7 @@ export const DeviationCategoryTreeEditor = ({ companyId }: Props) => {
           </div>
         )}
       </div>
-      {addingUnder !== "root" && (
+      {!readOnly && addingUnder !== "root" && (
         <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" onClick={() => setAddingUnder("root")}>
             <Plus className="w-3.5 h-3.5 mr-1" />

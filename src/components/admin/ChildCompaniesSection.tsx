@@ -67,6 +67,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
+  const [parentDeviationCompanyId, setParentDeviationCompanyId] = useState<string | null>(null);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
   const [defaultFlightAltitudeM, setDefaultFlightAltitudeM] = useState(30);
@@ -283,7 +284,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await supabase
       .from("companies")
-      .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -293,7 +294,19 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
-      setDeviationReportEnabled((data as any).deviation_report_enabled ?? false);
+      // For deviation report: child departments inherit toggle from parent
+      const parentId = (data as any).parent_company_id as string | null;
+      setParentDeviationCompanyId(parentId);
+      if (parentId) {
+        const { data: parent } = await supabase
+          .from("companies")
+          .select("deviation_report_enabled")
+          .eq("id", parentId)
+          .maybeSingle();
+        setDeviationReportEnabled((parent as any)?.deviation_report_enabled ?? false);
+      } else {
+        setDeviationReportEnabled((data as any).deviation_report_enabled ?? false);
+      }
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
       if (!callsignEditing.current) {
         setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
@@ -896,24 +909,39 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     <div className="font-medium text-sm flex items-center gap-1.5">
                       <AlertTriangle className="w-4 h-4" />
                       Avviksrapport ved flytur
+                      {parentDeviationCompanyId && (
+                        <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground border rounded px-1.5 py-0.5">
+                          Arvet fra morselskap
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste.
+                      {parentDeviationCompanyId
+                        ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
+                        : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
                     </div>
                   </Label>
                   <Switch
                     id="deviation-report"
                     checked={deviationReportEnabled}
                     onCheckedChange={handleToggleDeviationReport}
-                    disabled={savingSettings}
+                    disabled={savingSettings || !!parentDeviationCompanyId}
                   />
                 </div>
-                {deviationReportEnabled && companyId && (
+                {deviationReportEnabled && companyId && !parentDeviationCompanyId && (
                   <div className="pt-2 border-t border-border/50">
                     <p className="text-xs font-medium text-muted-foreground mb-2">
                       Kategorier (ubegrenset antall nivåer):
                     </p>
                     <DeviationCategoryTreeEditor companyId={companyId} />
+                  </div>
+                )}
+                {deviationReportEnabled && parentDeviationCompanyId && (
+                  <div className="pt-2 border-t border-border/50">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      Kategorier (arvet — kun lesetilgang):
+                    </p>
+                    <DeviationCategoryTreeEditor companyId={parentDeviationCompanyId} readOnly />
                   </div>
                 )}
               </div>

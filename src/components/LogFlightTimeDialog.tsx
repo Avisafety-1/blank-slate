@@ -880,23 +880,36 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
   };
 
   const finishFlow = async (missionIdForReport: string | null, flightLogIdForReport: string | null) => {
-    // If feature enabled, mission exists, and at least one category configured → show deviation dialog
-    if (
-      companySettings.deviation_report_enabled &&
-      missionIdForReport &&
-      companyId &&
-      navigator.onLine
-    ) {
+    // Deviation report: child departments inherit toggle + categories from parent
+    if (missionIdForReport && companyId && navigator.onLine) {
       try {
-        const { count } = await (supabase as any)
-          .from("deviation_report_categories")
-          .select("id", { count: "exact", head: true })
-          .eq("company_id", companyId);
-        if ((count || 0) > 0) {
-          setDeviationMissionId(missionIdForReport);
-          setDeviationFlightLogId(flightLogIdForReport);
-          setDeviationDialogOpen(true);
-          return; // wait for deviation dialog to call onDone
+        const { data: comp } = await supabase
+          .from("companies")
+          .select("parent_company_id, deviation_report_enabled")
+          .eq("id", companyId)
+          .maybeSingle();
+        const parentId = (comp as any)?.parent_company_id;
+        const effectiveCompanyId = parentId || companyId;
+        let enabled = (comp as any)?.deviation_report_enabled ?? false;
+        if (parentId) {
+          const { data: parent } = await supabase
+            .from("companies")
+            .select("deviation_report_enabled")
+            .eq("id", parentId)
+            .maybeSingle();
+          enabled = (parent as any)?.deviation_report_enabled ?? false;
+        }
+        if (enabled) {
+          const { count } = await (supabase as any)
+            .from("deviation_report_categories")
+            .select("id", { count: "exact", head: true })
+            .eq("company_id", effectiveCompanyId);
+          if ((count || 0) > 0) {
+            setDeviationMissionId(missionIdForReport);
+            setDeviationFlightLogId(flightLogIdForReport);
+            setDeviationDialogOpen(true);
+            return;
+          }
         }
       } catch {
         // fall through
