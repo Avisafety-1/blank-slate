@@ -36,6 +36,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
+import { DeviationReportsSection } from "@/components/dashboard/DeviationReportsSection";
 import {
   statusColors,
   incidentSeverityColors,
@@ -715,6 +716,9 @@ export const MissionCard = ({
           </div>
         </div>
       )}
+
+      {/* Deviation Reports Section */}
+      <DeviationReportsSection missionId={mission.id} open={true} />
 
       {/* Flight Logs Section */}
       {mission.flightLogs?.length > 0 && (
