@@ -1382,11 +1382,11 @@ const Status = () => {
             onValueChange={(v) => v && setActiveView(v as "operational" | "deviation")}
             className="justify-start"
           >
-            <ToggleGroupItem value="operational" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
-              Operativt
+            <ToggleGroupItem value="operational" className="bg-muted text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
+              Hendelser
             </ToggleGroupItem>
-            <ToggleGroupItem value="deviation" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
-              Avviksrapporter
+            <ToggleGroupItem value="deviation" className="bg-muted text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
+              Avvik
             </ToggleGroupItem>
           </ToggleGroup>
 
