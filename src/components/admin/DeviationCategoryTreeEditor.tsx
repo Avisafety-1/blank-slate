@@ -2,8 +2,20 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Check, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+
+const AVISAFE_PRESET: { label: string; children?: string[] }[] = [
+  { label: "Ingen avvik" },
+  { label: "Klima", children: ["Ising (propell/kontrollflater)", "Nedbør (regn/yr/vått vær)", "Vind og vindkast"] },
+  { label: "Teknisk svikt", children: ["Kompassforstyrrelse", "GNSS (forstyrrelse/tap av signal)", "Programvare", "Radiokontakt (C2)", "Batteri", "Flysensor", "Strukturell", "Kommunikasjon (Multi-CREW)", "Montering"] },
+  { label: "Nærhet (separasjon)", children: ["Annen drone (UA)", "Småfly (GA)", "Trafikkfly"] },
+  { label: "Overskridelse", children: ["Autorisasjon", "Avstandsbegrensning (horisontal)", "Energireserve", "Høydebegrensning (vertikal)", "Luftromsavgrensning (Airspace Infringement)", "MTOM", "Radiorekkevidde (BRLOS)", "VLOS (BLOS)"] },
+  { label: "Pilot (PIC)", children: ["Forstyrrelse under operasjon", "Ukvalifisert", "Udyktig (IMSAFE)"] },
+  { label: "Mangelfull lysføring" },
+  { label: "(N)MAC fugl (kollisjon/nær kollisjon med fugl)" },
+  { label: "Annet (beskriv i kommentarfelt)" },
+];
 
 interface CategoryNode {
   id: string;
