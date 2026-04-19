@@ -50,11 +50,20 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
     setSearch("");
     setFlightPhase(null);
     if (companyId) {
-      (supabase as any)
-        .from("deviation_report_categories")
-        .select("id, parent_id, label, sort_order")
-        .eq("company_id", companyId)
-        .then(({ data }: any) => setCategories(data || []));
+      (async () => {
+        // Resolve effective company: child departments inherit from parent
+        const { data: comp } = await supabase
+          .from("companies")
+          .select("parent_company_id")
+          .eq("id", companyId)
+          .maybeSingle();
+        const effectiveCompanyId = (comp as any)?.parent_company_id || companyId;
+        const { data } = await (supabase as any)
+          .from("deviation_report_categories")
+          .select("id, parent_id, label, sort_order")
+          .eq("company_id", effectiveCompanyId);
+        setCategories(data || []);
+      })();
     }
   }, [open, companyId]);
 
