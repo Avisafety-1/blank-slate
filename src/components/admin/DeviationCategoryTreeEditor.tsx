@@ -246,42 +246,46 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
           ) : (
             <>
               <span className="flex-1 text-sm">{node.label}</span>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, -1)} title="Flytt opp">
-                <ArrowUp className="w-3.5 h-3.5" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, 1)} title="Flytt ned">
-                <ArrowDown className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => setAddingUnder(node.id)}
-                title="Legg til underkategori"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => {
-                  setEditingId(node.id);
-                  setEditValue(node.label);
-                }}
-                title="Rediger"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 text-destructive"
-                onClick={() => deleteNode(node.id)}
-                title="Slett"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              {!readOnly && (
+                <>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, -1)} title="Flytt opp">
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, 1)} title="Flytt ned">
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => setAddingUnder(node.id)}
+                    title="Legg til underkategori"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      setEditingId(node.id);
+                      setEditValue(node.label);
+                    }}
+                    title="Rediger"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-destructive"
+                    onClick={() => deleteNode(node.id)}
+                    title="Slett"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>
