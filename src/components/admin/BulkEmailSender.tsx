@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Send, Users, UserCog, Eye, Loader2, Code, Eye as EyeIcon, Globe, FlaskConical } from "lucide-react";
+import { Send, Users, UserCog, Eye, Loader2, Code, Eye as EyeIcon, Globe, FlaskConical, Image as ImageIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -95,6 +95,52 @@ export const BulkEmailSender = () => {
     }
   };
 
+  const uploadImageFile = async (file: File): Promise<string | null> => {
+    if (!companyId) {
+      toast.error("Ingen bedrift valgt");
+      return null;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Kun bildefiler er tillatt");
+      return null;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Bildet er for stort (maks 5 MB)");
+      return null;
+    }
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${companyId}/bulk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("email-images").upload(path, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+    if (error) {
+      toast.error("Kunne ikke laste opp bilde: " + error.message);
+      return null;
+    }
+    const { data } = supabase.storage.from("email-images").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const handleQuillImageUpload = () => {
+    const input = document.createElement("input");
+    input.setAttribute("type", "file");
+    input.setAttribute("accept", "image/*");
+    input.click();
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const url = await uploadImageFile(file);
+      if (!url) return;
+      const editor = quillRef.current?.getEditor();
+      if (!editor) return;
+      const range = editor.getSelection(true);
+      editor.insertEmbed(range.index, "image", url, "user");
+      editor.setSelection(range.index + 1, 0);
+      toast.success("Bilde lagt til");
+    };
+  };
+
   const modules = useMemo(
     () => ({
       toolbar: {
@@ -104,12 +150,15 @@ export const BulkEmailSender = () => {
           [{ color: [] }, { background: [] }],
           [{ list: "ordered" }, { list: "bullet" }],
           [{ align: [] }],
-          ["link"],
+          ["link", "image"],
           ["clean"],
         ],
+        handlers: {
+          image: handleQuillImageUpload,
+        },
       },
     }),
-    []
+    [companyId]
   );
 
   const formats = [
@@ -124,7 +173,19 @@ export const BulkEmailSender = () => {
     "bullet",
     "align",
     "link",
+    "image",
   ];
+
+  const handleHtmlImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const url = await uploadImageFile(file);
+    if (!url) return;
+    const imgTag = `<img src="${url}" alt="" style="max-width:100%;height:auto;" />`;
+    setContent((prev) => prev + "\n" + imgTag);
+    toast.success("Bilde lagt til i HTML");
+  };
 
   const wrapContentInEmailTemplate = (htmlContent: string) => {
     return `<!DOCTYPE html>
@@ -400,9 +461,25 @@ export const BulkEmailSender = () => {
 
             <TabsContent value="html" className="mt-3 sm:mt-4">
               <div className="space-y-2">
-                <Label htmlFor="bulk-content" className="text-xs sm:text-sm">
-                  E-post innhold (HTML)
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="bulk-content" className="text-xs sm:text-sm">
+                    E-post innhold (HTML)
+                  </Label>
+                  <Label
+                    htmlFor="bulk-html-image-upload"
+                    className="inline-flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-border hover:bg-accent/10"
+                  >
+                    <ImageIcon className="h-3 w-3" />
+                    Last opp bilde
+                    <input
+                      id="bulk-html-image-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleHtmlImageUpload}
+                    />
+                  </Label>
+                </div>
                 <textarea
                   id="bulk-content"
                   value={content}
