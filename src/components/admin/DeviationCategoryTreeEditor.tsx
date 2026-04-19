@@ -57,7 +57,7 @@ function buildTree(rows: DbCategory[]): CategoryNode[] {
   return roots;
 }
 
-export const DeviationCategoryTreeEditor = ({ companyId }: Props) => {
+export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Props) => {
   const [rows, setRows] = useState<DbCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
