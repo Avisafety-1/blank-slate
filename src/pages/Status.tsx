@@ -1163,6 +1163,46 @@ const Status = () => {
         headStyles: { fillColor: COLORS.primary },
       });
 
+      // Deviation Reports section
+      if (deviationReports.length > 0) {
+        doc.addPage();
+        yPos = 20;
+        doc.setFontSize(16);
+        setFontStyle(doc, "bold");
+        doc.text("Avviksrapporter", 20, yPos);
+        yPos += 10;
+
+        const rootCounts: Record<string, number> = {};
+        deviationReports.forEach(r => {
+          const root = r.category_path[0] || "Ukategorisert";
+          rootCounts[root] = (rootCounts[root] || 0) + 1;
+        });
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Hovedkategori', 'Antall']],
+          body: Object.entries(rootCounts).map(([k, v]) => [k, v.toString()]),
+          theme: 'grid',
+          headStyles: { fillColor: COLORS.warning },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 10;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Dato', 'Pilot', 'Kategori', 'Kommentar']],
+          body: deviationReports.map(r => [
+            format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
+            sanitizeForPdf(r.reporter_name || "Ukjent"),
+            sanitizeForPdf(r.category_path.join(" > ")),
+            sanitizeForPdf(r.comment || ""),
+          ]),
+          theme: 'striped',
+          headStyles: { fillColor: COLORS.warning },
+          styles: { fontSize: 8, cellPadding: 2 },
+          columnStyles: { 3: { cellWidth: 60 } },
+        });
+      }
+
       // Generate PDF blob
       const pdfBlob = doc.output('blob');
       const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.pdf`;
