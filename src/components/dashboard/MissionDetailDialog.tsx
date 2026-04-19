@@ -23,6 +23,7 @@ import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 import { NotamDialog } from "./NotamDialog";
+import { DeviationReportsSection } from "./DeviationReportsSection";
 
 type Mission = any;
 
@@ -353,6 +354,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           </div>
 
           <MissionResourceSections mission={currentMission} open={open} />
+
+          <DeviationReportsSection missionId={currentMission?.id} open={open} />
 
           {/* Flight log analysis */}
           {missionFlightLogs && missionFlightLogs.length > 0 && (
