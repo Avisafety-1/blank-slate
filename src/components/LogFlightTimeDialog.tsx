@@ -963,7 +963,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         console.warn("Could not update post-flight checklist on mission:", e);
       }
     }
-    resetAndClose();
+    await finishFlow(postFlightMissionId, null);
   };
 
   const handlePostFlightChecklistCancelled = async () => {
