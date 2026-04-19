@@ -8,6 +8,7 @@ interface CompanySettings {
   require_mission_approval: boolean;
   require_sora_on_missions: boolean;
   require_sora_steps: number;
+  deviation_report_enabled: boolean;
 }
 
 const defaultSettings: CompanySettings = {
@@ -16,6 +17,7 @@ const defaultSettings: CompanySettings = {
   require_mission_approval: false,
   require_sora_on_missions: false,
   require_sora_steps: 1,
+  deviation_report_enabled: false,
 };
 
 // Simple in-memory cache keyed by companyId
