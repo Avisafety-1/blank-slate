@@ -462,6 +462,39 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     toast.success("Innstilling lagret");
   };
 
+  const handleToggleDeviationReport = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ deviation_report_enabled: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+    if (applySettingsToChildren) {
+      await supabase
+        .from("companies")
+        .update({ deviation_report_enabled: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+    setSavingSettings(false);
+    setDeviationReportEnabled(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+    if (checked) {
+      const { count } = await (supabase as any)
+        .from("deviation_report_categories")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId);
+      if ((count || 0) === 0) {
+        toast.info("Husk å definere kategorier nedenfor – ellers vises ingen pop-up til pilotene.");
+      }
+    }
+  };
+
   const handleChangeSoraSteps = async (steps: number) => {
     if (!companyId) return;
     setSavingSettings(true);
