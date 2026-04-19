@@ -729,6 +729,28 @@ const Status = () => {
       sections.push(["Innen 30 dager", String(expiringDocs.thirtyDays)]);
       sections.push(["Innen 60 dager", String(expiringDocs.sixtyDays)]);
       sections.push(["Innen 90 dager", String(expiringDocs.ninetyDays)]);
+      sections.push([]);
+
+      // Deviation Reports
+      sections.push(["Avviksrapporter (sammendrag)", ""]);
+      sections.push(["Totalt antall avvik", String(deviationReports.length)]);
+      sections.push(["Unike flyturer med avvik", String(new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size)]);
+      sections.push(["Unike piloter", String(new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size)]);
+      sections.push([]);
+      sections.push(["Hovedkategori", "Antall"]);
+      Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
+        const root = r.category_path[0] || "Ukategorisert";
+        acc[root] = (acc[root] || 0) + 1;
+        return acc;
+      }, {})).forEach(([name, value]) => sections.push([name, String(value)]));
+      sections.push([]);
+      sections.push(["Dato", "Pilot", "Kategori", "Kommentar"]);
+      deviationReports.forEach(r => sections.push([
+        format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
+        r.reporter_name || "Ukjent",
+        r.category_path.join(" > "),
+        r.comment || "",
+      ]));
 
       const bom = "\uFEFF";
       const csvContent = bom + sections.map(row => row.join(sep)).join("\n");
