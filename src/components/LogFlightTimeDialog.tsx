@@ -860,7 +860,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     }
   };
 
-  const resetAndClose = () => {
+  const resetFormState = () => {
     setFormData({
       droneId: "",
       missionId: "",
@@ -879,6 +879,38 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     setEndTime("");
     setPostFlightChecklistId(null);
     setPostFlightMissionId(null);
+  };
+
+  const finishFlow = async (missionIdForReport: string | null, flightLogIdForReport: string | null) => {
+    // If feature enabled, mission exists, and at least one category configured → show deviation dialog
+    if (
+      companySettings.deviation_report_enabled &&
+      missionIdForReport &&
+      companyId &&
+      navigator.onLine
+    ) {
+      try {
+        const { count } = await (supabase as any)
+          .from("deviation_report_categories")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId);
+        if ((count || 0) > 0) {
+          setDeviationMissionId(missionIdForReport);
+          setDeviationFlightLogId(flightLogIdForReport);
+          setDeviationDialogOpen(true);
+          return; // wait for deviation dialog to call onDone
+        }
+      } catch {
+        // fall through
+      }
+    }
+    resetFormState();
+    onOpenChange(false);
+    onFlightLogged?.();
+  };
+
+  const resetAndClose = () => {
+    resetFormState();
     onOpenChange(false);
     onFlightLogged?.();
   };
