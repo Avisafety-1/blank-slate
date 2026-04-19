@@ -1421,6 +1421,21 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           onComplete={handlePostFlightChecklistCompleted}
         />
       )}
+
+      {/* Deviation report after flight */}
+      <DeviationReportDialog
+        open={deviationDialogOpen}
+        onOpenChange={setDeviationDialogOpen}
+        missionId={deviationMissionId}
+        flightLogId={deviationFlightLogId}
+        onDone={() => {
+          setDeviationMissionId(null);
+          setDeviationFlightLogId(null);
+          resetFormState();
+          onOpenChange(false);
+          onFlightLogged?.();
+        }}
+      />
     </Dialog>
   );
 };
