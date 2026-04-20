@@ -1065,7 +1065,7 @@ export const CompanySoraConfigSection = () => {
         </Card>
       </Collapsible>
 
-      {/* Propagation toggle for parent companies */}
+      </fieldset>
       {!isChild && hasChildren && (
         <div className="rounded-lg border border-primary/30 bg-muted/30 p-4">
           <div className="flex items-center justify-between">
