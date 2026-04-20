@@ -38,6 +38,7 @@ import {
   Users,
   Building2,
   Sunrise,
+  Lock,
 } from "lucide-react";
 
 interface Document {
