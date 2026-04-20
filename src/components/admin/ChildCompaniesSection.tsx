@@ -901,6 +901,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   // Toggle for SORA-defaults (buffer mode + flight geography + altitude)
   const handleToggleApplySoraDefaultsToChildren = async (checked: boolean) => {
     if (!companyId) return;
+    setApplySoraDefaultsToChildren(checked);
     setSavingSettings(true);
     await (supabase as any)
       .from("companies")
