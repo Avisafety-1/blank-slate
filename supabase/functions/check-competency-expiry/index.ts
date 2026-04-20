@@ -13,6 +13,7 @@ interface ExpiringCompetency {
   utloper_dato: string;
   daysUntilExpiry: number;
   profile_id: string;
+  varsel_dager?: number | null;
 }
 
 serve(async (req) => {
@@ -31,7 +32,7 @@ serve(async (req) => {
     // Get all competencies with expiry dates
     const { data: competencies, error: compError } = await supabase
       .from('personnel_competencies')
-      .select('id, navn, type, utloper_dato, profile_id')
+      .select('id, navn, type, utloper_dato, profile_id, varsel_dager')
       .not('utloper_dato', 'is', null);
 
     if (compError) {
@@ -82,7 +83,7 @@ serve(async (req) => {
       const userPrefs = userPrefsMap.get(comp.profile_id);
       if (!userPrefs) continue;
 
-      const reminderDays = userPrefs.inspection_reminder_days || 14;
+      const reminderDays = (comp as any).varsel_dager ?? userPrefs.inspection_reminder_days ?? 14;
 
       // Check if within reminder window and not expired more than a week ago
       if (daysUntilExpiry <= reminderDays && daysUntilExpiry >= -7) {

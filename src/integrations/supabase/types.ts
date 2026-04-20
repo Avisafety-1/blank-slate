@@ -4201,6 +4201,7 @@ export type Database = {
           type: string
           utloper_dato: string | null
           utstedt_dato: string | null
+          varsel_dager: number
         }
         Insert: {
           beskrivelse?: string | null
@@ -4214,6 +4215,7 @@ export type Database = {
           type: string
           utloper_dato?: string | null
           utstedt_dato?: string | null
+          varsel_dager?: number
         }
         Update: {
           beskrivelse?: string | null
@@ -4227,6 +4229,7 @@ export type Database = {
           type?: string
           utloper_dato?: string | null
           utstedt_dato?: string | null
+          varsel_dager?: number
         }
         Relationships: [
           {

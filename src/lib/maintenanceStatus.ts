@@ -65,6 +65,7 @@ export const worstStatus = (a: Status, b: Status): Status => {
 interface CompetencyItem {
   utloper_dato?: string | null;
   påvirker_status?: boolean;
+  varsel_dager?: number | null;
 }
 
 /**
@@ -91,7 +92,8 @@ export const calculatePersonnelAggregatedStatus = (
   for (const comp of relevantCompetencies) {
     if (!comp.utloper_dato) continue; // No expiry date = OK for this competency
     
-    const status = calculateMaintenanceStatus(comp.utloper_dato, warningDays);
+    const effectiveWarningDays = comp.varsel_dager ?? warningDays;
+    const status = calculateMaintenanceStatus(comp.utloper_dato, effectiveWarningDays);
     const priority = STATUS_PRIORITY[status];
     worstPriority = Math.max(worstPriority, priority);
   }

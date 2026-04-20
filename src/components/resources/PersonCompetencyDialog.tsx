@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink, GraduationCap } from "lucide-react";
+import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink, GraduationCap, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
@@ -27,6 +27,7 @@ interface Competency {
   utloper_dato: string | null;
   påvirker_status?: boolean;
   fil_url?: string | null;
+  varsel_dager?: number | null;
 }
 
 interface Person {
@@ -66,6 +67,7 @@ export function PersonCompetencyDialog({
   const [newIssueDate, setNewIssueDate] = useState("");
   const [newExpiryDate, setNewExpiryDate] = useState("");
   const [newAffectsStatus, setNewAffectsStatus] = useState(true);
+  const [newWarningDays, setNewWarningDays] = useState<number>(30);
   const [newFile, setNewFile] = useState<File | null>(null);
   const [newDocumentUrl, setNewDocumentUrl] = useState<string | null>(null);
   const [newDocPickerOpen, setNewDocPickerOpen] = useState(false);
@@ -78,6 +80,7 @@ export function PersonCompetencyDialog({
   const [editIssueDate, setEditIssueDate] = useState("");
   const [editExpiryDate, setEditExpiryDate] = useState("");
   const [editAffectsStatus, setEditAffectsStatus] = useState(true);
+  const [editWarningDays, setEditWarningDays] = useState<number>(30);
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editDocumentUrl, setEditDocumentUrl] = useState<string | null>(null);
   const [editExistingFilUrl, setEditExistingFilUrl] = useState<string | null>(null);
@@ -231,7 +234,8 @@ export function PersonCompetencyDialog({
       utstedt_dato: newIssueDate || null,
       utloper_dato: newExpiryDate || null,
       påvirker_status: newAffectsStatus,
-    }).select('id').single();
+      varsel_dager: newWarningDays,
+    } as any).select('id').single();
 
     if (error) {
       console.error("Error adding competency:", error);
@@ -261,6 +265,7 @@ export function PersonCompetencyDialog({
     setNewIssueDate("");
     setNewExpiryDate("");
     setNewAffectsStatus(true);
+    setNewWarningDays(30);
     setNewFile(null);
     setNewDocumentUrl(null);
     if (newFileInputRef.current) newFileInputRef.current.value = '';
@@ -276,6 +281,7 @@ export function PersonCompetencyDialog({
     setEditIssueDate(competency.utstedt_dato || "");
     setEditExpiryDate(competency.utloper_dato || "");
     setEditAffectsStatus(competency.påvirker_status !== false);
+    setEditWarningDays(competency.varsel_dager ?? 30);
     setEditExistingFilUrl(competency.fil_url || null);
     setEditFile(null);
     setEditDocumentUrl(null);
@@ -289,6 +295,7 @@ export function PersonCompetencyDialog({
     setEditIssueDate("");
     setEditExpiryDate("");
     setEditAffectsStatus(true);
+    setEditWarningDays(30);
     setEditFile(null);
     setEditDocumentUrl(null);
     setEditExistingFilUrl(null);
@@ -318,6 +325,7 @@ export function PersonCompetencyDialog({
         utstedt_dato: editIssueDate || null,
         utloper_dato: editExpiryDate || null,
         påvirker_status: editAffectsStatus,
+        varsel_dager: editWarningDays,
         fil_url: filUrl,
       })
       .eq("id", competencyId);
@@ -564,6 +572,24 @@ export function PersonCompetencyDialog({
                             />
                           </div>
                         </div>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1">
+                            <Bell className="h-3 w-3" />
+                            Varsle (dager før utløp)
+                          </Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={365}
+                            value={editWarningDays}
+                            onChange={(e) => setEditWarningDays(Number(e.target.value) || 30)}
+                            placeholder="30"
+                            className="h-9"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Gul status og e-postvarsel utløses {editWarningDays} dager før utløp.
+                          </p>
+                        </div>
                         {renderFileInput(
                           editFile,
                           editDocumentUrl,
@@ -640,6 +666,12 @@ export function PersonCompetencyDialog({
                             </span>
                           )}
                         </div>
+                        {competency.utloper_dato && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Bell className="h-3 w-3" />
+                            Gul varsling sendes {competency.varsel_dager ?? 30} dager før utløp
+                          </p>
+                        )}
                         {competency.fil_url && (
                           <Button
                             type="button"
@@ -798,6 +830,26 @@ export function PersonCompetencyDialog({
                       className="h-9"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="new-warning-days" className="text-xs flex items-center gap-1">
+                    <Bell className="h-3 w-3" />
+                    Varsle (dager før utløp)
+                  </Label>
+                  <Input
+                    id="new-warning-days"
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={newWarningDays}
+                    onChange={(e) => setNewWarningDays(Number(e.target.value) || 30)}
+                    placeholder="30"
+                    className="h-9"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Gul status og e-postvarsel utløses {newWarningDays} dager før utløp.
+                  </p>
                 </div>
 
                 {renderFileInput(
