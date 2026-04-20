@@ -572,6 +572,24 @@ export function PersonCompetencyDialog({
                             />
                           </div>
                         </div>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1">
+                            <Bell className="h-3 w-3" />
+                            Varsle (dager før utløp)
+                          </Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={365}
+                            value={editWarningDays}
+                            onChange={(e) => setEditWarningDays(Number(e.target.value) || 30)}
+                            placeholder="30"
+                            className="h-9"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Gul status og e-postvarsel utløses {editWarningDays} dager før utløp.
+                          </p>
+                        </div>
                         {renderFileInput(
                           editFile,
                           editDocumentUrl,
@@ -648,6 +666,12 @@ export function PersonCompetencyDialog({
                             </span>
                           )}
                         </div>
+                        {competency.utloper_dato && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Bell className="h-3 w-3" />
+                            Gul varsling sendes {competency.varsel_dager ?? 30} dager før utløp
+                          </p>
+                        )}
                         {competency.fil_url && (
                           <Button
                             type="button"
@@ -806,6 +830,26 @@ export function PersonCompetencyDialog({
                       className="h-9"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="new-warning-days" className="text-xs flex items-center gap-1">
+                    <Bell className="h-3 w-3" />
+                    Varsle (dager før utløp)
+                  </Label>
+                  <Input
+                    id="new-warning-days"
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={newWarningDays}
+                    onChange={(e) => setNewWarningDays(Number(e.target.value) || 30)}
+                    placeholder="30"
+                    className="h-9"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Gul status og e-postvarsel utløses {newWarningDays} dager før utløp.
+                  </p>
                 </div>
 
                 {renderFileInput(
