@@ -313,7 +313,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -335,14 +335,52 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         (data as any).propagate_deviation_report
       );
       setApplySettingsToChildren(ownPropagate);
+      setApplyRolesToChildren(!!(data as any).propagate_mission_roles);
+      setApplyAlertsToChildren(!!(data as any).propagate_flight_alerts);
 
       // Load parent inheritance data (propagation flags + values)
       if (parentId) {
-        const { data: parent } = await (supabase as any)
-          .from("companies")
-          .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report")
-          .eq("id", parentId)
-          .maybeSingle();
+        const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
+          (supabase as any)
+            .from("companies")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts")
+            .eq("id", parentId)
+            .maybeSingle(),
+          (supabase as any)
+            .from("company_sora_config")
+            .select("default_buffer_mode, default_flight_geography_m, default_flight_altitude_m")
+            .eq("company_id", parentId)
+            .maybeSingle(),
+          (supabase as any)
+            .from("company_mission_roles")
+            .select("id, name")
+            .eq("company_id", parentId)
+            .order("name"),
+          (supabase as any)
+            .from("company_flight_alerts")
+            .select("alert_type, enabled, threshold_value")
+            .eq("company_id", parentId),
+          (supabase as any)
+            .from("company_flight_alert_recipients")
+            .select("id, profile_id")
+            .eq("company_id", parentId),
+        ]);
+
+        // Build alert map
+        const alertMap: Record<string, { enabled: boolean; threshold_value: number | null }> = {};
+        (parentAlerts || []).forEach((a: any) => { alertMap[a.alert_type] = { enabled: a.enabled, threshold_value: a.threshold_value }; });
+
+        // Recipients with names
+        const recProfileIds = (parentRecipients || []).map((r: any) => r.profile_id);
+        let recProfileMap: Record<string, string | null> = {};
+        if (recProfileIds.length > 0) {
+          const { data: recProfiles } = await supabase.from("profiles").select("id, full_name").in("id", recProfileIds);
+          (recProfiles || []).forEach((p: any) => { recProfileMap[p.id] = p.full_name; });
+        }
+        const recList = (parentRecipients || []).map((r: any) => ({
+          id: r.id, profile_id: r.profile_id, full_name: recProfileMap[r.profile_id] || null,
+        }));
+
         if (parent) {
           setParentNavn(parent.navn || "");
           setInherited({
@@ -357,6 +395,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             propagate_mission_approval: parent.propagate_mission_approval ?? false,
             propagate_sora_required: parent.propagate_sora_required ?? false,
             propagate_deviation_report: parent.propagate_deviation_report ?? false,
+            propagate_sora_buffer_mode: parent.propagate_sora_buffer_mode ?? false,
+            propagate_mission_roles: parent.propagate_mission_roles ?? false,
+            propagate_flight_alerts: parent.propagate_flight_alerts ?? false,
+            default_buffer_mode: (parentSora?.default_buffer_mode as "corridor" | "convexHull") || "corridor",
+            default_flight_geography_m: parentSora?.default_flight_geography_m ?? 0,
+            default_flight_altitude_m: parentSora?.default_flight_altitude_m ?? 30,
+            mission_roles: parentRoles || [],
+            flight_alerts: alertMap,
+            alert_recipients: recList,
           });
           setDeviationReportEnabled(parent.deviation_report_enabled ?? false);
         }
