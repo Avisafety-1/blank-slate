@@ -883,13 +883,13 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     // Deviation report: child departments inherit toggle + categories from parent
     if (missionIdForReport && companyId && navigator.onLine) {
       try {
+        // Resolve effective enabled-flag (parent overrides child via propagate_deviation_report)
         const { data: comp } = await supabase
           .from("companies")
           .select("parent_company_id, deviation_report_enabled")
           .eq("id", companyId)
           .maybeSingle();
         const parentId = (comp as any)?.parent_company_id;
-        const effectiveCompanyId = parentId || companyId;
         let enabled = (comp as any)?.deviation_report_enabled ?? false;
         if (parentId) {
           const { data: parent } = await supabase
@@ -900,11 +900,11 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           enabled = (parent as any)?.deviation_report_enabled ?? false;
         }
         if (enabled) {
-          const { count } = await (supabase as any)
-            .from("deviation_report_categories")
-            .select("id", { count: "exact", head: true })
-            .eq("company_id", effectiveCompanyId);
-          if ((count || 0) > 0) {
+          // Use RPC to check effective categories (handles inheritance + RLS)
+          const { data: hasCats } = await (supabase as any).rpc("has_effective_deviation_categories", {
+            _company_id: companyId,
+          });
+          if (hasCats) {
             setDeviationMissionId(missionIdForReport);
             setDeviationFlightLogId(flightLogIdForReport);
             setDeviationDialogOpen(true);
