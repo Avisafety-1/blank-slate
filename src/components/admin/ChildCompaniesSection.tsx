@@ -311,17 +311,37 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
-      // For deviation report: child departments inherit toggle from parent
       const parentId = (data as any).parent_company_id as string | null;
       setParentDeviationCompanyId(parentId);
+      setIsChildDept(!!parentId);
+
+      // Load parent inheritance data (propagation flags + values)
       if (parentId) {
-        const { data: parent } = await supabase
+        const { data: parent } = await (supabase as any)
           .from("companies")
-          .select("deviation_report_enabled")
+          .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report")
           .eq("id", parentId)
           .maybeSingle();
-        setDeviationReportEnabled((parent as any)?.deviation_report_enabled ?? false);
+        if (parent) {
+          setParentNavn(parent.navn || "");
+          setInherited({
+            show_all_airspace_warnings: parent.show_all_airspace_warnings ?? false,
+            hide_reporter_identity: parent.hide_reporter_identity ?? false,
+            require_mission_approval: parent.require_mission_approval ?? false,
+            require_sora_on_missions: parent.require_sora_on_missions ?? false,
+            require_sora_steps: parent.require_sora_steps ?? 1,
+            deviation_report_enabled: parent.deviation_report_enabled ?? false,
+            propagate_airspace_warnings: parent.propagate_airspace_warnings ?? false,
+            propagate_hide_reporter: parent.propagate_hide_reporter ?? false,
+            propagate_mission_approval: parent.propagate_mission_approval ?? false,
+            propagate_sora_required: parent.propagate_sora_required ?? false,
+            propagate_deviation_report: parent.propagate_deviation_report ?? false,
+          });
+          setDeviationReportEnabled(parent.deviation_report_enabled ?? false);
+        }
       } else {
+        setInherited(null);
+        setParentNavn("");
         setDeviationReportEnabled((data as any).deviation_report_enabled ?? false);
       }
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
