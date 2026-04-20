@@ -67,6 +67,7 @@ export function PersonCompetencyDialog({
   const [newIssueDate, setNewIssueDate] = useState("");
   const [newExpiryDate, setNewExpiryDate] = useState("");
   const [newAffectsStatus, setNewAffectsStatus] = useState(true);
+  const [newWarningDays, setNewWarningDays] = useState<number>(30);
   const [newFile, setNewFile] = useState<File | null>(null);
   const [newDocumentUrl, setNewDocumentUrl] = useState<string | null>(null);
   const [newDocPickerOpen, setNewDocPickerOpen] = useState(false);
@@ -79,6 +80,7 @@ export function PersonCompetencyDialog({
   const [editIssueDate, setEditIssueDate] = useState("");
   const [editExpiryDate, setEditExpiryDate] = useState("");
   const [editAffectsStatus, setEditAffectsStatus] = useState(true);
+  const [editWarningDays, setEditWarningDays] = useState<number>(30);
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editDocumentUrl, setEditDocumentUrl] = useState<string | null>(null);
   const [editExistingFilUrl, setEditExistingFilUrl] = useState<string | null>(null);
@@ -232,7 +234,8 @@ export function PersonCompetencyDialog({
       utstedt_dato: newIssueDate || null,
       utloper_dato: newExpiryDate || null,
       påvirker_status: newAffectsStatus,
-    }).select('id').single();
+      varsel_dager: newWarningDays,
+    } as any).select('id').single();
 
     if (error) {
       console.error("Error adding competency:", error);
@@ -262,6 +265,7 @@ export function PersonCompetencyDialog({
     setNewIssueDate("");
     setNewExpiryDate("");
     setNewAffectsStatus(true);
+    setNewWarningDays(30);
     setNewFile(null);
     setNewDocumentUrl(null);
     if (newFileInputRef.current) newFileInputRef.current.value = '';
@@ -277,6 +281,7 @@ export function PersonCompetencyDialog({
     setEditIssueDate(competency.utstedt_dato || "");
     setEditExpiryDate(competency.utloper_dato || "");
     setEditAffectsStatus(competency.påvirker_status !== false);
+    setEditWarningDays(competency.varsel_dager ?? 30);
     setEditExistingFilUrl(competency.fil_url || null);
     setEditFile(null);
     setEditDocumentUrl(null);
@@ -290,6 +295,7 @@ export function PersonCompetencyDialog({
     setEditIssueDate("");
     setEditExpiryDate("");
     setEditAffectsStatus(true);
+    setEditWarningDays(30);
     setEditFile(null);
     setEditDocumentUrl(null);
     setEditExistingFilUrl(null);
@@ -319,6 +325,7 @@ export function PersonCompetencyDialog({
         utstedt_dato: editIssueDate || null,
         utloper_dato: editExpiryDate || null,
         påvirker_status: editAffectsStatus,
+        varsel_dager: editWarningDays,
         fil_url: filUrl,
       })
       .eq("id", competencyId);
