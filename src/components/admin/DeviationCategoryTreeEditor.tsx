@@ -68,14 +68,26 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
 
   const fetchRows = async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from("deviation_report_categories")
-      .select("id, parent_id, label, sort_order, company_id")
-      .eq("company_id", companyId);
-    if (error) {
-      toast.error("Kunne ikke laste kategorier");
+    if (readOnly) {
+      // Use RPC to bypass RLS for inherited categories from parent company
+      const { data, error } = await (supabase as any).rpc("get_effective_deviation_categories", {
+        _company_id: companyId,
+      });
+      if (error) {
+        toast.error("Kunne ikke laste kategorier");
+      } else {
+        setRows(data || []);
+      }
     } else {
-      setRows(data || []);
+      const { data, error } = await (supabase as any)
+        .from("deviation_report_categories")
+        .select("id, parent_id, label, sort_order, company_id")
+        .eq("company_id", companyId);
+      if (error) {
+        toast.error("Kunne ikke laste kategorier");
+      } else {
+        setRows(data || []);
+      }
     }
     setLoading(false);
   };

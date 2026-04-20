@@ -1189,7 +1189,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         <p className="text-xs font-medium text-muted-foreground mb-2">
                           Kategorier (arvet — kun lesetilgang):
                         </p>
-                        <DeviationCategoryTreeEditor companyId={parentDeviationCompanyId} readOnly />
+                        <DeviationCategoryTreeEditor companyId={companyId} readOnly />
                       </div>
                     )}
                   </div>

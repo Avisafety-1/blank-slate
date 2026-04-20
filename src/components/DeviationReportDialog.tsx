@@ -51,17 +51,10 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
     setFlightPhase(null);
     if (companyId) {
       (async () => {
-        // Resolve effective company: child departments inherit from parent
-        const { data: comp } = await supabase
-          .from("companies")
-          .select("parent_company_id")
-          .eq("id", companyId)
-          .maybeSingle();
-        const effectiveCompanyId = (comp as any)?.parent_company_id || companyId;
-        const { data } = await (supabase as any)
-          .from("deviation_report_categories")
-          .select("id, parent_id, label, sort_order")
-          .eq("company_id", effectiveCompanyId);
+        // Use RPC to fetch effective categories (handles parent inheritance via SECURITY DEFINER)
+        const { data } = await (supabase as any).rpc("get_effective_deviation_categories", {
+          _company_id: companyId,
+        });
         setCategories(data || []);
       })();
     }
