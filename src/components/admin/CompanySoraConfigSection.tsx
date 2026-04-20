@@ -460,7 +460,7 @@ export const CompanySoraConfigSection = () => {
         </div>
       )}
 
-      <fieldset disabled={lockedByParent} className={lockedByParent ? "opacity-60 pointer-events-none" : ""}>
+      <fieldset disabled={lockedByParent} className={lockedByParent ? "opacity-60 [&_input]:pointer-events-none [&_textarea]:pointer-events-none [&_button[role=switch]]:pointer-events-none [&_[role=slider]]:pointer-events-none" : ""}>
       {/* Kort 0: SORA-basert godkjenning */}
       <Collapsible open={approvalOpen} onOpenChange={setApprovalOpen}>
         <Card>
@@ -496,7 +496,7 @@ export const CompanySoraConfigSection = () => {
                 </div>
               )}
 
-              <fieldset disabled={approvalLockedByParent} className={approvalLockedByParent ? "opacity-60 pointer-events-none space-y-6" : "space-y-6"}>
+              <fieldset disabled={approvalLockedByParent} className={approvalLockedByParent ? "opacity-60 space-y-6 [&_input]:pointer-events-none [&_textarea]:pointer-events-none [&_button[role=switch]]:pointer-events-none [&_[role=slider]]:pointer-events-none" : "space-y-6"}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div>
