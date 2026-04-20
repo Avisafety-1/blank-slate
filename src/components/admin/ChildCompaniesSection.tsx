@@ -877,125 +877,206 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4">
             <div className="space-y-3">
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
-                <Label htmlFor="show-all-airspace" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Vis alle luftromsadvarsler på oppdragskortene</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert vises alle advarsler direkte i stedet for kun den viktigste med resten i en ekspanderbar liste
-                  </div>
-                </Label>
-                <Switch
-                  id="show-all-airspace"
-                  checked={showAllAirspaceWarnings}
-                  onCheckedChange={handleToggleAirspaceWarnings}
-                  disabled={savingSettings}
-                />
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
-                <Label htmlFor="hide-reporter" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Skjul identitet til rapportør av hendelser</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert vises ikke navnet på den som rapporterte hendelsen. Administratorer i moderselskapet kan fortsatt se rapportørens identitet.
-                  </div>
-                </Label>
-                <Switch
-                  id="hide-reporter"
-                  checked={hideReporterIdentity}
-                  onCheckedChange={handleToggleHideReporter}
-                  disabled={savingSettings}
-                />
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
-                <Label htmlFor="require-approval" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Oppdrag krever godkjenning</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    SORA-spesifikk godkjenningslogikk overstyrer dette valget
-                  </div>
-                </Label>
-                <Switch
-                  id="require-approval"
-                  checked={requireMissionApproval}
-                  onCheckedChange={handleToggleRequireMissionApproval}
-                  disabled={savingSettings}
-                />
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="require-sora" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Krev SORA på alle oppdrag</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Alle oppdrag må ha gjennomført SORA-analyse for å kunne startes eller godkjennes. Gjelder ikke når SORA-basert godkjenning er aktivert.
+              {isChildDept && (
+                <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 flex items-start gap-2">
+                  <Lock className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="text-xs">
+                    <div className="font-medium text-foreground">Du ser innstillinger for {parentCompanyName}</div>
+                    <div className="text-muted-foreground mt-0.5">
+                      Felt merket med <Lock className="w-3 h-3 inline align-text-bottom" /> «Arvet fra {parentNavn}» styres av morselskapet og kan ikke endres her. Andre felt kan du overstyre selv.
                     </div>
-                  </Label>
-                  <Switch
-                    id="require-sora"
-                    checked={requireSoraOnMissions}
-                    onCheckedChange={handleToggleRequireSora}
-                    disabled={savingSettings || soraApprovalEnabled}
-                  />
+                  </div>
                 </div>
-                {requireSoraOnMissions && (
-                  <div className="pl-1 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Antall påkrevde steg:</p>
-                    <RadioGroup
-                      value={String(requireSoraSteps)}
-                      onValueChange={(v) => handleChangeSoraSteps(Number(v))}
-                      className="flex gap-4"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <RadioGroupItem value="1" id="sora-step-1" />
-                        <Label htmlFor="sora-step-1" className="text-xs cursor-pointer">1 steg (AI-vurdering)</Label>
+              )}
+
+              {/* Vis alle luftromsadvarsler */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_airspace_warnings;
+                const value = locked ? inherited!.show_all_airspace_warnings : showAllAirspaceWarnings;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                    <Label htmlFor="show-all-airspace" className="flex-1 cursor-pointer pr-4">
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Vis alle luftromsadvarsler på oppdragskortene
+                        {locked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <RadioGroupItem value="2" id="sora-step-2" />
-                        <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Når aktivert vises alle advarsler direkte i stedet for kun den viktigste med resten i en ekspanderbar liste
                       </div>
-                    </RadioGroup>
+                    </Label>
+                    <Switch
+                      id="show-all-airspace"
+                      checked={value}
+                      onCheckedChange={handleToggleAirspaceWarnings}
+                      disabled={savingSettings || locked}
+                    />
                   </div>
-                )}
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm flex items-center gap-1.5">
-                      <AlertTriangle className="w-4 h-4" />
-                      Avviksrapport ved flytur
-                      {parentDeviationCompanyId && (
-                        <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground border rounded px-1.5 py-0.5">
-                          Arvet fra morselskap
-                        </span>
-                      )}
+                );
+              })()}
+
+              {/* Skjul rapportør */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_hide_reporter;
+                const value = locked ? inherited!.hide_reporter_identity : hideReporterIdentity;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                    <Label htmlFor="hide-reporter" className="flex-1 cursor-pointer pr-4">
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Skjul identitet til rapportør av hendelser
+                        {locked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Når aktivert vises ikke navnet på den som rapporterte hendelsen. Administratorer i moderselskapet kan fortsatt se rapportørens identitet.
+                      </div>
+                    </Label>
+                    <Switch
+                      id="hide-reporter"
+                      checked={value}
+                      onCheckedChange={handleToggleHideReporter}
+                      disabled={savingSettings || locked}
+                    />
+                  </div>
+                );
+              })()}
+
+              {/* Krev godkjenning */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_mission_approval;
+                const value = locked ? inherited!.require_mission_approval : requireMissionApproval;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                    <Label htmlFor="require-approval" className="flex-1 cursor-pointer pr-4">
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Oppdrag krever godkjenning
+                        {locked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        SORA-spesifikk godkjenningslogikk overstyrer dette valget
+                      </div>
+                    </Label>
+                    <Switch
+                      id="require-approval"
+                      checked={value}
+                      onCheckedChange={handleToggleRequireMissionApproval}
+                      disabled={savingSettings || locked}
+                    />
+                  </div>
+                );
+              })()}
+
+              {/* Krev SORA */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_sora_required;
+                const value = locked ? inherited!.require_sora_on_missions : requireSoraOnMissions;
+                const stepsValue = locked ? inherited!.require_sora_steps : requireSoraSteps;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="require-sora" className="flex-1 cursor-pointer pr-4">
+                        <div className="font-medium text-sm flex items-center gap-1.5">
+                          Krev SORA på alle oppdrag
+                          {locked && (
+                            <Badge variant="secondary" className="text-[10px] gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Alle oppdrag må ha gjennomført SORA-analyse for å kunne startes eller godkjennes. Gjelder ikke når SORA-basert godkjenning er aktivert.
+                        </div>
+                      </Label>
+                      <Switch
+                        id="require-sora"
+                        checked={value}
+                        onCheckedChange={handleToggleRequireSora}
+                        disabled={savingSettings || soraApprovalEnabled || locked}
+                      />
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {parentDeviationCompanyId
-                        ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
-                        : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                    {value && (
+                      <div className="pl-1 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Antall påkrevde steg:</p>
+                        <RadioGroup
+                          value={String(stepsValue)}
+                          onValueChange={(v) => handleChangeSoraSteps(Number(v))}
+                          className="flex gap-4"
+                          disabled={locked}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="1" id="sora-step-1" disabled={locked} />
+                            <Label htmlFor="sora-step-1" className="text-xs cursor-pointer">1 steg (AI-vurdering)</Label>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="2" id="sora-step-2" disabled={locked} />
+                            <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Avviksrapport */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_deviation_report;
+                const value = locked ? inherited!.deviation_report_enabled : deviationReportEnabled;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
+                        <div className="font-medium text-sm flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4" />
+                          Avviksrapport ved flytur
+                          {locked && (
+                            <Badge variant="secondary" className="text-[10px] gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {locked
+                            ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
+                            : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                        </div>
+                      </Label>
+                      <Switch
+                        id="deviation-report"
+                        checked={value}
+                        onCheckedChange={handleToggleDeviationReport}
+                        disabled={savingSettings || locked}
+                      />
                     </div>
-                  </Label>
-                  <Switch
-                    id="deviation-report"
-                    checked={deviationReportEnabled}
-                    onCheckedChange={handleToggleDeviationReport}
-                    disabled={savingSettings || !!parentDeviationCompanyId}
-                  />
-                </div>
-                {deviationReportEnabled && companyId && !parentDeviationCompanyId && (
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      Kategorier (ubegrenset antall nivåer):
-                    </p>
-                    <DeviationCategoryTreeEditor companyId={companyId} />
+                    {value && companyId && !locked && (
+                      <div className="pt-2 border-t border-border/50">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">
+                          Kategorier (ubegrenset antall nivåer):
+                        </p>
+                        <DeviationCategoryTreeEditor companyId={companyId} />
+                      </div>
+                    )}
+                    {value && locked && parentDeviationCompanyId && (
+                      <div className="pt-2 border-t border-border/50">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">
+                          Kategorier (arvet — kun lesetilgang):
+                        </p>
+                        <DeviationCategoryTreeEditor companyId={parentDeviationCompanyId} readOnly />
+                      </div>
+                    )}
                   </div>
-                )}
-                {deviationReportEnabled && parentDeviationCompanyId && (
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      Kategorier (arvet — kun lesetilgang):
-                    </p>
-                    <DeviationCategoryTreeEditor companyId={parentDeviationCompanyId} readOnly />
-                  </div>
-                )}
-              </div>
+                );
+              })()}
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <Label className="flex-1">
                   <div className="font-medium text-sm">Standard SORA-buffersone</div>
