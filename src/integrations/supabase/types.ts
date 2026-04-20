@@ -5466,6 +5466,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_effective_flight_alert_config: {
+        Args: { _company_id: string }
+        Returns: Json
+      }
       get_fh2_token: {
         Args: { p_company_id: string; p_key: string }
         Returns: string
