@@ -460,7 +460,7 @@ export const CompanySoraConfigSection = () => {
         </div>
       )}
 
-      <fieldset disabled={lockedByParent} className={lockedByParent ? "opacity-60 pointer-events-none" : ""}>
+      <fieldset disabled={lockedByParent} className={lockedByParent ? "opacity-60 [&_input]:pointer-events-none [&_textarea]:pointer-events-none [&_button[role=switch]]:pointer-events-none [&_[role=slider]]:pointer-events-none" : ""}>
       {/* Kort 0: SORA-basert godkjenning */}
       <Collapsible open={approvalOpen} onOpenChange={setApprovalOpen}>
         <Card>
