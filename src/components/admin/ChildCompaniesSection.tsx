@@ -314,6 +314,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       const parentId = (data as any).parent_company_id as string | null;
       setParentDeviationCompanyId(parentId);
       setIsChildDept(!!parentId);
+      // Reflect own propagation state for parent company
+      const ownPropagate = !!(
+        (data as any).propagate_airspace_warnings ||
+        (data as any).propagate_hide_reporter ||
+        (data as any).propagate_mission_approval ||
+        (data as any).propagate_sora_required ||
+        (data as any).propagate_deviation_report
+      );
+      setApplySettingsToChildren(ownPropagate);
 
       // Load parent inheritance data (propagation flags + values)
       if (parentId) {
