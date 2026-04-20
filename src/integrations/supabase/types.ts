@@ -414,6 +414,7 @@ export type Database = {
           propagate_hide_reporter: boolean
           propagate_mission_approval: boolean
           propagate_mission_roles: boolean
+          propagate_sora_approval: boolean
           propagate_sora_buffer_mode: boolean
           propagate_sora_config: boolean
           propagate_sora_required: boolean
@@ -462,6 +463,7 @@ export type Database = {
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
           propagate_mission_roles?: boolean
+          propagate_sora_approval?: boolean
           propagate_sora_buffer_mode?: boolean
           propagate_sora_config?: boolean
           propagate_sora_required?: boolean
@@ -510,6 +512,7 @@ export type Database = {
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
           propagate_mission_roles?: boolean
+          propagate_sora_approval?: boolean
           propagate_sora_buffer_mode?: boolean
           propagate_sora_config?: boolean
           propagate_sora_required?: boolean
@@ -5467,6 +5470,10 @@ export type Database = {
         }
       }
       get_effective_flight_alert_config: {
+        Args: { _company_id: string }
+        Returns: Json
+      }
+      get_effective_sora_approval_config: {
         Args: { _company_id: string }
         Returns: Json
       }
