@@ -338,6 +338,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setApplySettingsToChildren(ownPropagate);
       setApplyRolesToChildren(!!(data as any).propagate_mission_roles);
       setApplyAlertsToChildren(!!(data as any).propagate_flight_alerts);
+      setApplySoraDefaultsToChildren(!!(data as any).propagate_sora_buffer_mode);
 
       // Load parent inheritance data (propagation flags + values)
       if (parentId) {
