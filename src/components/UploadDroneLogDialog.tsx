@@ -2770,6 +2770,11 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                   <p className="text-xs text-muted-foreground mt-1">
                     {hasSavedCredentials ? savedDjiEmail : t('dronelog.djiAccountDesc', 'Hent fra skyen')}
                   </p>
+                  {hasSavedCredentials && (
+                    <p className={`text-[11px] mt-1 ${enableAutoSync ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {enableAutoSync ? 'Auto-sync: På' : 'Auto-sync: Av'}
+                    </p>
+                  )}
                 </div>
                 {hasSavedCredentials && (
                   <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" title="Innlogget" />
