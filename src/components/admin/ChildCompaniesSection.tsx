@@ -1154,21 +1154,23 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   />
                 </div>
               </div>
-              {/* Settings propagation toggle */}
-              <div className="border-t pt-2 flex items-center justify-between">
-                <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert vil selskapsinnstillingene også settes på alle avdelinger
-                  </div>
-                </Label>
-                <Switch
-                  id="apply-settings-children"
-                  checked={applySettingsToChildren}
-                  onCheckedChange={handleToggleApplySettingsToChildren}
-                  disabled={savingSettings}
-                />
-              </div>
+              {/* Settings propagation toggle — only for parent companies */}
+              {!isChildDept && (
+                <div className="border-t pt-2 flex items-center justify-between">
+                  <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert settes innstillingene på alle avdelinger og avdelingene kan ikke overstyre dem
+                    </div>
+                  </Label>
+                  <Switch
+                    id="apply-settings-children"
+                    checked={applySettingsToChildren}
+                    onCheckedChange={handleToggleApplySettingsToChildren}
+                    disabled={savingSettings}
+                  />
+                </div>
+              )}
               {/* SafeSky callsign */}
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <div className="space-y-1">
