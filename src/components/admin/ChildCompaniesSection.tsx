@@ -1392,50 +1392,67 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Ny rolle (f.eks. Ansvarlig pilot)"
-                    value={newRoleName}
-                    onChange={(e) => setNewRoleName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddRole()}
-                    className="h-8 text-sm"
-                  />
-                  <Button size="sm" onClick={handleAddRole} disabled={savingRole || !newRoleName.trim()} className="h-8">
-                    <Plus className="h-3.5 w-3.5 mr-1" />
-                    Legg til
-                  </Button>
-                </div>
-                {missionRoles.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {missionRoles.map((role) => (
-                      <div key={role.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
-                        <span>{role.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteRole(role.id)}
-                          className="hover:bg-destructive/20 rounded-full p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                {/* Locked banner for child departments */}
+                {isChildDept && !!inherited?.propagate_mission_roles && (
+                  <div className="flex items-center gap-2 p-2 rounded-md border border-primary/40 bg-primary/5">
+                    <Lock className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                    <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
                   </div>
                 )}
-                {/* Roles propagation toggle */}
-                <div className="border-t pt-2 flex items-center justify-between">
-                  <Label htmlFor="apply-roles-children" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Når aktivert kopieres rollene til alle avdelinger i selskapet
+                {!(isChildDept && !!inherited?.propagate_mission_roles) && (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ny rolle (f.eks. Ansvarlig pilot)"
+                      value={newRoleName}
+                      onChange={(e) => setNewRoleName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddRole()}
+                      className="h-8 text-sm"
+                    />
+                    <Button size="sm" onClick={handleAddRole} disabled={savingRole || !newRoleName.trim()} className="h-8">
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Legg til
+                    </Button>
+                  </div>
+                )}
+                {(() => {
+                  const rolesLocked = isChildDept && !!inherited?.propagate_mission_roles;
+                  const displayRoles = rolesLocked ? (inherited?.mission_roles || []) : missionRoles;
+                  return displayRoles.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {displayRoles.map((role) => (
+                        <div key={role.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
+                          <span>{role.name}</span>
+                          {!rolesLocked && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRole(role.id)}
+                              className="hover:bg-destructive/20 rounded-full p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  </Label>
-                  <Switch
-                    id="apply-roles-children"
-                    checked={applyRolesToChildren}
-                    onCheckedChange={handleToggleApplyRolesToChildren}
-                    disabled={savingSettings}
-                  />
-                </div>
+                  ) : null;
+                })()}
+                {/* Roles propagation toggle - only for parent */}
+                {!isChildDept && (
+                  <div className="border-t pt-2 flex items-center justify-between">
+                    <Label htmlFor="apply-roles-children" className="flex-1 cursor-pointer pr-4">
+                      <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Når aktivert kopieres rollene til alle avdelinger i selskapet
+                      </div>
+                    </Label>
+                    <Switch
+                      id="apply-roles-children"
+                      checked={applyRolesToChildren}
+                      onCheckedChange={handleToggleApplyRolesToChildren}
+                      disabled={savingSettings}
+                    />
+                  </div>
+                )}
               </div>
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <div className="flex items-center gap-2">
@@ -1452,78 +1469,101 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <div className="space-y-2">
-                  {ALERT_TYPES.map((alert) => {
-                    const current = flightAlerts[alert.key];
-                    const enabled = current?.enabled ?? false;
-                    const thresholdValue = current?.threshold_value ?? alert.defaultValue;
-                    return (
-                      <div key={alert.key} className="flex items-center gap-2 flex-wrap">
-                        <Switch
-                          checked={enabled}
-                          onCheckedChange={(checked) => handleToggleAlert(alert.key, checked)}
-                          className="shrink-0"
-                        />
-                        <span className="text-sm min-w-0">{alert.label}</span>
-                        {alert.hasThreshold && (
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              value={thresholdValue ?? ''}
-                              onChange={(e) => handleChangeThreshold(alert.key, parseFloat(e.target.value) || 0)}
-                              className="h-7 w-16 text-xs"
-                              step={alert.key === 'battery_cell_deviation' ? 0.1 : 1}
-                              disabled={!enabled}
-                            />
-                            <span className="text-xs text-muted-foreground">{alert.unit}</span>
+                {/* Locked banner for child departments */}
+                {isChildDept && !!inherited?.propagate_flight_alerts && (
+                  <div className="flex items-center gap-2 p-2 rounded-md border border-primary/40 bg-primary/5">
+                    <Lock className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                    <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
+                  </div>
+                )}
+                {(() => {
+                  const alertsLocked = isChildDept && !!inherited?.propagate_flight_alerts;
+                  const displayAlerts = alertsLocked ? inherited!.flight_alerts : flightAlerts;
+                  const displayRecipients = alertsLocked ? inherited!.alert_recipients : alertRecipients;
+                  return (
+                    <>
+                      <div className="space-y-2">
+                        {ALERT_TYPES.map((alert) => {
+                          const current = displayAlerts[alert.key];
+                          const enabled = current?.enabled ?? false;
+                          const thresholdValue = current?.threshold_value ?? alert.defaultValue;
+                          return (
+                            <div key={alert.key} className="flex items-center gap-2 flex-wrap">
+                              <Switch
+                                checked={enabled}
+                                onCheckedChange={(checked) => handleToggleAlert(alert.key, checked)}
+                                className="shrink-0"
+                                disabled={alertsLocked}
+                              />
+                              <span className="text-sm min-w-0">{alert.label}</span>
+                              {alert.hasThreshold && (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    value={thresholdValue ?? ''}
+                                    onChange={(e) => handleChangeThreshold(alert.key, parseFloat(e.target.value) || 0)}
+                                    className="h-7 w-16 text-xs"
+                                    step={alert.key === 'battery_cell_deviation' ? 0.1 : 1}
+                                    disabled={!enabled || alertsLocked}
+                                  />
+                                  <span className="text-xs text-muted-foreground">{alert.unit}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="border-t pt-2 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Mottakere av varsler:</p>
+                        {!alertsLocked && (
+                          <SearchablePersonSelect
+                            persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
+                            value={null}
+                            onValueChange={handleAddRecipient}
+                            placeholder="Legg til mottaker..."
+                            searchPlaceholder="Søk person..."
+                            emptyText="Ingen tilgjengelige personer."
+                          />
+                        )}
+                        {displayRecipients.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {displayRecipients.map((r) => (
+                              <div key={r.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
+                                <span>{r.full_name || 'Ukjent bruker'}</span>
+                                {!alertsLocked && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveRecipient(r.id)}
+                                    className="hover:bg-destructive/20 rounded-full p-0.5"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-                <div className="border-t pt-2 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Mottakere av varsler:</p>
-                  <SearchablePersonSelect
-                    persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
-                    value={null}
-                    onValueChange={handleAddRecipient}
-                    placeholder="Legg til mottaker..."
-                    searchPlaceholder="Søk person..."
-                    emptyText="Ingen tilgjengelige personer."
-                  />
-                  {alertRecipients.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {alertRecipients.map((r) => (
-                        <div key={r.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
-                          <span>{r.full_name || 'Ukjent bruker'}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveRecipient(r.id)}
-                            className="hover:bg-destructive/20 rounded-full p-0.5"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {/* Alerts propagation toggle */}
-                <div className="border-t pt-2 flex items-center justify-between">
-                  <Label htmlFor="apply-alerts-children" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Når aktivert kopieres varsler og mottakere til alle avdelinger
-                    </div>
-                  </Label>
-                  <Switch
-                    id="apply-alerts-children"
-                    checked={applyAlertsToChildren}
-                    onCheckedChange={handleToggleApplyAlertsToChildren}
-                    disabled={savingSettings}
-                  />
-                </div>
+                    </>
+                  );
+                })()}
+                {/* Alerts propagation toggle - only for parent */}
+                {!isChildDept && (
+                  <div className="border-t pt-2 flex items-center justify-between">
+                    <Label htmlFor="apply-alerts-children" className="flex-1 cursor-pointer pr-4">
+                      <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Når aktivert kopieres varsler og mottakere til alle avdelinger
+                      </div>
+                    </Label>
+                    <Switch
+                      id="apply-alerts-children"
+                      checked={applyAlertsToChildren}
+                      onCheckedChange={handleToggleApplyAlertsToChildren}
+                      disabled={savingSettings}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </CollapsibleContent>
