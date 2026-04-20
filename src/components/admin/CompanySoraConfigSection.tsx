@@ -162,15 +162,28 @@ export const CompanySoraConfigSection = () => {
 
       const parentId = company?.parent_company_id || null;
       setIsChild(!!parentId);
+      setPropagateToChildren(!!company?.propagate_sora_config);
 
-      // Fetch parent name if child
-      if (parentId) {
-        const { data: parentCompany } = await supabase
+      // Check if this company has children (for propagation toggle)
+      if (!parentId) {
+        const { count } = await supabase
           .from("companies")
-          .select("navn")
+          .select("id", { count: "exact", head: true })
+          .eq("parent_company_id", companyId!);
+        setHasChildren((count || 0) > 0);
+      }
+
+      // Fetch parent name + check parent propagation flag
+      if (parentId) {
+        const { data: parentCompany } = await (supabase as any)
+          .from("companies")
+          .select("navn, propagate_sora_config")
           .eq("id", parentId)
           .maybeSingle();
         setParentName(parentCompany?.navn || "Morselskap");
+        if (parentCompany?.propagate_sora_config) {
+          setLockedByParent(true);
+        }
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
