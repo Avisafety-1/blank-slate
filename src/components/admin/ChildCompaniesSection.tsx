@@ -725,15 +725,29 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const handleToggleApplySettingsToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplySettingsToChildren(checked);
+    setSavingSettings(true);
+    // Persist propagation flags on this company so child departments know which fields are locked
+    await (supabase as any)
+      .from("companies")
+      .update({
+        propagate_airspace_warnings: checked,
+        propagate_hide_reporter: checked,
+        propagate_mission_approval: checked,
+        propagate_sora_required: checked,
+        propagate_deviation_report: checked,
+      })
+      .eq("id", companyId);
     if (checked) {
-      setSavingSettings(true);
       await supabase
         .from("companies")
         .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
         .eq("parent_company_id", companyId);
-      setSavingSettings(false);
-      toast.success("Selskapsinnstillinger anvendt på alle avdelinger");
+      toast.success("Selskapsinnstillinger anvendt på alle avdelinger og låst");
+    } else {
+      toast.success("Avdelinger kan nå overstyre innstillingene selv");
     }
+    setSavingSettings(false);
+    invalidateCompanySettingsCache();
   };
 
   const handleToggleApplyRolesToChildren = async (checked: boolean) => {
