@@ -1372,11 +1372,9 @@ const Admin = () => {
             </TabsContent>
           )}
 
-          {(isSuperAdmin || !isChildCompany) && (
-            <TabsContent value="child-companies" className="mt-4 sm:mt-8">
-              <ChildCompaniesSection departmentsEnabled={departmentsEnabled} />
-            </TabsContent>
-          )}
+          <TabsContent value="child-companies" className="mt-4 sm:mt-8">
+            <ChildCompaniesSection departmentsEnabled={departmentsEnabled} />
+          </TabsContent>
 
           {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
             <TabsContent value="calculator" className="mt-4 sm:mt-8">
