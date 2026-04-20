@@ -27,6 +27,7 @@ interface Competency {
   utloper_dato: string | null;
   påvirker_status?: boolean;
   fil_url?: string | null;
+  varsel_dager?: number | null;
 }
 
 interface Person {
