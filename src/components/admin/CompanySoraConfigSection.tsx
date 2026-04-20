@@ -151,11 +151,12 @@ export const CompanySoraConfigSection = () => {
     setParentName(null);
     setHasOwnConfig(false);
     setIsChild(false);
+    setLockedByParent(false);
     try {
       // Always check if this company is a child
-      const { data: company } = await supabase
+      const { data: company } = await (supabase as any)
         .from("companies")
-        .select("parent_company_id")
+        .select("parent_company_id, propagate_sora_config")
         .eq("id", companyId!)
         .maybeSingle();
 
