@@ -108,6 +108,9 @@ export const CompanySoraConfigSection = () => {
   const [hasChildren, setHasChildren] = useState(false);
   const [propagateToChildren, setPropagateToChildren] = useState(false);
   const [savingPropagate, setSavingPropagate] = useState(false);
+  const [propagateApproval, setPropagateApproval] = useState(false);
+  const [savingPropagateApproval, setSavingPropagateApproval] = useState(false);
+  const [approvalLockedByParent, setApprovalLockedByParent] = useState(false);
 
   const [approvalOpen, setApprovalOpen] = useState(true);
   const [hardstopOpen, setHardstopOpen] = useState(true);
