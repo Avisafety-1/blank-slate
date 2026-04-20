@@ -1,41 +1,41 @@
 
 
-## Plan: Fiks arv av avviksrapport-kategorier til avdelinger
+## Plan: Flylogg-varsler skal bruke arvet mottakerliste fra morselskap
 
 ### Diagnose
-Avdelinger ser «Ingen kategorier definert» selv om moderavdelingen har 34 kategorier. Årsak: RLS-policyen på `deviation_report_categories` tillater kun lesing av rader der `company_id` er i `get_user_visible_company_ids(auth.uid())`. Den funksjonen returnerer `eget selskap + barn`, men **ikke parent**. Dermed blir parent-kategoriene blokkert for avdelings-admin.
+`checkFlightAlerts` i `UploadDroneLogDialog.tsx` (linje 1755–1774) henter `company_flight_alerts` og `company_flight_alert_recipients` kun for avdelingens egen `companyId`. Det finnes ingen fallback til morselskapet og ingen sjekk på `propagate_flight_alerts`. Resultat: når en pilot logger flytur i avdeling B, går varselet kun til mottakere lagret på B — selv om morselskapet har «Gjelder for alle underavdelinger» aktivert.
 
-Dette forklarer også hvorfor `DeviationReportDialog` ikke fungerer for avdelinger (samme query, samme RLS-blokkering) — pop-upen kan vises tom eller hoppes over.
+Dagens propageringskopi i `ChildCompaniesSection` skriver alerts/recipients ned til avdelingene ved lagring, men:
+- Endringer på morselskapet etter kopi reflekteres ikke automatisk (ingen runtime-arv).
+- RLS hindrer trolig avdelingen i å lese parent's recipients direkte (samme mønster som vi nettopp løste for deviation categories).
 
-### Løsning: SECURITY DEFINER-funksjon for arvet kategorilesing
+### Løsning: Runtime-arv via SECURITY DEFINER RPC
 
-Lag en server-side funksjon som returnerer kategoriene fra effective company (parent hvis `propagate_deviation_report = true`, ellers eget selskap), og bruk den fra UI istedenfor direkte SELECT mot tabellen.
-
-**1. Ny database-funksjon `get_effective_deviation_categories(_company_id uuid)`**
+**1. Ny database-funksjon `get_effective_flight_alert_config(_company_id uuid)`**
 - `SECURITY DEFINER`, `STABLE`.
-- Slår opp `companies.parent_company_id` og parent's `propagate_deviation_report`.
-- Hvis avdeling og parent propagerer → returnerer parent's kategorier.
-- Ellers → returnerer egne kategorier.
-- Returnerer `setof deviation_report_categories` (id, parent_id, label, sort_order, company_id).
+- Slår opp `companies.parent_company_id` og parent's `propagate_flight_alerts`.
+- Hvis avdeling og parent propagerer → returner parent's alerts + recipients.
+- Ellers → returner egne.
+- Returnerer en JSON med to lister: `alerts` (alert_type, enabled, threshold_value) og `recipient_profile_ids` (uuid[]).
+- Adgangssjekk: `_company_id IN get_user_visible_company_ids(auth.uid())`.
 - GRANT EXECUTE til `authenticated`.
 
-Adgangssjekk i funksjonen: kun la brukeren kalle den hvis `_company_id IN get_user_visible_company_ids(auth.uid())` (slik at den ikke kan brukes til å lekke vilkårlige selskaper).
+**2. Bruk RPC i `UploadDroneLogDialog.checkFlightAlerts`**
+- Erstatt de to separate select-spørringene med ett `supabase.rpc("get_effective_flight_alert_config", { _company_id: companyId })`.
+- Filtrer alerts på `enabled = true` i klienten (eller direkte i SQL).
+- Hent profiles for `recipient_profile_ids` som før (allerede tilgjengelig via `profiles`-RLS).
 
-**2. Bruk funksjonen tre steder:**
-- `DeviationCategoryTreeEditor.tsx` (linje 71-74): Når `readOnly=true`, kall `supabase.rpc('get_effective_deviation_categories', { _company_id })` istedenfor direkte SELECT. (Editoren får ellers samme adgang som før i edit-modus.)
-- `DeviationReportDialog.tsx` (linje 61-64): Bytt til RPC for å hente kategoriene som vises i pop-upen for piloten.
-- `LogFlightTimeDialog.tsx` (linje 902-906): Bytt count-spørringen til RPC + `.length > 0`-sjekk (eller en egen `has_effective_deviation_categories(_company_id)`-funksjon for raskere telling).
-
-**3. Liten justering i `ChildCompaniesSection.tsx`**
-Send `companyId` (avdelingens egen id) — ikke `parentDeviationCompanyId` — inn til editoren i låst modus. Editoren bruker RPC og finner selv riktig kilde basert på propagate-flagget. Dette gir også korrekt fallback hvis parent senere skrur av propagering.
-
-### Filer som endres
-- Migrasjon: ny funksjon `get_effective_deviation_categories` (+ ev. `has_effective_deviation_categories`).
-- `src/components/admin/DeviationCategoryTreeEditor.tsx` (RPC i readOnly-modus).
-- `src/components/DeviationReportDialog.tsx` (RPC for kategorier).
-- `src/components/LogFlightTimeDialog.tsx` (RPC for sjekk om kategorier finnes).
-- `src/components/admin/ChildCompaniesSection.tsx` (send `companyId` til readOnly-editor).
+**3. Fjern unødvendig kopiering i `ChildCompaniesSection` (valgfritt opprydd)**
+- Når `propagate_flight_alerts = true` settes, trenger vi ikke lenger skrive alerts/recipients ned til avdelinger — RPC-en henter parent direkte.
+- Behold dagens kopi som fallback for bakoverkompatibilitet, men ikke kritisk.
 
 ### Resultat
-Avdelings-admin ser parent-kategoriene som «arvet — kun lesetilgang». Avviksrapport-pop-upen viser de samme kategoriene til piloten i avdelingen og kan lagres normalt.
+Flylogg-varsler trigget i en avdeling sjekker først om morselskapet har `propagate_flight_alerts = true`. Hvis ja, brukes morselskapets terskler og mottakerliste — ingen behov for å manuelt kopiere ned eller re-lagre avdelinger når mottakere endres på toppen.
+
+### Filer som endres
+- Migrasjon: ny funksjon `get_effective_flight_alert_config(uuid)`.
+- `src/components/UploadDroneLogDialog.tsx` (bytt to selects til ett RPC-kall i `checkFlightAlerts`).
+
+### Svar på spørsmålet ditt
+**Nei, slik det fungerer i dag** får ikke mottakere på morselskapet varsler når terskler overskrides i en avdeling — selv med «Gjelder for alle underavdelinger» på. Planen over fikser nettopp dette.
 
