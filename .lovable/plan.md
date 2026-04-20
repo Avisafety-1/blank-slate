@@ -1,30 +1,41 @@
 
 
-## Plan: Legg til arv-mekanisme for SafeSky callsign
+## Plan: Fiks arv av avviksrapport-kategorier til avdelinger
 
-SafeSky callsign-blokken har allerede en «Gjelder for alle underavdelinger»-toggle og `safesky_callsign_propagate`-kolonnen i databasen, men mangler låsemekanismen for avdelinger (child departments). Ingen DB-migrasjon nødvendig.
+### Diagnose
+Avdelinger ser «Ingen kategorier definert» selv om moderavdelingen har 34 kategorier. Årsak: RLS-policyen på `deviation_report_categories` tillater kun lesing av rader der `company_id` er i `get_user_visible_company_ids(auth.uid())`. Den funksjonen returnerer `eget selskap + barn`, men **ikke parent**. Dermed blir parent-kategoriene blokkert for avdelings-admin.
 
-### Endringer i `ChildCompaniesSection.tsx`
+Dette forklarer også hvorfor `DeviationReportDialog` ikke fungerer for avdelinger (samme query, samme RLS-blokkering) — pop-upen kan vises tom eller hoppes over.
 
-**1. Utvid parent-fetch med callsign-data:**
-- Legg til `safesky_callsign_prefix`, `safesky_callsign_variable`, `safesky_callsign_propagate` i parent-select (linje 348).
-- Legg til disse tre feltene i `inherited`-state-objektet (linje 386-409).
+### Løsning: SECURITY DEFINER-funksjon for arvet kategorilesing
 
-**2. Lås UI for child departments:**
-- Beregn `callsignLocked = isChildDept && !!inherited?.safesky_callsign_propagate`.
-- Når låst: vis Lock-badge + «Arvet fra {parentNavn}» banner øverst i SafeSky-blokken.
-- Overstyr visningsverdiene med parent-verdiene (`inherited.safesky_callsign_prefix`, `inherited.safesky_callsign_variable`).
-- Deaktiver Input, RadioGroup og Switch, skjul «Lagre»-knappen.
-- Skjul «Gjelder for alle underavdelinger»-toggle for child departments.
+Lag en server-side funksjon som returnerer kategoriene fra effective company (parent hvis `propagate_deviation_report = true`, ellers eget selskap), og bruk den fra UI istedenfor direkte SELECT mot tabellen.
 
-**3. Oppdater `handleSaveCallsign`:**
-- Legg til `propagate_sora_buffer_mode`-lignende flagg-persistens: når `callsignPropagate` settes på, pusher prefix og variable til alle barn (allerede implementert), men nå setter vi også `safesky_callsign_propagate = true` eksplisitt som propageringsflagg slik at barnas UI låses.
+**1. Ny database-funksjon `get_effective_deviation_categories(_company_id uuid)`**
+- `SECURITY DEFINER`, `STABLE`.
+- Slår opp `companies.parent_company_id` og parent's `propagate_deviation_report`.
+- Hvis avdeling og parent propagerer → returnerer parent's kategorier.
+- Ellers → returnerer egne kategorier.
+- Returnerer `setof deviation_report_categories` (id, parent_id, label, sort_order, company_id).
+- GRANT EXECUTE til `authenticated`.
+
+Adgangssjekk i funksjonen: kun la brukeren kalle den hvis `_company_id IN get_user_visible_company_ids(auth.uid())` (slik at den ikke kan brukes til å lekke vilkårlige selskaper).
+
+**2. Bruk funksjonen tre steder:**
+- `DeviationCategoryTreeEditor.tsx` (linje 71-74): Når `readOnly=true`, kall `supabase.rpc('get_effective_deviation_categories', { _company_id })` istedenfor direkte SELECT. (Editoren får ellers samme adgang som før i edit-modus.)
+- `DeviationReportDialog.tsx` (linje 61-64): Bytt til RPC for å hente kategoriene som vises i pop-upen for piloten.
+- `LogFlightTimeDialog.tsx` (linje 902-906): Bytt count-spørringen til RPC + `.length > 0`-sjekk (eller en egen `has_effective_deviation_categories(_company_id)`-funksjon for raskere telling).
+
+**3. Liten justering i `ChildCompaniesSection.tsx`**
+Send `companyId` (avdelingens egen id) — ikke `parentDeviationCompanyId` — inn til editoren i låst modus. Editoren bruker RPC og finner selv riktig kilde basert på propagate-flagget. Dette gir også korrekt fallback hvis parent senere skrur av propagering.
 
 ### Filer som endres
-- `src/components/admin/ChildCompaniesSection.tsx` (utvid inherited-state, lås SafeSky-blokken for barn).
+- Migrasjon: ny funksjon `get_effective_deviation_categories` (+ ev. `has_effective_deviation_categories`).
+- `src/components/admin/DeviationCategoryTreeEditor.tsx` (RPC i readOnly-modus).
+- `src/components/DeviationReportDialog.tsx` (RPC for kategorier).
+- `src/components/LogFlightTimeDialog.tsx` (RPC for sjekk om kategorier finnes).
+- `src/components/admin/ChildCompaniesSection.tsx` (send `companyId` til readOnly-editor).
 
-### UI-detaljer (konsistent med resten)
-- Badge: `secondary` med `Lock`-ikon.
-- Banner: `border-primary/40 bg-primary/5` med Lock-ikon + «Styres av morselskapet ({parentNavn})».
-- Deaktiverte felter får `disabled`-attributt.
+### Resultat
+Avdelings-admin ser parent-kategoriene som «arvet — kun lesetilgang». Avviksrapport-pop-upen viser de samme kategoriene til piloten i avdelingen og kan lagres normalt.
 
