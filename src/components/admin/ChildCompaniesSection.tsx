@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
 import { FH2DevicesSection } from "./FH2DevicesSection";
-import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle, Lock } from "lucide-react";
 import { DeviationCategoryTreeEditor } from "./DeviationCategoryTreeEditor";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -68,6 +68,23 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
   const [parentDeviationCompanyId, setParentDeviationCompanyId] = useState<string | null>(null);
+  // Inheritance: when current company has a parent that propagates a setting,
+  // the field is locked and shows the parent's value.
+  const [isChildDept, setIsChildDept] = useState(false);
+  const [parentNavn, setParentNavn] = useState<string>("");
+  const [inherited, setInherited] = useState<{
+    show_all_airspace_warnings: boolean;
+    hide_reporter_identity: boolean;
+    require_mission_approval: boolean;
+    require_sora_on_missions: boolean;
+    require_sora_steps: number;
+    deviation_report_enabled: boolean;
+    propagate_airspace_warnings: boolean;
+    propagate_hide_reporter: boolean;
+    propagate_mission_approval: boolean;
+    propagate_sora_required: boolean;
+    propagate_deviation_report: boolean;
+  } | null>(null);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
   const [defaultFlightAltitudeM, setDefaultFlightAltitudeM] = useState(30);
