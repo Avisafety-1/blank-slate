@@ -299,9 +299,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
   const fetchParentSettings = async () => {
     if (!companyId) return;
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report")
       .eq("id", companyId)
       .single();
     if (data) {
