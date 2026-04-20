@@ -408,6 +408,11 @@ export type Database = {
           navn: string
           org_nummer: string | null
           parent_company_id: string | null
+          propagate_airspace_warnings: boolean
+          propagate_deviation_report: boolean
+          propagate_hide_reporter: boolean
+          propagate_mission_approval: boolean
+          propagate_sora_required: boolean
           registration_code: string
           require_mission_approval: boolean
           require_sora_on_missions: boolean
@@ -447,6 +452,11 @@ export type Database = {
           navn: string
           org_nummer?: string | null
           parent_company_id?: string | null
+          propagate_airspace_warnings?: boolean
+          propagate_deviation_report?: boolean
+          propagate_hide_reporter?: boolean
+          propagate_mission_approval?: boolean
+          propagate_sora_required?: boolean
           registration_code: string
           require_mission_approval?: boolean
           require_sora_on_missions?: boolean
@@ -486,6 +496,11 @@ export type Database = {
           navn?: string
           org_nummer?: string | null
           parent_company_id?: string | null
+          propagate_airspace_warnings?: boolean
+          propagate_deviation_report?: boolean
+          propagate_hide_reporter?: boolean
+          propagate_mission_approval?: boolean
+          propagate_sora_required?: boolean
           registration_code?: string
           require_mission_approval?: boolean
           require_sora_on_missions?: boolean

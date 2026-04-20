@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
 import { FH2DevicesSection } from "./FH2DevicesSection";
-import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle, Lock } from "lucide-react";
 import { DeviationCategoryTreeEditor } from "./DeviationCategoryTreeEditor";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -68,6 +68,23 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
   const [parentDeviationCompanyId, setParentDeviationCompanyId] = useState<string | null>(null);
+  // Inheritance: when current company has a parent that propagates a setting,
+  // the field is locked and shows the parent's value.
+  const [isChildDept, setIsChildDept] = useState(false);
+  const [parentNavn, setParentNavn] = useState<string>("");
+  const [inherited, setInherited] = useState<{
+    show_all_airspace_warnings: boolean;
+    hide_reporter_identity: boolean;
+    require_mission_approval: boolean;
+    require_sora_on_missions: boolean;
+    require_sora_steps: number;
+    deviation_report_enabled: boolean;
+    propagate_airspace_warnings: boolean;
+    propagate_hide_reporter: boolean;
+    propagate_mission_approval: boolean;
+    propagate_sora_required: boolean;
+    propagate_deviation_report: boolean;
+  } | null>(null);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
   const [defaultFlightAltitudeM, setDefaultFlightAltitudeM] = useState(30);
@@ -282,9 +299,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
   const fetchParentSettings = async () => {
     if (!companyId) return;
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -294,17 +311,46 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
-      // For deviation report: child departments inherit toggle from parent
       const parentId = (data as any).parent_company_id as string | null;
       setParentDeviationCompanyId(parentId);
+      setIsChildDept(!!parentId);
+      // Reflect own propagation state for parent company
+      const ownPropagate = !!(
+        (data as any).propagate_airspace_warnings ||
+        (data as any).propagate_hide_reporter ||
+        (data as any).propagate_mission_approval ||
+        (data as any).propagate_sora_required ||
+        (data as any).propagate_deviation_report
+      );
+      setApplySettingsToChildren(ownPropagate);
+
+      // Load parent inheritance data (propagation flags + values)
       if (parentId) {
-        const { data: parent } = await supabase
+        const { data: parent } = await (supabase as any)
           .from("companies")
-          .select("deviation_report_enabled")
+          .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report")
           .eq("id", parentId)
           .maybeSingle();
-        setDeviationReportEnabled((parent as any)?.deviation_report_enabled ?? false);
+        if (parent) {
+          setParentNavn(parent.navn || "");
+          setInherited({
+            show_all_airspace_warnings: parent.show_all_airspace_warnings ?? false,
+            hide_reporter_identity: parent.hide_reporter_identity ?? false,
+            require_mission_approval: parent.require_mission_approval ?? false,
+            require_sora_on_missions: parent.require_sora_on_missions ?? false,
+            require_sora_steps: parent.require_sora_steps ?? 1,
+            deviation_report_enabled: parent.deviation_report_enabled ?? false,
+            propagate_airspace_warnings: parent.propagate_airspace_warnings ?? false,
+            propagate_hide_reporter: parent.propagate_hide_reporter ?? false,
+            propagate_mission_approval: parent.propagate_mission_approval ?? false,
+            propagate_sora_required: parent.propagate_sora_required ?? false,
+            propagate_deviation_report: parent.propagate_deviation_report ?? false,
+          });
+          setDeviationReportEnabled(parent.deviation_report_enabled ?? false);
+        }
       } else {
+        setInherited(null);
+        setParentNavn("");
         setDeviationReportEnabled((data as any).deviation_report_enabled ?? false);
       }
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
@@ -688,15 +734,29 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const handleToggleApplySettingsToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplySettingsToChildren(checked);
+    setSavingSettings(true);
+    // Persist propagation flags on this company so child departments know which fields are locked
+    await (supabase as any)
+      .from("companies")
+      .update({
+        propagate_airspace_warnings: checked,
+        propagate_hide_reporter: checked,
+        propagate_mission_approval: checked,
+        propagate_sora_required: checked,
+        propagate_deviation_report: checked,
+      })
+      .eq("id", companyId);
     if (checked) {
-      setSavingSettings(true);
       await supabase
         .from("companies")
         .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
         .eq("parent_company_id", companyId);
-      setSavingSettings(false);
-      toast.success("Selskapsinnstillinger anvendt på alle avdelinger");
+      toast.success("Selskapsinnstillinger anvendt på alle avdelinger og låst");
+    } else {
+      toast.success("Avdelinger kan nå overstyre innstillingene selv");
     }
+    setSavingSettings(false);
+    invalidateCompanySettingsCache();
   };
 
   const handleToggleApplyRolesToChildren = async (checked: boolean) => {
@@ -826,125 +886,206 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-4">
             <div className="space-y-3">
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
-                <Label htmlFor="show-all-airspace" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Vis alle luftromsadvarsler på oppdragskortene</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert vises alle advarsler direkte i stedet for kun den viktigste med resten i en ekspanderbar liste
-                  </div>
-                </Label>
-                <Switch
-                  id="show-all-airspace"
-                  checked={showAllAirspaceWarnings}
-                  onCheckedChange={handleToggleAirspaceWarnings}
-                  disabled={savingSettings}
-                />
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
-                <Label htmlFor="hide-reporter" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Skjul identitet til rapportør av hendelser</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert vises ikke navnet på den som rapporterte hendelsen. Administratorer i moderselskapet kan fortsatt se rapportørens identitet.
-                  </div>
-                </Label>
-                <Switch
-                  id="hide-reporter"
-                  checked={hideReporterIdentity}
-                  onCheckedChange={handleToggleHideReporter}
-                  disabled={savingSettings}
-                />
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
-                <Label htmlFor="require-approval" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Oppdrag krever godkjenning</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    SORA-spesifikk godkjenningslogikk overstyrer dette valget
-                  </div>
-                </Label>
-                <Switch
-                  id="require-approval"
-                  checked={requireMissionApproval}
-                  onCheckedChange={handleToggleRequireMissionApproval}
-                  disabled={savingSettings}
-                />
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="require-sora" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Krev SORA på alle oppdrag</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Alle oppdrag må ha gjennomført SORA-analyse for å kunne startes eller godkjennes. Gjelder ikke når SORA-basert godkjenning er aktivert.
+              {isChildDept && (
+                <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 flex items-start gap-2">
+                  <Lock className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="text-xs">
+                    <div className="font-medium text-foreground">Du ser innstillinger for {parentCompanyName}</div>
+                    <div className="text-muted-foreground mt-0.5">
+                      Felt merket med <Lock className="w-3 h-3 inline align-text-bottom" /> «Arvet fra {parentNavn}» styres av morselskapet og kan ikke endres her. Andre felt kan du overstyre selv.
                     </div>
-                  </Label>
-                  <Switch
-                    id="require-sora"
-                    checked={requireSoraOnMissions}
-                    onCheckedChange={handleToggleRequireSora}
-                    disabled={savingSettings || soraApprovalEnabled}
-                  />
+                  </div>
                 </div>
-                {requireSoraOnMissions && (
-                  <div className="pl-1 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Antall påkrevde steg:</p>
-                    <RadioGroup
-                      value={String(requireSoraSteps)}
-                      onValueChange={(v) => handleChangeSoraSteps(Number(v))}
-                      className="flex gap-4"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <RadioGroupItem value="1" id="sora-step-1" />
-                        <Label htmlFor="sora-step-1" className="text-xs cursor-pointer">1 steg (AI-vurdering)</Label>
+              )}
+
+              {/* Vis alle luftromsadvarsler */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_airspace_warnings;
+                const value = locked ? inherited!.show_all_airspace_warnings : showAllAirspaceWarnings;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                    <Label htmlFor="show-all-airspace" className="flex-1 cursor-pointer pr-4">
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Vis alle luftromsadvarsler på oppdragskortene
+                        {locked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <RadioGroupItem value="2" id="sora-step-2" />
-                        <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Når aktivert vises alle advarsler direkte i stedet for kun den viktigste med resten i en ekspanderbar liste
                       </div>
-                    </RadioGroup>
+                    </Label>
+                    <Switch
+                      id="show-all-airspace"
+                      checked={value}
+                      onCheckedChange={handleToggleAirspaceWarnings}
+                      disabled={savingSettings || locked}
+                    />
                   </div>
-                )}
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm flex items-center gap-1.5">
-                      <AlertTriangle className="w-4 h-4" />
-                      Avviksrapport ved flytur
-                      {parentDeviationCompanyId && (
-                        <span className="ml-1 text-[10px] uppercase tracking-wide text-muted-foreground border rounded px-1.5 py-0.5">
-                          Arvet fra morselskap
-                        </span>
-                      )}
+                );
+              })()}
+
+              {/* Skjul rapportør */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_hide_reporter;
+                const value = locked ? inherited!.hide_reporter_identity : hideReporterIdentity;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                    <Label htmlFor="hide-reporter" className="flex-1 cursor-pointer pr-4">
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Skjul identitet til rapportør av hendelser
+                        {locked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Når aktivert vises ikke navnet på den som rapporterte hendelsen. Administratorer i moderselskapet kan fortsatt se rapportørens identitet.
+                      </div>
+                    </Label>
+                    <Switch
+                      id="hide-reporter"
+                      checked={value}
+                      onCheckedChange={handleToggleHideReporter}
+                      disabled={savingSettings || locked}
+                    />
+                  </div>
+                );
+              })()}
+
+              {/* Krev godkjenning */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_mission_approval;
+                const value = locked ? inherited!.require_mission_approval : requireMissionApproval;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                    <Label htmlFor="require-approval" className="flex-1 cursor-pointer pr-4">
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Oppdrag krever godkjenning
+                        {locked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        SORA-spesifikk godkjenningslogikk overstyrer dette valget
+                      </div>
+                    </Label>
+                    <Switch
+                      id="require-approval"
+                      checked={value}
+                      onCheckedChange={handleToggleRequireMissionApproval}
+                      disabled={savingSettings || locked}
+                    />
+                  </div>
+                );
+              })()}
+
+              {/* Krev SORA */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_sora_required;
+                const value = locked ? inherited!.require_sora_on_missions : requireSoraOnMissions;
+                const stepsValue = locked ? inherited!.require_sora_steps : requireSoraSteps;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="require-sora" className="flex-1 cursor-pointer pr-4">
+                        <div className="font-medium text-sm flex items-center gap-1.5">
+                          Krev SORA på alle oppdrag
+                          {locked && (
+                            <Badge variant="secondary" className="text-[10px] gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Alle oppdrag må ha gjennomført SORA-analyse for å kunne startes eller godkjennes. Gjelder ikke når SORA-basert godkjenning er aktivert.
+                        </div>
+                      </Label>
+                      <Switch
+                        id="require-sora"
+                        checked={value}
+                        onCheckedChange={handleToggleRequireSora}
+                        disabled={savingSettings || soraApprovalEnabled || locked}
+                      />
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {parentDeviationCompanyId
-                        ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
-                        : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                    {value && (
+                      <div className="pl-1 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Antall påkrevde steg:</p>
+                        <RadioGroup
+                          value={String(stepsValue)}
+                          onValueChange={(v) => handleChangeSoraSteps(Number(v))}
+                          className="flex gap-4"
+                          disabled={locked}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="1" id="sora-step-1" disabled={locked} />
+                            <Label htmlFor="sora-step-1" className="text-xs cursor-pointer">1 steg (AI-vurdering)</Label>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="2" id="sora-step-2" disabled={locked} />
+                            <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Avviksrapport */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_deviation_report;
+                const value = locked ? inherited!.deviation_report_enabled : deviationReportEnabled;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
+                        <div className="font-medium text-sm flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4" />
+                          Avviksrapport ved flytur
+                          {locked && (
+                            <Badge variant="secondary" className="text-[10px] gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {locked
+                            ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
+                            : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                        </div>
+                      </Label>
+                      <Switch
+                        id="deviation-report"
+                        checked={value}
+                        onCheckedChange={handleToggleDeviationReport}
+                        disabled={savingSettings || locked}
+                      />
                     </div>
-                  </Label>
-                  <Switch
-                    id="deviation-report"
-                    checked={deviationReportEnabled}
-                    onCheckedChange={handleToggleDeviationReport}
-                    disabled={savingSettings || !!parentDeviationCompanyId}
-                  />
-                </div>
-                {deviationReportEnabled && companyId && !parentDeviationCompanyId && (
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      Kategorier (ubegrenset antall nivåer):
-                    </p>
-                    <DeviationCategoryTreeEditor companyId={companyId} />
+                    {value && companyId && !locked && (
+                      <div className="pt-2 border-t border-border/50">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">
+                          Kategorier (ubegrenset antall nivåer):
+                        </p>
+                        <DeviationCategoryTreeEditor companyId={companyId} />
+                      </div>
+                    )}
+                    {value && locked && parentDeviationCompanyId && (
+                      <div className="pt-2 border-t border-border/50">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">
+                          Kategorier (arvet — kun lesetilgang):
+                        </p>
+                        <DeviationCategoryTreeEditor companyId={parentDeviationCompanyId} readOnly />
+                      </div>
+                    )}
                   </div>
-                )}
-                {deviationReportEnabled && parentDeviationCompanyId && (
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      Kategorier (arvet — kun lesetilgang):
-                    </p>
-                    <DeviationCategoryTreeEditor companyId={parentDeviationCompanyId} readOnly />
-                  </div>
-                )}
-              </div>
+                );
+              })()}
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <Label className="flex-1">
                   <div className="font-medium text-sm">Standard SORA-buffersone</div>
@@ -1022,21 +1163,23 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   />
                 </div>
               </div>
-              {/* Settings propagation toggle */}
-              <div className="border-t pt-2 flex items-center justify-between">
-                <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
-                  <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert vil selskapsinnstillingene også settes på alle avdelinger
-                  </div>
-                </Label>
-                <Switch
-                  id="apply-settings-children"
-                  checked={applySettingsToChildren}
-                  onCheckedChange={handleToggleApplySettingsToChildren}
-                  disabled={savingSettings}
-                />
-              </div>
+              {/* Settings propagation toggle — only for parent companies */}
+              {!isChildDept && (
+                <div className="border-t pt-2 flex items-center justify-between">
+                  <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert settes innstillingene på alle avdelinger og avdelingene kan ikke overstyre dem
+                    </div>
+                  </Label>
+                  <Switch
+                    id="apply-settings-children"
+                    checked={applySettingsToChildren}
+                    onCheckedChange={handleToggleApplySettingsToChildren}
+                    disabled={savingSettings}
+                  />
+                </div>
+              )}
               {/* SafeSky callsign */}
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                 <div className="space-y-1">
