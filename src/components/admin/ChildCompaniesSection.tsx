@@ -103,6 +103,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [applySettingsToChildren, setApplySettingsToChildren] = useState(false);
   const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
   const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
+  const [applySoraDefaultsToChildren, setApplySoraDefaultsToChildren] = useState(false);
   const [missionRoles, setMissionRoles] = useState<{id: string; name: string}[]>([]);
   const [newRoleName, setNewRoleName] = useState("");
   const [savingRole, setSavingRole] = useState(false);
