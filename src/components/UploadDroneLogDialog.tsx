@@ -1755,20 +1755,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const checkFlightAlerts = async (parsedResult: DroneLogResult) => {
     if (!companyId) return;
     try {
-      const { data: alerts } = await (supabase as any)
-        .from("company_flight_alerts")
-        .select("alert_type, enabled, threshold_value")
-        .eq("company_id", companyId)
-        .eq("enabled", true);
-      if (!alerts || alerts.length === 0) return;
+      // Henter arvet konfig (parent hvis propagate_flight_alerts=true, ellers eget selskap)
+      const { data: config, error: cfgErr } = await (supabase as any).rpc(
+        "get_effective_flight_alert_config",
+        { _company_id: companyId }
+      );
+      if (cfgErr || !config) return;
 
-      const { data: recipients } = await (supabase as any)
-        .from("company_flight_alert_recipients")
-        .select("profile_id")
-        .eq("company_id", companyId);
-      if (!recipients || recipients.length === 0) return;
+      const alerts = (config.alerts || []).filter((a: any) => a.enabled);
+      if (alerts.length === 0) return;
 
-      const profileIds = recipients.map((r: any) => r.profile_id);
+      const profileIds: string[] = config.recipient_profile_ids || [];
+      if (profileIds.length === 0) return;
+
       const { data: profiles } = await supabase.from("profiles").select("id, full_name, email").in("id", profileIds);
       const recipientEmails = (profiles || []).filter((p: any) => p.email).map((p: any) => ({ email: p.email, name: p.full_name }));
       if (recipientEmails.length === 0) return;
