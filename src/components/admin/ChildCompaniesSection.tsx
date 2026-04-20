@@ -1186,83 +1186,115 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 );
               })()}
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <Label className="flex-1">
-                  <div className="font-medium text-sm">Standard SORA-buffersone</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Velg standard buffermodus for nye oppdrag og ruteplanlegger
-                  </div>
-                </Label>
-                <RadioGroup
-                  value={defaultBufferMode}
-                  onValueChange={(v) => handleChangeBufferMode(v as "corridor" | "convexHull")}
-                  className="flex gap-4"
-                  disabled={savingSettings}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <RadioGroupItem value="corridor" id="buffer-corridor" />
-                    <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <RadioGroupItem value="convexHull" id="buffer-convex" />
-                    <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
-                  </div>
-                </RadioGroup>
-                <div className="space-y-1.5 pt-2 border-t border-border/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button type="button" className="inline-flex">
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                          Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
-                        </PopoverContent>
-                      </Popover>
+              {(() => {
+                const soraLocked = isChildDept && !!inherited?.propagate_sora_buffer_mode;
+                const bufMode = soraLocked ? inherited!.default_buffer_mode : defaultBufferMode;
+                const fgVal = soraLocked ? inherited!.default_flight_geography_m : defaultFlightGeographyM;
+                const altVal = soraLocked ? inherited!.default_flight_altitude_m : defaultFlightAltitudeM;
+                const ownPropagateSora = applySettingsToChildren; // fallback - not used; use separate state via fetch instead
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                    <Label className="flex-1">
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Standard SORA-buffersone
+                        {soraLocked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Velg standard buffermodus for nye oppdrag og ruteplanlegger
+                      </div>
+                    </Label>
+                    <RadioGroup
+                      value={bufMode}
+                      onValueChange={(v) => handleChangeBufferMode(v as "corridor" | "convexHull")}
+                      className="flex gap-4"
+                      disabled={savingSettings || soraLocked}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="corridor" id="buffer-corridor" disabled={soraLocked} />
+                        <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="convexHull" id="buffer-convex" disabled={soraLocked} />
+                        <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
+                      </div>
+                    </RadioGroup>
+                    <div className="space-y-1.5 pt-2 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="inline-flex">
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
+                              Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <span className="text-xs font-mono text-green-600 dark:text-green-400">{fgVal}m</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={200}
+                        step={1}
+                        value={[fgVal]}
+                        onValueChange={([v]) => handleChangeDefaultFlightGeography(v)}
+                        disabled={savingSettings || soraLocked}
+                        className="[&_[role=slider]]:bg-green-600"
+                      />
                     </div>
-                    <span className="text-xs font-mono text-green-600 dark:text-green-400">{defaultFlightGeographyM}m</span>
-                  </div>
-                  <Slider
-                    min={0}
-                    max={200}
-                    step={1}
-                    value={[defaultFlightGeographyM]}
-                    onValueChange={([v]) => handleChangeDefaultFlightGeography(v)}
-                    disabled={savingSettings}
-                    className="[&_[role=slider]]:bg-green-600"
-                  />
-                </div>
-                <div className="space-y-1.5 pt-2 border-t border-border/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button type="button" className="inline-flex">
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                          Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.
-                        </PopoverContent>
-                      </Popover>
+                    <div className="space-y-1.5 pt-2 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="inline-flex">
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
+                              Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{altVal}m</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={120}
+                        step={1}
+                        value={[altVal]}
+                        onValueChange={([v]) => handleChangeDefaultFlightAltitude(v)}
+                        disabled={savingSettings || soraLocked}
+                        className="[&_[role=slider]]:bg-blue-600"
+                      />
                     </div>
-                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{defaultFlightAltitudeM}m</span>
+                    {!isChildDept && (
+                      <div className="border-t pt-2 flex items-center justify-between">
+                        <Label htmlFor="apply-sora-defaults-children" className="flex-1 cursor-pointer pr-4">
+                          <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Når aktivert kopieres SORA-standardverdier til alle avdelinger og låses
+                          </div>
+                        </Label>
+                        <Switch
+                          id="apply-sora-defaults-children"
+                          checked={applySoraDefaultsToChildren}
+                          onCheckedChange={handleToggleApplySoraDefaultsToChildren}
+                          disabled={savingSettings}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <Slider
-                    min={0}
-                    max={120}
-                    step={1}
-                    value={[defaultFlightAltitudeM]}
-                    onValueChange={([v]) => handleChangeDefaultFlightAltitude(v)}
-                    disabled={savingSettings}
-                    className="[&_[role=slider]]:bg-blue-600"
-                  />
-                </div>
-              </div>
+                );
+              })()}
               {/* Settings propagation toggle — only for parent companies */}
               {!isChildDept && (
                 <div className="border-t pt-2 flex items-center justify-between">
