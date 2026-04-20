@@ -84,6 +84,18 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_mission_approval: boolean;
     propagate_sora_required: boolean;
     propagate_deviation_report: boolean;
+    propagate_sora_buffer_mode: boolean;
+    propagate_mission_roles: boolean;
+    propagate_flight_alerts: boolean;
+    // parent SORA defaults
+    default_buffer_mode: "corridor" | "convexHull";
+    default_flight_geography_m: number;
+    default_flight_altitude_m: number;
+    // parent mission roles
+    mission_roles: { id: string; name: string }[];
+    // parent flight alerts
+    flight_alerts: Record<string, { enabled: boolean; threshold_value: number | null }>;
+    alert_recipients: { id: string; profile_id: string; full_name: string | null }[];
   } | null>(null);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
@@ -91,6 +103,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [applySettingsToChildren, setApplySettingsToChildren] = useState(false);
   const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
   const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
+  const [applySoraDefaultsToChildren, setApplySoraDefaultsToChildren] = useState(false);
   const [missionRoles, setMissionRoles] = useState<{id: string; name: string}[]>([]);
   const [newRoleName, setNewRoleName] = useState("");
   const [savingRole, setSavingRole] = useState(false);
@@ -301,7 +314,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -323,14 +336,53 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         (data as any).propagate_deviation_report
       );
       setApplySettingsToChildren(ownPropagate);
+      setApplyRolesToChildren(!!(data as any).propagate_mission_roles);
+      setApplyAlertsToChildren(!!(data as any).propagate_flight_alerts);
+      setApplySoraDefaultsToChildren(!!(data as any).propagate_sora_buffer_mode);
 
       // Load parent inheritance data (propagation flags + values)
       if (parentId) {
-        const { data: parent } = await (supabase as any)
-          .from("companies")
-          .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report")
-          .eq("id", parentId)
-          .maybeSingle();
+        const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
+          (supabase as any)
+            .from("companies")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts")
+            .eq("id", parentId)
+            .maybeSingle(),
+          (supabase as any)
+            .from("company_sora_config")
+            .select("default_buffer_mode, default_flight_geography_m, default_flight_altitude_m")
+            .eq("company_id", parentId)
+            .maybeSingle(),
+          (supabase as any)
+            .from("company_mission_roles")
+            .select("id, name")
+            .eq("company_id", parentId)
+            .order("name"),
+          (supabase as any)
+            .from("company_flight_alerts")
+            .select("alert_type, enabled, threshold_value")
+            .eq("company_id", parentId),
+          (supabase as any)
+            .from("company_flight_alert_recipients")
+            .select("id, profile_id")
+            .eq("company_id", parentId),
+        ]);
+
+        // Build alert map
+        const alertMap: Record<string, { enabled: boolean; threshold_value: number | null }> = {};
+        (parentAlerts || []).forEach((a: any) => { alertMap[a.alert_type] = { enabled: a.enabled, threshold_value: a.threshold_value }; });
+
+        // Recipients with names
+        const recProfileIds = (parentRecipients || []).map((r: any) => r.profile_id);
+        let recProfileMap: Record<string, string | null> = {};
+        if (recProfileIds.length > 0) {
+          const { data: recProfiles } = await supabase.from("profiles").select("id, full_name").in("id", recProfileIds);
+          (recProfiles || []).forEach((p: any) => { recProfileMap[p.id] = p.full_name; });
+        }
+        const recList = (parentRecipients || []).map((r: any) => ({
+          id: r.id, profile_id: r.profile_id, full_name: recProfileMap[r.profile_id] || null,
+        }));
+
         if (parent) {
           setParentNavn(parent.navn || "");
           setInherited({
@@ -345,6 +397,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             propagate_mission_approval: parent.propagate_mission_approval ?? false,
             propagate_sora_required: parent.propagate_sora_required ?? false,
             propagate_deviation_report: parent.propagate_deviation_report ?? false,
+            propagate_sora_buffer_mode: parent.propagate_sora_buffer_mode ?? false,
+            propagate_mission_roles: parent.propagate_mission_roles ?? false,
+            propagate_flight_alerts: parent.propagate_flight_alerts ?? false,
+            default_buffer_mode: (parentSora?.default_buffer_mode as "corridor" | "convexHull") || "corridor",
+            default_flight_geography_m: parentSora?.default_flight_geography_m ?? 0,
+            default_flight_altitude_m: parentSora?.default_flight_altitude_m ?? 30,
+            mission_roles: parentRoles || [],
+            flight_alerts: alertMap,
+            alert_recipients: recList,
           });
           setDeviationReportEnabled(parent.deviation_report_enabled ?? false);
         }
@@ -762,16 +823,18 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const handleToggleApplyRolesToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplyRolesToChildren(checked);
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("companies")
+      .update({ propagate_mission_roles: checked })
+      .eq("id", companyId);
     if (checked) {
-      setSavingSettings(true);
-      // Get child companies
       const { data: childCompanies } = await supabase
         .from("companies")
         .select("id")
         .eq("parent_company_id", companyId);
       if (childCompanies && childCompanies.length > 0) {
         for (const child of childCompanies) {
-          // Get existing roles for child
           const { data: existingRoles } = await (supabase as any)
             .from("company_mission_roles")
             .select("name")
@@ -785,23 +848,28 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           }
         }
       }
-      setSavingSettings(false);
-      toast.success("Roller anvendt på alle avdelinger");
+      toast.success("Roller anvendt på alle avdelinger og låst");
+    } else {
+      toast.success("Avdelinger kan nå redigere roller selv");
     }
+    setSavingSettings(false);
   };
 
   const handleToggleApplyAlertsToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplyAlertsToChildren(checked);
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("companies")
+      .update({ propagate_flight_alerts: checked })
+      .eq("id", companyId);
     if (checked) {
-      setSavingSettings(true);
       const { data: childCompanies } = await supabase
         .from("companies")
         .select("id")
         .eq("parent_company_id", companyId);
       if (childCompanies && childCompanies.length > 0) {
         for (const child of childCompanies) {
-          // Upsert alerts
           for (const alertType of ALERT_TYPES) {
             const current = flightAlerts[alertType.key];
             if (current) {
@@ -813,7 +881,6 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               }, { onConflict: 'company_id,alert_type' });
             }
           }
-          // Sync recipients
           await (supabase as any).from("company_flight_alert_recipients").delete().eq("company_id", child.id);
           if (alertRecipients.length > 0) {
             const recipientInserts = alertRecipients.map(r => ({
@@ -824,9 +891,45 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           }
         }
       }
-      setSavingSettings(false);
-      toast.success("Flylogg-varsler anvendt på alle avdelinger");
+      toast.success("Flylogg-varsler anvendt på alle avdelinger og låst");
+    } else {
+      toast.success("Avdelinger kan nå redigere varsler selv");
     }
+    setSavingSettings(false);
+  };
+
+  // Toggle for SORA-defaults (buffer mode + flight geography + altitude)
+  const handleToggleApplySoraDefaultsToChildren = async (checked: boolean) => {
+    if (!companyId) return;
+    setApplySoraDefaultsToChildren(checked);
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("companies")
+      .update({ propagate_sora_buffer_mode: checked })
+      .eq("id", companyId);
+    if (checked) {
+      const { data: childCompanies } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("parent_company_id", companyId);
+      if (childCompanies && childCompanies.length > 0) {
+        for (const child of childCompanies) {
+          await (supabase as any)
+            .from("company_sora_config")
+            .upsert({
+              company_id: child.id,
+              default_buffer_mode: defaultBufferMode,
+              default_flight_geography_m: defaultFlightGeographyM,
+              default_flight_altitude_m: defaultFlightAltitudeM,
+            }, { onConflict: 'company_id' });
+        }
+      }
+      toast.success("SORA-standardverdier anvendt og låst");
+    } else {
+      toast.success("Avdelinger kan nå redigere SORA-standardverdier");
+    }
+    setSavingSettings(false);
+    invalidateCompanySettingsCache();
   };
 
   const handleAdd = () => {
@@ -1086,83 +1189,115 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 );
               })()}
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <Label className="flex-1">
-                  <div className="font-medium text-sm">Standard SORA-buffersone</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Velg standard buffermodus for nye oppdrag og ruteplanlegger
-                  </div>
-                </Label>
-                <RadioGroup
-                  value={defaultBufferMode}
-                  onValueChange={(v) => handleChangeBufferMode(v as "corridor" | "convexHull")}
-                  className="flex gap-4"
-                  disabled={savingSettings}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <RadioGroupItem value="corridor" id="buffer-corridor" />
-                    <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <RadioGroupItem value="convexHull" id="buffer-convex" />
-                    <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
-                  </div>
-                </RadioGroup>
-                <div className="space-y-1.5 pt-2 border-t border-border/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button type="button" className="inline-flex">
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                          Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
-                        </PopoverContent>
-                      </Popover>
+              {(() => {
+                const soraLocked = isChildDept && !!inherited?.propagate_sora_buffer_mode;
+                const bufMode = soraLocked ? inherited!.default_buffer_mode : defaultBufferMode;
+                const fgVal = soraLocked ? inherited!.default_flight_geography_m : defaultFlightGeographyM;
+                const altVal = soraLocked ? inherited!.default_flight_altitude_m : defaultFlightAltitudeM;
+                const ownPropagateSora = applySettingsToChildren; // fallback - not used; use separate state via fetch instead
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                    <Label className="flex-1">
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Standard SORA-buffersone
+                        {soraLocked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Velg standard buffermodus for nye oppdrag og ruteplanlegger
+                      </div>
+                    </Label>
+                    <RadioGroup
+                      value={bufMode}
+                      onValueChange={(v) => handleChangeBufferMode(v as "corridor" | "convexHull")}
+                      className="flex gap-4"
+                      disabled={savingSettings || soraLocked}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="corridor" id="buffer-corridor" disabled={soraLocked} />
+                        <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="convexHull" id="buffer-convex" disabled={soraLocked} />
+                        <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
+                      </div>
+                    </RadioGroup>
+                    <div className="space-y-1.5 pt-2 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="inline-flex">
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
+                              Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <span className="text-xs font-mono text-green-600 dark:text-green-400">{fgVal}m</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={200}
+                        step={1}
+                        value={[fgVal]}
+                        onValueChange={([v]) => handleChangeDefaultFlightGeography(v)}
+                        disabled={savingSettings || soraLocked}
+                        className="[&_[role=slider]]:bg-green-600"
+                      />
                     </div>
-                    <span className="text-xs font-mono text-green-600 dark:text-green-400">{defaultFlightGeographyM}m</span>
-                  </div>
-                  <Slider
-                    min={0}
-                    max={200}
-                    step={1}
-                    value={[defaultFlightGeographyM]}
-                    onValueChange={([v]) => handleChangeDefaultFlightGeography(v)}
-                    disabled={savingSettings}
-                    className="[&_[role=slider]]:bg-green-600"
-                  />
-                </div>
-                <div className="space-y-1.5 pt-2 border-t border-border/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button type="button" className="inline-flex">
-                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                          Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.
-                        </PopoverContent>
-                      </Popover>
+                    <div className="space-y-1.5 pt-2 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="inline-flex">
+                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
+                              Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{altVal}m</span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={120}
+                        step={1}
+                        value={[altVal]}
+                        onValueChange={([v]) => handleChangeDefaultFlightAltitude(v)}
+                        disabled={savingSettings || soraLocked}
+                        className="[&_[role=slider]]:bg-blue-600"
+                      />
                     </div>
-                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{defaultFlightAltitudeM}m</span>
+                    {!isChildDept && (
+                      <div className="border-t pt-2 flex items-center justify-between">
+                        <Label htmlFor="apply-sora-defaults-children" className="flex-1 cursor-pointer pr-4">
+                          <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Når aktivert kopieres SORA-standardverdier til alle avdelinger og låses
+                          </div>
+                        </Label>
+                        <Switch
+                          id="apply-sora-defaults-children"
+                          checked={applySoraDefaultsToChildren}
+                          onCheckedChange={handleToggleApplySoraDefaultsToChildren}
+                          disabled={savingSettings}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <Slider
-                    min={0}
-                    max={120}
-                    step={1}
-                    value={[defaultFlightAltitudeM]}
-                    onValueChange={([v]) => handleChangeDefaultFlightAltitude(v)}
-                    disabled={savingSettings}
-                    className="[&_[role=slider]]:bg-blue-600"
-                  />
-                </div>
-              </div>
+                );
+              })()}
               {/* Settings propagation toggle — only for parent companies */}
               {!isChildDept && (
                 <div className="border-t pt-2 flex items-center justify-between">

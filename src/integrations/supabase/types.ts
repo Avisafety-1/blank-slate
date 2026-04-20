@@ -410,8 +410,12 @@ export type Database = {
           parent_company_id: string | null
           propagate_airspace_warnings: boolean
           propagate_deviation_report: boolean
+          propagate_flight_alerts: boolean
           propagate_hide_reporter: boolean
           propagate_mission_approval: boolean
+          propagate_mission_roles: boolean
+          propagate_sora_buffer_mode: boolean
+          propagate_sora_config: boolean
           propagate_sora_required: boolean
           registration_code: string
           require_mission_approval: boolean
@@ -454,8 +458,12 @@ export type Database = {
           parent_company_id?: string | null
           propagate_airspace_warnings?: boolean
           propagate_deviation_report?: boolean
+          propagate_flight_alerts?: boolean
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
+          propagate_mission_roles?: boolean
+          propagate_sora_buffer_mode?: boolean
+          propagate_sora_config?: boolean
           propagate_sora_required?: boolean
           registration_code: string
           require_mission_approval?: boolean
@@ -498,8 +506,12 @@ export type Database = {
           parent_company_id?: string | null
           propagate_airspace_warnings?: boolean
           propagate_deviation_report?: boolean
+          propagate_flight_alerts?: boolean
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
+          propagate_mission_roles?: boolean
+          propagate_sora_buffer_mode?: boolean
+          propagate_sora_config?: boolean
           propagate_sora_required?: boolean
           registration_code?: string
           require_mission_approval?: boolean
