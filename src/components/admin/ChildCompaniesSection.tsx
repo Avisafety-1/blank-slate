@@ -84,6 +84,18 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_mission_approval: boolean;
     propagate_sora_required: boolean;
     propagate_deviation_report: boolean;
+    propagate_sora_buffer_mode: boolean;
+    propagate_mission_roles: boolean;
+    propagate_flight_alerts: boolean;
+    // parent SORA defaults
+    default_buffer_mode: "corridor" | "convexHull";
+    default_flight_geography_m: number;
+    default_flight_altitude_m: number;
+    // parent mission roles
+    mission_roles: { id: string; name: string }[];
+    // parent flight alerts
+    flight_alerts: Record<string, { enabled: boolean; threshold_value: number | null }>;
+    alert_recipients: { id: string; profile_id: string; full_name: string | null }[];
   } | null>(null);
   const [defaultBufferMode, setDefaultBufferMode] = useState<"corridor" | "convexHull">("corridor");
   const [defaultFlightGeographyM, setDefaultFlightGeographyM] = useState(0);
