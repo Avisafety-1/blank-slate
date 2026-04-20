@@ -32,13 +32,12 @@ export function useSoraApprovalEnabled(): boolean {
 
   const fetch = async () => {
     if (!companyId) return;
-    const { data } = (await (supabase
-      .from("company_sora_config")
-      .select("sora_based_approval")
-      .eq("company_id", companyId)
-      .maybeSingle() as any)) as any;
+    const { data } = await (supabase as any).rpc(
+      "get_effective_sora_approval_config",
+      { _company_id: companyId }
+    );
 
-    const val = !!data?.sora_based_approval;
+    const val = !!(data?.config?.sora_based_approval);
     cache[companyId] = { enabled: val, ts: Date.now() };
     setEnabled(val);
   };
