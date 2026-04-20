@@ -484,6 +484,19 @@ export const CompanySoraConfigSection = () => {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="pt-0 space-y-6">
+              {approvalLockedByParent && parentName && (
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-primary/40 bg-primary/5">
+                  <Lock className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Arvet fra {parentName} — kun lesetilgang</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      «Godkjenning basert på SORA» og tilhørende terskler styres av morselskapet.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <fieldset disabled={approvalLockedByParent} className={approvalLockedByParent ? "opacity-60 pointer-events-none space-y-6" : "space-y-6"}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div>
@@ -532,6 +545,45 @@ export const CompanySoraConfigSection = () => {
                   }}
                 />
               </div>
+
+              {/* Propagate-to-children toggle (only for parent companies with children) */}
+              {!isChild && hasChildren && (
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">Gjelder for alle underavdelinger</p>
+                      <p className="text-xs text-muted-foreground">
+                        Avdelingene arver «Godkjenning basert på SORA», terskel og hardstop-innstilling fra dette selskapet
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={propagateApproval}
+                    disabled={savingPropagateApproval}
+                    onCheckedChange={async (v) => {
+                      if (!companyId) return;
+                      setSavingPropagateApproval(true);
+                      const prev = propagateApproval;
+                      setPropagateApproval(v);
+                      try {
+                        const { error } = await (supabase as any)
+                          .from("companies")
+                          .update({ propagate_sora_approval: v })
+                          .eq("id", companyId);
+                        if (error) throw error;
+                        toast.success(v ? "Propagering aktivert" : "Propagering deaktivert");
+                      } catch (err) {
+                        console.error("Error saving propagate_sora_approval:", err);
+                        toast.error("Kunne ikke lagre propagering");
+                        setPropagateApproval(prev);
+                      } finally {
+                        setSavingPropagateApproval(false);
+                      }
+                    }}
+                  />
+                </div>
+              )}
 
               {config.sora_based_approval && (
                 <div className="space-y-6 pt-2 border-t border-border">
@@ -584,6 +636,7 @@ export const CompanySoraConfigSection = () => {
                   </div>
                 </div>
               )}
+              </fieldset>
             </CardContent>
           </CollapsibleContent>
         </Card>
