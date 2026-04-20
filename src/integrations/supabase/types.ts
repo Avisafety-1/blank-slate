@@ -5449,6 +5449,23 @@ export type Database = {
           e2_scope: string
         }[]
       }
+      get_effective_deviation_categories: {
+        Args: { _company_id: string }
+        Returns: {
+          company_id: string
+          created_at: string
+          id: string
+          label: string
+          parent_id: string | null
+          sort_order: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "deviation_report_categories"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_fh2_token: {
         Args: { p_company_id: string; p_key: string }
         Returns: string
@@ -5533,6 +5550,10 @@ export type Database = {
         }[]
       }
       gettransactionid: { Args: never; Returns: unknown }
+      has_effective_deviation_categories: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
