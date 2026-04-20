@@ -1,32 +1,38 @@
 
 
-## Plan: Auto-sync toggle + "Logg ut"-knapp i dialogen
+## Plan: Varslingsdager for personellkompetanser
 
-### Problem
-1. **Auto-sync vises som "Av" selv om brukeren mener det er på.** Bekreftet i databasen: `dji_credentials.auto_sync_enabled = false` for alle 3 kontoer som bruker `rikardvb@gmail.com`. Årsaken er at avkrysningsboksen for auto-sync KUN vises i den manuelle innloggingsskjemaen og KUN når «Husk innlogging» er huket av (linje 3063-3071 i `UploadDroneLogDialog.tsx`). Når en bruker allerede har lagret innlogging, finnes det ingen måte å skru auto-sync av/på på — de må logge ut og inn igjen, og selv da krever det at de huker av «Husk innlogging» først.
-2. Det finnes ingen rask «Logg ut»-knapp på DJI-konto-kortet i metode-steget — kun en blå prikk indikerer at man er innlogget.
+### Mål
+På hver kompetanse skal det vises hvor mange dager før utløp varslingen utløses (Gul status) — og brukeren skal kunne endre denne verdien per kompetanse.
 
-### Endringer i `src/components/UploadDroneLogDialog.tsx`
+### Database
+Legg til kolonne `varsel_dager` (integer, default 30) på `personnel_competencies` via migrering.
 
-**1. Gjør auto-sync til en alltid-tilgjengelig toggle**
-- På metode-steget (under DJI-konto-kortet, linje 2754-2783), når `hasSavedCredentials = true`, vis en `Switch` (av/på) med label «Auto-sync (daglig kl. 03:00)» rett under «Auto-sync: På/Av»-teksten (eller erstatt teksten).
-- Ved endring: kall `supabase.from('dji_credentials').update({ auto_sync_enabled: <ny verdi> }).eq('user_id', user.id)`, oppdater lokal `enableAutoSync`-state, vis toast «Auto-sync slått på/av».
-- Behold også eksisterende avkrysningsboks i manuelle innloggingsskjemaen (linje 3063-3071) slik at man kan skru på det med én gang ved første innlogging.
+### Endringer i `src/components/resources/PersonCompetencyDialog.tsx`
+- Utvid `Competency`-interface med `varsel_dager?: number | null`.
+- Legg til state `newWarningDays` (default 30) og `editWarningDays`.
+- Skjema: nytt nummerfelt «Varsle (dager før utløp)» ved siden av «Utløpsdato» — både i «Legg til» og «Rediger»-skjemaene.
+- Lagre `varsel_dager` ved insert/update.
+- Visning per kompetansekort (kun lesbart): liten infotekst under utløpsdato:
+  - «Gul varsling sendes X dager før utløp (DD.MM.YYYY)» når utløpsdato finnes.
+  - Hvis allerede gul/rød: vis aktuell status.
 
-**2. Plassering av «Logg ut» og blå prikk på DJI-konto-kortet**
-- Flytt den blå prikken (linje 2780) fra `top-2 right-2` til `top-2 left-2`.
-- Legg til en liten ikon-knapp (LogOut-ikon, `h-6 w-6`, ghost-variant) i `top-2 right-2`. Klikk stopper propagering (slik at man ikke samtidig åpner DJI-login) og kaller eksisterende `handleDjiLogout()`. Tooltip: «Logg ut av DJI».
-- Knappen vises kun når `hasSavedCredentials = true`.
+### Endringer i `src/lib/maintenanceStatus.ts`
+- Utvid `CompetencyItem` med `varsel_dager?: number | null`.
+- I `calculatePersonnelAggregatedStatus`: bruk `comp.varsel_dager ?? warningDays` (per-kompetanse override).
 
-**3. Konsistens-forbedring**
-- I `handleDjiLogin` (linje ~941), når brukeren lagrer innlogging UTEN å huke av auto-sync, sørg for at `auto_sync_enabled` eksplisitt settes til `false` (ikke bare hoppes over). Dette forhindrer at gamle verdier henger igjen. (Kan implementeres ved å alltid skrive `auto_sync_enabled: enableAutoSync` ved lagring.)
+### Endringer i `src/hooks/useStatusData.ts` og `src/components/dashboard/PersonnelListDialog.tsx`
+- Ingen logikkendring nødvendig — funksjonen leser allerede hele kompetanseobjektet. Default på 30 beholdes som fallback.
 
-### Ingen DB-endringer
-Kolonnen `auto_sync_enabled` finnes allerede i `dji_credentials`. Ingen migreringer nødvendig.
+### Edge function
+`supabase/functions/check-competency-expiry/index.ts` bruker i dag `inspection_reminder_days` fra brukerprofil. Oppdater spørringen til å hente `varsel_dager` per kompetanse, og bruk `comp.varsel_dager ?? userPrefs.inspection_reminder_days ?? 14` ved sammenligning. Slik blir per-kompetanse-innstilling dominerende, med brukerpreferanse som fallback.
 
-### Tekniske detaljer
-- `Switch`-komponenten (`@/components/ui/switch`) er allerede importert.
-- `LogOut`-ikon er allerede importert fra `lucide-react` (linje 17).
-- Etter første lasting i `checkSavedCredentials` er `enableAutoSync` allerede synkronisert med DB-verdien (linje 401), så toggle-startverdien er korrekt.
-- For superadmin/Avisafe-bruker som ser andre selskaper: oppdateringen filtreres på `user_id = auth.uid()` via RLS (eksisterende policy).
+### UI-detaljer
+- Tallfelt: `min=1`, `max=365`, `type="number"`, plassholder «30».
+- Kompakt visning: liten muted tekst, ev. `Bell`-ikon for å indikere varsling.
 
+<lov-actions>
+<lov-suggestion message="Test that adding a competency, setting warning days, and seeing the yellow status appear works end-to-end">Verify that it works</lov-suggestion>
+<lov-suggestion message="Vis også gjenstående dager til utløp som badge på hver kompetanse (f.eks. «12 dager igjen»)">Show days remaining badge</lov-suggestion>
+<lov-suggestion message="Legg til samme per-element varslingsdager for utstyr og droner (overstyr selskapsdefault per ressurs)">Per-resource warning days</lov-suggestion>
+</lov-actions>
