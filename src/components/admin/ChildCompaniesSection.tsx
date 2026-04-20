@@ -821,16 +821,18 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const handleToggleApplyRolesToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplyRolesToChildren(checked);
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("companies")
+      .update({ propagate_mission_roles: checked })
+      .eq("id", companyId);
     if (checked) {
-      setSavingSettings(true);
-      // Get child companies
       const { data: childCompanies } = await supabase
         .from("companies")
         .select("id")
         .eq("parent_company_id", companyId);
       if (childCompanies && childCompanies.length > 0) {
         for (const child of childCompanies) {
-          // Get existing roles for child
           const { data: existingRoles } = await (supabase as any)
             .from("company_mission_roles")
             .select("name")
@@ -844,23 +846,28 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           }
         }
       }
-      setSavingSettings(false);
-      toast.success("Roller anvendt på alle avdelinger");
+      toast.success("Roller anvendt på alle avdelinger og låst");
+    } else {
+      toast.success("Avdelinger kan nå redigere roller selv");
     }
+    setSavingSettings(false);
   };
 
   const handleToggleApplyAlertsToChildren = async (checked: boolean) => {
     if (!companyId) return;
     setApplyAlertsToChildren(checked);
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("companies")
+      .update({ propagate_flight_alerts: checked })
+      .eq("id", companyId);
     if (checked) {
-      setSavingSettings(true);
       const { data: childCompanies } = await supabase
         .from("companies")
         .select("id")
         .eq("parent_company_id", companyId);
       if (childCompanies && childCompanies.length > 0) {
         for (const child of childCompanies) {
-          // Upsert alerts
           for (const alertType of ALERT_TYPES) {
             const current = flightAlerts[alertType.key];
             if (current) {
@@ -872,7 +879,6 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               }, { onConflict: 'company_id,alert_type' });
             }
           }
-          // Sync recipients
           await (supabase as any).from("company_flight_alert_recipients").delete().eq("company_id", child.id);
           if (alertRecipients.length > 0) {
             const recipientInserts = alertRecipients.map(r => ({
@@ -883,9 +889,44 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           }
         }
       }
-      setSavingSettings(false);
-      toast.success("Flylogg-varsler anvendt på alle avdelinger");
+      toast.success("Flylogg-varsler anvendt på alle avdelinger og låst");
+    } else {
+      toast.success("Avdelinger kan nå redigere varsler selv");
     }
+    setSavingSettings(false);
+  };
+
+  // Toggle for SORA-defaults (buffer mode + flight geography + altitude)
+  const handleToggleApplySoraDefaultsToChildren = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    await (supabase as any)
+      .from("companies")
+      .update({ propagate_sora_buffer_mode: checked })
+      .eq("id", companyId);
+    if (checked) {
+      const { data: childCompanies } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("parent_company_id", companyId);
+      if (childCompanies && childCompanies.length > 0) {
+        for (const child of childCompanies) {
+          await (supabase as any)
+            .from("company_sora_config")
+            .upsert({
+              company_id: child.id,
+              default_buffer_mode: defaultBufferMode,
+              default_flight_geography_m: defaultFlightGeographyM,
+              default_flight_altitude_m: defaultFlightAltitudeM,
+            }, { onConflict: 'company_id' });
+        }
+      }
+      toast.success("SORA-standardverdier anvendt og låst");
+    } else {
+      toast.success("Avdelinger kan nå redigere SORA-standardverdier");
+    }
+    setSavingSettings(false);
+    invalidateCompanySettingsCache();
   };
 
   const handleAdd = () => {
