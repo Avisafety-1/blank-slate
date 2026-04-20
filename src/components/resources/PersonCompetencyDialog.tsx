@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink, GraduationCap } from "lucide-react";
+import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink, GraduationCap, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
