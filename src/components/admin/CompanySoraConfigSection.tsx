@@ -372,8 +372,21 @@ export const CompanySoraConfigSection = () => {
 
   return (
     <div className="space-y-4">
-      {/* Inherited banner */}
-      {inherited && parentName && (
+      {/* Locked by parent banner */}
+      {lockedByParent && parentName && (
+        <div className="flex items-center gap-3 p-4 rounded-lg border border-primary/40 bg-primary/5">
+          <Lock className="h-5 w-5 text-primary flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">🔒 SORA-innstillingene styres av {parentName}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Kontakt morselskapets administrator for å endre disse innstillingene.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Inherited banner (soft, editable) */}
+      {inherited && parentName && !lockedByParent && (
         <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
           <Building2 className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
@@ -1051,17 +1064,86 @@ export const CompanySoraConfigSection = () => {
         </Card>
       </Collapsible>
 
+      {/* Propagation toggle for parent companies */}
+      {!isChild && hasChildren && (
+        <div className="rounded-lg border border-primary/30 bg-muted/30 p-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="propagate-sora-config" className="flex-1 cursor-pointer pr-4">
+              <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Når aktivert låses SORA-innstillingene for alle avdelinger og verdiene pushes fra morselskapet
+              </div>
+            </Label>
+            <Switch
+              id="propagate-sora-config"
+              checked={propagateToChildren}
+              onCheckedChange={async (checked) => {
+                if (!companyId) return;
+                setSavingPropagate(true);
+                setPropagateToChildren(checked);
+                await (supabase as any)
+                  .from("companies")
+                  .update({ propagate_sora_config: checked })
+                  .eq("id", companyId);
+                if (checked) {
+                  // Push current config to all children
+                  const { data: childCompanies } = await supabase
+                    .from("companies")
+                    .select("id")
+                    .eq("parent_company_id", companyId);
+                  if (childCompanies && childCompanies.length > 0) {
+                    for (const child of childCompanies) {
+                      await (supabase as any)
+                        .from("company_sora_config")
+                        .upsert({
+                          company_id: child.id,
+                          max_wind_speed_ms: config.max_wind_speed_ms,
+                          max_wind_gust_ms: config.max_wind_gust_ms,
+                          max_visibility_km: config.max_visibility_km,
+                          max_flight_altitude_m: config.max_flight_altitude_m,
+                          require_backup_battery: config.require_backup_battery,
+                          require_observer: config.require_observer,
+                          min_temp_c: config.min_temp_c,
+                          max_temp_c: config.max_temp_c,
+                          allow_bvlos: config.allow_bvlos,
+                          allow_night_flight: config.allow_night_flight,
+                          require_civil_twilight: config.require_civil_twilight,
+                          max_pilot_inactivity_days: config.max_pilot_inactivity_days,
+                          max_population_density_per_km2: config.max_population_density_per_km2,
+                          operative_restrictions: config.operative_restrictions || null,
+                          policy_notes: config.policy_notes || null,
+                          linked_document_ids: config.linked_document_ids,
+                          sora_based_approval: config.sora_based_approval,
+                          sora_approval_threshold: config.sora_approval_threshold,
+                          sora_hardstop_requires_approval: config.sora_hardstop_requires_approval,
+                        }, { onConflict: "company_id" });
+                    }
+                  }
+                  toast.success("SORA-innstillinger låst og pushet til alle avdelinger");
+                } else {
+                  toast.success("Avdelinger kan nå redigere SORA-innstillinger selv");
+                }
+                setSavingPropagate(false);
+              }}
+              disabled={savingPropagate}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Lagre-knapp */}
-      <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {saving ? "Lagrer..." : "Lagre SORA-innstillinger"}
-        </Button>
-      </div>
+      {!lockedByParent && (
+        <div className="flex justify-end pt-2">
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {saving ? "Lagrer..." : "Lagre SORA-innstillinger"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
