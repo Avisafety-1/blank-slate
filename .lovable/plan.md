@@ -1,49 +1,58 @@
-## Plan: Avdelings-tilgang til «Mitt selskap» med arv + valgfri overstyring (Alternativ B)
 
-### Mål
-Gi avdelings-administratorer tilgang til «Mitt selskap»-fanen. Innstillinger som morselskapet har propagert vises som «Arvet fra morselskap» (låst). Innstillinger som ikke er propagert kan overstyres av avdelingen.
 
-### DB-endring
-Legg til boolean-flagg per propagerbar innstilling på `companies` for å huske om morselskapet har «Gjelder for alle underavdelinger» PÅ:
-- `propagate_airspace_warnings boolean default false`
-- `propagate_hide_reporter boolean default false`
-- `propagate_mission_approval boolean default false`
-- `propagate_sora_required boolean default false`
-- `propagate_deviation_report boolean default false`
+## Plan: Utvid arv-mekanisme til SORA-config, mission roles og flight alerts
 
-Disse erstatter ikke eksisterende verdier — de markerer «mor styrer dette feltet». Avdelingen leser sin egen verdi som vanlig, men UI-et henter parent-flagget for å avgjøre om feltet skal vises som låst.
+Bygger videre på samme låsemønster som allerede finnes for Avviksrapport og de fem company-flagg-feltene. Når morselskapet slår på «Gjelder for alle underavdelinger» for et område, skal verdiene pushes til alle avdelinger OG avdelings-admin ser låst UI med badge «Arvet fra {morselskap}».
 
-### Endringer i `src/pages/Admin.tsx`
-- Fjern `!isChildCompany` fra fanevilkåret slik at avdelings-admin også ser «Mitt selskap».
+### Database-endringer
 
-### Endringer i `src/components/admin/ChildCompaniesSection.tsx`
-- Hent parent-selskapets `propagate_*`-flagg + verdier når `isChildCompany`.
-- Vis banner øverst: «Du ser innstillinger for {avdeling}. Felt merket med 🔒 styres av morselskapet ({parent.navn}).»
-- For hver innstilling:
-  - Hvis `isChildCompany && parent.propagate_<felt>`: vis bryteren som **disabled** med badge «Arvet fra {parent.navn}» og verdien fra parent.
-  - Ellers: bryteren er redigerbar.
-- Skjul «Avdelinger»-tabellen og «Gjelder for alle underavdelinger»-toggles for avdelinger.
-- For morselskap: Når toggle «Gjelder for alle underavdelinger» slås PÅ → sett `propagate_<felt> = true` på mor OG push verdien til alle barn (som i dag). Når den slås AV → sett `propagate_<felt> = false` (avdelinger får tilbake muligheten til å overstyre).
+**1. På `companies` (tre nye propageringsflagg):**
+- `propagate_sora_buffer_mode boolean default false`
+- `propagate_mission_roles boolean default false`
+- `propagate_flight_alerts boolean default false`
 
-### Innstillinger som omfattes (denne runden)
-1. Vis alle luftromsadvarsler
-2. Skjul rapportør-identitet
-3. Krev godkjenning av oppdrag
-4. Krev SORA på oppdrag (+ antall steg)
-5. Avviksrapport (utvid samme mønster)
+(SORA-buffermodus, geography og altitude grupperes under én «SORA-defaults»-toggle siden de allerede deler samme «Gjelder for alle underavdelinger»-område i UI.)
 
-SORA-config (`company_sora_config`), mission roles og flight alerts holdes utenfor denne runden.
+### Endringer i `ChildCompaniesSection.tsx`
+
+**Hent inn parent-data:**
+- Utvid `inherited`-state med `propagate_sora_buffer_mode`, `propagate_mission_roles`, `propagate_flight_alerts`.
+- Hent parent-verdiene parallelt:
+  - `default_buffer_mode`, `default_flight_geography_m`, `default_flight_altitude_m` fra parent sin `company_sora_config`.
+  - `company_mission_roles` for parent (liste).
+  - `company_flight_alerts` + `company_flight_alert_recipients` for parent.
+
+**SORA-defaults-blokk (buffermodus + Flight Geography + flyhøyde):**
+- Når `isChildDept && parent.propagate_sora_buffer_mode`: vis Lock-badge «Arvet fra {parentNavn}», bruk parent-verdiene som visning, deaktiver RadioGroup + begge Sliders.
+- Eksisterende «Gjelder for alle underavdelinger»-toggle (linje 1167) utvides til også å persistere `propagate_sora_buffer_mode = true/false` på morselskapet OG ved PÅ pushe `default_buffer_mode/geography/altitude` til alle barns `company_sora_config` (upsert per barn). Mor-toggle vises kun når `!isChildDept`.
+
+**Roller-blokk:**
+- Når `isChildDept && parent.propagate_mission_roles`: vis badge øverst i blokken, vis parent-rollene som lese-chips (ingen X-knapp), skjul «Legg til»-feltet.
+- `handleToggleApplyRolesToChildren` må også sette `propagate_mission_roles = true/false` på morselskapet. Når PÅ → kopier roller (eksisterende logikk). Når AV → fjern flagget; barn beholder verdiene men kan nå redigere selv. Mor-toggle vises kun når `!isChildDept`.
+- `applyRolesToChildren`-state initialiseres fra egen `propagate_mission_roles` ved fetch.
+
+**Flight alerts-blokk:**
+- Når `isChildDept && parent.propagate_flight_alerts`: badge øverst, alle Switch + Input + mottaker-velger settes `disabled`. Verdiene som vises hentes fra parent (via egen `fetchInheritedFlightAlerts`).
+- `handleToggleApplyAlertsToChildren` må også sette `propagate_flight_alerts = true/false` på morselskapet og pushe varsler+mottakere til barn (som i dag). Når AV → fjern flagget. Mor-toggle vises kun når `!isChildDept`.
+- `applyAlertsToChildren`-state initialiseres fra egen `propagate_flight_alerts`.
+
+### Endring i `CompanySoraConfigSection.tsx`
+
+Komponenten brukes i en egen fane (SORA-konfigurasjon, ikke samme som ChildCompaniesSection). Selv om den allerede har sin egen «Arvet fra»-banner, mangler hardlås når mor har eksplisitt propagering.
+
+- Legg til nytt felt `propagate_sora_config boolean default false` på `companies` (samme mønster).
+- Hent dette flagget fra parent. Når `isChild && parent.propagate_sora_config`:
+  - Skjul «Lagre»-knappen og deaktiver alle felt (terskler, sliders, switches, hardstop, dokumenter).
+  - Vis tydelig låst-banner: «🔒 SORA-innstillingene styres av {parentName}.»
+- Legg til en «Gjelder for alle underavdelinger»-toggle nederst (kun synlig for parent / `!isChild`) som setter flagget og pusher hele config-raden til alle barn via `upsert`.
 
 ### Filer som endres
-- DB-migrasjon (nye kolonner på `companies`)
-- `src/pages/Admin.tsx`
-- `src/components/admin/ChildCompaniesSection.tsx`
+- DB-migrasjon: 4 nye boolean-kolonner på `companies` (`propagate_sora_buffer_mode`, `propagate_mission_roles`, `propagate_flight_alerts`, `propagate_sora_config`).
+- `src/components/admin/ChildCompaniesSection.tsx` (utvid `inherited`, fetch parent SORA/roles/alerts, tre nye låsegrener, oppdater de tre apply-handlerne med flagg-persistens).
+- `src/components/admin/CompanySoraConfigSection.tsx` (parent-flag fetch, disabled-state, ny propageringstoggle for parent).
 
-### UI-detaljer
-- Badge: `secondary` med `Lock`-ikon fra lucide-react.
-- Tooltip på låst bryter: «Denne innstillingen er styrt av morselskapet. Kontakt morselskapets administrator for å endre.»
+### UI-detaljer (konsistent med eksisterende)
+- Badge: `secondary` med `Lock`-ikon.
+- Banner i en låst blokk: `border-primary/40 bg-primary/5` med Lock-ikon + tekst «Styres av morselskapet ({parentNavn})».
+- Tooltip på låste kontroller: «Denne innstillingen er styrt av morselskapet. Kontakt morselskapets administrator for å endre.»
 
-<lov-actions>
-<lov-suggestion message="Inkluder også SORA-config (buffermodus, geography, altitude), mission roles og flight alerts i samme arv-mønster">Utvid til SORA + roller + varsler</lov-suggestion>
-<lov-suggestion message="Test arvelogikken: aktiver propagering på mor, sjekk at avdelings-admin ser låst bryter, deaktiver og verifiser at avdelingen kan overstyre">Verifiser arv ende-til-ende</lov-suggestion>
-</lov-actions>
