@@ -159,13 +159,14 @@ export const CompanySoraConfigSection = () => {
       // Always check if this company is a child
       const { data: company } = await (supabase as any)
         .from("companies")
-        .select("parent_company_id, propagate_sora_config")
+        .select("parent_company_id, propagate_sora_config, propagate_sora_approval")
         .eq("id", companyId!)
         .maybeSingle();
 
       const parentId = company?.parent_company_id || null;
       setIsChild(!!parentId);
       setPropagateToChildren(!!company?.propagate_sora_config);
+      setPropagateApproval(!!company?.propagate_sora_approval);
 
       // Check if this company has children (for propagation toggle)
       if (!parentId) {
@@ -176,16 +177,21 @@ export const CompanySoraConfigSection = () => {
         setHasChildren((count || 0) > 0);
       }
 
-      // Fetch parent name + check parent propagation flag
+      // Fetch parent name + check parent propagation flags
+      let parentPropagatesApproval = false;
       if (parentId) {
         const { data: parentCompany } = await (supabase as any)
           .from("companies")
-          .select("navn, propagate_sora_config")
+          .select("navn, propagate_sora_config, propagate_sora_approval")
           .eq("id", parentId)
           .maybeSingle();
         setParentName(parentCompany?.navn || "Morselskap");
         if (parentCompany?.propagate_sora_config) {
           setLockedByParent(true);
+        }
+        if (parentCompany?.propagate_sora_approval) {
+          setApprovalLockedByParent(true);
+          parentPropagatesApproval = true;
         }
       }
 
@@ -215,6 +221,23 @@ export const CompanySoraConfigSection = () => {
         if (parentConfig) {
           applyConfigData(parentConfig);
           setInherited(true);
+        }
+      }
+
+      // If parent propagates SORA-approval, override approval-related fields with parent's values
+      if (parentPropagatesApproval && parentId) {
+        const { data: parentConfig } = await (supabase as any)
+          .from("company_sora_config")
+          .select("sora_based_approval, sora_approval_threshold, sora_hardstop_requires_approval")
+          .eq("company_id", parentId)
+          .maybeSingle();
+        if (parentConfig) {
+          setConfig((prev) => ({
+            ...prev,
+            sora_based_approval: !!parentConfig.sora_based_approval,
+            sora_approval_threshold: parentConfig.sora_approval_threshold != null ? Number(parentConfig.sora_approval_threshold) : prev.sora_approval_threshold,
+            sora_hardstop_requires_approval: parentConfig.sora_hardstop_requires_approval != null ? Boolean(parentConfig.sora_hardstop_requires_approval) : prev.sora_hardstop_requires_approval,
+          }));
         }
       }
     } catch (error) {
