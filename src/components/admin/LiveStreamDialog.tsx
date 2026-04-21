@@ -162,10 +162,25 @@ export const LiveStreamDialog = ({
               <div><span className="font-medium">SN:</span> <span className="font-mono">{deviceSn}</span></div>
               <div><span className="font-medium">Camera index:</span> <span className="font-mono">{cameraIndex || "(ikke valgt)"}</span></div>
               <div>
-                <span className="font-medium">Project UUID:</span>{" "}
-                <span className="font-mono">{projectUuid || <span className="text-destructive">(mangler – kreves av FH2)</span>}</span>
+                <span className="font-medium">Project UUID (UI):</span>{" "}
+                <span className="font-mono">{projectUuid || <span className="text-muted-foreground">(ikke satt — proxy auto-løser)</span>}</span>
               </div>
+              {resolvedProjectUuid && (
+                <div>
+                  <span className="font-medium">Project UUID (brukt):</span>{" "}
+                  <span className="font-mono">{resolvedProjectUuid}</span>
+                </div>
+              )}
             </div>
+
+            {projectResolve && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Auto-resolve av prosjekt:</p>
+                <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-40 whitespace-pre-wrap break-all">
+                  {JSON.stringify(projectResolve, null, 2)}
+                </pre>
+              </div>
+            )}
 
             {debugAttempts && (
               <div className="space-y-1">
