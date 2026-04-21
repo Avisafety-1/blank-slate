@@ -373,46 +373,72 @@ export const FlightHub2SendDialog = ({
             )}
           </div>
 
-          <div className="space-y-3 rounded-md border border-border p-3">
-            <p className="text-sm font-medium text-foreground">Flyparametre</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Flyhastighet (m/s)</Label>
-                <Input type="number" min={1} max={15} value={speed} onChange={(e) => setSpeed(Math.max(1, Math.min(15, Number(e.target.value))))} />
+          {routeMode === "kmz" && (
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <p className="text-sm font-medium text-foreground">Flyparametre</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Flyhastighet (m/s)</Label>
+                  <Input type="number" min={1} max={15} value={speed} onChange={(e) => setSpeed(Math.max(1, Math.min(15, Number(e.target.value))))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Takeoff-høyde (m)</Label>
+                  <Input type="number" min={1.2} max={1500} step={0.1} value={takeOffHeight} onChange={(e) => setTakeOffHeight(Math.max(1.2, Math.min(1500, Number(e.target.value))))} />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Takeoff-høyde (m)</Label>
-                <Input type="number" min={1.2} max={1500} step={0.1} value={takeOffHeight} onChange={(e) => setTakeOffHeight(Math.max(1.2, Math.min(1500, Number(e.target.value))))} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Høydemodus</Label>
+                  <Select value={heightMode} onValueChange={(v) => setHeightMode(v as any)}>
+                    <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="relativeToStartPoint">Relativ til startpunkt</SelectItem>
+                      <SelectItem value="EGM96">EGM96 (havnivå)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Svingmodus</Label>
+                  <Select value={turnMode} onValueChange={(v) => setTurnMode(v as any)}>
+                    <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="toPointAndStopWithDiscontinuityCurvature">Stopp i punkt</SelectItem>
+                      <SelectItem value="toPointAndPassWithContinuityCurvature">Fly gjennom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Høydemodus</Label>
-                <Select value={heightMode} onValueChange={(v) => setHeightMode(v as any)}>
-                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="relativeToStartPoint">Relativ til startpunkt</SelectItem>
-                    <SelectItem value="EGM96">EGM96 (havnivå)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Svingmodus</Label>
-                <Select value={turnMode} onValueChange={(v) => setTurnMode(v as any)}>
-                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="toPointAndStopWithDiscontinuityCurvature">Stopp i punkt</SelectItem>
-                    <SelectItem value="toPointAndPassWithContinuityCurvature">Fly gjennom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+          )}
 
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Checkbox id="send-route" checked={sendRoute} onCheckedChange={(c) => setSendRoute(!!c)} disabled={route.coordinates.length < 2} />
-              <Label htmlFor="send-route" className="text-sm cursor-pointer">Send rutefil (KMZ)</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Sending av rute</Label>
+              <RadioGroup
+                value={routeMode}
+                onValueChange={(v) => setRouteMode(v as "annotation" | "kmz" | "none")}
+                className="space-y-2"
+              >
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="annotation" id="mode-annotation" disabled={route.coordinates.length < 2} className="mt-0.5" />
+                  <Label htmlFor="mode-annotation" className="text-sm cursor-pointer font-normal">
+                    Send rute som kart-annotasjon (visuell linje)
+                    <span className="text-muted-foreground ml-1">– anbefalt</span>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="kmz" id="mode-kmz" disabled={route.coordinates.length < 2} className="mt-0.5" />
+                  <Label htmlFor="mode-kmz" className="text-sm cursor-pointer font-normal">
+                    Send rutefil (KMZ for autopilot)
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
+                  <Label htmlFor="mode-none" className="text-sm cursor-pointer font-normal">
+                    Ikke send rute
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="send-annotation" checked={sendAnnotation && !!hasAnnotation} onCheckedChange={(c) => setSendAnnotation(!!c)} disabled={!hasAnnotation} />
@@ -427,7 +453,7 @@ export const FlightHub2SendDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-          <Button onClick={handleSend} disabled={loading || !selectedProject || (!sendRoute && !sendAnnotation)}>
+          <Button onClick={handleSend} disabled={loading || !selectedProject || (routeMode === "none" && !sendAnnotation)}>
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Send
           </Button>
