@@ -854,6 +854,7 @@ Deno.serve(async (req: Request) => {
         cameraIndex,
         qualityType = "adaptive",
         videoExpire = 7200,
+        projectUuid: lsProjectUuid,
       } = params;
       if (!deviceSn || !cameraIndex) {
         return new Response(JSON.stringify({ error: "deviceSn og cameraIndex er påkrevd" }), {
@@ -861,45 +862,57 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Map quality string -> int (DJI: 0 auto, 1 smooth, 2 HD, 3 ultra HD)
-      const qualityMap: Record<string, number> = {
-        adaptive: 0, auto: 0, smooth: 1, hd: 2, "ultra-hd": 3, ultraHd: 3,
+      // DJI accepts both string enum and int. Send string per OpenAPI v1.0 spec.
+      const qualityStringMap: Record<string, string> = {
+        adaptive: "adaptive", auto: "adaptive",
+        smooth: "smooth",
+        hd: "high_definition", high_definition: "high_definition",
+        "ultra-hd": "ultra_high_definition", ultrahd: "ultra_high_definition",
+        ultra_high_definition: "ultra_high_definition",
       };
-      const qInt = typeof qualityType === "number"
-        ? qualityType
-        : (qualityMap[String(qualityType).toLowerCase()] ?? 0);
+      const qStr = qualityStringMap[String(qualityType).toLowerCase()] ?? "adaptive";
 
       const body = {
         sn: deviceSn,
         camera_index: cameraIndex,
         video_expire: Number(videoExpire) || 7200,
-        quality_type: qInt,
+        quality_type: qStr,
       };
 
+      // Try v1.0 first (livestream module moved here), fall back to v0.1, then manage.
+      const pathVariants = [
+        { name: "openapi-v1.0", path: "/openapi/v1.0/live-stream/start", v: NEW_API },
+        { name: "openapi-v0.1", path: "/openapi/v0.1/live-stream/start", v: NEW_API },
+        { name: "manage-v1.0", path: "/manage/api/v1.0/live-stream/start", v: OLD_API },
+      ];
+
       const attempts: any[] = [];
-      for (const v of API_VARIANTS) {
-        const url = v.name === "openapi-v0.1"
-          ? `${fh2BaseUrl}/openapi/v0.1/live-stream/start`
-          : `${fh2BaseUrl}/manage/api/v1.0/live-stream/start`;
+      for (const pv of pathVariants) {
+        const url = `${fh2BaseUrl}${pv.path}`;
         try {
-          const h: Record<string, string> = { ...makeHeaders(v, true), "Content-Type": "application/json" };
+          const h: Record<string, string> = {
+            ...makeHeaders(pv.v, true, lsProjectUuid),
+            "Content-Type": "application/json",
+            "X-Request-Id": crypto.randomUUID(),
+          };
           console.log(`[start-livestream] POST ${url} body=${JSON.stringify(body)}`);
           const res = await safeFetch(url, { method: "POST", headers: h, body: JSON.stringify(body) });
           const text = await res.text();
           let json: any = null;
           try { json = JSON.parse(text); } catch { /* keep text */ }
-          attempts.push({ variant: v.name, url, status: res.status, body: text.substring(0, 2000) });
+          attempts.push({ variant: pv.name, url, status: res.status, body: text.substring(0, 2000) });
           if (json && json.code === 0 && json.data?.url) {
             return new Response(JSON.stringify({
               ok: true,
               url: json.data.url,
               urlType: json.data.url_type,
               expireTs: json.data.expire_ts,
+              variant: pv.name,
               raw: json,
             }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
         } catch (err: any) {
-          attempts.push({ variant: v.name, url, error: err.message });
+          attempts.push({ variant: pv.name, url, error: err.message });
         }
       }
       return new Response(JSON.stringify({
