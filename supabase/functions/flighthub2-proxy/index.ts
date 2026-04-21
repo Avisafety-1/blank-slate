@@ -338,12 +338,30 @@ Deno.serve(async (req: Request) => {
     function flattenDjiDeviceList(rawList: any[]): any[] {
       const result: any[] = [];
       for (const item of rawList) {
-        if (item.gateway || item.drone) {
+        if (!item || typeof item !== "object") continue;
+
+        // DJI org/project format: { gateway: {...}, drone: {...} }
+        const hasGatewayDrone = item.gateway || item.drone;
+        if (hasGatewayDrone) {
           if (item.gateway) result.push({ ...item.gateway, _dji_role: "gateway" });
           if (item.drone) result.push({ ...item.drone, _dji_role: "drone" });
-        } else {
-          result.push(item);
+          continue;
         }
+
+        // Some FH2 endpoints return: { ...device, sub_devices: [...] } or children/bind_device
+        const subs = item.sub_devices || item.children || item.bind_device;
+        if (Array.isArray(subs) && subs.length > 0) {
+          // parent is usually a gateway/dock
+          result.push({ ...item, _dji_role: item._dji_role || "gateway" });
+          for (const sub of subs) {
+            if (sub && typeof sub === "object") {
+              result.push({ ...sub, _dji_role: sub._dji_role || "drone" });
+            }
+          }
+          continue;
+        }
+
+        result.push(item);
       }
       return result;
     }
