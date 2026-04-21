@@ -74,6 +74,15 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [testResult, setTestResult] = useState<any>(null);
   const [showTestResult, setShowTestResult] = useState(false);
 
+  // Debug-endpoint sandbox
+  const [debugDialogOpen, setDebugDialogOpen] = useState(false);
+  const [debugEndpoint, setDebugEndpoint] = useState("system_status");
+  const [debugMethod, setDebugMethod] = useState("GET");
+  const [debugProjectUuid, setDebugProjectUuid] = useState("");
+  const [debugDeviceSn, setDebugDeviceSn] = useState("");
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugResult, setDebugResult] = useState<any>(null);
+
   // Device detail
   const [detailDevice, setDetailDevice] = useState<FH2Device | null>(null);
   const [detailState, setDetailState] = useState<any>(null);
@@ -87,6 +96,30 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [memberRole, setMemberRole] = useState("project-member");
   const [memberProject, setMemberProject] = useState("");
   const [addingMember, setAddingMember] = useState(false);
+
+  const runDebugEndpoint = async (overrides?: { endpoint?: string; method?: string; projectUuid?: string }) => {
+    const ep = overrides?.endpoint ?? debugEndpoint;
+    const method = overrides?.method ?? debugMethod;
+    const projUuid = overrides?.projectUuid ?? debugProjectUuid;
+    setDebugLoading(true);
+    setDebugResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+        body: {
+          action: "debug-endpoint",
+          endpoint: ep,
+          method,
+          projectUuid: projUuid || undefined,
+        },
+      });
+      if (error) throw error;
+      setDebugResult(data);
+    } catch (err: any) {
+      setDebugResult({ error: err?.message || "Feil" });
+    } finally {
+      setDebugLoading(false);
+    }
+  };
 
   const fetchDevices = async () => {
     setLoading(true);
