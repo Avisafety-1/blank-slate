@@ -631,6 +631,17 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Live Stream Dialog */}
+      {liveDevice && (
+        <LiveStreamDialog
+          open={!!liveDevice}
+          onOpenChange={(open) => { if (!open) setLiveDevice(null); }}
+          deviceSn={liveDevice.device_sn}
+          deviceName={liveDevice.device_name}
+          cameras={getDeviceCameras(liveDevice)}
+        />
+      )}
     </div>
   );
 };
