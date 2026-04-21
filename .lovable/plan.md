@@ -1,45 +1,43 @@
 
 
-## Plan: Send rute som kart-annotasjon til FlightHub 2
+## Plan: Fikse FH2 list-devices (manglende Aircraft) + diagnoseverktøy + bygg-feil
 
-### Mål
-I `FlightHub2SendDialog` skal brukeren kunne velge hvordan ruten sendes:
-1. **Som rutefil (KMZ)** — dagens flyt, ment for autopilot på drona.
-2. **Som kart-annotasjon (LineString)** — kun visuell linje i FH2-kartet, samme mekanisme som SORA-buffersonene.
+### Diagnose
+1. `list-devices` returnerer Dock 3 fordi `/openapi/v0.1/device` (org-level) gir et `{gateway: Dock3, drone: null}`-element når drona ikke er dokket/online. Proxyen flatter ut dette, får 1 enhet (>0), og returnerer **uten** å kjøre `/project/device`-fallback. M4TD finnes kun via prosjekt-endepunktet (Aircraft-tab i FH2 = prosjekt-bundne droner).
+2. Bygg-feiler: `src/sw.ts` importerer `workbox-precaching/routing/strategies` som ikke er installert som devDependencies (typer mangler), og `__WB_MANIFEST` har ingen typedeklarasjon.
 
-Standardvalget endres til kart-annotasjon, siden det er mest brukervennlig for visuell deling.
+### Endringer
 
-### Endringer i `src/components/FlightHub2SendDialog.tsx`
+**1. `supabase/functions/flighthub2-proxy/index.ts` — `list-devices`-action**
+- Endre logikken slik at vi **alltid** slår sammen org-resultat + alle prosjekt-resultater (ikke bare når org er tom). Dedupliser på `device_sn`.
+- Når org-elementer har `sub_devices` / `children` / `bind_device` / `drone_sn` / `child_device_sn`-felter, flatt ut disse til egne enheter og merk `_dji_role` korrekt (gateway/drone).
+- Returner alltid `diagnostics`-array med både org- og prosjekt-stage så vi kan se per-prosjekt status.
 
-**1. State**
-- Erstatt `sendRoute: boolean` med `routeMode: "annotation" | "kmz" | "none"`.
-- Default: `"annotation"`.
+**2. Ny action `debug-endpoint` i samme edge-funksjon**
+- Tar `endpoint` (string, f.eks. `system_status`, `device`, `project/device`, `device/{sn}/state`, `device/hms?...`) og valgfri `method`/`projectUuid`.
+- Bygger URL mot både `openapi/v0.1` og `manage/api/v1.0`, sender med riktige headere, og returnerer rå status + body for hver variant.
+- Brukes som «sandkasse» for å verifisere hvilke API-kall som fungerer mot kundens token uten å skrive nye actions.
 
-**2. UI**
-- Bytt dagens enkle checkbox «Send rutefil (KMZ)» med en `RadioGroup` (3 valg):
-  - «Send rute som kart-annotasjon (visuell linje)» — anbefalt
-  - «Send rutefil (KMZ for autopilot)»
-  - «Ikke send rute»
-- Behold checkbox for «Send SORA-soner som kartannotasjoner» uendret.
-- Skjul/disable «Flyparametre»-blokken og DJI-modellvelger når `routeMode !== "kmz"` (de er kun relevante for KMZ-eksport).
+**3. UI: «Test enhets-API» i `CompanySettings` / FH2-seksjon (komponent som inneholder knappen i skjermbildet)**
+- Utvid eksisterende «Test enhets-API»-knapp til en liten meny / dialog med forhåndsdefinerte tester:
+  - System status (`GET /system_status`)
+  - List org-enheter (`GET /device`)
+  - List prosjekt-enheter (per prosjekt fra dropdown)
+  - Device state for valgt SN
+  - HMS for valgt SN
+- Kaller `flighthub2-proxy` med `action: "debug-endpoint"` og viser rå JSON-respons + status i dialogen, slik at vi (og kunden) raskt ser hvilke endepunkter som svarer hva.
 
-**3. Send-logikk i `handleSend`**
-- Hvis `routeMode === "kmz"` → kjør dagens `upload-route`-flyt.
-- Hvis `routeMode === "annotation"` og `route.coordinates.length >= 2`:
-  - Bygg LineString GeoJSON via ny helper `buildRouteLineGeoJson(coords, color)` (farge f.eks. `#10B981` grønn for å skille fra SORA-sonene).
-  - Kall `flighthub2-proxy` med `action: "create-annotation"`, `annotationType: 1` (line), navn = `routeName`, beskrivelse «Planlagt rute generert av Avisafe».
-- Suksess-toast oppdateres til å reflektere hvilken modus som ble brukt («rute som annotasjon», «rutefil», «X SORA-soner»).
-
-**4. Validering av Send-knapp**
-- Disabled når `routeMode === "none" && !sendAnnotation`, eller når valgt modus ikke har gyldige data (f.eks. <2 koordinater).
-
-### Antakelser
-- `flighthub2-proxy` sin `create-annotation`-action støtter allerede `annotationType: 1` for linjer (samme endepunkt brukes for SORA-polygoner med type 2). Hvis FH2 OpenAPI krever en annen type-kode for LineString, justeres verdien — proxyen videresender feltet uendret.
-- Ingen endringer i edge-funksjonen er nødvendige; kun klient-siden bygger en annen GeoJSON-geometri.
+**4. `src/sw.ts` — fikse bygg-feil**
+- Legg til devDependencies: `workbox-precaching`, `workbox-routing`, `workbox-strategies` (vil bli foreslått via add-dependencies-action).
+- Alternativ hvis dependency-installasjon ikke er ønsket: rull tilbake `sw.ts` til en variant uten workbox (nettverk-først håndtering inline) og deklarer `self.__WB_MANIFEST` som `any` via `declare const`. Foretrukket løsning er å installere workbox-pakkene siden Vite PWA `injectManifest` allerede forventer dem.
 
 ### Filer som endres
-- `src/components/FlightHub2SendDialog.tsx`
+- `supabase/functions/flighthub2-proxy/index.ts` (ny merge-logikk + `debug-endpoint`-action)
+- Komponenten med «Test enhets-API»-knappen (FH2-seksjonen i `CompanySettings` / `CompanyManagementSection` — identifiseres ved implementering) — utvides med diagnose-dialog
+- `src/sw.ts` + `package.json` (workbox-pakker)
 
 ### Resultat
-Brukeren får en tydelig valg i dialogen: standard sendes ruta som en visuell grønn linje (kart-annotasjon) sammen med eventuelle SORA-soner. KMZ-eksport for autopilot er fortsatt tilgjengelig som alternativ.
+- Aircraft-tab-droner (M4TD og fremtidige) vises i Avisafe selv når de ikke er dokket, fordi vi alltid merger inn `/project/device`-resultater.
+- Vi får et innebygd diagnoseverktøy for å teste FH2-endepunkter direkte fra UI uten å gjette i loggene.
+- Bygg-feilene i `src/sw.ts` forsvinner.
 
