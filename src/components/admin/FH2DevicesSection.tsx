@@ -74,6 +74,15 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [testResult, setTestResult] = useState<any>(null);
   const [showTestResult, setShowTestResult] = useState(false);
 
+  // Debug-endpoint sandbox
+  const [debugDialogOpen, setDebugDialogOpen] = useState(false);
+  const [debugEndpoint, setDebugEndpoint] = useState("system_status");
+  const [debugMethod, setDebugMethod] = useState("GET");
+  const [debugProjectUuid, setDebugProjectUuid] = useState("");
+  const [debugDeviceSn, setDebugDeviceSn] = useState("");
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugResult, setDebugResult] = useState<any>(null);
+
   // Device detail
   const [detailDevice, setDetailDevice] = useState<FH2Device | null>(null);
   const [detailState, setDetailState] = useState<any>(null);
@@ -87,6 +96,30 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [memberRole, setMemberRole] = useState("project-member");
   const [memberProject, setMemberProject] = useState("");
   const [addingMember, setAddingMember] = useState(false);
+
+  const runDebugEndpoint = async (overrides?: { endpoint?: string; method?: string; projectUuid?: string }) => {
+    const ep = overrides?.endpoint ?? debugEndpoint;
+    const method = overrides?.method ?? debugMethod;
+    const projUuid = overrides?.projectUuid ?? debugProjectUuid;
+    setDebugLoading(true);
+    setDebugResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+        body: {
+          action: "debug-endpoint",
+          endpoint: ep,
+          method,
+          projectUuid: projUuid || undefined,
+        },
+      });
+      if (error) throw error;
+      setDebugResult(data);
+    } catch (err: any) {
+      setDebugResult({ error: err?.message || "Feil" });
+    } finally {
+      setDebugLoading(false);
+    }
+  };
 
   const fetchDevices = async () => {
     setLoading(true);
@@ -233,6 +266,9 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={testDeviceApi} disabled={testLoading}>
             {testLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Radio className="h-3.5 w-3.5 mr-1" />}
             Test enhets-API
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setDebugResult(null); setDebugDialogOpen(true); }}>
+            <Radio className="h-3.5 w-3.5 mr-1" /> Debug API
           </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={fetchDevices} disabled={loading}>
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
@@ -478,6 +514,87 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
               Legg til
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Debug Endpoint Dialog */}
+      <Dialog open={debugDialogOpen} onOpenChange={setDebugDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>FH2 API Debug-sandkasse</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="h-7 text-xs"
+                onClick={() => runDebugEndpoint({ endpoint: "system_status", method: "GET" })}>
+                System status
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs"
+                onClick={() => runDebugEndpoint({ endpoint: "device", method: "GET" })}>
+                Org-enheter
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs"
+                onClick={() => runDebugEndpoint({ endpoint: "project", method: "GET" })}>
+                List prosjekter
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs"
+                disabled={!debugProjectUuid}
+                onClick={() => runDebugEndpoint({ endpoint: "project/device?page=1&page_size=200", method: "GET" })}>
+                Prosjekt-enheter
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs"
+                disabled={!debugDeviceSn}
+                onClick={() => runDebugEndpoint({ endpoint: `device/${encodeURIComponent(debugDeviceSn)}/state`, method: "GET" })}>
+                Device state
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs"
+                disabled={!debugDeviceSn}
+                onClick={() => runDebugEndpoint({ endpoint: `device/hms?device_sn_list=${encodeURIComponent(debugDeviceSn)}`, method: "GET" })}>
+                HMS
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Device SN (for state/HMS)</Label>
+                <Input value={debugDeviceSn} onChange={(e) => setDebugDeviceSn(e.target.value)} placeholder="SN..." className="h-8 text-sm font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs">Project UUID</Label>
+                <Input value={debugProjectUuid} onChange={(e) => setDebugProjectUuid(e.target.value)} placeholder="uuid..." className="h-8 text-sm font-mono" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+              <div>
+                <Label className="text-xs">Egendefinert endpoint (uten /openapi/v0.1/ prefiks)</Label>
+                <Input value={debugEndpoint} onChange={(e) => setDebugEndpoint(e.target.value)} placeholder="device" className="h-8 text-sm font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs">Metode</Label>
+                <Select value={debugMethod} onValueChange={setDebugMethod}>
+                  <SelectTrigger className="h-8 text-sm w-24"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GET">GET</SelectItem>
+                    <SelectItem value="POST">POST</SelectItem>
+                    <SelectItem value="PUT">PUT</SelectItem>
+                    <SelectItem value="DELETE">DELETE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button size="sm" className="h-8" onClick={() => runDebugEndpoint()} disabled={debugLoading || !debugEndpoint.trim()}>
+                  {debugLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Kjør"}
+                </Button>
+              </div>
+            </div>
+
+            {debugResult && (
+              <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-[50vh] whitespace-pre-wrap break-all">
+                {JSON.stringify(debugResult, null, 2)}
+              </pre>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

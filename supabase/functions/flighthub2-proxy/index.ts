@@ -338,12 +338,30 @@ Deno.serve(async (req: Request) => {
     function flattenDjiDeviceList(rawList: any[]): any[] {
       const result: any[] = [];
       for (const item of rawList) {
-        if (item.gateway || item.drone) {
+        if (!item || typeof item !== "object") continue;
+
+        // DJI org/project format: { gateway: {...}, drone: {...} }
+        const hasGatewayDrone = item.gateway || item.drone;
+        if (hasGatewayDrone) {
           if (item.gateway) result.push({ ...item.gateway, _dji_role: "gateway" });
           if (item.drone) result.push({ ...item.drone, _dji_role: "drone" });
-        } else {
-          result.push(item);
+          continue;
         }
+
+        // Some FH2 endpoints return: { ...device, sub_devices: [...] } or children/bind_device
+        const subs = item.sub_devices || item.children || item.bind_device;
+        if (Array.isArray(subs) && subs.length > 0) {
+          // parent is usually a gateway/dock
+          result.push({ ...item, _dji_role: item._dji_role || "gateway" });
+          for (const sub of subs) {
+            if (sub && typeof sub === "object") {
+              result.push({ ...sub, _dji_role: sub._dji_role || "drone" });
+            }
+          }
+          continue;
+        }
+
+        result.push(item);
       }
       return result;
     }
@@ -644,16 +662,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // ─── Action: list-devices ───
+    // ─── Action: list-devices (always merge org + all projects) ───
     if (action === "list-devices") {
       const diagnostics: any[] = [];
-      let emptySuccessPayload: any = null;
+      const devicesByKey = new Map<string, any>();
+      let workingVariant: string | null = null;
 
       for (const v of API_VARIANTS) {
         const orgUrl = v.name === "openapi-v0.1"
           ? `${fh2BaseUrl}/openapi/v0.1/device`
           : `${fh2BaseUrl}/manage/api/v1.0/device?page=1&page_size=200`;
 
+        // Step A: org-level device list
         try {
           const orgHeaders = makeHeaders(v, false);
           const orgRes = await safeFetch(orgUrl, { method: "GET", headers: orgHeaders });
@@ -665,46 +685,48 @@ Deno.serve(async (req: Request) => {
           const flatList = flattenDjiDeviceList(rawOrgList);
           const orgList = flatList.map((device: any) => normalizeDevicePayload(device));
 
-          // Raw debug info
-          const rawListSample = rawOrgList.slice(0, 3).map((item: any) => {
-            const keys = Object.keys(item || {});
-            return { _keys: keys, ...item };
-          });
-
           diagnostics.push({
             variant: v.name,
             stage: "org-device",
             url: orgUrl,
             status: orgRes.status,
             code: orgData?.code ?? null,
-            raw_data_type: typeof orgData?.data,
-            raw_data_keys: orgData?.data ? Object.keys(orgData.data) : null,
             raw_list_length: rawOrgList.length,
             flat_list_length: flatList.length,
             normalized_count: orgList.length,
             message: orgData?.message ?? null,
-            raw_body_preview: orgText.substring(0, 1000),
-            raw_list_sample: rawListSample,
+            raw_body_preview: orgText.substring(0, 500),
           });
-          console.log(`list-devices [${v.name}] org-device status=${orgRes.status} code=${orgData?.code} raw=${rawOrgList.length} flat=${flatList.length} norm=${orgList.length}`);
+          console.log(`list-devices [${v.name}] org-device status=${orgRes.status} code=${orgData?.code} norm=${orgList.length}`);
 
-          if (orgRes.ok && orgData?.code === 0 && orgList.length > 0) {
-            return new Response(JSON.stringify({
-              ...orgData,
-              data: { ...(orgData?.data || {}), list: orgList },
-              _api_version: v.name,
-              _source: "org-device",
-              diagnostics,
-            }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+          if (orgRes.ok && orgData?.code === 0) {
+            workingVariant = v.name;
+            for (const device of orgList) {
+              const key = device.device_sn || device.device_name;
+              if (key) devicesByKey.set(key, device);
+            }
           }
+        } catch (err: any) {
+          diagnostics.push({ variant: v.name, stage: "org-device", error: err.message });
+          console.log(`list-devices [${v.name}] org error: ${err.message}`);
+        }
 
+        // Step B: ALWAYS attempt project-level merge regardless of org outcome
+        try {
           const projectAttempt = await tryListProjects(fh2BaseUrl, fh2Token, v, safeFetch);
           const projects = extractListPayload(projectAttempt.data?.data);
-          const devicesByKey = new Map<string, any>();
+
+          diagnostics.push({
+            variant: v.name,
+            stage: "project-list",
+            status: projectAttempt.status,
+            code: projectAttempt.data?.code ?? null,
+            count: projects.length,
+            message: projectAttempt.data?.message ?? null,
+          });
 
           if (projectAttempt.ok && projects.length > 0 && v.projectHeaderName) {
+            workingVariant = workingVariant || v.name;
             const projectDeviceUrl = v.name === "openapi-v0.1"
               ? `${fh2BaseUrl}/openapi/v0.1/project/device?page=1&page_size=200`
               : `${fh2BaseUrl}/manage/api/v1.0/project/device?page=1&page_size=200`;
@@ -727,70 +749,50 @@ Deno.serve(async (req: Request) => {
                   variant: v.name,
                   stage: "project-device",
                   project_uuid: currentProjectUuid,
+                  project_name: project.name || project.workspace_name || project.project_name,
                   status: projectRes.status,
                   code: projectData?.code ?? null,
                   count: projectDevices.length,
                   message: projectData?.message ?? null,
+                  raw_body_preview: projectText.substring(0, 400),
                 });
-                console.log(`list-devices [${v.name}] project-device project=${currentProjectUuid} status=${projectRes.status} code=${projectData?.code} count=${projectDevices.length}`);
+                console.log(`list-devices [${v.name}] project=${currentProjectUuid} count=${projectDevices.length}`);
 
                 if (projectRes.ok && projectData?.code === 0) {
                   for (const device of projectDevices) {
                     const key = device.device_sn || `${device.device_name}-${currentProjectUuid}`;
-                    if (key) devicesByKey.set(key, device);
+                    if (key && !devicesByKey.has(key)) {
+                      devicesByKey.set(key, device);
+                    }
                   }
                 }
-              } catch (err) {
+              } catch (err: any) {
                 diagnostics.push({
                   variant: v.name,
                   stage: "project-device",
                   project_uuid: currentProjectUuid,
                   error: err.message,
                 });
-                console.log(`list-devices [${v.name}] project-device error for ${currentProjectUuid}: ${err.message}`);
               }
             }
-          } else {
-            diagnostics.push({
-              variant: v.name,
-              stage: "project-list",
-              status: projectAttempt.status,
-              code: projectAttempt.data?.code ?? null,
-              count: projects.length,
-              message: projectAttempt.data?.message ?? null,
-            });
           }
-
-          if (devicesByKey.size > 0) {
-            return new Response(JSON.stringify({
-              code: 0,
-              message: "",
-              data: { list: Array.from(devicesByKey.values()) },
-              _api_version: v.name,
-              _source: "project-device-fallback",
-              diagnostics,
-            }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-
-          if (orgRes.ok && orgData?.code === 0) {
-            emptySuccessPayload = {
-              ...orgData,
-              data: { ...(orgData?.data || {}), list: orgList },
-              _api_version: v.name,
-              _source: "empty-success",
-              diagnostics: [...diagnostics],
-            };
-          }
-        } catch (err) {
-          diagnostics.push({ variant: v.name, stage: "org-device", error: err.message });
-          console.log(`list-devices [${v.name}] error: ${err.message}`);
+        } catch (err: any) {
+          diagnostics.push({ variant: v.name, stage: "project-list", error: err.message });
         }
+
+        // If we got devices on this variant, stop trying the other variant
+        if (devicesByKey.size > 0) break;
       }
 
-      if (emptySuccessPayload) {
-        return new Response(JSON.stringify(emptySuccessPayload), {
+      if (workingVariant !== null) {
+        return new Response(JSON.stringify({
+          code: 0,
+          message: "",
+          data: { list: Array.from(devicesByKey.values()) },
+          _api_version: workingVariant,
+          _source: "merged-org-and-projects",
+          diagnostics,
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -801,6 +803,45 @@ Deno.serve(async (req: Request) => {
         diagnostics,
       }), {
         status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Action: debug-endpoint (raw sandbox for any FH2 API path) ───
+    if (action === "debug-endpoint") {
+      const { endpoint, method = "GET", projectUuid: dbgProjectUuid, body: dbgBody } = params;
+      if (!endpoint || typeof endpoint !== "string") {
+        return new Response(JSON.stringify({ error: "endpoint (string) er påkrevd" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const cleanEndpoint = endpoint.replace(/^\/+/, "");
+      const variants = [
+        { name: "openapi-v0.1", base: `${fh2BaseUrl}/openapi/v0.1/${cleanEndpoint}`, v: NEW_API },
+        { name: "manage-v1.0", base: `${fh2BaseUrl}/manage/api/v1.0/${cleanEndpoint}`, v: OLD_API },
+      ];
+      const results: Record<string, any> = {};
+      for (const { name, base, v } of variants) {
+        try {
+          const h: Record<string, string> = { ...makeHeaders(v, true, dbgProjectUuid) };
+          if (method !== "GET" && method !== "HEAD") h["Content-Type"] = "application/json";
+          console.log(`[debug-endpoint] ${method} ${base}`);
+          const res = await safeFetch(base, {
+            method,
+            headers: h,
+            body: dbgBody && method !== "GET" ? JSON.stringify(dbgBody) : undefined,
+          });
+          const text = await res.text();
+          results[name] = {
+            url: base,
+            status: res.status,
+            body: text.substring(0, 5000),
+          };
+        } catch (err: any) {
+          results[name] = { url: base, error: err.message };
+        }
+      }
+      return new Response(JSON.stringify({ ok: true, endpoint, method, results }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
