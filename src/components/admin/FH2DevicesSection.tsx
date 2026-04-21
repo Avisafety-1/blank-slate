@@ -304,28 +304,45 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
               <TableHead>Modell</TableHead>
               <TableHead>SN</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead className="w-20 text-right">Live</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {devices.map((d) => (
-              <TableRow
-                key={d.device_sn}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => openDeviceDetail(d)}
-              >
-                <TableCell>
-                  {isOnline(d)
-                    ? <Wifi className="h-4 w-4 text-green-500" />
-                    : <WifiOff className="h-4 w-4 text-muted-foreground" />}
-                </TableCell>
-                <TableCell className="font-medium text-sm">{d.device_name || d.nickname || "–"}</TableCell>
-                <TableCell className="text-sm">{getModelName(d)}</TableCell>
-                <TableCell className="text-xs font-mono text-muted-foreground">{d.device_sn}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className="text-xs">{getDeviceTypeName(d)}</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
+            {devices.map((d) => {
+              const cameras = getDeviceCameras(d);
+              const canLive = isOnline(d) && cameras.length > 0;
+              return (
+                <TableRow
+                  key={d.device_sn}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => openDeviceDetail(d)}
+                >
+                  <TableCell>
+                    {isOnline(d)
+                      ? <Wifi className="h-4 w-4 text-green-500" />
+                      : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+                  </TableCell>
+                  <TableCell className="font-medium text-sm">{d.device_name || d.nickname || "–"}</TableCell>
+                  <TableCell className="text-sm">{getModelName(d)}</TableCell>
+                  <TableCell className="text-xs font-mono text-muted-foreground">{d.device_sn}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-xs">{getDeviceTypeName(d)}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={!canLive}
+                      onClick={() => setLiveDevice(d)}
+                      title={canLive ? "Start live stream" : "Krever online drone med kamera"}
+                    >
+                      <Video className="h-3.5 w-3.5 mr-1" /> Live
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}
