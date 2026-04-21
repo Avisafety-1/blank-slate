@@ -267,6 +267,9 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
             {testLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Radio className="h-3.5 w-3.5 mr-1" />}
             Test enhets-API
           </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setDebugResult(null); setDebugDialogOpen(true); }}>
+            <Radio className="h-3.5 w-3.5 mr-1" /> Debug API
+          </Button>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={fetchDevices} disabled={loading}>
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
             {loaded ? "Oppdater" : "Hent enheter"}
