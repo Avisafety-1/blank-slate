@@ -1,51 +1,37 @@
 
 
-## Plan: Live stream fra DJI Dock 3 (FH2 OpenAPI)
+## Plan: Fikse FH2 livestream — bruk `/openapi/v1.0/` (ikke v0.1)
 
-### Bakgrunn
-DJI FlightHub 2 OpenAPI v0.1 har et `live-stream/start`-endepunkt som returnerer en **WHEP (WebRTC over HTTPS)** pull-URL. Strømmen avsluttes automatisk hvis ingen seer kobler seg til innen 5 minutter, og en `video_expire`-token bestemmer total varighet.
+### Diagnose
+Du har rett. Dokumentasjonsfanen heter «NEW FlightHub 2 OpenAPI **V1.0**», men endepunktet vises som `/openapi/v0.1/live-stream/start`. Det er fordi DJI nylig har flyttet livestream-modulene til `v1.0`-pathen (mens flere andre endepunkter fortsatt fungerer på `v0.1`). Vår proxy treffer kun `v0.1`, som derfor gir `200500 internal server error` — endepunktet eksisterer på den gamle ruten, men implementasjonen bak er flyttet/avviklet.
 
-**Endepunkt:**
-```
-POST /openapi/v0.1/live-stream/start
-Body: { sn, camera_index, video_expire, quality_type }
-Resp: { code, data: { url, url_type: "srs", expire_ts } }
-```
-
-`camera_index` (f.eks. `"165-0-7"`) hentes fra `drone.camera_list` i list-devices (vi normaliserer allerede `camera_list` i proxyen).
+Andre tegn som peker mot dette:
+- `manage/api/v1.0/live-stream/start` gir 404 (ingen rute der heller).
+- Andre FH2-endepunkter vi har testet på `v0.1` (system_status, device, project) svarer fortsatt OK, så token + HMAC-signering er korrekt.
 
 ### Endringer
 
-**1. `supabase/functions/flighthub2-proxy/index.ts` — ny action `start-livestream`**
-- Input: `deviceSn`, `cameraIndex`, valgfritt `qualityType` (default `"adaptive"`), `videoExpire` (default 7200s).
-- Sender POST mot `${fh2BaseUrl}/openapi/v0.1/live-stream/start` med samme HMAC-headers og `X-Project-Uuid` som andre actions.
-- Returnerer `{ url, urlType, expireTs }`. Logger feil med endpoint-URL for diagnose.
+**1. `supabase/functions/flighthub2-proxy/index.ts` — `start-livestream`-action**
+- Prøv variantene i denne rekkefølgen og returner første suksess:
+  1. `POST {fh2BaseUrl}/openapi/v1.0/live-stream/start`  ← **ny, primær**
+  2. `POST {fh2BaseUrl}/openapi/v0.1/live-stream/start`  ← beholdes som fallback
+  3. `POST {fh2BaseUrl}/manage/api/v1.0/live-stream/start` ← beholdes for fullstendighet
+- Behold dagens payload-fix (string-`quality_type`, `X-Request-Id`, `X-Project-Uuid`).
+- Legg alle forsøk i `attempts`-array og returner dem ved feil (samme mønster som `debug-endpoint`) så vi ser hvilken variant som svarte hva.
 
-**2. `src/components/admin/FH2DevicesSection.tsx` — UI for å starte og se strøm**
-- Ny kolonne / knapp «Live» per drone-rad (vises kun hvis `online_status === 1`, `type === 0` (drone) og `camera_list?.length > 0`).
-- Klikk åpner `LiveStreamDialog`:
-  - Velg kamera (dropdown over `camera_list`, f.eks. «Wide / Zoom / Thermal»).
-  - Velg kvalitet (Auto, Smooth, HD, Ultra HD).
-  - «Start strøm»-knapp → kaller `flighthub2-proxy` med `action: "start-livestream"`.
-  - Når svar kommer: viser strømmen i en innebygd WebRTC-spiller via `<iframe>` mot et **WHEP-kompatibelt JS-bibliotek** lastet client-side. Vi bruker [`whip-whep`-pattern via `RTCPeerConnection`](https://github.com/Eyevinn/webrtc-player) — minimal egen implementasjon: ny komponent `WhepPlayer.tsx` som tar `url` prop og setter opp `RTCPeerConnection` med SDP offer/answer mot WHEP-endpoint.
-  - Viser `expire_ts`-nedtelling og «Stopp»-knapp (lukker peer-connection lokalt; FH2 stenger automatisk etter 5 min uten seer).
+**2. `debug-endpoint`-action**
+- Utvid `variants`-listen til også å inkludere `openapi/v1.0` slik at man fra UI kan teste vilkårlige `v1.0`-endepunkter (f.eks. `live-stream/start`, `live-stream/stop`, `live-stream/status`) uten kodeendring.
 
-**3. Ny komponent `src/components/admin/WhepPlayer.tsx`**
-- Standard WHEP-klient: oppretter `RTCPeerConnection`, legger til `recvonly`-transceivers for video/audio, sender SDP offer som POST til WHEP-URL, setter remote description fra svaret, kobler stream til `<video autoPlay playsInline muted>`.
-- Håndterer feil og connection-state (Connecting / Live / Disconnected) med tydelig status-indikator.
-- Cleanup på unmount (`pc.close()`).
+**3. Ingen UI-endring nødvendig**
+- `LiveStreamDialog` sender allerede `quality_type` som streng. Når proxyen svarer OK fra `v1.0`, fungerer dialogen som før.
 
-### Begrensninger / antakelser
-- DJI sitt SRS-endepunkt (`http://47.96.144.147:30806/...`) i dokumentasjonseksempelet er **HTTP**, ikke HTTPS. Hvis produksjons-tokens også returnerer HTTP-URL, vil moderne nettlesere blokkere blandet innhold på en HTTPS-side. **Mitigering:** vise URL-en og en tydelig melding hvis WHEP-URL er `http://` («Åpne i ny fane / VLC»), pluss en «Kopier URL»-knapp. Dersom DJI returnerer HTTPS i kundens region, fungerer playeren direkte.
-- Endepunktet er merket «Developing» i dokumentasjonen – kan kreve at FH2-tenant har livestream-modulen aktivert. Ved 4xx-feil viser vi rå svaret (samme mønster som `debug-endpoint`).
-- Camera-index oppdages fra eksisterende `list-devices`-svar; ingen ekstra API-kall trengs for å bygge dropdown.
+### Antakelser
+- DJI sin OpenAPI-doc tittel «V1.0» reflekterer at livestream-modulen er publisert under `/openapi/v1.0/`. Hvis det viser seg at endepunktet faktisk forventer en helt ny path (f.eks. `/openapi/v1.0/livestream/start` uten bindestrek), vil `attempts`-loggen vise 404 og vi justerer raskt basert på respons.
+- Token og HMAC-signering er identisk på tvers av `v0.1` og `v1.0` (kjent fra DJI sine eksempler).
 
-### Filer som endres / opprettes
-- `supabase/functions/flighthub2-proxy/index.ts` — ny `start-livestream`-action
-- `src/components/admin/FH2DevicesSection.tsx` — Live-knapp + dialog
-- `src/components/admin/WhepPlayer.tsx` — ny WHEP WebRTC-spiller
-- `src/components/admin/LiveStreamDialog.tsx` — ny dialog med kamera/kvalitet-valg + player
+### Filer som endres
+- `supabase/functions/flighthub2-proxy/index.ts`
 
 ### Resultat
-Admin kan klikke «Live» på en online drone i FH2-listen, velge kamera + kvalitet, og se WebRTC-strømmen direkte i Avisafe. Hvis nettverket/protokollen ikke tillater innebygd avspilling, får man kopierbar URL som fallback.
+Livestream-kallet treffer riktig API-versjon (`v1.0`), `200500`-feilen forsvinner, og vi får en gyldig WHEP-URL tilbake. Diagnoseverktøyet kan i tillegg teste andre `v1.0`-endepunkter direkte fra admin-panelet.
 
