@@ -640,6 +640,7 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
           deviceSn={liveDevice.device_sn}
           deviceName={liveDevice.device_name}
           cameras={getDeviceCameras(liveDevice)}
+          projectUuid={(liveDevice as any).project_uuid}
         />
       )}
     </div>
