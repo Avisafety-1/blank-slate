@@ -76,6 +76,7 @@ export const LiveStreamDialog = ({
           deviceSn,
           cameraIndex,
           qualityType: quality,
+          projectUuid,
         },
       });
       if (error) throw error;
@@ -148,10 +149,19 @@ export const LiveStreamDialog = ({
               </Select>
             </div>
 
+            <div className="text-xs text-muted-foreground space-y-0.5 border rounded p-2">
+              <div><span className="font-medium">SN:</span> <span className="font-mono">{deviceSn}</span></div>
+              <div><span className="font-medium">Camera index:</span> <span className="font-mono">{cameraIndex || "(ikke valgt)"}</span></div>
+              <div>
+                <span className="font-medium">Project UUID:</span>{" "}
+                <span className="font-mono">{projectUuid || <span className="text-destructive">(mangler – kreves av FH2)</span>}</span>
+              </div>
+            </div>
+
             {debugAttempts && (
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Forsøk:</p>
-                <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-40 whitespace-pre-wrap break-all">
+                <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-60 whitespace-pre-wrap break-all">
                   {JSON.stringify(debugAttempts, null, 2)}
                 </pre>
               </div>
