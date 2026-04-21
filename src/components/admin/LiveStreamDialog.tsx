@@ -43,6 +43,8 @@ export const LiveStreamDialog = ({
   const [expireTs, setExpireTs] = useState<number | null>(null);
   const [now, setNow] = useState<number>(Date.now());
   const [debugAttempts, setDebugAttempts] = useState<any>(null);
+  const [resolvedProjectUuid, setResolvedProjectUuid] = useState<string | null>(null);
+  const [projectResolve, setProjectResolve] = useState<any>(null);
 
   useEffect(() => {
     if (open && cameras.length > 0 && !cameraIndex) {
