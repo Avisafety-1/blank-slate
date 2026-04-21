@@ -862,7 +862,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // DJI accepts both string enum and int. Send string per OpenAPI v1.0 spec.
+      // Map UI value -> DJI string enum (per OpenAPI spec).
       const qualityStringMap: Record<string, string> = {
         adaptive: "adaptive", auto: "adaptive",
         smooth: "smooth",
@@ -872,35 +872,48 @@ Deno.serve(async (req: Request) => {
       };
       const qStr = qualityStringMap[String(qualityType).toLowerCase()] ?? "adaptive";
 
-      const body = {
+      const baseBody = {
         sn: deviceSn,
         camera_index: cameraIndex,
         video_expire: Number(videoExpire) || 7200,
-        quality_type: qStr,
       };
 
-      // Try v1.0 first (livestream module moved here), fall back to v0.1, then manage.
-      const pathVariants = [
-        { name: "openapi-v1.0", path: "/openapi/v1.0/live-stream/start", v: NEW_API },
-        { name: "openapi-v0.1", path: "/openapi/v0.1/live-stream/start", v: NEW_API },
-        { name: "manage-v1.0", path: "/manage/api/v1.0/live-stream/start", v: OLD_API },
+      // DJI doc shows BOTH `video_quality` (in cURL example) and `quality_type` (in field list).
+      // Try documented v0.1 first, with `video_quality` (the example DJI ships).
+      const variants: { name: string; path: string; v: ApiVariant; field: "video_quality" | "quality_type" }[] = [
+        { name: "openapi-v0.1+video_quality", path: "/openapi/v0.1/live-stream/start", v: NEW_API, field: "video_quality" },
+        { name: "openapi-v0.1+quality_type",  path: "/openapi/v0.1/live-stream/start", v: NEW_API, field: "quality_type" },
+        { name: "openapi-v1.0+video_quality", path: "/openapi/v1.0/live-stream/start", v: NEW_API, field: "video_quality" },
+        { name: "openapi-v1.0+quality_type",  path: "/openapi/v1.0/live-stream/start", v: NEW_API, field: "quality_type" },
+        { name: "manage-v1.0+video_quality",  path: "/manage/api/v1.0/live-stream/start", v: OLD_API, field: "video_quality" },
       ];
 
       const attempts: any[] = [];
-      for (const pv of pathVariants) {
+      console.log(`[start-livestream] sn=${deviceSn} camera=${cameraIndex} quality=${qStr} projectUuid=${lsProjectUuid || "(none)"}`);
+
+      for (const pv of variants) {
         const url = `${fh2BaseUrl}${pv.path}`;
+        const body = { ...baseBody, [pv.field]: qStr };
         try {
           const h: Record<string, string> = {
             ...makeHeaders(pv.v, true, lsProjectUuid),
             "Content-Type": "application/json",
-            "X-Request-Id": crypto.randomUUID(),
           };
-          console.log(`[start-livestream] POST ${url} body=${JSON.stringify(body)}`);
+          console.log(`[start-livestream] POST ${url} field=${pv.field} projectHeader=${h["X-Project-Uuid"] || "(missing)"} body=${JSON.stringify(body)}`);
           const res = await safeFetch(url, { method: "POST", headers: h, body: JSON.stringify(body) });
           const text = await res.text();
           let json: any = null;
           try { json = JSON.parse(text); } catch { /* keep text */ }
-          attempts.push({ variant: pv.name, url, status: res.status, body: text.substring(0, 2000) });
+          attempts.push({
+            variant: pv.name,
+            url,
+            field: pv.field,
+            projectUuidSent: h["X-Project-Uuid"] || null,
+            status: res.status,
+            code: json?.code ?? null,
+            message: json?.message ?? null,
+            body: text.substring(0, 2000),
+          });
           if (json && json.code === 0 && json.data?.url) {
             return new Response(JSON.stringify({
               ok: true,
@@ -909,15 +922,20 @@ Deno.serve(async (req: Request) => {
               expireTs: json.data.expire_ts,
               variant: pv.name,
               raw: json,
+              attempts,
             }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
         } catch (err: any) {
-          attempts.push({ variant: pv.name, url, error: err.message });
+          attempts.push({ variant: pv.name, url, field: pv.field, error: err.message });
         }
       }
       return new Response(JSON.stringify({
         ok: false,
         error: "Kunne ikke starte live stream",
+        deviceSn,
+        cameraIndex,
+        qualityType: qStr,
+        projectUuid: lsProjectUuid || null,
         attempts,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
