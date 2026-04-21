@@ -90,6 +90,9 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [detailHms, setDetailHms] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Live stream dialog
+  const [liveDevice, setLiveDevice] = useState<FH2Device | null>(null);
+
   // Add member dialog
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [memberUserId, setMemberUserId] = useState("");
