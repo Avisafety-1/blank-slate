@@ -854,7 +854,7 @@ Deno.serve(async (req: Request) => {
         cameraIndex,
         qualityType = "adaptive",
         videoExpire = 7200,
-        projectUuid: lsProjectUuid,
+        projectUuid: lsProjectUuidParam,
       } = params;
       if (!deviceSn || !cameraIndex) {
         return new Response(JSON.stringify({ error: "deviceSn og cameraIndex er påkrevd" }), {
@@ -872,20 +872,78 @@ Deno.serve(async (req: Request) => {
       };
       const qStr = qualityStringMap[String(qualityType).toLowerCase()] ?? "adaptive";
 
+      // ── Auto-resolve project_uuid if not provided ──
+      let lsProjectUuid: string | undefined = lsProjectUuidParam || projectUuid || jwtProjectUuid || undefined;
+      const projectResolveLog: any = {
+        sourceFromClient: !!lsProjectUuidParam,
+        sourceFromJwt: !lsProjectUuidParam && !!jwtProjectUuid,
+      };
+
+      if (!lsProjectUuid) {
+        try {
+          console.log(`[start-livestream] No projectUuid provided — auto-resolving via /openapi/v0.1/project + /project/device`);
+          const listRes = await tryListProjects(fh2BaseUrl, fh2Token, NEW_API, safeFetch);
+          const projects = listRes.data?.data?.list || listRes.data?.data || [];
+          projectResolveLog.projectsFound = Array.isArray(projects) ? projects.length : 0;
+          projectResolveLog.tried = [];
+
+          let matched: string | undefined;
+          if (Array.isArray(projects)) {
+            for (const p of projects) {
+              const pUuid = p.uuid ?? p.project_uuid ?? p.workspace_uuid;
+              if (!pUuid) continue;
+              const devUrl = `${fh2BaseUrl}/openapi/v0.1/project/device?project_uuid=${encodeURIComponent(pUuid)}&page=1&page_size=200`;
+              try {
+                const h = makeHeaders(NEW_API, true, pUuid);
+                const dr = await safeFetch(devUrl, { method: "GET", headers: h });
+                const dt = await dr.text();
+                let dj: any = null;
+                try { dj = JSON.parse(dt); } catch { /* ignore */ }
+                const rawList = dj?.data?.list || dj?.data || [];
+                const flat = flattenDjiDeviceList(Array.isArray(rawList) ? rawList : []);
+                const found = flat.some((d: any) => {
+                  const sn = d.device_sn ?? d.sn ?? d.child_device_sn;
+                  return sn === deviceSn;
+                });
+                projectResolveLog.tried.push({
+                  projectUuid: pUuid,
+                  projectName: p.workspace_name ?? p.name ?? p.project_name,
+                  status: dr.status,
+                  deviceCount: flat.length,
+                  matched: found,
+                });
+                if (found) { matched = pUuid; break; }
+              } catch (e: any) {
+                projectResolveLog.tried.push({ projectUuid: pUuid, error: e?.message });
+              }
+            }
+          }
+
+          if (matched) {
+            lsProjectUuid = matched;
+          } else if (Array.isArray(projects) && projects.length > 0) {
+            const first = projects[0];
+            lsProjectUuid = first.uuid ?? first.project_uuid ?? first.workspace_uuid;
+            projectResolveLog.fallbackToFirst = true;
+          }
+          projectResolveLog.resolved = lsProjectUuid || null;
+          console.log(`[start-livestream] Auto-resolve result:`, JSON.stringify(projectResolveLog));
+        } catch (e: any) {
+          projectResolveLog.error = e?.message;
+          console.log(`[start-livestream] Auto-resolve failed: ${e?.message}`);
+        }
+      }
+
       const baseBody = {
         sn: deviceSn,
         camera_index: cameraIndex,
         video_expire: Number(videoExpire) || 7200,
       };
 
-      // DJI doc shows BOTH `video_quality` (in cURL example) and `quality_type` (in field list).
-      // Try documented v0.1 first, with `video_quality` (the example DJI ships).
+      // Only v0.1 path is valid (v1.0 + manage paths returned 404).
       const variants: { name: string; path: string; v: ApiVariant; field: "video_quality" | "quality_type" }[] = [
         { name: "openapi-v0.1+video_quality", path: "/openapi/v0.1/live-stream/start", v: NEW_API, field: "video_quality" },
         { name: "openapi-v0.1+quality_type",  path: "/openapi/v0.1/live-stream/start", v: NEW_API, field: "quality_type" },
-        { name: "openapi-v1.0+video_quality", path: "/openapi/v1.0/live-stream/start", v: NEW_API, field: "video_quality" },
-        { name: "openapi-v1.0+quality_type",  path: "/openapi/v1.0/live-stream/start", v: NEW_API, field: "quality_type" },
-        { name: "manage-v1.0+video_quality",  path: "/manage/api/v1.0/live-stream/start", v: OLD_API, field: "video_quality" },
       ];
 
       const attempts: any[] = [];
@@ -923,6 +981,7 @@ Deno.serve(async (req: Request) => {
               variant: pv.name,
               raw: json,
               attempts,
+              projectResolve: projectResolveLog,
             }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
         } catch (err: any) {
@@ -936,6 +995,7 @@ Deno.serve(async (req: Request) => {
         cameraIndex,
         qualityType: qStr,
         projectUuid: lsProjectUuid || null,
+        projectResolve: projectResolveLog,
         attempts,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
