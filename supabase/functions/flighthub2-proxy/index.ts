@@ -817,6 +817,7 @@ Deno.serve(async (req: Request) => {
       }
       const cleanEndpoint = endpoint.replace(/^\/+/, "");
       const variants = [
+        { name: "openapi-v1.0", base: `${fh2BaseUrl}/openapi/v1.0/${cleanEndpoint}`, v: NEW_API },
         { name: "openapi-v0.1", base: `${fh2BaseUrl}/openapi/v0.1/${cleanEndpoint}`, v: NEW_API },
         { name: "manage-v1.0", base: `${fh2BaseUrl}/manage/api/v1.0/${cleanEndpoint}`, v: OLD_API },
       ];
