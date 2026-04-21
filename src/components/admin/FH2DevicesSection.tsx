@@ -13,8 +13,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Radio, Wifi, WifiOff, Battery, Thermometer, Wind, HardDrive, AlertTriangle, UserPlus, RefreshCw } from "lucide-react";
+import { Loader2, Radio, Wifi, WifiOff, Battery, Thermometer, Wind, HardDrive, AlertTriangle, UserPlus, RefreshCw, Video } from "lucide-react";
 import { toast } from "sonner";
+import { LiveStreamDialog } from "./LiveStreamDialog";
 
 interface FH2Device {
   device_sn: string;
