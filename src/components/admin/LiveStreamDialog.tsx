@@ -43,6 +43,8 @@ export const LiveStreamDialog = ({
   const [expireTs, setExpireTs] = useState<number | null>(null);
   const [now, setNow] = useState<number>(Date.now());
   const [debugAttempts, setDebugAttempts] = useState<any>(null);
+  const [resolvedProjectUuid, setResolvedProjectUuid] = useState<string | null>(null);
+  const [projectResolve, setProjectResolve] = useState<any>(null);
 
   useEffect(() => {
     if (open && cameras.length > 0 && !cameraIndex) {
@@ -52,6 +54,8 @@ export const LiveStreamDialog = ({
       setStreamUrl(null);
       setExpireTs(null);
       setDebugAttempts(null);
+      setResolvedProjectUuid(null);
+      setProjectResolve(null);
     }
   }, [open, cameras, cameraIndex]);
 
@@ -69,6 +73,8 @@ export const LiveStreamDialog = ({
     setStarting(true);
     setStreamUrl(null);
     setDebugAttempts(null);
+    setResolvedProjectUuid(null);
+    setProjectResolve(null);
     try {
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
         body: {
@@ -80,6 +86,9 @@ export const LiveStreamDialog = ({
         },
       });
       if (error) throw error;
+      const used = data?.attempts?.[0]?.projectUuidSent ?? data?.projectUuid ?? null;
+      setResolvedProjectUuid(used);
+      setProjectResolve(data?.projectResolve ?? null);
       if (data?.ok && data?.url) {
         setStreamUrl(data.url);
         setExpireTs(data.expireTs ?? null);
@@ -153,10 +162,25 @@ export const LiveStreamDialog = ({
               <div><span className="font-medium">SN:</span> <span className="font-mono">{deviceSn}</span></div>
               <div><span className="font-medium">Camera index:</span> <span className="font-mono">{cameraIndex || "(ikke valgt)"}</span></div>
               <div>
-                <span className="font-medium">Project UUID:</span>{" "}
-                <span className="font-mono">{projectUuid || <span className="text-destructive">(mangler – kreves av FH2)</span>}</span>
+                <span className="font-medium">Project UUID (UI):</span>{" "}
+                <span className="font-mono">{projectUuid || <span className="text-muted-foreground">(ikke satt — proxy auto-løser)</span>}</span>
               </div>
+              {resolvedProjectUuid && (
+                <div>
+                  <span className="font-medium">Project UUID (brukt):</span>{" "}
+                  <span className="font-mono">{resolvedProjectUuid}</span>
+                </div>
+              )}
             </div>
+
+            {projectResolve && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Auto-resolve av prosjekt:</p>
+                <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-40 whitespace-pre-wrap break-all">
+                  {JSON.stringify(projectResolve, null, 2)}
+                </pre>
+              </div>
+            )}
 
             {debugAttempts && (
               <div className="space-y-1">
