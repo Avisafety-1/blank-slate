@@ -23,17 +23,18 @@ interface LiveStreamDialogProps {
   deviceSn: string;
   deviceName?: string;
   cameras: CameraOption[];
+  projectUuid?: string;
 }
 
 const QUALITY_OPTIONS = [
   { value: "adaptive", label: "Auto (adaptiv)" },
   { value: "smooth", label: "Smooth" },
-  { value: "hd", label: "HD" },
-  { value: "ultra-hd", label: "Ultra HD" },
+  { value: "high_definition", label: "HD" },
+  { value: "ultra_high_definition", label: "Ultra HD" },
 ];
 
 export const LiveStreamDialog = ({
-  open, onOpenChange, deviceSn, deviceName, cameras,
+  open, onOpenChange, deviceSn, deviceName, cameras, projectUuid,
 }: LiveStreamDialogProps) => {
   const [cameraIndex, setCameraIndex] = useState<string>("");
   const [quality, setQuality] = useState<string>("adaptive");
