@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Upload, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -52,7 +53,7 @@ export const FlightHub2SendDialog = ({
   const [projects, setProjects] = useState<FH2Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [routeName, setRouteName] = useState(initialRouteName || "Avisafe Route");
-  const [sendRoute, setSendRoute] = useState(true);
+  const [routeMode, setRouteMode] = useState<"annotation" | "kmz" | "none">("annotation");
   const [sendAnnotation, setSendAnnotation] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -177,14 +178,24 @@ export const FlightHub2SendDialog = ({
     };
   };
 
+  const buildRouteLineGeoJson = (coords: Array<{ lat: number; lng: number }>, color: string) => {
+    const lineCoords = coords.map((c) => [c.lng, c.lat, 0]);
+    return {
+      type: "Feature",
+      properties: { color, clampToGround: true },
+      geometry: { type: "LineString", coordinates: lineCoords },
+    };
+  };
+
   const handleSend = async () => {
     if (!selectedProject) { toast.error("Velg et prosjekt"); return; }
     setLoading(true);
-    let routeSuccess = false;
+    let routeKmzSuccess = false;
+    let routeAnnotationSuccess = false;
     let annotationCount = 0;
 
     try {
-      if (sendRoute && route.coordinates.length >= 2) {
+      if (routeMode === "kmz" && route.coordinates.length >= 2) {
         const kmzBase64 = await generateKmzBase64();
         const droneEnum = activeDjiModel?.enumValue ?? 67;
         const droneSubEnum = activeDjiModel?.subEnumValue ?? 0;
@@ -194,11 +205,31 @@ export const FlightHub2SendDialog = ({
         });
         if (error) throw error;
         if (data?.code === 0) {
-          routeSuccess = true;
+          routeKmzSuccess = true;
         } else {
           const detail = data?.message || data?.raw || JSON.stringify(data);
           toast.error(`Rutefil: ${detail}`);
           console.error("[FH2] finish-upload response:", data);
+        }
+      } else if (routeMode === "annotation" && route.coordinates.length >= 2) {
+        const geoJson = buildRouteLineGeoJson(route.coordinates, "#10B981");
+        const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+          body: {
+            action: "create-annotation",
+            projectUuid: selectedProject,
+            name: routeName,
+            desc: "Planlagt rute generert av Avisafe",
+            geoJson,
+            annotationType: 1,
+          },
+        });
+        if (error) {
+          console.error("[FH2] route annotation error:", error);
+          toast.error(`Rute-annotasjon: ${error.message}`);
+        } else if (data?.code === 0) {
+          routeAnnotationSuccess = true;
+        } else {
+          toast.error(`Rute-annotasjon: ${data?.message || "Feil"}`);
         }
       }
 
@@ -226,9 +257,10 @@ export const FlightHub2SendDialog = ({
         }
       }
 
-      if (routeSuccess || annotationCount > 0) {
+      if (routeKmzSuccess || routeAnnotationSuccess || annotationCount > 0) {
         const parts = [];
-        if (routeSuccess) parts.push("rutefil");
+        if (routeKmzSuccess) parts.push("rutefil (KMZ)");
+        if (routeAnnotationSuccess) parts.push("rute som annotasjon");
         if (annotationCount > 0) parts.push(`${annotationCount} SORA-soner`);
         toast.success(`Sendt til FlightHub 2: ${parts.join(" og ")}`);
         onOpenChange(false);
@@ -341,46 +373,72 @@ export const FlightHub2SendDialog = ({
             )}
           </div>
 
-          <div className="space-y-3 rounded-md border border-border p-3">
-            <p className="text-sm font-medium text-foreground">Flyparametre</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Flyhastighet (m/s)</Label>
-                <Input type="number" min={1} max={15} value={speed} onChange={(e) => setSpeed(Math.max(1, Math.min(15, Number(e.target.value))))} />
+          {routeMode === "kmz" && (
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <p className="text-sm font-medium text-foreground">Flyparametre</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Flyhastighet (m/s)</Label>
+                  <Input type="number" min={1} max={15} value={speed} onChange={(e) => setSpeed(Math.max(1, Math.min(15, Number(e.target.value))))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Takeoff-høyde (m)</Label>
+                  <Input type="number" min={1.2} max={1500} step={0.1} value={takeOffHeight} onChange={(e) => setTakeOffHeight(Math.max(1.2, Math.min(1500, Number(e.target.value))))} />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Takeoff-høyde (m)</Label>
-                <Input type="number" min={1.2} max={1500} step={0.1} value={takeOffHeight} onChange={(e) => setTakeOffHeight(Math.max(1.2, Math.min(1500, Number(e.target.value))))} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Høydemodus</Label>
+                  <Select value={heightMode} onValueChange={(v) => setHeightMode(v as any)}>
+                    <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="relativeToStartPoint">Relativ til startpunkt</SelectItem>
+                      <SelectItem value="EGM96">EGM96 (havnivå)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Svingmodus</Label>
+                  <Select value={turnMode} onValueChange={(v) => setTurnMode(v as any)}>
+                    <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="toPointAndStopWithDiscontinuityCurvature">Stopp i punkt</SelectItem>
+                      <SelectItem value="toPointAndPassWithContinuityCurvature">Fly gjennom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Høydemodus</Label>
-                <Select value={heightMode} onValueChange={(v) => setHeightMode(v as any)}>
-                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="relativeToStartPoint">Relativ til startpunkt</SelectItem>
-                    <SelectItem value="EGM96">EGM96 (havnivå)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Svingmodus</Label>
-                <Select value={turnMode} onValueChange={(v) => setTurnMode(v as any)}>
-                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="toPointAndStopWithDiscontinuityCurvature">Stopp i punkt</SelectItem>
-                    <SelectItem value="toPointAndPassWithContinuityCurvature">Fly gjennom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+          )}
 
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Checkbox id="send-route" checked={sendRoute} onCheckedChange={(c) => setSendRoute(!!c)} disabled={route.coordinates.length < 2} />
-              <Label htmlFor="send-route" className="text-sm cursor-pointer">Send rutefil (KMZ)</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Sending av rute</Label>
+              <RadioGroup
+                value={routeMode}
+                onValueChange={(v) => setRouteMode(v as "annotation" | "kmz" | "none")}
+                className="space-y-2"
+              >
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="annotation" id="mode-annotation" disabled={route.coordinates.length < 2} className="mt-0.5" />
+                  <Label htmlFor="mode-annotation" className="text-sm cursor-pointer font-normal">
+                    Send rute som kart-annotasjon (visuell linje)
+                    <span className="text-muted-foreground ml-1">– anbefalt</span>
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="kmz" id="mode-kmz" disabled={route.coordinates.length < 2} className="mt-0.5" />
+                  <Label htmlFor="mode-kmz" className="text-sm cursor-pointer font-normal">
+                    Send rutefil (KMZ for autopilot)
+                  </Label>
+                </div>
+                <div className="flex items-start gap-2">
+                  <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
+                  <Label htmlFor="mode-none" className="text-sm cursor-pointer font-normal">
+                    Ikke send rute
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox id="send-annotation" checked={sendAnnotation && !!hasAnnotation} onCheckedChange={(c) => setSendAnnotation(!!c)} disabled={!hasAnnotation} />
@@ -395,7 +453,7 @@ export const FlightHub2SendDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
-          <Button onClick={handleSend} disabled={loading || !selectedProject || (!sendRoute && !sendAnnotation)}>
+          <Button onClick={handleSend} disabled={loading || !selectedProject || (routeMode === "none" && !sendAnnotation)}>
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Send
           </Button>
