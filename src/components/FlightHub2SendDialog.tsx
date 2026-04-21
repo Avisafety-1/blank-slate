@@ -178,14 +178,24 @@ export const FlightHub2SendDialog = ({
     };
   };
 
+  const buildRouteLineGeoJson = (coords: Array<{ lat: number; lng: number }>, color: string) => {
+    const lineCoords = coords.map((c) => [c.lng, c.lat, 0]);
+    return {
+      type: "Feature",
+      properties: { color, clampToGround: true },
+      geometry: { type: "LineString", coordinates: lineCoords },
+    };
+  };
+
   const handleSend = async () => {
     if (!selectedProject) { toast.error("Velg et prosjekt"); return; }
     setLoading(true);
-    let routeSuccess = false;
+    let routeKmzSuccess = false;
+    let routeAnnotationSuccess = false;
     let annotationCount = 0;
 
     try {
-      if (sendRoute && route.coordinates.length >= 2) {
+      if (routeMode === "kmz" && route.coordinates.length >= 2) {
         const kmzBase64 = await generateKmzBase64();
         const droneEnum = activeDjiModel?.enumValue ?? 67;
         const droneSubEnum = activeDjiModel?.subEnumValue ?? 0;
@@ -195,11 +205,31 @@ export const FlightHub2SendDialog = ({
         });
         if (error) throw error;
         if (data?.code === 0) {
-          routeSuccess = true;
+          routeKmzSuccess = true;
         } else {
           const detail = data?.message || data?.raw || JSON.stringify(data);
           toast.error(`Rutefil: ${detail}`);
           console.error("[FH2] finish-upload response:", data);
+        }
+      } else if (routeMode === "annotation" && route.coordinates.length >= 2) {
+        const geoJson = buildRouteLineGeoJson(route.coordinates, "#10B981");
+        const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+          body: {
+            action: "create-annotation",
+            projectUuid: selectedProject,
+            name: routeName,
+            desc: "Planlagt rute generert av Avisafe",
+            geoJson,
+            annotationType: 1,
+          },
+        });
+        if (error) {
+          console.error("[FH2] route annotation error:", error);
+          toast.error(`Rute-annotasjon: ${error.message}`);
+        } else if (data?.code === 0) {
+          routeAnnotationSuccess = true;
+        } else {
+          toast.error(`Rute-annotasjon: ${data?.message || "Feil"}`);
         }
       }
 
@@ -227,9 +257,10 @@ export const FlightHub2SendDialog = ({
         }
       }
 
-      if (routeSuccess || annotationCount > 0) {
+      if (routeKmzSuccess || routeAnnotationSuccess || annotationCount > 0) {
         const parts = [];
-        if (routeSuccess) parts.push("rutefil");
+        if (routeKmzSuccess) parts.push("rutefil (KMZ)");
+        if (routeAnnotationSuccess) parts.push("rute som annotasjon");
         if (annotationCount > 0) parts.push(`${annotationCount} SORA-soner`);
         toast.success(`Sendt til FlightHub 2: ${parts.join(" og ")}`);
         onOpenChange(false);
