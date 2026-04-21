@@ -252,6 +252,19 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const getModelName = (device: FH2Device) =>
     device.device_model?.model || device.device_model?.name || device.model_name || device.device_name || "Ukjent";
 
+  // Extract camera options from a device (DJI camera_list format)
+  const getDeviceCameras = (device: FH2Device): { index: string; name: string }[] => {
+    const list = (device as any).camera_list ?? (device as any).cameras ?? [];
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((c: any) => {
+        const index = c.camera_index ?? c.index ?? c.id ?? c.payload_index ?? "";
+        const name = c.camera_name ?? c.name ?? c.payload_name ?? c.type_name ?? `Kamera ${index}`;
+        return index ? { index: String(index), name: String(name) } : null;
+      })
+      .filter(Boolean) as { index: string; name: string }[];
+  };
+
   const isOnline = (device: FH2Device) => device.online_status === 1;
 
   return (
