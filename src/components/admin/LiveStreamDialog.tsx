@@ -54,6 +54,8 @@ export const LiveStreamDialog = ({
       setStreamUrl(null);
       setExpireTs(null);
       setDebugAttempts(null);
+      setResolvedProjectUuid(null);
+      setProjectResolve(null);
     }
   }, [open, cameras, cameraIndex]);
 
@@ -71,6 +73,8 @@ export const LiveStreamDialog = ({
     setStarting(true);
     setStreamUrl(null);
     setDebugAttempts(null);
+    setResolvedProjectUuid(null);
+    setProjectResolve(null);
     try {
       const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
         body: {
@@ -82,6 +86,9 @@ export const LiveStreamDialog = ({
         },
       });
       if (error) throw error;
+      const used = data?.attempts?.[0]?.projectUuidSent ?? data?.projectUuid ?? null;
+      setResolvedProjectUuid(used);
+      setProjectResolve(data?.projectResolve ?? null);
       if (data?.ok && data?.url) {
         setStreamUrl(data.url);
         setExpireTs(data.expireTs ?? null);
