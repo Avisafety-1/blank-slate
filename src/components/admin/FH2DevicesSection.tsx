@@ -13,8 +13,9 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Radio, Wifi, WifiOff, Battery, Thermometer, Wind, HardDrive, AlertTriangle, UserPlus, RefreshCw } from "lucide-react";
+import { Loader2, Radio, Wifi, WifiOff, Battery, Thermometer, Wind, HardDrive, AlertTriangle, UserPlus, RefreshCw, Video } from "lucide-react";
 import { toast } from "sonner";
+import { LiveStreamDialog } from "./LiveStreamDialog";
 
 interface FH2Device {
   device_sn: string;
@@ -88,6 +89,9 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const [detailState, setDetailState] = useState<any>(null);
   const [detailHms, setDetailHms] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Live stream dialog
+  const [liveDevice, setLiveDevice] = useState<FH2Device | null>(null);
 
   // Add member dialog
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
@@ -248,6 +252,19 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
   const getModelName = (device: FH2Device) =>
     device.device_model?.model || device.device_model?.name || device.model_name || device.device_name || "Ukjent";
 
+  // Extract camera options from a device (DJI camera_list format)
+  const getDeviceCameras = (device: FH2Device): { index: string; name: string }[] => {
+    const list = (device as any).camera_list ?? (device as any).cameras ?? [];
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((c: any) => {
+        const index = c.camera_index ?? c.index ?? c.id ?? c.payload_index ?? "";
+        const name = c.camera_name ?? c.name ?? c.payload_name ?? c.type_name ?? `Kamera ${index}`;
+        return index ? { index: String(index), name: String(name) } : null;
+      })
+      .filter(Boolean) as { index: string; name: string }[];
+  };
+
   const isOnline = (device: FH2Device) => device.online_status === 1;
 
   return (
@@ -300,28 +317,45 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
               <TableHead>Modell</TableHead>
               <TableHead>SN</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead className="w-20 text-right">Live</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {devices.map((d) => (
-              <TableRow
-                key={d.device_sn}
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => openDeviceDetail(d)}
-              >
-                <TableCell>
-                  {isOnline(d)
-                    ? <Wifi className="h-4 w-4 text-green-500" />
-                    : <WifiOff className="h-4 w-4 text-muted-foreground" />}
-                </TableCell>
-                <TableCell className="font-medium text-sm">{d.device_name || d.nickname || "–"}</TableCell>
-                <TableCell className="text-sm">{getModelName(d)}</TableCell>
-                <TableCell className="text-xs font-mono text-muted-foreground">{d.device_sn}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary" className="text-xs">{getDeviceTypeName(d)}</Badge>
-                </TableCell>
-              </TableRow>
-            ))}
+            {devices.map((d) => {
+              const cameras = getDeviceCameras(d);
+              const canLive = isOnline(d) && cameras.length > 0;
+              return (
+                <TableRow
+                  key={d.device_sn}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => openDeviceDetail(d)}
+                >
+                  <TableCell>
+                    {isOnline(d)
+                      ? <Wifi className="h-4 w-4 text-green-500" />
+                      : <WifiOff className="h-4 w-4 text-muted-foreground" />}
+                  </TableCell>
+                  <TableCell className="font-medium text-sm">{d.device_name || d.nickname || "–"}</TableCell>
+                  <TableCell className="text-sm">{getModelName(d)}</TableCell>
+                  <TableCell className="text-xs font-mono text-muted-foreground">{d.device_sn}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-xs">{getDeviceTypeName(d)}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={!canLive}
+                      onClick={() => setLiveDevice(d)}
+                      title={canLive ? "Start live stream" : "Krever online drone med kamera"}
+                    >
+                      <Video className="h-3.5 w-3.5 mr-1" /> Live
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}
@@ -597,6 +631,17 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Live Stream Dialog */}
+      {liveDevice && (
+        <LiveStreamDialog
+          open={!!liveDevice}
+          onOpenChange={(open) => { if (!open) setLiveDevice(null); }}
+          deviceSn={liveDevice.device_sn}
+          deviceName={liveDevice.device_name}
+          cameras={getDeviceCameras(liveDevice)}
+        />
+      )}
     </div>
   );
 };

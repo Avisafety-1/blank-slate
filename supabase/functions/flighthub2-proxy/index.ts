@@ -846,6 +846,68 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ─── Action: start-livestream ───
+    if (action === "start-livestream") {
+      const {
+        deviceSn,
+        cameraIndex,
+        qualityType = "adaptive",
+        videoExpire = 7200,
+      } = params;
+      if (!deviceSn || !cameraIndex) {
+        return new Response(JSON.stringify({ error: "deviceSn og cameraIndex er påkrevd" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Map quality string -> int (DJI: 0 auto, 1 smooth, 2 HD, 3 ultra HD)
+      const qualityMap: Record<string, number> = {
+        adaptive: 0, auto: 0, smooth: 1, hd: 2, "ultra-hd": 3, ultraHd: 3,
+      };
+      const qInt = typeof qualityType === "number"
+        ? qualityType
+        : (qualityMap[String(qualityType).toLowerCase()] ?? 0);
+
+      const body = {
+        sn: deviceSn,
+        camera_index: cameraIndex,
+        video_expire: Number(videoExpire) || 7200,
+        quality_type: qInt,
+      };
+
+      const attempts: any[] = [];
+      for (const v of API_VARIANTS) {
+        const url = v.name === "openapi-v0.1"
+          ? `${fh2BaseUrl}/openapi/v0.1/live-stream/start`
+          : `${fh2BaseUrl}/manage/api/v1.0/live-stream/start`;
+        try {
+          const h: Record<string, string> = { ...makeHeaders(v, true), "Content-Type": "application/json" };
+          console.log(`[start-livestream] POST ${url} body=${JSON.stringify(body)}`);
+          const res = await safeFetch(url, { method: "POST", headers: h, body: JSON.stringify(body) });
+          const text = await res.text();
+          let json: any = null;
+          try { json = JSON.parse(text); } catch { /* keep text */ }
+          attempts.push({ variant: v.name, url, status: res.status, body: text.substring(0, 2000) });
+          if (json && json.code === 0 && json.data?.url) {
+            return new Response(JSON.stringify({
+              ok: true,
+              url: json.data.url,
+              urlType: json.data.url_type,
+              expireTs: json.data.expire_ts,
+              raw: json,
+            }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        } catch (err: any) {
+          attempts.push({ variant: v.name, url, error: err.message });
+        }
+      }
+      return new Response(JSON.stringify({
+        ok: false,
+        error: "Kunne ikke starte live stream",
+        attempts,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ─── Action: device-state ───
     if (action === "device-state") {
       const { deviceSn } = params;
