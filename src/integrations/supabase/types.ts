@@ -4857,6 +4857,9 @@ export type Database = {
           question_text: string
           slide_type: string
           sort_order: number
+          video_end_seconds: number | null
+          video_start_seconds: number | null
+          video_url: string | null
         }
         Insert: {
           content_json?: Json | null
@@ -4867,6 +4870,9 @@ export type Database = {
           question_text: string
           slide_type?: string
           sort_order?: number
+          video_end_seconds?: number | null
+          video_start_seconds?: number | null
+          video_url?: string | null
         }
         Update: {
           content_json?: Json | null
@@ -4877,6 +4883,9 @@ export type Database = {
           question_text?: string
           slide_type?: string
           sort_order?: number
+          video_end_seconds?: number | null
+          video_start_seconds?: number | null
+          video_url?: string | null
         }
         Relationships: [
           {
