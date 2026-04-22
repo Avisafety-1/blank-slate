@@ -364,11 +364,14 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           .from("training_questions")
           .insert({
             course_id: cId!,
-            question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : ""),
+            question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : s.slide_type === "video" ? `Video ${i + 1}` : ""),
             image_url: s.image_url,
             sort_order: i,
             slide_type: s.slide_type,
             content_json: null,
+            video_url: s.slide_type === "video" ? (s.video_url || null) : null,
+            video_start_seconds: s.slide_type === "video" ? (s.video_start_seconds ?? null) : null,
+            video_end_seconds: s.slide_type === "video" ? (s.video_end_seconds ?? null) : null,
           } as any)
           .select("id")
           .single();
