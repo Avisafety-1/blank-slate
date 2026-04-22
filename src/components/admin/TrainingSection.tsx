@@ -95,7 +95,7 @@ export const TrainingSection = () => {
     try {
       const { data: coursesData, error } = await supabase
         .from("training_courses")
-        .select("*")
+        .select("*, companies(navn)")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
