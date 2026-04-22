@@ -34,6 +34,7 @@ interface Slide {
   video_url?: string | null;
   video_start_seconds?: number | null;
   video_end_seconds?: number | null;
+  video_required_complete?: boolean;
   // local-only for preview
   _localBlobUrl?: string;
 }
