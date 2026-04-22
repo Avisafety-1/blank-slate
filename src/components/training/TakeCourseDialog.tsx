@@ -444,16 +444,25 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             <ChevronLeft className="h-4 w-4 mr-1" />
             Forrige
           </Button>
-          {currentPage < slides.length - 1 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNext}
-            >
-              Neste
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          )}
+          {currentPage < slides.length - 1 && (() => {
+            const cur = slides[currentPage];
+            const blockedByVideo =
+              cur?.slide_type === "video" &&
+              cur?.video_required_complete &&
+              !completedVideoIds.has(cur.id);
+            return (
+              <Button
+                variant={blockedByVideo ? "outline" : "default"}
+                size="sm"
+                onClick={handleNext}
+                disabled={blockedByVideo}
+                title={blockedByVideo ? "Du må se hele videoen før du kan gå videre" : undefined}
+              >
+                Neste
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            );
+          })()}
         </div>
         <div className="flex gap-2">
           {!previewMode && (
