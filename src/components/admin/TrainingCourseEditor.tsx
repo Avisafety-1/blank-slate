@@ -237,7 +237,6 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     const s = slides[sIdx];
     const newOpts = s.options.map((o, i) => {
       if (i === oIdx) return { ...o, [field]: value };
-      if (field === "is_correct" && value === true) return { ...o, is_correct: false };
       return o;
     });
     updateSlide(sIdx, "options", newOpts);
