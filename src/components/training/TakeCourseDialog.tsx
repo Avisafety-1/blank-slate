@@ -315,7 +315,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     onOpenChange(false);
   };
 
-  const answeredCount = questionSlides.filter((q) => answers[q.id]).length;
+  const answeredCount = questionSlides.filter((q) => isQuestionAnswered(q.id)).length;
   const totalProgress = slides.length > 0 ? Math.round(((currentPage + 1) / slides.length) * 100) : 0;
 
   const renderSlide = (s: SlideData) => {
