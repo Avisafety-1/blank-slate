@@ -394,9 +394,9 @@ export function OpenAIPMap({
 
     // Create panes
     const paneConfig: Record<string, string> = {
-      liveFlightPane: '699', safeskyPane: '698', notamPane: '695', airportPane: '690', missionPane: '685', routePane: '680',
-      obstaclePane: '675', nsmPane: '650',
-      rpasPane: '645', aipPane: '640', rmzPane: '635',
+      safeskyPane: '750', liveFlightPane: '720', missionPane: '680', airportPane: '670', routePane: '665',
+      obstaclePane: '660', nsmPane: '650', notamPane: '640',
+      rpasPane: '630', aipPane: '625', rmzPane: '620',
     };
     const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
@@ -450,7 +450,7 @@ export function OpenAIPMap({
     // NVE Kraftledninger (vector via ArcGIS REST)
     if (!map.getPane('powerPane')) {
       map.createPane('powerPane');
-      map.getPane('powerPane')!.style.zIndex = '692';
+      map.getPane('powerPane')!.style.zIndex = '700';
     }
     const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
@@ -458,7 +458,7 @@ export function OpenAIPMap({
     // NAIS skipstrafikk (BarentsWatch)
     if (!map.getPane('naisPane')) {
       map.createPane('naisPane');
-      map.getPane('naisPane')!.style.zIndex = '655';
+      map.getPane('naisPane')!.style.zIndex = '695';
     }
     const naisLayer = L.layerGroup();
     layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
