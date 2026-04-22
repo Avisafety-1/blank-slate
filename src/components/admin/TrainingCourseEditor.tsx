@@ -204,6 +204,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       video_url: "",
       video_start_seconds: null,
       video_end_seconds: null,
+      video_required_complete: false,
     };
     const newSlides = [...slides];
     const insertAt = afterIdx != null ? afterIdx + 1 : slides.length;
