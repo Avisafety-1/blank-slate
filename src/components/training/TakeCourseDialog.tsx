@@ -28,6 +28,9 @@ interface SlideData {
   content_json: any;
   image_url: string | null;
   sort_order: number;
+  video_url?: string | null;
+  video_start_seconds?: number | null;
+  video_end_seconds?: number | null;
   options: { id: string; option_text: string; is_correct: boolean; sort_order: number }[];
 }
 
