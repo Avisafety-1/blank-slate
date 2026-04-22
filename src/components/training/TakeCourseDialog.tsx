@@ -329,6 +329,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               start={s.video_start_seconds ?? null}
               end={s.video_end_seconds ?? null}
               autoplay
+              customControls
             />
           </div>
         </div>
