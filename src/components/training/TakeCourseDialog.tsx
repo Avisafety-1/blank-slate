@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { YouTubeClipPlayer, parseYouTubeId } from "@/components/training/YouTubeClipPlayer";
 
 interface Props {
   assignmentId?: string;
