@@ -1,80 +1,33 @@
 
 
-## Plan: Dele kurs på tvers av avdelinger og tildele personell i underavdelinger
+## Plan: Større innhold i fullskjermsmodus for kurs på iPad
 
-### Mål
-1. En avdeling (parent eller child) skal kunne dele et kurs med andre enheter i organisasjonshierarkiet
-2. Mor-avdeling kan dele nedover til alle underavdelinger
-3. En underavdeling kan dele oppover til mor-avdelingen, som da kan re-distribuere til andre søsken
-4. Admins skal kunne tildele kurset til personell i de avdelingene kurset er delt med
+### Problem
+I fullskjerm på iPad får videoer og bilder bare ca. halve skjermbredden fordi innholdet er begrenset av `max-w-3xl` / `max-w-5xl` / `max-w-2xl` selv når dialogen tar hele skjermen. Resultat: mye tomt rom rundt videoen.
 
-### Datamodell
+### Løsning
+I `src/components/training/TakeCourseDialog.tsx` — fjerne snevre maks-bredder når `isFullscreen = true` slik at video, bilder og spørsmålskort fyller tilgjengelig plass:
 
-**Ny kolonne på `training_courses`:**
-```sql
-ALTER TABLE public.training_courses
-  ADD COLUMN visible_to_children boolean NOT NULL DEFAULT false,
-  ADD COLUMN shared_with_parent boolean NOT NULL DEFAULT false;
-```
+**1. Video-slide (`renderSlide`, video-grenen)**
+- Fullskjerm: bytt `max-w-5xl` → `max-w-[90vw]` (eller `max-w-none w-full`), og la wrapperen sentrere innholdet
+- Ikke-fullskjerm: behold `max-w-3xl`
 
-- `visible_to_children` — kurset er synlig for alle underavdelinger (samme mønster som `training_course_folders` og `documents`)
-- `shared_with_parent` — kurset (eid av en underavdeling) er synlig for mor-avdelingen, som så kan velge `visible_to_children = true` på sin kopi/markering for å spre videre
+**2. Innholds-/bildeslide (content-grenen)**
+- Fullskjerm: la bildet bruke `max-h-[78vh]` og `w-auto max-w-[92vw]` slik at bredt landskapsformat fyller skjermen, ikke bare høyden
 
-**Oppdater RLS SELECT-policy på `training_courses`:**
-```sql
-DROP POLICY "Users can view training courses for their company hierarchy" ON public.training_courses;
-CREATE POLICY "Users can view training courses for their company hierarchy"
-  ON public.training_courses FOR SELECT TO authenticated
-  USING (
-    company_id = ANY(get_user_visible_company_ids(auth.uid()))
-    OR global_visibility = true
-    OR (visible_to_children = true 
-        AND company_id = ANY(get_user_readable_company_ids(auth.uid())))
-    OR (shared_with_parent = true
-        AND get_parent_company_id(company_id) = ANY(get_user_visible_company_ids(auth.uid())))
-  );
-```
+**3. Spørsmål-slide (question-grenen)**
+- Fullskjerm: bytt kortets `max-w-2xl` → `max-w-4xl` for bedre lesbarhet og luftighet på iPad. Bildet i spørsmål: `max-h-[55vh]` i fullskjerm
+- Ikke-fullskjerm: behold `max-w-2xl`
 
-**Oppdater RLS på `training_questions` og `training_question_options`** slik at de følger SELECT-tilgangen til kurset (subquery på `training_courses` slår automatisk inn fordi RLS evalueres rekursivt).
+**4. Padding på fullskjerm-wrapper**
+- I `DialogContent`-wrapper: redusér `p-4 sm:p-6` → `p-2 sm:p-4` i fullskjerm slik at innholdet får ~24-32px ekstra plass på hver side
 
-**Oppdater INSERT-policy på `training_assignments`** slik at admins kan tildele kurs til profiler i underavdelinger (eller mor-avdeling) når kurset er synlig for dem:
-```sql
-WITH CHECK (
-  company_id = ANY(get_user_visible_company_ids(auth.uid()))
-  AND course_id IN (SELECT id FROM training_courses)  -- RLS gate
-)
-```
-
-### Endringer i UI
-
-**1. `src/components/admin/TrainingSection.tsx` — kurs-kort**
-- Legg til to nye knapper/togglestatuser ved siden av "Global"-badge:
-  - **"Del med underavdelinger"** (kun synlig hvis selskapet har underavdelinger og brukeren er eier av kurset) — toggler `visible_to_children`
-  - **"Del med mor-avdeling"** (kun synlig hvis selskapet har en parent og brukeren er eier av kurset) — toggler `shared_with_parent`
-- Vis badges på kort: `Delt nedover` / `Delt med mor` / `Arvet fra X`
-- Hvis kurset er arvet (company_id ≠ aktivt companyId), skjul Edit/Delete/Publiser-knapper — vis kun Preview og Tildel
-
-**2. `src/components/admin/TrainingAssignmentDialog.tsx` — utvid personellsøk**
-- Endre `fetchData` slik at profiler fra hele synlig hierarki vises (det skjer allerede pga. RLS, men UI-en må gruppere/vise avdeling tydelig)
-- Legg til avdelingsfilter-dropdown (multi-select) øverst som lar admin filtrere på avdeling
-- Bruk `get_user_visible_company_ids` (via RPC eller eksisterende henting) for å vise alle relevante avdelinger
-- Når profiler tildeles: bruk profilens `company_id` (allerede implementert) — men sørg for at `course_id` fortsatt er gyldig tilgangsmessig
-
-**3. `src/components/admin/TrainingStatusView.tsx`**
-- Vis avdeling i statuslisten slik at admin ser hvilken avdeling deltakeren tilhører
+**5. Video-container høyde**
+- YouTubeClipPlayer beholder `aspect-video`. Når wrapperen er bredere blir videoen automatisk større. Ingen endring i komponenten.
 
 ### Filer som endres
-- **Ny migrasjon** — kolonner + oppdaterte RLS-policyer
-- `src/components/admin/TrainingSection.tsx` — toggle-knapper for deling, eierskap-sjekk på handlinger, badges
-- `src/components/admin/TrainingAssignmentDialog.tsx` — avdelingsfilter, vis avdeling i listen
-- `src/components/admin/TrainingStatusView.tsx` — vis avdeling i statuskolonnen
-
-### UX-detaljer
-- Knappene "Del med underavdelinger" / "Del med mor" vises kun for kurs eid av aktivt selskap
-- Mor-avdelingen kan ta et kurs som ble delt opp (`shared_with_parent`) og toggle `visible_to_children = true` — men kun hvis morselskapet har skriverettighet (RLS allerede via `get_user_visible_company_ids`)
-- Tildeling fungerer på tvers av avdelinger: dropdown viser ansatte fra alle synlige avdelinger med avdelingsbadge
-- Ingen brytende endring: eksisterende kurs har `visible_to_children = false` og `shared_with_parent = false`
+- `src/components/training/TakeCourseDialog.tsx` — kondisjonelle Tailwind-klasser basert på `isFullscreen` for video-, bilde- og spørsmålsblokkene + redusert padding
 
 ### Resultat
-Kurs kan deles fritt opp/ned i organisasjonshierarkiet. Admin på mor-avdeling kan opprette ett kurs og distribuere til alle underavdelinger; en underavdeling kan dele tilbake til mor som så kan spre til søsken. Tildeling av personell fungerer for alle ansatte i de avdelingene kurset er gjort synlig for.
+På iPad i fullskjerm vil videoer fylle ~90% av skjermbredden (i stedet for ~50%), bilder bruker både bredde og høyde, og spørsmålskort blir bredere og mer behagelig å lese. Vanlig (ikke-fullskjerm) modus er uendret.
 
