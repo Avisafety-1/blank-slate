@@ -61,6 +61,22 @@ export function EccairsTaxonomySelect({
     return <Skeleton className="h-10 w-full" />;
   }
 
+  const isVL453 = valueListKey === 'VL453';
+
+  const getDisplayLabel = (id: string, description?: string): string => {
+    if (isVL453) {
+      if (id === '2133') return 'CAA Norway';
+      return description ? `${description} (${id})` : `CAA (${id})`;
+    }
+    return description || `ID: ${id}`;
+  };
+
+  const selectedDisplay = value
+    ? (isVL453
+        ? getDisplayLabel(value, selectedItem?.value_description)
+        : (fixedLabel || selectedItem?.value_description || `ID: ${value}`))
+    : placeholder;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -71,9 +87,7 @@ export function EccairsTaxonomySelect({
           className="w-full justify-between font-normal"
           disabled={disabled}
         >
-          <span className="truncate">
-            {fixedLabel && value ? fixedLabel : (selectedItem?.value_description || (value ? `ID: ${value}` : placeholder))}
-          </span>
+          <span className="truncate">{selectedDisplay}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -113,7 +127,7 @@ export function EccairsTaxonomySelect({
                           value === item.value_id ? "opacity-100" : "opacity-0"
                         )}
                       />
-                      {item.value_description}
+                      {getDisplayLabel(item.value_id, item.value_description)}
                     </CommandItem>
                   ))}
                 </CommandGroup>
