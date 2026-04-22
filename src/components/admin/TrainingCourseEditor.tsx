@@ -25,12 +25,15 @@ interface QuestionOption {
 
 interface Slide {
   id?: string;
-  slide_type: "content" | "question";
+  slide_type: "content" | "question" | "video";
   question_text: string;
   content_json: any;
   image_url: string | null;
   sort_order: number;
   options: QuestionOption[];
+  video_url?: string | null;
+  video_start_seconds?: number | null;
+  video_end_seconds?: number | null;
   // local-only for preview
   _localBlobUrl?: string;
 }
