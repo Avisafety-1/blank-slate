@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play, FolderOpen, FolderPlus, Building2, ArrowLeft } from "lucide-react";
+import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play, FolderOpen, FolderPlus, Building2, ArrowLeft, ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingCourseEditor } from "./TrainingCourseEditor";
 import { TrainingAssignmentDialog } from "./TrainingAssignmentDialog";
