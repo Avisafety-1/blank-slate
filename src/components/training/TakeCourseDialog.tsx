@@ -315,6 +315,26 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       );
     }
 
+    if (s.slide_type === "video") {
+      const vid = parseYouTubeId(s.video_url || "");
+      if (!vid) {
+        return <p className="text-sm text-destructive">Ugyldig YouTube-URL</p>;
+      }
+      return (
+        <div className="flex items-center justify-center">
+          <div className={`w-full ${isFullscreen ? "max-w-5xl" : "max-w-3xl"} mx-auto`}>
+            <YouTubeClipPlayer
+              key={`${s.id}-${currentPage}`}
+              videoId={vid}
+              start={s.video_start_seconds ?? null}
+              end={s.video_end_seconds ?? null}
+              autoplay
+            />
+          </div>
+        </div>
+      );
+    }
+
     // Question slide
     return (
       <div className={isFullscreen ? "flex items-center justify-center min-h-[60vh]" : ""}>
