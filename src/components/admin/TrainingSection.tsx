@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play, FolderOpen, FolderPlus, Building2, ArrowLeft } from "lucide-react";
+import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play, FolderOpen, FolderPlus, Building2, ArrowLeft, ArrowDown, ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingCourseEditor } from "./TrainingCourseEditor";
 import { TrainingAssignmentDialog } from "./TrainingAssignmentDialog";
@@ -24,7 +24,10 @@ interface Course {
   created_at: string;
   folder_id: string | null;
   global_visibility: boolean;
+  visible_to_children: boolean;
+  shared_with_parent: boolean;
   company_id: string;
+  company_name?: string;
   question_count?: number;
   assignment_stats?: { total: number; completed: number; passed: number };
 }
@@ -51,6 +54,21 @@ export const TrainingSection = () => {
   const [previewCourseId, setPreviewCourseId] = useState<string | null>(null);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [hasChildren, setHasChildren] = useState(false);
+  const [hasParent, setHasParent] = useState(false);
+
+  // Detect parent/children of active company
+  useEffect(() => {
+    if (!companyId) return;
+    (async () => {
+      const [{ data: parent }, { count: childCount }] = await Promise.all([
+        supabase.from("companies").select("parent_company_id").eq("id", companyId).maybeSingle(),
+        supabase.from("companies").select("id", { count: "exact", head: true }).eq("parent_company_id", companyId),
+      ]);
+      setHasParent(!!parent?.parent_company_id);
+      setHasChildren((childCount || 0) > 0);
+    })();
+  }, [companyId]);
 
   const fetchFolders = async () => {
     if (!companyId) return;
@@ -77,7 +95,7 @@ export const TrainingSection = () => {
     try {
       const { data: coursesData, error } = await supabase
         .from("training_courses")
-        .select("*")
+        .select("*, companies(navn)")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -100,6 +118,7 @@ export const TrainingSection = () => {
 
           return {
             ...c,
+            company_name: (c as any).companies?.navn,
             question_count: qCount || 0,
             assignment_stats: { total, completed, passed },
           };
@@ -247,6 +266,34 @@ export const TrainingSection = () => {
     }
   };
 
+  const handleToggleVisibleToChildren = async (course: Course) => {
+    try {
+      const { error } = await (supabase.from("training_courses") as any)
+        .update({ visible_to_children: !course.visible_to_children })
+        .eq("id", course.id);
+      if (error) throw error;
+      toast.success(course.visible_to_children ? "Deling med underavdelinger deaktivert" : "Kurs delt med underavdelinger");
+      fetchCourses();
+    } catch (err) {
+      console.error("Error toggling visible_to_children:", err);
+      toast.error("Kunne ikke oppdatere deling");
+    }
+  };
+
+  const handleToggleSharedWithParent = async (course: Course) => {
+    try {
+      const { error } = await (supabase.from("training_courses") as any)
+        .update({ shared_with_parent: !course.shared_with_parent })
+        .eq("id", course.id);
+      if (error) throw error;
+      toast.success(course.shared_with_parent ? "Deling med mor-avdeling deaktivert" : "Kurs delt med mor-avdeling");
+      fetchCourses();
+    } catch (err) {
+      console.error("Error toggling shared_with_parent:", err);
+      toast.error("Kunne ikke oppdatere deling");
+    }
+  };
+
   if (editorOpen) {
     return (
       <TrainingCourseEditor
@@ -277,16 +324,36 @@ export const TrainingSection = () => {
 
   const activeFolder = folders.find((f) => f.id === activeFolderId);
 
-  const renderCourseCard = (course: Course) => (
+  const renderCourseCard = (course: Course) => {
+    const isOwner = course.company_id === companyId;
+    return (
     <Card key={course.id} className="flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base leading-tight">{course.title}</CardTitle>
-          <div className="flex gap-1 shrink-0">
+          <div className="flex flex-wrap gap-1 shrink-0 justify-end">
             {course.global_visibility && (
               <Badge variant="outline" className="text-primary border-primary/30">
                 <Globe className="h-3 w-3 mr-1" />
                 Global
+              </Badge>
+            )}
+            {!isOwner && (
+              <Badge variant="outline" className="border-muted-foreground/30">
+                <Building2 className="h-3 w-3 mr-1" />
+                Arvet{course.company_name ? ` fra ${course.company_name}` : ""}
+              </Badge>
+            )}
+            {isOwner && course.visible_to_children && (
+              <Badge variant="outline" className="border-primary/30 text-primary">
+                <ArrowDown className="h-3 w-3 mr-1" />
+                Delt nedover
+              </Badge>
+            )}
+            {isOwner && course.shared_with_parent && (
+              <Badge variant="outline" className="border-primary/30 text-primary">
+                <ArrowUp className="h-3 w-3 mr-1" />
+                Delt med mor
               </Badge>
             )}
             <Badge variant={course.status === "published" ? "default" : "secondary"}>
@@ -312,18 +379,22 @@ export const TrainingSection = () => {
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => handleEditCourse(course.id)}>
-            <Edit className="h-3.5 w-3.5" />
-          </Button>
+          {isOwner && (
+            <Button size="sm" variant="outline" onClick={() => handleEditCourse(course.id)}>
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {(course.question_count || 0) > 0 && (
             <Button size="sm" variant="outline" onClick={() => setPreviewCourseId(course.id)}>
               <Play className="h-3.5 w-3.5 mr-1" />
               Preview
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={() => handleTogglePublish(course)}>
-            {course.status === "published" ? "Avpubliser" : "Publiser"}
-          </Button>
+          {isOwner && (
+            <Button size="sm" variant="outline" onClick={() => handleTogglePublish(course)}>
+              {course.status === "published" ? "Avpubliser" : "Publiser"}
+            </Button>
+          )}
           {course.status === "published" && (
             <Button size="sm" variant="outline" onClick={() => setAssignCourseId(course.id)}>
               <Users className="h-3.5 w-3.5 mr-1" />
@@ -335,7 +406,7 @@ export const TrainingSection = () => {
             Status
           </Button>
           {/* Folder move */}
-          {folders.length > 0 && (
+          {isOwner && folders.length > 0 && (
             <Select
               value={course.folder_id || "__none__"}
               onValueChange={(v) => handleMoveCourse(course.id, v === "__none__" ? null : v)}
@@ -351,8 +422,30 @@ export const TrainingSection = () => {
               </SelectContent>
             </Select>
           )}
+          {/* Share with children (owner + has children) */}
+          {isOwner && hasChildren && (
+            <Button
+              size="sm"
+              variant={course.visible_to_children ? "default" : "ghost"}
+              onClick={() => handleToggleVisibleToChildren(course)}
+              title={course.visible_to_children ? "Slutt å dele med underavdelinger" : "Del med underavdelinger"}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {/* Share with parent (owner + has parent) */}
+          {isOwner && hasParent && (
+            <Button
+              size="sm"
+              variant={course.shared_with_parent ? "default" : "ghost"}
+              onClick={() => handleToggleSharedWithParent(course)}
+              title={course.shared_with_parent ? "Slutt å dele med mor-avdeling" : "Del med mor-avdeling"}
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {/* Global visibility (superadmin only) */}
-          {isSuperAdmin && (
+          {isSuperAdmin && isOwner && (
             <Button
               size="sm"
               variant={course.global_visibility ? "default" : "ghost"}
@@ -362,13 +455,16 @@ export const TrainingSection = () => {
               <Globe className="h-3.5 w-3.5" />
             </Button>
           )}
-          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDeleteCourse(course.id)}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {isOwner && (
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDeleteCourse(course.id)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">

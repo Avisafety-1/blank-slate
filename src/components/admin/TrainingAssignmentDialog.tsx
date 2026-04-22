@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
 
@@ -29,6 +30,7 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState<string>("__all__");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -117,6 +119,7 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
 
   const filtered = profiles.filter((p) => {
     if (assignedIds.has(p.id)) return false;
+    if (companyFilter !== "__all__" && p.company_id !== companyFilter) return false;
     const q = search.toLowerCase();
     if (!q) return true;
     return (
@@ -124,6 +127,15 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
       (p.email || "").toLowerCase().includes(q)
     );
   });
+
+  // Distinct companies for filter dropdown
+  const companyOptions = Array.from(
+    new Map(
+      profiles
+        .filter((p) => p.company_id && (p.companies as any)?.navn)
+        .map((p) => [p.company_id, (p.companies as any).navn as string])
+    ).entries()
+  ).sort((a, b) => a[1].localeCompare(b[1]));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -141,6 +153,20 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
             className="pl-9"
           />
         </div>
+
+        {companyOptions.length > 1 && (
+          <Select value={companyFilter} onValueChange={setCompanyFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Alle avdelinger" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Alle avdelinger</SelectItem>
+              {companyOptions.map(([id, name]) => (
+                <SelectItem key={id} value={id}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {assignedIds.size > 0 && (
           <p className="text-xs text-muted-foreground">{assignedIds.size} allerede tildelt (skjult)</p>
