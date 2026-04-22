@@ -365,7 +365,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     // Question slide
     return (
       <div className={isFullscreen ? "flex items-center justify-center min-h-[60vh]" : ""}>
-        <Card className="w-full max-w-2xl mx-auto">
+        <Card className={`w-full mx-auto ${isFullscreen ? "max-w-4xl" : "max-w-2xl"}`}>
           <CardContent className="pt-4 space-y-3">
             <p className="font-medium">
               <span className="text-muted-foreground mr-2">
@@ -374,7 +374,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               {s.question_text}
             </p>
             {s.image_url && (
-              <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
+              <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[55vh]" : "max-h-48"} rounded object-contain`} />
             )}
             <p className="text-xs text-muted-foreground">
               Kryss av alle riktige svar (ett eller flere)
