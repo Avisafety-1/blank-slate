@@ -24,7 +24,10 @@ interface Course {
   created_at: string;
   folder_id: string | null;
   global_visibility: boolean;
+  visible_to_children: boolean;
+  shared_with_parent: boolean;
   company_id: string;
+  company_name?: string;
   question_count?: number;
   assignment_stats?: { total: number; completed: number; passed: number };
 }
