@@ -191,6 +191,24 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     setSlides(newSlides);
   };
 
+  const addVideoSlide = (afterIdx?: number) => {
+    const newSlide: Slide = {
+      slide_type: "video",
+      question_text: "YouTube-video",
+      content_json: null,
+      image_url: null,
+      sort_order: (afterIdx ?? slides.length - 1) + 1,
+      options: [],
+      video_url: "",
+      video_start_seconds: null,
+      video_end_seconds: null,
+    };
+    const newSlides = [...slides];
+    const insertAt = afterIdx != null ? afterIdx + 1 : slides.length;
+    newSlides.splice(insertAt, 0, newSlide);
+    setSlides(newSlides);
+  };
+
   const removeSlide = (idx: number) => {
     setSlides(slides.filter((_, i) => i !== idx));
   };
