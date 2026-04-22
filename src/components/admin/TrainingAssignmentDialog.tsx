@@ -154,6 +154,20 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
           />
         </div>
 
+        {companyOptions.length > 1 && (
+          <Select value={companyFilter} onValueChange={setCompanyFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Alle avdelinger" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Alle avdelinger</SelectItem>
+              {companyOptions.map(([id, name]) => (
+                <SelectItem key={id} value={id}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         {assignedIds.size > 0 && (
           <p className="text-xs text-muted-foreground">{assignedIds.size} allerede tildelt (skjult)</p>
         )}
