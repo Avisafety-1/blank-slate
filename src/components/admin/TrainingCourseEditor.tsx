@@ -622,6 +622,16 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           />
                         </div>
                       )}
+                      <div className="flex items-center gap-3 pt-2 border-t">
+                        <Switch
+                          id={`req-complete-${sIdx}`}
+                          checked={!!s.video_required_complete}
+                          onCheckedChange={(v) => updateSlide(sIdx, "video_required_complete", v)}
+                        />
+                        <Label htmlFor={`req-complete-${sIdx}`} className="text-sm cursor-pointer">
+                          Krev at brukeren ser hele videoen før «Neste»
+                        </Label>
+                      </div>
                       <Button
                         size="sm"
                         variant="outline"
