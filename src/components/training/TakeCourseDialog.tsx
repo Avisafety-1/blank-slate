@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
@@ -49,7 +49,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const { user } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
   const [slides, setSlides] = useState<SlideData[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [passed, setPassed] = useState(false);
@@ -92,10 +92,16 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
         if (!assignment) throw new Error("Assignment not found");
         targetCourseId = assignment.course_id;
-        const savedAnswers = assignment.saved_answers as Record<string, string> | null;
+        const savedAnswers = assignment.saved_answers as Record<string, any> | null;
         if (savedAnswers) {
           const { _currentSlide, ...rest } = savedAnswers as any;
-          setAnswers(rest);
+          // Normaliser til string[] (støtt gammelt format der verdien var string)
+          const normalized: Record<string, string[]> = {};
+          Object.entries(rest).forEach(([k, v]) => {
+            if (Array.isArray(v)) normalized[k] = v as string[];
+            else if (typeof v === "string" && v) normalized[k] = [v];
+          });
+          setAnswers(normalized);
           if (typeof _currentSlide === "number") savedCurrentSlide = _currentSlide;
         }
       } else {
@@ -178,8 +184,14 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     onOpenChange(false);
   };
 
-  const handleSelectAnswer = (questionId: string, optionId: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: optionId }));
+  const handleToggleAnswer = (questionId: string, optionId: string) => {
+    setAnswers(prev => {
+      const cur = prev[questionId] || [];
+      const next = cur.includes(optionId)
+        ? cur.filter(id => id !== optionId)
+        : [...cur, optionId];
+      return { ...prev, [questionId]: next };
+    });
   };
 
   const handleNext = () => {
@@ -194,23 +206,31 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     }
   };
 
+  const isQuestionAnswered = (qId: string) => (answers[qId]?.length ?? 0) > 0;
+
+  const scoreQuestion = (q: SlideData) => {
+    const correctIds = new Set(q.options.filter(o => o.is_correct).map(o => o.id));
+    const selected = new Set(answers[q.id] || []);
+    if (correctIds.size === 0) return false;
+    if (correctIds.size !== selected.size) return false;
+    for (const id of correctIds) if (!selected.has(id)) return false;
+    return true;
+  };
+
   const handleSubmit = async () => {
     if (!course) return;
 
-    const unanswered = questionSlides.filter((q) => !answers[q.id]);
+    const unanswered = questionSlides.filter((q) => !isQuestionAnswered(q.id));
     if (unanswered.length > 0) {
       toast.error(`Du må svare på alle ${questionSlides.length} spørsmål`);
-      const firstIdx = slides.findIndex((s) => s.slide_type === "question" && !answers[s.id]);
+      const firstIdx = slides.findIndex((s) => s.slide_type === "question" && !isQuestionAnswered(s.id));
       if (firstIdx >= 0) setCurrentPage(firstIdx);
       return;
     }
 
     if (previewMode) {
       let correct = 0;
-      questionSlides.forEach((q) => {
-        const correctOption = q.options.find((o) => o.is_correct);
-        if (correctOption && correctOption.id === answers[q.id]) correct++;
-      });
+      questionSlides.forEach((q) => { if (scoreQuestion(q)) correct++; });
       const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
       setScore(scorePercent);
       setPassed(scorePercent >= course.passing_score);
@@ -223,10 +243,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     setSubmitting(true);
     try {
       let correct = 0;
-      questionSlides.forEach((q) => {
-        const correctOption = q.options.find((o) => o.is_correct);
-        if (correctOption && correctOption.id === answers[q.id]) correct++;
-      });
+      questionSlides.forEach((q) => { if (scoreQuestion(q)) correct++; });
 
       const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
       const didPass = scorePercent >= course.passing_score;
@@ -298,7 +315,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     onOpenChange(false);
   };
 
-  const answeredCount = questionSlides.filter((q) => answers[q.id]).length;
+  const answeredCount = questionSlides.filter((q) => isQuestionAnswered(q.id)).length;
   const totalProgress = slides.length > 0 ? Math.round(((currentPage + 1) / slides.length) * 100) : 0;
 
   const renderSlide = (s: SlideData) => {
@@ -359,17 +376,24 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             {s.image_url && (
               <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
             )}
-            <RadioGroup
-              value={answers[s.id] || ""}
-              onValueChange={(v) => handleSelectAnswer(s.id, v)}
-            >
-              {s.options.map((o) => (
-                <div key={o.id} className="flex items-center gap-2">
-                  <RadioGroupItem value={o.id} id={o.id} />
-                  <Label htmlFor={o.id} className="cursor-pointer text-sm">{o.option_text}</Label>
-                </div>
-              ))}
-            </RadioGroup>
+            <p className="text-xs text-muted-foreground">
+              Kryss av alle riktige svar (ett eller flere)
+            </p>
+            <div className="space-y-2">
+              {s.options.map((o) => {
+                const checked = (answers[s.id] || []).includes(o.id);
+                return (
+                  <div key={o.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={o.id}
+                      checked={checked}
+                      onCheckedChange={() => handleToggleAnswer(s.id, o.id)}
+                    />
+                    <Label htmlFor={o.id} className="cursor-pointer text-sm">{o.option_text}</Label>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -450,13 +474,21 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               cur?.slide_type === "video" &&
               cur?.video_required_complete &&
               !completedVideoIds.has(cur.id);
+            const blockedByQuestion =
+              cur?.slide_type === "question" && !isQuestionAnswered(cur.id);
+            const blocked = blockedByVideo || blockedByQuestion;
+            const title = blockedByVideo
+              ? "Du må se hele videoen før du kan gå videre"
+              : blockedByQuestion
+              ? "Velg minst ett svar før du kan gå videre"
+              : undefined;
             return (
               <Button
-                variant={blockedByVideo ? "outline" : "default"}
+                variant={blocked ? "outline" : "default"}
                 size="sm"
                 onClick={handleNext}
-                disabled={blockedByVideo}
-                title={blockedByVideo ? "Du må se hele videoen før du kan gå videre" : undefined}
+                disabled={blocked}
+                title={title}
               >
                 Neste
                 <ChevronRight className="h-4 w-4 ml-1" />
