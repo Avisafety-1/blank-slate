@@ -118,6 +118,7 @@ export const TrainingSection = () => {
 
           return {
             ...c,
+            company_name: (c as any).companies?.navn,
             question_count: qCount || 0,
             assignment_stats: { total, completed, passed },
           };
