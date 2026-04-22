@@ -1,41 +1,53 @@
 
 
-## Plan: Skille NOTAM-pinner fra NOTAM-områder i z-index
+## Plan: Vis "CAA Norway" i stedet for bare "CAA" for VL453 (felt 453 – Ansvarlig enhet)
 
-### Problem
-Akkurat nå legges både NOTAM-områder (sirkler/polygoner) og NOTAM-pinner (markers for aerodrome / center) i samme `notamPane` (z-index 640). Det betyr at pinnene havner under NSM, 5km RPAS og TMZ/TIZ — selv om områdene gjerne skal ligge der.
+### Bakgrunn
+ECCAIRS-taksonomien VL453 ("Responsible Entity") inneholder ~190 oppføringer som alle har `value_description = "CAA"` — ingen landangivelse. Dette gjør at både den valgte verdien og dropdown-listen viser bare "CAA", og brukeren kan ikke skille Norges CAA (value_id `2133`) fra alle andre lands CAA-er.
 
-### Løsning
-Lag en **ny pane `notamPinPane`** kun for marker-ikonene, plassert over alle luftromsflater men under oppdragspinner og live flight.
+Default-verdien er allerede satt til `2133` i `eccairsFields.ts`, men UI-et viser fortsatt bare "CAA".
 
-### Endringer
+### Løsning (to deler)
 
-**1. `src/components/OpenAIPMap.tsx`** — `paneConfig` (rundt linje 396–400):
-Legg til ny pane:
-```ts
-notamPinPane: '675',  // mellom obstacle (660) og missionPane (680)
+**Del 1 — Fast etikett for valgt verdi (rask seier)**
+Sett `fixedLabel: 'CAA Norway'` på felt 453 i `src/config/eccairsFields.ts`. `EccairsTaxonomySelect` støtter allerede `fixedLabel` og vil da vise "CAA Norway" så lenge `value === 2133`.
+
+Problem: hvis brukeren åpner dropdownen og bytter, viser knappen feil etikett. Derfor må vi også løse dropdown-visningen.
+
+**Del 2 — Vis `value_id` ved siden av "CAA" i dropdownen for VL453**
+I `src/components/eccairs/EccairsTaxonomySelect.tsx`:
+- Når `valueListKey === 'VL453'`: rendre `{item.value_description} ({item.value_id})` i `CommandItem` slik at brukeren ser "CAA (2133)", "CAA (2102)" osv.
+- For valgt verdi: hvis `value === '2133'` vis "CAA Norway", ellers vis `CAA ({value_id})` som fallback (i stedet for `fixedLabel` som blir feil etter bytte).
+
+Konkret endring i `EccairsTaxonomySelect.tsx` rundt linje 75 og 116:
+```tsx
+// Linje 75 — selected label
+const isVL453 = valueListKey === 'VL453';
+const selectedLabel = isVL453 && value === '2133'
+  ? 'CAA Norway'
+  : isVL453 && selectedItem
+    ? `${selectedItem.value_description} (${selectedItem.value_id})`
+    : (selectedItem?.value_description || (value ? `ID: ${value}` : placeholder));
+
+// Linje 116 — list item label
+{isVL453 && item.value_id === '2133'
+  ? 'CAA Norway'
+  : isVL453
+    ? `${item.value_description} (${item.value_id})`
+    : item.value_description}
 ```
-Endelig rekkefølge (lav → høy):
-`rmz(620) < aip(625) < rpas(630) < notam-områder(640) < nsm(650) < obstacle(660) < notamPinPane(675) < route(665) < airport(670) < mission(680) < liveFlight(720) < safesky(750)`.
 
-Marker-pane (`notamPinPane`) trenger ikke være i `nonInteractivePanes`-settet siden pinner skal være klikkbare også i routePlanning bør forbli som NOTAM-områdene — vi holder samme oppførsel og legger den med i `panesToDisable`-listen + `nonInteractivePanes`.
+Dette holder seg generelt — søkbart, og brukeren ser tydelig at 2133 er Norge.
 
-**2. `src/components/OpenAIPMap.tsx`** — call til `fetchNotams` (linje 595):
-Send med ekstra prop:
-```ts
-fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode });
-```
-
-**3. `src/lib/mapDataFetchers.ts`** — `fetchNotams`:
-- Utvid signaturen med `pinPane: string`.
-- Når et `geometry_geojson` rendres som GeoJSON og lager pin-markers (linje ~896–917), bruk `pane: pinPane` i stedet for `pane`.
-- Når `addNotamCenterMarker` kalles, send med `pinPane`. Inne i funksjonen: marker (både `L.marker` og `L.circleMarker`) bruker `pinPane`.
-- Områder/polygoner og fallback-`circleMarker` for ikke-aerodrome NOTAMs uten geometri vurderes som "område" og blir værende på `notamPane`. Aerodrome-pin og pointToLayer-pin går til `notamPinPane`.
+**Del 3 — Forbedre søk i VL453**
+I `useEccairsTaxonomy` (`src/hooks/useEccairsTaxonomy.ts`) gjøres ingen endringer; dagens server-side ILIKE-søk på `value_description`/`value_synonym` vil fortsatt finne "CAA". Fordi `value_synonym` allerede er value_id-en, vil søk på "2133" treffe Norge CAA direkte.
 
 ### Filer som endres
-- `src/components/OpenAIPMap.tsx` (paneConfig + ett funksjonskall)
-- `src/lib/mapDataFetchers.ts` (`fetchNotams` + `addNotamCenterMarker`)
+- `src/config/eccairsFields.ts` — legg til `fixedLabel: 'CAA Norway'` på felt 453
+- `src/components/eccairs/EccairsTaxonomySelect.tsx` — spesialhåndtering når `valueListKey === 'VL453'`
 
 ### Resultat
-NOTAM-områder forblir under NSM/5km/TMZ/TIZ (uendret), mens NOTAM-pinnene nå tegnes oppå alle disse luftromsflatene og er fortsatt klikkbare. Oppdragspinner og SafeSky ligger fremdeles over NOTAM-pinnene.
+- Default-verdien vises som **"CAA Norway"** i feltet "Ansvarlig enhet" (VL453).
+- Dropdownen viser **"CAA Norway"** øverst for 2133 og **"CAA (2102)"**, **"CAA (2049)"** osv. for de andre, slik at brukeren faktisk kan skille dem.
+- Alle 190+ CAA-entries beholder samme `value_id` til ECCAIRS — kun visningen endres.
 
