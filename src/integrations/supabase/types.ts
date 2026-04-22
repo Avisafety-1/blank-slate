@@ -4757,10 +4757,12 @@ export type Database = {
           id: string
           passing_score: number
           pptx_file_url: string | null
+          shared_with_parent: boolean
           status: string
           title: string
           updated_at: string
           validity_months: number | null
+          visible_to_children: boolean
         }
         Insert: {
           available_to_all?: boolean
@@ -4775,10 +4777,12 @@ export type Database = {
           id?: string
           passing_score?: number
           pptx_file_url?: string | null
+          shared_with_parent?: boolean
           status?: string
           title: string
           updated_at?: string
           validity_months?: number | null
+          visible_to_children?: boolean
         }
         Update: {
           available_to_all?: boolean
@@ -4793,10 +4797,12 @@ export type Database = {
           id?: string
           passing_score?: number
           pptx_file_url?: string | null
+          shared_with_parent?: boolean
           status?: string
           title?: string
           updated_at?: string
           validity_months?: number | null
+          visible_to_children?: boolean
         }
         Relationships: [
           {
