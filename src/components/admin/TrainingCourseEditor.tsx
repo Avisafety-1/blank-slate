@@ -290,7 +290,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         return;
       }
       if (!q.options.some(o => o.is_correct)) {
-        toast.error("Spørsmålet må ha ett riktig svar");
+        toast.error("Spørsmålet må ha minst ett riktig svar");
         return;
       }
       for (const o of q.options) {
