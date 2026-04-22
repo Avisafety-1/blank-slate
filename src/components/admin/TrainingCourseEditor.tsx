@@ -656,15 +656,16 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Svaralternativer</Label>
+                      <Label className="text-xs text-muted-foreground">
+                        Svaralternativer (kryss av alle riktige svar)
+                      </Label>
                       {s.options.map((o, oIdx) => (
                         <div key={oIdx} className="flex items-center gap-2">
                           <input
-                            type="radio"
-                            name={`correct-${sIdx}`}
+                            type="checkbox"
                             checked={o.is_correct}
-                            onChange={() => updateOption(sIdx, oIdx, "is_correct", true)}
-                            className="accent-primary"
+                            onChange={(e) => updateOption(sIdx, oIdx, "is_correct", e.target.checked)}
+                            className="accent-primary h-4 w-4"
                             title="Marker som riktig svar"
                           />
                           <Input
