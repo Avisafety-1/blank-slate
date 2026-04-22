@@ -487,6 +487,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           {uploadingPdf && (
             <p className="text-xs text-muted-foreground">Konverterer sider til bilder...</p>
           )}
+          <div className="pt-2 border-t">
+            <Button variant="outline" size="sm" onClick={() => addVideoSlide()}>
+              <Youtube className="h-4 w-4 mr-2" />
+              Legg til YouTube-video
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
