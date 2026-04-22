@@ -394,11 +394,11 @@ export function OpenAIPMap({
 
     // Create panes
     const paneConfig: Record<string, string> = {
-      safeskyPane: '750', liveFlightPane: '720', missionPane: '680', airportPane: '670', routePane: '665',
+      safeskyPane: '750', liveFlightPane: '720', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
       obstaclePane: '660', nsmPane: '650', notamPane: '640',
       rpasPane: '630', aipPane: '625', rmzPane: '620',
     };
-    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane']);
+    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
@@ -592,7 +592,7 @@ export function OpenAIPMap({
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
-    fetchNotams({ layer: notamLayer, pane: 'notamPane', mode });
+    fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode });
     // Viewport-based verneområder fetching with debounce
     const fetchVerneomraader = () => {
       if (map.getZoom() < 10) {

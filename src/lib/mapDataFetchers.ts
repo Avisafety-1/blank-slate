@@ -848,9 +848,10 @@ export async function fetchKraftledningerInBounds(params: {
 export async function fetchNotams(params: {
   layer: L.LayerGroup;
   pane: string;
+  pinPane: string;
   mode: string;
 }) {
-  const { layer, pane, mode } = params;
+  const { layer, pane, pinPane, mode } = params;
 
   layer.clearLayers();
 
@@ -892,7 +893,7 @@ export async function fetchNotams(params: {
             bubblingMouseEvents: false,
             pointToLayer: (_feature: any, latlng: L.LatLng) => {
               return L.marker(latlng, {
-                pane,
+                pane: pinPane,
                 interactive: mode !== "routePlanning",
                 bubblingMouseEvents: false,
                 icon: L.divIcon({
@@ -925,10 +926,10 @@ export async function fetchNotams(params: {
           geoLayer.bringToFront();
         } catch {
           // Fallback to center marker
-          addNotamCenterMarker(notam, layer, pane, mode, notamRenderer);
+          addNotamCenterMarker(notam, layer, pane, pinPane, mode, notamRenderer);
         }
       } else if (notam.center_lat != null && notam.center_lng != null) {
-        addNotamCenterMarker(notam, layer, pane, mode, notamRenderer);
+        addNotamCenterMarker(notam, layer, pane, pinPane, mode, notamRenderer);
       }
     }
 
@@ -938,16 +939,16 @@ export async function fetchNotams(params: {
   }
 }
 
-function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mode: string, renderer?: L.Renderer) {
+function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, pinPane: string, mode: string, renderer?: L.Renderer) {
   if (notam.center_lat == null || notam.center_lng == null) return;
 
   const isAerodrome = notam.scope === "A";
 
   let marker: L.Layer;
   if (isAerodrome) {
-    // Use a pin icon for aerodrome NOTAMs
+    // Use a pin icon for aerodrome NOTAMs — pin pane (above airspace areas)
     marker = L.marker([notam.center_lat, notam.center_lng], {
-      pane,
+      pane: pinPane,
       interactive: mode !== "routePlanning",
       bubblingMouseEvents: false,
       icon: L.divIcon({
@@ -963,7 +964,7 @@ function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, mod
       }),
     });
   } else {
-    // Use circle marker for other NOTAMs without geometry
+    // Use circle marker for other NOTAMs without geometry — treat as area, stays on notamPane
     marker = L.circleMarker([notam.center_lat, notam.center_lng], {
       pane,
       renderer,
