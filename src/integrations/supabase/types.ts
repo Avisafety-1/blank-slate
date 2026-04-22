@@ -4858,6 +4858,7 @@ export type Database = {
           slide_type: string
           sort_order: number
           video_end_seconds: number | null
+          video_required_complete: boolean
           video_start_seconds: number | null
           video_url: string | null
         }
@@ -4871,6 +4872,7 @@ export type Database = {
           slide_type?: string
           sort_order?: number
           video_end_seconds?: number | null
+          video_required_complete?: boolean
           video_start_seconds?: number | null
           video_url?: string | null
         }
@@ -4884,6 +4886,7 @@ export type Database = {
           slide_type?: string
           sort_order?: number
           video_end_seconds?: number | null
+          video_required_complete?: boolean
           video_start_seconds?: number | null
           video_url?: string | null
         }

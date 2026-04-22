@@ -34,6 +34,7 @@ interface Slide {
   video_url?: string | null;
   video_start_seconds?: number | null;
   video_end_seconds?: number | null;
+  video_required_complete?: boolean;
   // local-only for preview
   _localBlobUrl?: string;
 }
@@ -106,6 +107,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           video_url: q.video_url || null,
           video_start_seconds: q.video_start_seconds ?? null,
           video_end_seconds: q.video_end_seconds ?? null,
+          video_required_complete: q.video_required_complete ?? false,
           options: (optionsData || [])
             .filter((o: any) => o.question_id === q.id)
             .map((o: any) => ({
@@ -202,6 +204,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       video_url: "",
       video_start_seconds: null,
       video_end_seconds: null,
+      video_required_complete: false,
     };
     const newSlides = [...slides];
     const insertAt = afterIdx != null ? afterIdx + 1 : slides.length;
@@ -372,6 +375,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             video_url: s.slide_type === "video" ? (s.video_url || null) : null,
             video_start_seconds: s.slide_type === "video" ? (s.video_start_seconds ?? null) : null,
             video_end_seconds: s.slide_type === "video" ? (s.video_end_seconds ?? null) : null,
+            video_required_complete: s.slide_type === "video" ? !!s.video_required_complete : false,
           } as any)
           .select("id")
           .single();
@@ -618,6 +622,16 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           />
                         </div>
                       )}
+                      <div className="flex items-center gap-3 pt-2 border-t">
+                        <Switch
+                          id={`req-complete-${sIdx}`}
+                          checked={!!s.video_required_complete}
+                          onCheckedChange={(v) => updateSlide(sIdx, "video_required_complete", v)}
+                        />
+                        <Label htmlFor={`req-complete-${sIdx}`} className="text-sm cursor-pointer">
+                          Krev at brukeren ser hele videoen før «Neste»
+                        </Label>
+                      </div>
                       <Button
                         size="sm"
                         variant="outline"

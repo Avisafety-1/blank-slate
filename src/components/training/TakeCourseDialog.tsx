@@ -31,6 +31,7 @@ interface SlideData {
   video_url?: string | null;
   video_start_seconds?: number | null;
   video_end_seconds?: number | null;
+  video_required_complete?: boolean;
   options: { id: string; option_text: string; is_correct: boolean; sort_order: number }[];
 }
 
@@ -58,6 +59,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const [savingProgress, setSavingProgress] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [completedVideoIds, setCompletedVideoIds] = useState<Set<string>>(new Set());
 
   const questionSlides = slides.filter(s => s.slide_type === "question");
 
@@ -136,6 +138,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           video_url: q.video_url || null,
           video_start_seconds: q.video_start_seconds ?? null,
           video_end_seconds: q.video_end_seconds ?? null,
+          video_required_complete: q.video_required_complete ?? false,
           options: (optionsData || []).filter((o: any) => o.question_id === q.id),
         }));
         setSlides(loadedSlides);
@@ -330,6 +333,12 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               end={s.video_end_seconds ?? null}
               autoplay
               customControls
+              onEnd={() => setCompletedVideoIds((prev) => {
+                if (prev.has(s.id)) return prev;
+                const next = new Set(prev);
+                next.add(s.id);
+                return next;
+              })}
             />
           </div>
         </div>
@@ -435,16 +444,25 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             <ChevronLeft className="h-4 w-4 mr-1" />
             Forrige
           </Button>
-          {currentPage < slides.length - 1 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNext}
-            >
-              Neste
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          )}
+          {currentPage < slides.length - 1 && (() => {
+            const cur = slides[currentPage];
+            const blockedByVideo =
+              cur?.slide_type === "video" &&
+              cur?.video_required_complete &&
+              !completedVideoIds.has(cur.id);
+            return (
+              <Button
+                variant={blockedByVideo ? "outline" : "default"}
+                size="sm"
+                onClick={handleNext}
+                disabled={blockedByVideo}
+                title={blockedByVideo ? "Du må se hele videoen før du kan gå videre" : undefined}
+              >
+                Neste
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            );
+          })()}
         </div>
         <div className="flex gap-2">
           {!previewMode && (
