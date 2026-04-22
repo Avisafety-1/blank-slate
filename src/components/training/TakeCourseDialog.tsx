@@ -342,7 +342,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       }
       return (
         <div className="flex items-center justify-center">
-          <div className={`w-full ${isFullscreen ? "max-w-5xl" : "max-w-3xl"} mx-auto`}>
+          <div className={`w-full ${isFullscreen ? "max-w-[96vw]" : "max-w-3xl"} mx-auto`}>
             <YouTubeClipPlayer
               key={`${s.id}-${currentPage}`}
               videoId={vid}
