@@ -92,10 +92,16 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
         if (!assignment) throw new Error("Assignment not found");
         targetCourseId = assignment.course_id;
-        const savedAnswers = assignment.saved_answers as Record<string, string> | null;
+        const savedAnswers = assignment.saved_answers as Record<string, any> | null;
         if (savedAnswers) {
           const { _currentSlide, ...rest } = savedAnswers as any;
-          setAnswers(rest);
+          // Normaliser til string[] (støtt gammelt format der verdien var string)
+          const normalized: Record<string, string[]> = {};
+          Object.entries(rest).forEach(([k, v]) => {
+            if (Array.isArray(v)) normalized[k] = v as string[];
+            else if (typeof v === "string" && v) normalized[k] = [v];
+          });
+          setAnswers(normalized);
           if (typeof _currentSlide === "number") savedCurrentSlide = _currentSlide;
         }
       } else {
