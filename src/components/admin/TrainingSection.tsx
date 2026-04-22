@@ -54,6 +54,21 @@ export const TrainingSection = () => {
   const [previewCourseId, setPreviewCourseId] = useState<string | null>(null);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [hasChildren, setHasChildren] = useState(false);
+  const [hasParent, setHasParent] = useState(false);
+
+  // Detect parent/children of active company
+  useEffect(() => {
+    if (!companyId) return;
+    (async () => {
+      const [{ data: parent }, { count: childCount }] = await Promise.all([
+        supabase.from("companies").select("parent_company_id").eq("id", companyId).maybeSingle(),
+        supabase.from("companies").select("id", { count: "exact", head: true }).eq("parent_company_id", companyId),
+      ]);
+      setHasParent(!!parent?.parent_company_id);
+      setHasChildren((childCount || 0) > 0);
+    })();
+  }, [companyId]);
 
   const fetchFolders = async () => {
     if (!companyId) return;
