@@ -119,6 +119,7 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
 
   const filtered = profiles.filter((p) => {
     if (assignedIds.has(p.id)) return false;
+    if (companyFilter !== "__all__" && p.company_id !== companyFilter) return false;
     const q = search.toLowerCase();
     if (!q) return true;
     return (
@@ -126,6 +127,15 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
       (p.email || "").toLowerCase().includes(q)
     );
   });
+
+  // Distinct companies for filter dropdown
+  const companyOptions = Array.from(
+    new Map(
+      profiles
+        .filter((p) => p.company_id && (p.companies as any)?.navn)
+        .map((p) => [p.company_id, (p.companies as any).navn as string])
+    ).entries()
+  ).sort((a, b) => a[1].localeCompare(b[1]));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
