@@ -333,6 +333,12 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               end={s.video_end_seconds ?? null}
               autoplay
               customControls
+              onEnd={() => setCompletedVideoIds((prev) => {
+                if (prev.has(s.id)) return prev;
+                const next = new Set(prev);
+                next.add(s.id);
+                return next;
+              })}
             />
           </div>
         </div>
