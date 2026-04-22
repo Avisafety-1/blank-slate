@@ -31,6 +31,7 @@ interface SlideData {
   video_url?: string | null;
   video_start_seconds?: number | null;
   video_end_seconds?: number | null;
+  video_required_complete?: boolean;
   options: { id: string; option_text: string; is_correct: boolean; sort_order: number }[];
 }
 
