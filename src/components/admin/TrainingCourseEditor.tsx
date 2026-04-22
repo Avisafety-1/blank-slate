@@ -299,7 +299,21 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       }
     }
 
-    setSaving(true);
+    const videoSlides = slides.filter(s => s.slide_type === "video");
+    for (const v of videoSlides) {
+      if (!v.video_url || !parseYouTubeId(v.video_url)) {
+        toast.error("Ugyldig YouTube-URL på video-slide");
+        return;
+      }
+      if (
+        v.video_start_seconds != null &&
+        v.video_end_seconds != null &&
+        v.video_end_seconds <= v.video_start_seconds
+      ) {
+        toast.error("Sluttidspunkt må være etter starttidspunkt");
+        return;
+      }
+    }
     try {
       let cId = courseId;
 
