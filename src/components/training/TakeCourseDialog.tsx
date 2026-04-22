@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { YouTubeClipPlayer, parseYouTubeId } from "@/components/training/YouTubeClipPlayer";
 
 interface Props {
   assignmentId?: string;
@@ -27,6 +28,9 @@ interface SlideData {
   content_json: any;
   image_url: string | null;
   sort_order: number;
+  video_url?: string | null;
+  video_start_seconds?: number | null;
+  video_end_seconds?: number | null;
   options: { id: string; option_text: string; is_correct: boolean; sort_order: number }[];
 }
 
@@ -129,6 +133,9 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           content_json: q.content_json || null,
           image_url: q.image_url,
           sort_order: q.sort_order,
+          video_url: q.video_url || null,
+          video_start_seconds: q.video_start_seconds ?? null,
+          video_end_seconds: q.video_end_seconds ?? null,
           options: (optionsData || []).filter((o: any) => o.question_id === q.id),
         }));
         setSlides(loadedSlides);
@@ -304,6 +311,26 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           ) : (
             <p className="text-muted-foreground text-sm">Innholdsside</p>
           )}
+        </div>
+      );
+    }
+
+    if (s.slide_type === "video") {
+      const vid = parseYouTubeId(s.video_url || "");
+      if (!vid) {
+        return <p className="text-sm text-destructive">Ugyldig YouTube-URL</p>;
+      }
+      return (
+        <div className="flex items-center justify-center">
+          <div className={`w-full ${isFullscreen ? "max-w-5xl" : "max-w-3xl"} mx-auto`}>
+            <YouTubeClipPlayer
+              key={`${s.id}-${currentPage}`}
+              videoId={vid}
+              start={s.video_start_seconds ?? null}
+              end={s.video_end_seconds ?? null}
+              autoplay
+            />
+          </div>
         </div>
       );
     }

@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Trash2, Upload, FileText, HelpCircle, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, FileText, HelpCircle, Image as ImageIcon, Youtube } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
+import { YouTubeClipPlayer, parseYouTubeId, parseTimeInput, formatSeconds } from "@/components/training/YouTubeClipPlayer";
 
 // Set worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -24,12 +25,15 @@ interface QuestionOption {
 
 interface Slide {
   id?: string;
-  slide_type: "content" | "question";
+  slide_type: "content" | "question" | "video";
   question_text: string;
   content_json: any;
   image_url: string | null;
   sort_order: number;
   options: QuestionOption[];
+  video_url?: string | null;
+  video_start_seconds?: number | null;
+  video_end_seconds?: number | null;
   // local-only for preview
   _localBlobUrl?: string;
 }
@@ -99,6 +103,9 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           content_json: q.content_json || null,
           image_url: q.image_url,
           sort_order: q.sort_order,
+          video_url: q.video_url || null,
+          video_start_seconds: q.video_start_seconds ?? null,
+          video_end_seconds: q.video_end_seconds ?? null,
           options: (optionsData || [])
             .filter((o: any) => o.question_id === q.id)
             .map((o: any) => ({
@@ -181,6 +188,24 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     };
     const newSlides = [...slides];
     newSlides.splice(afterIdx + 1, 0, newSlide);
+    setSlides(newSlides);
+  };
+
+  const addVideoSlide = (afterIdx?: number) => {
+    const newSlide: Slide = {
+      slide_type: "video",
+      question_text: "YouTube-video",
+      content_json: null,
+      image_url: null,
+      sort_order: (afterIdx ?? slides.length - 1) + 1,
+      options: [],
+      video_url: "",
+      video_start_seconds: null,
+      video_end_seconds: null,
+    };
+    const newSlides = [...slides];
+    const insertAt = afterIdx != null ? afterIdx + 1 : slides.length;
+    newSlides.splice(insertAt, 0, newSlide);
     setSlides(newSlides);
   };
 
@@ -274,6 +299,22 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       }
     }
 
+    const videoSlides = slides.filter(s => s.slide_type === "video");
+    for (const v of videoSlides) {
+      if (!v.video_url || !parseYouTubeId(v.video_url)) {
+        toast.error("Ugyldig YouTube-URL på video-slide");
+        return;
+      }
+      if (
+        v.video_start_seconds != null &&
+        v.video_end_seconds != null &&
+        v.video_end_seconds <= v.video_start_seconds
+      ) {
+        toast.error("Sluttidspunkt må være etter starttidspunkt");
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       let cId = courseId;
@@ -323,11 +364,14 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           .from("training_questions")
           .insert({
             course_id: cId!,
-            question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : ""),
+            question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : s.slide_type === "video" ? `Video ${i + 1}` : ""),
             image_url: s.image_url,
             sort_order: i,
             slide_type: s.slide_type,
             content_json: null,
+            video_url: s.slide_type === "video" ? (s.video_url || null) : null,
+            video_start_seconds: s.slide_type === "video" ? (s.video_start_seconds ?? null) : null,
+            video_end_seconds: s.slide_type === "video" ? (s.video_end_seconds ?? null) : null,
           } as any)
           .select("id")
           .single();
@@ -443,6 +487,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           {uploadingPdf && (
             <p className="text-xs text-muted-foreground">Konverterer sider til bilder...</p>
           )}
+          <div className="pt-2 border-t">
+            <Button variant="outline" size="sm" onClick={() => addVideoSlide()}>
+              <Youtube className="h-4 w-4 mr-2" />
+              Legg til YouTube-video
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -460,15 +510,15 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-medium text-muted-foreground w-6">{sIdx + 1}.</span>
-                  <Badge variant={s.slide_type === "content" ? "secondary" : "outline"} className="text-xs">
-                    {s.slide_type === "content" ? "Slide" : "Spørsmål"}
+                  <Badge variant={s.slide_type === "content" ? "secondary" : s.slide_type === "video" ? "default" : "outline"} className="text-xs">
+                    {s.slide_type === "content" ? "Slide" : s.slide_type === "video" ? "Video" : "Spørsmål"}
                   </Badge>
                   <div className="flex-1" />
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" disabled={sIdx === 0} onClick={() => moveSlide(sIdx, sIdx - 1)} className="h-7 w-7 p-0">↑</Button>
                     <Button size="sm" variant="ghost" disabled={sIdx === slides.length - 1} onClick={() => moveSlide(sIdx, sIdx + 1)} className="h-7 w-7 p-0">↓</Button>
                   </div>
-                  {s.slide_type === "question" && (
+                  {(s.slide_type === "question" || s.slide_type === "video") && (
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(sIdx)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -485,17 +535,101 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                         className="w-full max-h-64 object-contain rounded border bg-muted/20"
                       />
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => addQuestionAfterSlide(sIdx)}
-                      className="text-xs"
-                    >
-                      <HelpCircle className="h-3.5 w-3.5 mr-1" />
-                      Legg til spørsmål etter denne sliden
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addQuestionAfterSlide(sIdx)}
+                        className="text-xs"
+                      >
+                        <HelpCircle className="h-3.5 w-3.5 mr-1" />
+                        Legg til spørsmål etter
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addVideoSlide(sIdx)}
+                        className="text-xs"
+                      >
+                        <Youtube className="h-3.5 w-3.5 mr-1" />
+                        Legg til video etter
+                      </Button>
+                    </div>
                   </div>
                 )}
+
+                {/* Video slide */}
+                {s.slide_type === "video" && (() => {
+                  const vid = parseYouTubeId(s.video_url || "");
+                  const startInvalid =
+                    s.video_start_seconds != null &&
+                    s.video_end_seconds != null &&
+                    s.video_end_seconds <= s.video_start_seconds;
+                  return (
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-sm">YouTube-URL</Label>
+                        <Input
+                          value={s.video_url || ""}
+                          onChange={(e) => updateSlide(sIdx, "video_url", e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                        />
+                        {!vid && (s.video_url?.length ?? 0) > 0 && (
+                          <p className="text-xs text-destructive mt-1">Ugyldig YouTube-URL</p>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-sm">Start (MM:SS eller sek)</Label>
+                          <Input
+                            defaultValue={formatSeconds(s.video_start_seconds ?? undefined)}
+                            onBlur={(e) => {
+                              const parsed = parseTimeInput(e.target.value);
+                              updateSlide(sIdx, "video_start_seconds", parsed);
+                              if (parsed != null) e.target.value = formatSeconds(parsed);
+                            }}
+                            placeholder="0:00"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Slutt (MM:SS eller sek)</Label>
+                          <Input
+                            defaultValue={formatSeconds(s.video_end_seconds ?? undefined)}
+                            onBlur={(e) => {
+                              const parsed = parseTimeInput(e.target.value);
+                              updateSlide(sIdx, "video_end_seconds", parsed);
+                              if (parsed != null) e.target.value = formatSeconds(parsed);
+                            }}
+                            placeholder="(til slutt)"
+                          />
+                        </div>
+                      </div>
+                      {startInvalid && (
+                        <p className="text-xs text-destructive">Sluttidspunkt må være etter starttidspunkt</p>
+                      )}
+                      {vid && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Forhåndsvisning av klipp</Label>
+                          <YouTubeClipPlayer
+                            videoId={vid}
+                            start={s.video_start_seconds ?? null}
+                            end={s.video_end_seconds ?? null}
+                            autoplay={false}
+                          />
+                        </div>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addQuestionAfterSlide(sIdx)}
+                        className="text-xs"
+                      >
+                        <HelpCircle className="h-3.5 w-3.5 mr-1" />
+                        Legg til spørsmål etter denne videoen
+                      </Button>
+                    </div>
+                  );
+                })()}
 
                 {/* Question slide */}
                 {s.slide_type === "question" && (
