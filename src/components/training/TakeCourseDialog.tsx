@@ -326,7 +326,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             <img
               src={s.image_url}
               alt={s.question_text}
-              className={`w-full rounded-lg ${isFullscreen ? "max-h-[80vh]" : "max-h-[60vh]"} object-contain`}
+              className={`rounded-lg object-contain ${isFullscreen ? "max-h-[88vh] max-w-[96vw] w-auto" : "w-full max-h-[60vh]"}`}
             />
           ) : (
             <p className="text-muted-foreground text-sm">Innholdsside</p>
@@ -342,7 +342,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       }
       return (
         <div className="flex items-center justify-center">
-          <div className={`w-full ${isFullscreen ? "max-w-5xl" : "max-w-3xl"} mx-auto`}>
+          <div className={`w-full ${isFullscreen ? "max-w-[96vw]" : "max-w-3xl"} mx-auto`}>
             <YouTubeClipPlayer
               key={`${s.id}-${currentPage}`}
               videoId={vid}
@@ -365,7 +365,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     // Question slide
     return (
       <div className={isFullscreen ? "flex items-center justify-center min-h-[60vh]" : ""}>
-        <Card className="w-full max-w-2xl mx-auto">
+        <Card className={`w-full mx-auto ${isFullscreen ? "max-w-4xl" : "max-w-2xl"}`}>
           <CardContent className="pt-4 space-y-3">
             <p className="font-medium">
               <span className="text-muted-foreground mr-2">
@@ -374,7 +374,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               {s.question_text}
             </p>
             {s.image_url && (
-              <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[60vh]" : "max-h-48"} rounded object-contain`} />
+              <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[55vh]" : "max-h-48"} rounded object-contain`} />
             )}
             <p className="text-xs text-muted-foreground">
               Kryss av alle riktige svar (ett eller flere)
@@ -528,7 +528,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             : "max-w-3xl max-h-[90vh] overflow-y-auto"
         }
       >
-        <div className={isFullscreen ? "h-full flex flex-col overflow-y-auto p-4 sm:p-6" : ""}>
+        <div className={isFullscreen ? "h-full flex flex-col overflow-y-auto p-2 sm:p-4" : ""}>
           <DialogHeader>
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 min-w-0">
