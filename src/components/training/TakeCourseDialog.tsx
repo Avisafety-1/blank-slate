@@ -59,6 +59,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const [savingProgress, setSavingProgress] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [completedVideoIds, setCompletedVideoIds] = useState<Set<string>>(new Set());
 
   const questionSlides = slides.filter(s => s.slide_type === "question");
 
