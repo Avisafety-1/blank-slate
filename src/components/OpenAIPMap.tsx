@@ -450,7 +450,7 @@ export function OpenAIPMap({
     // NVE Kraftledninger (vector via ArcGIS REST)
     if (!map.getPane('powerPane')) {
       map.createPane('powerPane');
-      map.getPane('powerPane')!.style.zIndex = '692';
+      map.getPane('powerPane')!.style.zIndex = '700';
     }
     const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
@@ -458,7 +458,7 @@ export function OpenAIPMap({
     // NAIS skipstrafikk (BarentsWatch)
     if (!map.getPane('naisPane')) {
       map.createPane('naisPane');
-      map.getPane('naisPane')!.style.zIndex = '655';
+      map.getPane('naisPane')!.style.zIndex = '695';
     }
     const naisLayer = L.layerGroup();
     layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
