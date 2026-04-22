@@ -138,6 +138,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           video_url: q.video_url || null,
           video_start_seconds: q.video_start_seconds ?? null,
           video_end_seconds: q.video_end_seconds ?? null,
+          video_required_complete: q.video_required_complete ?? false,
           options: (optionsData || []).filter((o: any) => o.question_id === q.id),
         }));
         setSlides(loadedSlides);
