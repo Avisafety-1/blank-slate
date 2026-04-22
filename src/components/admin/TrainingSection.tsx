@@ -324,16 +324,36 @@ export const TrainingSection = () => {
 
   const activeFolder = folders.find((f) => f.id === activeFolderId);
 
-  const renderCourseCard = (course: Course) => (
+  const renderCourseCard = (course: Course) => {
+    const isOwner = course.company_id === companyId;
+    return (
     <Card key={course.id} className="flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base leading-tight">{course.title}</CardTitle>
-          <div className="flex gap-1 shrink-0">
+          <div className="flex flex-wrap gap-1 shrink-0 justify-end">
             {course.global_visibility && (
               <Badge variant="outline" className="text-primary border-primary/30">
                 <Globe className="h-3 w-3 mr-1" />
                 Global
+              </Badge>
+            )}
+            {!isOwner && (
+              <Badge variant="outline" className="border-muted-foreground/30">
+                <Building2 className="h-3 w-3 mr-1" />
+                Arvet{course.company_name ? ` fra ${course.company_name}` : ""}
+              </Badge>
+            )}
+            {isOwner && course.visible_to_children && (
+              <Badge variant="outline" className="border-primary/30 text-primary">
+                <ArrowDown className="h-3 w-3 mr-1" />
+                Delt nedover
+              </Badge>
+            )}
+            {isOwner && course.shared_with_parent && (
+              <Badge variant="outline" className="border-primary/30 text-primary">
+                <ArrowUp className="h-3 w-3 mr-1" />
+                Delt med mor
               </Badge>
             )}
             <Badge variant={course.status === "published" ? "default" : "secondary"}>
@@ -359,18 +379,22 @@ export const TrainingSection = () => {
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => handleEditCourse(course.id)}>
-            <Edit className="h-3.5 w-3.5" />
-          </Button>
+          {isOwner && (
+            <Button size="sm" variant="outline" onClick={() => handleEditCourse(course.id)}>
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {(course.question_count || 0) > 0 && (
             <Button size="sm" variant="outline" onClick={() => setPreviewCourseId(course.id)}>
               <Play className="h-3.5 w-3.5 mr-1" />
               Preview
             </Button>
           )}
-          <Button size="sm" variant="outline" onClick={() => handleTogglePublish(course)}>
-            {course.status === "published" ? "Avpubliser" : "Publiser"}
-          </Button>
+          {isOwner && (
+            <Button size="sm" variant="outline" onClick={() => handleTogglePublish(course)}>
+              {course.status === "published" ? "Avpubliser" : "Publiser"}
+            </Button>
+          )}
           {course.status === "published" && (
             <Button size="sm" variant="outline" onClick={() => setAssignCourseId(course.id)}>
               <Users className="h-3.5 w-3.5 mr-1" />
@@ -382,7 +406,7 @@ export const TrainingSection = () => {
             Status
           </Button>
           {/* Folder move */}
-          {folders.length > 0 && (
+          {isOwner && folders.length > 0 && (
             <Select
               value={course.folder_id || "__none__"}
               onValueChange={(v) => handleMoveCourse(course.id, v === "__none__" ? null : v)}
@@ -398,8 +422,30 @@ export const TrainingSection = () => {
               </SelectContent>
             </Select>
           )}
+          {/* Share with children (owner + has children) */}
+          {isOwner && hasChildren && (
+            <Button
+              size="sm"
+              variant={course.visible_to_children ? "default" : "ghost"}
+              onClick={() => handleToggleVisibleToChildren(course)}
+              title={course.visible_to_children ? "Slutt å dele med underavdelinger" : "Del med underavdelinger"}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {/* Share with parent (owner + has parent) */}
+          {isOwner && hasParent && (
+            <Button
+              size="sm"
+              variant={course.shared_with_parent ? "default" : "ghost"}
+              onClick={() => handleToggleSharedWithParent(course)}
+              title={course.shared_with_parent ? "Slutt å dele med mor-avdeling" : "Del med mor-avdeling"}
+            >
+              <ArrowUp className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {/* Global visibility (superadmin only) */}
-          {isSuperAdmin && (
+          {isSuperAdmin && isOwner && (
             <Button
               size="sm"
               variant={course.global_visibility ? "default" : "ghost"}
@@ -409,13 +455,16 @@ export const TrainingSection = () => {
               <Globe className="h-3.5 w-3.5" />
             </Button>
           )}
-          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDeleteCourse(course.id)}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {isOwner && (
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDeleteCourse(course.id)}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
