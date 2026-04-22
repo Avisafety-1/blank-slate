@@ -352,7 +352,7 @@ export function OpenAIPMap({
         container.classList.remove("route-planning-active");
       }
       const pointerEvents = mode === "routePlanning" ? "none" : "auto";
-      const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'missionPane', 'notamPane'];
+      const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'missionPane', 'notamPane', 'notamPinPane'];
       for (const paneName of panesToDisable) {
         const pane = map.getPane(paneName);
         if (pane) {
