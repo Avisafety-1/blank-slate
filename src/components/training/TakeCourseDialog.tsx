@@ -326,7 +326,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             <img
               src={s.image_url}
               alt={s.question_text}
-              className={`w-full rounded-lg ${isFullscreen ? "max-h-[80vh]" : "max-h-[60vh]"} object-contain`}
+              className={`rounded-lg object-contain ${isFullscreen ? "max-h-[88vh] max-w-[96vw] w-auto" : "w-full max-h-[60vh]"}`}
             />
           ) : (
             <p className="text-muted-foreground text-sm">Innholdsside</p>
