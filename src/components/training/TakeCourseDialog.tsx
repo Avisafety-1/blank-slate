@@ -206,23 +206,31 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     }
   };
 
+  const isQuestionAnswered = (qId: string) => (answers[qId]?.length ?? 0) > 0;
+
+  const scoreQuestion = (q: SlideData) => {
+    const correctIds = new Set(q.options.filter(o => o.is_correct).map(o => o.id));
+    const selected = new Set(answers[q.id] || []);
+    if (correctIds.size === 0) return false;
+    if (correctIds.size !== selected.size) return false;
+    for (const id of correctIds) if (!selected.has(id)) return false;
+    return true;
+  };
+
   const handleSubmit = async () => {
     if (!course) return;
 
-    const unanswered = questionSlides.filter((q) => !answers[q.id]);
+    const unanswered = questionSlides.filter((q) => !isQuestionAnswered(q.id));
     if (unanswered.length > 0) {
       toast.error(`Du må svare på alle ${questionSlides.length} spørsmål`);
-      const firstIdx = slides.findIndex((s) => s.slide_type === "question" && !answers[s.id]);
+      const firstIdx = slides.findIndex((s) => s.slide_type === "question" && !isQuestionAnswered(s.id));
       if (firstIdx >= 0) setCurrentPage(firstIdx);
       return;
     }
 
     if (previewMode) {
       let correct = 0;
-      questionSlides.forEach((q) => {
-        const correctOption = q.options.find((o) => o.is_correct);
-        if (correctOption && correctOption.id === answers[q.id]) correct++;
-      });
+      questionSlides.forEach((q) => { if (scoreQuestion(q)) correct++; });
       const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
       setScore(scorePercent);
       setPassed(scorePercent >= course.passing_score);
@@ -235,10 +243,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     setSubmitting(true);
     try {
       let correct = 0;
-      questionSlides.forEach((q) => {
-        const correctOption = q.options.find((o) => o.is_correct);
-        if (correctOption && correctOption.id === answers[q.id]) correct++;
-      });
+      questionSlides.forEach((q) => { if (scoreQuestion(q)) correct++; });
 
       const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
       const didPass = scorePercent >= course.passing_score;
