@@ -314,6 +314,8 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         return;
       }
     }
+
+    setSaving(true);
     try {
       let cId = courseId;
 
