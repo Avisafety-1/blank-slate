@@ -266,6 +266,34 @@ export const TrainingSection = () => {
     }
   };
 
+  const handleToggleVisibleToChildren = async (course: Course) => {
+    try {
+      const { error } = await (supabase.from("training_courses") as any)
+        .update({ visible_to_children: !course.visible_to_children })
+        .eq("id", course.id);
+      if (error) throw error;
+      toast.success(course.visible_to_children ? "Deling med underavdelinger deaktivert" : "Kurs delt med underavdelinger");
+      fetchCourses();
+    } catch (err) {
+      console.error("Error toggling visible_to_children:", err);
+      toast.error("Kunne ikke oppdatere deling");
+    }
+  };
+
+  const handleToggleSharedWithParent = async (course: Course) => {
+    try {
+      const { error } = await (supabase.from("training_courses") as any)
+        .update({ shared_with_parent: !course.shared_with_parent })
+        .eq("id", course.id);
+      if (error) throw error;
+      toast.success(course.shared_with_parent ? "Deling med mor-avdeling deaktivert" : "Kurs delt med mor-avdeling");
+      fetchCourses();
+    } catch (err) {
+      console.error("Error toggling shared_with_parent:", err);
+      toast.error("Kunne ikke oppdatere deling");
+    }
+  };
+
   if (editorOpen) {
     return (
       <TrainingCourseEditor
