@@ -510,15 +510,15 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-medium text-muted-foreground w-6">{sIdx + 1}.</span>
-                  <Badge variant={s.slide_type === "content" ? "secondary" : "outline"} className="text-xs">
-                    {s.slide_type === "content" ? "Slide" : "Spørsmål"}
+                  <Badge variant={s.slide_type === "content" ? "secondary" : s.slide_type === "video" ? "default" : "outline"} className="text-xs">
+                    {s.slide_type === "content" ? "Slide" : s.slide_type === "video" ? "Video" : "Spørsmål"}
                   </Badge>
                   <div className="flex-1" />
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" disabled={sIdx === 0} onClick={() => moveSlide(sIdx, sIdx - 1)} className="h-7 w-7 p-0">↑</Button>
                     <Button size="sm" variant="ghost" disabled={sIdx === slides.length - 1} onClick={() => moveSlide(sIdx, sIdx + 1)} className="h-7 w-7 p-0">↓</Button>
                   </div>
-                  {s.slide_type === "question" && (
+                  {(s.slide_type === "question" || s.slide_type === "video") && (
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(sIdx)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
