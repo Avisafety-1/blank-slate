@@ -528,7 +528,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             : "max-w-3xl max-h-[90vh] overflow-y-auto"
         }
       >
-        <div className={isFullscreen ? "h-full flex flex-col overflow-y-auto p-4 sm:p-6" : ""}>
+        <div className={isFullscreen ? "h-full flex flex-col overflow-y-auto p-2 sm:p-4" : ""}>
           <DialogHeader>
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 min-w-0">
