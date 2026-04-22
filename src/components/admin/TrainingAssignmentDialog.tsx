@@ -30,6 +30,7 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState<string>("__all__");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
