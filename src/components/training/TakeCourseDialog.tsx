@@ -184,8 +184,14 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     onOpenChange(false);
   };
 
-  const handleSelectAnswer = (questionId: string, optionId: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: optionId }));
+  const handleToggleAnswer = (questionId: string, optionId: string) => {
+    setAnswers(prev => {
+      const cur = prev[questionId] || [];
+      const next = cur.includes(optionId)
+        ? cur.filter(id => id !== optionId)
+        : [...cur, optionId];
+      return { ...prev, [questionId]: next };
+    });
   };
 
   const handleNext = () => {
