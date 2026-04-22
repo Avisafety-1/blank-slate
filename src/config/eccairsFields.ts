@@ -162,6 +162,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     type: 'select',
     group: 'location',
     defaultValue: '2133',
+    fixedLabel: 'CAA Norway',
     helpText: 'Myndighet ansvarlig for hendelsesoppfølging (2133 = Norway CAA)'
   },
 
