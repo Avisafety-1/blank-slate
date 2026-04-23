@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play, FolderOpen, FolderPlus, Building2, ArrowLeft, ArrowDown, ArrowUp } from "lucide-react";
+import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play, FolderOpen, FolderPlus, Building2, ArrowLeft, ArrowDown, ArrowUp, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingCourseEditor } from "./TrainingCourseEditor";
 import { TrainingAssignmentDialog } from "./TrainingAssignmentDialog";
 import { TrainingStatusView } from "./TrainingStatusView";
 import { TakeCourseDialog } from "@/components/training/TakeCourseDialog";
 import { CreateTrainingFolderDialog } from "@/components/training/CreateTrainingFolderDialog";
+import { AICourseGeneratorDialog } from "@/components/training/AICourseGeneratorDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -53,6 +54,7 @@ export const TrainingSection = () => {
   const [publishDialogCourse, setPublishDialogCourse] = useState<Course | null>(null);
   const [previewCourseId, setPreviewCourseId] = useState<string | null>(null);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [aiGenOpen, setAiGenOpen] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [hasChildren, setHasChildren] = useState(false);
   const [hasParent, setHasParent] = useState(false);
@@ -485,7 +487,11 @@ export const TrainingSection = () => {
           <h2 className="text-xl font-bold">Opplæring</h2>
           <p className="text-sm text-muted-foreground">Opprett kurs og tester for dine ansatte</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setAiGenOpen(true)} size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/10">
+            <Sparkles className="h-4 w-4 mr-1" />
+            Generer med AI
+          </Button>
           <Button onClick={() => setCreateFolderOpen(true)} size="sm" variant="outline">
             <FolderPlus className="h-4 w-4 mr-1" />
             Ny mappe
@@ -671,6 +677,18 @@ export const TrainingSection = () => {
         open={createFolderOpen}
         onOpenChange={setCreateFolderOpen}
         onSuccess={() => { fetchFolders(); fetchCourses(); }}
+      />
+
+      <AICourseGeneratorDialog
+        open={aiGenOpen}
+        onOpenChange={setAiGenOpen}
+        folders={folders.map((f) => ({ id: f.id, name: f.name }))}
+        initialFolderId={activeFolderId}
+        onCourseCreated={(courseId) => {
+          fetchCourses();
+          setEditingCourseId(courseId);
+          setEditorOpen(true);
+        }}
       />
     </div>
   );
