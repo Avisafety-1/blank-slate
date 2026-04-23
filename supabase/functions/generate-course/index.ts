@@ -414,7 +414,7 @@ ${contextBlock}`;
       let narrationAudioUrl: string | null = null;
       console.log(`[${label}] include_narration=${include_narration}, has_text=${!!slide.narration_text}`);
       if (include_narration && slide.narration_text) {
-        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings, label);
+        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings, label, voice);
         if (audioBytes) {
           const path = `${manual.company_id}/${courseId}/${slideId}.mp3`;
           const { error: upErr } = await admin.storage
