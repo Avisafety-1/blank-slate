@@ -441,26 +441,51 @@ ${contextBlock}`;
         source_reference: slide.source_reference || null,
       };
 
-      // Inline insert with JSON.stringify on jsonb to ensure persistence
-      const { error: insErr } = await admin
-        .from("training_questions")
-        .insert({
-          id: slideId,
-          course_id: courseId,
-          question_text: slide.heading || "Intro",
-          sort_order: sortOrder++,
-          slide_type: "content",
-          image_url: imageUrl,
-          content_json: JSON.stringify(contentJson) as any,
-        });
+      // Insert with content_json as raw object (jsonb serialization handled by PostgREST)
+      const insertRow: any = {
+        id: slideId,
+        course_id: courseId,
+        question_text: slide.heading || "Intro",
+        sort_order: sortOrder++,
+        slide_type: "content",
+        image_url: imageUrl,
+        content_json: contentJson,
+      };
+      const { error: insErr } = await admin.from("training_questions").insert(insertRow);
 
       if (insErr) {
         console.error(`[${label}] insert error`, insErr);
         warnings.push(`Intro-slide insert feilet: ${insErr.message}`);
-      } else {
-        createdSlides++;
-        console.log(`[${label}] inserted OK (audio=${narrationAudioUrl ? "yes" : "no"}, image=${imageUrl ? "yes" : "no"})`);
+        continue;
       }
+      createdSlides++;
+
+      // Verify content_json was persisted; if NULL, fall back to UPDATE
+      const { data: verifyRow } = await admin
+        .from("training_questions")
+        .select("content_json")
+        .eq("id", slideId)
+        .maybeSingle();
+      const isNull = !verifyRow?.content_json;
+      console.log(`[${label}] verified content_json: ${isNull ? "NULL — applying UPDATE fallback" : "NOT NULL"}`);
+      if (isNull) {
+        const { error: updErr } = await admin
+          .from("training_questions")
+          .update({ content_json: contentJson } as any)
+          .eq("id", slideId);
+        if (updErr) {
+          console.error(`[${label}] update fallback failed`, updErr);
+          warnings.push(`content_json kunne ikke lagres for ${label}: ${updErr.message}`);
+        } else {
+          const { data: re } = await admin
+            .from("training_questions")
+            .select("content_json")
+            .eq("id", slideId)
+            .maybeSingle();
+          console.log(`[${label}] after UPDATE content_json: ${re?.content_json ? "NOT NULL ✓" : "STILL NULL ✗"}`);
+        }
+      }
+      console.log(`[${label}] done (audio=${narrationAudioUrl ? "yes" : "no"}, image=${imageUrl ? "yes" : "no"})`);
     }
 
     // 2. Insert questions (multiple_choice only)
