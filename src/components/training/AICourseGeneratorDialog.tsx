@@ -462,9 +462,9 @@ export const AICourseGeneratorDialog = ({
         </div>
       )}
 
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => onOpenChange(false)}>
-          Avbryt
+      <div className="flex justify-between gap-2">
+        <Button variant="outline" onClick={() => setStep("select")} disabled={uploadProgress > 0 && uploadProgress < 100}>
+          Tilbake
         </Button>
         <Button onClick={extractAndUpload} disabled={!file || !title.trim() || (uploadProgress > 0 && uploadProgress < 100)}>
           {uploadProgress > 0 && uploadProgress < 100 ? (
