@@ -343,38 +343,36 @@ export const TrainingSection = () => {
     return (
     <Card key={course.id} className="flex flex-col">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base leading-tight">{course.title}</CardTitle>
-          <div className="flex flex-wrap gap-1 shrink-0 justify-end">
-            {course.global_visibility && (
-              <Badge variant="outline" className="text-primary border-primary/30">
-                <Globe className="h-3 w-3 mr-1" />
-                Global
-              </Badge>
-            )}
-            {!isOwner && (
-              <Badge variant="outline" className="border-muted-foreground/30">
-                <Building2 className="h-3 w-3 mr-1" />
-                Arvet{course.company_name ? ` fra ${course.company_name}` : ""}
-              </Badge>
-            )}
-            {isOwner && course.visible_to_children && (
-              <Badge variant="outline" className="border-primary/30 text-primary">
-                <ArrowDown className="h-3 w-3 mr-1" />
-                Delt nedover
-              </Badge>
-            )}
-            {isOwner && course.shared_with_parent && (
-              <Badge variant="outline" className="border-primary/30 text-primary">
-                <ArrowUp className="h-3 w-3 mr-1" />
-                Delt med mor
-              </Badge>
-            )}
-            <Badge variant={course.status === "published" ? "default" : "secondary"}>
-              {course.status === "published" ? "Publisert" : "Kladd"}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {course.global_visibility && (
+            <Badge variant="outline" className="text-primary border-primary/30">
+              <Globe className="h-3 w-3 mr-1" />
+              Global
             </Badge>
-          </div>
+          )}
+          {!isOwner && (
+            <Badge variant="outline" className="border-muted-foreground/30">
+              <Building2 className="h-3 w-3 mr-1" />
+              Arvet{course.company_name ? ` fra ${course.company_name}` : ""}
+            </Badge>
+          )}
+          {isOwner && course.visible_to_children && (
+            <Badge variant="outline" className="border-primary/30 text-primary">
+              <ArrowDown className="h-3 w-3 mr-1" />
+              Delt nedover
+            </Badge>
+          )}
+          {isOwner && course.shared_with_parent && (
+            <Badge variant="outline" className="border-primary/30 text-primary">
+              <ArrowUp className="h-3 w-3 mr-1" />
+              Delt med mor
+            </Badge>
+          )}
+          <Badge variant={course.status === "published" ? "default" : "secondary"}>
+            {course.status === "published" ? "Publisert" : "Kladd"}
+          </Badge>
         </div>
+        <CardTitle className="text-base leading-tight">{course.title}</CardTitle>
         {course.description && (
           <p className="text-xs text-muted-foreground line-clamp-2">{course.description}</p>
         )}
