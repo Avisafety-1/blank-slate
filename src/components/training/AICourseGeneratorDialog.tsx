@@ -103,10 +103,6 @@ export const AICourseGeneratorDialog = ({
     if (!file || !companyId || !user) return;
     setErrorMsg(null);
     setUploadProgress(5);
-    setUploadStage("Leser PDF…");
-
-    try {
-      // Dynamic import of pdfjs
     setUploadStage(isDocx(file) ? "Leser Word-dokument…" : "Leser PDF…");
 
     try {
