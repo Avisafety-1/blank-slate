@@ -6,21 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const EMBED_DIM = 1536;
-const padOrTrim = (v: number[], d: number) =>
-  v.length === d ? v : v.length > d ? v.slice(0, d) : v.concat(new Array(d - v.length).fill(0));
-
-async function embedQuery(text: string, apiKey: string): Promise<number[]> {
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/text-embedding-004", input: [text] }),
-  });
-  if (!resp.ok) throw new Error(`embedding ${resp.status}: ${await resp.text()}`);
-  const data = await resp.json();
-  return padOrTrim(data.data[0].embedding, EMBED_DIM);
-}
-
 const courseSchema = {
   type: "object",
   properties: {
@@ -107,7 +92,7 @@ async function generateImage(prompt: string, apiKey: string): Promise<Uint8Array
       }),
     });
     if (!resp.ok) {
-      console.error("image gen failed", resp.status, await resp.text());
+      console.error("[image] gen failed", resp.status, await resp.text());
       return null;
     }
     const data = await resp.json();
@@ -119,7 +104,7 @@ async function generateImage(prompt: string, apiKey: string): Promise<Uint8Array
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     return bytes;
   } catch (e) {
-    console.error("image gen error", e);
+    console.error("[image] gen error", e);
     return null;
   }
 }
@@ -128,13 +113,18 @@ async function generateTTS(
   text: string,
   openaiKey: string | undefined,
   warnings: string[],
+  slideLabel: string,
 ): Promise<Uint8Array | null> {
+  console.log(`[tts:${slideLabel}] start — text length=${text?.length ?? 0}, openaiKey=${openaiKey ? "PRESENT" : "MISSING"}`);
   if (!openaiKey) {
     warnings.push("OPENAI_API_KEY mangler — hopper over server-side tale (bruker nettleser-fallback).");
     return null;
   }
+  if (!text || text.trim().length === 0) {
+    console.warn(`[tts:${slideLabel}] empty text, skipping`);
+    return null;
+  }
   try {
-    // Direct OpenAI TTS — Lovable AI Gateway does NOT support /v1/audio/speech
     const resp = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
@@ -145,16 +135,19 @@ async function generateTTS(
         response_format: "mp3",
       }),
     });
+    console.log(`[tts:${slideLabel}] openai status=${resp.status}`);
     if (!resp.ok) {
       const body = await resp.text();
-      console.error("openai tts failed", resp.status, body);
+      console.error(`[tts:${slideLabel}] openai failed`, resp.status, body);
       warnings.push(`OpenAI TTS feilet (${resp.status}) — bruker nettleser-fallback.`);
       return null;
     }
     const buf = await resp.arrayBuffer();
-    return new Uint8Array(buf);
+    const bytes = new Uint8Array(buf);
+    console.log(`[tts:${slideLabel}] received ${bytes.length} bytes`);
+    return bytes;
   } catch (e) {
-    console.error("tts error", e);
+    console.error(`[tts:${slideLabel}] exception`, e);
     warnings.push("OpenAI TTS-kall kastet exception — bruker nettleser-fallback.");
     return null;
   }
@@ -177,11 +170,17 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const warnings: string[] = [];
+
+    console.log(`[startup] LOVABLE_API_KEY=${LOVABLE_API_KEY ? "PRESENT" : "MISSING"}, OPENAI_API_KEY=${OPENAI_API_KEY ? "PRESENT" : "MISSING"}`);
+
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+    if (!OPENAI_API_KEY) {
+      warnings.push("OPENAI_API_KEY er ikke satt — server-side tale deaktivert (Web Speech fallback brukes).");
     }
 
     const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -204,7 +203,6 @@ Deno.serve(async (req) => {
       topic_title,
       topic_description,
       chapter_reference,
-      focus_query,
       include_narration,
       include_visuals,
     } = body as {
@@ -218,6 +216,8 @@ Deno.serve(async (req) => {
       include_narration?: boolean;
       include_visuals?: boolean;
     };
+
+    console.log(`[request] manual_id=${manual_id}, length=${length}, include_narration=${include_narration}, include_visuals=${include_visuals}`);
 
     if (!manual_id || !topic_title || !length) {
       return new Response(JSON.stringify({ error: "missing fields" }), {
@@ -257,48 +257,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Retrieve relevant chunks based on focus_query (preferred) or topic_title
-    const retrievalQuery = (focus_query && focus_query.trim()) || `${topic_title} ${topic_description || ""}`.trim();
+    // Retrieve chunks via even sampling (embedding model removed from AI Gateway)
     let chunks: { chunk_index: number; chunk_text: string; section_heading: string | null }[] = [];
-
-    if (retrievalQuery.length > 0) {
-      try {
-        const queryVec = await embedQuery(retrievalQuery, LOVABLE_API_KEY);
-        const { data: matched, error: matchErr } = await admin.rpc("match_manual_chunks", {
-          p_manual_id: manual_id,
-          p_query_embedding: queryVec as any,
-          p_match_count: 14,
-        });
-        if (matchErr) throw matchErr;
-        chunks = (matched || []).map((m: any) => ({
-          chunk_index: m.chunk_index,
-          chunk_text: m.chunk_text,
-          section_heading: m.section_heading,
-        }));
-      } catch (e) {
-        console.error("vector search failed, falling back", e);
-      }
+    const { data: all } = await admin
+      .from("manual_chunks")
+      .select("chunk_index, chunk_text, section_heading")
+      .eq("manual_id", manual_id)
+      .order("chunk_index", { ascending: true });
+    const total = all?.length || 0;
+    if (total === 0) {
+      return new Response(JSON.stringify({ error: "Ingen innhold funnet i manualen" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-
-    if (chunks.length === 0) {
-      const { data: all } = await admin
-        .from("manual_chunks")
-        .select("chunk_index, chunk_text, section_heading")
-        .eq("manual_id", manual_id)
-        .order("chunk_index", { ascending: true });
-      const total = all?.length || 0;
-      if (total === 0) {
-        return new Response(JSON.stringify({ error: "Ingen innhold funnet i manualen" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const want = Math.min(14, total);
-      const step = Math.max(1, Math.floor(total / want));
-      for (let i = 0; i < total && chunks.length < want; i += step) {
-        chunks.push(all![i]);
-      }
+    const want = Math.min(14, total);
+    const step = Math.max(1, Math.floor(total / want));
+    for (let i = 0; i < total && chunks.length < want; i += step) {
+      chunks.push(all![i]);
     }
+    console.log(`[chunks] selected ${chunks.length} of ${total}`);
 
     const contextBlock = chunks
       .map(
@@ -398,8 +376,12 @@ ${contextBlock}`;
 
     // 1. Insert intro slides (with optional image + TTS)
     const introSlides = Array.isArray(aiResult.intro_slides) ? aiResult.intro_slides : [];
+    console.log(`[intro] ${introSlides.length} slides from AI`);
+    let slideIdx = 0;
     for (const slide of introSlides) {
+      slideIdx++;
       const slideId = crypto.randomUUID();
+      const label = `intro${slideIdx}`;
 
       let imageUrl: string | null = null;
       if (include_visuals && slide.image_prompt) {
@@ -415,26 +397,29 @@ ${contextBlock}`;
               .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
             imageUrl = signed?.signedUrl || null;
           } else {
-            console.error("image upload error", upErr);
+            console.error("[image] upload error", upErr);
           }
         }
       }
 
       let narrationAudioUrl: string | null = null;
+      console.log(`[${label}] include_narration=${include_narration}, has_text=${!!slide.narration_text}`);
       if (include_narration && slide.narration_text) {
-        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings);
+        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings, label);
         if (audioBytes) {
           const path = `${manual.company_id}/${courseId}/${slideId}.mp3`;
           const { error: upErr } = await admin.storage
             .from("training-narration")
             .upload(path, audioBytes, { contentType: "audio/mpeg", upsert: true });
-          if (!upErr) {
+          if (upErr) {
+            console.error(`[${label}] audio upload error`, upErr);
+            warnings.push(`Lyd-opplasting feilet for ${label}: ${upErr.message}`);
+          } else {
             const { data: signed } = await admin.storage
               .from("training-narration")
               .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
             narrationAudioUrl = signed?.signedUrl || null;
-          } else {
-            console.error("audio upload error", upErr);
+            console.log(`[${label}] uploaded mp3, signed url=${narrationAudioUrl ? "OK" : "FAILED"}`);
           }
         }
       }
@@ -447,30 +432,31 @@ ${contextBlock}`;
         source_reference: slide.source_reference || null,
       };
 
-      const introInsert = {
-        id: slideId,
-        course_id: courseId,
-        question_text: slide.heading || "Intro",
-        sort_order: sortOrder++,
-        slide_type: "content",
-        image_url: imageUrl,
-        content_json: contentJson as any,
-      };
-
+      // Inline insert with JSON.stringify on jsonb to ensure persistence
       const { error: insErr } = await admin
         .from("training_questions")
-        .insert(introInsert);
+        .insert({
+          id: slideId,
+          course_id: courseId,
+          question_text: slide.heading || "Intro",
+          sort_order: sortOrder++,
+          slide_type: "content",
+          image_url: imageUrl,
+          content_json: JSON.stringify(contentJson) as any,
+        });
 
       if (insErr) {
-        console.error("intro slide insert error", insErr);
+        console.error(`[${label}] insert error`, insErr);
         warnings.push(`Intro-slide insert feilet: ${insErr.message}`);
       } else {
         createdSlides++;
+        console.log(`[${label}] inserted OK (audio=${narrationAudioUrl ? "yes" : "no"}, image=${imageUrl ? "yes" : "no"})`);
       }
     }
 
     // 2. Insert questions (multiple_choice only)
     const aiQuestions = Array.isArray(aiResult.questions) ? aiResult.questions : [];
+    console.log(`[questions] ${aiQuestions.length} from AI`);
     for (const q of aiQuestions) {
       const contentJson = {
         explanation: q.explanation || null,
@@ -479,17 +465,15 @@ ${contextBlock}`;
         question_type: "multiple_choice",
       };
 
-      const questionInsert = {
-        course_id: courseId,
-        question_text: q.question,
-        sort_order: sortOrder++,
-        slide_type: "question",
-        content_json: contentJson as any,
-      };
-
       const { data: qRow, error: qErr } = await admin
         .from("training_questions")
-        .insert(questionInsert)
+        .insert({
+          course_id: courseId,
+          question_text: q.question,
+          sort_order: sortOrder++,
+          slide_type: "question",
+          content_json: JSON.stringify(contentJson) as any,
+        })
         .select("id")
         .single();
 
@@ -522,6 +506,8 @@ ${contextBlock}`;
 
       createdQuestions++;
     }
+
+    console.log(`[done] course=${courseId}, intro=${createdSlides}, questions=${createdQuestions}, warnings=${warnings.length}`);
 
     return new Response(
       JSON.stringify({
