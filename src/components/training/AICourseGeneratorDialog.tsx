@@ -438,7 +438,7 @@ export const AICourseGeneratorDialog = ({
             AI Kursgenerator
           </DialogTitle>
           <DialogDescription>
-            {step === "upload" && "Steg 1 av 2 — Last opp en operasjonsmanual (PDF)"}
+            {step === "upload" && "Steg 1 av 2 — Last opp en operasjonsmanual (PDF eller Word)"}
             {step === "config" && "Steg 2 av 2 — Konfigurer kurset"}
             {step === "generate" && "Genererer…"}
           </DialogDescription>
