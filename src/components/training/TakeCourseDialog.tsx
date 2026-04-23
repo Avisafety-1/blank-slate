@@ -65,6 +65,9 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
   useEffect(() => {
     if (open) loadCourse();
+    else {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
   }, [open, assignmentId, directCourseId]);
 
   const toggleFullscreen = useCallback(() => {
@@ -194,15 +197,39 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     });
   };
 
+  const speakNarration = (text: string) => {
+    try {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = "nb-NO";
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    } catch (e) {
+      console.error("speech synthesis failed", e);
+    }
+  };
+
+  const maybeAutoSpeak = (idx: number) => {
+    const s = slides[idx];
+    if (!s || s.slide_type !== "content") return;
+    const cj = (s.content_json as any) || {};
+    if (cj.narration_audio_url) return; // <audio autoPlay> handles it
+    const text: string | null = cj.narration_text || null;
+    if (text) speakNarration(text);
+  };
+
   const handleNext = () => {
     if (currentPage < slides.length - 1) {
-      setCurrentPage(p => p + 1);
+      const next = currentPage + 1;
+      setCurrentPage(next);
+      maybeAutoSpeak(next);
     }
   };
 
   const handlePrev = () => {
     if (currentPage > 0) {
-      setCurrentPage(p => p - 1);
+      const next = currentPage - 1;
+      setCurrentPage(next);
+      maybeAutoSpeak(next);
     }
   };
 
@@ -356,16 +383,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                try {
-                  const utter = new SpeechSynthesisUtterance(narrationText);
-                  utter.lang = "nb-NO";
-                  window.speechSynthesis.cancel();
-                  window.speechSynthesis.speak(utter);
-                } catch (e) {
-                  console.error("speech synthesis failed", e);
-                }
-              }}
+              onClick={() => speakNarration(narrationText)}
             >
               ▶ Les opp
             </Button>

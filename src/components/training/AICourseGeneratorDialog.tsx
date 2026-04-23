@@ -333,6 +333,10 @@ export const AICourseGeneratorDialog = ({
       toast.success(
         `Kurs opprettet (${intros} intro-slides + ${generated}/${requested} spørsmål)`
       );
+      const warnings: string[] = Array.isArray(data.warnings) ? data.warnings : [];
+      if (warnings.length > 0) {
+        toast.warning(warnings.slice(0, 3).join(" • "), { duration: 8000 });
+      }
       setStep("done");
       onCourseCreated(data.course_id);
       onOpenChange(false);
