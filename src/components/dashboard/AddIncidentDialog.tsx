@@ -14,8 +14,9 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
-import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown } from "lucide-react";
+import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,9 @@ interface AddIncidentDialogProps {
 
 export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToEdit, defaultMissionId }: AddIncidentDialogProps) => {
   const { companyId } = useAuth();
+  const companySettings = useCompanySettings();
   const { canAccess } = usePlanGating();
+  const globalAnonymous = companySettings.hide_reporter_identity;
 
   // Block opening if plan doesn't include incidents
   useEffect(() => {
@@ -59,6 +62,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const [droneId, setDroneId] = useState<string | null>(null);
   const [equipmentIds, setEquipmentIds] = useState<string[]>([]);
   const [resourcesOpen, setResourcesOpen] = useState(false);
+  const [reportAnonymously, setReportAnonymously] = useState(false);
 
   // Resource data
   const [companyProfiles, setCompanyProfiles] = useState<Array<{ id: string; full_name?: string | null }>>([]);
@@ -114,6 +118,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         setPilotId(incidentToEdit.pilot_id || null);
         setDroneId(incidentToEdit.drone_id || null);
         setEquipmentIds((incidentToEdit.equipment_ids as string[]) || []);
+        setReportAnonymously(!!incidentToEdit.reported_anonymously);
         if (incidentToEdit.pilot_id || incidentToEdit.drone_id || ((incidentToEdit.equipment_ids as string[])?.length > 0)) {
           setResourcesOpen(true);
         }
@@ -159,6 +164,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       setDroneId(null);
       setEquipmentIds([]);
       setResourcesOpen(false);
+      setReportAnonymously(false);
     }
   }, [open, defaultDate, incidentToEdit, defaultMissionId]);
 
@@ -389,6 +395,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         pilot_id: pilotId || null,
         drone_id: droneId || null,
         equipment_ids: equipmentIds.length > 0 ? equipmentIds : null,
+        reported_anonymously: globalAnonymous || reportAnonymously,
       };
 
       // === OFFLINE PATH ===
@@ -925,6 +932,30 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               noneLabel="Ingen ansvarlig"
             />
           </div>
+
+          {/* Anonymitet */}
+          {globalAnonymous ? (
+            <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
+              <EyeOff className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Denne rapporten sendes inn anonymt (selskapsinnstilling).
+              </p>
+            </div>
+          ) : (
+            <label className="flex items-start gap-2 rounded-md border border-border p-3 cursor-pointer hover:bg-muted/40 transition-colors">
+              <Checkbox
+                checked={reportAnonymously}
+                onCheckedChange={(checked) => setReportAnonymously(!!checked)}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Rapporter anonymt</p>
+                <p className="text-xs text-muted-foreground">
+                  Navnet ditt vil ikke vises på rapporten.
+                </p>
+              </div>
+            </label>
+          )}
 
           <div className="flex gap-2">
             <Button
