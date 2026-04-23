@@ -109,13 +109,17 @@ async function generateImage(prompt: string, apiKey: string): Promise<Uint8Array
   }
 }
 
+const ALLOWED_VOICES = new Set(["coral", "sage", "onyx", "nova", "alloy", "ash", "ballad", "echo", "fable", "shimmer", "verse", "marin", "cedar"]);
+const TTS_INSTRUCTIONS = "Snakk i en rolig, profesjonell og lærerik tone på norsk. Tydelig artikulasjon, moderat tempo, vennlig og inkluderende — som en erfaren instruktør som forklarer for en kollega.";
+
 async function generateTTS(
   text: string,
   openaiKey: string | undefined,
   warnings: string[],
   slideLabel: string,
+  voice: string,
 ): Promise<Uint8Array | null> {
-  console.log(`[tts:${slideLabel}] start — text length=${text?.length ?? 0}, openaiKey=${openaiKey ? "PRESENT" : "MISSING"}`);
+  console.log(`[tts:${slideLabel}] start — text length=${text?.length ?? 0}, voice=${voice}, openaiKey=${openaiKey ? "PRESENT" : "MISSING"}`);
   if (!openaiKey) {
     warnings.push("OPENAI_API_KEY mangler — hopper over server-side tale (bruker nettleser-fallback).");
     return null;
@@ -129,9 +133,10 @@ async function generateTTS(
       method: "POST",
       headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "tts-1",
-        voice: "nova",
+        model: "gpt-4o-mini-tts",
+        voice,
         input: text.slice(0, 4000),
+        instructions: TTS_INSTRUCTIONS,
         response_format: "mp3",
       }),
     });
@@ -205,6 +210,7 @@ Deno.serve(async (req) => {
       chapter_reference,
       include_narration,
       include_visuals,
+      voice: requestedVoice,
     } = body as {
       manual_id: string;
       length: number;
@@ -215,9 +221,12 @@ Deno.serve(async (req) => {
       focus_query?: string;
       include_narration?: boolean;
       include_visuals?: boolean;
+      voice?: string;
     };
 
-    console.log(`[request] manual_id=${manual_id}, length=${length}, include_narration=${include_narration}, include_visuals=${include_visuals}`);
+    const voice = requestedVoice && ALLOWED_VOICES.has(requestedVoice) ? requestedVoice : "coral";
+
+    console.log(`[request] manual_id=${manual_id}, length=${length}, include_narration=${include_narration}, include_visuals=${include_visuals}, voice=${voice}`);
 
     if (!manual_id || !topic_title || !length) {
       return new Response(JSON.stringify({ error: "missing fields" }), {
@@ -405,7 +414,7 @@ ${contextBlock}`;
       let narrationAudioUrl: string | null = null;
       console.log(`[${label}] include_narration=${include_narration}, has_text=${!!slide.narration_text}`);
       if (include_narration && slide.narration_text) {
-        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings, label);
+        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings, label, voice);
         if (audioBytes) {
           const path = `${manual.company_id}/${courseId}/${slideId}.mp3`;
           const { error: upErr } = await admin.storage

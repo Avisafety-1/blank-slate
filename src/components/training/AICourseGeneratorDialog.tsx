@@ -71,6 +71,7 @@ export const AICourseGeneratorDialog = ({
   const [length, setLength] = useState<5 | 10 | 15>(10);
   const [includeNarration, setIncludeNarration] = useState(true);
   const [includeVisuals, setIncludeVisuals] = useState(true);
+  const [voice, setVoice] = useState<string>("coral");
   const [folderId, setFolderId] = useState<string | null>(initialFolderId || null);
 
   const [generating, setGenerating] = useState(false);
@@ -314,6 +315,7 @@ export const AICourseGeneratorDialog = ({
           focus_query: selectedTopic.focus_query,
           include_narration: includeNarration,
           include_visuals: includeVisuals,
+          voice: includeNarration ? voice : undefined,
         },
       });
 
@@ -544,6 +546,23 @@ export const AICourseGeneratorDialog = ({
           </div>
           <Switch id="narration-toggle" checked={includeNarration} onCheckedChange={setIncludeNarration} />
         </div>
+        {includeNarration && (
+          <div className="pt-2 border-t">
+            <Label htmlFor="voice-select" className="text-sm">Stemme</Label>
+            <Select value={voice} onValueChange={setVoice}>
+              <SelectTrigger id="voice-select" className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="coral">Coral – varm kvinnestemme (anbefalt)</SelectItem>
+                <SelectItem value="sage">Sage – rolig kvinnestemme</SelectItem>
+                <SelectItem value="nova">Nova – lys, energisk kvinnestemme</SelectItem>
+                <SelectItem value="onyx">Onyx – dyp mannstemme</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Bruker OpenAI gpt-4o-mini-tts med norsk lærer-tone.
+            </p>
+          </div>
+        )}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <Label htmlFor="visuals-toggle" className="font-medium">Inkluder AI-bilder</Label>
