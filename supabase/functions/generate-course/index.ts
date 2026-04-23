@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
 
     const voice = requestedVoice && ALLOWED_VOICES.has(requestedVoice) ? requestedVoice : "coral";
 
-    console.log(`[request] manual_id=${manual_id}, length=${length}, include_narration=${include_narration}, include_visuals=${include_visuals}`);
+    console.log(`[request] manual_id=${manual_id}, length=${length}, include_narration=${include_narration}, include_visuals=${include_visuals}, voice=${voice}`);
 
     if (!manual_id || !topic_title || !length) {
       return new Response(JSON.stringify({ error: "missing fields" }), {
