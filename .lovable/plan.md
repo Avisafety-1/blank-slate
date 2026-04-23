@@ -1,113 +1,43 @@
 
 
-# AI-foreslåtte kurskategorier + talende intro-slides
+# Fiks talegenerering i AI-kurs
 
-Bygger om AI Kursgeneratoren slik at AI selv leser manualen og foreslår flere kurs-temaer (hvert med kapittelreferanse). Brukeren velger ett tema, og AI genererer et **test-orientert** kurs som starter med talende, visuelt rike intro-slides (TTS + AI-bilder) før spørsmålene.
+To problemer ble funnet ved sjekk av databasen og edge-funksjonen:
 
-## Ny brukerflyt
+## Diagnose
 
-```text
-Steg 1: Last opp manual (uendret)
-  ↓
-Steg 2: AI foreslår 5–8 kurs-temaer
-  [☐ Nødprosedyrer ved tap av GPS — Kap. 7.3]
-  [☐ Batterihåndtering og lagring — Kap. 4.1–4.2]
-  [☐ Pre-flight inspeksjon — Kap. 3]
-  ...
-  Hvert forslag: tittel + kapittelreferanse + 2-linjes forklaring
-  Brukeren velger ETT (eller flere → ett kurs per).
-  ↓
-Steg 3: Velg lengde (5/10/15 spm) + om narrasjon skal genereres
-  ↓
-Steg 4: Generering
-  - AI lager 2–3 intro-slides (forklarende tekst, hver med tittel)
-  - Hver intro-slide får AI-generert bilde (Nano Banana)
-  - Hver intro-slide får TTS-lyd
-  - Deretter X spørsmål (ren test-modus, ingen scenario-friskrift)
-```
+**1. Lovable AI Gateway støtter ikke tekst-til-tale.** Dokumentasjonen lister kun chat- og bilde-modeller (Gemini, GPT-5). Endepunktet `/v1/audio/speech` med `openai/tts-1` finnes ikke der, så `generateTTS()` returnerer `null` hver gang og ingen mp3 lagres.
 
-## Datamodell (bygger på eksisterende `training_questions`)
+**2. `content_json` er NULL på alle slides** i kurset «Praktisk bruk av sjekklister før flyging». Det betyr at heller ikke `narration_text`, `heading`, `source_reference` eller `explanation` ble lagret. Derfor får TakeCourseDialog hverken lyd-URL ELLER tekst — så fallback-knappen «Les opp» (Web Speech API) vises ikke heller. Bilder ble lagret OK, så insert-kallet kjører — men jsonb-payloaden droppes. Sannsynlig årsak: `as any`-cast rundt hele insert-objektet i kombinasjon med hvordan Supabase-klienten i Deno serialiserer nested objekter med null-felter.
 
-`training_questions.slide_type` brukes allerede (`content` / `question` / `video`). Vi utvider `content_json` for `slide_type='content'` med:
+## Løsning
 
-```json
-{
-  "narration_text": "...",          // det TTS skal lese
-  "narration_audio_url": "...",     // ferdig generert mp3 i Storage
-  "ai_generated": true,
-  "source_reference": "Kap. 7.3"
-}
-```
+### A. Server-side TTS via OpenAI direkte
+Siden Lovable AI Gateway ikke har TTS, kaller edge-funksjonen `https://api.openai.com/v1/audio/speech` direkte med modell `tts-1` og stemmen `nova` (god norsk uttale). Dette krever en ny secret: **`OPENAI_API_KEY`**. Du blir bedt om å legge den inn når implementasjonen starter.
 
-Bilde lagres på eksisterende `training_questions.image_url`.
+### B. Klient-side fallback (Web Speech API)
+Hvis OpenAI-nøkkel mangler ELLER TTS-kallet feiler, hopper edge-funksjonen elegant over lyd-generering. TakeCourseDialog viser da en stor «▶ Spill av tale»-knapp som bruker nettleserens innebygde `SpeechSynthesisUtterance` med `lang="nb-NO"`. Stemmen er gratis, fungerer offline, og er svært god på Apple-enheter.
 
-Ny storage-bucket `training-narration` (privat, signed URL) for mp3-filer.
-Eksisterende `course-images`-bucket (eller ny `training-visuals`) brukes til AI-bilder.
+### C. Fiks `content_json`-lagringen
+Fjern `as any` rundt hele insert-objektet. I stedet bygger vi payloaden eksplisitt typet og sender `content_json` som et rent JS-objekt (Supabase-klienten serialiserer jsonb selv). Dette gjelder både intro-slides og spørsmål-slides. Etter fiks vil `narration_text`, `heading`, `source_reference` og `explanation` faktisk havne i databasen.
 
-Ingen schema-endringer på spørsmål — kun ny bucket + RLS.
+### D. Forbedret feilrapportering
+Logg eksplisitt om TTS-kallet feilet (status + body) og om insertet returnerte feil. I dag svelges feil i `console.error` men kommer ikke fram til brukeren. Vi legger til en `warnings`-array i responsen slik at UI kan vise «Lyd ble ikke generert — bruk Les opp-knappen i stedet».
 
-## Edge functions
+### E. Auto-spill ved bytte til intro-slide
+For å unngå at brukeren må trykke på Web Speech-knappen, kobler vi `speechSynthesis.speak()` på samme bruker-gesture som «Neste»-knappen som tok dem TIL sliden. Det respekterer nettleserens autoplay-policy. (For server-genererte mp3 fortsetter `<audio autoPlay>` å virke som i dag.)
 
-**1. `suggest-course-topics`** (NY)
-- Input: `manual_id`
-- Henter et representativt utvalg chunks (med headings) fra `manual_chunks`
-- Ber `gemini-2.5-pro` via tool-call returnere:
-  ```json
-  { "topics": [
-      { "title": "...", "chapter_reference": "Kap. 7.3",
-        "description": "Hva kurset dekker, 1-2 setninger",
-        "focus_query": "kort søkesetning for retrieval" }
-  ] }
-  ```
-- Returnerer 5–8 forslag
+## Eksisterende kurs
 
-**2. `generate-course`** (UTVIDES)
-- Nye input-felt: `topic_title`, `topic_description`, `chapter_reference`, `focus_query`, `include_narration: boolean`, `include_visuals: boolean`
-- AI-schema utvides: `intro_slides: [{ heading, narration_text, image_prompt, source_reference }]` + `questions: [...]` (kun multiple_choice — fjerner scenario-typen for å holde det til en ren test)
-- Etter AI-svar:
-  - For hver intro-slide:
-    - Generer bilde via `google/gemini-2.5-flash-image` (Nano Banana) → last opp til Storage → lagre URL i `image_url`
-    - Generer TTS via Lovable AI Gateway TTS-endepunkt → last opp mp3 → lagre URL i `content_json.narration_audio_url`
-  - Sett inn intro-slides FØR spørsmål (sort_order 0..n), spørsmål etter
-- Skipper bilde/lyd hvis togglen er av (gir tekstbasert intro-slide kun)
-
-## Frontend
-
-**`AICourseGeneratorDialog.tsx`** — utvides til 4 steg:
-- Steg 1 Upload (uendret)
-- Steg 2 NY `TopicSuggestionsStep`: kortliste med foreslåtte temaer, hver som klikkbart kort med tittel, kapittel-badge og beskrivelse. Brukeren velger ETT kort.
-- Steg 3 Config (forenkles): kun antall spørsmål, mappe, og to togglene «Inkluder talende intro» og «Inkluder bilder». Rolle/vanskelighet/fokus-tekst fjernes (avledes av valgt tema).
-- Steg 4 Genererer (med detaljerte stage-meldinger: «Lager intro-tekst…», «Genererer bilde 1/3…», «Lager tale…», «Lager spørsmål…»)
-
-**Avspilling i eksisterende kursvisning**
-`TakeCourseDialog.tsx` viser allerede slides paginert. For `slide_type='content'` med `narration_audio_url` legger vi til en `<audio controls autoPlay>` over bildet, og en stor «Neste»-knapp som blir aktiv når lyd er ferdig (eller umiddelbart hvis brukeren foretrekker det). Ingen videointegrasjon trengs.
-
-## Tekst-til-tale
-
-Bruker Lovable AI Gateway sin TTS-modell (OpenAI TTS via gatewayen). Norsk stemme prioriteres. Hver intro-slide får én mp3 (~30–60 sek). Filene lastes opp til `training-narration/{company_id}/{course_id}/{slide_id}.mp3` og hentes via signed URL ved avspilling.
-
-Hvis TTS ikke er tilgjengelig i gatewayen, faller vi tilbake til klient-side `SpeechSynthesisUtterance` (Web Speech API) som lar nettleseren lese teksten — gratis, men stemmekvalitet varierer per OS.
-
-## Bilder
-
-`google/gemini-2.5-flash-image` (Nano Banana) — én prompt per intro-slide, generert serverside i `generate-course`. Vi gir AI en stilguide i prompten («profesjonell teknisk illustrasjon, mørk SaaS-bakgrunn, ingen tekst i bildet, fotorealistisk drone-kontekst») så det matcher AviSafes mørke tema.
+Kurset `d4d3f5ca…` er ubrukelig (ingen tekst, ingen lyd). Etter fiks må du slette og generere det på nytt — da får du både bilder, lest tale (eller fallback-knapp) og fungerende spørsmål med forklaringer.
 
 ## Filer som endres
 
-**Nye:**
-- `supabase/functions/suggest-course-topics/index.ts`
-- `src/components/training/TopicSuggestionsStep.tsx`
-- Migrasjon: ny storage bucket `training-narration` + RLS, ny bucket `training-visuals` + RLS
+- `supabase/functions/generate-course/index.ts` — bytt TTS-implementasjonen til OpenAI direkte, eksplisitt typing av insert-payload (fjern `as any`), warnings-array i respons
+- `src/components/training/TakeCourseDialog.tsx` — auto-spill via Web Speech på user-gesture når lyd-URL mangler men narration_text finnes
+- `src/components/training/AICourseGeneratorDialog.tsx` — vis warnings fra generate-course-responsen som toast (f.eks. «3 av 3 lydfiler kunne ikke genereres — fallback til nettleser-tale»)
 
-**Endret:**
-- `supabase/functions/generate-course/index.ts` — schema, intro-slides, bilde- og lydgenerering, kun multiple_choice
-- `src/components/training/AICourseGeneratorDialog.tsx` — 4-stegs flyt, fjern rolle/vanskelighet, legg til toggles
-- `src/components/training/TakeCourseDialog.tsx` — `<audio>`-element for narration på content-slides
-- `supabase/config.toml` — registrer `suggest-course-topics`
+## Hva du må gjøre
 
-## Kostnads-/begrensningsnotat
-
-- 3 intro-slides × (1 bilde + 1 TTS-lyd) = ~6 ekstra AI-kall per kurs. Bør være OK.
-- TTS-fallback til Web Speech API hvis brukeren skrur av «Inkluder talende intro».
-- AI-video ekskluderes som du selv foreslo — for dyrt/tregt akkurat nå.
+Etter at du godkjenner planen ber jeg deg legge til **`OPENAI_API_KEY`** som secret. Du finner nøkkelen på platform.openai.com under API Keys. Hvis du IKKE vil bruke OpenAI, si fra — da dropper vi server-side TTS helt og bruker bare Web Speech API (gratis, men varierende stemmekvalitet per OS).
 
