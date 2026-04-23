@@ -489,15 +489,19 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               </div>
             )}
 
-            {incident.rapportert_av && (
-              <div className="flex items-start gap-3">
-                <User className="w-5 h-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Rapportert av</p>
-                  <p className="text-base">{companySettings.hide_reporter_identity && !(isAdmin && departmentsEnabled) ? "Anonym" : incident.rapportert_av}</p>
+            {incident.rapportert_av && (() => {
+              const isAnonymous = incident.reported_anonymously || companySettings.hide_reporter_identity;
+              const showName = !isAnonymous || (isAdmin && departmentsEnabled);
+              return (
+                <div className="flex items-start gap-3">
+                  <User className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Rapportert av</p>
+                    <p className="text-base">{showName ? incident.rapportert_av : "Anonym"}</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {incident.opprettet_dato && (
               <div className="flex items-start gap-3">

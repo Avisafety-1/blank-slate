@@ -933,6 +933,30 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             />
           </div>
 
+          {/* Anonymitet */}
+          {globalAnonymous ? (
+            <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
+              <EyeOff className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Denne rapporten sendes inn anonymt (selskapsinnstilling).
+              </p>
+            </div>
+          ) : (
+            <label className="flex items-start gap-2 rounded-md border border-border p-3 cursor-pointer hover:bg-muted/40 transition-colors">
+              <Checkbox
+                checked={reportAnonymously}
+                onCheckedChange={(checked) => setReportAnonymously(!!checked)}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Rapporter anonymt</p>
+                <p className="text-xs text-muted-foreground">
+                  Navnet ditt vil ikke vises på rapporten.
+                </p>
+              </div>
+            </label>
+          )}
+
           <div className="flex gap-2">
             <Button
               type="button"
