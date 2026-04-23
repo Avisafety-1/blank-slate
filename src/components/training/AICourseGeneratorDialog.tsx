@@ -30,7 +30,16 @@ interface Props {
   onCourseCreated: (courseId: string) => void;
 }
 
-type Step = "upload" | "topics" | "config" | "generate" | "done";
+type Step = "select" | "upload" | "topics" | "config" | "generate" | "done";
+
+interface ExistingManual {
+  id: string;
+  title: string;
+  page_count: number | null;
+  file_size: number | null;
+  created_at: string;
+  chunk_count: number;
+}
 
 export const AICourseGeneratorDialog = ({
   open,
@@ -40,13 +49,17 @@ export const AICourseGeneratorDialog = ({
   onCourseCreated,
 }: Props) => {
   const { companyId, user } = useAuth();
-  const [step, setStep] = useState<Step>("upload");
+  const [step, setStep] = useState<Step>("select");
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState("");
   const [manualId, setManualId] = useState<string | null>(null);
   const [chunkCount, setChunkCount] = useState(0);
+
+  // Existing manuals
+  const [existingManuals, setExistingManuals] = useState<ExistingManual[]>([]);
+  const [loadingManuals, setLoadingManuals] = useState(false);
 
   // Topics
   const [topicsLoading, setTopicsLoading] = useState(false);
