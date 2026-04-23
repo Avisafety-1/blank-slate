@@ -210,6 +210,7 @@ Deno.serve(async (req) => {
       chapter_reference,
       include_narration,
       include_visuals,
+      voice: requestedVoice,
     } = body as {
       manual_id: string;
       length: number;
@@ -220,7 +221,10 @@ Deno.serve(async (req) => {
       focus_query?: string;
       include_narration?: boolean;
       include_visuals?: boolean;
+      voice?: string;
     };
+
+    const voice = requestedVoice && ALLOWED_VOICES.has(requestedVoice) ? requestedVoice : "coral";
 
     console.log(`[request] manual_id=${manual_id}, length=${length}, include_narration=${include_narration}, include_visuals=${include_visuals}`);
 
