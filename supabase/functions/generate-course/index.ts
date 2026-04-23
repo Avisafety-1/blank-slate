@@ -109,13 +109,17 @@ async function generateImage(prompt: string, apiKey: string): Promise<Uint8Array
   }
 }
 
+const ALLOWED_VOICES = new Set(["coral", "sage", "onyx", "nova", "alloy", "ash", "ballad", "echo", "fable", "shimmer", "verse", "marin", "cedar"]);
+const TTS_INSTRUCTIONS = "Snakk i en rolig, profesjonell og lærerik tone på norsk. Tydelig artikulasjon, moderat tempo, vennlig og inkluderende — som en erfaren instruktør som forklarer for en kollega.";
+
 async function generateTTS(
   text: string,
   openaiKey: string | undefined,
   warnings: string[],
   slideLabel: string,
+  voice: string,
 ): Promise<Uint8Array | null> {
-  console.log(`[tts:${slideLabel}] start — text length=${text?.length ?? 0}, openaiKey=${openaiKey ? "PRESENT" : "MISSING"}`);
+  console.log(`[tts:${slideLabel}] start — text length=${text?.length ?? 0}, voice=${voice}, openaiKey=${openaiKey ? "PRESENT" : "MISSING"}`);
   if (!openaiKey) {
     warnings.push("OPENAI_API_KEY mangler — hopper over server-side tale (bruker nettleser-fallback).");
     return null;
@@ -129,9 +133,10 @@ async function generateTTS(
       method: "POST",
       headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "tts-1",
-        voice: "nova",
+        model: "gpt-4o-mini-tts",
+        voice,
         input: text.slice(0, 4000),
+        instructions: TTS_INSTRUCTIONS,
         response_format: "mp3",
       }),
     });
