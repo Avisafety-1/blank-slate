@@ -356,7 +356,7 @@ export const TrainingSection = () => {
               Arvet{course.company_name ? ` fra ${course.company_name}` : ""}
             </Badge>
           )}
-          {isOwner && course.visible_to_children && (
+          {course.visible_to_children && (isOwner || course.shared_with_parent) && (
             <Badge variant="outline" className="border-primary/30 text-primary">
               <ArrowDown className="h-3 w-3 mr-1" />
               Delt nedover
