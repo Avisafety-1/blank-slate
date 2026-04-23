@@ -2820,6 +2820,7 @@ export type Database = {
           opprettet_dato: string | null
           pilot_id: string | null
           rapportert_av: string | null
+          reported_anonymously: boolean
           status: string
           tittel: string
           user_id: string | null
@@ -2844,6 +2845,7 @@ export type Database = {
           opprettet_dato?: string | null
           pilot_id?: string | null
           rapportert_av?: string | null
+          reported_anonymously?: boolean
           status?: string
           tittel: string
           user_id?: string | null
@@ -2868,6 +2870,7 @@ export type Database = {
           opprettet_dato?: string | null
           pilot_id?: string | null
           rapportert_av?: string | null
+          reported_anonymously?: boolean
           status?: string
           tittel?: string
           user_id?: string | null
