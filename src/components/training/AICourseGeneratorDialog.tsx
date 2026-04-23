@@ -3,16 +3,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Upload, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { chunkManualText } from "@/lib/manualChunker";
+import { TopicSuggestionsStep, SuggestedTopic } from "./TopicSuggestionsStep";
 
 interface Folder {
   id: string;
@@ -27,7 +28,7 @@ interface Props {
   onCourseCreated: (courseId: string) => void;
 }
 
-type Step = "upload" | "config" | "generate" | "done";
+type Step = "upload" | "topics" | "config" | "generate" | "done";
 
 export const AICourseGeneratorDialog = ({
   open,
@@ -45,11 +46,16 @@ export const AICourseGeneratorDialog = ({
   const [manualId, setManualId] = useState<string | null>(null);
   const [chunkCount, setChunkCount] = useState(0);
 
+  // Topics
+  const [topicsLoading, setTopicsLoading] = useState(false);
+  const [topics, setTopics] = useState<SuggestedTopic[]>([]);
+  const [selectedTopic, setSelectedTopic] = useState<SuggestedTopic | null>(null);
+  const [topicsError, setTopicsError] = useState<string | null>(null);
+
   // Config
-  const [role, setRole] = useState("Pilot");
-  const [difficulty, setDifficulty] = useState("Medium");
-  const [length, setLength] = useState<5 | 10 | 20>(10);
-  const [focusArea, setFocusArea] = useState("");
+  const [length, setLength] = useState<5 | 10 | 15>(10);
+  const [includeNarration, setIncludeNarration] = useState(true);
+  const [includeVisuals, setIncludeVisuals] = useState(true);
   const [folderId, setFolderId] = useState<string | null>(initialFolderId || null);
 
   const [generating, setGenerating] = useState(false);
@@ -67,6 +73,9 @@ export const AICourseGeneratorDialog = ({
       setUploadProgress(0);
       setUploadStage("");
       setErrorMsg(null);
+      setTopics([]);
+      setSelectedTopic(null);
+      setTopicsError(null);
       setFolderId(initialFolderId || null);
     }
   }, [open, initialFolderId]);
@@ -98,6 +107,32 @@ export const AICourseGeneratorDialog = ({
     e.preventDefault();
     handleFileSelect(e.dataTransfer.files?.[0]);
   }, []);
+
+  const fetchTopics = async (mid: string) => {
+    setTopicsLoading(true);
+    setTopicsError(null);
+    setTopics([]);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-course-topics", {
+        body: { manual_id: mid },
+      });
+      if (error) {
+        const ctx: any = (error as any).context;
+        if (ctx?.status === 429) throw new Error("AI er overbelastet. Prøv igjen om litt.");
+        if (ctx?.status === 402) throw new Error("AI-kreditter brukt opp.");
+        throw error;
+      }
+      setTopics(data?.topics || []);
+      if (!data?.topics?.length) {
+        setTopicsError("AI klarte ikke å foreslå temaer. Prøv en annen manual.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      setTopicsError(e?.message || "Kunne ikke hente forslag");
+    } finally {
+      setTopicsLoading(false);
+    }
+  };
 
   const extractAndUpload = async () => {
     if (!file || !companyId || !user) return;
@@ -141,7 +176,6 @@ export const AICourseGeneratorDialog = ({
       }
       setUploadProgress(45);
 
-      // Create manual row first to get id
       setUploadStage("Lagrer manual…");
       const manualUuid = crypto.randomUUID();
       const ext = isDocx(file) ? "docx" : "pdf";
@@ -181,7 +215,8 @@ export const AICourseGeneratorDialog = ({
       setChunkCount(procData?.chunk_count || chunks.length);
       setUploadProgress(100);
       setUploadStage("Ferdig");
-      setStep("config");
+      setStep("topics");
+      fetchTopics(manualUuid);
     } catch (e: any) {
       console.error(e);
       const msg = e?.message || "Opplasting feilet";
@@ -193,36 +228,40 @@ export const AICourseGeneratorDialog = ({
   };
 
   const handleGenerate = async () => {
-    if (!manualId) return;
+    if (!manualId || !selectedTopic) return;
     setGenerating(true);
     setErrorMsg(null);
     setStep("generate");
-    setGenerationStage("Analyserer manual…");
+    setGenerationStage("Analyserer manual og lager intro-tekst…");
 
     try {
-      // Brief progressive UI
-      setTimeout(() => setGenerationStage("Genererer spørsmål med AI…"), 800);
+      // Progressive UI hints (since we can't get real progress from the function)
+      setTimeout(() => {
+        if (includeVisuals) setGenerationStage("Genererer bilder med AI…");
+      }, 6000);
+      setTimeout(() => {
+        if (includeNarration) setGenerationStage("Lager talesynteser…");
+      }, 14000);
+      setTimeout(() => setGenerationStage("Lager spørsmål…"), 22000);
 
       const { data, error } = await supabase.functions.invoke("generate-course", {
         body: {
           manual_id: manualId,
-          role,
-          difficulty,
           length,
-          focus_area: focusArea.trim() || null,
           folder_id: folderId,
+          topic_title: selectedTopic.title,
+          topic_description: selectedTopic.description,
+          chapter_reference: selectedTopic.chapter_reference,
+          focus_query: selectedTopic.focus_query,
+          include_narration: includeNarration,
+          include_visuals: includeVisuals,
         },
       });
 
       if (error) {
-        // Try to parse status from error context
         const ctx: any = (error as any).context;
-        if (ctx?.status === 429) {
-          throw new Error("AI er overbelastet. Prøv igjen om litt.");
-        }
-        if (ctx?.status === 402) {
-          throw new Error("AI-kreditter brukt opp. Legg til kreditter i Workspace.");
-        }
+        if (ctx?.status === 429) throw new Error("AI er overbelastet. Prøv igjen om litt.");
+        if (ctx?.status === 402) throw new Error("AI-kreditter brukt opp. Legg til kreditter i Workspace.");
         throw error;
       }
 
@@ -231,10 +270,9 @@ export const AICourseGeneratorDialog = ({
       setGenerationStage("Lagrer kurs…");
       const generated = data.questions_generated ?? 0;
       const requested = data.questions_requested ?? length;
+      const intros = data.intro_slides_generated ?? 0;
       toast.success(
-        generated < requested
-          ? `Kurs opprettet (${generated} av ${requested} spørsmål — noen ble hoppet over pga. utilstrekkelig innhold)`
-          : `Kurs opprettet med ${generated} spørsmål`
+        `Kurs opprettet (${intros} intro-slides + ${generated}/${requested} spørsmål)`
       );
       setStep("done");
       onCourseCreated(data.course_id);
@@ -314,7 +352,7 @@ export const AICourseGeneratorDialog = ({
         <Button variant="outline" onClick={() => onOpenChange(false)}>
           Avbryt
         </Button>
-        <Button onClick={extractAndUpload} disabled={!file || !title.trim() || uploadProgress > 0 && uploadProgress < 100}>
+        <Button onClick={extractAndUpload} disabled={!file || !title.trim() || (uploadProgress > 0 && uploadProgress < 100)}>
           {uploadProgress > 0 && uploadProgress < 100 ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Behandler…</>
           ) : (
@@ -325,8 +363,8 @@ export const AICourseGeneratorDialog = ({
     </div>
   );
 
-  const renderConfig = () => (
-    <div className="space-y-5">
+  const renderTopics = () => (
+    <div className="space-y-4">
       <Card className="p-3 bg-muted/30 flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-primary" />
         <span className="text-sm">
@@ -334,39 +372,42 @@ export const AICourseGeneratorDialog = ({
         </span>
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label>Rolle</Label>
-          <Select value={role} onValueChange={setRole}>
-            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Pilot">Pilot</SelectItem>
-              <SelectItem value="Observatør">Observatør</SelectItem>
-              <SelectItem value="Administrator">Administrator</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Vanskelighetsgrad</Label>
-          <Select value={difficulty} onValueChange={setDifficulty}>
-            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Lett">Lett</SelectItem>
-              <SelectItem value="Medium">Medium</SelectItem>
-              <SelectItem value="Vanskelig">Vanskelig</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <TopicSuggestionsStep
+        loading={topicsLoading}
+        topics={topics}
+        selected={selectedTopic}
+        onSelect={setSelectedTopic}
+        errorMsg={topicsError}
+        onRetry={manualId ? () => fetchTopics(manualId) : undefined}
+      />
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+        <Button onClick={() => setStep("config")} disabled={!selectedTopic}>
+          Fortsett
+        </Button>
       </div>
+    </div>
+  );
+
+  const renderConfig = () => (
+    <div className="space-y-5">
+      {selectedTopic && (
+        <Card className="p-3 bg-primary/5 border-primary/30">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Valgt tema</p>
+          <p className="font-semibold text-sm">{selectedTopic.title}</p>
+          <p className="text-xs text-muted-foreground mt-1">{selectedTopic.chapter_reference} · {selectedTopic.description}</p>
+        </Card>
+      )}
 
       <div>
         <Label>Antall spørsmål</Label>
         <RadioGroup
           value={String(length)}
-          onValueChange={(v) => setLength(Number(v) as 5 | 10 | 20)}
+          onValueChange={(v) => setLength(Number(v) as 5 | 10 | 15)}
           className="flex gap-4 mt-2"
         >
-          {[5, 10, 20].map((n) => (
+          {[5, 10, 15].map((n) => (
             <label key={n} className="flex items-center gap-2 cursor-pointer">
               <RadioGroupItem value={String(n)} id={`len-${n}`} />
               <span>{n}</span>
@@ -375,16 +416,25 @@ export const AICourseGeneratorDialog = ({
         </RadioGroup>
       </div>
 
-      <div>
-        <Label htmlFor="focus">Fokusområde (valgfritt)</Label>
-        <Textarea
-          id="focus"
-          placeholder="F.eks. nødprosedyrer ved tap av GPS, batterihåndtering…"
-          value={focusArea}
-          onChange={(e) => setFocusArea(e.target.value)}
-          rows={2}
-          className="mt-1"
-        />
+      <div className="space-y-3 rounded-lg border p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <Label htmlFor="narration-toggle" className="font-medium">Inkluder talende intro</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              AI genererer talesyntese (TTS) som leser opp introduksjonen før spørsmålene.
+            </p>
+          </div>
+          <Switch id="narration-toggle" checked={includeNarration} onCheckedChange={setIncludeNarration} />
+        </div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <Label htmlFor="visuals-toggle" className="font-medium">Inkluder AI-bilder</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Hver intro-slide får et AI-generert illustrasjonsbilde.
+            </p>
+          </div>
+          <Switch id="visuals-toggle" checked={includeVisuals} onCheckedChange={setIncludeVisuals} />
+        </div>
       </div>
 
       {folders.length > 0 && (
@@ -410,7 +460,7 @@ export const AICourseGeneratorDialog = ({
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+        <Button variant="outline" onClick={() => setStep("topics")}>Tilbake</Button>
         <Button onClick={handleGenerate} disabled={generating}>
           <Sparkles className="h-4 w-4 mr-2" />
           Generer kurs
@@ -424,7 +474,7 @@ export const AICourseGeneratorDialog = ({
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
       <p className="font-medium">{generationStage}</p>
       <p className="text-sm text-muted-foreground">
-        Dette kan ta 20–60 sekunder. AI leser manualen og lager spørsmål basert på innholdet.
+        Dette kan ta 30-90 sekunder{includeVisuals || includeNarration ? " (bilder og lyd tar lengst)" : ""}.
       </p>
     </div>
   );
@@ -438,12 +488,14 @@ export const AICourseGeneratorDialog = ({
             AI Kursgenerator
           </DialogTitle>
           <DialogDescription>
-            {step === "upload" && "Steg 1 av 2 — Last opp en operasjonsmanual (PDF eller Word)"}
-            {step === "config" && "Steg 2 av 2 — Konfigurer kurset"}
-            {step === "generate" && "Genererer…"}
+            {step === "upload" && "Steg 1 av 3 — Last opp en operasjonsmanual (PDF eller Word)"}
+            {step === "topics" && "Steg 2 av 3 — Velg tema for kurset"}
+            {step === "config" && "Steg 3 av 3 — Konfigurer kurset"}
+            {step === "generate" && "Genererer kurs…"}
           </DialogDescription>
         </DialogHeader>
         {step === "upload" && renderUpload()}
+        {step === "topics" && renderTopics()}
         {step === "config" && renderConfig()}
         {step === "generate" && renderGenerate()}
       </DialogContent>

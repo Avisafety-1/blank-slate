@@ -27,25 +27,36 @@ const courseSchema = {
     title: { type: "string" },
     description: { type: "string" },
     learning_objectives: { type: "array", items: { type: "string" } },
+    intro_slides: {
+      type: "array",
+      description: "2-3 forklarende intro-slides FØR spørsmålene",
+      items: {
+        type: "object",
+        properties: {
+          heading: { type: "string", description: "Tittel på slidet" },
+          narration_text: { type: "string", description: "Tekst som skal leses opp (2-4 setninger på norsk)" },
+          image_prompt: { type: "string", description: "Engelsk prompt for AI-bildegenerering. Profesjonell teknisk illustrasjon, mørk SaaS-bakgrunn, fotorealistisk drone-kontekst, ingen tekst i bildet." },
+          source_reference: { type: "string", description: "Kapittel-/seksjonsreferanse fra manualen" },
+        },
+        required: ["heading", "narration_text", "image_prompt", "source_reference"],
+      },
+    },
     questions: {
       type: "array",
       items: {
         type: "object",
         properties: {
-          type: { type: "string", enum: ["multiple_choice", "scenario"] },
-          scenario: { type: "string" },
           question: { type: "string" },
-          options: { type: "array", items: { type: "string" } },
-          correct_answer: { type: "string" },
-          answer: { type: "string" },
+          options: { type: "array", items: { type: "string" }, description: "Nøyaktig 4 alternativer" },
+          correct_answer: { type: "string", description: "Må matche EN av options ord-for-ord" },
           explanation: { type: "string" },
           source_reference: { type: "string" },
         },
-        required: ["type", "question", "explanation", "source_reference"],
+        required: ["question", "options", "correct_answer", "explanation", "source_reference"],
       },
     },
   },
-  required: ["title", "description", "questions"],
+  required: ["title", "description", "intro_slides", "questions"],
 };
 
 async function generateWithAI(systemPrompt: string, userPrompt: string, apiKey: string) {
@@ -83,6 +94,61 @@ async function generateWithAI(systemPrompt: string, userPrompt: string, apiKey: 
   return JSON.parse(toolCall.function.arguments);
 }
 
+async function generateImage(prompt: string, apiKey: string): Promise<Uint8Array | null> {
+  try {
+    const styleSuffix = ", professional technical illustration, dark SaaS background tones (deep navy/charcoal), photorealistic drone operation context, cinematic lighting, no text in image, no watermarks, clean composition";
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content: prompt + styleSuffix }],
+        modalities: ["image", "text"],
+      }),
+    });
+    if (!resp.ok) {
+      console.error("image gen failed", resp.status, await resp.text());
+      return null;
+    }
+    const data = await resp.json();
+    const url: string | undefined = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!url || !url.startsWith("data:")) return null;
+    const base64 = url.split(",")[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  } catch (e) {
+    console.error("image gen error", e);
+    return null;
+  }
+}
+
+async function generateTTS(text: string, apiKey: string): Promise<Uint8Array | null> {
+  try {
+    // OpenAI TTS via Lovable AI Gateway
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "openai/tts-1",
+        voice: "nova",
+        input: text,
+        response_format: "mp3",
+      }),
+    });
+    if (!resp.ok) {
+      console.error("tts failed", resp.status, await resp.text());
+      return null;
+    }
+    const buf = await resp.arrayBuffer();
+    return new Uint8Array(buf);
+  } catch (e) {
+    console.error("tts error", e);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -118,16 +184,29 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     const body = await req.json();
-    const { manual_id, role, difficulty, length, focus_area, folder_id } = body as {
+    const {
+      manual_id,
+      length,
+      folder_id,
+      topic_title,
+      topic_description,
+      chapter_reference,
+      focus_query,
+      include_narration,
+      include_visuals,
+    } = body as {
       manual_id: string;
-      role: string;
-      difficulty: string;
       length: number;
-      focus_area?: string | null;
       folder_id?: string | null;
+      topic_title: string;
+      topic_description?: string;
+      chapter_reference?: string;
+      focus_query?: string;
+      include_narration?: boolean;
+      include_visuals?: boolean;
     };
 
-    if (!manual_id || !role || !difficulty || !length) {
+    if (!manual_id || !topic_title || !length) {
       return new Response(JSON.stringify({ error: "missing fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -148,7 +227,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Authorize: user must have visibility to that company
+    // Authorize
     const { data: visibleRaw } = await admin.rpc("get_user_visible_company_ids", { p_user_id: userId });
     const visibleIds: string[] = Array.isArray(visibleRaw)
       ? visibleRaw.map((v: any) => (typeof v === "string" ? v : v?.company_id ?? v?.get_user_visible_company_ids ?? null)).filter(Boolean)
@@ -165,15 +244,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Retrieve relevant chunks
+    // Retrieve relevant chunks based on focus_query (preferred) or topic_title
+    const retrievalQuery = (focus_query && focus_query.trim()) || `${topic_title} ${topic_description || ""}`.trim();
     let chunks: { chunk_index: number; chunk_text: string; section_heading: string | null }[] = [];
-    if (focus_area && focus_area.trim().length > 0) {
+
+    if (retrievalQuery.length > 0) {
       try {
-        const queryVec = await embedQuery(focus_area.trim(), LOVABLE_API_KEY);
+        const queryVec = await embedQuery(retrievalQuery, LOVABLE_API_KEY);
         const { data: matched, error: matchErr } = await admin.rpc("match_manual_chunks", {
           p_manual_id: manual_id,
           p_query_embedding: queryVec as any,
-          p_match_count: 12,
+          p_match_count: 14,
         });
         if (matchErr) throw matchErr;
         chunks = (matched || []).map((m: any) => ({
@@ -182,12 +263,11 @@ Deno.serve(async (req) => {
           section_heading: m.section_heading,
         }));
       } catch (e) {
-        console.error("vector search failed, falling back to diversified", e);
+        console.error("vector search failed, falling back", e);
       }
     }
 
     if (chunks.length === 0) {
-      // Diversified across manual
       const { data: all } = await admin
         .from("manual_chunks")
         .select("chunk_index, chunk_text, section_heading")
@@ -200,7 +280,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const want = Math.min(12, total);
+      const want = Math.min(14, total);
       const step = Math.max(1, Math.floor(total / want));
       for (let i = 0; i < total && chunks.length < want; i += step) {
         chunks.push(all![i]);
@@ -216,26 +296,28 @@ Deno.serve(async (req) => {
 
     const systemPrompt = `Du er en ekspert på flysikkerhet og droneoperasjoner og lager opplæringsmateriell på norsk.
 
-Din oppgave er å generere et høykvalitets treningskurs basert UTELUKKENDE på det oppgitte manualinnholdet.
+Din oppgave er å generere et test-orientert treningskurs UTELUKKENDE basert på det oppgitte manualinnholdet.
+
+Kursstruktur:
+1. 2-3 INTRO-SLIDES med forklarende tekst (narration_text) som introduserer temaet før testen begynner. Hvert slide skal ha en treffende heading, en god 2-4 setningers fortellende tekst som kan leses opp, og en image_prompt for et illustrerende bilde.
+2. ${length} FLERVALGSSPØRSMÅL (kun multiple_choice — én test, ingen scenario-tekst).
 
 Regler:
-- IKKE finn på eller anta informasjon
-- Bruk kun den oppgitte teksten
+- IKKE finn på eller anta informasjon — bruk kun det som står i manualen
 - Prioriter sikkerhetskritiske prosedyrer
-- Lag realistiske, scenariobaserte spørsmål
-- Unngå generiske eller åpenbare spørsmål
-- Hvis informasjonen er utilstrekkelig for et spørsmål, hopp over det
-- For flervalgsspørsmål: gi nøyaktig 4 svaralternativer, hvor "correct_answer" matcher EN av "options" ord-for-ord
-- Alle felt skal være på norsk
-- "source_reference" skal peke til seksjonsnavn eller kapittel fra manualen
+- Hvert spørsmål skal ha NØYAKTIG 4 alternativer
+- "correct_answer" må matche EN av "options" ord-for-ord
+- Alle felt på norsk (image_prompt på engelsk for bedre AI-bildegenerering)
+- "source_reference" peker til kapittel/seksjon fra manualen
+- Returner KUN gyldig output via emit_course-verktøyet`;
 
-Returner KUN gyldig strukturert output via emit_course-verktøyet.`;
+    const userPrompt = `Generer et kurs om følgende tema:
 
-    const userPrompt = `Generer et kurs for:
-Rolle: ${role}
-Vanskelighetsgrad: ${difficulty}
+Tittel: ${topic_title}
+${chapter_reference ? `Kapittel: ${chapter_reference}` : ""}
+${topic_description ? `Beskrivelse: ${topic_description}` : ""}
+
 Antall spørsmål: ${length}
-Fokus: ${focus_area || "(ingen — bruk dekkende utvalg fra manualen)"}
 
 Manualtittel: ${manual.title}
 
@@ -259,10 +341,9 @@ ${contextBlock}`;
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      // Retry once
       try {
         aiResult = await generateWithAI(systemPrompt, userPrompt, LOVABLE_API_KEY);
-      } catch (e2) {
+      } catch {
         return new Response(JSON.stringify({ error: "AI-generering feilet" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -270,10 +351,9 @@ ${contextBlock}`;
       }
     }
 
-    // Create course
-    const courseTitle = (aiResult.title || `AI-generert kurs fra ${manual.title}`).slice(0, 200);
+    const courseTitle = (aiResult.title || topic_title).slice(0, 200);
     const description =
-      (aiResult.description || "") +
+      (aiResult.description || topic_description || "") +
       (aiResult.learning_objectives?.length
         ? "\n\nLæringsmål:\n• " + aiResult.learning_objectives.join("\n• ")
         : "");
@@ -299,29 +379,95 @@ ${contextBlock}`;
     }
     const courseId = courseRow.id;
 
-    // Insert questions
-    const aiQuestions = Array.isArray(aiResult.questions) ? aiResult.questions : [];
     let sortOrder = 0;
+    let createdSlides = 0;
     let createdQuestions = 0;
 
-    for (const q of aiQuestions) {
-      const isScenario = q.type === "scenario";
-      const qText = isScenario && q.scenario
-        ? `Scenario:\n${q.scenario}\n\nSpørsmål: ${q.question}`
-        : q.question;
+    // 1. Insert intro slides (with optional image + TTS)
+    const introSlides = Array.isArray(aiResult.intro_slides) ? aiResult.intro_slides : [];
+    for (const slide of introSlides) {
+      const slideId = crypto.randomUUID();
 
+      let imageUrl: string | null = null;
+      if (include_visuals && slide.image_prompt) {
+        const imgBytes = await generateImage(slide.image_prompt, LOVABLE_API_KEY);
+        if (imgBytes) {
+          const path = `${manual.company_id}/${courseId}/${slideId}.png`;
+          const { error: upErr } = await admin.storage
+            .from("training-visuals")
+            .upload(path, imgBytes, { contentType: "image/png", upsert: true });
+          if (!upErr) {
+            const { data: signed } = await admin.storage
+              .from("training-visuals")
+              .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+            imageUrl = signed?.signedUrl || null;
+          } else {
+            console.error("image upload error", upErr);
+          }
+        }
+      }
+
+      let narrationAudioUrl: string | null = null;
+      if (include_narration && slide.narration_text) {
+        const audioBytes = await generateTTS(slide.narration_text, LOVABLE_API_KEY);
+        if (audioBytes) {
+          const path = `${manual.company_id}/${courseId}/${slideId}.mp3`;
+          const { error: upErr } = await admin.storage
+            .from("training-narration")
+            .upload(path, audioBytes, { contentType: "audio/mpeg", upsert: true });
+          if (!upErr) {
+            const { data: signed } = await admin.storage
+              .from("training-narration")
+              .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+            narrationAudioUrl = signed?.signedUrl || null;
+          } else {
+            console.error("audio upload error", upErr);
+          }
+        }
+      }
+
+      const contentJson = {
+        heading: slide.heading || null,
+        narration_text: slide.narration_text || null,
+        narration_audio_url: narrationAudioUrl,
+        ai_generated: true,
+        source_reference: slide.source_reference || null,
+      };
+
+      const { error: insErr } = await admin
+        .from("training_questions")
+        .insert({
+          id: slideId,
+          course_id: courseId,
+          question_text: slide.heading || "Intro",
+          sort_order: sortOrder++,
+          slide_type: "content",
+          image_url: imageUrl,
+          content_json: contentJson as any,
+        } as any);
+
+      if (insErr) {
+        console.error("intro slide insert error", insErr);
+      } else {
+        createdSlides++;
+      }
+    }
+
+    // 2. Insert questions (multiple_choice only)
+    const aiQuestions = Array.isArray(aiResult.questions) ? aiResult.questions : [];
+    for (const q of aiQuestions) {
       const contentJson = {
         explanation: q.explanation || null,
         source_reference: q.source_reference || null,
         ai_generated: true,
-        question_type: q.type,
+        question_type: "multiple_choice",
       };
 
       const { data: qRow, error: qErr } = await admin
         .from("training_questions")
         .insert({
           course_id: courseId,
-          question_text: qText,
+          question_text: q.question,
           sort_order: sortOrder++,
           slide_type: "question",
           content_json: contentJson as any,
@@ -334,27 +480,14 @@ ${contextBlock}`;
         continue;
       }
 
-      // Build options
-      let options: { text: string; is_correct: boolean }[] = [];
-      if (isScenario) {
-        // Scenario: render free-text explanation as a single-option "correct" answer flow.
-        // We synthesize a Yes/No correct options pattern based on the answer.
-        const correctAns = (q.answer || q.correct_answer || "Riktig svar").trim();
-        options = [
-          { text: correctAns.slice(0, 500), is_correct: true },
-          { text: "Ikke i henhold til prosedyre", is_correct: false },
-        ];
-      } else {
-        const opts = Array.isArray(q.options) ? q.options : [];
-        const correct = (q.correct_answer || "").trim();
-        options = opts.map((o: string) => ({
-          text: String(o).slice(0, 500),
-          is_correct: String(o).trim() === correct,
-        }));
-        // Ensure at least one is marked correct
-        if (options.length > 0 && !options.some((o) => o.is_correct)) {
-          options[0].is_correct = true;
-        }
+      const opts = Array.isArray(q.options) ? q.options : [];
+      const correct = (q.correct_answer || "").trim();
+      const options = opts.map((o: string) => ({
+        text: String(o).slice(0, 500),
+        is_correct: String(o).trim() === correct,
+      }));
+      if (options.length > 0 && !options.some((o) => o.is_correct)) {
+        options[0].is_correct = true;
       }
 
       if (options.length > 0) {
@@ -374,6 +507,7 @@ ${contextBlock}`;
     return new Response(
       JSON.stringify({
         course_id: courseId,
+        intro_slides_generated: createdSlides,
         questions_generated: createdQuestions,
         questions_requested: length,
       }),
