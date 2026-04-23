@@ -124,27 +124,38 @@ async function generateImage(prompt: string, apiKey: string): Promise<Uint8Array
   }
 }
 
-async function generateTTS(text: string, apiKey: string): Promise<Uint8Array | null> {
+async function generateTTS(
+  text: string,
+  openaiKey: string | undefined,
+  warnings: string[],
+): Promise<Uint8Array | null> {
+  if (!openaiKey) {
+    warnings.push("OPENAI_API_KEY mangler — hopper over server-side tale (bruker nettleser-fallback).");
+    return null;
+  }
   try {
-    // OpenAI TTS via Lovable AI Gateway
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
+    // Direct OpenAI TTS — Lovable AI Gateway does NOT support /v1/audio/speech
+    const resp = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "openai/tts-1",
+        model: "tts-1",
         voice: "nova",
-        input: text,
+        input: text.slice(0, 4000),
         response_format: "mp3",
       }),
     });
     if (!resp.ok) {
-      console.error("tts failed", resp.status, await resp.text());
+      const body = await resp.text();
+      console.error("openai tts failed", resp.status, body);
+      warnings.push(`OpenAI TTS feilet (${resp.status}) — bruker nettleser-fallback.`);
       return null;
     }
     const buf = await resp.arrayBuffer();
     return new Uint8Array(buf);
   } catch (e) {
     console.error("tts error", e);
+    warnings.push("OpenAI TTS-kall kastet exception — bruker nettleser-fallback.");
     return null;
   }
 }
@@ -164,6 +175,8 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const warnings: string[] = [];
     if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
         status: 500,
@@ -409,7 +422,7 @@ ${contextBlock}`;
 
       let narrationAudioUrl: string | null = null;
       if (include_narration && slide.narration_text) {
-        const audioBytes = await generateTTS(slide.narration_text, LOVABLE_API_KEY);
+        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings);
         if (audioBytes) {
           const path = `${manual.company_id}/${courseId}/${slideId}.mp3`;
           const { error: upErr } = await admin.storage
