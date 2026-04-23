@@ -1,43 +1,48 @@
 
 
-# Fiks talegenerering i AI-kurs
+# Fiks lyd og content_json i AI-kursgenerering
 
-To problemer ble funnet ved sjekk av databasen og edge-funksjonen:
+Diagnose etter inspeksjon av siste genererte kurs (`69a310af…`):
 
-## Diagnose
+## Problemer funnet
 
-**1. Lovable AI Gateway støtter ikke tekst-til-tale.** Dokumentasjonen lister kun chat- og bilde-modeller (Gemini, GPT-5). Endepunktet `/v1/audio/speech` med `openai/tts-1` finnes ikke der, så `generateTTS()` returnerer `null` hver gang og ingen mp3 lagres.
+**1. `content_json` er fortsatt NULL i databasen.** Bilder lagres OK (image_url satt på 2 første slides), men jsonb-feltet droppes ved insert. Sannsynlig årsak: PostgREST-klienten i Deno serialiserer ikke nested objekter korrekt når raden bygges som et separat `const`-objekt og deretter sendes til `.insert(obj)`. Når `content_json` er null, finnes det ingen `narration_text` å lese opp — så hverken mp3 eller Web Speech-fallback har noe å si.
 
-**2. `content_json` er NULL på alle slides** i kurset «Praktisk bruk av sjekklister før flyging». Det betyr at heller ikke `narration_text`, `heading`, `source_reference` eller `explanation` ble lagret. Derfor får TakeCourseDialog hverken lyd-URL ELLER tekst — så fallback-knappen «Les opp» (Web Speech API) vises ikke heller. Bilder ble lagret OK, så insert-kallet kjører — men jsonb-payloaden droppes. Sannsynlig årsak: `as any`-cast rundt hele insert-objektet i kombinasjon med hvordan Supabase-klienten i Deno serialiserer nested objekter med null-felter.
+**2. TTS-kallet logges ikke.** Vi vet ikke om `generateTTS()` faktisk ble kalt, om OpenAI returnerte feil, eller om `slide.narration_text` var tomt fra LLM-en. Edge-loggen viser ingen TTS-relaterte meldinger overhodet.
+
+**3. Embedding-modellen finnes ikke lenger.** `google/text-embedding-004` ble fjernet fra AI Gateway. Vektor-søk feiler hver gang og faller tilbake til "ta hver N-te chunk" (funker, men gir dårligere kontekst-treff).
 
 ## Løsning
 
-### A. Server-side TTS via OpenAI direkte
-Siden Lovable AI Gateway ikke har TTS, kaller edge-funksjonen `https://api.openai.com/v1/audio/speech` direkte med modell `tts-1` og stemmen `nova` (god norsk uttale). Dette krever en ny secret: **`OPENAI_API_KEY`**. Du blir bedt om å legge den inn når implementasjonen starter.
+### A. Fiks `content_json`-persistering definitivt
+Bygg insert-objektet inline i `.insert({...})`-kallet (ikke som mellomliggende `const`), og send `content_json` som **`JSON.stringify(contentJson)`**. Postgres jsonb godtar dette og bevarer alle felter. Gjelder både intro-slides og spørsmål-slides.
 
-### B. Klient-side fallback (Web Speech API)
-Hvis OpenAI-nøkkel mangler ELLER TTS-kallet feiler, hopper edge-funksjonen elegant over lyd-generering. TakeCourseDialog viser da en stor «▶ Spill av tale»-knapp som bruker nettleserens innebygde `SpeechSynthesisUtterance` med `lang="nb-NO"`. Stemmen er gratis, fungerer offline, og er svært god på Apple-enheter.
+### B. Eksplisitt TTS-logging
+Logg hvert steg: «narration enabled? has text? calling OpenAI… status… bytes returned… upload result». Da kan vi diagnostisere på 1 sekund om det er LLM, OpenAI eller storage som svikter.
 
-### C. Fiks `content_json`-lagringen
-Fjern `as any` rundt hele insert-objektet. I stedet bygger vi payloaden eksplisitt typet og sender `content_json` som et rent JS-objekt (Supabase-klienten serialiserer jsonb selv). Dette gjelder både intro-slides og spørsmål-slides. Etter fiks vil `narration_text`, `heading`, `source_reference` og `explanation` faktisk havne i databasen.
+### C. Verifiser `OPENAI_API_KEY`-tilgang
+Før første TTS-kall, logg om secret er satt (uten å printe verdien). Hvis ikke satt, push warning umiddelbart.
 
-### D. Forbedret feilrapportering
-Logg eksplisitt om TTS-kallet feilet (status + body) og om insertet returnerte feil. I dag svelges feil i `console.error` men kommer ikke fram til brukeren. Vi legger til en `warnings`-array i responsen slik at UI kan vise «Lyd ble ikke generert — bruk Les opp-knappen i stedet».
+### D. Fjern embedding-kallet
+Siden modellen ikke finnes i AI Gateway og fallback (jevn fordeling av chunks) fungerer godt nok for kursgenerering, droppes vektor-søket helt. Det forenkler koden, fjerner en feil-kilde, og sparer et AI-kall per kursgenerering.
 
-### E. Auto-spill ved bytte til intro-slide
-For å unngå at brukeren må trykke på Web Speech-knappen, kobler vi `speechSynthesis.speak()` på samme bruker-gesture som «Neste»-knappen som tok dem TIL sliden. Det respekterer nettleserens autoplay-policy. (For server-genererte mp3 fortsetter `<audio autoPlay>` å virke som i dag.)
-
-## Eksisterende kurs
-
-Kurset `d4d3f5ca…` er ubrukelig (ingen tekst, ingen lyd). Etter fiks må du slette og generere det på nytt — da får du både bilder, lest tale (eller fallback-knapp) og fungerende spørsmål med forklaringer.
+### E. Re-generer kurset
+Eksisterende kurs (`69a310af…` og `d4d3f5ca…`) må slettes manuelt og genereres på nytt etter fiksen — fordi `content_json` aldri ble lagret er det ingen vei tilbake.
 
 ## Filer som endres
 
-- `supabase/functions/generate-course/index.ts` — bytt TTS-implementasjonen til OpenAI direkte, eksplisitt typing av insert-payload (fjern `as any`), warnings-array i respons
-- `src/components/training/TakeCourseDialog.tsx` — auto-spill via Web Speech på user-gesture når lyd-URL mangler men narration_text finnes
-- `src/components/training/AICourseGeneratorDialog.tsx` — vis warnings fra generate-course-responsen som toast (f.eks. «3 av 3 lydfiler kunne ikke genereres — fallback til nettleser-tale»)
+- `supabase/functions/generate-course/index.ts`:
+  - Inline insert-objekter med `JSON.stringify(contentJson)` for jsonb-feltet
+  - Detaljert TTS-logging (enabled/has-text/openai-status/bytes/upload)
+  - Sjekk og logg `OPENAI_API_KEY`-tilstedeværelse ved oppstart
+  - Fjern `embedQuery()` og direkte hopp til chunked-fallback
 
-## Hva du må gjøre
+Ingen frontend-endringer nødvendig — `TakeCourseDialog` og Web Speech-fallback er allerede klare til å bruke `narration_text` så snart den faktisk lagres.
 
-Etter at du godkjenner planen ber jeg deg legge til **`OPENAI_API_KEY`** som secret. Du finner nøkkelen på platform.openai.com under API Keys. Hvis du IKKE vil bruke OpenAI, si fra — da dropper vi server-side TTS helt og bruker bare Web Speech API (gratis, men varierende stemmekvalitet per OS).
+## Hva du bør gjøre etterpå
+
+1. Slett kurset «Planlegging av Oppdrag og Analyse av Luftrom» fra opplæringsmodulen
+2. Generer det på nytt
+3. Sjekk edge-loggen for `generate-course` — du vil se TTS-status linje for linje
+4. Hvis OpenAI fortsatt feiler, gir loggen oss eksakt feilkode (401 = nøkkel ugyldig, 429 = rate limit, etc.) så vi kan fikse målrettet
 
