@@ -1,33 +1,56 @@
 
 
-## Plan: Større innhold i fullskjermsmodus for kurs på iPad
+## Plan: La brukeren velge anonym rapportering per hendelse
 
-### Problem
-I fullskjerm på iPad får videoer og bilder bare ca. halve skjermbredden fordi innholdet er begrenset av `max-w-3xl` / `max-w-5xl` / `max-w-2xl` selv når dialogen tar hele skjermen. Resultat: mye tomt rom rundt videoen.
+### Mål
+Når en bruker oppretter en hendelsesrapport, skal det være en avkrysningsboks "Rapporter anonymt".
+- Hvis selskapet har **`hide_reporter_identity = true`** (global anonymitet på), vises ikke avkrysningsboksen — i stedet vises en informasjonstekst: "Denne rapporten sendes inn anonymt (selskapsinnstilling)."
+- Hvis global er **av**, kan brukeren selv velge — standard er av (ikke anonym).
 
-### Løsning
-I `src/components/training/TakeCourseDialog.tsx` — fjerne snevre maks-bredder når `isFullscreen = true` slik at video, bilder og spørsmålskort fyller tilgjengelig plass:
+### Datamodell
+Ny kolonne på `incidents`:
+```sql
+ALTER TABLE public.incidents
+  ADD COLUMN reported_anonymously boolean NOT NULL DEFAULT false;
+```
+Ingen RLS-endring trengs — den følger eksisterende policyer.
 
-**1. Video-slide (`renderSlide`, video-grenen)**
-- Fullskjerm: bytt `max-w-5xl` → `max-w-[90vw]` (eller `max-w-none w-full`), og la wrapperen sentrere innholdet
-- Ikke-fullskjerm: behold `max-w-3xl`
+### UI-endringer
 
-**2. Innholds-/bildeslide (content-grenen)**
-- Fullskjerm: la bildet bruke `max-h-[78vh]` og `w-auto max-w-[92vw]` slik at bredt landskapsformat fyller skjermen, ikke bare høyden
+**1. `src/components/dashboard/AddIncidentDialog.tsx`**
+- Importere `useCompanySettings`.
+- Ny lokal state `reportAnonymously` (bool, default `false`).
+- I redigeringsmodus (`incidentToEdit`): forhåndsfyll fra `incidentToEdit.reported_anonymously`.
+- Rendre i skjemaet (over/under "Rapportert av"-blokken):
+  - Hvis `companySettings.hide_reporter_identity === true`: vis kun en `<p>`-info: *"Denne rapporten sendes inn anonymt (selskapsinnstilling)."* med ikon (Lock/EyeOff).
+  - Hvis `false`: vis en `<Checkbox>` + label "Rapporter anonymt" og kort hjelpetekst "Navnet ditt vil ikke vises på rapporten".
+- I `incidentData` legge til `reported_anonymously: companySettings.hide_reporter_identity || reportAnonymously` (slik at global twinger anonymitet, og per-rapport-valg respekteres ellers).
+- Samme felt sendes med ved offline-kø og ved INSERT/UPDATE.
 
-**3. Spørsmål-slide (question-grenen)**
-- Fullskjerm: bytt kortets `max-w-2xl` → `max-w-4xl` for bedre lesbarhet og luftighet på iPad. Bildet i spørsmål: `max-h-[55vh]` i fullskjerm
-- Ikke-fullskjerm: behold `max-w-2xl`
+**2. `src/components/dashboard/IncidentDetailDialog.tsx`**
+- Endre rendering av "Rapportert av" til å sjekke per-incident-flag i tillegg til selskapsinnstilling:
+  ```tsx
+  const isAnonymous =
+    incident.reported_anonymously ||
+    companySettings.hide_reporter_identity;
+  const showName = !isAnonymous || (isAdmin && departmentsEnabled);
+  ```
+  Vis "Anonym" når `!showName`. Admin-/avdelings-overstyring beholdes uendret (admin kan fortsatt se identitet).
 
-**4. Padding på fullskjerm-wrapper**
-- I `DialogContent`-wrapper: redusér `p-4 sm:p-6` → `p-2 sm:p-4` i fullskjerm slik at innholdet får ~24-32px ekstra plass på hver side
-
-**5. Video-container høyde**
-- YouTubeClipPlayer beholder `aspect-video`. Når wrapperen er bredere blir videoen automatisk større. Ingen endring i komponenten.
+**3. `src/integrations/supabase/types.ts`**
+- Auto-genereres etter migrasjonen — ingen manuell endring.
 
 ### Filer som endres
-- `src/components/training/TakeCourseDialog.tsx` — kondisjonelle Tailwind-klasser basert på `isFullscreen` for video-, bilde- og spørsmålsblokkene + redusert padding
+- **Ny migrasjon** — `incidents.reported_anonymously` boolean.
+- `src/components/dashboard/AddIncidentDialog.tsx` — checkbox/info + send `reported_anonymously` ved insert/update/offline.
+- `src/components/dashboard/IncidentDetailDialog.tsx` — bruk per-incident-flag i visningslogikken.
+
+### UX-detaljer
+- Standard: ikke anonym (må aktivt velges).
+- Hvis global anonymitet er på: ingen valgmulighet, kun informasjonstekst — og `reported_anonymously` lagres som `true` uansett.
+- Admins ser fortsatt identitet på anonyme rapporter når avdelings-funksjonen er aktivert (eksisterende oppførsel beholdes).
+- Ingen brytende endring: eksisterende rapporter får `reported_anonymously = false` og vises som før (avhengig av selskapsinnstilling).
 
 ### Resultat
-På iPad i fullskjerm vil videoer fylle ~90% av skjermbredden (i stedet for ~50%), bilder bruker både bredde og høyde, og spørsmålskort blir bredere og mer behagelig å lese. Vanlig (ikke-fullskjerm) modus er uendret.
+Brukeren får valgfri anonymitet per rapport når selskapet ikke har tvunget global anonymitet. Når global er på, kommuniseres dette tydelig i skjemaet, og rapporten lagres anonymt uten ekstra interaksjon.
 
