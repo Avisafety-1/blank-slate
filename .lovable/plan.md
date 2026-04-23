@@ -1,38 +1,85 @@
 
+# Fiks lydtap etter AI-generering av kurs
 
-# Re-deploy `generate-course` og bekreft fiks
+## Bekreftet årsak
 
-## Diagnose
+Lyden blir faktisk generert riktig i edge-funksjonen:
 
-Koden i `supabase/functions/generate-course/index.ts` er **allerede korrekt** (linjene 444–487 inneholder den fiksen vi ble enige om: rå objekt + verify-SELECT + UPDATE-fallback). Men edge-funksjon-loggen for det nyeste kursforsøket (`a635a0a6…` kjørt 18:32) viser fortsatt det **gamle** loggformatet: `[intro1] inserted OK (audio=yes, image=no)` — ikke det nye `[intro1] verified content_json: …`.
+- `generate-course`-loggen viser `openai status=200`
+- mp3 lastes opp
+- `content_json` blir verifisert som `NOT NULL`
 
-Det betyr at den siste filendringen aldri ble deployed til Supabase Edge Runtime. Funksjonen kjører fortsatt gammel kode som verken verifiserer eller har UPDATE-fallback. Derfor er `content_json` fortsatt NULL i alle 13 rader, og lyden spilles ikke.
+Men det nye AI-kurset blir deretter åpnet direkte i kurseditoren, og når kurset lagres der blir alle slides skrevet tilbake med:
 
-## Løsning
+- `content_json: null`
 
-### 1. Tving re-deploy av `generate-course`
-Bruk `supabase--deploy_edge_functions` med `["generate-course"]` for å pushe den faktiske filen. Etter deploy bekreftes ny versjon ved å se etter `verified content_json:` i loggen.
+Det sletter:
+- `narration_audio_url`
+- `narration_text`
+- `heading`
+- `source_reference`
+- forklaringer på spørsmål
 
-### 2. Test umiddelbart
-Slett kurset «Operasjonelle Begrensninger…» (`a635a0a6…`) og generer et nytt for å bekrefte at `content_json` nå lagres med `narration_audio_url`.
+Dermed finner `TakeCourseDialog` ingen lyd-URL og har ingenting å spille av.
 
-### 3. Hvis fiksen fortsatt ikke fungerer (insert dropper feltet stille)
-Da er det noe rart med PostgREST/jsonb-håndteringen i denne spesifikke Deno-versjonen. Plan B blir å **droppe content_json fra insert helt** og kjøre en separat `UPDATE`-setning rett etter — UPDATE har en helt annen kodepath og er garantert å fungere. Logikken finnes allerede som fallback (linje 471–487), så vi kan bare snu den til primærløsning.
+## Endringer som skal gjøres
 
-### 4. Bonus: fyll inn data for de 3 eksisterende kursene
-MP3-filene ligger allerede i storage-bøtta `training-narration`. Kjør et engangs-SQL-skript som finner mp3-filene per slide og setter `content_json` med signert URL. Da slipper du å regenerere noen av kursene.
+### 1. Behold `content_json` i kurseditoren ved lagring
+Oppdater `src/components/admin/TrainingCourseEditor.tsx` slik at editoren ikke nullstiller `content_json` for eksisterende AI-slides.
 
-## Filer / handlinger
+Bytt fra:
+- `content_json: null`
 
-- **Re-deploy**: `supabase/functions/generate-course/index.ts` (ingen kodeendring nødvendig — bare push)
-- **Verifiser via logg**: lete etter `verified content_json: NOT NULL` etter ny generering
-- **Plan B (kun om nødvendig)**: Endre intro-slide-inserten til alltid å gjøre INSERT (uten content_json) → SELECT → UPDATE, slik at vi unngår jsonb-droppingen helt. Samme mønster på spørsmål-slides hvis de viser samme problem.
-- **Engangs reparasjon (valgfritt)**: SQL som lister mp3-filer fra `training-narration`-bøtta og oppdaterer eksisterende kurs sine slides — så «Operasjonelle Begrensninger», «Praktisk bruk av sjekklister» og «Kurs for dronepiloter hos K2 Security» får tilbake lyd uten regenerering.
+til:
+- `content_json: s.content_json ?? null`
 
-## Hva du gjør etter godkjenning
+for alle slide-typer ved insert/sync mot `training_questions`.
 
-1. Jeg deployer funksjonen på nytt
-2. Du sletter ett av de eksisterende kursene og genererer det på nytt
-3. Vi sjekker loggen sammen — `verified content_json: NOT NULL ✓` = ferdig
-4. Hvis du vil, kjører vi engangs-skriptet for å redde de tre eksisterende kursene
+Dette alene stopper tap av lyd og metadata.
 
+### 2. Beskytt AI-kurset mot unødvendig lagring rett etter generering
+Oppdater `src/components/admin/TrainingSection.tsx` slik at `onCourseCreated` ikke automatisk åpner editoren for AI-genererte kurs.
+
+Dagens flyt:
+- AI-kurs opprettes
+- `setEditingCourseId(courseId)`
+- `setEditorOpen(true)`
+
+Ny flyt:
+- oppdater kurslisten
+- eventuelt vis toast “Kurs opprettet”
+- ikke åpne editor automatisk
+
+Dette reduserer risikoen for at brukeren lagrer et AI-kurs uten å være klar over at metadata kan overskrives.
+
+## Filer som endres
+
+- `src/components/admin/TrainingCourseEditor.tsx`
+  - Bevar `content_json` når slides lagres
+- `src/components/admin/TrainingSection.tsx`
+  - Fjern auto-åpning av editor etter AI-generering
+
+## Forventet resultat
+
+Et nytt AI-generert kurs vil da beholde:
+- lyd-URL
+- opplesningstekst
+- slide-heading
+- kildehenvisning
+- forklaringstekst på spørsmål
+
+Og `TakeCourseDialog` vil igjen kunne vise:
+- `<audio controls autoPlay>` når `narration_audio_url` finnes
+- fallback-knapp for opplesning når bare `narration_text` finnes
+
+## Verifisering etter endring
+
+1. Generer et nytt AI-kurs
+2. Åpne kurset i forhåndsvisning uten å lagre det i editor
+3. Bekreft at intro-slidene viser lydspiller
+4. Lagre deretter kurset i editor
+5. Åpne forhåndsvisning igjen og bekreft at lyden fortsatt finnes
+
+## Teknisk detalj
+
+Problemet er ikke OpenAI, ikke edge-funksjonen og ikke selve avspilleren. Problemet er at frontend-editoren overskriver databasen etterpå med `content_json = null`, og dermed sletter lydreferansen som allerede var lagret korrekt.
