@@ -370,7 +370,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             image_url: s.image_url,
             sort_order: i,
             slide_type: s.slide_type,
-            content_json: null,
+            content_json: s.content_json ?? null,
             video_url: s.slide_type === "video" ? (s.video_url || null) : null,
             video_start_seconds: s.slide_type === "video" ? (s.video_start_seconds ?? null) : null,
             video_end_seconds: s.slide_type === "video" ? (s.video_end_seconds ?? null) : null,

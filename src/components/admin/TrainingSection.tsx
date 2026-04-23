@@ -684,10 +684,9 @@ export const TrainingSection = () => {
         onOpenChange={setAiGenOpen}
         folders={folders.map((f) => ({ id: f.id, name: f.name }))}
         initialFolderId={activeFolderId}
-        onCourseCreated={(courseId) => {
+        onCourseCreated={(_courseId) => {
           fetchCourses();
-          setEditingCourseId(courseId);
-          setEditorOpen(true);
+          toast.success("Kurs opprettet — lyd og innhold er bevart. Åpne for å redigere ved behov.");
         }}
       />
     </div>
