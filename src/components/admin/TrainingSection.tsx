@@ -434,8 +434,8 @@ export const TrainingSection = () => {
               </SelectContent>
             </Select>
           )}
-          {/* Share with children (owner + has children) */}
-          {isOwner && hasChildren && (
+          {/* Share with children: owner with children, OR parent viewing a course shared up from a child */}
+          {hasChildren && (isOwner || course.shared_with_parent) && (
             <Button
               size="sm"
               variant={course.visible_to_children ? "default" : "ghost"}
