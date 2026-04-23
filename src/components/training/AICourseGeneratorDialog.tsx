@@ -287,8 +287,8 @@ export const AICourseGeneratorDialog = ({
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <Upload className="h-10 w-10" />
-            <p className="font-medium">Dra og slipp PDF her</p>
-            <p className="text-xs">eller klikk for å velge (maks 50 MB)</p>
+            <p className="font-medium">Dra og slipp PDF eller Word her</p>
+            <p className="text-xs">eller klikk for å velge (.pdf eller .docx, maks 50 MB)</p>
           </div>
         )}
       </div>
