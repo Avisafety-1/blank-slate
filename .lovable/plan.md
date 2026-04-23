@@ -1,50 +1,38 @@
 
 
-# Fiks content_json-lagring (definitiv)
+# Re-deploy `generate-course` og bekreft fiks
 
-## Diagnose (bekreftet via DB)
+## Diagnose
 
-Edge function-loggen sier `inserted OK (audio=yes)`, men en direkte DB-spørring viser at **alle 12 rader har `content_json = NULL`**. Audiofilene (372 KB mp3) ble lastet opp til storage og OpenAI ble faktisk belastet — men URL-ene som peker til dem ble aldri lagret. Derfor får `<audio>`-taggen ingen `src` og spiller ingenting.
+Koden i `supabase/functions/generate-course/index.ts` er **allerede korrekt** (linjene 444–487 inneholder den fiksen vi ble enige om: rå objekt + verify-SELECT + UPDATE-fallback). Men edge-funksjon-loggen for det nyeste kursforsøket (`a635a0a6…` kjørt 18:32) viser fortsatt det **gamle** loggformatet: `[intro1] inserted OK (audio=yes, image=no)` — ikke det nye `[intro1] verified content_json: …`.
 
-**Hvorfor OpenAI-dashboardet ikke viser belastning ennå:** OpenAI Usage oppdateres med 1–24 timers forsinkelse. Men loggen vår viser klart at vi mottok 372096 bytes mp3 fra status 200 — det ble belastet.
-
-**Hvorfor `JSON.stringify(contentJson) as any` ikke fungerte:** Forrige fiks sendte en JSON-streng inn i et jsonb-felt. PostgREST tolker det da som en string-verdi (`"{...}"` som tekst), ikke som et jsonb-objekt — og siden tabellen sannsynligvis har en trigger eller validator som forventer et objekt, droppes feltet stille til NULL uten å feile inserten. `as any` skjulte typefeilen.
+Det betyr at den siste filendringen aldri ble deployed til Supabase Edge Runtime. Funksjonen kjører fortsatt gammel kode som verken verifiserer eller har UPDATE-fallback. Derfor er `content_json` fortsatt NULL i alle 13 rader, og lyden spilles ikke.
 
 ## Løsning
 
-### 1. Send `content_json` som rent JS-objekt (ikke stringified)
-PostgREST/Supabase-klienten serialiserer jsonb riktig fra et objekt. Fjern `JSON.stringify()` og `as any` rundt det. Bruk en eksplisitt typedeklarasjon på inserten istedenfor.
+### 1. Tving re-deploy av `generate-course`
+Bruk `supabase--deploy_edge_functions` med `["generate-course"]` for å pushe den faktiske filen. Etter deploy bekreftes ny versjon ved å se etter `verified content_json:` i loggen.
 
-### 2. Verifiser med en SELECT etter insert
-Etter hver intro-slide insert, gjør en SELECT på samme rad og logg `content_json IS NULL`. Hvis fortsatt NULL, faller vi tilbake til en `UPDATE`-setning som setter feltet eksplisitt — det omgår eventuelle insert-triggere som strippper jsonb.
+### 2. Test umiddelbart
+Slett kurset «Operasjonelle Begrensninger…» (`a635a0a6…`) og generer et nytt for å bekrefte at `content_json` nå lagres med `narration_audio_url`.
 
-### 3. Fallback: Direkte UPDATE etter insert
-Hvis SELECT viser at content_json ble droppet, kjør:
-```ts
-await admin.from("training_questions")
-  .update({ content_json: contentJson })
-  .eq("id", slideId);
-```
-Dette er garantert å fungere fordi UPDATE ikke går gjennom samme trigger-stack som INSERT.
+### 3. Hvis fiksen fortsatt ikke fungerer (insert dropper feltet stille)
+Da er det noe rart med PostgREST/jsonb-håndteringen i denne spesifikke Deno-versjonen. Plan B blir å **droppe content_json fra insert helt** og kjøre en separat `UPDATE`-setning rett etter — UPDATE har en helt annen kodepath og er garantert å fungere. Logikken finnes allerede som fallback (linje 471–487), så vi kan bare snu den til primærløsning.
 
-### 4. Be deg sjekke om det finnes en trigger på tabellen
-Etter fiksen viser jeg deg om det finnes en `BEFORE INSERT`-trigger på `training_questions` som kan ha strippet feltet. Hvis ja, fikser vi triggeren.
+### 4. Bonus: fyll inn data for de 3 eksisterende kursene
+MP3-filene ligger allerede i storage-bøtta `training-narration`. Kjør et engangs-SQL-skript som finner mp3-filene per slide og setter `content_json` med signert URL. Da slipper du å regenerere noen av kursene.
 
-## Filer som endres
+## Filer / handlinger
 
-- `supabase/functions/generate-course/index.ts`:
-  - Send `content_json: contentJson` (objekt, ikke string)
-  - Etter insert: SELECT for å verifisere, og UPDATE-fallback hvis NULL
-  - Logg `content_json IS NULL` etter både insert og update
+- **Re-deploy**: `supabase/functions/generate-course/index.ts` (ingen kodeendring nødvendig — bare push)
+- **Verifiser via logg**: lete etter `verified content_json: NOT NULL` etter ny generering
+- **Plan B (kun om nødvendig)**: Endre intro-slide-inserten til alltid å gjøre INSERT (uten content_json) → SELECT → UPDATE, slik at vi unngår jsonb-droppingen helt. Samme mønster på spørsmål-slides hvis de viser samme problem.
+- **Engangs reparasjon (valgfritt)**: SQL som lister mp3-filer fra `training-narration`-bøtta og oppdaterer eksisterende kurs sine slides — så «Operasjonelle Begrensninger», «Praktisk bruk av sjekklister» og «Kurs for dronepiloter hos K2 Security» får tilbake lyd uten regenerering.
 
-## Etter fiks
+## Hva du gjør etter godkjenning
 
-1. Slett kurset «Praktisk bruk av sjekklister før flyging» (id `52af6aca…`)
-2. Generer på nytt
-3. Loggen vil vise: `[intro1] verified content_json: NOT NULL` ✅
-4. Lyden spilles automatisk på intro-slides
-
-## Bonus-info
-
-Lyden eksisterer faktisk allerede i storage-bøtta `training-narration` for det forrige kurset — vi kunne i teorien skrevet et engangs-skript som gjenskaper signed URLs og fyller content_json for de eksisterende kursene. Si fra hvis du vil det istedenfor å regenerere.
+1. Jeg deployer funksjonen på nytt
+2. Du sletter ett av de eksisterende kursene og genererer det på nytt
+3. Vi sjekker loggen sammen — `verified content_json: NOT NULL ✓` = ferdig
+4. Hvis du vil, kjører vi engangs-skriptet for å redde de tre eksisterende kursene
 
