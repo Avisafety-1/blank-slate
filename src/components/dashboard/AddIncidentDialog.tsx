@@ -118,6 +118,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         setPilotId(incidentToEdit.pilot_id || null);
         setDroneId(incidentToEdit.drone_id || null);
         setEquipmentIds((incidentToEdit.equipment_ids as string[]) || []);
+        setReportAnonymously(!!incidentToEdit.reported_anonymously);
         if (incidentToEdit.pilot_id || incidentToEdit.drone_id || ((incidentToEdit.equipment_ids as string[])?.length > 0)) {
           setResourcesOpen(true);
         }
@@ -163,6 +164,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       setDroneId(null);
       setEquipmentIds([]);
       setResourcesOpen(false);
+      setReportAnonymously(false);
     }
   }, [open, defaultDate, incidentToEdit, defaultMissionId]);
 
@@ -393,6 +395,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         pilot_id: pilotId || null,
         drone_id: droneId || null,
         equipment_ids: equipmentIds.length > 0 ? equipmentIds : null,
+        reported_anonymously: globalAnonymous || reportAnonymously,
       };
 
       // === OFFLINE PATH ===
