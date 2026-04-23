@@ -1,77 +1,113 @@
 
 
-# AI Course Generator — integrert i Opplæring-modulen
+# AI-foreslåtte kurskategorier + talende intro-slides
 
-Bygger en AI-drevet kursgenerator som tar en operasjonsmanual (PDF) og produserer ferdige kurs i den **eksisterende** opplæringsmodulen (`training_courses` / `training_questions` / `training_question_options`). Ingen parallelle tabeller — alt havner i samme system slik at tildeling, gjennomføring, kompetanseregistrering og resultater fungerer som før.
+Bygger om AI Kursgeneratoren slik at AI selv leser manualen og foreslår flere kurs-temaer (hvert med kapittelreferanse). Brukeren velger ett tema, og AI genererer et **test-orientert** kurs som starter med talende, visuelt rike intro-slides (TTS + AI-bilder) før spørsmålene.
 
-## Brukerflyt
+## Ny brukerflyt
 
-1. På Admin → Opplæring kommer en ny knapp **"Generer med AI"** (ved siden av "Nytt kurs" og "Ny mappe").
-2. Dialog åpnes med tre steg:
-   - **Steg 1 — Last opp manual**: Dra-og-slipp PDF (maks 50 MB). Lagres i `manuals`-bucket. Tekst trekkes ut i nettleseren med `pdfjs-dist` (samme bibliotek som allerede brukes i `TrainingCourseEditor`). Tekst chunkes (~1000 ord, foretrekker overskrifter) og sendes til edge function for embedding-lagring.
-   - **Steg 2 — Konfigurer kurs**: Rolle (Pilot / Observatør / Administrator), Vanskelighetsgrad (Lett / Medium / Vanskelig), Antall spørsmål (5 / 10 / 20), Fokusområde (valgfri tekst), Mappe (valgfri — bruker eksisterende mapper).
-   - **Steg 3 — Generer**: Kaller `generate-course` edge function. Viser progress. Når ferdig: kurset åpnes i den **eksisterende** `TrainingCourseEditor` slik at admin kan finpusse spørsmål, legge til bilder, justere bestågrense osv. før publisering.
-3. Etter publisering brukes vanlig **TakeCourseDialog** for gjennomføring — score lagres i `training_assignments` og kompetanse i `personnel_competencies` som i dag.
+```text
+Steg 1: Last opp manual (uendret)
+  ↓
+Steg 2: AI foreslår 5–8 kurs-temaer
+  [☐ Nødprosedyrer ved tap av GPS — Kap. 7.3]
+  [☐ Batterihåndtering og lagring — Kap. 4.1–4.2]
+  [☐ Pre-flight inspeksjon — Kap. 3]
+  ...
+  Hvert forslag: tittel + kapittelreferanse + 2-linjes forklaring
+  Brukeren velger ETT (eller flere → ett kurs per).
+  ↓
+Steg 3: Velg lengde (5/10/15 spm) + om narrasjon skal genereres
+  ↓
+Steg 4: Generering
+  - AI lager 2–3 intro-slides (forklarende tekst, hver med tittel)
+  - Hver intro-slide får AI-generert bilde (Nano Banana)
+  - Hver intro-slide får TTS-lyd
+  - Deretter X spørsmål (ren test-modus, ingen scenario-friskrift)
+```
 
-## Database-endringer
+## Datamodell (bygger på eksisterende `training_questions`)
 
-Nye tabeller (eksisterende kurs-tabeller røres ikke):
+`training_questions.slide_type` brukes allerede (`content` / `question` / `video`). Vi utvider `content_json` for `slide_type='content'` med:
 
-- `manuals` — `id`, `company_id`, `title`, `file_url`, `file_size`, `page_count`, `uploaded_by`, `created_at`. RLS: bedrifts-isolert via `get_user_visible_company_ids`.
-- `manual_chunks` — `id`, `manual_id`, `chunk_index`, `chunk_text`, `section_heading`, `embedding vector(1536)`, `token_count`. RLS: arvet via `manual_id`. GIN/IVFFlat-indeks på embedding.
-- Ny kolonne `training_courses.source_manual_id uuid` (nullable, FK → manuals) for sporbarhet.
-- Storage bucket `manuals` (privat). RLS: kun samme selskap kan lese/skrive sine egne PDF-er. Path-mønster: `{company_id}/{manual_id}.pdf`.
-- pgvector-extension aktiveres (`create extension if not exists vector`).
+```json
+{
+  "narration_text": "...",          // det TTS skal lese
+  "narration_audio_url": "...",     // ferdig generert mp3 i Storage
+  "ai_generated": true,
+  "source_reference": "Kap. 7.3"
+}
+```
+
+Bilde lagres på eksisterende `training_questions.image_url`.
+
+Ny storage-bucket `training-narration` (privat, signed URL) for mp3-filer.
+Eksisterende `course-images`-bucket (eller ny `training-visuals`) brukes til AI-bilder.
+
+Ingen schema-endringer på spørsmål — kun ny bucket + RLS.
 
 ## Edge functions
 
-**`process-manual`** (kalt etter upload)
-- Input: `manual_id`, `chunks: [{ index, text, heading }]`
-- Genererer embeddings via Lovable AI Gateway (`google/text-embedding-004` eller OpenAI embedding) i batcher på 20.
-- Insert i `manual_chunks`. Returnerer `{ chunk_count }`.
+**1. `suggest-course-topics`** (NY)
+- Input: `manual_id`
+- Henter et representativt utvalg chunks (med headings) fra `manual_chunks`
+- Ber `gemini-2.5-pro` via tool-call returnere:
+  ```json
+  { "topics": [
+      { "title": "...", "chapter_reference": "Kap. 7.3",
+        "description": "Hva kurset dekker, 1-2 setninger",
+        "focus_query": "kort søkesetning for retrieval" }
+  ] }
+  ```
+- Returnerer 5–8 forslag
 
-**`generate-course`**
-- Input: `manual_id`, `role`, `difficulty`, `length`, `focus_area`, `folder_id`.
-- Henter relevante chunks: hvis `focus_area` finnes → embed query → top-K via pgvector cosine similarity (K = 8–12). Ellers → diversifisert utvalg (jevnt fordelt på `chunk_index`).
-- Sender til Lovable AI (`google/gemini-2.5-pro`) med strukturert output via tool-calling (ikke fri JSON) for garantert gyldig schema. System-prompt og bruker-prompt nøyaktig som spesifisert (norsk-tilpasset for AviSafe), med eksplisitt regel: "Bruk kun gitt innhold, ikke finn på."
-- Mapper AI-output til eksisterende skjema:
-  - `multiple_choice` → `training_questions.slide_type='question'` + `training_question_options` (én markert `is_correct=true`)
-  - `scenario` → `training_questions.slide_type='question'` med scenariet flettet inn i `question_text` og forklaring i `content_json.explanation`. `source_reference` lagres i `content_json.source_reference`.
-- Oppretter `training_courses`-rad med `status='draft'`, `source_manual_id`, valgt `folder_id`, `passing_score=80`, `validity_months=12`.
-- Returnerer `course_id`. Frontend åpner deretter `TrainingCourseEditor` med kurset.
+**2. `generate-course`** (UTVIDES)
+- Nye input-felt: `topic_title`, `topic_description`, `chapter_reference`, `focus_query`, `include_narration: boolean`, `include_visuals: boolean`
+- AI-schema utvides: `intro_slides: [{ heading, narration_text, image_prompt, source_reference }]` + `questions: [...]` (kun multiple_choice — fjerner scenario-typen for å holde det til en ren test)
+- Etter AI-svar:
+  - For hver intro-slide:
+    - Generer bilde via `google/gemini-2.5-flash-image` (Nano Banana) → last opp til Storage → lagre URL i `image_url`
+    - Generer TTS via Lovable AI Gateway TTS-endepunkt → last opp mp3 → lagre URL i `content_json.narration_audio_url`
+  - Sett inn intro-slides FØR spørsmål (sort_order 0..n), spørsmål etter
+- Skipper bilde/lyd hvis togglen er av (gir tekstbasert intro-slide kun)
 
-Alle funksjoner: CORS-headere, JWT-validering i kode, 429/402-håndtering med toast på klient.
+## Frontend
 
-## Frontend-komponenter
+**`AICourseGeneratorDialog.tsx`** — utvides til 4 steg:
+- Steg 1 Upload (uendret)
+- Steg 2 NY `TopicSuggestionsStep`: kortliste med foreslåtte temaer, hver som klikkbart kort med tittel, kapittel-badge og beskrivelse. Brukeren velger ETT kort.
+- Steg 3 Config (forenkles): kun antall spørsmål, mappe, og to togglene «Inkluder talende intro» og «Inkluder bilder». Rolle/vanskelighet/fokus-tekst fjernes (avledes av valgt tema).
+- Steg 4 Genererer (med detaljerte stage-meldinger: «Lager intro-tekst…», «Genererer bilde 1/3…», «Lager tale…», «Lager spørsmål…»)
 
-- `src/components/training/AICourseGeneratorDialog.tsx` — 3-stegs wizard (upload → config → generate).
-- `src/components/training/ManualUploadStep.tsx` — drag/drop + pdfjs tekstuttrekk + chunking-logikk.
-- `src/components/training/CourseConfigStep.tsx` — skjema med rolle/vanskelighet/lengde/fokus/mappe.
-- `src/lib/manualChunker.ts` — splitt på `\n\n[A-Z0-9.]+ ` (overskriftsmønster), fallback ord-vindu 1000 med 100 overlap.
-- `TrainingSection.tsx`: ny knapp "Generer med AI" + state for å åpne dialogen + flow som åpner `TrainingCourseEditor` med returnert `course_id`.
-- Eksisterende kort-visning, badges, mappestruktur, deling oppover/nedover, gjennomføring og resultater fungerer uendret.
+**Avspilling i eksisterende kursvisning**
+`TakeCourseDialog.tsx` viser allerede slides paginert. For `slide_type='content'` med `narration_audio_url` legger vi til en `<audio controls autoPlay>` over bildet, og en stor «Neste»-knapp som blir aktiv når lyd er ferdig (eller umiddelbart hvis brukeren foretrekker det). Ingen videointegrasjon trengs.
 
-## UX-detaljer
+## Tekst-til-tale
 
-- Mørkt tema, glassmorfisme — matcher resten av appen.
-- Wizard som `Dialog` (mobil: full sheet), kortbasert layout.
-- Progress-indikator under generering ("Analyserer manual…", "Genererer spørsmål…", "Lagrer kurs…").
-- "Regenerer spørsmål"-knapp inne i editor (Phase 2 — valgfri, lagt inn som disabled placeholder).
-- Tydelig melding hvis bestemt seksjon mangler innhold: AI hopper over og UI viser "X spørsmål generert (av Y forespurt)".
-- Sporbarhet: hvert spørsmål viser liten badge "Kilde: Seksjon 3.2" i editor og kan vises under gjennomføring i forklaringen.
+Bruker Lovable AI Gateway sin TTS-modell (OpenAI TTS via gatewayen). Norsk stemme prioriteres. Hver intro-slide får én mp3 (~30–60 sek). Filene lastes opp til `training-narration/{company_id}/{course_id}/{slide_id}.mp3` og hentes via signed URL ved avspilling.
 
-## Tekniske detaljer
+Hvis TTS ikke er tilgjengelig i gatewayen, faller vi tilbake til klient-side `SpeechSynthesisUtterance` (Web Speech API) som lar nettleseren lese teksten — gratis, men stemmekvalitet varierer per OS.
 
-- **Embedding-modell**: `text-embedding-3-small` via OpenAI hvis `OPENAI_API_KEY` finnes (best kvalitet). Fallback til Lovable AI Gateway hvis ikke. Brukeren spørres ikke — vi bruker det som er konfigurert (sjekkes i edge function).
-- **Generering**: `google/gemini-2.5-pro` for kvalitet på lange kontekster. Tool-calling for strukturert output.
-- **PDF-størrelse**: tekst trekkes ut klient-side for å spare edge-tid; kun tekst-chunks sendes til server.
-- **Sikkerhet**: kun admin-rolle kan generere kurs (sjekk via `useRoleCheck`). Edge function validerer at `manual_id` tilhører kallende brukers selskap.
-- **Feilhåndtering**: Toast på 429 (rate limit), 402 (kreditt), nettverksfeil. Hvis AI returnerer ugyldig schema → retry én gang, deretter feilmelding.
+## Bilder
 
-## Endrede filer
+`google/gemini-2.5-flash-image` (Nano Banana) — én prompt per intro-slide, generert serverside i `generate-course`. Vi gir AI en stilguide i prompten («profesjonell teknisk illustrasjon, mørk SaaS-bakgrunn, ingen tekst i bildet, fotorealistisk drone-kontekst») så det matcher AviSafes mørke tema.
 
-- Nye: `AICourseGeneratorDialog.tsx`, `ManualUploadStep.tsx`, `CourseConfigStep.tsx`, `manualChunker.ts`, edge functions `process-manual/index.ts` og `generate-course/index.ts`.
-- Endret: `src/components/admin/TrainingSection.tsx` (knapp + state).
-- Migrasjon: `manuals`, `manual_chunks`, `source_manual_id`-kolonne, RLS-policyer, storage bucket + policyer, pgvector-extension.
-- `supabase/config.toml`: registrer to nye edge functions.
+## Filer som endres
+
+**Nye:**
+- `supabase/functions/suggest-course-topics/index.ts`
+- `src/components/training/TopicSuggestionsStep.tsx`
+- Migrasjon: ny storage bucket `training-narration` + RLS, ny bucket `training-visuals` + RLS
+
+**Endret:**
+- `supabase/functions/generate-course/index.ts` — schema, intro-slides, bilde- og lydgenerering, kun multiple_choice
+- `src/components/training/AICourseGeneratorDialog.tsx` — 4-stegs flyt, fjern rolle/vanskelighet, legg til toggles
+- `src/components/training/TakeCourseDialog.tsx` — `<audio>`-element for narration på content-slides
+- `supabase/config.toml` — registrer `suggest-course-topics`
+
+## Kostnads-/begrensningsnotat
+
+- 3 intro-slides × (1 bilde + 1 TTS-lyd) = ~6 ekstra AI-kall per kurs. Bør være OK.
+- TTS-fallback til Web Speech API hvis brukeren skrur av «Inkluder talende intro».
+- AI-video ekskluderes som du selv foreslo — for dyrt/tregt akkurat nå.
 
