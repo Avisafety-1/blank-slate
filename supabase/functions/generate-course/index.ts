@@ -149,8 +149,16 @@ Deno.serve(async (req) => {
     }
 
     // Authorize: user must have visibility to that company
-    const { data: visible } = await admin.rpc("get_user_visible_company_ids", { p_user_id: userId });
-    if (!Array.isArray(visible) || !visible.includes(manual.company_id)) {
+    const { data: visibleRaw } = await admin.rpc("get_user_visible_company_ids", { p_user_id: userId });
+    const visibleIds: string[] = Array.isArray(visibleRaw)
+      ? visibleRaw.map((v: any) => (typeof v === "string" ? v : v?.company_id ?? v?.get_user_visible_company_ids ?? null)).filter(Boolean)
+      : [];
+    let authorized = visibleIds.includes(manual.company_id);
+    if (!authorized) {
+      const { data: prof } = await admin.from("profiles").select("company_id").eq("id", userId).maybeSingle();
+      authorized = prof?.company_id === manual.company_id;
+    }
+    if (!authorized) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
