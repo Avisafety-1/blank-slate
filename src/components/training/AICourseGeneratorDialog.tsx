@@ -80,7 +80,7 @@ export const AICourseGeneratorDialog = ({
 
   useEffect(() => {
     if (open) {
-      setStep("upload");
+      setStep("select");
       setFile(null);
       setTitle("");
       setManualId(null);
@@ -92,8 +92,52 @@ export const AICourseGeneratorDialog = ({
       setSelectedTopic(null);
       setTopicsError(null);
       setFolderId(initialFolderId || null);
+      loadExistingManuals();
     }
-  }, [open, initialFolderId]);
+  }, [open, initialFolderId, companyId]);
+
+  const loadExistingManuals = async () => {
+    if (!companyId) return;
+    setLoadingManuals(true);
+    try {
+      const { data: manuals, error } = await supabase
+        .from("manuals")
+        .select("id, title, page_count, file_size, created_at")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const ids = (manuals || []).map((m) => m.id);
+      let counts: Record<string, number> = {};
+      if (ids.length > 0) {
+        const { data: chunks } = await supabase
+          .from("manual_chunks")
+          .select("manual_id")
+          .in("manual_id", ids);
+        for (const c of chunks || []) {
+          counts[c.manual_id] = (counts[c.manual_id] || 0) + 1;
+        }
+      }
+      setExistingManuals(
+        (manuals || []).map((m) => ({ ...m, chunk_count: counts[m.id] || 0 }))
+      );
+    } catch (e) {
+      console.error("loadExistingManuals", e);
+    } finally {
+      setLoadingManuals(false);
+    }
+  };
+
+  const useExistingManual = (m: ExistingManual) => {
+    if (m.chunk_count === 0) {
+      toast.error("Denne manualen mangler AI-indeks. Last opp på nytt.");
+      return;
+    }
+    setManualId(m.id);
+    setTitle(m.title);
+    setChunkCount(m.chunk_count);
+    setStep("topics");
+    fetchTopics(m.id);
+  };
 
   const isPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
   const isDocx = (f: File) =>
