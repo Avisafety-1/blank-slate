@@ -71,6 +71,7 @@ export const AICourseGeneratorDialog = ({
   const [length, setLength] = useState<5 | 10 | 15>(10);
   const [includeNarration, setIncludeNarration] = useState(true);
   const [includeVisuals, setIncludeVisuals] = useState(true);
+  const [voice, setVoice] = useState<string>("coral");
   const [folderId, setFolderId] = useState<string | null>(initialFolderId || null);
 
   const [generating, setGenerating] = useState(false);
