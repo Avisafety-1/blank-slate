@@ -1391,19 +1391,7 @@ const Admin = () => {
 
           {!isChildCompany && (
             <TabsContent value="training" className="mt-4 sm:mt-8">
-              {isSuperAdmin ? (
-                <TrainingSection />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-                  <GraduationCap className="h-12 w-12 text-muted-foreground/50" />
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-foreground">Side under utvikling</h3>
-                    <p className="text-sm text-muted-foreground max-w-md">
-                      Opplæringsmodulen er foreløpig kun tilgjengelig for utvalgte selskaper. Kontakt oss for mer informasjon.
-                    </p>
-                  </div>
-                </div>
-              )}
+              <TrainingSection />
             </TabsContent>
           )}
         </Tabs>
