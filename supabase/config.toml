@@ -176,3 +176,9 @@ verify_jwt = false
 
 [functions.fetch-notams]
 verify_jwt = false
+
+[functions.process-manual]
+verify_jwt = true
+
+[functions.generate-course]
+verify_jwt = true
