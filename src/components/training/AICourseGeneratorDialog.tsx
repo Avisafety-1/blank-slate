@@ -347,6 +347,61 @@ export const AICourseGeneratorDialog = ({
     }
   };
 
+  const renderSelect = () => (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Velg en tidligere opplastet manual for å spare tid og AI-kostnader, eller last opp en ny.
+      </p>
+
+      {loadingManuals ? (
+        <div className="py-8 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : existingManuals.length > 0 ? (
+        <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+          {existingManuals.map((m) => {
+            const indexed = m.chunk_count > 0;
+            return (
+              <Card
+                key={m.id}
+                onClick={() => indexed && useExistingManual(m)}
+                className={`p-3 transition border-2 ${
+                  indexed
+                    ? "cursor-pointer border-border hover:border-primary hover:bg-muted/30"
+                    : "border-border opacity-60 cursor-not-allowed"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <BookOpen className="h-5 w-5 mt-0.5 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{m.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {indexed ? `${m.chunk_count} seksjoner` : "Ikke indeksert"}
+                      {m.page_count ? ` · ${m.page_count} sider` : ""}
+                      {" · lastet opp "}
+                      {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: nb })}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="py-6 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
+          Ingen tidligere manualer funnet.
+        </div>
+      )}
+
+      <div className="flex justify-between gap-2 pt-2">
+        <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+        <Button onClick={() => setStep("upload")}>
+          <Plus className="h-4 w-4 mr-2" /> Last opp ny manual
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderUpload = () => (
     <div className="space-y-4">
       <div>
