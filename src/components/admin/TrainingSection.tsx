@@ -520,14 +520,32 @@ export const TrainingSection = () => {
                 </div>
               </button>
               {!folder.inherited && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive"
-                  onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100">
+                  {hasChildren && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={`h-6 w-6 p-0 ${folder.visible_to_children ? "text-primary" : "text-muted-foreground"}`}
+                      onClick={(e) => { e.stopPropagation(); handleToggleFolderVisibleToChildren(folder); }}
+                      title={folder.visible_to_children ? "Slutt å dele mappe med underavdelinger" : "Del mappe med underavdelinger"}
+                    >
+                      <ArrowDown className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 text-destructive"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              {!folder.inherited && folder.visible_to_children && (
+                <Badge variant="outline" className="absolute bottom-1 right-1 text-[9px] h-4 px-1 border-primary/30 text-primary">
+                  <ArrowDown className="h-2.5 w-2.5" />
+                </Badge>
               )}
             </div>
           ))}
