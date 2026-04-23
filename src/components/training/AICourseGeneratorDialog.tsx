@@ -8,7 +8,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Upload, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Sparkles, Upload, FileText, Loader2, CheckCircle2, AlertCircle, BookOpen, Plus } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,7 +30,16 @@ interface Props {
   onCourseCreated: (courseId: string) => void;
 }
 
-type Step = "upload" | "topics" | "config" | "generate" | "done";
+type Step = "select" | "upload" | "topics" | "config" | "generate" | "done";
+
+interface ExistingManual {
+  id: string;
+  title: string;
+  page_count: number | null;
+  file_size: number | null;
+  created_at: string;
+  chunk_count: number;
+}
 
 export const AICourseGeneratorDialog = ({
   open,
@@ -38,13 +49,17 @@ export const AICourseGeneratorDialog = ({
   onCourseCreated,
 }: Props) => {
   const { companyId, user } = useAuth();
-  const [step, setStep] = useState<Step>("upload");
+  const [step, setStep] = useState<Step>("select");
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState("");
   const [manualId, setManualId] = useState<string | null>(null);
   const [chunkCount, setChunkCount] = useState(0);
+
+  // Existing manuals
+  const [existingManuals, setExistingManuals] = useState<ExistingManual[]>([]);
+  const [loadingManuals, setLoadingManuals] = useState(false);
 
   // Topics
   const [topicsLoading, setTopicsLoading] = useState(false);
@@ -65,7 +80,7 @@ export const AICourseGeneratorDialog = ({
 
   useEffect(() => {
     if (open) {
-      setStep("upload");
+      setStep("select");
       setFile(null);
       setTitle("");
       setManualId(null);
@@ -77,8 +92,52 @@ export const AICourseGeneratorDialog = ({
       setSelectedTopic(null);
       setTopicsError(null);
       setFolderId(initialFolderId || null);
+      loadExistingManuals();
     }
-  }, [open, initialFolderId]);
+  }, [open, initialFolderId, companyId]);
+
+  const loadExistingManuals = async () => {
+    if (!companyId) return;
+    setLoadingManuals(true);
+    try {
+      const { data: manuals, error } = await supabase
+        .from("manuals")
+        .select("id, title, page_count, file_size, created_at")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const ids = (manuals || []).map((m) => m.id);
+      let counts: Record<string, number> = {};
+      if (ids.length > 0) {
+        const { data: chunks } = await supabase
+          .from("manual_chunks")
+          .select("manual_id")
+          .in("manual_id", ids);
+        for (const c of chunks || []) {
+          counts[c.manual_id] = (counts[c.manual_id] || 0) + 1;
+        }
+      }
+      setExistingManuals(
+        (manuals || []).map((m) => ({ ...m, chunk_count: counts[m.id] || 0 }))
+      );
+    } catch (e) {
+      console.error("loadExistingManuals", e);
+    } finally {
+      setLoadingManuals(false);
+    }
+  };
+
+  const useExistingManual = (m: ExistingManual) => {
+    if (m.chunk_count === 0) {
+      toast.error("Denne manualen mangler AI-indeks. Last opp på nytt.");
+      return;
+    }
+    setManualId(m.id);
+    setTitle(m.title);
+    setChunkCount(m.chunk_count);
+    setStep("topics");
+    fetchTopics(m.id);
+  };
 
   const isPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
   const isDocx = (f: File) =>
@@ -288,6 +347,61 @@ export const AICourseGeneratorDialog = ({
     }
   };
 
+  const renderSelect = () => (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Velg en tidligere opplastet manual for å spare tid og AI-kostnader, eller last opp en ny.
+      </p>
+
+      {loadingManuals ? (
+        <div className="py-8 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : existingManuals.length > 0 ? (
+        <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+          {existingManuals.map((m) => {
+            const indexed = m.chunk_count > 0;
+            return (
+              <Card
+                key={m.id}
+                onClick={() => indexed && useExistingManual(m)}
+                className={`p-3 transition border-2 ${
+                  indexed
+                    ? "cursor-pointer border-border hover:border-primary hover:bg-muted/30"
+                    : "border-border opacity-60 cursor-not-allowed"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <BookOpen className="h-5 w-5 mt-0.5 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{m.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {indexed ? `${m.chunk_count} seksjoner` : "Ikke indeksert"}
+                      {m.page_count ? ` · ${m.page_count} sider` : ""}
+                      {" · lastet opp "}
+                      {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: nb })}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="py-6 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
+          Ingen tidligere manualer funnet.
+        </div>
+      )}
+
+      <div className="flex justify-between gap-2 pt-2">
+        <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+        <Button onClick={() => setStep("upload")}>
+          <Plus className="h-4 w-4 mr-2" /> Last opp ny manual
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderUpload = () => (
     <div className="space-y-4">
       <div>
@@ -348,9 +462,9 @@ export const AICourseGeneratorDialog = ({
         </div>
       )}
 
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => onOpenChange(false)}>
-          Avbryt
+      <div className="flex justify-between gap-2">
+        <Button variant="outline" onClick={() => setStep("select")} disabled={uploadProgress > 0 && uploadProgress < 100}>
+          Tilbake
         </Button>
         <Button onClick={extractAndUpload} disabled={!file || !title.trim() || (uploadProgress > 0 && uploadProgress < 100)}>
           {uploadProgress > 0 && uploadProgress < 100 ? (
@@ -488,12 +602,14 @@ export const AICourseGeneratorDialog = ({
             AI Kursgenerator
           </DialogTitle>
           <DialogDescription>
-            {step === "upload" && "Steg 1 av 3 — Last opp en operasjonsmanual (PDF eller Word)"}
-            {step === "topics" && "Steg 2 av 3 — Velg tema for kurset"}
-            {step === "config" && "Steg 3 av 3 — Konfigurer kurset"}
+            {step === "select" && "Velg en eksisterende manual eller last opp en ny"}
+            {step === "upload" && "Last opp en operasjonsmanual (PDF eller Word)"}
+            {step === "topics" && "Velg tema for kurset"}
+            {step === "config" && "Konfigurer kurset"}
             {step === "generate" && "Genererer kurs…"}
           </DialogDescription>
         </DialogHeader>
+        {step === "select" && renderSelect()}
         {step === "upload" && renderUpload()}
         {step === "topics" && renderTopics()}
         {step === "config" && renderConfig()}
