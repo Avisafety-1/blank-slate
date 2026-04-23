@@ -315,6 +315,7 @@ export const AICourseGeneratorDialog = ({
           focus_query: selectedTopic.focus_query,
           include_narration: includeNarration,
           include_visuals: includeVisuals,
+          voice: includeNarration ? voice : undefined,
         },
       });
 
