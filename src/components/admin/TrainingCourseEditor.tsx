@@ -490,11 +490,14 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           {uploadingPdf && (
             <p className="text-xs text-muted-foreground">Konverterer sider til bilder...</p>
           )}
-          <div className="pt-2 border-t">
+          <div className="pt-2 border-t space-y-2">
             <Button variant="outline" size="sm" onClick={() => addVideoSlide()}>
               <Youtube className="h-4 w-4 mr-2" />
               Legg til YouTube-video
             </Button>
+            <p className="text-xs text-muted-foreground">
+              Annonser fjernes automatisk når videoen spilles av i kurset (via klipping og YouTubes innebygde spiller uten reklame mellom segmenter).
+            </p>
           </div>
         </CardContent>
       </Card>
