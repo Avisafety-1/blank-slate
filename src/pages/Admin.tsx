@@ -1387,11 +1387,9 @@ const Admin = () => {
           )}
 
 
-          {!isChildCompany && (
-            <TabsContent value="training" className="mt-4 sm:mt-8">
-              <TrainingSection />
-            </TabsContent>
-          )}
+          <TabsContent value="training" className="mt-4 sm:mt-8">
+            <TrainingSection />
+          </TabsContent>
         </Tabs>
       </main>
 
