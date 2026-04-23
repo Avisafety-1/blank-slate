@@ -678,6 +678,18 @@ export const TrainingSection = () => {
         onOpenChange={setCreateFolderOpen}
         onSuccess={() => { fetchFolders(); fetchCourses(); }}
       />
+
+      <AICourseGeneratorDialog
+        open={aiGenOpen}
+        onOpenChange={setAiGenOpen}
+        folders={folders.map((f) => ({ id: f.id, name: f.name }))}
+        initialFolderId={activeFolderId}
+        onCourseCreated={(courseId) => {
+          fetchCourses();
+          setEditingCourseId(courseId);
+          setEditorOpen(true);
+        }}
+      />
     </div>
   );
 };
