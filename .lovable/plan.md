@@ -1,48 +1,39 @@
 
 
-# Fiks lyd og content_json i AI-kursgenerering
+# Bytt til OpenAI gpt-4o-mini-tts med bedre stemme + prompt-styring
 
-Diagnose etter inspeksjon av siste genererte kurs (`69a310af…`):
+OpenAI har en nyere TTS-modell (`gpt-4o-mini-tts`) som er mer naturlig enn `tts-1`, og som lar oss styre tone, tempo og følelse via en `instructions`-parameter. I tillegg har vi tilgang til høykvalitets-stemmer som `marin` og `cedar` (anbefalt av OpenAI), samt klassikere som `coral`, `sage` og `nova`.
 
-## Problemer funnet
+## Endringer
 
-**1. `content_json` er fortsatt NULL i databasen.** Bilder lagres OK (image_url satt på 2 første slides), men jsonb-feltet droppes ved insert. Sannsynlig årsak: PostgREST-klienten i Deno serialiserer ikke nested objekter korrekt når raden bygges som et separat `const`-objekt og deretter sendes til `.insert(obj)`. Når `content_json` er null, finnes det ingen `narration_text` å lese opp — så hverken mp3 eller Web Speech-fallback har noe å si.
+### A. Oppgrader TTS-modell og stemme i `generate-course/index.ts`
+- Bytt fra `tts-1` til **`gpt-4o-mini-tts`** (mer naturlig prosodi, bedre på norsk)
+- Bytt fra `nova` til **`coral`** som standard (varmere, mer engasjerende — passer til opplæring). `marin`/`cedar` er nyeste, men optimalisert for engelsk.
+- Legg til **`instructions`**-parameter: «Snakk i en rolig, profesjonell og lærerik tone på norsk. Tydelig artikulasjon, moderat tempo, vennlig og inkluderende.»
+- Behold `mp3` som format (best kompatibilitet med `<audio>`-tag i nettleser)
 
-**2. TTS-kallet logges ikke.** Vi vet ikke om `generateTTS()` faktisk ble kalt, om OpenAI returnerte feil, eller om `slide.narration_text` var tomt fra LLM-en. Edge-loggen viser ingen TTS-relaterte meldinger overhodet.
+### B. Brukervalgbar stemme (valgfritt, anbefalt)
+Legg til en stemme-velger i `AICourseGeneratorDialog.tsx` slik at brukeren kan velge mellom:
+- **Coral** (varm kvinnestemme — standard)
+- **Sage** (rolig kvinnestemme)
+- **Onyx** (dyp mannstemme)
+- **Nova** (lys, energisk kvinnestemme)
 
-**3. Embedding-modellen finnes ikke lenger.** `google/text-embedding-004` ble fjernet fra AI Gateway. Vektor-søk feiler hver gang og faller tilbake til "ta hver N-te chunk" (funker, men gir dårligere kontekst-treff).
+Stemmen sendes med i request-bodyen til edge-funksjonen.
 
-## Løsning
-
-### A. Fiks `content_json`-persistering definitivt
-Bygg insert-objektet inline i `.insert({...})`-kallet (ikke som mellomliggende `const`), og send `content_json` som **`JSON.stringify(contentJson)`**. Postgres jsonb godtar dette og bevarer alle felter. Gjelder både intro-slides og spørsmål-slides.
-
-### B. Eksplisitt TTS-logging
-Logg hvert steg: «narration enabled? has text? calling OpenAI… status… bytes returned… upload result». Da kan vi diagnostisere på 1 sekund om det er LLM, OpenAI eller storage som svikter.
-
-### C. Verifiser `OPENAI_API_KEY`-tilgang
-Før første TTS-kall, logg om secret er satt (uten å printe verdien). Hvis ikke satt, push warning umiddelbart.
-
-### D. Fjern embedding-kallet
-Siden modellen ikke finnes i AI Gateway og fallback (jevn fordeling av chunks) fungerer godt nok for kursgenerering, droppes vektor-søket helt. Det forenkler koden, fjerner en feil-kilde, og sparer et AI-kall per kursgenerering.
-
-### E. Re-generer kurset
-Eksisterende kurs (`69a310af…` og `d4d3f5ca…`) må slettes manuelt og genereres på nytt etter fiksen — fordi `content_json` aldri ble lagret er det ingen vei tilbake.
+### C. Behold fallback-logikken
+Web Speech API-fallback i `TakeCourseDialog.tsx` står urørt — den brukes fortsatt hvis OpenAI feiler eller `narration_audio_url` mangler.
 
 ## Filer som endres
 
-- `supabase/functions/generate-course/index.ts`:
-  - Inline insert-objekter med `JSON.stringify(contentJson)` for jsonb-feltet
-  - Detaljert TTS-logging (enabled/has-text/openai-status/bytes/upload)
-  - Sjekk og logg `OPENAI_API_KEY`-tilstedeværelse ved oppstart
-  - Fjern `embedQuery()` og direkte hopp til chunked-fallback
+- `supabase/functions/generate-course/index.ts` — bytt modell til `gpt-4o-mini-tts`, ta imot `voice` fra request body (default `coral`), legg til `instructions` for norsk lærer-tone
+- `src/components/training/AICourseGeneratorDialog.tsx` — legg til Select-felt for stemme i steg 4 (kun synlig når «Inkluder talende intro» er på), send `voice` med i invoke-kallet
 
-Ingen frontend-endringer nødvendig — `TakeCourseDialog` og Web Speech-fallback er allerede klare til å bruke `narration_text` så snart den faktisk lagres.
+## Hva du må gjøre etterpå
 
-## Hva du bør gjøre etterpå
+Slett det forrige kurset «Planlegging av Oppdrag og Analyse av Luftrom» og generer det på nytt. Du vil høre tydelig forskjell — `gpt-4o-mini-tts` med `coral` + norsk-instruksjon låter merkbart mer naturlig enn `tts-1` med `nova`.
 
-1. Slett kurset «Planlegging av Oppdrag og Analyse av Luftrom» fra opplæringsmodulen
-2. Generer det på nytt
-3. Sjekk edge-loggen for `generate-course` — du vil se TTS-status linje for linje
-4. Hvis OpenAI fortsatt feiler, gir loggen oss eksakt feilkode (401 = nøkkel ugyldig, 429 = rate limit, etc.) så vi kan fikse målrettet
+## Kostnadsnotat
+
+`gpt-4o-mini-tts` er ~$0.015 per 1000 tegn — samme prisnivå som `tts-1`. Ingen ekstra kostnad for å oppgradere.
 
