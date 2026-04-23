@@ -506,8 +506,8 @@ ${contextBlock}`;
           question_text: q.question,
           sort_order: sortOrder++,
           slide_type: "question",
-          content_json: JSON.stringify(contentJson) as any,
-        })
+          content_json: contentJson,
+        } as any)
         .select("id")
         .single();
 
