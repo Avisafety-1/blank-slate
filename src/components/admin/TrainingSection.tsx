@@ -294,6 +294,20 @@ export const TrainingSection = () => {
     }
   };
 
+  const handleToggleFolderVisibleToChildren = async (folder: Folder) => {
+    try {
+      const { error } = await (supabase.from("training_course_folders") as any)
+        .update({ visible_to_children: !folder.visible_to_children })
+        .eq("id", folder.id);
+      if (error) throw error;
+      toast.success(folder.visible_to_children ? "Mappe-deling deaktivert" : "Mappe delt med underavdelinger");
+      fetchFolders();
+    } catch (err) {
+      console.error("Error toggling folder visible_to_children:", err);
+      toast.error("Kunne ikke oppdatere mappe-deling");
+    }
+  };
+
   if (editorOpen) {
     return (
       <TrainingCourseEditor
