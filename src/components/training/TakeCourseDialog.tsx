@@ -320,15 +320,57 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
   const renderSlide = (s: SlideData) => {
     if (s.slide_type === "content") {
+      const cj = (s.content_json as any) || {};
+      const narrationUrl: string | null = cj.narration_audio_url || null;
+      const narrationText: string | null = cj.narration_text || null;
+      const heading: string | null = cj.heading || null;
+      const sourceRef: string | null = cj.source_reference || null;
+
       return (
-        <div className="flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 max-w-3xl mx-auto">
+          {heading && (
+            <div className="text-center">
+              <h3 className="text-xl font-semibold">{heading}</h3>
+              {sourceRef && <p className="text-xs text-muted-foreground mt-1">{sourceRef}</p>}
+            </div>
+          )}
           {s.image_url ? (
             <img
               src={s.image_url}
-              alt={s.question_text}
-              className={`rounded-lg object-contain ${isFullscreen ? "max-h-[88vh] max-w-[96vw] w-auto" : "w-full max-h-[60vh]"}`}
+              alt={heading || s.question_text}
+              className={`rounded-lg object-contain ${isFullscreen ? "max-h-[60vh] max-w-[96vw] w-auto" : "w-full max-h-[40vh]"}`}
             />
-          ) : (
+          ) : null}
+          {narrationText && (
+            <p className="text-sm text-foreground/90 text-center leading-relaxed">{narrationText}</p>
+          )}
+          {narrationUrl ? (
+            <audio
+              key={s.id}
+              src={narrationUrl}
+              controls
+              autoPlay
+              className="w-full max-w-md"
+            />
+          ) : narrationText ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                try {
+                  const utter = new SpeechSynthesisUtterance(narrationText);
+                  utter.lang = "nb-NO";
+                  window.speechSynthesis.cancel();
+                  window.speechSynthesis.speak(utter);
+                } catch (e) {
+                  console.error("speech synthesis failed", e);
+                }
+              }}
+            >
+              ▶ Les opp
+            </Button>
+          ) : null}
+          {!s.image_url && !narrationText && !heading && (
             <p className="text-muted-foreground text-sm">Innholdsside</p>
           )}
         </div>
