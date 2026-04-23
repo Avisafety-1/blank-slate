@@ -447,20 +447,23 @@ ${contextBlock}`;
         source_reference: slide.source_reference || null,
       };
 
+      const introInsert = {
+        id: slideId,
+        course_id: courseId,
+        question_text: slide.heading || "Intro",
+        sort_order: sortOrder++,
+        slide_type: "content",
+        image_url: imageUrl,
+        content_json: contentJson as any,
+      };
+
       const { error: insErr } = await admin
         .from("training_questions")
-        .insert({
-          id: slideId,
-          course_id: courseId,
-          question_text: slide.heading || "Intro",
-          sort_order: sortOrder++,
-          slide_type: "content",
-          image_url: imageUrl,
-          content_json: contentJson as any,
-        } as any);
+        .insert(introInsert);
 
       if (insErr) {
         console.error("intro slide insert error", insErr);
+        warnings.push(`Intro-slide insert feilet: ${insErr.message}`);
       } else {
         createdSlides++;
       }
@@ -476,20 +479,23 @@ ${contextBlock}`;
         question_type: "multiple_choice",
       };
 
+      const questionInsert = {
+        course_id: courseId,
+        question_text: q.question,
+        sort_order: sortOrder++,
+        slide_type: "question",
+        content_json: contentJson as any,
+      };
+
       const { data: qRow, error: qErr } = await admin
         .from("training_questions")
-        .insert({
-          course_id: courseId,
-          question_text: q.question,
-          sort_order: sortOrder++,
-          slide_type: "question",
-          content_json: contentJson as any,
-        } as any)
+        .insert(questionInsert)
         .select("id")
         .single();
 
       if (qErr || !qRow) {
         console.error("question insert error", qErr);
+        if (qErr) warnings.push(`Spørsmål-insert feilet: ${qErr.message}`);
         continue;
       }
 
@@ -523,6 +529,7 @@ ${contextBlock}`;
         intro_slides_generated: createdSlides,
         questions_generated: createdQuestions,
         questions_requested: length,
+        warnings,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
