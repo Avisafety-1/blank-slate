@@ -272,7 +272,7 @@ export const AICourseGeneratorDialog = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="application/pdf"
+          accept="application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           className="hidden"
           onChange={(e) => handleFileSelect(e.target.files?.[0])}
         />
