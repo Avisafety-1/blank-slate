@@ -71,10 +71,19 @@ export const AICourseGeneratorDialog = ({
     }
   }, [open, initialFolderId]);
 
+  const isPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+  const isDocx = (f: File) =>
+    f.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    /\.docx$/i.test(f.name);
+
   const handleFileSelect = (selected: File | undefined) => {
     if (!selected) return;
-    if (selected.type !== "application/pdf") {
-      toast.error("Kun PDF-filer er støttet");
+    if (!isPdf(selected) && !isDocx(selected)) {
+      toast.error("Kun PDF- eller Word-filer (.docx) er støttet");
+      return;
+    }
+    if (/\.doc$/i.test(selected.name) && !isDocx(selected)) {
+      toast.error("Gamle .doc-filer støttes ikke. Lagre som .docx og prøv igjen.");
       return;
     }
     if (selected.size > 50 * 1024 * 1024) {
@@ -82,7 +91,7 @@ export const AICourseGeneratorDialog = ({
       return;
     }
     setFile(selected);
-    if (!title) setTitle(selected.name.replace(/\.pdf$/i, ""));
+    if (!title) setTitle(selected.name.replace(/\.(pdf|docx)$/i, ""));
   };
 
   const onDrop = useCallback((e: React.DragEvent) => {
