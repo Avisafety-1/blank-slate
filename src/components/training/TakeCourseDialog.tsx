@@ -65,6 +65,9 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
   useEffect(() => {
     if (open) loadCourse();
+    else {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
   }, [open, assignmentId, directCourseId]);
 
   const toggleFullscreen = useCallback(() => {
