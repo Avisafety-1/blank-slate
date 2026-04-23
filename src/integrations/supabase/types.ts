@@ -2954,6 +2954,88 @@ export type Database = {
           },
         ]
       }
+      manual_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          created_at: string
+          embedding: string | null
+          id: string
+          manual_id: string
+          section_heading: string | null
+          token_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          chunk_text: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          manual_id: string
+          section_heading?: string | null
+          token_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          manual_id?: string
+          section_heading?: string | null
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_chunks_manual_id_fkey"
+            columns: ["manual_id"]
+            isOneToOne: false
+            referencedRelation: "manuals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manuals: {
+        Row: {
+          company_id: string
+          created_at: string
+          file_size: number | null
+          file_url: string
+          id: string
+          page_count: number | null
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          page_count?: number | null
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          page_count?: number | null
+          title?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manuals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_viewer_heartbeats: {
         Row: {
           created_at: string
@@ -4761,6 +4843,7 @@ export type Database = {
           passing_score: number
           pptx_file_url: string | null
           shared_with_parent: boolean
+          source_manual_id: string | null
           status: string
           title: string
           updated_at: string
@@ -4781,6 +4864,7 @@ export type Database = {
           passing_score?: number
           pptx_file_url?: string | null
           shared_with_parent?: boolean
+          source_manual_id?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -4801,6 +4885,7 @@ export type Database = {
           passing_score?: number
           pptx_file_url?: string | null
           shared_with_parent?: boolean
+          source_manual_id?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -4820,6 +4905,13 @@ export type Database = {
             columns: ["folder_id"]
             isOneToOne: false
             referencedRelation: "training_course_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_courses_source_manual_id_fkey"
+            columns: ["source_manual_id"]
+            isOneToOne: false
+            referencedRelation: "manuals"
             referencedColumns: ["id"]
           },
         ]
@@ -5595,6 +5687,20 @@ export type Database = {
       }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      match_manual_chunks: {
+        Args: {
+          p_manual_id: string
+          p_match_count?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          chunk_index: number
+          chunk_text: string
+          id: string
+          section_heading: string
+          similarity: number
+        }[]
+      }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
         | { Args: { use_typmod?: boolean }; Returns: string }
