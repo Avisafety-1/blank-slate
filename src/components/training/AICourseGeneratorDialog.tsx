@@ -602,12 +602,14 @@ export const AICourseGeneratorDialog = ({
             AI Kursgenerator
           </DialogTitle>
           <DialogDescription>
-            {step === "upload" && "Steg 1 av 3 — Last opp en operasjonsmanual (PDF eller Word)"}
-            {step === "topics" && "Steg 2 av 3 — Velg tema for kurset"}
-            {step === "config" && "Steg 3 av 3 — Konfigurer kurset"}
+            {step === "select" && "Velg en eksisterende manual eller last opp en ny"}
+            {step === "upload" && "Last opp en operasjonsmanual (PDF eller Word)"}
+            {step === "topics" && "Velg tema for kurset"}
+            {step === "config" && "Konfigurer kurset"}
             {step === "generate" && "Genererer kurs…"}
           </DialogDescription>
         </DialogHeader>
+        {step === "select" && renderSelect()}
         {step === "upload" && renderUpload()}
         {step === "topics" && renderTopics()}
         {step === "config" && renderConfig()}
