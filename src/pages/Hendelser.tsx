@@ -64,6 +64,7 @@ type Incident = {
   pilot_id: string | null;
   drone_id: string | null;
   equipment_ids: string[] | null;
+  reported_anonymously?: boolean;
   drone_serial_number?: string | null;
   comments?: IncidentComment[];
 };

@@ -37,7 +37,9 @@ interface AddIncidentDialogProps {
 
 export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToEdit, defaultMissionId }: AddIncidentDialogProps) => {
   const { companyId } = useAuth();
+  const companySettings = useCompanySettings();
   const { canAccess } = usePlanGating();
+  const globalAnonymous = companySettings.hide_reporter_identity;
 
   // Block opening if plan doesn't include incidents
   useEffect(() => {
@@ -60,6 +62,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const [droneId, setDroneId] = useState<string | null>(null);
   const [equipmentIds, setEquipmentIds] = useState<string[]>([]);
   const [resourcesOpen, setResourcesOpen] = useState(false);
+  const [reportAnonymously, setReportAnonymously] = useState(false);
 
   // Resource data
   const [companyProfiles, setCompanyProfiles] = useState<Array<{ id: string; full_name?: string | null }>>([]);
