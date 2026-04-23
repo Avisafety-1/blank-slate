@@ -107,36 +107,56 @@ export const AICourseGeneratorDialog = ({
 
     try {
       // Dynamic import of pdfjs
-      const pdfjs: any = await import("pdfjs-dist");
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    setUploadStage(isDocx(file) ? "Leser Word-dokument…" : "Leser PDF…");
 
-      const arrayBuf = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data: arrayBuf }).promise;
-      const pageCount = pdf.numPages;
+    try {
       let fullText = "";
-      for (let p = 1; p <= pageCount; p++) {
-        const page = await pdf.getPage(p);
-        const content = await page.getTextContent();
-        const pageText = content.items.map((it: any) => it.str).join(" ");
-        fullText += "\n\n" + pageText;
-        setUploadProgress(5 + Math.floor((p / pageCount) * 35));
+      let pageCount = 0;
+      const arrayBuf = await file.arrayBuffer();
+
+      if (isDocx(file)) {
+        const mammoth: any = await import("mammoth");
+        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuf });
+        fullText = result.value || "";
+        pageCount = Math.max(1, Math.ceil(fullText.length / 3000));
+        setUploadProgress(40);
+      } else {
+        const pdfjs: any = await import("pdfjs-dist");
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+        const pdf = await pdfjs.getDocument({ data: arrayBuf }).promise;
+        pageCount = pdf.numPages;
+        for (let p = 1; p <= pageCount; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          const pageText = content.items.map((it: any) => it.str).join(" ");
+          fullText += "\n\n" + pageText;
+          setUploadProgress(5 + Math.floor((p / pageCount) * 35));
+        }
       }
 
       setUploadStage("Splitter i seksjoner…");
       const chunks = chunkManualText(fullText);
       if (chunks.length === 0) {
-        throw new Error("Fant ingen tekst i PDF-en. Er den scannet?");
+        throw new Error(
+          isDocx(file)
+            ? "Fant ingen tekst i Word-dokumentet."
+            : "Fant ingen tekst i PDF-en. Er den scannet?"
+        );
       }
       setUploadProgress(45);
 
       // Create manual row first to get id
       setUploadStage("Lagrer manual…");
       const manualUuid = crypto.randomUUID();
-      const path = `${companyId}/${manualUuid}.pdf`;
+      const ext = isDocx(file) ? "docx" : "pdf";
+      const path = `${companyId}/${manualUuid}.${ext}`;
+      const contentType = isDocx(file)
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : "application/pdf";
 
       const { error: uploadErr } = await supabase.storage
         .from("manuals")
-        .upload(path, file, { contentType: "application/pdf", upsert: false });
+        .upload(path, file, { contentType, upsert: false });
       if (uploadErr) throw uploadErr;
       setUploadProgress(60);
 
