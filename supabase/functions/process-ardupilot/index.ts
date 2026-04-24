@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     }
 
     const parserFormData = new FormData();
-    parserFormData.append("file", new Blob([binData]), "flight.bin");
+    parserFormData.append("file", new Blob([binData as BlobPart]), "flight.bin");
 
     const parserHeaders: Record<string, string> = {};
     if (parserSecret) {
@@ -122,8 +122,9 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("process-ardupilot error:", error);
+    const msg = error instanceof Error ? error.message : "Ukjent feil";
     return new Response(
-      JSON.stringify({ error: error.message || "Ukjent feil" }),
+      JSON.stringify({ error: msg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

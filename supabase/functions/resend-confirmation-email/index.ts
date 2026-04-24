@@ -52,7 +52,7 @@ serve(async (req) => {
     const companyName = (profile?.companies as any)?.navn || 'AviSafe';
 
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
+      type: 'magiclink',
       email,
     });
 
