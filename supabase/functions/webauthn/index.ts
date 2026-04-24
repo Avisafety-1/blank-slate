@@ -363,6 +363,6 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (err) {
     console.error("WebAuthn error:", err);
-    return json({ error: err.message || "Internal server error" }, 500);
+    return json({ error: err instanceof Error ? err.message : "Internal server error" }, 500);
   }
 });
