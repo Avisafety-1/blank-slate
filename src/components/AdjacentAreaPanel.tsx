@@ -45,9 +45,11 @@ export function AdjacentAreaPanel({
   const abortRef = useRef<AbortController | null>(null);
   const adjacentMountedRef = useRef(false);
 
-  // Auto-compute when active (switch on) and inputs change
+  // Auto-compute when active (switch on) and inputs change.
+  // Krever minst 2 rutepunkter — vi vil IKKE beregne rundt en enslig
+  // start-/lokasjons-pin fra oppdraget, kun rundt selve flyruten.
   useEffect(() => {
-    if (!active || !soraSettings.enabled || coordinates.length < 1) {
+    if (!active || !soraSettings.enabled || coordinates.length < 2) {
       if (!active) setResult(null);
       return;
     }
@@ -177,9 +179,10 @@ export function AdjacentAreaPanel({
             )}
 
           </div>
-        ) : coordinates.length < 1 ? (
+        ) : coordinates.length < 2 ? (
           <p className="text-xs text-muted-foreground italic py-2">
-            Planlegg en rute for å beregne tilstøtende område.
+            Planlegg en rute (minst 2 punkter) for å beregne tilstøtende område.
+            Oppdragets start-/lokasjonspunkt teller ikke som rute.
           </p>
         ) : null}
     </div>
