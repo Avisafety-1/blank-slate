@@ -134,16 +134,16 @@ serve(async (req) => {
     ]);
 
     // Gather matching personnel and customer IDs for relational lookups
-    const personnelIds = (personnel.data || []).map(p => p.id);
-    const customerIds = (customers.data || []).map(c => c.id);
+    const personnelIds = (personnel.data || []).map((p: any) => p.id);
+    const customerIds = (customers.data || []).map((c: any) => c.id);
 
-    let allMissions = missions.data || [];
-    let allIncidents = incidents.data || [];
-    let allSora = sora.data || [];
+    let allMissions: any[] = missions.data || [];
+    let allIncidents: any[] = incidents.data || [];
+    let allSora: any[] = sora.data || [];
 
     // Relational lookups when personnel or customers matched
     if (personnelIds.length > 0 || customerIds.length > 0) {
-      const relQueries: Promise<any>[] = [];
+      const relQueries: any[] = [];
 
       // Find missions linked to matching personnel
       if (personnelIds.length > 0) {
