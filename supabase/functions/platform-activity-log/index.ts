@@ -121,8 +121,8 @@ Deno.serve(async (req) => {
       return q;
     };
 
-    const [missions, riskAssessments, incidents, documents, profiles, drones, equipment] =
-      await Promise.all([
+    const [missions, riskAssessments, incidents, documents, profiles, drones, equipment]: any[] =
+      await Promise.all<any>([
         buildQuery("missions", "id, opprettet_dato, user_id, tittel, company_id"),
         buildQuery("mission_risk_assessments", "id, created_at, pilot_id, mission_id, company_id"),
         buildQuery("incidents", "id, opprettet_dato, user_id, tittel, company_id"),
