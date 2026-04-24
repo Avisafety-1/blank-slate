@@ -788,13 +788,41 @@ export function PersonCompetencyDialog({
                   </div>
                   <div>
                     <Label htmlFor="new-name" className="text-xs">Navn *</Label>
-                    <Input
-                      id="new-name"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      placeholder="F.eks. A3 drone"
-                      className="h-9"
-                    />
+                    {newType === "Kurs" ? (
+                      <>
+                        <Select
+                          value={["STS", "A1/A3", "A2"].includes(newName) ? newName : (newName ? "__custom__" : "")}
+                          onValueChange={(v) => setNewName(v === "__custom__" ? "" : v)}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Velg kurs..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="STS">STS</SelectItem>
+                            <SelectItem value="A1/A3">A1/A3</SelectItem>
+                            <SelectItem value="A2">A2</SelectItem>
+                            <SelectItem value="__custom__">Annet (skriv inn)...</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {!["STS", "A1/A3", "A2"].includes(newName) && (
+                          <Input
+                            id="new-name"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            placeholder="Skriv inn kursnavn"
+                            className="h-9 mt-2"
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <Input
+                        id="new-name"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder="F.eks. A3 drone"
+                        className="h-9"
+                      />
+                    )}
                   </div>
                 </div>
 
