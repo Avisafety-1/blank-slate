@@ -317,6 +317,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
    const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
+   const [updateDroneSnConfirmed, setUpdateDroneSnConfirmed] = useState(false);
    const [showAddDroneDialog, setShowAddDroneDialog] = useState(false);
    const [linkBatteryToExisting, setLinkBatteryToExisting] = useState(false);
    const [linkDroneToExisting, setLinkDroneToExisting] = useState(false);
