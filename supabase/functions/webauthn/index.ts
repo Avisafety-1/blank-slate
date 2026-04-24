@@ -4,8 +4,8 @@ import {
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
-} from "npm:@simplewebauthn/server@13.1.1";
-import { isoBase64URL } from "npm:@simplewebauthn/server@13.1.1/helpers";
+} from "https://esm.sh/@simplewebauthn/server@13.1.1";
+import { isoBase64URL } from "https://esm.sh/@simplewebauthn/server@13.1.1/helpers";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
