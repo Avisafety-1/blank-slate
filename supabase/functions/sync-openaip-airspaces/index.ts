@@ -43,6 +43,15 @@ Deno.serve(async (req) => {
     // Exclude TIA (24), CTA (26), ACC (27), Airwork (28), OCA (15)
     const includedTypes = new Set([0, 1, 2, 3, 5, 6, 21, 23]);
 
+    // Names that are unofficial (model aircraft / glider clubs not on Avinor IPPC)
+    // Will be flagged is_official=false after upsert.
+    const UNOFFICIAL_NAME_PATTERNS = [
+      /^GAULDAL/i,
+      /^EGGEMOEN/i,
+      /^GVARV/i,
+      /^STARMOEN/i,
+    ];
+
     // Fetch ALL airspaces for Norway (no type filter - API filter is unreliable)
     const allAirspaces: any[] = [];
     let page = 1;
@@ -200,6 +209,25 @@ Deno.serve(async (req) => {
     };
 
     console.log(`Sync complete: ${synced} synced, ${errors} errors`);
+
+    // Re-flag known unofficial club/glider zones after upsert
+    try {
+      const { error: flagError } = await supabase
+        .from("aip_restriction_zones")
+        .update({ is_official: false })
+        .or(
+          UNOFFICIAL_NAME_PATTERNS.map(
+            (re) => `name.ilike.${re.source.replace(/^\^/, "")}%`
+          ).join(",")
+        );
+      if (flagError) {
+        console.warn("Could not re-flag unofficial zones:", flagError.message);
+      } else {
+        console.log("Re-flagged unofficial club/glider zones as is_official=false");
+      }
+    } catch (e) {
+      console.warn("Re-flag step failed:", e);
+    }
 
     return new Response(JSON.stringify(summary), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
