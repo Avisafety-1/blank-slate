@@ -523,12 +523,12 @@ ${contextBlock}`;
         text: String(o).slice(0, 500),
         is_correct: String(o).trim() === correct,
       }));
-      if (options.length > 0 && !options.some((o) => o.is_correct)) {
+      if (options.length > 0 && !options.some((o: { is_correct: boolean }) => o.is_correct)) {
         options[0].is_correct = true;
       }
 
       if (options.length > 0) {
-        const optRows = options.map((o, j) => ({
+        const optRows = options.map((o: { text: string; is_correct: boolean }, j: number) => ({
           question_id: qRow.id,
           option_text: o.text,
           is_correct: o.is_correct,

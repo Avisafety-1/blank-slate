@@ -324,7 +324,7 @@ function parseCsvToResult(csvText: string) {
   let minGpsSats = 99;
   let maxGpsSats = 0;
   const batteryReadings: number[] = [];
-  const warnings: Array<{ type: string; message: string; value?: number }> = [];
+  const warnings: Array<{ type: string; message: string; value?: number; severity?: string; count?: number }> = [];
   const flycStatesSet = new Set<string>();
   const appWarnings = new Set<string>();
   const events: FlightEvent[] = [];
