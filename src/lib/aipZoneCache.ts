@@ -29,6 +29,7 @@ export function getAipZones(): Promise<AipZone[]> {
   cachedPromise = (supabase
     .from('aip_restriction_zones')
     .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry')
+    .eq('is_official', true)
     .then(({ data, error }) => {
       if (error) {
         // Reset cache on error so next caller retries

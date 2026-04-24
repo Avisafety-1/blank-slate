@@ -372,6 +372,7 @@ export async function generateMissionMapSnapshot(
       const { data: zones } = await supabase
         .from("aip_restriction_zones")
         .select("zone_type, name, geometry, properties")
+        .eq("is_official", true)
         .limit(80);
 
       if (zones) {

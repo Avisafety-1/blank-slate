@@ -109,6 +109,7 @@ export type Database = {
           external_id: string | null
           geometry: unknown
           id: string
+          is_official: boolean
           lower_limit: string | null
           name: string | null
           openaip_id: string | null
@@ -124,6 +125,7 @@ export type Database = {
           external_id?: string | null
           geometry?: unknown
           id?: string
+          is_official?: boolean
           lower_limit?: string | null
           name?: string | null
           openaip_id?: string | null
@@ -139,6 +141,7 @@ export type Database = {
           external_id?: string | null
           geometry?: unknown
           id?: string
+          is_official?: boolean
           lower_limit?: string | null
           name?: string | null
           openaip_id?: string | null
