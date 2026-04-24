@@ -1963,11 +1963,34 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedDroneId && (result.aircraftSN || result.aircraftSerial) && (selectedDrone?.serienummer === (result.aircraftSN || result.aircraftSerial)?.trim() || selectedDrone?.internal_serial === (result.aircraftSN || result.aircraftSerial)?.trim()) && (
-                    <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />Auto-matchet via SN
-                    </p>
-                  )}
+                  {(() => {
+                    const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
+                    if (!selectedDroneId || !parsedSn || !selectedDrone) return null;
+                    const isMatched = snMatchesDjiSn(selectedDrone.serienummer, parsedSn) || snMatchesDjiSn((selectedDrone as any).internal_serial, parsedSn);
+                    if (!isMatched) return null;
+                    const storedSn = (selectedDrone.serienummer || '').trim();
+                    const snDiffers = storedSn && storedSn !== parsedSn;
+                    return (
+                      <>
+                        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />Auto-matchet via SN
+                        </p>
+                        {snDiffers && (
+                          <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                            <Checkbox
+                              id="update-drone-sn"
+                              checked={updateDroneSnConfirmed}
+                              onCheckedChange={(v) => setUpdateDroneSnConfirmed(v === true)}
+                              className="mt-0.5"
+                            />
+                            <Label htmlFor="update-drone-sn" className="text-[11px] leading-tight cursor-pointer text-amber-900 dark:text-amber-200">
+                              Lagret SN ({storedSn}) er kortere enn loggens SN ({parsedSn}). Oppdater {terminology.vehicle} sitt serienummer til full verdi?
+                            </Label>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Equipment selector */}
