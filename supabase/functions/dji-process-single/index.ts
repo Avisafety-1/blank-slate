@@ -423,8 +423,21 @@ Deno.serve(async (req) => {
       if (own?.parent_company_id) searchCompanyIds.push(own.parent_company_id);
     }
 
-    // Auto-match drone by serial
+    // Match by exact OR prefix (handles old 16-char SNs vs new full 20-char SNs).
+    const snMatches = (stored: string | null | undefined, parsedSn: string): boolean => {
+      if (!stored) return false;
+      const s = stored.toLowerCase().trim();
+      const p = parsedSn.toLowerCase().trim();
+      if (!s || !p) return false;
+      if (s === p) return true;
+      if (s.length >= 12 && p.startsWith(s)) return true;
+      if (p.length >= 12 && s.startsWith(p)) return true;
+      return false;
+    };
+
+    // Auto-match drone by serial (with prefix support)
     let matchedDroneId: string | null = null;
+    let snMismatchSuggestion: any = null;
     if (parsed.aircraftSN) {
       const { data: drones } = await serviceClient
         .from("drones")
@@ -432,22 +445,30 @@ Deno.serve(async (req) => {
         .in("company_id", searchCompanyIds);
 
       if (drones) {
-        const snLower = parsed.aircraftSN.toLowerCase();
         const ownMatch = drones.find(d =>
-          d.company_id === pendingLog.company_id && (
-            d.serienummer.toLowerCase() === snLower ||
-            (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
-          )
+          d.company_id === pendingLog.company_id &&
+          (snMatches(d.serienummer, parsed.aircraftSN!) || snMatches(d.internal_serial, parsed.aircraftSN!))
         );
         const match = ownMatch || drones.find(d =>
-          d.serienummer.toLowerCase() === snLower ||
-          (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
+          snMatches(d.serienummer, parsed.aircraftSN!) || snMatches(d.internal_serial, parsed.aircraftSN!)
         );
-        if (match) matchedDroneId = match.id;
+        if (match) {
+          matchedDroneId = match.id;
+          const storedSn = (match.serienummer || "").trim();
+          const parsedSn = parsed.aircraftSN.trim();
+          if (storedSn && parsedSn && storedSn !== parsedSn) {
+            snMismatchSuggestion = {
+              drone_id: match.id,
+              current_sn: storedSn,
+              suggested_sn: parsedSn,
+              type: "drone",
+            };
+          }
+        }
       }
     }
 
-    // Auto-match battery
+    // Auto-match battery (with prefix support)
     let matchedBatteryId: string | null = null;
     if (parsed.batterySN) {
       const { data: batteries } = await serviceClient
@@ -457,16 +478,12 @@ Deno.serve(async (req) => {
         .ilike("type", "batteri");
 
       if (batteries) {
-        const bsnLower = parsed.batterySN.toLowerCase();
         const ownMatch = batteries.find(b =>
-          b.company_id === pendingLog.company_id && (
-            b.serienummer.toLowerCase() === bsnLower ||
-            (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
-          )
+          b.company_id === pendingLog.company_id &&
+          (snMatches(b.serienummer, parsed.batterySN!) || snMatches(b.internal_serial, parsed.batterySN!))
         );
         const match = ownMatch || batteries.find(b =>
-          b.serienummer.toLowerCase() === bsnLower ||
-          (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
+          snMatches(b.serienummer, parsed.batterySN!) || snMatches(b.internal_serial, parsed.batterySN!)
         );
         if (match) matchedBatteryId = match.id;
       }
@@ -485,7 +502,8 @@ Deno.serve(async (req) => {
         matched_battery_id: matchedBatteryId,
         max_height_m: parsed.maxAltitude || null,
         total_distance_m: parsed.totalDistance || null,
-      })
+        sn_mismatch_suggestion: snMismatchSuggestion,
+      } as any)
       .eq("id", pending_log_id);
 
     // Check if SHA-256 already exists in flight_logs
