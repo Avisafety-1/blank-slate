@@ -54,6 +54,29 @@ const FIELDS = [
   "APP.warning",
 ].join(",");
 
+// RFC 4180-aware CSV row parser: respects quoted fields and "" escapes.
+function parseCsvRow(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; } else { inQuotes = false; }
+      } else { cur += ch; }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { out.push(cur.trim()); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+const stripQuotes = (v: string) => (v ?? "").replace(/^"+|"+$/g, "").trim();
+
 /**
  * Find a header index using flexible matching.
  */
