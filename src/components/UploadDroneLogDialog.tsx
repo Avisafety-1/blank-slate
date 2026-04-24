@@ -203,6 +203,18 @@ const isApiLimitError = (error: any): boolean => {
   return msg.includes('limit reached') || msg.includes('429') || msg.includes('api limit') || msg.includes('too many requests');
 };
 
+// Match by exact OR prefix — handles old 16-char DJI SNs vs new full 20-char SNs.
+const snMatchesDjiSn = (stored: string | null | undefined, parsedSn: string | null | undefined): boolean => {
+  if (!stored || !parsedSn) return false;
+  const s = stored.toLowerCase().trim();
+  const p = parsedSn.toLowerCase().trim();
+  if (!s || !p) return false;
+  if (s === p) return true;
+  if (s.length >= 12 && p.startsWith(s)) return true;
+  if (p.length >= 12 && s.startsWith(p)) return true;
+  return false;
+};
+
 // ── Component ──
 
 export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
