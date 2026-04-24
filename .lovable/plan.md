@@ -1,85 +1,67 @@
+# Fix plan for build errors and DJI full serial numbers
 
-# Fiks lydtap etter AI-generering av kurs
+## Current diagnosis
+- The **frontend app is not generally broken**, but the **edge-function build is currently unsuccessful**.
+- That matters because DJI import relies on edge functions, so a failed edge build can leave some DJI fixes undeployed.
+- The earlier statement that the other errors were irrelevant was too optimistic: even if some errors were already present, they still **block successful deployment** and therefore can block the DJI fix from taking effect.
+- The main DJI issue is now clear:
+  - `dji-auto-sync` was updated to parse full serial numbers correctly.
+  - `dji-process-single` was only **partly** updated.
+  - `process-dronelog` — the function used by **manual file import** from `UploadDroneLogDialog` — still uses naive `split(",")` parsing, so **manual imports can still truncate the aircraft serial number**.
+  - The UI prompt for “oppdater serienummer?” is **not implemented yet**.
 
-## Bekreftet årsak
+## What I will implement
 
-Lyden blir faktisk generert riktig i edge-funksjonen:
+### 1. Unblock edge-function builds
+Fix the errors that currently stop the edge bundle/typecheck from going green:
+- Replace or align the functions still importing `npm:@supabase/supabase-js@2.57.2` so they use a supported import pattern already used elsewhere in the project.
+- Fix type errors in:
+  - `supabase/functions/process-ardupilot/index.ts`
+  - `supabase/functions/resend-confirmation-email/index.ts`
+  - `supabase/functions/send-calendar-link/index.ts`
+- Re-check for any remaining function-level type issues after those fixes.
 
-- `generate-course`-loggen viser `openai status=200`
-- mp3 lastes opp
-- `content_json` blir verifisert som `NOT NULL`
+### 2. Finish the DJI serial-number fix in the manual import path
+Update `supabase/functions/process-dronelog/index.ts` so manual file uploads behave like the newer DJI flow:
+- Replace all `split(",")` CSV parsing with the same RFC 4180-aware row parser.
+- Strip surrounding quotes from `DETAILS.aircraftSN` and `DETAILS.batterySN`.
+- Ensure the returned parsed payload preserves the **full 20-character aircraft serial number**.
 
-Men det nye AI-kurset blir deretter åpnet direkte i kurseditoren, og når kurset lagres der blir alle slides skrevet tilbake med:
+### 3. Make all DJI matching paths consistent
+Apply the same prefix-match logic everywhere DJI logs are processed:
+- `supabase/functions/process-dronelog/index.ts`
+- `supabase/functions/dji-process-single/index.ts`
+- `src/components/UploadDroneLogDialog.tsx` bulk/manual local matching logic
 
-- `content_json: null`
+This will allow:
+- full 20-char log SN to match an older 16-char stored SN
+- older 16-char log SN to match a full stored SN
+- consistent drone/battery matching regardless of whether the log came from auto-sync, pending-log processing, or manual upload
 
-Det sletter:
-- `narration_audio_url`
-- `narration_text`
-- `heading`
-- `source_reference`
-- forklaringer på spørsmål
+### 4. Implement the serial-number update prompt in the UI
+Complete the migration UX that was planned but not finished:
+- Read `sn_mismatch_suggestion` from `pending_dji_logs`
+- Show a clear checkbox/prompt in `UploadDroneLogDialog` when a matched drone/battery has an older truncated SN
+- On user confirmation, update the drone/equipment serial number to the full value during import
+- Keep it opt-in; no silent overwrite
 
-Dermed finner `TakeCourseDialog` ingen lyd-URL og har ingenting å spille av.
+### 5. Verify the affected flows end-to-end
+After the fixes are implemented:
+- verify manual DJI file import returns full SN
+- verify pending DJI log processing keeps full SN
+- verify old 16-char stored drone still auto-matches a new 20-char log
+- verify the user sees the update prompt when there is a mismatch
+- verify edge functions build cleanly so the fix is actually deployable
 
-## Endringer som skal gjøres
+## Technical details
+- Manual import currently goes through `supabase.functions.invoke('process-dronelog', ...)` in `src/components/UploadDroneLogDialog.tsx`, so fixing only `dji-auto-sync` is not enough.
+- `process-dronelog` still has naive parsing at the current CSV read points and still builds `aircraftSN` without the new quote-safe cleanup.
+- `dji-process-single` already has `parseCsvRow`, but its drone/battery auto-match still uses exact equality instead of the prefix-match helper pattern used in `dji-auto-sync`.
+- The prompt path is only partially prepared at the database level (`sn_mismatch_suggestion` exists in types/migration), but the UI is not consuming it yet.
 
-### 1. Behold `content_json` i kurseditoren ved lagring
-Oppdater `src/components/admin/TrainingCourseEditor.tsx` slik at editoren ikke nullstiller `content_json` for eksisterende AI-slides.
-
-Bytt fra:
-- `content_json: null`
-
-til:
-- `content_json: s.content_json ?? null`
-
-for alle slide-typer ved insert/sync mot `training_questions`.
-
-Dette alene stopper tap av lyd og metadata.
-
-### 2. Beskytt AI-kurset mot unødvendig lagring rett etter generering
-Oppdater `src/components/admin/TrainingSection.tsx` slik at `onCourseCreated` ikke automatisk åpner editoren for AI-genererte kurs.
-
-Dagens flyt:
-- AI-kurs opprettes
-- `setEditingCourseId(courseId)`
-- `setEditorOpen(true)`
-
-Ny flyt:
-- oppdater kurslisten
-- eventuelt vis toast “Kurs opprettet”
-- ikke åpne editor automatisk
-
-Dette reduserer risikoen for at brukeren lagrer et AI-kurs uten å være klar over at metadata kan overskrives.
-
-## Filer som endres
-
-- `src/components/admin/TrainingCourseEditor.tsx`
-  - Bevar `content_json` når slides lagres
-- `src/components/admin/TrainingSection.tsx`
-  - Fjern auto-åpning av editor etter AI-generering
-
-## Forventet resultat
-
-Et nytt AI-generert kurs vil da beholde:
-- lyd-URL
-- opplesningstekst
-- slide-heading
-- kildehenvisning
-- forklaringstekst på spørsmål
-
-Og `TakeCourseDialog` vil igjen kunne vise:
-- `<audio controls autoPlay>` når `narration_audio_url` finnes
-- fallback-knapp for opplesning når bare `narration_text` finnes
-
-## Verifisering etter endring
-
-1. Generer et nytt AI-kurs
-2. Åpne kurset i forhåndsvisning uten å lagre det i editor
-3. Bekreft at intro-slidene viser lydspiller
-4. Lagre deretter kurset i editor
-5. Åpne forhåndsvisning igjen og bekreft at lyden fortsatt finnes
-
-## Teknisk detalj
-
-Problemet er ikke OpenAI, ikke edge-funksjonen og ikke selve avspilleren. Problemet er at frontend-editoren overskriver databasen etterpå med `content_json = null`, og dermed sletter lydreferansen som allerede var lagret korrekt.
+## Result
+When this is done:
+- the edge build will succeed again
+- manual DJI imports will no longer truncate serial numbers
+- old 16-char entries will still match new 20-char logs
+- users will be asked before upgrading stored serial numbers to the full value

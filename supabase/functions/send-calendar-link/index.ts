@@ -103,8 +103,9 @@ serve(async (req: Request): Promise<Response> => {
     );
   } catch (error) {
     console.error("Error sending calendar link email:", error);
+    const msg = error instanceof Error ? error.message : String(error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: msg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

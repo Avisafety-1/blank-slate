@@ -54,6 +54,29 @@ const FIELDS = [
   "APP.warning",
 ].join(",");
 
+// RFC 4180-aware CSV row parser: respects quoted fields and "" escapes.
+function parseCsvRow(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; } else { inQuotes = false; }
+      } else { cur += ch; }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { out.push(cur.trim()); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+const stripQuotes = (v: string) => (v ?? "").replace(/^"+|"+$/g, "").trim();
+
 /**
  * Find a header index using flexible matching.
  */
@@ -109,7 +132,7 @@ function parseCsvToResult(csvText: string) {
     throw new Error("Empty or invalid CSV response from DroneLog");
   }
 
-  const headers = lines[0].split(",").map((h) => h.trim());
+  const headers = parseCsvRow(lines[0]);
   console.log("CSV headers received:", JSON.stringify(headers));
 
   // Core indices
@@ -201,11 +224,11 @@ function parseCsvToResult(csvText: string) {
     "isDualBattery:", isDualBattery, "batt1Charge:", batt1ChargeIdx, "batt2Charge:", batt2ChargeIdx);
 
   // Extract DETAILS metadata from first data row
-  const firstRow = lines[1].split(",").map((c) => c.trim());
+  const firstRow = parseCsvRow(lines[1]);
   const startTime = detStartTimeIdx >= 0 ? firstRow[detStartTimeIdx] : "";
   const aircraftName = detAircraftNameIdx >= 0 ? firstRow[detAircraftNameIdx] : "";
-  const rawAircraftSN = detAircraftSNIdx >= 0 ? firstRow[detAircraftSNIdx] : "";
-  const aircraftSerial = detAircraftSerialIdx >= 0 ? firstRow[detAircraftSerialIdx] : "";
+  const rawAircraftSN = detAircraftSNIdx >= 0 ? stripQuotes(firstRow[detAircraftSNIdx]) : "";
+  const aircraftSerial = detAircraftSerialIdx >= 0 ? stripQuotes(firstRow[detAircraftSerialIdx]) : "";
   const aircraftSN = rawAircraftSN || aircraftSerial;
   const droneType = detDroneTypeIdx >= 0 ? firstRow[detDroneTypeIdx] : "";
   const totalDistance = detTotalDistIdx >= 0 ? parseFloat(firstRow[detTotalDistIdx]) : NaN;

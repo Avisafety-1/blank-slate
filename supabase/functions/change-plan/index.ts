@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -107,7 +107,7 @@ serve(async (req) => {
     const subscription = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
 
     // Find the current plan item
-    const planItem = subscription.items.data.find(item => PRICE_TO_PLAN[item.price.id]);
+    const planItem = subscription.items.data.find((item: any) => PRICE_TO_PLAN[item.price.id]);
     if (!planItem) throw new Error("No plan item found in subscription");
 
     const currentPlan = PRICE_TO_PLAN[planItem.price.id];

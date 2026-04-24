@@ -4,8 +4,8 @@ import {
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
-} from "npm:@simplewebauthn/server@13.1.1";
-import { isoBase64URL } from "npm:@simplewebauthn/server@13.1.1/helpers";
+} from "https://esm.sh/@simplewebauthn/server@13.1.1";
+import { isoBase64URL } from "https://esm.sh/@simplewebauthn/server@13.1.1/helpers";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -363,6 +363,6 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (err) {
     console.error("WebAuthn error:", err);
-    return json({ error: err.message || "Internal server error" }, 500);
+    return json({ error: err instanceof Error ? err.message : "Internal server error" }, 500);
   }
 });
