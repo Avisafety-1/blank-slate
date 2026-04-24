@@ -92,6 +92,8 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
       toast.success("Kompetanse lagt til");
       onOpenChange(false);
       setSelectedPersonId("");
+      setSelectedType("Kurs");
+      setNavnValue("");
       setFile(null);
       setDocumentUrl(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
