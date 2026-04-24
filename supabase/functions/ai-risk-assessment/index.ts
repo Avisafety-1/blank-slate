@@ -667,11 +667,11 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       summary: string;
     } | null = null;
 
-    if (lat && lng) {
+    // Befolkningstetthet skal KUN beregnes ut fra selve flyruten,
+    // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
+    if (routeCoords && routeCoords.length >= 2) {
       try {
-        const allCoords: { lat: number; lng: number }[] = routeCoords && routeCoords.length > 0
-          ? routeCoords
-          : [{ lat, lng }];
+        const allCoords: { lat: number; lng: number }[] = routeCoords;
 
         const degPerMeterLat = 1 / 111320;
         const avgLatPop = allCoords.reduce((s, c) => s + c.lat, 0) / allCoords.length;
