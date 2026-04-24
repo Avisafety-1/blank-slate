@@ -261,16 +261,16 @@ Søkeresultater for "${query}":
 
 Oppdrag (${allMissions.length}): ${allMissions.map(m => m.tittel).join(', ') || 'Ingen'}
 Hendelser (${allIncidents.length}): ${allIncidents.map(i => i.tittel).join(', ') || 'Ingen'}
-Dokumenter (${documents.data?.length || 0}): ${documents.data?.map(d => d.tittel).join(', ') || 'Ingen'}
-Utstyr (${equipment.data?.length || 0}): ${equipment.data?.map(e => e.navn).join(', ') || 'Ingen'}
-Droner (${drones.data?.length || 0}): ${drones.data?.map(d => d.modell).join(', ') || 'Ingen'}
-Kompetanse (${competencies.data?.length || 0}): ${competencies.data?.map(c => c.navn).join(', ') || 'Ingen'}
-SORA-analyser (${allSora.length}): ${allSora.map(s => s.conops_summary || s.sora_status).join(', ') || 'Ingen'}
-Personell (${personnel.data?.length || 0}): ${personnel.data?.map(p => p.full_name).join(', ') || 'Ingen'}
-Kunder (${customers.data?.length || 0}): ${customers.data?.map(c => c.navn).join(', ') || 'Ingen'}
-Nyheter (${news.data?.length || 0}): ${news.data?.map(n => n.tittel).join(', ') || 'Ingen'}
-Flylogger (${flightLogs.data?.length || 0}): ${flightLogs.data?.map(f => `${f.departure_location} → ${f.landing_location}`).join(', ') || 'Ingen'}
-Kalender (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map(c => c.title).join(', ') || 'Ingen'}
+Dokumenter (${documents.data?.length || 0}): ${documents.data?.map((d: any) => d.tittel).join(', ') || 'Ingen'}
+Utstyr (${equipment.data?.length || 0}): ${equipment.data?.map((e: any) => e.navn).join(', ') || 'Ingen'}
+Droner (${drones.data?.length || 0}): ${drones.data?.map((d: any) => d.modell).join(', ') || 'Ingen'}
+Kompetanse (${competencies.data?.length || 0}): ${competencies.data?.map((c: any) => c.navn).join(', ') || 'Ingen'}
+SORA-analyser (${allSora.length}): ${allSora.map((s: any) => s.conops_summary || s.sora_status).join(', ') || 'Ingen'}
+Personell (${personnel.data?.length || 0}): ${personnel.data?.map((p: any) => p.full_name).join(', ') || 'Ingen'}
+Kunder (${customers.data?.length || 0}): ${customers.data?.map((c: any) => c.navn).join(', ') || 'Ingen'}
+Nyheter (${news.data?.length || 0}): ${news.data?.map((n: any) => n.tittel).join(', ') || 'Ingen'}
+Flylogger (${flightLogs.data?.length || 0}): ${flightLogs.data?.map((f: any) => `${f.departure_location} → ${f.landing_location}`).join(', ') || 'Ingen'}
+Kalender (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map((c: any) => c.title).join(', ') || 'Ingen'}
 `;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
