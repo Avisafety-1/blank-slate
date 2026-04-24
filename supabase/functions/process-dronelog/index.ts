@@ -242,6 +242,25 @@ function parseCsvToResult(csvText: string) {
   const batterySerial = detBatterySerialIdx >= 0 ? firstRow[detBatterySerialIdx] : "";
   const batterySN = (rawBatterySN || batterySerial).replace(/^"|"$/g, "").trim();
   console.log("Battery SN indices — batterySN:", detBatterySNIdx, "batterySerial:", detBatterySerialIdx, "resolved:", batterySN);
+
+  // === DIAGNOSTIC: Inspect ALL battery-related headers and unique SN values across rows ===
+  const batteryHeaders = headers.filter(h => /battery/i.test(h) && /SN|serial/i.test(h));
+  console.log("[DIAG] Battery-related SN headers found in CSV:", JSON.stringify(batteryHeaders));
+  console.log("[DIAG] All headers containing 'battery' (case-insensitive):", JSON.stringify(headers.filter(h => /battery/i.test(h))));
+
+  // Scan ALL rows for unique battery SN values (in case they vary mid-flight or there are dual batteries)
+  const uniqueBatterySNs = new Set<string>();
+  if (detBatterySNIdx >= 0 || detBatterySerialIdx >= 0) {
+    for (let r = 1; r < lines.length; r++) {
+      const row = parseCsvRow(lines[r]);
+      const sn1 = detBatterySNIdx >= 0 ? (row[detBatterySNIdx] || "").replace(/^"|"$/g, "").trim() : "";
+      const sn2 = detBatterySerialIdx >= 0 ? (row[detBatterySerialIdx] || "").replace(/^"|"$/g, "").trim() : "";
+      if (sn1) uniqueBatterySNs.add(sn1);
+      if (sn2) uniqueBatterySNs.add(sn2);
+    }
+  }
+  console.log("[DIAG] Unique battery SN values across ALL rows:", JSON.stringify(Array.from(uniqueBatterySNs)));
+  console.log("[DIAG] Total unique battery SNs:", uniqueBatterySNs.size, "| Aircraft SN:", aircraftSN, "| isDualBattery flag:", isDualBattery);
   const batteryFullCap = battFullCapIdx >= 0 ? parseFloat(firstRow[battFullCapIdx]) : NaN;
   const batteryCurrCap = battCurrCapIdx >= 0 ? parseFloat(firstRow[battCurrCapIdx]) : NaN;
   const batteryStatus = battStatusIdx >= 0 ? firstRow[battStatusIdx] : "";
