@@ -112,7 +112,7 @@ serve(async (req) => {
 
     if (action === 'add') {
       // Check not already present
-      const existing = subscription.items.data.find(item => ADDON_PRICE_IDS[item.price.id] === addon_id);
+      const existing = subscription.items.data.find((item: any) => ADDON_PRICE_IDS[item.price.id] === addon_id);
       if (existing) {
         return new Response(JSON.stringify({ success: true, addons: sub.addons, reason: 'already_active' }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -141,7 +141,7 @@ serve(async (req) => {
       });
     } else {
       // Remove addon
-      const itemToRemove = subscription.items.data.find(item => ADDON_PRICE_IDS[item.price.id] === addon_id);
+      const itemToRemove = subscription.items.data.find((item: any) => ADDON_PRICE_IDS[item.price.id] === addon_id);
       if (!itemToRemove) {
         return new Response(JSON.stringify({ success: true, addons: sub.addons, reason: 'not_active' }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

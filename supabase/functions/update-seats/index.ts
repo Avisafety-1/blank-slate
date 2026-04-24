@@ -73,7 +73,7 @@ serve(async (req) => {
     const subscription = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
 
     // Find the plan item (not addon)
-    const planItem = subscription.items.data.find(item => PLAN_PRICE_IDS.has(item.price.id));
+    const planItem = subscription.items.data.find((item: any) => PLAN_PRICE_IDS.has(item.price.id));
     if (!planItem) {
       logStep("No plan item found in subscription");
       return new Response(JSON.stringify({ updated: false, reason: 'no_plan_item' }), {

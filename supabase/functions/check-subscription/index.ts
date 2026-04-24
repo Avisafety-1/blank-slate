@@ -154,7 +154,7 @@ serve(async (req) => {
       limit: 10,
     });
 
-    const subscription = subscriptions.data.find(s => 
+    const subscription = subscriptions.data.find((s: any) => 
       s.status === 'active' || s.status === 'trialing'
     );
 
