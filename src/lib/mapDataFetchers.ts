@@ -116,7 +116,8 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
     const { data, error } = await supabase
       .from('aip_restriction_zones')
       .select('zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry, properties')
-      .in('zone_type', ['P', 'R', 'D', 'RMZ', 'TMZ', 'ATZ', 'CTR', 'TIZ']);
+      .in('zone_type', ['P', 'R', 'D', 'RMZ', 'TMZ', 'ATZ', 'CTR', 'TIZ'])
+      .eq('is_official', true);
 
     if (error || !data) {
       console.error('Feil ved henting av AIP-soner:', error);
