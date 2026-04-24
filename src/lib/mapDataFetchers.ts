@@ -747,7 +747,7 @@ export async function fetchPilotPositions(params: {
 
 // --- Kraftledninger (NVE) via ArcGIS REST ---
 
-const NVE_BASE = "https://nve.geodataonline.no/arcgis/rest/services/Nettanlegg4/MapServer";
+const NVE_BASE = "https://kart.nve.no/enterprise/rest/services/Nettanlegg4/MapServer";
 
 
 
@@ -797,7 +797,10 @@ export async function fetchKraftledningerInBounds(params: {
       try {
         const url = `${NVE_BASE}/${def.layerId}/query?where=1%3D1&geometry=${encodeURIComponent(envelope)}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&outSR=4326&f=geojson&resultRecordCount=2000`;
         const res = await fetch(url);
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.warn(`[NVE] Layer ${def.layerId} returned HTTP ${res.status} from ${NVE_BASE}`);
+          return;
+        }
         const geojson = await res.json();
         if (!geojson.features?.length) return;
 
