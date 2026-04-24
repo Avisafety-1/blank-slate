@@ -1762,6 +1762,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     delete (window as any).__pendingDjiLogId;
   };
 
+  // Apply user-confirmed serial number update to the matched drone
+  const applyDroneSnUpdateIfConfirmed = async () => {
+    if (!updateDroneSnConfirmed || !selectedDroneId || !result) return;
+    const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
+    const drone = drones.find(d => d.id === selectedDroneId);
+    if (!drone || !parsedSn || (drone.serienummer || '').trim() === parsedSn) return;
+    const { error } = await supabase
+      .from('drones')
+      .update({ serienummer: parsedSn })
+      .eq('id', selectedDroneId);
+    if (error) {
+      console.error('SN-oppdatering feilet:', error);
+      toast.error('Kunne ikke oppdatere serienummer på dronen');
+    } else {
+      toast.success(`Serienummer oppdatert til ${parsedSn}`);
+      queryClient.invalidateQueries({ queryKey: ['drones'] });
+    }
+  };
+
   // updateDroneFlightHours removed — handled by DB trigger trg_update_drone_hours (divides minutes by 60.0)
 
   // ── Flight alert threshold check ──
