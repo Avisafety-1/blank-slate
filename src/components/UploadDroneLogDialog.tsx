@@ -504,10 +504,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setUnmatchedBatterySN(null);
       return;
     }
-    const sn = data.batterySN.trim().toLowerCase();
-    const match = equipmentList.find(e => 
-      (e.serienummer && e.serienummer.trim().toLowerCase() === sn) ||
-      (e.internal_serial && e.internal_serial.trim().toLowerCase() === sn)
+    const sn = data.batterySN.trim();
+    const match = equipmentList.find(e =>
+      snMatchesDjiSn(e.serienummer, sn) || snMatchesDjiSn(e.internal_serial, sn)
     );
     if (match) {
       setSelectedEquipment(prev => prev.includes(match.id) ? prev : [...prev, match.id]);
@@ -524,10 +523,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setUnmatchedDroneSN(null);
       return;
     }
-    const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
-    const match = drones.find(d => 
-      (d.serienummer && d.serienummer.trim().toLowerCase() === sn) ||
-      (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+    const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
+    const match = drones.find(d =>
+      snMatchesDjiSn(d.serienummer, sn) || snMatchesDjiSn(d.internal_serial, sn)
     );
     if (match) {
       setSelectedDroneId(match.id);
