@@ -1593,6 +1593,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       
       await updateBatteryEquipment(result);
       await ensureDroneEquipmentHistory();
+      await applyDroneSnUpdateIfConfirmed();
       await markPendingLogApproved(matchedLog.id);
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
       checkFlightAlerts(result);
@@ -1665,7 +1666,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       await updateBatteryEquipment(result);
       await ensureDroneEquipmentHistory();
+      await applyDroneSnUpdateIfConfirmed();
       await markPendingLogApproved(logData?.id);
+      // Mission flow
+      void 0;
       toast.success(t('dronelog.missionCreated', `Nytt oppdrag opprettet fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg!`));
       checkFlightAlerts(result);
       // Return to method step so user can continue processing pending logs
