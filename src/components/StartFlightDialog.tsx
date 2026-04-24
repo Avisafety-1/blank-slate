@@ -81,7 +81,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const { checklists } = useChecklists();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
-  const [publishMode, setPublishMode] = useState<PublishMode>('none');
+  const [publishMode, setPublishMode] = useState<PublishMode>('advisory');
   const [loading, setLoading] = useState(false);
   
   // Company-level linked checklists (persisted)
