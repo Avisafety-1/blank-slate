@@ -488,6 +488,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setUnmatchedBatterySN(null);
     setShowAddEquipmentDialog(false);
     setUnmatchedDroneSN(null);
+    setUpdateDroneSnConfirmed(false);
     setShowAddDroneDialog(false);
     setLinkBatteryToExisting(false);
     setLinkDroneToExisting(false);
