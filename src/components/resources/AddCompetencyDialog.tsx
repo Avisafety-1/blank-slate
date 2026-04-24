@@ -25,7 +25,11 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
   const { companyId } = useAuth();
   const [selectedPersonId, setSelectedPersonId] = useState<string>("");
   const [personSearchOpen, setPersonSearchOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<string>("Kurs");
+  const [navnValue, setNavnValue] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
+
+  const KURS_PRESETS = ["STS", "A1/A3", "A2"];
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
