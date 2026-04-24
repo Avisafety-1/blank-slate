@@ -560,10 +560,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     Array.isArray((selectedMission.route as { coordinates: unknown[] }).coordinates) &&
     (selectedMission.route as { coordinates: unknown[] }).coordinates.length > 0;
 
-  // Reset publishMode to 'none' if advisory was selected but no route available
+  // Auto-bytt SafeSky-modus basert på om rute er tilgjengelig:
+  // - Uten rute: tving 'none' (advisory krever rute)
+  // - Med rute: default til 'advisory' når brukeren ikke aktivt har valgt
   useEffect(() => {
-    if (publishMode === 'advisory' && !hasRoute) {
+    if (!hasRoute && publishMode === 'advisory') {
       setPublishMode('none');
+    } else if (hasRoute && publishMode === 'none') {
+      setPublishMode('advisory');
     }
   }, [hasRoute, publishMode]);
 
