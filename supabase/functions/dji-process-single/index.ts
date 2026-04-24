@@ -59,6 +59,40 @@ function normalizeDateToISO(raw: string | null | undefined): string | null {
 
 // ── CSV parser ──
 
+// RFC 4180-aware CSV row parser: respects quoted fields and "" escapes.
+function parseCsvRow(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; } else { inQuotes = false; }
+      } else { cur += ch; }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { out.push(cur.trim()); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+const stripQuotes = (v: string) => (v ?? "").replace(/^"+|"+$/g, "").trim();
+
+function snMatches(stored: string | null | undefined, parsed: string): boolean {
+  if (!stored) return false;
+  const s = stored.toLowerCase().trim();
+  const p = parsed.toLowerCase().trim();
+  if (!s || !p) return false;
+  if (s === p) return true;
+  if (s.length >= 12 && p.startsWith(s)) return true;
+  if (p.length >= 12 && s.startsWith(p)) return true;
+  return false;
+}
+
 function findHeaderIndex(headers: string[], target: string): number {
   const exact = headers.indexOf(target);
   if (exact !== -1) return exact;
