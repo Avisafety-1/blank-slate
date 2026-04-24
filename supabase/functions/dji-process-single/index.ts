@@ -107,12 +107,12 @@ function parseCsvMinimal(csvText: string) {
   const lines = csvText.trim().split("\n");
   if (lines.length < 2) throw new Error("Empty CSV");
 
-  const headers = lines[0].split(",").map((h) => h.trim());
-  const firstRow = lines[1].split(",").map((c) => c.trim());
+  const headers = parseCsvRow(lines[0]);
+  const firstRow = parseCsvRow(lines[1]);
 
   const get = (field: string) => {
     const idx = findHeaderIndex(headers, field);
-    return idx >= 0 ? firstRow[idx] : "";
+    return idx >= 0 ? stripQuotes(firstRow[idx] ?? "") : "";
   };
   const getNum = (field: string) => {
     const v = parseFloat(get(field));
@@ -120,7 +120,7 @@ function parseCsvMinimal(csvText: string) {
   };
 
   const aircraftSN = get("DETAILS.aircraftSN") || get("DETAILS.aircraftSerial");
-  const batterySN = (get("DETAILS.batterySN") || get("DETAILS.batterySerial")).replace(/^"|"$/g, "").trim();
+  const batterySN = get("DETAILS.batterySN") || get("DETAILS.batterySerial");
   const sha256Hash = get("DETAILS.sha256Hash");
   const totalTimeSec = getNum("DETAILS.totalTime [s]");
   const durationMinutes = totalTimeSec ? Math.round(totalTimeSec / 60) : Math.round((lines.length - 1) / 600);
@@ -176,7 +176,7 @@ function parseCsvMinimal(csvText: string) {
   const sampleRate = Math.max(1, Math.floor((lines.length - 1) / 500));
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",").map((c) => c.trim());
+    const cols = parseCsvRow(lines[i]);
     const lat = latIdx >= 0 ? parseFloat(cols[latIdx]) : NaN;
     const lon = lonIdx >= 0 ? parseFloat(cols[lonIdx]) : NaN;
     const alt = altIdx >= 0 ? parseFloat(cols[altIdx]) : 0;
