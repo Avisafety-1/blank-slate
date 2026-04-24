@@ -705,28 +705,29 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           }
         }
 
-        // 3. Auto-match drone
+        // 3. Auto-match drone (with prefix support)
         let droneId: string | null = null;
         let droneModel: string | undefined;
-        const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
           const match = localDrones.find(d =>
-            d.serienummer.trim().toLowerCase() === sn ||
-            (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+            snMatchesDjiSn(d.serienummer, sn) ||
+            snMatchesDjiSn(d.internal_serial, sn)
           );
           if (match) { droneId = match.id; droneModel = match.modell; }
         }
 
-        // 4. Auto-match battery
+        // 4. Auto-match battery (with prefix support)
         let batteryId: string | null = null;
         if (data.batterySN) {
-          const bsn = data.batterySN.trim().toLowerCase();
+          const bsn = data.batterySN.trim();
           const bMatch = localEquipment.find(e =>
-            (e.serienummer && e.serienummer.trim().toLowerCase() === bsn) ||
-            (e.internal_serial && e.internal_serial.trim().toLowerCase() === bsn)
+            snMatchesDjiSn(e.serienummer, bsn) ||
+            snMatchesDjiSn(e.internal_serial, bsn)
           );
           if (bMatch) batteryId = bMatch.id;
         }
+
 
         // 5. Save to pending_dji_logs
         const effectiveDate = data.startTime ? (parseFlightDate(data.startTime) || new Date()) : new Date();
