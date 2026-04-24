@@ -66,6 +66,29 @@ function normalizeDateToISO(raw: string | null | undefined): string | null {
 
 // ── CSV parser ──
 
+// RFC 4180-aware CSV row parser: respects quoted fields and "" escapes.
+function parseCsvRow(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; } else { inQuotes = false; }
+      } else { cur += ch; }
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { out.push(cur.trim()); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+const stripQuotes = (v: string) => (v ?? "").replace(/^"+|"+$/g, "").trim();
+
 function findHeaderIndex(headers: string[], target: string): number {
   const exact = headers.indexOf(target);
   if (exact !== -1) return exact;
@@ -80,12 +103,12 @@ function parseCsvMinimal(csvText: string) {
   const lines = csvText.trim().split("\n");
   if (lines.length < 2) throw new Error("Empty CSV");
 
-  const headers = lines[0].split(",").map((h) => h.trim());
-  const firstRow = lines[1].split(",").map((c) => c.trim());
+  const headers = parseCsvRow(lines[0]);
+  const firstRow = parseCsvRow(lines[1]);
 
   const get = (field: string) => {
     const idx = findHeaderIndex(headers, field);
-    return idx >= 0 ? firstRow[idx] : "";
+    return idx >= 0 ? stripQuotes(firstRow[idx] ?? "") : "";
   };
   const getNum = (field: string) => {
     const v = parseFloat(get(field));
@@ -93,7 +116,7 @@ function parseCsvMinimal(csvText: string) {
   };
 
   const aircraftSN = get("DETAILS.aircraftSN") || get("DETAILS.aircraftSerial");
-  const batterySN = (get("DETAILS.batterySN") || get("DETAILS.batterySerial")).replace(/^"|"$/g, "").trim();
+  const batterySN = get("DETAILS.batterySN") || get("DETAILS.batterySerial");
   const sha256Hash = get("DETAILS.sha256Hash");
   const totalTimeSec = getNum("DETAILS.totalTime [s]");
   const durationMinutes = totalTimeSec ? Math.round(totalTimeSec / 60) : Math.round((lines.length - 1) / 600);
@@ -148,7 +171,7 @@ function parseCsvMinimal(csvText: string) {
   const sampleRate = Math.max(1, Math.floor((lines.length - 1) / 500));
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",").map((c) => c.trim());
+    const cols = parseCsvRow(lines[i]);
     const lat = latIdx >= 0 ? parseFloat(cols[latIdx]) : NaN;
     const lon = lonIdx >= 0 ? parseFloat(cols[lonIdx]) : NaN;
     const alt = altIdx >= 0 ? parseFloat(cols[altIdx]) : 0;
@@ -317,6 +340,20 @@ async function getSearchCompanyIds(serviceClient: any, companyId: string): Promi
   return Array.from(ids);
 }
 
+// Match by exact OR prefix (handles old 16-char SNs vs new full 20-char SNs).
+function snMatches(stored: string | null | undefined, parsed: string): boolean {
+  if (!stored) return false;
+  const s = stored.toLowerCase().trim();
+  const p = parsed.toLowerCase().trim();
+  if (!s || !p) return false;
+  if (s === p) return true;
+  // Old truncated SN in DB matches new full SN from log
+  if (s.length >= 12 && p.startsWith(s)) return true;
+  // Reverse: full SN in DB, truncated SN in log
+  if (p.length >= 12 && s.startsWith(p)) return true;
+  return false;
+}
+
 async function matchDroneAndBattery(
   serviceClient: any,
   companyId: string,
@@ -324,6 +361,7 @@ async function matchDroneAndBattery(
 ) {
   let matchedDroneId: string | null = null;
   let matchedBatteryId: string | null = null;
+  let snMismatchSuggestion: any = null;
 
   const searchIds = await getSearchCompanyIds(serviceClient, companyId);
 
@@ -334,19 +372,27 @@ async function matchDroneAndBattery(
       .in("company_id", searchIds);
 
     if (drones) {
-      const snLower = parsed.aircraftSN.toLowerCase();
-      // Prefer match in own company, then parent
       const ownMatch = drones.find((d: any) =>
-        d.company_id === companyId && (
-          d.serienummer.toLowerCase() === snLower ||
-          (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
-        )
+        d.company_id === companyId &&
+        (snMatches(d.serienummer, parsed.aircraftSN) || snMatches(d.internal_serial, parsed.aircraftSN))
       );
       const anyMatch = ownMatch || drones.find((d: any) =>
-        d.serienummer.toLowerCase() === snLower ||
-        (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
+        snMatches(d.serienummer, parsed.aircraftSN) || snMatches(d.internal_serial, parsed.aircraftSN)
       );
-      if (anyMatch) matchedDroneId = anyMatch.id;
+      if (anyMatch) {
+        matchedDroneId = anyMatch.id;
+        // Suggest update if stored SN differs from parsed SN (typically truncated)
+        const storedSn = (anyMatch.serienummer || "").trim();
+        const parsedSn = parsed.aircraftSN.trim();
+        if (storedSn && parsedSn && storedSn !== parsedSn) {
+          snMismatchSuggestion = {
+            drone_id: anyMatch.id,
+            current_sn: storedSn,
+            suggested_sn: parsedSn,
+            type: "drone",
+          };
+        }
+      }
     }
   }
 
@@ -358,22 +404,18 @@ async function matchDroneAndBattery(
       .ilike("type", "batteri");
 
     if (batteries) {
-      const bsnLower = parsed.batterySN.toLowerCase();
       const ownMatch = batteries.find((b: any) =>
-        b.company_id === companyId && (
-          b.serienummer.toLowerCase() === bsnLower ||
-          (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
-        )
+        b.company_id === companyId &&
+        (snMatches(b.serienummer, parsed.batterySN) || snMatches(b.internal_serial, parsed.batterySN))
       );
       const anyMatch = ownMatch || batteries.find((b: any) =>
-        b.serienummer.toLowerCase() === bsnLower ||
-        (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
+        snMatches(b.serienummer, parsed.batterySN) || snMatches(b.internal_serial, parsed.batterySN)
       );
       if (anyMatch) matchedBatteryId = anyMatch.id;
     }
   }
 
-  return { matchedDroneId, matchedBatteryId };
+  return { matchedDroneId, matchedBatteryId, snMismatchSuggestion };
 }
 
 // ── Main handler ──
@@ -646,7 +688,7 @@ async function syncSingleUser(
       try {
         console.log(`[dji-auto-sync] Downloading + parsing log ${logId}`);
         const parsed = await downloadAndParseLog(dronelogKey, accountId, String(logId));
-        const { matchedDroneId, matchedBatteryId } = await matchDroneAndBattery(serviceClient, company.id, parsed);
+        const { matchedDroneId, matchedBatteryId, snMismatchSuggestion } = await matchDroneAndBattery(serviceClient, company.id, parsed);
 
         let alreadyImported = false;
         let existingFlightLogId: string | null = null;
@@ -679,6 +721,7 @@ async function syncSingleUser(
             parsed_result: parsed as any,
             matched_drone_id: matchedDroneId,
             matched_battery_id: matchedBatteryId,
+            sn_mismatch_suggestion: snMismatchSuggestion,
             status: alreadyImported ? "approved" : "pending",
             processed_flight_log_id: existingFlightLogId,
           });
