@@ -482,7 +482,12 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
     }
 
     // 8b. Fetch solar/geomagnetic activity (Kp-index) from NOAA SWPC
-    let solarActivity: { kpIndex: number; noaaScale: string; level: string } | null = null;
+    // Always provide an object so the AI prompt can include Kp consistently, even when unavailable.
+    let solarActivity: { kpIndex: number | null; noaaScale: string; level: string } = {
+      kpIndex: null,
+      noaaScale: 'unknown',
+      level: 'unavailable',
+    };
     try {
       const kpRes = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json', {
         signal: AbortSignal.timeout(5000),
