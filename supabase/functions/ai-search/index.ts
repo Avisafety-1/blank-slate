@@ -46,7 +46,7 @@ serve(async (req) => {
       missions, incidents, documents, equipment, drones,
       competencies, sora, personnel, customers, news,
       flightLogs, calendarEvents
-    ]: any[] = await Promise.all([
+    ]: any[] = await Promise.all<any>([
       // Missions - includes merknader
       supabase
         .from('missions')
