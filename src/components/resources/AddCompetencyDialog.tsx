@@ -25,7 +25,11 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
   const { companyId } = useAuth();
   const [selectedPersonId, setSelectedPersonId] = useState<string>("");
   const [personSearchOpen, setPersonSearchOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<string>("Kurs");
+  const [navnValue, setNavnValue] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
+
+  const KURS_PRESETS = ["STS", "A1/A3", "A2"];
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,6 +92,8 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
       toast.success("Kompetanse lagt til");
       onOpenChange(false);
       setSelectedPersonId("");
+      setSelectedType("Kurs");
+      setNavnValue("");
       setFile(null);
       setDocumentUrl(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -158,7 +164,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
             </div>
             <div>
               <Label htmlFor="type">Type</Label>
-              <Select name="type" defaultValue="Kurs">
+              <Select name="type" value={selectedType} onValueChange={(v) => { setSelectedType(v); setNavnValue(""); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -175,7 +181,46 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
             </div>
             <div>
               <Label htmlFor="navn">Navn</Label>
-              <Input id="navn" name="navn" required />
+              {selectedType === "Kurs" ? (
+                <>
+                  <Select
+                    value={KURS_PRESETS.includes(navnValue) ? navnValue : (navnValue ? "__custom__" : "")}
+                    onValueChange={(v) => setNavnValue(v === "__custom__" ? "" : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Velg kurs..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {KURS_PRESETS.map((k) => (
+                        <SelectItem key={k} value={k}>{k}</SelectItem>
+                      ))}
+                      <SelectItem value="__custom__">Annet (skriv inn)...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {!KURS_PRESETS.includes(navnValue) && (
+                    <Input
+                      id="navn"
+                      name="navn"
+                      className="mt-2"
+                      placeholder="Skriv inn kursnavn"
+                      value={navnValue}
+                      onChange={(e) => setNavnValue(e.target.value)}
+                      required
+                    />
+                  )}
+                  {KURS_PRESETS.includes(navnValue) && (
+                    <input type="hidden" name="navn" value={navnValue} />
+                  )}
+                </>
+              ) : (
+                <Input
+                  id="navn"
+                  name="navn"
+                  value={navnValue}
+                  onChange={(e) => setNavnValue(e.target.value)}
+                  required
+                />
+              )}
             </div>
             <div>
               <Label htmlFor="beskrivelse">Beskrivelse</Label>
