@@ -132,7 +132,7 @@ function parseCsvToResult(csvText: string) {
     throw new Error("Empty or invalid CSV response from DroneLog");
   }
 
-  const headers = lines[0].split(",").map((h) => h.trim());
+  const headers = parseCsvRow(lines[0]);
   console.log("CSV headers received:", JSON.stringify(headers));
 
   // Core indices
