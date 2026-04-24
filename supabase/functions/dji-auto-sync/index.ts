@@ -340,6 +340,20 @@ async function getSearchCompanyIds(serviceClient: any, companyId: string): Promi
   return Array.from(ids);
 }
 
+// Match by exact OR prefix (handles old 16-char SNs vs new full 20-char SNs).
+function snMatches(stored: string | null | undefined, parsed: string): boolean {
+  if (!stored) return false;
+  const s = stored.toLowerCase().trim();
+  const p = parsed.toLowerCase().trim();
+  if (!s || !p) return false;
+  if (s === p) return true;
+  // Old truncated SN in DB matches new full SN from log
+  if (s.length >= 12 && p.startsWith(s)) return true;
+  // Reverse: full SN in DB, truncated SN in log
+  if (p.length >= 12 && s.startsWith(p)) return true;
+  return false;
+}
+
 async function matchDroneAndBattery(
   serviceClient: any,
   companyId: string,
@@ -347,6 +361,7 @@ async function matchDroneAndBattery(
 ) {
   let matchedDroneId: string | null = null;
   let matchedBatteryId: string | null = null;
+  let snMismatchSuggestion: any = null;
 
   const searchIds = await getSearchCompanyIds(serviceClient, companyId);
 
@@ -357,19 +372,27 @@ async function matchDroneAndBattery(
       .in("company_id", searchIds);
 
     if (drones) {
-      const snLower = parsed.aircraftSN.toLowerCase();
-      // Prefer match in own company, then parent
       const ownMatch = drones.find((d: any) =>
-        d.company_id === companyId && (
-          d.serienummer.toLowerCase() === snLower ||
-          (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
-        )
+        d.company_id === companyId &&
+        (snMatches(d.serienummer, parsed.aircraftSN) || snMatches(d.internal_serial, parsed.aircraftSN))
       );
       const anyMatch = ownMatch || drones.find((d: any) =>
-        d.serienummer.toLowerCase() === snLower ||
-        (d.internal_serial && d.internal_serial.toLowerCase() === snLower)
+        snMatches(d.serienummer, parsed.aircraftSN) || snMatches(d.internal_serial, parsed.aircraftSN)
       );
-      if (anyMatch) matchedDroneId = anyMatch.id;
+      if (anyMatch) {
+        matchedDroneId = anyMatch.id;
+        // Suggest update if stored SN differs from parsed SN (typically truncated)
+        const storedSn = (anyMatch.serienummer || "").trim();
+        const parsedSn = parsed.aircraftSN.trim();
+        if (storedSn && parsedSn && storedSn !== parsedSn) {
+          snMismatchSuggestion = {
+            drone_id: anyMatch.id,
+            current_sn: storedSn,
+            suggested_sn: parsedSn,
+            type: "drone",
+          };
+        }
+      }
     }
   }
 
@@ -381,22 +404,18 @@ async function matchDroneAndBattery(
       .ilike("type", "batteri");
 
     if (batteries) {
-      const bsnLower = parsed.batterySN.toLowerCase();
       const ownMatch = batteries.find((b: any) =>
-        b.company_id === companyId && (
-          b.serienummer.toLowerCase() === bsnLower ||
-          (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
-        )
+        b.company_id === companyId &&
+        (snMatches(b.serienummer, parsed.batterySN) || snMatches(b.internal_serial, parsed.batterySN))
       );
       const anyMatch = ownMatch || batteries.find((b: any) =>
-        b.serienummer.toLowerCase() === bsnLower ||
-        (b.internal_serial && b.internal_serial.toLowerCase() === bsnLower)
+        snMatches(b.serienummer, parsed.batterySN) || snMatches(b.internal_serial, parsed.batterySN)
       );
       if (anyMatch) matchedBatteryId = anyMatch.id;
     }
   }
 
-  return { matchedDroneId, matchedBatteryId };
+  return { matchedDroneId, matchedBatteryId, snMismatchSuggestion };
 }
 
 // ── Main handler ──
