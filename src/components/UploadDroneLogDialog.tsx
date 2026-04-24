@@ -203,6 +203,18 @@ const isApiLimitError = (error: any): boolean => {
   return msg.includes('limit reached') || msg.includes('429') || msg.includes('api limit') || msg.includes('too many requests');
 };
 
+// Match by exact OR prefix — handles old 16-char DJI SNs vs new full 20-char SNs.
+const snMatchesDjiSn = (stored: string | null | undefined, parsedSn: string | null | undefined): boolean => {
+  if (!stored || !parsedSn) return false;
+  const s = stored.toLowerCase().trim();
+  const p = parsedSn.toLowerCase().trim();
+  if (!s || !p) return false;
+  if (s === p) return true;
+  if (s.length >= 12 && p.startsWith(s)) return true;
+  if (p.length >= 12 && s.startsWith(p)) return true;
+  return false;
+};
+
 // ── Component ──
 
 export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
@@ -305,6 +317,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
    const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
+   const [updateDroneSnConfirmed, setUpdateDroneSnConfirmed] = useState(false);
    const [showAddDroneDialog, setShowAddDroneDialog] = useState(false);
    const [linkBatteryToExisting, setLinkBatteryToExisting] = useState(false);
    const [linkDroneToExisting, setLinkDroneToExisting] = useState(false);
@@ -475,6 +488,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setUnmatchedBatterySN(null);
     setShowAddEquipmentDialog(false);
     setUnmatchedDroneSN(null);
+    setUpdateDroneSnConfirmed(false);
     setShowAddDroneDialog(false);
     setLinkBatteryToExisting(false);
     setLinkDroneToExisting(false);
@@ -492,10 +506,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setUnmatchedBatterySN(null);
       return;
     }
-    const sn = data.batterySN.trim().toLowerCase();
-    const match = equipmentList.find(e => 
-      (e.serienummer && e.serienummer.trim().toLowerCase() === sn) ||
-      (e.internal_serial && e.internal_serial.trim().toLowerCase() === sn)
+    const sn = data.batterySN.trim();
+    const match = equipmentList.find(e =>
+      snMatchesDjiSn(e.serienummer, sn) || snMatchesDjiSn(e.internal_serial, sn)
     );
     if (match) {
       setSelectedEquipment(prev => prev.includes(match.id) ? prev : [...prev, match.id]);
@@ -512,10 +525,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setUnmatchedDroneSN(null);
       return;
     }
-    const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
-    const match = drones.find(d => 
-      (d.serienummer && d.serienummer.trim().toLowerCase() === sn) ||
-      (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+    const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
+    const match = drones.find(d =>
+      snMatchesDjiSn(d.serienummer, sn) || snMatchesDjiSn(d.internal_serial, sn)
     );
     if (match) {
       setSelectedDroneId(match.id);
@@ -695,28 +707,29 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           }
         }
 
-        // 3. Auto-match drone
+        // 3. Auto-match drone (with prefix support)
         let droneId: string | null = null;
         let droneModel: string | undefined;
-        const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
           const match = localDrones.find(d =>
-            d.serienummer.trim().toLowerCase() === sn ||
-            (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+            snMatchesDjiSn(d.serienummer, sn) ||
+            snMatchesDjiSn(d.internal_serial, sn)
           );
           if (match) { droneId = match.id; droneModel = match.modell; }
         }
 
-        // 4. Auto-match battery
+        // 4. Auto-match battery (with prefix support)
         let batteryId: string | null = null;
         if (data.batterySN) {
-          const bsn = data.batterySN.trim().toLowerCase();
+          const bsn = data.batterySN.trim();
           const bMatch = localEquipment.find(e =>
-            (e.serienummer && e.serienummer.trim().toLowerCase() === bsn) ||
-            (e.internal_serial && e.internal_serial.trim().toLowerCase() === bsn)
+            snMatchesDjiSn(e.serienummer, bsn) ||
+            snMatchesDjiSn(e.internal_serial, bsn)
           );
           if (bMatch) batteryId = bMatch.id;
         }
+
 
         // 5. Save to pending_dji_logs
         const effectiveDate = data.startTime ? (parseFlightDate(data.startTime) || new Date()) : new Date();
@@ -811,25 +824,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           }
         }
 
-        // 3. Auto-match drone
+        // 3. Auto-match drone (with prefix support)
         let droneId: string | null = null;
         let droneModel: string | undefined;
-        const sn = (data.aircraftSN || data.aircraftSerial || '').trim().toLowerCase();
+        const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
           const match = localDrones.find(d =>
-            d.serienummer.trim().toLowerCase() === sn ||
-            (d.internal_serial && d.internal_serial.trim().toLowerCase() === sn)
+            snMatchesDjiSn(d.serienummer, sn) ||
+            snMatchesDjiSn(d.internal_serial, sn)
           );
           if (match) { droneId = match.id; droneModel = match.modell; }
         }
 
-        // 4. Auto-match battery
+        // 4. Auto-match battery (with prefix support)
         let batteryId: string | null = null;
         if (data.batterySN) {
-          const bsn = data.batterySN.trim().toLowerCase();
+          const bsn = data.batterySN.trim();
           const bMatch = localEquipment.find(e =>
-            (e.serienummer && e.serienummer.trim().toLowerCase() === bsn) ||
-            (e.internal_serial && e.internal_serial.trim().toLowerCase() === bsn)
+            snMatchesDjiSn(e.serienummer, bsn) ||
+            snMatchesDjiSn(e.internal_serial, bsn)
           );
           if (bMatch) batteryId = bMatch.id;
         }
@@ -1580,6 +1593,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       
       await updateBatteryEquipment(result);
       await ensureDroneEquipmentHistory();
+      await applyDroneSnUpdateIfConfirmed();
       await markPendingLogApproved(matchedLog.id);
       toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
       checkFlightAlerts(result);
@@ -1652,6 +1666,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       await updateBatteryEquipment(result);
       await ensureDroneEquipmentHistory();
+      await applyDroneSnUpdateIfConfirmed();
       await markPendingLogApproved(logData?.id);
       toast.success(t('dronelog.missionCreated', `Nytt oppdrag opprettet fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg!`));
       checkFlightAlerts(result);
@@ -1723,6 +1738,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       await updateBatteryEquipment(result);
       await ensureDroneEquipmentHistory();
+      await applyDroneSnUpdateIfConfirmed();
       await markPendingLogApproved(logData?.id);
       const missionName = matchedMissions.find(m => m.id === selectedMissionId)?.tittel || 'oppdrag';
       toast.success(`Flylogg lagret og knyttet til "${missionName}"!`);
@@ -1747,6 +1763,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       .update({ status: 'approved', processed_flight_log_id: flightLogId || null })
       .eq('id', pendingId);
     delete (window as any).__pendingDjiLogId;
+  };
+
+  // Apply user-confirmed serial number update to the matched drone
+  const applyDroneSnUpdateIfConfirmed = async () => {
+    if (!updateDroneSnConfirmed || !selectedDroneId || !result) return;
+    const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
+    const drone = drones.find(d => d.id === selectedDroneId);
+    if (!drone || !parsedSn || (drone.serienummer || '').trim() === parsedSn) return;
+    const { error } = await supabase
+      .from('drones')
+      .update({ serienummer: parsedSn })
+      .eq('id', selectedDroneId);
+    if (error) {
+      console.error('SN-oppdatering feilet:', error);
+      toast.error('Kunne ikke oppdatere serienummer på dronen');
+    } else {
+      toast.success(`Serienummer oppdatert til ${parsedSn}`);
+      queryClient.invalidateQueries({ queryKey: ['drones'] });
+    }
   };
 
   // updateDroneFlightHours removed — handled by DB trigger trg_update_drone_hours (divides minutes by 60.0)
@@ -1950,11 +1985,34 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                       ))}
                     </SelectContent>
                   </Select>
-                  {selectedDroneId && (result.aircraftSN || result.aircraftSerial) && (selectedDrone?.serienummer === (result.aircraftSN || result.aircraftSerial)?.trim() || selectedDrone?.internal_serial === (result.aircraftSN || result.aircraftSerial)?.trim()) && (
-                    <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />Auto-matchet via SN
-                    </p>
-                  )}
+                  {(() => {
+                    const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
+                    if (!selectedDroneId || !parsedSn || !selectedDrone) return null;
+                    const isMatched = snMatchesDjiSn(selectedDrone.serienummer, parsedSn) || snMatchesDjiSn((selectedDrone as any).internal_serial, parsedSn);
+                    if (!isMatched) return null;
+                    const storedSn = (selectedDrone.serienummer || '').trim();
+                    const snDiffers = storedSn && storedSn !== parsedSn;
+                    return (
+                      <>
+                        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />Auto-matchet via SN
+                        </p>
+                        {snDiffers && (
+                          <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                            <Checkbox
+                              id="update-drone-sn"
+                              checked={updateDroneSnConfirmed}
+                              onCheckedChange={(v) => setUpdateDroneSnConfirmed(v === true)}
+                              className="mt-0.5"
+                            />
+                            <Label htmlFor="update-drone-sn" className="text-[11px] leading-tight cursor-pointer text-amber-900 dark:text-amber-200">
+                              Lagret SN ({storedSn}) er kortere enn loggens SN ({parsedSn}). Oppdater {terminology.vehicle} sitt serienummer til full verdi?
+                            </Label>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Equipment selector */}
