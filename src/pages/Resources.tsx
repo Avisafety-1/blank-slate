@@ -495,7 +495,9 @@ const Resources = () => {
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <h3 className="font-semibold">{drone.modell}</h3>
-                        <p className="text-sm text-muted-foreground">{drone.registrering}</p>
+                        {drone.registration_number && (
+                          <p className="text-sm text-muted-foreground">Reg.nr: {drone.registration_number}</p>
+                        )}
                         {drone.company_id !== companyId && drone.companies?.navn && (
                           <Badge variant="secondary" className="mt-1 gap-1 text-xs">
                             <Building2 className="w-3 h-3" />
