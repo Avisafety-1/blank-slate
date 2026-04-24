@@ -408,6 +408,12 @@ export function OpenAIPMap({
       }
     }
 
+    // Sørg for at popup-bokser alltid ligger over alle kartlag
+    const popupPane = map.getPane('popupPane');
+    if (popupPane) popupPane.style.zIndex = '800';
+    const tooltipPane = map.getPane('tooltipPane');
+    if (tooltipPane) tooltipPane.style.zIndex = '790';
+
     // Base layer
     const osmLayer = L.tileLayer(openAipConfig.tiles.base, {
       attribution: openAipConfig.attribution.osm,
