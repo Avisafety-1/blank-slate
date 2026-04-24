@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
+import { TettstederLegend } from "@/components/TettstederLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
@@ -452,6 +453,13 @@ export function OpenAIPMap({
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
     layerConfigs.push({ id: "befolkning1km", name: "Befolkning 1km² (SSB)", layer: befolkningLayer, enabled: false, icon: "users" });
+
+    // SSB Tettsteder (urban settlements ≥200 residents)
+    const tettstederLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/tettsteder", {
+      layers: "tettsted_2024", format: "image/png", transparent: true, opacity: 0.5,
+      attribution: 'Tettsteder © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
+    } as any);
+    layerConfigs.push({ id: "tettsteder", name: "Tettsteder (SSB)", layer: tettstederLayer, enabled: false, icon: "users" });
 
     // NVE Kraftledninger (vector via ArcGIS REST)
     if (!map.getPane('powerPane')) {
@@ -990,6 +998,7 @@ export function OpenAIPMap({
 
       {layers.find(l => l.id === "arealbruk")?.enabled && <ArealbrukLegend />}
       {layers.find(l => l.id === "befolkning1km")?.enabled && <BefolkningLegend />}
+      {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
     </div>
   );
 }
