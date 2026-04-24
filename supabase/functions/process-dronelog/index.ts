@@ -224,11 +224,11 @@ function parseCsvToResult(csvText: string) {
     "isDualBattery:", isDualBattery, "batt1Charge:", batt1ChargeIdx, "batt2Charge:", batt2ChargeIdx);
 
   // Extract DETAILS metadata from first data row
-  const firstRow = lines[1].split(",").map((c) => c.trim());
+  const firstRow = parseCsvRow(lines[1]);
   const startTime = detStartTimeIdx >= 0 ? firstRow[detStartTimeIdx] : "";
   const aircraftName = detAircraftNameIdx >= 0 ? firstRow[detAircraftNameIdx] : "";
-  const rawAircraftSN = detAircraftSNIdx >= 0 ? firstRow[detAircraftSNIdx] : "";
-  const aircraftSerial = detAircraftSerialIdx >= 0 ? firstRow[detAircraftSerialIdx] : "";
+  const rawAircraftSN = detAircraftSNIdx >= 0 ? stripQuotes(firstRow[detAircraftSNIdx]) : "";
+  const aircraftSerial = detAircraftSerialIdx >= 0 ? stripQuotes(firstRow[detAircraftSerialIdx]) : "";
   const aircraftSN = rawAircraftSN || aircraftSerial;
   const droneType = detDroneTypeIdx >= 0 ? firstRow[detDroneTypeIdx] : "";
   const totalDistance = detTotalDistIdx >= 0 ? parseFloat(firstRow[detTotalDistIdx]) : NaN;
