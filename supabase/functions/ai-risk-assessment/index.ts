@@ -482,7 +482,12 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
     }
 
     // 8b. Fetch solar/geomagnetic activity (Kp-index) from NOAA SWPC
-    let solarActivity: { kpIndex: number; noaaScale: string; level: string } | null = null;
+    // Always provide an object so the AI prompt can include Kp consistently, even when unavailable.
+    let solarActivity: { kpIndex: number | null; noaaScale: string; level: string } = {
+      kpIndex: null,
+      noaaScale: 'unknown',
+      level: 'unavailable',
+    };
     try {
       const kpRes = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json', {
         signal: AbortSignal.timeout(5000),
@@ -1285,12 +1290,29 @@ Hvis SORA er påkrevd men buffersoner ikke er beregnet, anbefal at brukeren utf�
 #### Selskapskrav
 Sjekk om selskapet krever SORA for alle oppdrag (company_requires_sora_on_missions). Hvis ja, merk at SORA er påkrevd som internkrav selv om operasjonen kan utføres uten.
 
-    ### SOLSTORM / GEOMAGNETISK AKTIVITET
+    ### SOLSTORM / GEOMAGNETISK AKTIVITET (Kp-indeks) — OBLIGATORISK
 Feltet "solarActivity" inneholder Kp-indeks fra NOAA Space Weather Prediction Center.
-${solarActivity ? `Kp-indeks for oppdragsdato: ${solarActivity.kpIndex} (${solarActivity.noaaScale}, ${solarActivity.level}).` : 'Solstormdata er ikke tilgjengelig.'}
-- Hvis Kp < 5 (G0): Skriv KUN én kort setning i equipment-kategoriens "factors", f.eks. "Geomagnetisk aktivitet vurdert — Kp ${solarActivity?.kpIndex ?? '?'}, ingen forstyrrelse forventet." IKKE utdyp mer enn dette.
-- Hvis Kp 5–6 (G1–G2): Advarsel i equipment "concerns" om mulig GPS/GNSS-degradering. Reduser equipment score med 1 poeng.
-- Hvis Kp 7+ (G3+): Sterk advarsel. Reduser equipment score med 2–3 poeng. Vurder caution eller no-go avhengig av total risiko.
+Aktuell verdi: Kp = ${solarActivity.kpIndex ?? 'ikke tilgjengelig'} (${solarActivity.noaaScale}, ${solarActivity.level}).
+
+KRITISK: Kp-indeks MÅ ALLTID inkluderes i weather-kategoriens "factors"- eller "concerns"-liste som ETT separat punkt, uavhengig av verdi (også når Kp = 0 eller data mangler). Bruk eksakt disse malene:
+
+- Hvis kpIndex === null (ikke tilgjengelig):
+  Legg til i weather "factors": "Geomagnetisk aktivitet (Kp): data ikke tilgjengelig fra NOAA — verifiser manuelt før flygning."
+  Ingen score-påvirkning.
+
+- Hvis Kp 0–4 (G0, rolig):
+  Legg til i weather "factors": "Geomagnetisk aktivitet: Kp ${solarActivity.kpIndex ?? '?'} (G0, rolig) — ingen GPS/GNSS-forstyrrelser forventet."
+  Ingen score-påvirkning.
+
+- Hvis Kp 5–6 (G1–G2, mindre/moderat storm):
+  Legg til i weather "concerns": "Geomagnetisk storm: Kp ${solarActivity.kpIndex ?? '?'} (${solarActivity.noaaScale}) — mulig GPS/GNSS-degradering, økt posisjonsdrift kan forekomme."
+  Reduser BÅDE weather og equipment score med 1 poeng.
+
+- Hvis Kp ≥ 7 (G3+, sterk storm):
+  Legg til i weather "concerns": "Sterk geomagnetisk storm: Kp ${solarActivity.kpIndex ?? '?'} (${solarActivity.noaaScale}) — betydelig risiko for GPS/GNSS-svikt og kompassfeil."
+  Reduser BÅDE weather og equipment score med 2 poeng. Vurder caution eller no-go basert på totalbilde.
+
+Du MÅ aldri utelate Kp-punktet fra weather-kategorien. Dette er et obligatorisk fast felt i rapporten.
 
 ### REGLER FOR SUMMARY (Foreslått konklusjon)
 - Summary SKAL KUN omtale bekymringer som faktisk er reflektert i kategori-scorene og concerns-listene.
