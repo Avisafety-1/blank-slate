@@ -862,9 +862,12 @@ export async function fetchNotams(params: {
   // Dedicated SVG renderer bound to notamPane so vectors live in their own SVG container
   const map = (layer as any)._map as L.Map | null;
   if (!map) return;
+  if (!map.getPane(pane)) map.createPane(pane);
+  if (!map.getPane(pinPane)) map.createPane(pinPane);
+
   // Reuse existing renderer if available to avoid orphaned SVG containers
   let notamRenderer: L.SVG;
-  if ((layer as any)._notamRenderer && (layer as any)._notamRenderer._map) {
+  if ((layer as any)._notamRenderer && (layer as any)._notamRenderer._map === map) {
     notamRenderer = (layer as any)._notamRenderer;
   } else {
     notamRenderer = L.svg({ pane });
