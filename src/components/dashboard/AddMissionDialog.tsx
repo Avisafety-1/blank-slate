@@ -455,6 +455,10 @@ export const AddMissionDialog = ({
           toast.warning("Oppdraget ble lagret, men SORA-dokumentasjonen kunne ikke opprettes");
         }
       };
+      const routeForStorage = routeData ? (() => {
+        const { _createSoraDocumentation, ...cleanRoute } = routeData as any;
+        return cleanRoute;
+      })() : routeData;
 
       if (mission) {
         // UPDATE mode
@@ -510,7 +514,7 @@ export const AddMissionDialog = ({
           customer_id: selectedCustomer || null,
           latitude: formData.latitude,
           longitude: formData.longitude,
-          route: routeData,
+          route: routeForStorage,
           oppdatert_dato: new Date().toISOString(),
         };
 
@@ -656,7 +660,7 @@ export const AddMissionDialog = ({
             company_id: profile.company_id,
             latitude: formData.latitude,
             longitude: formData.longitude,
-            route: routeData,
+            route: routeForStorage,
           })
           .select()
           .single();
