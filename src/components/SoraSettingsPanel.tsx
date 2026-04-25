@@ -104,6 +104,15 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     onChange({ ...settings, ...partial });
   };
 
+  useEffect(() => {
+    if (initialDroneId && initialDroneId !== selectedDroneId) setSelectedDroneId(initialDroneId);
+  }, [initialDroneId, selectedDroneId]);
+
+  useEffect(() => {
+    if (settings.characteristicDimensionM != null) setCharacteristicDimension(String(settings.characteristicDimensionM));
+    if (settings.groundSpeedMps != null) setGroundSpeed(String(settings.groundSpeedMps));
+  }, [settings.characteristicDimensionM, settings.groundSpeedMps]);
+
   // Fetch company drones
   useEffect(() => {
     if (!companyId) return;
