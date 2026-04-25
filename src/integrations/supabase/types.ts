@@ -1483,11 +1483,13 @@ export type Database = {
       drone_models: {
         Row: {
           category: string | null
+          characteristic_dimension_m: number | null
           comment: string | null
           created_at: string | null
           endurance_min: number | null
           eu_class: string
           id: string
+          max_speed_mps: number | null
           max_wind_mps: number | null
           name: string
           payload_kg: number
@@ -1498,11 +1500,13 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          characteristic_dimension_m?: number | null
           comment?: string | null
           created_at?: string | null
           endurance_min?: number | null
           eu_class: string
           id?: string
+          max_speed_mps?: number | null
           max_wind_mps?: number | null
           name: string
           payload_kg?: number
@@ -1513,11 +1517,13 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          characteristic_dimension_m?: number | null
           comment?: string | null
           created_at?: string | null
           endurance_min?: number | null
           eu_class?: string
           id?: string
+          max_speed_mps?: number | null
           max_wind_mps?: number | null
           name?: string
           payload_kg?: number

@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { pickBestDroneCatalogMatch } from "@/lib/droneCatalog";
 import {
   calculateSoraBuffer,
   categoryToAircraftType,
@@ -40,9 +41,11 @@ interface CompanyDrone {
 }
 
 interface CatalogSpecs {
+  name: string;
   weight_kg: number;
   max_wind_mps: number | null;
   max_speed_mps?: number | null;
+  characteristic_dimension_m?: number | null;
   category: string | null;
   endurance_min: number | null;
   standard_takeoff_weight_kg: number | null;
@@ -99,6 +102,8 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
   // UI state
   const [manualOverride, setManualOverride] = useState(false);
+  const [manualCdOverride, setManualCdOverride] = useState(false);
+  const [manualSpeedOverride, setManualSpeedOverride] = useState(false);
 
   const update = (partial: Partial<SoraSettings>) => {
     onChange({ ...settings, ...partial });
@@ -142,15 +147,39 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       return;
     }
     const fetchSpecs = async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("drone_models")
-        .select("weight_kg, max_wind_mps, category, endurance_min, standard_takeoff_weight_kg")
-        .ilike("name", selectedDrone.modell)
-        .maybeSingle();
-      setCatalogSpecs(data as CatalogSpecs | null);
+        .select("name, weight_kg, max_wind_mps, max_speed_mps, characteristic_dimension_m, category, endurance_min, standard_takeoff_weight_kg")
+        .or(`name.ilike.%${selectedDrone.modell}%,name.ilike.%${selectedDrone.modell.replace(/^DJI\s+/i, "")}%`)
+        .limit(20);
+      setCatalogSpecs(pickBestDroneCatalogMatch((data ?? []) as CatalogSpecs[], selectedDrone.modell));
     };
     fetchSpecs();
   }, [selectedDrone?.modell]);
+
+  useEffect(() => {
+    if (!selectedDrone || !catalogSpecs) return;
+    const catalogCd = catalogSpecs.characteristic_dimension_m;
+    const catalogSpeed = catalogSpecs.max_speed_mps ?? (catalogSpecs.max_wind_mps != null ? catalogSpecs.max_wind_mps * 2 : null);
+    const next: Partial<SoraSettings> = { droneId: selectedDroneId || undefined };
+
+    if (catalogCd != null && !manualCdOverride) {
+      setCharacteristicDimension(String(catalogCd));
+      next.characteristicDimensionM = catalogCd;
+    }
+    if (catalogSpeed != null && !manualSpeedOverride) {
+      setGroundSpeed(String(catalogSpeed));
+      next.groundSpeedMps = catalogSpeed;
+    }
+
+    const hasChanges = settings.droneId !== next.droneId
+      || (next.characteristicDimensionM !== undefined && settings.characteristicDimensionM !== next.characteristicDimensionM)
+      || (next.groundSpeedMps !== undefined && settings.groundSpeedMps !== next.groundSpeedMps);
+
+    if (hasChanges) {
+      onChange({ ...settings, ...next });
+    }
+  }, [catalogSpecs, selectedDrone, selectedDroneId, manualCdOverride, manualSpeedOverride, settings, onChange]);
 
   // Build drone profile
   const droneProfile: DroneProfile | null = useMemo(() => {
@@ -159,7 +188,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     return {
       aircraft_type: categoryToAircraftType(catalogSpecs?.category ?? null, selectedDrone.modell),
       mtow_kg: mtow,
-      max_speed_mps: undefined,
+      max_speed_mps: catalogSpecs?.max_speed_mps ?? undefined,
       max_wind_mps: catalogSpecs?.max_wind_mps ?? undefined,
       has_parachute_support: true,
       has_fts_support: true,
@@ -215,7 +244,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         <Label className="text-xs text-muted-foreground flex items-center gap-1">
           <Plane className="h-3 w-3" /> Velg drone
         </Label>
-        <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); update({ droneId: v || undefined }); onDroneSelected?.(v || null); }}>
+        <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); setManualCdOverride(false); setManualSpeedOverride(false); update({ droneId: v || undefined }); onDroneSelected?.(v || null); }}>
           <SelectTrigger className="h-8 text-sm">
             <SelectValue placeholder="Velg drone fra flåten" />
           </SelectTrigger>
@@ -230,7 +259,14 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         {selectedDrone && catalogSpecs && (
           <p className="text-[11px] text-muted-foreground">
             {catalogSpecs.category ?? droneProfile?.aircraft_type} · {droneProfile?.mtow_kg} kg MTOW
+            {catalogSpecs.characteristic_dimension_m != null && ` · CD ${catalogSpecs.characteristic_dimension_m} m`}
+            {catalogSpecs.max_speed_mps != null && ` · V0 ${catalogSpecs.max_speed_mps} m/s`}
             {catalogSpecs.max_wind_mps != null && ` · Maks vind ${catalogSpecs.max_wind_mps} m/s`}
+          </p>
+        )}
+        {selectedDrone && !catalogSpecs?.characteristic_dimension_m && (
+          <p className="text-[11px] text-amber-600 dark:text-amber-400">
+            CD mangler i dronemodell-katalogen. Kontroller verdien manuelt før tilstøtende område beregnes.
           </p>
         )}
       </div>
@@ -259,12 +295,12 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">CD (m)</Label>
                 <FieldHint>{SORA_HELP.cd}</FieldHint>
-                <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
+                <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setManualCdOverride(true); setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
                 <FieldHint>{SORA_HELP.v0}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
+                <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setManualSpeedOverride(true); setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
