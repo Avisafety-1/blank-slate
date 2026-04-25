@@ -2832,34 +2832,60 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 </div>
               </button>
               {djiEnabled && (
-              <button
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={handleDjiCardKeyDown}
                 onClick={() => {
                   if (hasSavedCredentials) {
                     setStep('dji-login');
-                    // Trigger auto-login
                     setTimeout(() => handleDjiAutoLogin(), 100);
                   } else {
                     setStep('dji-login');
                   }
                 }}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center relative"
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
+                {hasSavedCredentials && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                    title="Logg ut av DJI"
+                    disabled={isDjiLoading}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleDjiLogout();
+                    }}
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 <CloudDownload className="w-8 h-8 text-primary" />
-                <div>
+                <div className="w-full min-w-0">
                   <p className="font-medium text-sm">{t('dronelog.djiAccount', 'DJI-konto')}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
                     {hasSavedCredentials ? savedDjiEmail : t('dronelog.djiAccountDesc', 'Hent fra skyen')}
                   </p>
                   {hasSavedCredentials && (
-                    <p className={`text-[11px] mt-1 ${enableAutoSync ? 'text-green-600' : 'text-muted-foreground'}`}>
-                      {enableAutoSync ? 'Auto-sync: På' : 'Auto-sync: Av'}
-                    </p>
+                    <div
+                      className="mt-2 flex items-center justify-center gap-2 text-[11px] text-muted-foreground"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Switch
+                        checked={enableAutoSync}
+                        disabled={isAutoSyncSaving}
+                        onCheckedChange={handleAutoSyncToggle}
+                        className="scale-75"
+                        aria-label="Auto-sync"
+                      />
+                      <span>{enableAutoSync ? 'Auto-sync: På' : 'Auto-sync: Av'}</span>
+                    </div>
                   )}
                 </div>
-                {hasSavedCredentials && (
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" title="Innlogget" />
-                )}
-              </button>
+              </div>
               )}
             </div>
 
