@@ -240,7 +240,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         <Label className="text-xs text-muted-foreground flex items-center gap-1">
           <Plane className="h-3 w-3" /> Velg drone
         </Label>
-        <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); update({ droneId: v || undefined }); onDroneSelected?.(v || null); }}>
+        <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); setManualCdOverride(false); setManualSpeedOverride(false); update({ droneId: v || undefined }); onDroneSelected?.(v || null); }}>
           <SelectTrigger className="h-8 text-sm">
             <SelectValue placeholder="Velg drone fra flåten" />
           </SelectTrigger>
@@ -255,7 +255,14 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         {selectedDrone && catalogSpecs && (
           <p className="text-[11px] text-muted-foreground">
             {catalogSpecs.category ?? droneProfile?.aircraft_type} · {droneProfile?.mtow_kg} kg MTOW
+            {catalogSpecs.characteristic_dimension_m != null && ` · CD ${catalogSpecs.characteristic_dimension_m} m`}
+            {catalogSpecs.max_speed_mps != null && ` · V0 ${catalogSpecs.max_speed_mps} m/s`}
             {catalogSpecs.max_wind_mps != null && ` · Maks vind ${catalogSpecs.max_wind_mps} m/s`}
+          </p>
+        )}
+        {selectedDrone && !catalogSpecs?.characteristic_dimension_m && (
+          <p className="text-[11px] text-amber-600 dark:text-amber-400">
+            CD mangler i dronemodell-katalogen. Kontroller verdien manuelt før tilstøtende område beregnes.
           </p>
         )}
       </div>
@@ -284,12 +291,12 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">CD (m)</Label>
                 <FieldHint>{SORA_HELP.cd}</FieldHint>
-                <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
+                <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setManualCdOverride(true); setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
                 <FieldHint>{SORA_HELP.v0}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
+                <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setManualSpeedOverride(true); setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
