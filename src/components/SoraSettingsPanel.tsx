@@ -15,7 +15,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   calculateSoraBuffer,
   categoryToAircraftType,
+  type ContingencyMethod,
   type DroneProfile,
+  type GroundRiskBufferMethod,
   type MissionParams,
   type SoraBufferSuggestion,
 } from "@/lib/soraBufferCalculator";
@@ -64,6 +66,19 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
   const [parachuteEnabled, setParachuteEnabled] = useState(false);
   const [ftsEnabled, setFtsEnabled] = useState(false);
   const [windOverride, setWindOverride] = useState<string>("");
+  const [characteristicDimension, setCharacteristicDimension] = useState("1.0");
+  const [groundSpeed, setGroundSpeed] = useState("15");
+  const [reactionTime, setReactionTime] = useState("1.5");
+  const [pitchBankAngle, setPitchBankAngle] = useState("30");
+  const [altimetryError, setAltimetryError] = useState("1");
+  const [gnssError, setGnssError] = useState("5");
+  const [positionHoldError, setPositionHoldError] = useState("2");
+  const [mapError, setMapError] = useState("0");
+  const [contingencyMethod, setContingencyMethod] = useState<ContingencyMethod>("standard");
+  const [deploymentTime, setDeploymentTime] = useState("3");
+  const [grbMethod, setGrbMethod] = useState<GroundRiskBufferMethod>("off");
+  const [glideRatio, setGlideRatio] = useState("15");
+  const [descentSpeed, setDescentSpeed] = useState("3.5");
 
   // UI state
   const [manualOverride, setManualOverride] = useState(false);
