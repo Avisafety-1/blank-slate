@@ -269,6 +269,91 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">CD (m)</Label>
+                <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => setCharacteristicDimension(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
+                <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => setGroundSpeed(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
+                <Input type="number" min={0} step={0.1} value={reactionTime} onChange={(e) => setReactionTime(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Pitch/bank-vinkel (°)</Label>
+                <Input type="number" min={1} max={89} step={1} value={pitchBankAngle} onChange={(e) => setPitchBankAngle(e.target.value)} className="h-8 text-sm" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">HAM (m)</Label>
+                <Input type="number" min={0} step={0.1} value={altimetryError} onChange={(e) => setAltimetryError(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">SGNSS (m)</Label>
+                <Input type="number" min={0} step={0.1} value={gnssError} onChange={(e) => setGnssError(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">SPos (m)</Label>
+                <Input type="number" min={0} step={0.1} value={positionHoldError} onChange={(e) => setPositionHoldError(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">SMap (m)</Label>
+                <Input type="number" min={0} step={0.1} value={mapError} onChange={(e) => setMapError(e.target.value)} className="h-8 text-sm" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Contingency-metode</Label>
+                <Select value={contingencyMethod} onValueChange={(v) => setContingencyMethod(v as ContingencyMethod)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard</SelectItem>
+                    <SelectItem value="parachute">Parachute / FTS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {contingencyMethod === "parachute" && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Deployment tP (s)</Label>
+                  <Input type="number" min={0} step={0.1} value={deploymentTime} onChange={(e) => setDeploymentTime(e.target.value)} className="h-8 text-sm" />
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">GRB-metode</Label>
+                <Select value={grbMethod} onValueChange={(v) => setGrbMethod(v as GroundRiskBufferMethod)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="off">Av</SelectItem>
+                    <SelectItem value="1to1">1:1 rule</SelectItem>
+                    <SelectItem value="ballistic">Ballistic</SelectItem>
+                    <SelectItem value="glide">Glide</SelectItem>
+                    <SelectItem value="drift">Drift / parachute</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {grbMethod === "glide" && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Glide ratio</Label>
+                  <Input type="number" min={1} step={0.5} value={glideRatio} onChange={(e) => setGlideRatio(e.target.value)} className="h-8 text-sm" />
+                </div>
+              )}
+              {grbMethod === "drift" && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Descent speed (m/s)</Label>
+                  <Input type="number" min={0.1} step={0.1} value={descentSpeed} onChange={(e) => setDescentSpeed(e.target.value)} className="h-8 text-sm" />
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Vind-overstyring (m/s, valgfritt)</Label>
               <Input
