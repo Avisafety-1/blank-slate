@@ -114,6 +114,8 @@ interface MatchedFlightLog {
   landing_location: string;
   mission_id: string | null;
   missions?: { tittel: string } | null;
+  pilot_ids?: string[];
+  pilot_names?: string[];
 }
 
 interface Drone {
