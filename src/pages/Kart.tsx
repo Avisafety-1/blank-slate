@@ -88,7 +88,12 @@ export default function KartPage() {
       // Also fetch max speed from drone_models catalog
       if (data?.modell) {
         (supabase as any).from('drone_models').select('name, max_wind_mps, max_speed_mps, characteristic_dimension_m').or(`name.ilike.%${data.modell}%,name.ilike.%${data.modell.replace(/^DJI\s+/i, "")}%`).limit(20).then(({ data: models }: any) => {
-          const model = pickBestDroneCatalogMatch(models ?? [], data.modell);
+          const model = pickBestDroneCatalogMatch<{
+            name: string;
+            max_wind_mps: number | null;
+            max_speed_mps: number | null;
+            characteristic_dimension_m: number | null;
+          }>((models ?? []) as any[], data.modell);
           const catalogSpeed = model?.max_speed_mps ?? (model?.max_wind_mps ? model.max_wind_mps * 2 : undefined);
           setSoraDroneMaxSpeed(catalogSpeed);
           setSoraSettings(prev => prev.droneId === soraDroneId ? {
