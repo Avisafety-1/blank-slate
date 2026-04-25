@@ -375,7 +375,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
           <div className="flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5 text-primary" />
-            <p className="text-xs font-medium text-foreground">Foreslått SORA-buffer</p>
+            <p className="text-xs font-medium text-foreground">SORA 2.5-beregning</p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
@@ -384,14 +384,23 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             </div>
             <div>
               <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{suggestion.suggested_contingency_buffer_m}m</p>
-              <p className="text-[10px] text-muted-foreground">Contingency</p>
+              <p className="text-[10px] text-muted-foreground">SCV</p>
             </div>
             <div>
               <p className="text-lg font-bold text-red-600 dark:text-red-400">{suggestion.suggested_ground_risk_buffer_m}m</p>
-              <p className="text-[10px] text-muted-foreground">Ground risk</p>
+              <p className="text-[10px] text-muted-foreground">SGRB</p>
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground">{suggestion.calculation_summary}</p>
+
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <span>Reaction (SR): {suggestion.details.reaction_distance_m} m</span>
+            <span>Maneuver (SCM): {suggestion.details.maneuver_distance_m} m</span>
+            <span>Vert. reaction (HR): {suggestion.details.vertical_reaction_m} m</span>
+            <span>Vert. maneuver (HCM): {suggestion.details.vertical_maneuver_m} m</span>
+            <span>CV høyde: {suggestion.details.cv_height_margin_m} m</span>
+            <span>Total ceiling: {suggestion.details.total_ceiling_m} m</span>
+          </div>
 
           {suggestion.warnings.length > 0 && (
             <div className="space-y-1">
@@ -405,7 +414,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           )}
 
           <Button size="sm" className="w-full h-7 text-xs" onClick={applySuggestion}>
-            Bruk foreslått buffer
+            Bruk SORA 2.5-beregning
           </Button>
 
           {manualOverride && (
