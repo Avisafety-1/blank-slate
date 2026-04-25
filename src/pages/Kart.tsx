@@ -2,7 +2,7 @@ import { OpenAIPMap, RouteData, RoutePoint, SoraSettings } from "@/components/Op
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { AdjacentAreaPanel } from "@/components/AdjacentAreaPanel";
-import { calculateAdjacentRadius } from "@/lib/adjacentAreaCalculator";
+import { calculateAdjacentRadius, type AdjacentAreaResult } from "@/lib/adjacentAreaCalculator";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 // soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
@@ -75,7 +75,7 @@ export default function KartPage() {
   const [soraDroneModel, setSoraDroneModel] = useState<string | undefined>(undefined);
   const [soraDroneMaxSpeed, setSoraDroneMaxSpeed] = useState<number | undefined>(undefined);
   const [showAdjacentArea, setShowAdjacentArea] = useState(false);
-  const [adjacentResult, setAdjacentResult] = useState<{ pass: boolean } | null>(null);
+  const [adjacentResult, setAdjacentResult] = useState<AdjacentAreaResult | null>(null);
   const [soraOpen, setSoraOpen] = useState(false);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
 
@@ -93,6 +93,12 @@ export default function KartPage() {
       }
     });
   }, [soraDroneId]);
+
+  useEffect(() => {
+    if (soraSettings.droneId && soraSettings.droneId !== soraDroneId) {
+      setSoraDroneId(soraSettings.droneId);
+    }
+  }, [soraSettings.droneId, soraDroneId]);
 
   // FlightHub 2 state
   const [hasFH2Token, setHasFH2Token] = useState(false);
@@ -761,7 +767,13 @@ export default function KartPage() {
                 <Users className="h-3.5 w-3.5 text-blue-500" />
                 <span className={cn(
                   "text-xs font-medium",
-                  adjacentResult == null ? "text-foreground" : adjacentResult.pass ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                  adjacentResult == null
+                    ? "text-foreground"
+                    : adjacentResult.requiredContainment === "Low"
+                      ? "text-green-600 dark:text-green-400"
+                      : adjacentResult.requiredContainment === "Medium"
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-red-600 dark:text-red-400"
                 )}>Tilstøtende</span>
                 <Switch
                   checked={showAdjacentArea}
@@ -778,19 +790,20 @@ export default function KartPage() {
             </div>
 
             {/* SORA Settings content */}
-            <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} onDroneSelected={setSoraDroneId} open={soraOpen} onOpenChange={setSoraOpen} />
+            <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} onDroneSelected={setSoraDroneId} initialDroneId={soraSettings.droneId} open={soraOpen} onOpenChange={setSoraOpen} />
 
             {/* Adjacent Area content */}
             {soraSettings.enabled && (
               <AdjacentAreaPanel
                 coordinates={currentRoute.coordinates}
                 soraSettings={soraSettings}
-                maxSpeedMps={soraDroneMaxSpeed}
+                maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
                 active={showAdjacentArea}
                 onShowAdjacentArea={setShowAdjacentArea}
                 onResultChange={setAdjacentResult}
                 open={adjacentOpen}
                 onOpenChange={setAdjacentOpen}
+                missionId={editingMissionId ?? routePlanningState?.missionId ?? null}
               />
             )}
           </div>
@@ -822,7 +835,7 @@ export default function KartPage() {
           focusFlightId={focusFlightId}
           onFocusFlightHandled={() => setFocusFlightId(null)}
           soraSettings={soraSettings}
-          adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraDroneMaxSpeed) : undefined}
+          adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
         />
       </div>
 
