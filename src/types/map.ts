@@ -12,6 +12,7 @@ export interface RouteData {
   pointsOutsideVLOS?: number;
   soraSettings?: SoraSettings;
   adjacentAreaDocumentation?: AdjacentAreaDocumentation;
+  _createSoraDocumentation?: boolean;
 }
 
 export interface AdjacentAreaDocumentation {
