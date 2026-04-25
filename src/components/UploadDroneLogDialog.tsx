@@ -2045,7 +2045,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 {/* Pilot selector */}
                 <div className="space-y-1.5">
                   <Label className="text-xs flex items-center gap-1"><User className="w-3 h-3" />Pilot</Label>
-                  <Select value={pilotId} onValueChange={setPilotId}>
+                  <Select value={pilotId} onValueChange={handlePilotChange}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Velg pilot" />
                     </SelectTrigger>
