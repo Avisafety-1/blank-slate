@@ -1975,6 +1975,17 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
   const selectedPilot = personnel.find(p => p.id === pilotId);
   const selectedDrone = drones.find(d => d.id === selectedDroneId);
   const selectedEqNames = equipmentList.filter(e => selectedEquipment.includes(e.id));
+  const getPilotLogsForMission = (missionId: string, targetPilotId: string) =>
+    matchCandidates.filter(c => c.mission_id === missionId && (c.pilot_ids || []).includes(targetPilotId));
+  const getAllLogsForMission = (missionId: string) =>
+    matchCandidates.filter(c => c.mission_id === missionId);
+
+  const handlePilotChange = (newPilotId: string) => {
+    setPilotId(newPilotId);
+    if (!selectedMissionId || selectedMissionId === '__new__') return;
+    const pilotLogs = getPilotLogsForMission(selectedMissionId, newPilotId);
+    setMatchedLog(pilotLogs.length === 1 ? pilotLogs[0] : null);
+  };
 
   // ── Render ──
 
