@@ -437,6 +437,24 @@ export const AddMissionDialog = ({
         throw new Error("Kunne ikke hente brukerinformasjon");
       }
 
+      const createSoraDocIfNeeded = async (missionId: string) => {
+        if (!routeData?.soraSettings?.enabled && !routeData?.adjacentAreaDocumentation?.enabled) return;
+        try {
+          const created = await createSoraDocumentationPdf({
+            missionId,
+            missionTitle: formData.tittel,
+            missionTime: formData.tidspunkt,
+            companyId: profile.company_id,
+            userId: user.id,
+            route: routeData as any,
+          });
+          if (created) toast.success("SORA beregningsgrunnlag lagret som dokument på oppdraget");
+        } catch (docError) {
+          console.error("Could not create SORA documentation:", docError);
+          toast.warning("Oppdraget ble lagret, men SORA-dokumentasjonen kunne ikke opprettes");
+        }
+      };
+
       if (mission) {
         // UPDATE mode
         // Sjekk om status endres til Fullført - da henter vi og lagrer værdata
