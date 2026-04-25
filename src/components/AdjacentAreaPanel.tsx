@@ -143,24 +143,50 @@ export function AdjacentAreaPanel({
           Beregningen bruker SSB 250m befolkningsrutenett for høyere presisjon enn kartlagets 1 km rutenett.
         </p>
 
-        {/* Containment level selector */}
-        <div className="space-y-1">
-          <Label className="text-xs">Containment-nivå</Label>
-          <Select
-            value={containmentLevel}
-            onValueChange={(v) => setContainmentLevel(v as ContainmentLevel)}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low (&lt; 50 pers/km²)</SelectItem>
-              <SelectItem value="low500">Low (&lt; 500 pers/km²)</SelectItem>
-              <SelectItem value="low5000">Low (&lt; 5 000 pers/km²)</SelectItem>
-              <SelectItem value="medium">Medium (&lt; 50 000 pers/km²)</SelectItem>
-              <SelectItem value="high">High (ingen grense)</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-xs">UA Size</Label>
+            <Select value={uaSizeOverride} onValueChange={(v) => setUaSizeOverride(v as UaSizeKey | "auto")}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto: {UA_SIZE_LABELS[autoUaSize]}</SelectItem>
+                {Object.entries(UA_SIZE_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">SAIL</Label>
+            <Select value={sail} onValueChange={(v) => setSail(v as SailLevel)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["I", "II", "III", "IV", "V", "VI"].map((level) => (
+                  <SelectItem key={level} value={level}>SAIL {level}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {autoUaSize.startsWith("3m") && uaSizeOverride === "auto" && (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-border p-2 sm:col-span-2">
+              <Label className="text-xs">Shelter relevant i tilstøtende område</Label>
+              <Switch checked={shelterApplicable} onCheckedChange={setShelterApplicable} />
+            </div>
+          )}
+
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">Outdoor assemblies innen 1 km av OPS volume</Label>
+            <Select value={outdoorAssemblies} onValueChange={(v) => setOutdoorAssemblies(v as OutdoorAssembliesCategory)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(OUTDOOR_ASSEMBLIES_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Results */}
@@ -186,7 +212,18 @@ export function AdjacentAreaPanel({
 
               <div className="text-muted-foreground">Grense</div>
               <div className="font-medium">
-                {result.threshold === Infinity ? "Ingen" : `${result.threshold} pers/km²`}
+                {POPULATION_DENSITY_LABELS[result.populationDensityCategory]}
+              </div>
+
+              <div className="text-muted-foreground">UA Size</div>
+              <div className="font-medium">{UA_SIZE_LABELS[result.uaSize]}</div>
+
+              <div className="text-muted-foreground">Required containment</div>
+              <div className="font-medium">{result.requiredContainment}</div>
+
+              <div className="text-muted-foreground">Outdoor assemblies</div>
+              <div className="font-medium">
+                {OUTDOOR_ASSEMBLIES_LABELS[result.outdoorAssemblies]}
               </div>
             </div>
 
