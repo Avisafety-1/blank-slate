@@ -972,6 +972,29 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     return !!(pdData && pdData.length > 0);
   };
 
+  const enrichLogsWithPilots = async (logs: any[]): Promise<MatchedFlightLog[]> => {
+    if (!logs || logs.length === 0) return [];
+    const logIds = logs.map(log => log.id).filter(Boolean);
+    const { data: personnelRows } = await supabase
+      .from('flight_log_personnel')
+      .select('flight_log_id, profile_id, profiles(full_name)')
+      .in('flight_log_id', logIds);
+
+    const pilotsByLog = new Map<string, { ids: string[]; names: string[] }>();
+    (personnelRows || []).forEach((row: any) => {
+      const entry = pilotsByLog.get(row.flight_log_id) || { ids: [], names: [] };
+      if (row.profile_id) entry.ids.push(row.profile_id);
+      const name = row.profiles?.full_name;
+      if (name) entry.names.push(name);
+      pilotsByLog.set(row.flight_log_id, entry);
+    });
+
+    return logs.map(log => {
+      const pilots = pilotsByLog.get(log.id) || { ids: [], names: [] };
+      return { ...(log as MatchedFlightLog), pilot_ids: pilots.ids, pilot_names: pilots.names };
+    });
+  };
+
   const [djiLoginCooldown, setDjiLoginCooldown] = useState(false);
   const [djiImportCooldown, setDjiImportCooldown] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
