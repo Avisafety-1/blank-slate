@@ -11,6 +11,25 @@ export interface RouteData {
   maxDistanceFromPilot?: number;
   pointsOutsideVLOS?: number;
   soraSettings?: SoraSettings;
+  adjacentAreaDocumentation?: AdjacentAreaDocumentation;
+}
+
+export interface AdjacentAreaDocumentation {
+  enabled: boolean;
+  calculatedAt: string;
+  adjacentRadiusM: number;
+  adjacentAreaKm2: number;
+  totalPopulation: number;
+  avgDensity: number;
+  threshold: number;
+  pass: boolean;
+  uaSize: string;
+  sail: string;
+  populationDensityCategory: string;
+  outdoorAssemblies: string;
+  requiredContainment: string;
+  containmentLevel: string;
+  statusText: string;
 }
 
 export interface SoraSettings {
