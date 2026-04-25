@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import safeskyLogo from "@/assets/safesky-logo.png";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
+import { pickBestDroneCatalogMatch } from "@/lib/droneCatalog";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -86,9 +87,15 @@ export default function KartPage() {
       setSoraDroneModel(data?.modell || undefined);
       // Also fetch max speed from drone_models catalog
       if (data?.modell) {
-        supabase.from('drone_models').select('max_wind_mps, name').ilike('name', `%${data.modell}%`).limit(1).single().then(({ data: model }) => {
-          // Use a rough estimate: max speed ≈ 2× max wind rating, or fallback to undefined
-          setSoraDroneMaxSpeed(model?.max_wind_mps ? model.max_wind_mps * 2 : undefined);
+        (supabase as any).from('drone_models').select('name, max_wind_mps, max_speed_mps, characteristic_dimension_m').or(`name.ilike.%${data.modell}%,name.ilike.%${data.modell.replace(/^DJI\s+/i, "")}%`).limit(20).then(({ data: models }: any) => {
+          const model = pickBestDroneCatalogMatch(models ?? [], data.modell);
+          const catalogSpeed = model?.max_speed_mps ?? (model?.max_wind_mps ? model.max_wind_mps * 2 : undefined);
+          setSoraDroneMaxSpeed(catalogSpeed);
+          setSoraSettings(prev => prev.droneId === soraDroneId ? {
+            ...prev,
+            characteristicDimensionM: model?.characteristic_dimension_m ?? prev.characteristicDimensionM,
+            groundSpeedMps: catalogSpeed ?? prev.groundSpeedMps,
+          } : prev);
         });
       }
     });
