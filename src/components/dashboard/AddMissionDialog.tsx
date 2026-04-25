@@ -38,6 +38,7 @@ export interface RouteData {
   totalDistance: number;
   soraSettings?: any;
   adjacentAreaDocumentation?: any;
+  _createSoraDocumentation?: boolean;
 }
 
 interface AddMissionDialogProps {
