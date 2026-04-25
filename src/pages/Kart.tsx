@@ -230,6 +230,7 @@ export default function KartPage() {
     const routeToSave: RouteData = {
       ...currentRoute,
       soraSettings: soraSettings.enabled ? soraSettings : undefined,
+      _createSoraDocumentation: !!soraSettings.enabled || !!(showAdjacentArea && adjacentResult),
       adjacentAreaDocumentation: showAdjacentArea && adjacentResult ? {
         enabled: true,
         calculatedAt: new Date().toISOString(),
