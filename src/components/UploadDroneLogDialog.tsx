@@ -1233,12 +1233,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (data.sha256Hash) {
       const { data: dupMatch } = await (supabase
         .from('flight_logs')
-        .select('id, flight_date, flight_duration_minutes, drone_id, mission_id, missions(tittel, tidspunkt)')
+        .select('id, flight_date, flight_duration_minutes, drone_id, mission_id, departure_location, landing_location, missions(tittel, tidspunkt)')
         .eq('company_id', companyId) as any)
         .eq('dronelog_sha256', data.sha256Hash)
         .limit(1)
         .maybeSingle();
       if (dupMatch) {
+        const [enrichedDup] = await enrichLogsWithPilots([dupMatch]);
+        const duplicateBelongsToSelectedPilot = !!pilotId && (enrichedDup?.pilot_ids || []).includes(pilotId);
         // If the duplicate belongs to a mission, fetch all logs for that mission
         // and let user choose, rather than returning early
         if (dupMatch.mission_id) {
@@ -1257,24 +1259,34 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, drones(modell)')
               .eq('mission_id', dupMatch.mission_id)
               .order('flight_date', { ascending: false });
+            const enrichedLogs = await enrichLogsWithPilots(existingLogs || []);
+            const pilotLogs = pilotId ? enrichedLogs.filter(log => (log.pilot_ids || []).includes(pilotId)) : [];
 
-            if (existingLogs && existingLogs.length > 0) {
-              setMatchCandidates(existingLogs as any[]);
-              setMatchedLog(dupMatch as any); // Pre-select the duplicate
-              toast.info('Flyloggen er allerede importert. Du kan oppdatere den eller velge en annen flytur.');
+            if (enrichedLogs.length > 0) {
+              setMatchCandidates(enrichedLogs);
+              setMatchedLog(duplicateBelongsToSelectedPilot ? enrichedDup : (pilotLogs[0] || null));
+              toast.info(duplicateBelongsToSelectedPilot
+                ? 'Flyloggen er allerede importert for valgt pilot. Du kan oppdatere den eksisterende.'
+                : 'Oppdraget er funnet. Eksisterende flylogger fra andre piloter oppdateres ikke automatisk.');
             } else {
-              setMatchedLog(dupMatch as any);
-              toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+              setMatchedLog(duplicateBelongsToSelectedPilot ? enrichedDup : null);
+              toast.info(duplicateBelongsToSelectedPilot
+                ? 'Flyloggen er allerede importert for valgt pilot. Du kan oppdatere den eksisterende.'
+                : 'Flyloggen finnes allerede på en annen pilot. Velg riktig pilot eller legg til som ny flytur.');
             }
           } else {
-            setMatchedLog(dupMatch as any);
-            toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+            setMatchedLog(duplicateBelongsToSelectedPilot ? enrichedDup : null);
+            toast.info(duplicateBelongsToSelectedPilot
+              ? 'Flyloggen er allerede importert for valgt pilot. Du kan oppdatere den eksisterende.'
+              : 'Flyloggen finnes allerede på en annen pilot. Velg riktig pilot eller legg til som ny flytur.');
           }
           return;
         }
         // No mission — just pre-select the duplicate
-        setMatchedLog(dupMatch as any);
-        toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+        setMatchedLog(duplicateBelongsToSelectedPilot ? enrichedDup : null);
+        toast.info(duplicateBelongsToSelectedPilot
+          ? 'Flyloggen er allerede importert for valgt pilot. Du kan oppdatere den eksisterende.'
+          : 'Flyloggen finnes allerede på en annen pilot. Velg riktig pilot eller legg til som ny flytur.');
         return;
       }
     }
