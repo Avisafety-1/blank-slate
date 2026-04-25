@@ -150,9 +150,22 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       parachute_enabled: parachuteEnabled,
       fts_enabled: ftsEnabled,
       wind_override_mps: windOverride ? Number(windOverride) : undefined,
+      characteristic_dimension_m: Number(characteristicDimension) || undefined,
+      ground_speed_mps: Number(groundSpeed) || undefined,
+      reaction_time_s: Number(reactionTime) || undefined,
+      pitch_bank_angle_deg: Number(pitchBankAngle) || undefined,
+      altimetry_error_m: Number(altimetryError) || undefined,
+      gnss_error_m: Number(gnssError) || undefined,
+      position_hold_error_m: Number(positionHoldError) || undefined,
+      map_error_m: Number(mapError) || undefined,
+      contingency_method: contingencyMethod,
+      deployment_time_s: Number(deploymentTime) || undefined,
+      ground_risk_buffer_method: grbMethod,
+      glide_ratio: Number(glideRatio) || undefined,
+      descent_speed_mps: Number(descentSpeed) || undefined,
     };
     return calculateSoraBuffer(droneProfile, missionParams);
-  }, [droneProfile, settings.flightAltitude, operationProfile, containmentLevel, parachuteEnabled, ftsEnabled, windOverride]);
+  }, [droneProfile, settings.flightAltitude, operationProfile, containmentLevel, parachuteEnabled, ftsEnabled, windOverride, characteristicDimension, groundSpeed, reactionTime, pitchBankAngle, altimetryError, gnssError, positionHoldError, mapError, contingencyMethod, deploymentTime, grbMethod, glideRatio, descentSpeed]);
 
   const applySuggestion = () => {
     if (!suggestion) return;
@@ -160,6 +173,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     onChange({
       ...settings,
       contingencyDistance: suggestion.suggested_contingency_buffer_m,
+      contingencyHeight: suggestion.suggested_contingency_height_m,
       groundRiskDistance: suggestion.suggested_ground_risk_buffer_m,
     });
   };
