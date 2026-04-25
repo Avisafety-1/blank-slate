@@ -115,7 +115,7 @@ export function calculateSoraBuffer(
   const cvHeightMargin = hAm + verticalReaction + verticalManeuver;
   const totalCeiling = hfg + cvHeightMargin;
 
-  const grbMethod = mission.ground_risk_buffer_method ?? "off";
+  const grbMethod = mission.ground_risk_buffer_method ?? "1to1";
   let groundRiskBuffer = 0;
   if (grbMethod !== "off") {
     const halfCd = cd / 2;
