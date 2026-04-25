@@ -588,6 +588,8 @@ export const AddMissionDialog = ({
           if (documentsError) throw documentsError;
         }
 
+        await createSoraDocIfNeeded(mission.id);
+
         // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
           const checklistDocIds = selectedDocuments.filter(id => {
@@ -716,6 +718,8 @@ export const AddMissionDialog = ({
           
           if (documentsError) throw documentsError;
         }
+
+        await createSoraDocIfNeeded(createdMission.id);
 
         // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
