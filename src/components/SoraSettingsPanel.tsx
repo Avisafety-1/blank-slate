@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { pickBestDroneCatalogMatch } from "@/lib/droneCatalog";
 import {
   calculateSoraBuffer,
   categoryToAircraftType,
@@ -40,9 +41,11 @@ interface CompanyDrone {
 }
 
 interface CatalogSpecs {
+  name: string;
   weight_kg: number;
   max_wind_mps: number | null;
   max_speed_mps?: number | null;
+  characteristic_dimension_m?: number | null;
   category: string | null;
   endurance_min: number | null;
   standard_takeoff_weight_kg: number | null;
@@ -99,6 +102,8 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
   // UI state
   const [manualOverride, setManualOverride] = useState(false);
+  const [manualCdOverride, setManualCdOverride] = useState(false);
+  const [manualSpeedOverride, setManualSpeedOverride] = useState(false);
 
   const update = (partial: Partial<SoraSettings>) => {
     onChange({ ...settings, ...partial });
