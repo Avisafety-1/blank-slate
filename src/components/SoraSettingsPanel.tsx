@@ -76,7 +76,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
   const [mapError, setMapError] = useState("0");
   const [contingencyMethod, setContingencyMethod] = useState<ContingencyMethod>("standard");
   const [deploymentTime, setDeploymentTime] = useState("3");
-  const [grbMethod, setGrbMethod] = useState<GroundRiskBufferMethod>("off");
+  const [grbMethod, setGrbMethod] = useState<GroundRiskBufferMethod>("1to1");
   const [glideRatio, setGlideRatio] = useState("15");
   const [descentSpeed, setDescentSpeed] = useState("3.5");
 
