@@ -147,7 +147,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       return;
     }
     const fetchSpecs = async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("drone_models")
         .select("name, weight_kg, max_wind_mps, max_speed_mps, characteristic_dimension_m, category, endurance_min, standard_takeoff_weight_kg")
         .or(`name.ilike.%${selectedDrone.modell}%,name.ilike.%${selectedDrone.modell.replace(/^DJI\s+/i, "")}%`)
