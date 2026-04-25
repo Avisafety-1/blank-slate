@@ -1,67 +1,59 @@
-# Fix plan for build errors and DJI full serial numbers
+## Funn
 
-## Current diagnosis
-- The **frontend app is not generally broken**, but the **edge-function build is currently unsuccessful**.
-- That matters because DJI import relies on edge functions, so a failed edge build can leave some DJI fixes undeployed.
-- The earlier statement that the other errors were irrelevant was too optimistic: even if some errors were already present, they still **block successful deployment** and therefore can block the DJI fix from taking effect.
-- The main DJI issue is now clear:
-  - `dji-auto-sync` was updated to parse full serial numbers correctly.
-  - `dji-process-single` was only **partly** updated.
-  - `process-dronelog` — the function used by **manual file import** from `UploadDroneLogDialog` — still uses naive `split(",")` parsing, so **manual imports can still truncate the aircraft serial number**.
-  - The UI prompt for “oppdater serienummer?” is **not implemented yet**.
+Ja — koden har allerede deler av dette, men det vises ikke slik du forventet i metodeboksen:
 
-## What I will implement
+- `UploadDroneLogDialog.tsx` henter `dji_credentials.auto_sync_enabled` og viser kun tekst: `Auto-sync: På/Av` på DJI-konto-kortet.
+- Det finnes `handleDjiLogout()`, men logg-ut-knappen ligger bare inne i DJI-login/loggliste-steget, ikke oppe til høyre på selve DJI-konto-kortet.
+- Toggle for auto-sync finnes kun som checkbox når man logger inn manuelt og lagrer innlogging. Etter at innloggingen er lagret, kan brukeren ikke slå auto-sync av/på direkte fra boksen.
+- `resetState()` setter `enableAutoSync(false)`, så dialogen kan kort vise feil status før `checkSavedCredentials()` får lastet riktig verdi. Det kan forklare hvorfor boksen oppleves som “tilbakestilt”.
 
-### 1. Unblock edge-function builds
-Fix the errors that currently stop the edge bundle/typecheck from going green:
-- Replace or align the functions still importing `npm:@supabase/supabase-js@2.57.2` so they use a supported import pattern already used elsewhere in the project.
-- Fix type errors in:
-  - `supabase/functions/process-ardupilot/index.ts`
-  - `supabase/functions/resend-confirmation-email/index.ts`
-  - `supabase/functions/send-calendar-link/index.ts`
-- Re-check for any remaining function-level type issues after those fixes.
+## Plan
 
-### 2. Finish the DJI serial-number fix in the manual import path
-Update `supabase/functions/process-dronelog/index.ts` so manual file uploads behave like the newer DJI flow:
-- Replace all `split(",")` CSV parsing with the same RFC 4180-aware row parser.
-- Strip surrounding quotes from `DETAILS.aircraftSN` and `DETAILS.batterySN`.
-- Ensure the returned parsed payload preserves the **full 20-character aircraft serial number**.
+### 1. Gjør DJI-konto-kortet til en administrerbar statusboks
+I metodevalget (`step === 'method'`) oppdateres DJI-konto-kortet slik at når lagret DJI-innlogging finnes, vises:
 
-### 3. Make all DJI matching paths consistent
-Apply the same prefix-match logic everywhere DJI logs are processed:
+- e-post som i dag
+- en ekte `Switch` for `Auto-sync`
+- en liten logg-ut-knapp øverst til høyre på kortet
+
+Skisse:
+
+```text
+DJI-konto                         Logg ut
+rikardvb@gmail.com
+[ toggle ] Auto-sync: På/Av
+```
+
+Kortet skal fortsatt kunne klikkes for å hente logger fra DJI-kontoen, men klikk på toggle/logg-ut skal ikke trigge innlogging/importvisning.
+
+### 2. Legg til egen handler for auto-sync-toggle
+Legg til `handleAutoSyncToggle(checked)` i `UploadDroneLogDialog.tsx`:
+
+- oppdater UI optimistisk
+- oppdater `dji_credentials.auto_sync_enabled` for innlogget bruker
+- vis toast: `Auto-sync aktivert` / `Auto-sync deaktivert`
+- rull tilbake UI hvis databaseoppdatering feiler
+
+Dette bruker eksisterende RLS/tilgang for egen `dji_credentials`-rad.
+
+### 3. Ikke nullstill lagret auto-sync-status ved dialog-reset
+Endre `resetState()` slik at den ikke setter `enableAutoSync(false)` når dialogen åpnes/resettes. Status skal komme fra `checkSavedCredentials()` og bevares i UI.
+
+### 4. Forbedre lagring ved manuell DJI-login
+Når brukeren logger inn og huker av for lagring/auto-sync, send `autoSyncEnabled` direkte til `process-dronelog` sin `dji-save-credentials` action, slik at upsert kan lagre `auto_sync_enabled` samtidig med credentials.
+
+Da slipper vi separat update etterpå og reduserer risiko for at status blir feil.
+
+### 5. Oppdater edge-funksjonen for credentials
+I `supabase/functions/process-dronelog/index.ts` endres `dji-save-credentials` til å akseptere `autoSyncEnabled` og lagre dette i `dji_credentials.auto_sync_enabled` ved upsert.
+
+## Filer som endres
+
+- `src/components/UploadDroneLogDialog.tsx`
 - `supabase/functions/process-dronelog/index.ts`
-- `supabase/functions/dji-process-single/index.ts`
-- `src/components/UploadDroneLogDialog.tsx` bulk/manual local matching logic
 
-This will allow:
-- full 20-char log SN to match an older 16-char stored SN
-- older 16-char log SN to match a full stored SN
-- consistent drone/battery matching regardless of whether the log came from auto-sync, pending-log processing, or manual upload
+## Resultat
 
-### 4. Implement the serial-number update prompt in the UI
-Complete the migration UX that was planned but not finished:
-- Read `sn_mismatch_suggestion` from `pending_dji_logs`
-- Show a clear checkbox/prompt in `UploadDroneLogDialog` when a matched drone/battery has an older truncated SN
-- On user confirmation, update the drone/equipment serial number to the full value during import
-- Keep it opt-in; no silent overwrite
-
-### 5. Verify the affected flows end-to-end
-After the fixes are implemented:
-- verify manual DJI file import returns full SN
-- verify pending DJI log processing keeps full SN
-- verify old 16-char stored drone still auto-matches a new 20-char log
-- verify the user sees the update prompt when there is a mismatch
-- verify edge functions build cleanly so the fix is actually deployable
-
-## Technical details
-- Manual import currently goes through `supabase.functions.invoke('process-dronelog', ...)` in `src/components/UploadDroneLogDialog.tsx`, so fixing only `dji-auto-sync` is not enough.
-- `process-dronelog` still has naive parsing at the current CSV read points and still builds `aircraftSN` without the new quote-safe cleanup.
-- `dji-process-single` already has `parseCsvRow`, but its drone/battery auto-match still uses exact equality instead of the prefix-match helper pattern used in `dji-auto-sync`.
-- The prompt path is only partially prepared at the database level (`sn_mismatch_suggestion` exists in types/migration), but the UI is not consuming it yet.
-
-## Result
-When this is done:
-- the edge build will succeed again
-- manual DJI imports will no longer truncate serial numbers
-- old 16-char entries will still match new 20-char logs
-- users will be asked before upgrading stored serial numbers to the full value
+- DJI-konto-boksen får tilbake forventet kontrollflate: auto-sync-toggle og logg-ut øverst til høyre.
+- Brukeren kan slå auto-sync av/på uten å gå inn i DJI-login-steget.
+- UI-statusen blir mer stabil og matcher databasen bedre.

@@ -10,7 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
@@ -298,6 +298,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
   const [savedDjiEmail, setSavedDjiEmail] = useState("");
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
+  const [isAutoSyncSaving, setIsAutoSyncSaving] = useState(false);
   const [syncJustTriggered, setSyncJustTriggered] = useState(false);
   const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
   const [selectedPendingLogId, setSelectedPendingLogId] = useState<string | null>(null);
@@ -441,6 +442,40 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  const handleDjiCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (hasSavedCredentials) {
+        setStep('dji-login');
+        setTimeout(() => handleDjiAutoLogin(), 100);
+      } else {
+        setStep('dji-login');
+      }
+    }
+  };
+
+  const handleAutoSyncToggle = async (checked: boolean) => {
+    if (!user || !hasSavedCredentials || isAutoSyncSaving) return;
+    const previous = enableAutoSync;
+    setEnableAutoSync(checked);
+    setIsAutoSyncSaving(true);
+
+    const { error } = await supabase
+      .from("dji_credentials")
+      .update({ auto_sync_enabled: checked } as any)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error('Failed to update DJI auto-sync:', error);
+      setEnableAutoSync(previous);
+      toast.error('Kunne ikke oppdatere auto-sync');
+    } else {
+      toast.success(checked ? 'Auto-sync aktivert' : 'Auto-sync deaktivert');
+    }
+
+    setIsAutoSyncSaving(false);
+  };
+
   const handleDjiLogout = async () => {
     try {
       await callDronelogAction("dji-delete-credentials", {});
@@ -453,6 +488,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setHasSavedCredentials(false);
     setSavedDjiEmail("");
     setSaveCredentials(false);
+    setEnableAutoSync(false);
     setDjiEmail("");
     setDjiPassword("");
     setStep('dji-login');
