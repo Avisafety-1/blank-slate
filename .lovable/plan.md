@@ -1,75 +1,67 @@
-Plan for implementering:
+Jeg lager en ny PDF-dokumentasjon som beskriver hvordan AI-risikovurderingen i AviSafe fungerer fra start til slutt, uten å omtale endringshistorikk.
 
-1. Oppdatere datamodellen for SORA-innstillinger
-- Utvide `SoraSettings` med kinematiske verdier fra SORA-buffersoner som trengs videre:
-  - `droneId`
-  - `characteristicDimensionM` (CD)
-  - `groundSpeedMps` (V0)
-- Når brukeren velger drone og beregner SORA-buffersoner, lagres disse verdiene i `soraSettings` slik at «Tilstøtende områder» automatisk kan bruke samme UA.
+Dokumentet vil dekke:
 
-2. Automatisk valg av UA Size
-- UA Size skal ikke være et fritt standardvalg brukeren må fylle ut på nytt.
-- Systemet beregner foreslått UA Size fra verdiene brukt i SORA-buffersoner:
-  - CD < 1 m og V0 < 25 m/s → `< 1 m UA (< 25 m/s)`
-  - CD < 3 m og V0 < 35 m/s → `< 3 m UA (< 35 m/s)`
-  - CD < 8 m og V0 < 75 m/s → `< 8 m UA (< 75 m/s)`
-  - CD < 20 m og V0 < 125 m/s → `< 20 m UA (< 125 m/s)`
-  - CD < 40 m og V0 < 200 m/s → `< 40 m UA (< 200 m/s)`
-- For `< 3 m UA` må brukeren fortsatt kunne angi om «shelter» er relevant i tilstøtende område, fordi det ikke kan utledes sikkert fra dronevalget.
-- UI viser automatisk valgt UA Size som en forklaring, med mulighet for manuell overstyring hvis nødvendig.
+1. Formål og avgrensning
+   - At AI-risikovurderingen er beslutningsstøtte for pilot/operatør, ikke en automatisk erstatning for pilot-in-command sin operative vurdering.
+   - Skille mellom ordinær AI-risikovurdering og SORA re-vurdering/SORA-output.
 
-3. Implementere CAA containment-matrisen
-- Erstatte dagens enkle «containment-nivå terskel»-logikk med CAA/Luftfartstilsynet sin containment-logikk fra `containment.html`:
-  - UA Size
-  - SAIL I–VI
-  - gjennomsnittlig befolkningstetthet i tilstøtende område
-  - outdoor assemblies innen 1 km fra operasjonsvolum
-  - resultat: `Low`, `Medium`, `High` eller `Out of scope`
-- Matrisen legges i `src/lib/adjacentAreaCalculator.ts` som lokal typed konstant, slik at appen ikke er avhengig av ekstern CAA-side i runtime.
+2. Full dataflyt
+   - Pilot-input fra dialogen: flyhøyde, operasjonstype, VLOS/BVLOS, observatører, nærhet til mennesker, ATC, kritisk infrastruktur, backup-landingsplass og eventuelt hopp over vær.
+   - Oppdragsdata: lokasjon, tidspunkt, rute, kunde og eventuell eksisterende SORA.
+   - Ressursdata: tildelte piloter, kompetanser, flylogg/recency, drone, utstyr og vedlikeholdsstatus.
+   - Selskapsdata fra SORA-admin: hardstop-grenser, operative begrensninger, policy-notater, dokumentreferanser og auto-godkjenning.
 
-4. Koble SSB-resultatet til riktig tetthetskategori
-- Fortsette å hente SSB 250 m befolkningsrutenett via eksisterende edge function.
-- Beregne faktisk gjennomsnittlig tetthet i «donut»-området som i dag.
-- Mappe beregnet tetthet til CAA-kategorier:
-  - `< 50`
-  - `< 500`
-  - `< 5 000`
-  - `< 50 000`
-  - `No upper limit`
-- Kun vise de tetthetskategoriene som er gyldige for valgt UA Size, slik CAA-kalkulatoren gjør.
+3. Datakilder og grunnlag
+   - MET Norway Locationforecast via drone-weather-funksjonen for vær, inkludert temperatur, vind, vindkast, sikt/nedbør og duggpunkt.
+   - NOAA Space Weather Prediction Center for Kp-indeks/geomagnetisk aktivitet.
+   - OpenAIP / interne luftromsdata via `check_mission_airspace` for luftrom, CTR/TIZ, restriksjonsområder mv.
+   - SSB Arealbruk WFS for kvalitativ bakkeklassifisering.
+   - SSB befolkning på rutenett (`befolkning_1km_2025`) for AI-risikovurderingens rutenære befolkningstetthet.
+   - Operatørens egne data i AviSafe: oppdrag, kompetanser, flylogger, droner, utstyr, dokumenter og SORA-admin.
 
-5. SAIL-felt
-- Legge inn SAIL I–VI i «Tilstøtende områder»-panelet.
-- Hvis ruteplanleggingen kommer fra et eksisterende oppdrag eller har `missionId`, forsøker vi å hente SAIL fra `mission_sora.sail` og forhåndsutfylle feltet.
-- Hvis SAIL ikke finnes, brukes en tydelig standard/placeholder og brukeren kan velge manuelt.
+4. Beregninger og vurderingslogikk
+   - Score-skala 1–10 der høy score betyr lav risiko.
+   - Fem kategorier: vær, luftrom, utstyr, pilot/kompetanse og oppdragskompleksitet.
+   - Hardstop-logikk som overstyrer score og gir NO-GO ved absolutte brudd.
+   - Hvordan duggpunkt-differanse vurderes: liten differanse gir økt risiko.
+   - Kp-indeks: Kp 0–4 ingen trekk, Kp 5–6 trekk i vær og utstyr, Kp ≥ 7 større trekk og mulig caution/no-go.
+   - Befolkningstetthet: terskler for spredt/befolket/tett befolket og hvordan dette påvirker bakkesrisiko.
+   - Pilot-recency, kompetanse og utløpte sertifikater.
+   - Drone-/utstyrsstatus og vedlikehold.
 
-6. Outdoor assemblies
-- Legge inn valg for «Outdoor assemblies innen 1 km fra OPS volume»:
-  - `< 40 k`
-  - `40 k til 400 k`
-  - `> 400 k`
-- Standard settes til `< 40 k`, men feltet vises tydelig som operativ vurdering brukeren må bekrefte.
+5. SORA-metodikk i AI-flyten
+   - Kategorisering: Åpen, STS eller Spesifikk kategori.
+   - Når SORA kreves, spesielt BVLOS, over 120 m, utenfor åpen/STS eller som selskapskrav.
+   - ALOS-beregning fra karakteristisk dimensjon.
+   - Bakkerisiko: iGRC, mitigeringer M1/M2 og fGRC.
+   - Luftrisiko: AEC, ARC, strategiske mitigeringer, residual ARC og TMPR.
+   - SAIL-oppslag fra fGRC og ARC.
+   - Containment-robusthet og OSO-krav.
 
-7. Resultatvisning og fargekoding
-- Erstatte dagens `OK/OVER` med «Required containment: Low/Medium/High/Out of scope».
-- Headeren «Tilstøtende» fargekodes etter resultat:
-  - Low: grønn
-  - Medium: gul/oransje
-  - High: rød
-  - Out of scope: rød/destruktiv
-- Panelet viser fortsatt radius, areal, innbyggere og gjennomsnittlig tetthet, men statusen handler nå om nødvendig containment, ikke bare pass/fail mot en manuelt valgt terskel.
+6. SORA-admin
+   - Hvordan selskapsspesifikke innstillinger overstyrer standardverdier.
+   - Hvilke verdier som er absolutte hardstop: vind, vindkast, sikt, temperatur, flyhøyde, BVLOS, nattflyging, pilotinaktivitet, befolkningstetthet, reservebatteri, observatør og sivil skumring.
+   - Arv fra morselskap/avdeling.
+   - Operative begrensninger og AI-lesbare policy-notater.
+   - Viktig begrensning: AI leser ikke innholdet i PDF/Word direkte, kun metadata og tekst som er limt inn som policy-notater.
+   - SORA-basert auto-godkjenning: scoreterskel, hardstop-regel og status `approved` / `not_approved`.
 
-8. Kart-siden og dataflyt
-- Oppdatere `Kart.tsx` slik at valgt drone, maks hastighet og CD fra SORA-buffersoner sendes til `AdjacentAreaPanel`.
-- Sørge for at lagrede ruter får med de nye SORA-verdiene, slik at beregningen er konsistent når ruten åpnes igjen.
+7. Prioritering og vekting
+   - Absolutte hardstop prioriteres høyest.
+   - Deretter regulatoriske krav/SORA-krav.
+   - Deretter direkte operative forhold som vær, luftrom og utstyr.
+   - Deretter kompetanse/recency og kompleksitet.
+   - Positiv pilot-erfaring kan ikke kompensere for hardstop, teknisk rød status eller meteorologiske overskridelser.
 
-Tekniske filer som endres:
-- `src/types/map.ts`
-- `src/components/SoraSettingsPanel.tsx`
-- `src/components/AdjacentAreaPanel.tsx`
-- `src/lib/adjacentAreaCalculator.ts`
-- `src/pages/Kart.tsx`
+8. Kilder
+   - Luftfartstilsynet / CAA Norway SORA 2.5-kalkulator og veiledning.
+   - EASA-regelverk for UAS, særlig forordning (EU) 2019/947 og 2019/945.
+   - JARUS SORA 2.5 for iGRC/fGRC, ARC, SAIL, containment og OSO.
+   - MET Norway API.
+   - NOAA SWPC Kp-index forecast.
+   - SSB/Geonorge WFS-kilder for arealbruk og befolkning på rutenett.
 
-Viktig avgrensning:
-- SSB-datagrunnlaget og geometriberegningen beholdes som i dag.
-- Det som endres er beslutningslogikken: beregnet tetthet + UA Size + SAIL + outdoor assemblies gir nødvendig containment etter CAA SORA 2.5-matrisen.
+Leveranse etter godkjenning:
+- Jeg genererer PDF-en i `/mnt/documents/`, for eksempel `ai-risikovurdering-dokumentasjon.pdf`.
+- Jeg konverterer alle PDF-sider til bilder og kontrollerer visuelt at layout, tabeller, norske tegn, kildehenvisninger og sideskift er korrekte før jeg leverer filen.
