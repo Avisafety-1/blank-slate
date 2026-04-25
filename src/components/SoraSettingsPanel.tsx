@@ -48,6 +48,27 @@ interface CatalogSpecs {
   standard_takeoff_weight_kg: number | null;
 }
 
+const SORA_HELP = {
+  cd: "Characteristic Dimension: største relevante dimensjon på dronen.",
+  v0: "V0: maksimal bakkehastighet, inkludert vindbidrag.",
+  tr: "tR: tiden fra avvik oppdages til korrigerende handling starter.",
+  ham: "HAM: altimetry error, høydefeil i målingen.",
+  sgnss: "SGNSS: GNSS-feil i horisontal posisjon.",
+  spos: "SPos: position hold error, posisjonsavvik ved hold/automatisering.",
+  smap: "SMap: map error, kart-/geodatafeil.",
+  sr: "SR: reaction distance = V0 × tR.",
+  scm: "SCM: contingency maneuver distance, horisontal manøvreringsavstand.",
+  hr: "HR: vertical reaction, vertikal høydeendring i reaksjonstiden.",
+  hcm: "HCM: vertical maneuver, vertikal høydeendring under manøver.",
+  hcv: "HCV: total contingency volume ceiling, maksimal beregnet høyde.",
+  grb: "GRB/SGRB: Ground Risk Buffer, ekstra bakke-risikobuffer utenfor contingency area.",
+  tp: "tP: deployment time for fallskjerm eller FTS.",
+} as const;
+
+const FieldHint = ({ children }: { children: string }) => (
+  <p className="text-[10px] leading-snug text-muted-foreground">{children}</p>
+);
+
 export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId, open: controlledOpen, onOpenChange }: SoraSettingsPanelProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -272,14 +293,17 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">CD (m)</Label>
+                <FieldHint>{SORA_HELP.cd}</FieldHint>
                 <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => setCharacteristicDimension(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
+                <FieldHint>{SORA_HELP.v0}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => setGroundSpeed(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
+                <FieldHint>{SORA_HELP.tr}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={reactionTime} onChange={(e) => setReactionTime(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
@@ -291,18 +315,22 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">HAM (m)</Label>
+                <FieldHint>{SORA_HELP.ham}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={altimetryError} onChange={(e) => setAltimetryError(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">SGNSS (m)</Label>
+                <FieldHint>{SORA_HELP.sgnss}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={gnssError} onChange={(e) => setGnssError(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">SPos (m)</Label>
+                <FieldHint>{SORA_HELP.spos}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={positionHoldError} onChange={(e) => setPositionHoldError(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">SMap (m)</Label>
+                <FieldHint>{SORA_HELP.smap}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={mapError} onChange={(e) => setMapError(e.target.value)} className="h-8 text-sm" />
               </div>
             </div>
@@ -321,6 +349,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               {contingencyMethod === "parachute" && (
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Deployment tP (s)</Label>
+                  <FieldHint>{SORA_HELP.tp}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={deploymentTime} onChange={(e) => setDeploymentTime(e.target.value)} className="h-8 text-sm" />
                 </div>
               )}
@@ -329,6 +358,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">GRB-metode</Label>
+                <FieldHint>{SORA_HELP.grb}</FieldHint>
                 <Select value={grbMethod} onValueChange={(v) => setGrbMethod(v as GroundRiskBufferMethod)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -394,12 +424,12 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           <p className="text-[11px] text-muted-foreground">{suggestion.calculation_summary}</p>
 
           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            <span>Reaction (SR): {suggestion.details.reaction_distance_m} m</span>
-            <span>Maneuver (SCM): {suggestion.details.maneuver_distance_m} m</span>
-            <span>Vert. reaction (HR): {suggestion.details.vertical_reaction_m} m</span>
-            <span>Vert. maneuver (HCM): {suggestion.details.vertical_maneuver_m} m</span>
-            <span>CV høyde: {suggestion.details.cv_height_margin_m} m</span>
-            <span>Total ceiling: {suggestion.details.total_ceiling_m} m</span>
+            <span title={SORA_HELP.sr}>SR reaction: {suggestion.details.reaction_distance_m} m</span>
+            <span title={SORA_HELP.scm}>SCM maneuver: {suggestion.details.maneuver_distance_m} m</span>
+            <span title={SORA_HELP.hr}>HR vert. reaction: {suggestion.details.vertical_reaction_m} m</span>
+            <span title={SORA_HELP.hcm}>HCM vert. maneuver: {suggestion.details.vertical_maneuver_m} m</span>
+            <span title="CV height margin over planned flight geography height.">CV høyde: {suggestion.details.cv_height_margin_m} m</span>
+            <span title={SORA_HELP.hcv}>HCV total ceiling: {suggestion.details.total_ceiling_m} m</span>
           </div>
 
           {suggestion.warnings.length > 0 && (
