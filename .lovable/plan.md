@@ -1,145 +1,75 @@
-Jeg har sjekket vår nåværende SORA-bufferlogikk mot Luftfartstilsynets SORA 2.5-kalkulator for Contingency Volume.
+Plan for implementering:
 
-Konklusjon: Nei, vår automatiske «Foreslått SORA-buffer»-kalkulator er ikke riktig som SORA 2.5-beregning. Den er en grov heuristikk basert på dronetype, vekt, høyde, vind og multiplikatorer. Den matcher ikke formelen i Luftfartstilsynets kalkulator.
+1. Oppdatere datamodellen for SORA-innstillinger
+- Utvide `SoraSettings` med kinematiske verdier fra SORA-buffersoner som trengs videre:
+  - `droneId`
+  - `characteristicDimensionM` (CD)
+  - `groundSpeedMps` (V0)
+- Når brukeren velger drone og beregner SORA-buffersoner, lagres disse verdiene i `soraSettings` slik at «Tilstøtende områder» automatisk kan bruke samme UA.
 
-Viktig nyanse: Selve kart-renderingen av buffersonene er konseptuelt riktig ved at den tegner lagene som avstander fra ruten:
+2. Automatisk valg av UA Size
+- UA Size skal ikke være et fritt standardvalg brukeren må fylle ut på nytt.
+- Systemet beregner foreslått UA Size fra verdiene brukt i SORA-buffersoner:
+  - CD < 1 m og V0 < 25 m/s → `< 1 m UA (< 25 m/s)`
+  - CD < 3 m og V0 < 35 m/s → `< 3 m UA (< 35 m/s)`
+  - CD < 8 m og V0 < 75 m/s → `< 8 m UA (< 75 m/s)`
+  - CD < 20 m og V0 < 125 m/s → `< 20 m UA (< 125 m/s)`
+  - CD < 40 m og V0 < 200 m/s → `< 40 m UA (< 200 m/s)`
+- For `< 3 m UA` må brukeren fortsatt kunne angi om «shelter» er relevant i tilstøtende område, fordi det ikke kan utledes sikkert fra dronevalget.
+- UI viser automatisk valgt UA Size som en forklaring, med mulighet for manuell overstyring hvis nødvendig.
 
-```text
-Rute / Flight Geography
-+ Flight Geography Area
-+ Contingency Area
-+ Ground Risk Buffer
-```
+3. Implementere CAA containment-matrisen
+- Erstatte dagens enkle «containment-nivå terskel»-logikk med CAA/Luftfartstilsynet sin containment-logikk fra `containment.html`:
+  - UA Size
+  - SAIL I–VI
+  - gjennomsnittlig befolkningstetthet i tilstøtende område
+  - outdoor assemblies innen 1 km fra operasjonsvolum
+  - resultat: `Low`, `Medium`, `High` eller `Out of scope`
+- Matrisen legges i `src/lib/adjacentAreaCalculator.ts` som lokal typed konstant, slik at appen ikke er avhengig av ekstern CAA-side i runtime.
 
-Problemet ligger i hvordan appen foreslår tallene for Contingency og Ground Risk, ikke primært i hvordan sonene tegnes.
+4. Koble SSB-resultatet til riktig tetthetskategori
+- Fortsette å hente SSB 250 m befolkningsrutenett via eksisterende edge function.
+- Beregne faktisk gjennomsnittlig tetthet i «donut»-området som i dag.
+- Mappe beregnet tetthet til CAA-kategorier:
+  - `< 50`
+  - `< 500`
+  - `< 5 000`
+  - `< 50 000`
+  - `No upper limit`
+- Kun vise de tetthetskategoriene som er gyldige for valgt UA Size, slik CAA-kalkulatoren gjør.
 
-## Hvordan vi regner i dag
+5. SAIL-felt
+- Legge inn SAIL I–VI i «Tilstøtende områder»-panelet.
+- Hvis ruteplanleggingen kommer fra et eksisterende oppdrag eller har `missionId`, forsøker vi å hente SAIL fra `mission_sora.sail` og forhåndsutfylle feltet.
+- Hvis SAIL ikke finnes, brukes en tydelig standard/placeholder og brukeren kan velge manuelt.
 
-I `src/lib/soraBufferCalculator.ts` bruker vi faste basisverdier:
+6. Outdoor assemblies
+- Legge inn valg for «Outdoor assemblies innen 1 km fra OPS volume»:
+  - `< 40 k`
+  - `40 k til 400 k`
+  - `> 400 k`
+- Standard settes til `< 40 k`, men feltet vises tydelig som operativ vurdering brukeren må bekrefte.
 
-```text
-Multirotor: contingency 20 m, ground risk 50 m
-Fixed wing: contingency 40 m, ground risk 80 m
-VTOL: contingency 30 m, ground risk 60 m
-Helicopter: contingency 35 m, ground risk 70 m
-```
+7. Resultatvisning og fargekoding
+- Erstatte dagens `OK/OVER` med «Required containment: Low/Medium/High/Out of scope».
+- Headeren «Tilstøtende» fargekodes etter resultat:
+  - Low: grønn
+  - Medium: gul/oransje
+  - High: rød
+  - Out of scope: rød/destruktiv
+- Panelet viser fortsatt radius, areal, innbyggere og gjennomsnittlig tetthet, men statusen handler nå om nødvendig containment, ikke bare pass/fail mot en manuelt valgt terskel.
 
-Deretter justeres tallene med multiplikatorer for MTOW, høyde, BVLOS/VLOS, containment, vind, hastighet, fallskjerm og FTS. Dette gir praktiske forslag, men det er ikke SORA 2.5-metoden fra CAA/Luftfartstilsynet.
+8. Kart-siden og dataflyt
+- Oppdatere `Kart.tsx` slik at valgt drone, maks hastighet og CD fra SORA-buffersoner sendes til `AdjacentAreaPanel`.
+- Sørge for at lagrede ruter får med de nye SORA-verdiene, slik at beregningen er konsistent når ruten åpnes igjen.
 
-## Hvordan Luftfartstilsynets kalkulator regner
-
-Fra `https://training.caa.no/SORA-2.5-calculator/contingency_volume.html` bruker kalkulatoren blant annet:
-
-```text
-SCV = SGNSS + SPos + SMap + SR + SCM
-SR  = V0 × tR
-```
-
-For standard multirotor:
-
-```text
-SCM = V0² / (2 × g × tan(theta))
-HCM = V0² / (2 × g)
-HR  = V0 × 0.707 × tR
-HCV = HFG + HAM + HR + HCM
-```
-
-For standard fixed wing:
-
-```text
-SCM = V0² / (g × tan(bank angle))
-HCM = (V0² / g) × 0.3
-```
-
-For Parachute/FTS contingency:
-
-```text
-SCM = V0 × tP
-HCM = V0 × 0.707 × tP
-```
-
-Ground Risk Buffer beregnes separat når GRB er aktivert, med metodevalg:
-
-```text
-1:1 rule:       SGRB = HCV + CD/2
-Ballistic:      SGRB = V0 × sqrt((2 × HCV) / g) + CD/2
-Glide:          SGRB = HCV × glideRatio + CD/2
-Drift/parachute: SGRB = (HCV / descentSpeed) × windSpeed + CD/2
-```
-
-I tillegg advarer kalkulatoren om at Flight Geography-dimensjoner må være minst `3 × CD`.
-
-## Plan for å gjøre vår kalkulator korrekt
-
-1. Erstatt den heuristiske beregningen i `soraBufferCalculator.ts` med en SORA 2.5-formelbasert kalkulator som følger Luftfartstilsynets Contingency Volume-logikk.
-
-2. Utvid input-parametere i SORA-panelet i ruteplanleggeren:
-   - Maks bakkehastighet `V0` (inkludert vind, slik CAA-kalkulatoren beskriver)
-   - Reaksjonstid `tR`
-   - Maks pitch/bank-vinkel
-   - Altimetry error `HAM`
-   - GNSS error `SGNSS`
-   - Position hold error `SPos`
-   - Map error `SMap`
-   - Characteristic Dimension `CD`
-   - Contingency-metode: Standard eller Parachute/FTS
-   - Deployment time `tP` når Parachute/FTS er valgt
-   - GRB på/av og GRB-metode: 1:1, Ballistic, Glide, Drift/Parachute
-   - Glide ratio, vindhastighet og descent speed der disse metodene krever det
-
-3. Behold kartets eksisterende visuelle soner, men fyll dem med korrekt beregnede verdier:
-   - `contingencyDistance = SCV`
-   - `contingencyHeight = HCV - HFG`
-   - `groundRiskDistance = SGRB`
-
-4. Endre UI-tekst fra «Foreslått SORA-buffer» til noe mer presist, for eksempel «SORA 2.5-beregning», og vis detaljene:
-
-```text
-Reaction (SR)
-Maneuver (SCM)
-Vertical reaction (HR)
-Vertical maneuver (HCM)
-CV buffer (SCV)
-Total ceiling (HCV)
-Ground Risk Buffer (SGRB)
-```
-
-5. Legg inn validering/advarsler:
-   - Flight Geography bør være minst `3 × CD`
-   - Maks bakkehastighet bør inkludere vind
-   - Drift/parachute-vind under ca. 3 m/s bør markeres som lite realistisk, tilsvarende CAA-kalkulatoren
-   - Fixed wing bør ikke bruke ballistic-metoden, og multirotor bør ikke bruke glide-metoden, slik CAA-kalkulatoren gjør
-
-6. Bruk dronekatalogen der vi har data, men la brukeren overstyre verdier manuelt. Per nå ser dronekatalogen ut til å ha vekt, maks vind og enkelte spesifikasjoner, men ikke komplett `characteristic_dimension_m` eller maks bakkehastighet for alle modeller. Derfor bør UI-en alltid vise beregningsparametrene og ikke skjule dem bak automatiske antakelser.
-
-7. Legg til små enhetstester for kalkulatoren med referanseeksempel fra Luftfartstilsynets standardverdier:
-
-```text
-Multirotor
-V0 = 15 m/s
-TR = 1.5 s
-theta = 30°
-HFG = 120 m
-HAM = 1 m
-SGNSS = 5 m
-SPos = 2 m
-SMap = 0 m
-Forventet SCV ≈ 49.4 m
-Forventet HCV ≈ 148.4 m
-```
-
-## Filer som må endres
-
-- `src/lib/soraBufferCalculator.ts`
+Tekniske filer som endres:
+- `src/types/map.ts`
 - `src/components/SoraSettingsPanel.tsx`
-- eventuelt `src/types/map.ts` hvis vi ønsker å lagre flere beregningsparametere sammen med ruten
-- testfil for kalkulatoren
+- `src/components/AdjacentAreaPanel.tsx`
+- `src/lib/adjacentAreaCalculator.ts`
+- `src/pages/Kart.tsx`
 
-## Visuell effekt
-
-Ja, dette gir en visuell og funksjonell endring i ruteplanleggerens SORA-panel:
-
-- Flere beregningsfelt blir tilgjengelige.
-- Resultatboksen viser faktiske SORA 2.5-detaljer i stedet for grove forslag.
-- Standardverdiene vil kunne gi andre bufferavstander enn i dag. For eksempel gir CAA-standardeksempelet `SCV ≈ 49.4 m`, mens vår nåværende heuristikk ofte runder til andre tall avhengig av dronetype/vekt/vind.
-- Kartsonene vil fortsatt tegnes på samme måte, men med mer regulatorisk riktige avstander.
+Viktig avgrensning:
+- SSB-datagrunnlaget og geometriberegningen beholdes som i dag.
+- Det som endres er beslutningslogikken: beregnet tetthet + UA Size + SAIL + outdoor assemblies gir nødvendig containment etter CAA SORA 2.5-matrisen.

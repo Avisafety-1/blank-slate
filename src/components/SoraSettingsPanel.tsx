@@ -104,6 +104,15 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     onChange({ ...settings, ...partial });
   };
 
+  useEffect(() => {
+    if (initialDroneId && initialDroneId !== selectedDroneId) setSelectedDroneId(initialDroneId);
+  }, [initialDroneId, selectedDroneId]);
+
+  useEffect(() => {
+    if (settings.characteristicDimensionM != null) setCharacteristicDimension(String(settings.characteristicDimensionM));
+    if (settings.groundSpeedMps != null) setGroundSpeed(String(settings.groundSpeedMps));
+  }, [settings.characteristicDimensionM, settings.groundSpeedMps]);
+
   // Fetch company drones
   useEffect(() => {
     if (!companyId) return;
@@ -189,6 +198,9 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     setManualOverride(false);
     onChange({
       ...settings,
+      droneId: selectedDroneId || undefined,
+      characteristicDimensionM: Number(characteristicDimension) || undefined,
+      groundSpeedMps: Number(groundSpeed) || undefined,
       contingencyDistance: suggestion.suggested_contingency_buffer_m,
       contingencyHeight: suggestion.suggested_contingency_height_m,
       groundRiskDistance: suggestion.suggested_ground_risk_buffer_m,
@@ -203,7 +215,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         <Label className="text-xs text-muted-foreground flex items-center gap-1">
           <Plane className="h-3 w-3" /> Velg drone
         </Label>
-        <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); onDroneSelected?.(v || null); }}>
+        <Select value={selectedDroneId} onValueChange={(v) => { setSelectedDroneId(v); setManualOverride(false); update({ droneId: v || undefined }); onDroneSelected?.(v || null); }}>
           <SelectTrigger className="h-8 text-sm">
             <SelectValue placeholder="Velg drone fra flåten" />
           </SelectTrigger>
@@ -247,12 +259,12 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">CD (m)</Label>
                 <FieldHint>{SORA_HELP.cd}</FieldHint>
-                <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => setCharacteristicDimension(e.target.value)} className="h-8 text-sm" />
+                <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
                 <FieldHint>{SORA_HELP.v0}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => setGroundSpeed(e.target.value)} className="h-8 text-sm" />
+                <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>

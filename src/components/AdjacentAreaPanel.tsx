@@ -1,17 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ChevronDown, Users, MapPin, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import type { RoutePoint, SoraSettings } from "@/types/map";
 import {
   computeAdjacentAreaDensity,
   calculateAdjacentRadius,
   getDensityThreshold,
+  deriveUaSizeFromSora,
+  UA_SIZE_LABELS,
+  POPULATION_DENSITY_LABELS,
+  OUTDOOR_ASSEMBLIES_LABELS,
   type AdjacentAreaResult,
-  type ContainmentLevel,
+  type OutdoorAssembliesCategory,
+  type SailLevel,
+  type UaSizeKey,
 } from "@/lib/adjacentAreaCalculator";
 
 interface AdjacentAreaPanelProps {
@@ -23,6 +30,7 @@ interface AdjacentAreaPanelProps {
   onResultChange?: (result: AdjacentAreaResult | null) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  missionId?: string | null;
 }
 
 export function AdjacentAreaPanel({
@@ -34,16 +42,36 @@ export function AdjacentAreaPanel({
   onResultChange,
   open: controlledOpen,
   onOpenChange,
+  missionId,
 }: AdjacentAreaPanelProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
-  const [containmentLevel, setContainmentLevel] = useState<ContainmentLevel>("low");
+  const [shelterApplicable, setShelterApplicable] = useState(false);
+  const [uaSizeOverride, setUaSizeOverride] = useState<UaSizeKey | "auto">("auto");
+  const [sail, setSail] = useState<SailLevel>("II");
+  const [outdoorAssemblies, setOutdoorAssemblies] = useState<OutdoorAssembliesCategory>("40k");
   const [result, setResult] = useState<AdjacentAreaResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [showOnMap, setShowOnMap] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
   const adjacentMountedRef = useRef(false);
+  const autoUaSize = useMemo(() => deriveUaSizeFromSora(soraSettings, shelterApplicable), [soraSettings, shelterApplicable]);
+  const uaSize = uaSizeOverride === "auto" ? autoUaSize : uaSizeOverride;
+  const effectiveMaxSpeed = soraSettings.groundSpeedMps ?? maxSpeedMps;
+
+  useEffect(() => {
+    if (!missionId) return;
+    supabase
+      .from("mission_sora")
+      .select("sail")
+      .eq("mission_id", missionId)
+      .maybeSingle()
+      .then(({ data }) => {
+        const fetchedSail = data?.sail as SailLevel | null | undefined;
+        if (["I", "II", "III", "IV", "V", "VI"].includes(fetchedSail ?? "")) setSail(fetchedSail!);
+      });
+  }, [missionId]);
 
   // Auto-compute when active (switch on) and inputs change.
   // Krever minst 2 rutepunkter — vi vil IKKE beregne rundt en enslig
@@ -59,7 +87,7 @@ export function AdjacentAreaPanel({
     abortRef.current = ctrl;
 
     setLoading(true);
-    computeAdjacentAreaDensity(coordinates, soraSettings, maxSpeedMps, containmentLevel, ctrl.signal)
+    computeAdjacentAreaDensity(coordinates, soraSettings, effectiveMaxSpeed, { uaSize, sail, outdoorAssemblies }, ctrl.signal)
       .then((res) => {
         if (!ctrl.signal.aborted) {
           setResult(res);
@@ -69,13 +97,18 @@ export function AdjacentAreaPanel({
       .catch((err) => {
         if (!ctrl.signal.aborted) {
           setResult({
-            adjacentRadiusM: calculateAdjacentRadius(maxSpeedMps),
+            adjacentRadiusM: calculateAdjacentRadius(effectiveMaxSpeed),
             adjacentAreaKm2: 0,
             totalPopulation: 0,
             avgDensity: 0,
-            threshold: getDensityThreshold(containmentLevel),
+            threshold: getDensityThreshold("NoLimit"),
             pass: false,
-            containmentLevel,
+            uaSize,
+            sail,
+            populationDensityCategory: "NoLimit",
+            outdoorAssemblies,
+            requiredContainment: "Error",
+            containmentLevel: "Error",
             statusText: "Feil ved henting av data",
             error: err?.message ?? "Ukjent feil",
           });
@@ -84,7 +117,7 @@ export function AdjacentAreaPanel({
       });
 
     return () => ctrl.abort();
-  }, [active, coordinates, soraSettings, maxSpeedMps, containmentLevel]);
+  }, [active, coordinates, soraSettings, effectiveMaxSpeed, uaSize, sail, outdoorAssemblies]);
 
   useEffect(() => {
     if (!adjacentMountedRef.current) {
@@ -100,7 +133,7 @@ export function AdjacentAreaPanel({
 
   if (!soraSettings.enabled) return null;
 
-  const radiusKm = (calculateAdjacentRadius(maxSpeedMps) / 1000).toFixed(1);
+  const radiusKm = (calculateAdjacentRadius(effectiveMaxSpeed) / 1000).toFixed(1);
 
   const contentJsx = (
     <div className="px-3 py-3 space-y-3 text-sm">
@@ -110,24 +143,50 @@ export function AdjacentAreaPanel({
           Beregningen bruker SSB 250m befolkningsrutenett for høyere presisjon enn kartlagets 1 km rutenett.
         </p>
 
-        {/* Containment level selector */}
-        <div className="space-y-1">
-          <Label className="text-xs">Containment-nivå</Label>
-          <Select
-            value={containmentLevel}
-            onValueChange={(v) => setContainmentLevel(v as ContainmentLevel)}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low (&lt; 50 pers/km²)</SelectItem>
-              <SelectItem value="low500">Low (&lt; 500 pers/km²)</SelectItem>
-              <SelectItem value="low5000">Low (&lt; 5 000 pers/km²)</SelectItem>
-              <SelectItem value="medium">Medium (&lt; 50 000 pers/km²)</SelectItem>
-              <SelectItem value="high">High (ingen grense)</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label className="text-xs">UA Size</Label>
+            <Select value={uaSizeOverride} onValueChange={(v) => setUaSizeOverride(v as UaSizeKey | "auto")}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto: {UA_SIZE_LABELS[autoUaSize]}</SelectItem>
+                {Object.entries(UA_SIZE_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">SAIL</Label>
+            <Select value={sail} onValueChange={(v) => setSail(v as SailLevel)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["I", "II", "III", "IV", "V", "VI"].map((level) => (
+                  <SelectItem key={level} value={level}>SAIL {level}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {autoUaSize.startsWith("3m") && uaSizeOverride === "auto" && (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-border p-2 sm:col-span-2">
+              <Label className="text-xs">Shelter relevant i tilstøtende område</Label>
+              <Switch checked={shelterApplicable} onCheckedChange={setShelterApplicable} />
+            </div>
+          )}
+
+          <div className="space-y-1 sm:col-span-2">
+            <Label className="text-xs">Outdoor assemblies innen 1 km av OPS volume</Label>
+            <Select value={outdoorAssemblies} onValueChange={(v) => setOutdoorAssemblies(v as OutdoorAssembliesCategory)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(OUTDOOR_ASSEMBLIES_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Results */}
@@ -153,7 +212,18 @@ export function AdjacentAreaPanel({
 
               <div className="text-muted-foreground">Grense</div>
               <div className="font-medium">
-                {result.threshold === Infinity ? "Ingen" : `${result.threshold} pers/km²`}
+                {POPULATION_DENSITY_LABELS[result.populationDensityCategory]}
+              </div>
+
+              <div className="text-muted-foreground">UA Size</div>
+              <div className="font-medium">{UA_SIZE_LABELS[result.uaSize]}</div>
+
+              <div className="text-muted-foreground">Required containment</div>
+              <div className="font-medium">{result.requiredContainment}</div>
+
+              <div className="text-muted-foreground">Outdoor assemblies</div>
+              <div className="font-medium">
+                {OUTDOOR_ASSEMBLIES_LABELS[result.outdoorAssemblies]}
               </div>
             </div>
 
