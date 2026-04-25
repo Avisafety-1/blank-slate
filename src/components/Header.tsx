@@ -89,7 +89,7 @@ export const Header = () => {
   const displayLang = i18n.language?.startsWith('en') ? 'NO' : 'EN';
 
   return (
-    <header className="bg-card/80 backdrop-blur-md border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-[1100] w-full">
+    <header className="bg-card/95 border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-[1100] w-full">
       <div className="w-full px-3 sm:px-4 pt-1 sm:pt-2 pb-2 sm:pb-3">
         <div className="flex items-center justify-between gap-1 sm:gap-2 min-w-0">
           <Button 
@@ -122,7 +122,7 @@ export const Header = () => {
                   <Menu className="w-3.5 h-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-[1150]">
+              <DropdownMenuContent align="end" className="bg-card/95 border-glass z-[1150]">
                 <DropdownMenuItem onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>
