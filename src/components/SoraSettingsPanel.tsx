@@ -149,13 +149,33 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     const fetchSpecs = async () => {
       const { data } = await supabase
         .from("drone_models")
-        .select("weight_kg, max_wind_mps, category, endurance_min, standard_takeoff_weight_kg")
-        .ilike("name", selectedDrone.modell)
-        .maybeSingle();
-      setCatalogSpecs(data as CatalogSpecs | null);
+        .select("name, weight_kg, max_wind_mps, max_speed_mps, characteristic_dimension_m, category, endurance_min, standard_takeoff_weight_kg")
+        .or(`name.ilike.%${selectedDrone.modell}%,name.ilike.%${selectedDrone.modell.replace(/^DJI\s+/i, "")}%`)
+        .limit(20);
+      setCatalogSpecs(pickBestDroneCatalogMatch((data ?? []) as CatalogSpecs[], selectedDrone.modell));
     };
     fetchSpecs();
   }, [selectedDrone?.modell]);
+
+  useEffect(() => {
+    if (!selectedDrone || !catalogSpecs) return;
+    const catalogCd = catalogSpecs.characteristic_dimension_m;
+    const catalogSpeed = catalogSpecs.max_speed_mps ?? (catalogSpecs.max_wind_mps != null ? catalogSpecs.max_wind_mps * 2 : null);
+    const next: Partial<SoraSettings> = { droneId: selectedDroneId || undefined };
+
+    if (catalogCd != null && !manualCdOverride) {
+      setCharacteristicDimension(String(catalogCd));
+      next.characteristicDimensionM = catalogCd;
+    }
+    if (catalogSpeed != null && !manualSpeedOverride) {
+      setGroundSpeed(String(catalogSpeed));
+      next.groundSpeedMps = catalogSpeed;
+    }
+
+    if (Object.keys(next).length > 1 || settings.droneId !== selectedDroneId) {
+      onChange({ ...settings, ...next });
+    }
+  }, [catalogSpecs, selectedDrone, selectedDroneId, manualCdOverride, manualSpeedOverride, settings, onChange]);
 
   // Build drone profile
   const droneProfile: DroneProfile | null = useMemo(() => {
@@ -164,7 +184,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     return {
       aircraft_type: categoryToAircraftType(catalogSpecs?.category ?? null, selectedDrone.modell),
       mtow_kg: mtow,
-      max_speed_mps: undefined,
+      max_speed_mps: catalogSpecs?.max_speed_mps ?? undefined,
       max_wind_mps: catalogSpecs?.max_wind_mps ?? undefined,
       has_parachute_support: true,
       has_fts_support: true,
