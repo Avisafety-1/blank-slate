@@ -1,51 +1,55 @@
 ## Funn
 
-Ja — koden har allerede deler av dette, men det vises ikke slik du forventet i metodeboksen:
+Ja, årsaken er sannsynligvis at togglen prøver å oppdatere `dji_credentials` direkte fra frontend:
 
-- `UploadDroneLogDialog.tsx` henter `dji_credentials.auto_sync_enabled` og viser kun tekst: `Auto-sync: På/Av` på DJI-konto-kortet.
-- Det finnes `handleDjiLogout()`, men logg-ut-knappen ligger bare inne i DJI-login/loggliste-steget, ikke oppe til høyre på selve DJI-konto-kortet.
-- Toggle for auto-sync finnes kun som checkbox når man logger inn manuelt og lagrer innlogging. Etter at innloggingen er lagret, kan brukeren ikke slå auto-sync av/på direkte fra boksen.
-- `resetState()` setter `enableAutoSync(false)`, så dialogen kan kort vise feil status før `checkSavedCredentials()` får lastet riktig verdi. Det kan forklare hvorfor boksen oppleves som “tilbakestilt”.
+```ts
+supabase.from("dji_credentials").update({ auto_sync_enabled: checked })
+```
+
+Men RLS-policyene på `dji_credentials` tillater kun `SELECT` og `DELETE` for egne rader. Det finnes ingen `UPDATE`-policy. Dermed kan UI-en se ut som den endres optimistisk, men databaseoppdateringen blir ikke lagret. Når dialogen åpnes på nytt, leses den gamle verdien fra databasen og togglen hopper tilbake.
 
 ## Plan
 
-### 1. Gjør DJI-konto-kortet til en administrerbar statusboks
-I metodevalget (`step === 'method'`) oppdateres DJI-konto-kortet slik at når lagret DJI-innlogging finnes, vises:
-
-- e-post som i dag
-- en ekte `Switch` for `Auto-sync`
-- en liten logg-ut-knapp øverst til høyre på kortet
-
-Skisse:
+### 1. Flytt toggle-lagring til eksisterende edge-funksjon
+Legg til en ny action i `supabase/functions/process-dronelog/index.ts`, for eksempel:
 
 ```text
-DJI-konto                         Logg ut
-rikardvb@gmail.com
-[ toggle ] Auto-sync: På/Av
+dji-update-auto-sync
 ```
 
-Kortet skal fortsatt kunne klikkes for å hente logger fra DJI-kontoen, men klikk på toggle/logg-ut skal ikke trigge innlogging/importvisning.
+Den skal:
+- validere innlogget bruker via eksisterende auth-oppsett i funksjonen
+- ta imot `autoSyncEnabled: boolean`
+- oppdatere kun raden der `user_id = authUser.id`
+- bruke service client internt, slik de andre credential-operasjonene allerede gjør
+- returnere tydelig feil hvis raden ikke finnes
 
-### 2. Legg til egen handler for auto-sync-toggle
-Legg til `handleAutoSyncToggle(checked)` i `UploadDroneLogDialog.tsx`:
+Dette unngår å åpne en generell `UPDATE`-policy på en tabell som inneholder krypterte DJI-credentials.
 
-- oppdater UI optimistisk
-- oppdater `dji_credentials.auto_sync_enabled` for innlogget bruker
-- vis toast: `Auto-sync aktivert` / `Auto-sync deaktivert`
-- rull tilbake UI hvis databaseoppdatering feiler
+### 2. Oppdater frontend-handleren
+Endre `handleAutoSyncToggle()` i `src/components/UploadDroneLogDialog.tsx` slik at den kaller:
 
-Dette bruker eksisterende RLS/tilgang for egen `dji_credentials`-rad.
+```ts
+callDronelogAction("dji-update-auto-sync", { autoSyncEnabled: checked })
+```
 
-### 3. Ikke nullstill lagret auto-sync-status ved dialog-reset
-Endre `resetState()` slik at den ikke setter `enableAutoSync(false)` når dialogen åpnes/resettes. Status skal komme fra `checkSavedCredentials()` og bevares i UI.
+i stedet for direkte `supabase.from("dji_credentials").update(...)`.
 
-### 4. Forbedre lagring ved manuell DJI-login
-Når brukeren logger inn og huker av for lagring/auto-sync, send `autoSyncEnabled` direkte til `process-dronelog` sin `dji-save-credentials` action, slik at upsert kan lagre `auto_sync_enabled` samtidig med credentials.
+Behold dagens optimistiske UI:
+- toggle endres umiddelbart
+- rollback ved feil
+- toast ved suksess/feil
 
-Da slipper vi separat update etterpå og reduserer risiko for at status blir feil.
+### 3. Rydd opp i statuslasting ved åpning
+Juster åpningssekvensen slik at `resetState()` ikke kan overstyre eller skape race mot `checkSavedCredentials()`.
 
-### 5. Oppdater edge-funksjonen for credentials
-I `supabase/functions/process-dronelog/index.ts` endres `dji-save-credentials` til å akseptere `autoSyncEnabled` og lagre dette i `dji_credentials.auto_sync_enabled` ved upsert.
+Konkret:
+- behold `enableAutoSync` uten reset ved vanlig dialog-reset
+- sett `enableAutoSync(false)` kun ved faktisk DJI-logg-ut eller når ingen credentials finnes
+- la `checkSavedCredentials()` være autoritativ kilde når dialogen åpnes
+
+### 4. Ekstra robusthet
+Etter vellykket toggle kan vi eventuelt kalle `checkSavedCredentials()` på nytt, eller la optimistisk state stå. Jeg anbefaler å la optimistisk state stå for rask UI, men legge inn bedre feillogging hvis edge-funksjonen returnerer feil.
 
 ## Filer som endres
 
@@ -54,6 +58,6 @@ I `supabase/functions/process-dronelog/index.ts` endres `dji-save-credentials` t
 
 ## Resultat
 
-- DJI-konto-boksen får tilbake forventet kontrollflate: auto-sync-toggle og logg-ut øverst til høyre.
-- Brukeren kan slå auto-sync av/på uten å gå inn i DJI-login-steget.
-- UI-statusen blir mer stabil og matcher databasen bedre.
+- Auto-sync-toggle lagres stabilt i databasen.
+- Når du lukker og åpner dialogen igjen, vises samme status som du valgte.
+- Vi unngår å gi frontend generell skriveadgang til credential-tabellen.

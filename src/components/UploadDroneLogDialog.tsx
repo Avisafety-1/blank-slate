@@ -416,6 +416,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     } else {
       setHasSavedCredentials(false);
       setSavedDjiEmail("");
+      setEnableAutoSync(false);
     }
   };
 
@@ -460,17 +461,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setEnableAutoSync(checked);
     setIsAutoSyncSaving(true);
 
-    const { error } = await supabase
-      .from("dji_credentials")
-      .update({ auto_sync_enabled: checked } as any)
-      .eq("user_id", user.id);
-
-    if (error) {
+    try {
+      await callDronelogAction("dji-update-auto-sync", { autoSyncEnabled: checked });
+      toast.success(checked ? 'Auto-sync aktivert' : 'Auto-sync deaktivert');
+    } catch (error) {
       console.error('Failed to update DJI auto-sync:', error);
       setEnableAutoSync(previous);
       toast.error('Kunne ikke oppdatere auto-sync');
-    } else {
-      toast.success(checked ? 'Auto-sync aktivert' : 'Auto-sync deaktivert');
     }
 
     setIsAutoSyncSaving(false);
