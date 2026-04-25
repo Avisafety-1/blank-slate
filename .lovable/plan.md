@@ -1,37 +1,42 @@
-Plan for å rette UA size i tilstøtende områder når drone er valgt
+Dette bør ikke ta stor plass hvis vi gjør det som en kompakt PDF/JSON-basert dokumentasjon ved lagring. Typisk størrelse blir sannsynligvis ca. 50–300 KB per dokument, avhengig av om vi inkluderer kartbilde. Uten kartbilde er det ofte svært lite. Selv ved 1 000 oppdrag er dette normalt bare titalls til noen hundre MB. Det som virkelig kan ta plass er skjermbilder/kartbilder i høy oppløsning; derfor bør dokumentasjonen starte som en tekstlig/tablåbasert PDF og eventuelt ett komprimert kartbilde senere.
 
-1. Utvid dronemodell-katalogen
-- Legg til felt i `drone_models` for:
-  - `characteristic_dimension_m` (CD/største relevante dimensjon i meter)
-  - eventuelt `max_speed_mps` hvis vi vil slutte å estimere V0 fra maks vind.
-- Oppdater eksisterende katalograder med realistiske CD-verdier for alle modeller som finnes i katalogen, inkludert FlyCart 100.
-- FlyCart 100 skal ikke falle tilbake til CD=1.0 m; den skal få en CD over 3 m slik at UA size blir minst `< 8 m UA`, forutsatt at V0 fortsatt er under 75 m/s.
+Plan:
 
-2. Bruk katalogverdier automatisk i SORA-panelet
-- Oppdater `SoraSettingsPanel` slik at valg av drone henter `characteristic_dimension_m` og `max_speed_mps` fra `drone_models`.
-- Når drone velges, fylles CD-feltet automatisk fra katalogen hvis brukeren ikke allerede har overstyrt manuelt.
-- Sett `settings.characteristicDimensionM` og `settings.groundSpeedMps` samtidig, slik at `AdjacentAreaPanel` får riktige verdier uten at brukeren må trykke «Bruk SORA 2.5-beregning» først.
-- Behold manuell overstyring: brukeren kan fortsatt endre CD/V0 direkte for oppdraget.
+1. Utvid rutens lagrede SORA-data
+- Når brukeren har aktivert «SORA volum» og/eller «Tilstøtende», lagres ikke bare selve SORA-innstillingene, men også et lite dokumentasjonsgrunnlag sammen med ruten.
+- For tilstøtende områder lagres resultatet som allerede beregnes i UI: radius, areal, total befolkning, gjennomsnittlig tetthet, SORA-kategori, UA size, SAIL, outdoor assemblies, containment-krav og datakilde.
+- Dette unngår at dokumentet må gjenskape beregningen senere med andre data.
 
-3. Rett matching mot katalogen
-- Dagens kode bruker delvis eksakt `ilike(name, selectedDrone.modell)` og delvis `%modell%`. Jeg vil gjøre matching mer robust, slik at droner i flåten med navn som «DJI FlyCart 100», «FlyCart 100» eller varianter med serienavn finner riktig katalograd.
-- Sikre at både kart-siden og SORA-panelet bruker samme logikk for katalogoppslag.
+2. Lag en egen PDF-generator for SORA-grunnlag
+- Opprett en funksjon som lager en kompakt PDF med:
+  - Oppdragstittel, dato, rute-/operasjonsinformasjon
+  - SORA volum: Flight Geography, Contingency, Ground Risk Buffer, høyde, buffer-modus
+  - Dronegrunnlag: valgt drone, CD, V0/ground speed, UA size
+  - Tilstøtende områder: beregningsradius, areal, innbyggere, tetthet, SORA-kategori, SAIL, outdoor assemblies og required containment
+  - Kilder/metode: JARUS SORA 2.5, CAA Norway SORA 2.5 calculator-logikk, SSB 250m befolkningsrutenett, samt tidspunkt for generering
+- Dokumentet lagres som PDF i eksisterende `documents` storage-bøtte.
 
-4. Vis tydelig kilde i UI
-- I SORA-panelet viser vi at CD/V0 kommer fra «Dronemodell-katalog» når automatisk utfylt.
-- Hvis katalogen mangler CD for en modell, vis en liten advarsel om at systemet bruker fallback, slik at feil UA size ikke skjules.
+3. Koble PDF-en automatisk til oppdraget ved lagring
+- Når man trykker «Lagre» i ruteplanleggeren og ruten returneres til/opprettes på oppdraget, opprettes dokumentet bare dersom:
+  - SORA volum er huket av, og/eller
+  - Tilstøtende områder er huket av og har beregningsresultat
+- Etter opprettelse legges dokumentet inn i `documents` og kobles til oppdraget via `mission_documents`.
+- Tittel kan f.eks. være: `SORA beregningsgrunnlag - [oppdragstittel]`.
 
-5. Verifisering
-- Test at `deriveUaSizeFromSora()` gir riktig UA-kategori for typiske modeller:
-  - små droner: `< 1 m` eller `< 3 m` avhengig av CD/V0
-  - Matrice 300/350/400: forventet større kategori basert på CD
-  - FlyCart 100: ikke `< 3 m`; forventet `< 8 m UA` dersom CD < 8 m og V0 < 75 m/s
-- Test flyten på `/kart`: velg FlyCart 100 i SORA-panelet, åpne tilstøtende område og bekreft at UA size følger katalogens CD.
+4. Unngå unødvendig lagringsvekst og duplikater
+- Ved nyopprettelse: lag ett dokument per lagret oppdrag dersom SORA/tilstøtende er aktivert.
+- Ved senere ruteendring på eksisterende oppdrag: enten erstatte/arkivere forrige SORA-grunnlag eller lage ny versjon. Anbefalt start: lage ny versjon bare når ruten faktisk lagres på nytt, slik at historikken bevares.
+- Dokumentet bør ikke genereres bare fordi man skrur brytere av/på eller beregner i panelet; kun ved faktisk «Lagre».
 
-Tekniske detaljer
-- Databaseendring krever migrasjon på `public.drone_models`.
-- Frontend endres primært i:
-  - `src/components/SoraSettingsPanel.tsx`
-  - `src/pages/Kart.tsx`
-  - eventuelt en liten helper i `src/lib/` for katalogmatching/UA-spesifikasjoner.
-- `src/integrations/supabase/types.ts` skal ikke redigeres manuelt.
+5. UI-feedback
+- Etter lagring vises en toast, f.eks. «SORA beregningsgrunnlag lagret som dokument på oppdraget».
+- Hvis PDF-oppretting feiler etter at oppdraget er lagret, skal oppdraget fortsatt lagres, men brukeren får beskjed om at dokumentasjonen ikke kunne opprettes.
+
+Tekniske detaljer:
+- Berørte filer sannsynligvis:
+  - `src/pages/Kart.tsx` for å ta med `showAdjacentArea` og `adjacentResult` i rutedata ved lagring.
+  - `src/types/map.ts` for å utvide `RouteData` med valgfri `adjacentAreaResult`/dokumentasjonsmetadata.
+  - `src/components/dashboard/AddMissionDialog.tsx` for å opprette PDF og koble den til nyopprettet/oppdatert oppdrag etter at `missions`-raden finnes.
+  - Ny fil, f.eks. `src/lib/soraDocumentationPdf.ts`, for selve PDF-genereringen og opplasting til `documents`.
+- Ingen databaseskjemaendring ser nødvendig ut, fordi eksisterende `documents` og `mission_documents` allerede dekker lagring og kobling.
+- For lagringsplass velges PDF uten tungt kartbilde i første versjon. Det gir liten filstørrelse og god revisjonssporing.
