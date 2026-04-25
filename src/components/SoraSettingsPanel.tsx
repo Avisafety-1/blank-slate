@@ -48,6 +48,22 @@ interface CatalogSpecs {
   standard_takeoff_weight_kg: number | null;
 }
 
+const SORA_HELP = {
+  cd: "Characteristic Dimension: største relevante dimensjon på dronen.",
+  v0: "V0: maksimal bakkehastighet, inkludert vindbidrag.",
+  tr: "tR: tiden fra avvik oppdages til korrigerende handling starter.",
+  ham: "HAM: altimetry error, høydefeil i målingen.",
+  sgnss: "SGNSS: GNSS-feil i horisontal posisjon.",
+  spos: "SPos: position hold error, posisjonsavvik ved hold/automatisering.",
+  smap: "SMap: map error, kart-/geodatafeil.",
+  grb: "GRB/SGRB: Ground Risk Buffer, ekstra bakke-risikobuffer utenfor contingency area.",
+  tp: "tP: deployment time for fallskjerm eller FTS.",
+} as const;
+
+const FieldHint = ({ children }: { children: string }) => (
+  <p className="text-[10px] leading-snug text-muted-foreground">{children}</p>
+);
+
 export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId, open: controlledOpen, onOpenChange }: SoraSettingsPanelProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
