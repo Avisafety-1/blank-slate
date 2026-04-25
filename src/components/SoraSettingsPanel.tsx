@@ -56,6 +56,11 @@ const SORA_HELP = {
   sgnss: "SGNSS: GNSS-feil i horisontal posisjon.",
   spos: "SPos: position hold error, posisjonsavvik ved hold/automatisering.",
   smap: "SMap: map error, kart-/geodatafeil.",
+  sr: "SR: reaction distance = V0 × tR.",
+  scm: "SCM: contingency maneuver distance, horisontal manøvreringsavstand.",
+  hr: "HR: vertical reaction, vertikal høydeendring i reaksjonstiden.",
+  hcm: "HCM: vertical maneuver, vertikal høydeendring under manøver.",
+  hcv: "HCV: total contingency volume ceiling, maksimal beregnet høyde.",
   grb: "GRB/SGRB: Ground Risk Buffer, ekstra bakke-risikobuffer utenfor contingency area.",
   tp: "tP: deployment time for fallskjerm eller FTS.",
 } as const;
@@ -419,12 +424,12 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           <p className="text-[11px] text-muted-foreground">{suggestion.calculation_summary}</p>
 
           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            <span>Reaction (SR): {suggestion.details.reaction_distance_m} m</span>
-            <span>Maneuver (SCM): {suggestion.details.maneuver_distance_m} m</span>
-            <span>Vert. reaction (HR): {suggestion.details.vertical_reaction_m} m</span>
-            <span>Vert. maneuver (HCM): {suggestion.details.vertical_maneuver_m} m</span>
-            <span>CV høyde: {suggestion.details.cv_height_margin_m} m</span>
-            <span>Total ceiling: {suggestion.details.total_ceiling_m} m</span>
+            <span title={SORA_HELP.sr}>SR reaction: {suggestion.details.reaction_distance_m} m</span>
+            <span title={SORA_HELP.scm}>SCM maneuver: {suggestion.details.maneuver_distance_m} m</span>
+            <span title={SORA_HELP.hr}>HR vert. reaction: {suggestion.details.vertical_reaction_m} m</span>
+            <span title={SORA_HELP.hcm}>HCM vert. maneuver: {suggestion.details.vertical_maneuver_m} m</span>
+            <span title="CV height margin over planned flight geography height.">CV høyde: {suggestion.details.cv_height_margin_m} m</span>
+            <span title={SORA_HELP.hcv}>HCV total ceiling: {suggestion.details.total_ceiling_m} m</span>
           </div>
 
           {suggestion.warnings.length > 0 && (
