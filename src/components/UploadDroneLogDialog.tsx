@@ -114,6 +114,8 @@ interface MatchedFlightLog {
   landing_location: string;
   mission_id: string | null;
   missions?: { tittel: string } | null;
+  pilot_ids?: string[];
+  pilot_names?: string[];
 }
 
 interface Drone {
@@ -342,6 +344,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (me) setPilotId(me.id);
     }
   }, [user, personnel]);
+
+  useEffect(() => {
+    if (!pilotId || !selectedMissionId || selectedMissionId === '__new__') return;
+    const pilotMatches = matchCandidates.filter(
+      c => c.mission_id === selectedMissionId && (c.pilot_ids || []).includes(pilotId)
+    );
+    if (matchedLog && !(matchedLog.pilot_ids || []).includes(pilotId)) {
+      setMatchedLog(pilotMatches[0] || null);
+    } else if (!matchedLog && pilotMatches.length === 1) {
+      setMatchedLog(pilotMatches[0]);
+    }
+  }, [pilotId, selectedMissionId, matchCandidates, matchedLog]);
 
   // Initialize warning actions when result changes
   useEffect(() => {
@@ -958,6 +972,29 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     return !!(pdData && pdData.length > 0);
   };
 
+  const enrichLogsWithPilots = async (logs: any[]): Promise<MatchedFlightLog[]> => {
+    if (!logs || logs.length === 0) return [];
+    const logIds = logs.map(log => log.id).filter(Boolean);
+    const { data: personnelRows } = await supabase
+      .from('flight_log_personnel')
+      .select('flight_log_id, profile_id, profiles(full_name)')
+      .in('flight_log_id', logIds);
+
+    const pilotsByLog = new Map<string, { ids: string[]; names: string[] }>();
+    (personnelRows || []).forEach((row: any) => {
+      const entry = pilotsByLog.get(row.flight_log_id) || { ids: [], names: [] };
+      if (row.profile_id) entry.ids.push(row.profile_id);
+      const name = row.profiles?.full_name;
+      if (name) entry.names.push(name);
+      pilotsByLog.set(row.flight_log_id, entry);
+    });
+
+    return logs.map(log => {
+      const pilots = pilotsByLog.get(log.id) || { ids: [], names: [] };
+      return { ...(log as MatchedFlightLog), pilot_ids: pilots.ids, pilot_names: pilots.names };
+    });
+  };
+
   const [djiLoginCooldown, setDjiLoginCooldown] = useState(false);
   const [djiImportCooldown, setDjiImportCooldown] = useState(false);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
@@ -1196,12 +1233,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (data.sha256Hash) {
       const { data: dupMatch } = await (supabase
         .from('flight_logs')
-        .select('id, flight_date, flight_duration_minutes, drone_id, mission_id, missions(tittel, tidspunkt)')
+        .select('id, flight_date, flight_duration_minutes, drone_id, mission_id, departure_location, landing_location, missions(tittel, tidspunkt)')
         .eq('company_id', companyId) as any)
         .eq('dronelog_sha256', data.sha256Hash)
         .limit(1)
         .maybeSingle();
       if (dupMatch) {
+        const [enrichedDup] = await enrichLogsWithPilots([dupMatch]);
+        const duplicateBelongsToSelectedPilot = !!pilotId && (enrichedDup?.pilot_ids || []).includes(pilotId);
         // If the duplicate belongs to a mission, fetch all logs for that mission
         // and let user choose, rather than returning early
         if (dupMatch.mission_id) {
@@ -1220,24 +1259,34 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, drones(modell)')
               .eq('mission_id', dupMatch.mission_id)
               .order('flight_date', { ascending: false });
+            const enrichedLogs = await enrichLogsWithPilots(existingLogs || []);
+            const pilotLogs = pilotId ? enrichedLogs.filter(log => (log.pilot_ids || []).includes(pilotId)) : [];
 
-            if (existingLogs && existingLogs.length > 0) {
-              setMatchCandidates(existingLogs as any[]);
-              setMatchedLog(dupMatch as any); // Pre-select the duplicate
-              toast.info('Flyloggen er allerede importert. Du kan oppdatere den eller velge en annen flytur.');
+            if (enrichedLogs.length > 0) {
+              setMatchCandidates(enrichedLogs);
+              setMatchedLog(duplicateBelongsToSelectedPilot ? enrichedDup : (pilotLogs[0] || null));
+              toast.info(duplicateBelongsToSelectedPilot
+                ? 'Flyloggen er allerede importert for valgt pilot. Du kan oppdatere den eksisterende.'
+                : 'Oppdraget er funnet. Eksisterende flylogger fra andre piloter oppdateres ikke automatisk.');
             } else {
-              setMatchedLog(dupMatch as any);
-              toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+              setMatchedLog(duplicateBelongsToSelectedPilot ? enrichedDup : null);
+              toast.info(duplicateBelongsToSelectedPilot
+                ? 'Flyloggen er allerede importert for valgt pilot. Du kan oppdatere den eksisterende.'
+                : 'Flyloggen finnes allerede på en annen pilot. Velg riktig pilot eller legg til som ny flytur.');
             }
           } else {
-            setMatchedLog(dupMatch as any);
-            toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+            setMatchedLog(duplicateBelongsToSelectedPilot ? enrichedDup : null);
+            toast.info(duplicateBelongsToSelectedPilot
+              ? 'Flyloggen er allerede importert for valgt pilot. Du kan oppdatere den eksisterende.'
+              : 'Flyloggen finnes allerede på en annen pilot. Velg riktig pilot eller legg til som ny flytur.');
           }
           return;
         }
         // No mission — just pre-select the duplicate
-        setMatchedLog(dupMatch as any);
-        toast.info('Flyloggen er allerede importert. Du kan oppdatere den eksisterende.');
+        setMatchedLog(duplicateBelongsToSelectedPilot ? enrichedDup : null);
+        toast.info(duplicateBelongsToSelectedPilot
+          ? 'Flyloggen er allerede importert for valgt pilot. Du kan oppdatere den eksisterende.'
+          : 'Flyloggen finnes allerede på en annen pilot. Velg riktig pilot eller legg til som ny flytur.');
         return;
       }
     }
@@ -1288,10 +1337,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         .order('flight_date', { ascending: false });
 
       if (existingLogs && existingLogs.length > 0) {
-        console.log('[DroneLog] Found', existingLogs.length, 'existing flight logs on matched missions');
-        setMatchCandidates(existingLogs as any[]);
-        // Don't auto-set matchedLog — let user choose
-        toast.info('Oppdraget har eksisterende flyturer. Velg om du vil oppdatere en eller legge til ny.');
+        const enrichedLogs = await enrichLogsWithPilots(existingLogs);
+        const pilotLogs = pilotId ? enrichedLogs.filter(log => (log.pilot_ids || []).includes(pilotId)) : [];
+        console.log('[DroneLog] Found', enrichedLogs.length, 'existing flight logs on matched missions');
+        setMatchCandidates(enrichedLogs);
+        if (pilotLogs.length === 1) {
+          setMatchedLog(pilotLogs[0]);
+          toast.info('Fant eksisterende flytur for valgt pilot på oppdraget.');
+        } else if (pilotLogs.length > 1) {
+          toast.info('Oppdraget har flere eksisterende flyturer for valgt pilot. Velg om du vil oppdatere en eller legge til ny.');
+        } else {
+          toast.info('Oppdraget matcher tidspunktet. Ingen eksisterende flytur for valgt pilot ble valgt.');
+        }
       }
     }
   };
@@ -1918,6 +1975,17 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
   const selectedPilot = personnel.find(p => p.id === pilotId);
   const selectedDrone = drones.find(d => d.id === selectedDroneId);
   const selectedEqNames = equipmentList.filter(e => selectedEquipment.includes(e.id));
+  const getPilotLogsForMission = (missionId: string, targetPilotId: string) =>
+    matchCandidates.filter(c => c.mission_id === missionId && (c.pilot_ids || []).includes(targetPilotId));
+  const getAllLogsForMission = (missionId: string) =>
+    matchCandidates.filter(c => c.mission_id === missionId);
+
+  const handlePilotChange = (newPilotId: string) => {
+    setPilotId(newPilotId);
+    if (!selectedMissionId || selectedMissionId === '__new__') return;
+    const pilotLogs = getPilotLogsForMission(selectedMissionId, newPilotId);
+    setMatchedLog(pilotLogs.length === 1 ? pilotLogs[0] : null);
+  };
 
   // ── Render ──
 
@@ -1977,7 +2045,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 {/* Pilot selector */}
                 <div className="space-y-1.5">
                   <Label className="text-xs flex items-center gap-1"><User className="w-3 h-3" />Pilot</Label>
-                  <Select value={pilotId} onValueChange={setPilotId}>
+                  <Select value={pilotId} onValueChange={handlePilotChange}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Velg pilot" />
                     </SelectTrigger>
@@ -2682,22 +2750,24 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         )}
 
         {/* Show existing flight logs for chosen mission */}
-        {selectedMissionId && selectedMissionId !== '__new__' && matchCandidates.filter(c => c.mission_id === selectedMissionId).length > 0 && (
+        {selectedMissionId && selectedMissionId !== '__new__' && getAllLogsForMission(selectedMissionId).length > 0 && (
           <div className="p-3 rounded-lg bg-accent/30 border border-border">
-            <p className="text-sm font-medium mb-2">{t('dronelog.existingFlights', 'Eksisterende flyturer på dette oppdraget:')}</p>
+            <p className="text-sm font-medium mb-2">Eksisterende flyturer for valgt pilot på dette oppdraget:</p>
+            {pilotId && getPilotLogsForMission(selectedMissionId, pilotId).length === 0 && (
+              <p className="text-xs text-muted-foreground mb-2">Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.</p>
+            )}
             <RadioGroup
               value={matchedLog ? matchedLog.id : '__new_flight__'}
               onValueChange={(val) => {
                 if (val === '__new_flight__') {
                   setMatchedLog(null);
                 } else {
-                  const found = matchCandidates.find(c => c.id === val);
+                  const found = matchCandidates.find(c => c.id === val && (!pilotId || (c.pilot_ids || []).includes(pilotId)));
                   if (found) setMatchedLog(found);
                 }
               }}
             >
-              {matchCandidates
-                .filter(c => c.mission_id === selectedMissionId)
+              {(pilotId ? getPilotLogsForMission(selectedMissionId, pilotId) : [])
                 .map((log) => (
                   <label key={log.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
                     <RadioGroupItem value={log.id} />

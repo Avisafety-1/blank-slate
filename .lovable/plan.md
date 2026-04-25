@@ -1,63 +1,72 @@
-## Funn
-
-Ja, årsaken er sannsynligvis at togglen prøver å oppdatere `dji_credentials` direkte fra frontend:
-
-```ts
-supabase.from("dji_credentials").update({ auto_sync_enabled: checked })
-```
-
-Men RLS-policyene på `dji_credentials` tillater kun `SELECT` og `DELETE` for egne rader. Det finnes ingen `UPDATE`-policy. Dermed kan UI-en se ut som den endres optimistisk, men databaseoppdateringen blir ikke lagret. Når dialogen åpnes på nytt, leses den gamle verdien fra databasen og togglen hopper tilbake.
-
 ## Plan
 
-### 1. Flytt toggle-lagring til eksisterende edge-funksjon
-Legg til en ny action i `supabase/functions/process-dronelog/index.ts`, for eksempel:
+### Mål
+DJI-import skal fortsatt foreslå eksisterende oppdrag basert på tidspunkt, men den skal bare foreslå/auto-velge eksisterende flylogger som tilhører valgt pilot. Når pilot endres i loggseksjonen, skal eksisterende flylogg-match beregnes på nytt for den piloten.
+
+### 1. Utvid match-data med pilotinformasjon
+I `src/components/UploadDroneLogDialog.tsx` utvides `MatchedFlightLog` med pilot-ID-er/navn fra `flight_log_personnel`.
+
+Når eksisterende flylogger hentes for et matchet oppdrag, hentes også tilknyttet personell:
 
 ```text
-dji-update-auto-sync
+flight_logs
+  -> flight_log_personnel
+     -> profiles
 ```
 
-Den skal:
-- validere innlogget bruker via eksisterende auth-oppsett i funksjonen
-- ta imot `autoSyncEnabled: boolean`
-- oppdatere kun raden der `user_id = authUser.id`
-- bruke service client internt, slik de andre credential-operasjonene allerede gjør
-- returnere tydelig feil hvis raden ikke finnes
+Dette gjør at UI kan vite hvilke flylogger som faktisk tilhører valgt pilot.
 
-Dette unngår å åpne en generell `UPDATE`-policy på en tabell som inneholder krypterte DJI-credentials.
+### 2. Skill mellom oppdragsmatch og flyloggmatch
+Behold dagens logikk for oppdrag:
+- finn oppdrag samme kalenderdag
+- sorter etter nærmest flytidspunkt
+- forhåndsvelg nærmeste oppdrag
 
-### 2. Oppdater frontend-handleren
-Endre `handleAutoSyncToggle()` i `src/components/UploadDroneLogDialog.tsx` slik at den kaller:
+Endre kun flyloggmatch:
+- `matchCandidates` filtreres mot `pilotId`
+- eksisterende flylogger fra andre piloter vises ikke som oppdaterbare kandidater
+- hvis valgt pilot ikke har en eksisterende logg på oppdraget, skal UI foreslå «Legg til som ny flytur»
 
-```ts
-callDronelogAction("dji-update-auto-sync", { autoSyncEnabled: checked })
+### 3. Re-match når pilot endres
+Pilotvelgeren i loggseksjonen får en egen handler, f.eks. `handlePilotChange(newPilotId)`, som:
+- oppdaterer valgt pilot
+- fjerner `matchedLog` hvis den tilhører en annen pilot
+- auto-velger en kandidat dersom valgt oppdrag har en eksisterende flylogg for den nye piloten
+- ellers lar `matchedLog` være tom slik at import oppretter ny flylogg på oppdraget
+
+Dette dekker tilfellet: «når man endrer pilot fra listen i loggen, kan den auto-matche på logger hvis loggen tilhører valgt pilot».
+
+### 4. Sikre duplikatlogikk mot feil pilot
+SHA-256-duplikatkontrollen i `findMatchingFlightLog()` endres slik at den ikke automatisk setter `matchedLog` for en logg som tilhører en annen pilot.
+
+Forslag:
+- hvis SHA-256-duplikat finnes for valgt pilot: forhåndsvelg den som eksisterende flylogg
+- hvis SHA-256-duplikat finnes for annen pilot: ikke forhåndsvelg som oppdaterbar logg; vis eventuelt en nøytral info om at loggen allerede finnes på en annen pilot, og la bruker legge inn som ny/velge riktig pilot
+
+Dette hindrer at importdata overskriver andre piloters flylogger ved et uhell.
+
+### 5. Oppdater visningen for eksisterende flyturer
+I listen «Eksisterende flyturer på dette oppdraget» vises kun logger for valgt pilot. Teksten kan tydeliggjøres:
+
+```text
+Eksisterende flyturer for valgt pilot på dette oppdraget
 ```
 
-i stedet for direkte `supabase.from("dji_credentials").update(...)`.
+Hvis oppdraget har logger, men ingen for valgt pilot, vises en kort hjelpetekst:
 
-Behold dagens optimistiske UI:
-- toggle endres umiddelbart
-- rollback ved feil
-- toast ved suksess/feil
+```text
+Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.
+```
 
-### 3. Rydd opp i statuslasting ved åpning
-Juster åpningssekvensen slik at `resetState()` ikke kan overstyre eller skape race mot `checkSavedCredentials()`.
+### 6. Behold eksisterende lagringsflyt
+Lagring trenger i hovedsak ikke ny database-struktur:
+- oppdater eksisterende logg kun når `matchedLog` er en pilot-godkjent kandidat
+- ny logg kobles fortsatt til valgt pilot via `flight_log_personnel`
+- eksisterende flytidjustering i `saveLogbookEntries()` beholdes
 
-Konkret:
-- behold `enableAutoSync` uten reset ved vanlig dialog-reset
-- sett `enableAutoSync(false)` kun ved faktisk DJI-logg-ut eller når ingen credentials finnes
-- la `checkSavedCredentials()` være autoritativ kilde når dialogen åpnes
+## Teknisk
 
-### 4. Ekstra robusthet
-Etter vellykket toggle kan vi eventuelt kalle `checkSavedCredentials()` på nytt, eller la optimistisk state stå. Jeg anbefaler å la optimistisk state stå for rask UI, men legge inn bedre feillogging hvis edge-funksjonen returnerer feil.
-
-## Filer som endres
-
+Berørt fil:
 - `src/components/UploadDroneLogDialog.tsx`
-- `supabase/functions/process-dronelog/index.ts`
 
-## Resultat
-
-- Auto-sync-toggle lagres stabilt i databasen.
-- Når du lukker og åpner dialogen igjen, vises samme status som du valgte.
-- Vi unngår å gi frontend generell skriveadgang til credential-tabellen.
+Ingen databaseendringer er planlagt. Endringen ligger i frontend-matchlogikken og bruker eksisterende `flight_log_personnel`-kobling.
