@@ -438,7 +438,7 @@ export const AddMissionDialog = ({
       }
 
       const createSoraDocIfNeeded = async (missionId: string) => {
-        if (!routeData?.soraSettings?.enabled && !routeData?.adjacentAreaDocumentation?.enabled) return;
+        if (!routeData?._createSoraDocumentation) return;
         try {
           const created = await createSoraDocumentationPdf({
             missionId,
