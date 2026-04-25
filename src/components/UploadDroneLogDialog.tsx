@@ -1337,10 +1337,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         .order('flight_date', { ascending: false });
 
       if (existingLogs && existingLogs.length > 0) {
-        console.log('[DroneLog] Found', existingLogs.length, 'existing flight logs on matched missions');
-        setMatchCandidates(existingLogs as any[]);
-        // Don't auto-set matchedLog — let user choose
-        toast.info('Oppdraget har eksisterende flyturer. Velg om du vil oppdatere en eller legge til ny.');
+        const enrichedLogs = await enrichLogsWithPilots(existingLogs);
+        const pilotLogs = pilotId ? enrichedLogs.filter(log => (log.pilot_ids || []).includes(pilotId)) : [];
+        console.log('[DroneLog] Found', enrichedLogs.length, 'existing flight logs on matched missions');
+        setMatchCandidates(enrichedLogs);
+        if (pilotLogs.length === 1) {
+          setMatchedLog(pilotLogs[0]);
+          toast.info('Fant eksisterende flytur for valgt pilot på oppdraget.');
+        } else if (pilotLogs.length > 1) {
+          toast.info('Oppdraget har flere eksisterende flyturer for valgt pilot. Velg om du vil oppdatere en eller legge til ny.');
+        } else {
+          toast.info('Oppdraget matcher tidspunktet. Ingen eksisterende flytur for valgt pilot ble valgt.');
+        }
       }
     }
   };
