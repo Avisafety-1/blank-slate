@@ -288,14 +288,17 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">CD (m)</Label>
+                <FieldHint>{SORA_HELP.cd}</FieldHint>
                 <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => setCharacteristicDimension(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
+                <FieldHint>{SORA_HELP.v0}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => setGroundSpeed(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
+                <FieldHint>{SORA_HELP.tr}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={reactionTime} onChange={(e) => setReactionTime(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
@@ -307,18 +310,22 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">HAM (m)</Label>
+                <FieldHint>{SORA_HELP.ham}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={altimetryError} onChange={(e) => setAltimetryError(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">SGNSS (m)</Label>
+                <FieldHint>{SORA_HELP.sgnss}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={gnssError} onChange={(e) => setGnssError(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">SPos (m)</Label>
+                <FieldHint>{SORA_HELP.spos}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={positionHoldError} onChange={(e) => setPositionHoldError(e.target.value)} className="h-8 text-sm" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">SMap (m)</Label>
+                <FieldHint>{SORA_HELP.smap}</FieldHint>
                 <Input type="number" min={0} step={0.1} value={mapError} onChange={(e) => setMapError(e.target.value)} className="h-8 text-sm" />
               </div>
             </div>
@@ -337,6 +344,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               {contingencyMethod === "parachute" && (
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Deployment tP (s)</Label>
+                  <FieldHint>{SORA_HELP.tp}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={deploymentTime} onChange={(e) => setDeploymentTime(e.target.value)} className="h-8 text-sm" />
                 </div>
               )}
@@ -345,6 +353,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">GRB-metode</Label>
+                <FieldHint>{SORA_HELP.grb}</FieldHint>
                 <Select value={grbMethod} onValueChange={(v) => setGrbMethod(v as GroundRiskBufferMethod)}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
