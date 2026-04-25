@@ -10,7 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
@@ -298,6 +298,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
   const [savedDjiEmail, setSavedDjiEmail] = useState("");
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
+  const [isAutoSyncSaving, setIsAutoSyncSaving] = useState(false);
   const [syncJustTriggered, setSyncJustTriggered] = useState(false);
   const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
   const [selectedPendingLogId, setSelectedPendingLogId] = useState<string | null>(null);
@@ -441,6 +442,40 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
+  const handleDjiCardKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (hasSavedCredentials) {
+        setStep('dji-login');
+        setTimeout(() => handleDjiAutoLogin(), 100);
+      } else {
+        setStep('dji-login');
+      }
+    }
+  };
+
+  const handleAutoSyncToggle = async (checked: boolean) => {
+    if (!user || !hasSavedCredentials || isAutoSyncSaving) return;
+    const previous = enableAutoSync;
+    setEnableAutoSync(checked);
+    setIsAutoSyncSaving(true);
+
+    const { error } = await supabase
+      .from("dji_credentials")
+      .update({ auto_sync_enabled: checked } as any)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error('Failed to update DJI auto-sync:', error);
+      setEnableAutoSync(previous);
+      toast.error('Kunne ikke oppdatere auto-sync');
+    } else {
+      toast.success(checked ? 'Auto-sync aktivert' : 'Auto-sync deaktivert');
+    }
+
+    setIsAutoSyncSaving(false);
+  };
+
   const handleDjiLogout = async () => {
     try {
       await callDronelogAction("dji-delete-credentials", {});
@@ -453,6 +488,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setHasSavedCredentials(false);
     setSavedDjiEmail("");
     setSaveCredentials(false);
+    setEnableAutoSync(false);
     setDjiEmail("");
     setDjiPassword("");
     setStep('dji-login');
@@ -493,7 +529,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setLinkBatteryToExisting(false);
     setLinkDroneToExisting(false);
     setSaveCredentials(false);
-    setEnableAutoSync(false);
     setIsAutoLoggingIn(false);
     setSyncJustTriggered(false);
     setLogType('auto');
@@ -945,23 +980,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       // Save credentials if checkbox is checked
       if (saveCredentials) {
         try {
-          await callDronelogAction("dji-save-credentials", { email: djiEmail, password: djiPassword, accountId });
+          await callDronelogAction("dji-save-credentials", { email: djiEmail, password: djiPassword, accountId, autoSyncEnabled: enableAutoSync });
           setHasSavedCredentials(true);
           setSavedDjiEmail(djiEmail);
           toast.success('DJI-innlogging lagret');
-          
-          // Enable auto-sync on user's credentials if checkbox is checked
-          if (enableAutoSync && user) {
-            try {
-              await supabase
-                .from("dji_credentials")
-                .update({ auto_sync_enabled: true } as any)
-                .eq("user_id", user.id);
-              toast.success('Automatisk sync aktivert for din konto');
-            } catch (syncErr) {
-              console.error('Failed to enable auto sync:', syncErr);
-            }
-          }
+          if (enableAutoSync) toast.success('Automatisk sync aktivert for din konto');
         } catch (saveErr) {
           console.error('Failed to save DJI credentials:', saveErr);
           toast.warning('Innlogging OK, men kunne ikke lagre legitimasjon');
@@ -2809,34 +2832,60 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 </div>
               </button>
               {djiEnabled && (
-              <button
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={handleDjiCardKeyDown}
                 onClick={() => {
                   if (hasSavedCredentials) {
                     setStep('dji-login');
-                    // Trigger auto-login
                     setTimeout(() => handleDjiAutoLogin(), 100);
                   } else {
                     setStep('dji-login');
                   }
                 }}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center relative"
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
+                {hasSavedCredentials && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                    title="Logg ut av DJI"
+                    disabled={isDjiLoading}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleDjiLogout();
+                    }}
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 <CloudDownload className="w-8 h-8 text-primary" />
-                <div>
+                <div className="w-full min-w-0">
                   <p className="font-medium text-sm">{t('dronelog.djiAccount', 'DJI-konto')}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
                     {hasSavedCredentials ? savedDjiEmail : t('dronelog.djiAccountDesc', 'Hent fra skyen')}
                   </p>
                   {hasSavedCredentials && (
-                    <p className={`text-[11px] mt-1 ${enableAutoSync ? 'text-green-600' : 'text-muted-foreground'}`}>
-                      {enableAutoSync ? 'Auto-sync: På' : 'Auto-sync: Av'}
-                    </p>
+                    <div
+                      className="mt-2 flex items-center justify-center gap-2 text-[11px] text-muted-foreground"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Switch
+                        checked={enableAutoSync}
+                        disabled={isAutoSyncSaving}
+                        onCheckedChange={handleAutoSyncToggle}
+                        className="scale-75"
+                        aria-label="Auto-sync"
+                      />
+                      <span>{enableAutoSync ? 'Auto-sync: På' : 'Auto-sync: Av'}</span>
+                    </div>
                   )}
                 </div>
-                {hasSavedCredentials && (
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" title="Innlogget" />
-                )}
-              </button>
+              </div>
               )}
             </div>
 
