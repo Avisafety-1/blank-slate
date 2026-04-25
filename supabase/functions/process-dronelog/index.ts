@@ -970,7 +970,7 @@ Deno.serve(async (req) => {
       // ── DJI credential management ──
 
       if (action === "dji-save-credentials") {
-        const { email, password, accountId: djiAccId } = body;
+        const { email, password, accountId: djiAccId, autoSyncEnabled } = body;
         if (!email || !password) {
           return new Response(JSON.stringify({ error: "Email and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -989,6 +989,7 @@ Deno.serve(async (req) => {
             dji_email: email,
             dji_password_encrypted: encryptedB64,
             dji_account_id: djiAccId || null,
+            auto_sync_enabled: autoSyncEnabled === true,
             updated_at: new Date().toISOString(),
           }, { onConflict: "user_id" });
 
