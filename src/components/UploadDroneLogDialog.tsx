@@ -529,7 +529,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setLinkBatteryToExisting(false);
     setLinkDroneToExisting(false);
     setSaveCredentials(false);
-    setEnableAutoSync(false);
     setIsAutoLoggingIn(false);
     setSyncJustTriggered(false);
     setLogType('auto');
@@ -981,23 +980,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       // Save credentials if checkbox is checked
       if (saveCredentials) {
         try {
-          await callDronelogAction("dji-save-credentials", { email: djiEmail, password: djiPassword, accountId });
+          await callDronelogAction("dji-save-credentials", { email: djiEmail, password: djiPassword, accountId, autoSyncEnabled: enableAutoSync });
           setHasSavedCredentials(true);
           setSavedDjiEmail(djiEmail);
           toast.success('DJI-innlogging lagret');
-          
-          // Enable auto-sync on user's credentials if checkbox is checked
-          if (enableAutoSync && user) {
-            try {
-              await supabase
-                .from("dji_credentials")
-                .update({ auto_sync_enabled: true } as any)
-                .eq("user_id", user.id);
-              toast.success('Automatisk sync aktivert for din konto');
-            } catch (syncErr) {
-              console.error('Failed to enable auto sync:', syncErr);
-            }
-          }
+          if (enableAutoSync) toast.success('Automatisk sync aktivert for din konto');
         } catch (saveErr) {
           console.error('Failed to save DJI credentials:', saveErr);
           toast.warning('Innlogging OK, men kunne ikke lagre legitimasjon');
