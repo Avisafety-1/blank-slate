@@ -31,10 +31,13 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
+import { createSoraDocumentationPdf } from "@/lib/soraDocumentationPdf";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
   totalDistance: number;
+  soraSettings?: any;
+  adjacentAreaDocumentation?: any;
 }
 
 interface AddMissionDialogProps {
