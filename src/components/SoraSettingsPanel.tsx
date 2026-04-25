@@ -172,7 +172,11 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       next.groundSpeedMps = catalogSpeed;
     }
 
-    if (Object.keys(next).length > 1 || settings.droneId !== selectedDroneId) {
+    const hasChanges = settings.droneId !== next.droneId
+      || (next.characteristicDimensionM !== undefined && settings.characteristicDimensionM !== next.characteristicDimensionM)
+      || (next.groundSpeedMps !== undefined && settings.groundSpeedMps !== next.groundSpeedMps);
+
+    if (hasChanges) {
       onChange({ ...settings, ...next });
     }
   }, [catalogSpecs, selectedDrone, selectedDroneId, manualCdOverride, manualSpeedOverride, settings, onChange]);
