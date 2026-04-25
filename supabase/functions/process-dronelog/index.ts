@@ -1052,6 +1052,32 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ deleted: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      if (action === "dji-update-auto-sync") {
+        const { autoSyncEnabled } = body;
+        if (typeof autoSyncEnabled !== "boolean") {
+          return new Response(JSON.stringify({ error: "autoSyncEnabled must be boolean" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const { data, error } = await serviceClient
+          .from("dji_credentials")
+          .update({ auto_sync_enabled: autoSyncEnabled, updated_at: new Date().toISOString() })
+          .eq("user_id", authUser.id)
+          .select("id, auto_sync_enabled")
+          .maybeSingle();
+
+        if (error) {
+          console.error("[process-dronelog] dji-update-auto-sync error:", error);
+          return new Response(JSON.stringify({ error: "Failed to update auto-sync" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        if (!data) {
+          return new Response(JSON.stringify({ error: "No saved credentials" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        return new Response(JSON.stringify({ saved: true, autoSyncEnabled: data.auto_sync_enabled === true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
