@@ -2750,22 +2750,24 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         )}
 
         {/* Show existing flight logs for chosen mission */}
-        {selectedMissionId && selectedMissionId !== '__new__' && matchCandidates.filter(c => c.mission_id === selectedMissionId).length > 0 && (
+        {selectedMissionId && selectedMissionId !== '__new__' && getAllLogsForMission(selectedMissionId).length > 0 && (
           <div className="p-3 rounded-lg bg-accent/30 border border-border">
-            <p className="text-sm font-medium mb-2">{t('dronelog.existingFlights', 'Eksisterende flyturer på dette oppdraget:')}</p>
+            <p className="text-sm font-medium mb-2">Eksisterende flyturer for valgt pilot på dette oppdraget:</p>
+            {pilotId && getPilotLogsForMission(selectedMissionId, pilotId).length === 0 && (
+              <p className="text-xs text-muted-foreground mb-2">Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.</p>
+            )}
             <RadioGroup
               value={matchedLog ? matchedLog.id : '__new_flight__'}
               onValueChange={(val) => {
                 if (val === '__new_flight__') {
                   setMatchedLog(null);
                 } else {
-                  const found = matchCandidates.find(c => c.id === val);
+                  const found = matchCandidates.find(c => c.id === val && (!pilotId || (c.pilot_ids || []).includes(pilotId)));
                   if (found) setMatchedLog(found);
                 }
               }}
             >
-              {matchCandidates
-                .filter(c => c.mission_id === selectedMissionId)
+              {(pilotId ? getPilotLogsForMission(selectedMissionId, pilotId) : [])
                 .map((log) => (
                   <label key={log.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
                     <RadioGroupItem value={log.id} />
