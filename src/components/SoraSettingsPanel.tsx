@@ -82,10 +82,6 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
   const [catalogSpecs, setCatalogSpecs] = useState<CatalogSpecs | null>(null);
 
   // Mission params state
-  const [operationProfile, setOperationProfile] = useState<"vlos" | "bvlos">("vlos");
-  const [containmentLevel, setContainmentLevel] = useState<"low" | "medium" | "high">("medium");
-  const [parachuteEnabled, setParachuteEnabled] = useState(false);
-  const [ftsEnabled, setFtsEnabled] = useState(false);
   const [windOverride, setWindOverride] = useState<string>("");
   const [characteristicDimension, setCharacteristicDimension] = useState("1.0");
   const [groundSpeed, setGroundSpeed] = useState("15");
@@ -166,10 +162,10 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     if (!droneProfile) return null;
     const missionParams: MissionParams = {
       planned_altitude_m_agl: settings.flightAltitude,
-      operation_profile: operationProfile,
-      containment_level: containmentLevel,
-      parachute_enabled: parachuteEnabled,
-      fts_enabled: ftsEnabled,
+      operation_profile: "vlos",
+      containment_level: "medium",
+      parachute_enabled: contingencyMethod === "parachute",
+      fts_enabled: contingencyMethod === "parachute",
       wind_override_mps: windOverride ? Number(windOverride) : undefined,
       characteristic_dimension_m: Number(characteristicDimension) || undefined,
       ground_speed_mps: Number(groundSpeed) || undefined,
@@ -186,7 +182,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       descent_speed_mps: Number(descentSpeed) || undefined,
     };
     return calculateSoraBuffer(droneProfile, missionParams);
-  }, [droneProfile, settings.flightAltitude, operationProfile, containmentLevel, parachuteEnabled, ftsEnabled, windOverride, characteristicDimension, groundSpeed, reactionTime, pitchBankAngle, altimetryError, gnssError, positionHoldError, mapError, contingencyMethod, deploymentTime, grbMethod, glideRatio, descentSpeed]);
+  }, [droneProfile, settings.flightAltitude, windOverride, characteristicDimension, groundSpeed, reactionTime, pitchBankAngle, altimetryError, gnssError, positionHoldError, mapError, contingencyMethod, deploymentTime, grbMethod, glideRatio, descentSpeed]);
 
   const applySuggestion = () => {
     if (!suggestion) return;
@@ -247,49 +243,6 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
         {selectedDrone && (
           <>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Operasjonsprofil</Label>
-              <RadioGroup value={operationProfile} onValueChange={(v) => setOperationProfile(v as "vlos" | "bvlos")} className="flex gap-4">
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="vlos" id="op-vlos" />
-                  <Label htmlFor="op-vlos" className="text-xs cursor-pointer">VLOS</Label>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="bvlos" id="op-bvlos" />
-                  <Label htmlFor="op-bvlos" className="text-xs cursor-pointer">BVLOS</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Containment-nivå</Label>
-              <RadioGroup value={containmentLevel} onValueChange={(v) => setContainmentLevel(v as "low" | "medium" | "high")} className="flex gap-4">
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="low" id="cl-low" />
-                  <Label htmlFor="cl-low" className="text-xs cursor-pointer">Lav</Label>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="medium" id="cl-med" />
-                  <Label htmlFor="cl-med" className="text-xs cursor-pointer">Middels</Label>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="high" id="cl-high" />
-                  <Label htmlFor="cl-high" className="text-xs cursor-pointer">Høy</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-2">
-                <Switch checked={parachuteEnabled} onCheckedChange={setParachuteEnabled} className="scale-90" />
-                <Label className="text-xs text-muted-foreground">Fallskjerm</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={ftsEnabled} onCheckedChange={setFtsEnabled} className="scale-90" />
-                <Label className="text-xs text-muted-foreground">FTS</Label>
-              </div>
-            </div>
-
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">CD (m)</Label>
