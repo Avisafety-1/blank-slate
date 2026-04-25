@@ -37,6 +37,14 @@ const getFileIcon = (fileName?: string | null) => {
   }
 };
 
+const showFileAccessError = (action: "open" | "download") => {
+  toast.error(
+    action === "open"
+      ? "Du har tilgang til dokumentkortet, men filtilgangen mangler. Kontakt administrator."
+      : "Du har tilgang til dokumentkortet, men filen kunne ikke lastes ned. Kontakt administrator."
+  );
+};
+
 interface DocumentsListProps {
   documents: Document[];
   isLoading: boolean;
@@ -105,7 +113,7 @@ const DocumentsList = ({
       if (data?.signedUrl) window.open(data.signedUrl, '_blank');
     } catch (error) {
       console.error('Error opening file:', error);
-      toast.error('Kunne ikke åpne dokumentet');
+      showFileAccessError("open");
     }
   };
 
@@ -131,7 +139,7 @@ const DocumentsList = ({
       }
     } catch (error) {
       console.error('Error downloading file:', error);
-      toast.error('Kunne ikke laste ned dokumentet');
+      showFileAccessError("download");
     }
   };
 

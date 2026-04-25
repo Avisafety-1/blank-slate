@@ -203,7 +203,7 @@ const DocumentCardModal = ({
       }
     } catch (error) {
       console.error('Error opening file:', error);
-      toast.error('Kunne ikke åpne dokumentet');
+      toast.error('Du har tilgang til dokumentkortet, men filtilgangen mangler. Kontakt administrator.');
     }
   };
 
