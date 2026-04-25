@@ -345,6 +345,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   }, [user, personnel]);
 
+  useEffect(() => {
+    if (!pilotId || !selectedMissionId || selectedMissionId === '__new__') return;
+    const pilotMatches = matchCandidates.filter(
+      c => c.mission_id === selectedMissionId && (c.pilot_ids || []).includes(pilotId)
+    );
+    if (matchedLog && !(matchedLog.pilot_ids || []).includes(pilotId)) {
+      setMatchedLog(pilotMatches[0] || null);
+    } else if (!matchedLog && pilotMatches.length === 1) {
+      setMatchedLog(pilotMatches[0]);
+    }
+  }, [pilotId, selectedMissionId, matchCandidates, matchedLog]);
+
   // Initialize warning actions when result changes
   useEffect(() => {
     if (result && result.warnings.length > 0) {
