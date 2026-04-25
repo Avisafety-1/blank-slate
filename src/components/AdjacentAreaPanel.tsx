@@ -171,7 +171,7 @@ export function AdjacentAreaPanel({
 
           {autoUaSize.startsWith("3m") && uaSizeOverride === "auto" && (
             <div className="flex items-center justify-between gap-3 rounded-md border border-border p-2 sm:col-span-2">
-              <Label className="text-xs">Shelter relevant i tilstøtende område</Label>
+              <Label className="text-xs">Shelter: Er personer i området beskyttet (innendørs/under robust struktur)?</Label>
               <Switch checked={shelterApplicable} onCheckedChange={setShelterApplicable} />
             </div>
           )}
