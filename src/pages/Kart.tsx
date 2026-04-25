@@ -18,6 +18,7 @@ import safeskyLogo from "@/assets/safesky-logo.png";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { pickBestDroneCatalogMatch } from "@/lib/droneCatalog";
+import { createSoraDocumentationPdf } from "@/lib/soraDocumentationPdf";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -229,6 +230,24 @@ export default function KartPage() {
     const routeToSave: RouteData = {
       ...currentRoute,
       soraSettings: soraSettings.enabled ? soraSettings : undefined,
+      _createSoraDocumentation: !!soraSettings.enabled || !!(showAdjacentArea && adjacentResult),
+      adjacentAreaDocumentation: showAdjacentArea && adjacentResult ? {
+        enabled: true,
+        calculatedAt: new Date().toISOString(),
+        adjacentRadiusM: adjacentResult.adjacentRadiusM,
+        adjacentAreaKm2: adjacentResult.adjacentAreaKm2,
+        totalPopulation: adjacentResult.totalPopulation,
+        avgDensity: adjacentResult.avgDensity,
+        threshold: adjacentResult.threshold,
+        pass: adjacentResult.pass,
+        uaSize: adjacentResult.uaSize,
+        sail: adjacentResult.sail,
+        populationDensityCategory: adjacentResult.populationDensityCategory,
+        outdoorAssemblies: adjacentResult.outdoorAssemblies,
+        requiredContainment: adjacentResult.requiredContainment,
+        containmentLevel: adjacentResult.containmentLevel,
+        statusText: adjacentResult.statusText,
+      } : undefined,
     };
 
     if (editingMissionId) {
@@ -244,7 +263,24 @@ export default function KartPage() {
         return;
       }
       
-      toast.success("Rute og SORA-soner oppdatert");
+      if (user && companyId && (routeToSave.soraSettings?.enabled || routeToSave.adjacentAreaDocumentation?.enabled)) {
+        try {
+          await createSoraDocumentationPdf({
+            missionId: editingMissionId,
+            missionTitle: selectedMission?.tittel || "Oppdrag",
+            missionTime: selectedMission?.tidspunkt,
+            companyId,
+            userId: user.id,
+            route: routeToSave,
+          });
+          toast.success("Rute og SORA-dokumentasjon oppdatert");
+        } catch (docError) {
+          console.error("Could not create SORA documentation:", docError);
+          toast.warning("Ruten ble lagret, men SORA-dokumentasjonen kunne ikke opprettes");
+        }
+      } else {
+        toast.success("Rute og SORA-soner oppdatert");
+      }
       setIsRoutePlanning(false);
       setEditingMissionId(null);
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
