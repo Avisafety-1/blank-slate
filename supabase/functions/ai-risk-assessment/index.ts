@@ -974,6 +974,31 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       ? assignedDrones.find((d: any) => d.id === effectiveDroneId) || assignedDrones[0]
       : null;
 
+    let droneCatalogMatch: any = null;
+    let primaryDroneCharacteristicDimensionM: number | null = null;
+    let deterministicAlos: ReturnType<typeof calculateAlos> | null = null;
+    if (droneData?.modell) {
+      try {
+        const { data: droneModels } = await supabase
+          .from('drone_models' as any)
+          .select('name, characteristic_dimension_m, max_speed_mps, weight_kg, category')
+          .or(`name.ilike.%${droneData.modell}%,name.ilike.%${String(droneData.modell).replace(/^DJI\s+/i, '')}%`)
+          .limit(20);
+
+        droneCatalogMatch = pickBestDroneModelMatch((droneModels as any[]) || [], droneData.modell);
+        primaryDroneCharacteristicDimensionM = droneCatalogMatch?.characteristic_dimension_m ?? null;
+        deterministicAlos = calculateAlos(
+          primaryDroneCharacteristicDimensionM,
+          isFixedWingDrone(droneData.modell, droneCatalogMatch?.category),
+        );
+        if (primaryDroneCharacteristicDimensionM) {
+          console.log(`Drone CD loaded for ALOS: ${droneData.modell} -> ${primaryDroneCharacteristicDimensionM}m (${droneCatalogMatch?.name})`);
+        }
+      } catch (e) {
+        console.error('Drone model catalog fetch error (continuing without deterministic CD):', e);
+      }
+    }
+
     // 10. Build AI prompt
     const today = new Date();
     const validCompetencies = allCompetencies.filter((c: any) => 
