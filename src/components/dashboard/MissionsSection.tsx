@@ -437,63 +437,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
               if (!approvalConfirmMissionId) return;
-
-              // SORA-sjekk: krev SORA før godkjenning
-              if (companySettings.require_sora_on_missions && !soraApprovalEnabled) {
-                const { count } = await supabase
-                  .from('mission_risk_assessments')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('mission_id', approvalConfirmMissionId);
-                const requiredSteps = companySettings.require_sora_steps ?? 1;
-                if ((count ?? 0) < requiredSteps) {
-                  toast.error('Gjennomfør SORA først');
-                  setApprovalConfirmMissionId(null);
-                  return;
-                }
-              }
-              
-              // Check if anyone can approve missions
-              const { data: approvers, error: approverError } = await supabase
-                .rpc('get_mission_approvers', { target_company_id: companyId! });
-
-              if (approverError) {
-                console.error('Error checking approvers:', approverError);
-                toast.error('Kunne ikke sjekke godkjennere');
-                setApprovalConfirmMissionId(null);
-                return;
-              }
-              
-              if (!approvers || approvers.length === 0) {
-                toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
-                setApprovalConfirmMissionId(null);
-                return;
-              }
-              
-              const missionToApprove = missions.find((m: any) => m.id === approvalConfirmMissionId);
-              await supabase
-                .from('missions')
-                .update({ approval_status: 'pending_approval' })
-                .eq('id', approvalConfirmMissionId);
+              await submitMissionForApproval(approvalConfirmMissionId);
               setApprovalConfirmMissionId(null);
-              fetchMissions();
-              if (missionToApprove && companyId) {
-                try {
-                  await supabase.functions.invoke('send-notification-email', {
-                    body: {
-                      type: 'notify_mission_approval',
-                      companyId,
-                      mission: {
-                        tittel: missionToApprove.tittel,
-                        lokasjon: missionToApprove.lokasjon,
-                        tidspunkt: missionToApprove.tidspunkt,
-                        beskrivelse: missionToApprove.beskrivelse || '',
-                      }
-                    }
-                  });
-                } catch (emailError) {
-                  console.error('Error sending approval notification:', emailError);
-                }
-              }
             }}>
               Send til godkjenning
             </AlertDialogAction>
