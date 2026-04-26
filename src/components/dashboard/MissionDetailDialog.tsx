@@ -24,6 +24,7 @@ import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 import { NotamDialog } from "./NotamDialog";
 import { DeviationReportsSection } from "./DeviationReportsSection";
+import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
 
 type Mission = any;
 
@@ -457,6 +458,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               </div>
             </div>
           )}
+
+          <MissionSoraRouteDocumentation route={currentMission.route} className="pt-4" />
         </div>
       </DialogContent>
     </Dialog>
