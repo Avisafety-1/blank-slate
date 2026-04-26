@@ -308,7 +308,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                 ...(mission?.personnel?.length > 0 ? ['personnel'] : []),
                 ...(mission?.drones?.length > 0 ? ['drones'] : []),
                 ...(mission?.equipment?.length > 0 ? ['equipment'] : []),
-                ...(mission?.sora ? ['sora'] : []),
+                ...((mission?.sora || (mission?.route as any)?.soraSettings?.enabled || (mission?.route as any)?.adjacentAreaDocumentation?.enabled) ? ['sora'] : []),
                 ...(mission?.aiRisk ? ['riskAssessment'] : []),
                 ...(mission?.incidents?.length > 0 ? ['incidents'] : []),
                 ...(mission?.flightLogs?.length > 0 ? ['flightLogs'] : []),
@@ -401,7 +401,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
             )}
 
             {/* Rute */}
-            {((props.exportPdfMission?.route as any)?.coordinates?.length > 0 || props.exportPdfMission?.sora) && (
+            {((props.exportPdfMission?.route as any)?.coordinates?.length > 0 || props.exportPdfMission?.sora || (props.exportPdfMission?.route as any)?.soraSettings?.enabled || (props.exportPdfMission?.route as any)?.adjacentAreaDocumentation?.enabled) && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Rute</p>
                 <div className="space-y-2">
@@ -411,10 +411,10 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                       <span className="text-sm">Rutekoordinater</span>
                     </label>
                   )}
-                  {props.exportPdfMission?.sora && (
+                  {(props.exportPdfMission?.sora || (props.exportPdfMission?.route as any)?.soraSettings?.enabled || (props.exportPdfMission?.route as any)?.adjacentAreaDocumentation?.enabled) && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.sora} onCheckedChange={v => props.setPdfSections(s => ({ ...s, sora: v === true }))} />
-                      <span className="text-sm">SORA-analyse</span>
+                      <span className="text-sm">SORA-analyse og beregningsgrunnlag</span>
                     </label>
                   )}
                 </div>

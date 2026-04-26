@@ -5,8 +5,59 @@ import { generateMissionMapSnapshot } from "@/lib/mapSnapshotUtils";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
+import {
+  OUTDOOR_ASSEMBLIES_LABELS,
+  POPULATION_DENSITY_LABELS,
+  UA_SIZE_LABELS,
+} from "@/lib/adjacentAreaCalculator";
 
 type Mission = any;
+
+const fmtRouteDocNumber = (value: unknown, decimals = 0, unit = "") => {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "-";
+  return `${n.toLocaleString("nb-NO", { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit}`;
+};
+
+const getRouteSoraRows = (route: any): string[][] => {
+  const rows: string[][] = [];
+  const sora = route?.soraSettings;
+  const adjacent = route?.adjacentAreaDocumentation;
+
+  if (sora?.enabled) {
+    rows.push(
+      ["SORA volum", ""],
+      ["Flight Geography", fmtRouteDocNumber(sora.flightGeographyDistance, 0, " m")],
+      ["Contingency buffer", fmtRouteDocNumber(sora.contingencyDistance, 0, " m")],
+      ["Contingency høyde", fmtRouteDocNumber(sora.contingencyHeight, 0, " m")],
+      ["Ground Risk Buffer", fmtRouteDocNumber(sora.groundRiskDistance, 0, " m")],
+      ["Flyhøyde", fmtRouteDocNumber(sora.flightAltitude, 0, " m AGL")],
+      ["Buffermodus", sora.bufferMode === "convexHull" ? "Konveks" : "Rute-korridor"],
+      ["Drone", sora.droneId ? "Valgt i ruteplanlegger" : "Ikke valgt"],
+      ["CD", fmtRouteDocNumber(sora.characteristicDimensionM, 2, " m")],
+      ["V0 / bakkehastighet", fmtRouteDocNumber(sora.groundSpeedMps, 1, " m/s")],
+    );
+  }
+
+  if (adjacent?.enabled) {
+    rows.push(
+      ["Tilstøtende områder", ""],
+      ["Tilstøtende radius", fmtRouteDocNumber((adjacent.adjacentRadiusM ?? 0) / 1000, 1, " km")],
+      ["Areal", fmtRouteDocNumber(adjacent.adjacentAreaKm2, 1, " km2")],
+      ["Innbyggere funnet", fmtRouteDocNumber(adjacent.totalPopulation, 0)],
+      ["Gj.snitt tetthet", fmtRouteDocNumber(adjacent.avgDensity, 1, " pers/km2")],
+      ["Grense/kategori", POPULATION_DENSITY_LABELS[adjacent.populationDensityCategory as keyof typeof POPULATION_DENSITY_LABELS] ?? adjacent.populationDensityCategory ?? "-"],
+      ["UA Size", UA_SIZE_LABELS[adjacent.uaSize as keyof typeof UA_SIZE_LABELS] ?? adjacent.uaSize ?? "-"],
+      ["SAIL", adjacent.sail ? `SAIL ${adjacent.sail}` : "-"],
+      ["Outdoor assemblies", OUTDOOR_ASSEMBLIES_LABELS[adjacent.outdoorAssemblies as keyof typeof OUTDOOR_ASSEMBLIES_LABELS] ?? adjacent.outdoorAssemblies ?? "-"],
+      ["Required containment", adjacent.requiredContainment ?? "-"],
+      ["Resultat", adjacent.statusText || (adjacent.pass ? "Innenfor beregningsgrunnlaget" : "Krever nærmere vurdering")],
+      ["Beregnet", adjacent.calculatedAt ? formatDateForPdf(adjacent.calculatedAt, "dd.MM.yyyy HH:mm") : "-"],
+    );
+  }
+
+  return rows;
+};
 
 export const DEFAULT_PDF_SECTIONS = {
   map: true,
@@ -402,6 +453,30 @@ export const exportToPDF = async (
       yPos = (pdf as any).lastAutoTable.finalY + 10;
     }
     
+    // SORA route documentation
+    const routeSoraRows = getRouteSoraRows(mission.route as any);
+    if (sections.sora && routeSoraRows.length > 0) {
+      if (yPos > 230) {
+        pdf.addPage();
+        yPos = 20;
+      }
+
+      pdf.setFontSize(12);
+      setFontStyle(pdf, "bold");
+      pdf.text("SORA buffer og tilstøtende områder", 15, yPos);
+      yPos += 7;
+
+      autoTable(pdf, {
+        startY: yPos,
+        head: [],
+        body: routeSoraRows.map(([label, value]) => [sanitizeForPdf(label), sanitizeForPdf(value)]),
+        theme: "grid",
+        styles: { fontSize: 9, font: getPdfFontName() },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 55 }, 1: { cellWidth: pageWidth - 85 } }
+      });
+      yPos = (pdf as any).lastAutoTable.finalY + 10;
+    }
+
     // SORA
     if (sections.sora && mission.sora) {
       if (yPos > 250) {

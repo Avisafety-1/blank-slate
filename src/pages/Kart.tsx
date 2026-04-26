@@ -18,7 +18,6 @@ import safeskyLogo from "@/assets/safesky-logo.png";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { pickBestDroneCatalogMatch } from "@/lib/droneCatalog";
-import { createSoraDocumentationPdf } from "@/lib/soraDocumentationPdf";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -182,6 +181,8 @@ export default function KartPage() {
         if (state.existingRoute.soraSettings) {
           setSoraSettings(state.existingRoute.soraSettings);
         }
+          setShowAdjacentArea(!!state.existingRoute.adjacentAreaDocumentation?.enabled);
+          setAdjacentResult((state.existingRoute.adjacentAreaDocumentation as any) || null);
       }
     }
     if (state?.focusFlightId) {
@@ -230,7 +231,6 @@ export default function KartPage() {
     const routeToSave: RouteData = {
       ...currentRoute,
       soraSettings: soraSettings.enabled ? soraSettings : undefined,
-      _createSoraDocumentation: !!soraSettings.enabled || !!(showAdjacentArea && adjacentResult),
       adjacentAreaDocumentation: showAdjacentArea && adjacentResult ? {
         enabled: true,
         calculatedAt: new Date().toISOString(),
@@ -263,24 +263,7 @@ export default function KartPage() {
         return;
       }
       
-      if (user && companyId && (routeToSave.soraSettings?.enabled || routeToSave.adjacentAreaDocumentation?.enabled)) {
-        try {
-          await createSoraDocumentationPdf({
-            missionId: editingMissionId,
-            missionTitle: selectedMission?.tittel || "Oppdrag",
-            missionTime: selectedMission?.tidspunkt,
-            companyId,
-            userId: user.id,
-            route: routeToSave,
-          });
-          toast.success("Rute og SORA-dokumentasjon oppdatert");
-        } catch (docError) {
-          console.error("Could not create SORA documentation:", docError);
-          toast.warning("Ruten ble lagret, men SORA-dokumentasjonen kunne ikke opprettes");
-        }
-      } else {
-        toast.success("Rute og SORA-soner oppdatert");
-      }
+      toast.success("Rute og SORA-grunnlag oppdatert");
       setIsRoutePlanning(false);
       setEditingMissionId(null);
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
@@ -335,6 +318,8 @@ export default function KartPage() {
     } else {
       setSoraSettings(defaultSoraSettings);
     }
+    setShowAdjacentArea(!!route?.adjacentAreaDocumentation?.enabled);
+    setAdjacentResult((route?.adjacentAreaDocumentation as any) || null);
   }, [defaultSoraSettings]);
 
   const handleCancelRoute = () => {
