@@ -28,6 +28,10 @@ import {
   getApprovalStatusLabel,
   getNotamBadgeColor,
   getSoraBadgeColor,
+  canSubmitForApproval,
+  shouldShowAIRiskBadge,
+  shouldShowApprovalBadge,
+  shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
@@ -206,6 +210,66 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     fetchMissions();
   };
 
+  const submitMissionForApproval = async (missionId: string) => {
+    const missionToApprove = missions.find((m: any) => m.id === missionId);
+
+    if (companySettings.require_sora_on_missions && !soraApprovalEnabled) {
+      const { count } = await supabase
+        .from('mission_risk_assessments')
+        .select('id', { count: 'exact', head: true })
+        .eq('mission_id', missionId);
+      const requiredSteps = companySettings.require_sora_steps ?? 1;
+      if ((count ?? 0) < requiredSteps) {
+        toast.error('Gjennomfør SORA først');
+        return;
+      }
+    }
+    
+    const { data: approvers, error: approverError } = await supabase
+      .rpc('get_mission_approvers', { target_company_id: companyId! });
+
+    if (approverError) {
+      console.error('Error checking approvers:', approverError);
+      toast.error('Kunne ikke sjekke godkjennere');
+      return;
+    }
+    
+    if (!approvers || approvers.length === 0) {
+      toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('missions')
+      .update({ approval_status: 'pending_approval', submitted_for_approval_at: new Date().toISOString() })
+      .eq('id', missionId);
+
+    if (error) {
+      toast.error('Kunne ikke sende til godkjenning');
+      return;
+    }
+
+    fetchMissions();
+    if (missionToApprove && companyId) {
+      try {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'notify_mission_approval',
+            companyId,
+            mission: {
+              tittel: missionToApprove.tittel,
+              lokasjon: missionToApprove.lokasjon,
+              tidspunkt: missionToApprove.tidspunkt,
+              beskrivelse: missionToApprove.beskrivelse || '',
+            }
+          }
+        });
+      } catch (emailError) {
+        console.error('Error sending approval notification:', emailError);
+      }
+    }
+  };
+
   return (
     <>
       <GlassCard className="h-[400px] flex flex-col overflow-hidden">
@@ -254,9 +318,9 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       latitude={mission.latitude}
                       longitude={mission.longitude}
                     />
-                    {showApproval && (() => {
+                    {shouldShowApprovalBadge(showApproval, mission.approval_status) && (() => {
                       const approvalStatus = mission.approval_status || 'not_approved';
-                      const isClickable = approvalStatus === 'not_approved' || !mission.approval_status;
+                      const isClickable = canSubmitForApproval(mission.approval_status);
                       return (
                         <Badge 
                           variant="outline"
@@ -270,22 +334,22 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                         </Badge>
                       );
                     })()}
-                    <Badge 
-                      variant="outline"
-                      onClick={(e) => handleSoraClick(mission, e)}
-                      className={`${getSoraBadgeColor(missionSoras[mission.id]?.sora_status || "Ikke startet")} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80`}
-                    >
-                      {missionSoras[mission.id]?.sora_status 
-                        ? t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })
-                        : t('dashboard.missions.soraNoStatus')}
-                    </Badge>
-                    {missionAIRisks[mission.id] && (
+                    {shouldShowSoraBadge(missionSoras[mission.id]) && (
+                      <Badge 
+                        variant="outline"
+                        onClick={(e) => handleSoraClick({ ...mission, sora: missionSoras[mission.id] }, e)}
+                        className={`${getSoraBadgeColor(missionSoras[mission.id]?.sora_status)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80`}
+                      >
+                        {t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })}
+                      </Badge>
+                    )}
+                    {shouldShowAIRiskBadge(missionAIRisks[mission.id]) && (
                       <Badge 
                         variant="outline"
                         className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedAIRiskMission(mission);
+                          setSelectedAIRiskMission({ ...mission, aiRisk: missionAIRisks[mission.id] });
                           setRiskDialogInitialTab('history');
                           setRiskDialogOpen(true);
                         }}
@@ -373,63 +437,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
               if (!approvalConfirmMissionId) return;
-
-              // SORA-sjekk: krev SORA før godkjenning
-              if (companySettings.require_sora_on_missions && !soraApprovalEnabled) {
-                const { count } = await supabase
-                  .from('mission_risk_assessments')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('mission_id', approvalConfirmMissionId);
-                const requiredSteps = companySettings.require_sora_steps ?? 1;
-                if ((count ?? 0) < requiredSteps) {
-                  toast.error('Gjennomfør SORA først');
-                  setApprovalConfirmMissionId(null);
-                  return;
-                }
-              }
-              
-              // Check if anyone can approve missions
-              const { data: approvers, error: approverError } = await supabase
-                .rpc('get_mission_approvers', { target_company_id: companyId! });
-
-              if (approverError) {
-                console.error('Error checking approvers:', approverError);
-                toast.error('Kunne ikke sjekke godkjennere');
-                setApprovalConfirmMissionId(null);
-                return;
-              }
-              
-              if (!approvers || approvers.length === 0) {
-                toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
-                setApprovalConfirmMissionId(null);
-                return;
-              }
-              
-              const missionToApprove = missions.find((m: any) => m.id === approvalConfirmMissionId);
-              await supabase
-                .from('missions')
-                .update({ approval_status: 'pending_approval' })
-                .eq('id', approvalConfirmMissionId);
+              await submitMissionForApproval(approvalConfirmMissionId);
               setApprovalConfirmMissionId(null);
-              fetchMissions();
-              if (missionToApprove && companyId) {
-                try {
-                  await supabase.functions.invoke('send-notification-email', {
-                    body: {
-                      type: 'notify_mission_approval',
-                      companyId,
-                      mission: {
-                        tittel: missionToApprove.tittel,
-                        lokasjon: missionToApprove.lokasjon,
-                        tidspunkt: missionToApprove.tidspunkt,
-                        beskrivelse: missionToApprove.beskrivelse || '',
-                      }
-                    }
-                  });
-                } catch (emailError) {
-                  console.error('Error sending approval notification:', emailError);
-                }
-              }
             }}>
               Send til godkjenning
             </AlertDialogAction>

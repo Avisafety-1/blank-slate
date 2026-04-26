@@ -48,6 +48,10 @@ import {
   getApprovalStatusColor,
   getSoraBadgeColor,
   getNotamBadgeColor,
+  canSubmitForApproval,
+  shouldShowAIRiskBadge,
+  shouldShowApprovalBadge,
+  shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
@@ -116,6 +120,8 @@ export const MissionCard = ({
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
   const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
+  const approvalStatus = mission.approval_status || 'not_approved';
+  const approvalClickable = canSubmitForApproval(mission.approval_status);
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
@@ -155,24 +161,21 @@ export const MissionCard = ({
               latitude={mission.latitude}
               longitude={mission.longitude}
             />
-            {showApproval && mission.approval_status === 'pending_approval' && (
-              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('pending_approval')}`}>
-                <Clock className="h-3 w-3 mr-1" />
-                Venter på godkjenning
+            {shouldShowApprovalBadge(showApproval, mission.approval_status) && (
+              <Badge
+                variant="outline"
+                className={`text-xs ${getApprovalStatusColor(approvalStatus)} ${approvalClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={approvalClickable ? (e) => {
+                  e.stopPropagation();
+                  onSubmitForApproval(mission);
+                } : undefined}
+              >
+                {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
+                {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                {approvalStatus === 'pending_approval' ? 'Venter på godkjenning' : approvalStatus === 'approved' ? 'Godkjent' : 'Ikke godkjent'}
               </Badge>
             )}
-            {showApproval && mission.approval_status === 'approved' && (
-              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('approved')}`}>
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Godkjent
-              </Badge>
-            )}
-            {showApproval && mission.approval_status === 'not_approved' && (
-              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('not_approved')}`}>
-                Ikke godkjent
-              </Badge>
-            )}
-            {mission.aiRisk && (
+            {shouldShowAIRiskBadge(mission.aiRisk) && (
               <Badge 
                 variant="outline" 
                 className={`text-xs ${getAIRiskBadgeColor(mission.aiRisk.recommendation)} cursor-pointer hover:opacity-80 transition-opacity`}
@@ -185,7 +188,7 @@ export const MissionCard = ({
                 AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({formatAIRiskScore(mission.aiRisk.overall_score)})
               </Badge>
             )}
-            {mission.sora && (
+            {shouldShowSoraBadge(mission.sora) && (
               <Badge variant="outline" className="text-xs">
                 <FileText className="h-3 w-3 mr-1" />
                 SORA: {mission.sora.sora_status}
@@ -273,7 +276,7 @@ export const MissionCard = ({
               <ClipboardCheck className="h-4 w-4 mr-2" />
               Tilknytt sjekkliste
             </DropdownMenuItem>
-            {showApproval && mission.approval_status === 'not_approved' && (
+            {showApproval && canSubmitForApproval(mission.approval_status) && (
               <DropdownMenuItem onClick={() => onSubmitForApproval(mission)}>
                 <Send className="h-4 w-4 mr-2" />
                 Send til godkjenning
