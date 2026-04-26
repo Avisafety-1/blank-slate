@@ -526,7 +526,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             
             await supabase
               .from('missions')
-              .update({ approval_status: 'pending_approval' })
+              .update({ approval_status: 'pending_approval', submitted_for_approval_at: new Date().toISOString() })
               .eq('id', currentMission.id);
             setApprovalConfirmOpen(false);
             onMissionUpdated?.();
