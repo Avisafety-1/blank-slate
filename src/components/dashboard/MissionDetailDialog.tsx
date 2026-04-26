@@ -25,6 +25,14 @@ import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 import { NotamDialog } from "./NotamDialog";
 import { DeviationReportsSection } from "./DeviationReportsSection";
 import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
+import {
+  statusColors,
+  getAIRiskBadgeColor,
+  getAIRiskLabel,
+  formatAIRiskScore,
+  getApprovalStatusColor,
+  getSoraBadgeColor,
+} from "@/lib/oppdragHelpers";
 
 type Mission = any;
 
@@ -35,44 +43,6 @@ interface MissionDetailDialogProps {
   onMissionUpdated?: () => void;
   onEditRoute?: (mission: any) => void;
 }
-
-const statusColors: Record<string, string> = {
-  Planlagt: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30",
-  Pågående: "bg-status-yellow/20 text-yellow-700 dark:text-yellow-300 border-status-yellow/30",
-  Fullført: "bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30",
-};
-
-const getAIRiskBadgeColor = (recommendation: string) => {
-  switch (recommendation?.toLowerCase()) {
-    case 'proceed':
-      return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
-    case 'proceed_with_caution':
-      return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
-    case 'not_recommended':
-      return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
-    default:
-      return 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30';
-  }
-};
-
-const getAIRiskLabel = (recommendation: string) => {
-  switch (recommendation?.toLowerCase()) {
-    case 'proceed':
-      return 'Anbefalt';
-    case 'proceed_with_caution':
-      return 'Forsiktighet';
-    case 'not_recommended':
-      return 'Ikke anbefalt';
-    default:
-      return recommendation || 'Ukjent';
-  }
-};
-
-const formatAIRiskScore = (score: unknown) => {
-  const n = typeof score === "number" ? score : Number(score);
-  if (!Number.isFinite(n)) return "—/10";
-  return `${n.toFixed(1)}/10`;
-};
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
   const { companyId } = useAuth();
@@ -231,13 +201,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               longitude={currentMission.longitude}
             />
             {showApproval && currentMission.approval_status === 'pending_approval' && (
-              <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-yellow-500/30">
+              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('pending_approval')}`}>
                 <Clock className="h-3 w-3 mr-1" />
                 Venter godkjenning
               </Badge>
             )}
             {showApproval && currentMission.approval_status === 'approved' && (
-              <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 dark:text-green-300 border-green-500/30">
+              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('approved')}`}>
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
               </Badge>
@@ -245,7 +215,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             {showApproval && (!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
               <Badge 
                 variant="outline" 
-                className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 cursor-pointer hover:opacity-80 transition-opacity"
+                className={`text-xs ${getApprovalStatusColor('not_approved')} cursor-pointer hover:opacity-80 transition-opacity`}
                 onClick={() => setApprovalConfirmOpen(true)}
               >
                 Ikke godkjent – Send til godkjenning
@@ -263,18 +233,14 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 AI: {getAIRiskLabel(currentMission.aiRisk.recommendation)} ({formatAIRiskScore(currentMission.aiRisk.overall_score)})
               </Badge>
             ) : (
-              <Badge className="bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 border">
+              <Badge variant="outline" className="bg-gray-500/20 text-gray-900 border-gray-500/30">
                 <Brain className="w-3 h-3 mr-1" />
                 Risiko: Ikke vurdert
               </Badge>
             )}
             <Badge 
-              className={`border cursor-pointer hover:opacity-80 transition-opacity ${
-                soraStatus === 'Ferdig' ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30' :
-                soraStatus === 'Under arbeid' ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30' :
-                soraStatus === 'Revidert' ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30' :
-                'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30'
-              }`}
+              variant="outline"
+              className={`cursor-pointer hover:opacity-80 transition-opacity ${getSoraBadgeColor(soraStatus || 'Ikke startet')}`}
               onClick={() => {
                 setRiskDialogInitialTab('manual-sora');
                 setRiskDialogOpen(true);
@@ -287,8 +253,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <Badge
                 className={`border cursor-pointer hover:opacity-80 transition-opacity ${
                   ninoxApproved
-                    ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30'
-                    : 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30'
+                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
+                    : 'bg-red-500/20 text-red-900 border-red-500/30'
                 }`}
                 onClick={() => { if (!ninoxApproved) setNinoxConfirmOpen(true); }}
               >
