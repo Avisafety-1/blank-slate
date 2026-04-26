@@ -45,6 +45,54 @@ const deriveRiskRecommendation = (
   return 'no-go';
 };
 
+const normalizeDroneModelName = (value: string): string => value
+  .toLowerCase()
+  .replace(/\bdji\b|\bautel\b|\bparrot\b|\bskydio\b|\byuneec\b/g, '')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+  .replace(/\s+/g, ' ');
+
+const pickBestDroneModelMatch = <T extends { name: string }>(models: T[], droneModelName: string): T | null => {
+  const normalizedDroneName = normalizeDroneModelName(droneModelName);
+  if (!normalizedDroneName) return null;
+
+  const exact = models.find((model) => normalizeDroneModelName(model.name) === normalizedDroneName);
+  if (exact) return exact;
+
+  const candidates = models
+    .map((model) => {
+      const normalizedCatalogName = normalizeDroneModelName(model.name);
+      const catalogTokens = normalizedCatalogName.split(' ').filter(Boolean);
+      const droneTokens = normalizedDroneName.split(' ').filter(Boolean);
+      const sharedTokens = catalogTokens.filter((token) => droneTokens.includes(token)).length;
+      const contains = normalizedCatalogName.includes(normalizedDroneName) || normalizedDroneName.includes(normalizedCatalogName);
+      return { model, score: (contains ? 100 : 0) + sharedTokens * 10 - Math.abs(catalogTokens.length - droneTokens.length) };
+    })
+    .filter((candidate) => candidate.score >= 18)
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.model ?? null;
+};
+
+const isFixedWingDrone = (droneModel?: string | null, catalogCategory?: string | null): boolean => {
+  const value = `${droneModel ?? ''} ${catalogCategory ?? ''}`.toLowerCase();
+  return /fixed|wing|fastving|fly|plane|vtol/.test(value);
+};
+
+const calculateAlos = (characteristicDimensionM?: number | null, fixedWing = false) => {
+  if (typeof characteristicDimensionM !== 'number' || !Number.isFinite(characteristicDimensionM) || characteristicDimensionM <= 0) {
+    return null;
+  }
+  const multiplier = fixedWing ? 490 : 327;
+  const offset = fixedWing ? 30 : 20;
+  const alosMaxM = Math.round(multiplier * characteristicDimensionM + offset);
+  return {
+    alosMaxM,
+    alosCalculation: `${multiplier} × ${characteristicDimensionM}m + ${offset}m = ${alosMaxM}m`,
+    formula: fixedWing ? 'fixed-wing' : 'multirotor',
+  };
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -926,6 +974,31 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       ? assignedDrones.find((d: any) => d.id === effectiveDroneId) || assignedDrones[0]
       : null;
 
+    let droneCatalogMatch: any = null;
+    let primaryDroneCharacteristicDimensionM: number | null = null;
+    let deterministicAlos: ReturnType<typeof calculateAlos> | null = null;
+    if (droneData?.modell) {
+      try {
+        const { data: droneModels } = await supabase
+          .from('drone_models' as any)
+          .select('name, characteristic_dimension_m, max_speed_mps, weight_kg, category')
+          .or(`name.ilike.%${droneData.modell}%,name.ilike.%${String(droneData.modell).replace(/^DJI\s+/i, '')}%`)
+          .limit(20);
+
+        droneCatalogMatch = pickBestDroneModelMatch((droneModels as any[]) || [], droneData.modell);
+        primaryDroneCharacteristicDimensionM = droneCatalogMatch?.characteristic_dimension_m ?? null;
+        deterministicAlos = calculateAlos(
+          primaryDroneCharacteristicDimensionM,
+          isFixedWingDrone(droneData.modell, droneCatalogMatch?.category),
+        );
+        if (primaryDroneCharacteristicDimensionM) {
+          console.log(`Drone CD loaded for ALOS: ${droneData.modell} -> ${primaryDroneCharacteristicDimensionM}m (${droneCatalogMatch?.name})`);
+        }
+      } catch (e) {
+        console.error('Drone model catalog fetch error (continuing without deterministic CD):', e);
+      }
+    }
+
     // 10. Build AI prompt
     const today = new Date();
     const validCompetencies = allCompetencies.filter((c: any) => 
@@ -1026,6 +1099,12 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         nextInspection: droneData.neste_inspeksjon,
         available: droneData.tilgjengelig,
         class: droneData.klasse,
+        catalogModel: droneCatalogMatch?.name ?? null,
+        category: droneCatalogMatch?.category ?? null,
+        characteristicDimensionM: primaryDroneCharacteristicDimensionM,
+        maxSpeedMps: droneCatalogMatch?.max_speed_mps ?? null,
+        weightKg: droneCatalogMatch?.weight_kg ?? droneData.vekt ?? null,
+        alos: deterministicAlos,
       } : null,
       pilotInputs: pilotInputs || {},
       landUse: landUseData,
@@ -1328,6 +1407,9 @@ Hvis operasjonen IKKE kan utføres i Åpen eller STS → SORA er påkrevd.
 Beregn maks VLOS-avstand (ALOS = Attitude Line of Sight):
 - Multirotor/helikopter: ALOS = 327 × CD + 20m (CD = karakteristisk dimensjon i meter)
 - Fastvinget fly: ALOS = 490 × CD + 30m
+- Bruk ALLTID primaryDrone.characteristicDimensionM når den finnes. Ikke estimer CD hvis denne verdien er oppgitt.
+- Hvis primaryDrone.alos finnes, bruk nøyaktig primaryDrone.alos.alosMaxM og primaryDrone.alos.alosCalculation i operation_classification.
+- Hvis CD ikke finnes i dronemodell-katalogen, skriv tydelig at CD er estimert.
 
 #### Buffersone-sjekk
 Sjekk om oppdraget har SORA-buffersoner beregnet. Se etter mission.route.soraSettings:
@@ -1582,6 +1664,22 @@ Returner en JSON-respons med denne strukturen:
       aiAnalysis.hard_stop_triggered === true,
       aiAnalysis.recommendation
     );
+
+    if (deterministicAlos) {
+      aiAnalysis.ground_risk_analysis = {
+        ...(aiAnalysis.ground_risk_analysis || {}),
+        characteristic_dimension: `${primaryDroneCharacteristicDimensionM}m`,
+        max_speed_category: droneCatalogMatch?.max_speed_mps
+          ? `${droneCatalogMatch.max_speed_mps} m/s`
+          : aiAnalysis.ground_risk_analysis?.max_speed_category,
+        drone_weight_kg: droneCatalogMatch?.weight_kg ?? droneData?.vekt ?? aiAnalysis.ground_risk_analysis?.drone_weight_kg,
+      };
+      aiAnalysis.operation_classification = {
+        ...(aiAnalysis.operation_classification || {}),
+        alos_max_m: deterministicAlos.alosMaxM,
+        alos_calculation: deterministicAlos.alosCalculation,
+      };
+    }
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
