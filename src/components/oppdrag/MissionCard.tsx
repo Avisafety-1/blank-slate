@@ -45,6 +45,9 @@ import {
   getAIRiskBadgeColor,
   getAIRiskLabel,
   formatAIRiskScore,
+  getApprovalStatusColor,
+  getSoraBadgeColor,
+  getNotamBadgeColor,
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
@@ -153,19 +156,19 @@ export const MissionCard = ({
               longitude={mission.longitude}
             />
             {showApproval && mission.approval_status === 'pending_approval' && (
-              <Badge variant="outline" className="text-xs bg-yellow-500/20 text-yellow-900 border-yellow-500/30">
+              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('pending_approval')}`}>
                 <Clock className="h-3 w-3 mr-1" />
                 Venter på godkjenning
               </Badge>
             )}
             {showApproval && mission.approval_status === 'approved' && (
-              <Badge variant="outline" className="text-xs bg-green-500/20 text-green-900 border-green-500/30">
+              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('approved')}`}>
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Godkjent
               </Badge>
             )}
             {showApproval && mission.approval_status === 'not_approved' && (
-              <Badge variant="outline" className="text-xs bg-gray-500/20 text-gray-700 border-gray-500/30">
+              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('not_approved')}`}>
                 Ikke godkjent
               </Badge>
             )}
@@ -216,8 +219,8 @@ export const MissionCard = ({
                 variant="outline"
                 className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
                   mission.notam_submitted_at
-                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
-                    : 'bg-amber-500/20 text-amber-900 border-amber-500/30'
+                    ? getNotamBadgeColor(true)
+                    : getNotamBadgeColor(false)
                 }`}
                 onClick={(e) => { e.stopPropagation(); onNotam?.(mission); }}
               >
