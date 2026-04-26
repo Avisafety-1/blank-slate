@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,8 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
 
-  const handleVerify = async () => {
-    if (code.length !== 6) return;
+  const handleVerify = async (codeToVerify = code) => {
+    if (codeToVerify.length !== 6 || verifying) return;
 
     setVerifying(true);
     try {
@@ -40,7 +40,7 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
       const { error: verifyError } = await supabase.auth.mfa.verify({
         factorId: totpFactor.id,
         challengeId: challengeData.id,
-        code,
+        code: codeToVerify,
       });
       if (verifyError) throw verifyError;
 
@@ -53,6 +53,12 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
       setVerifying(false);
     }
   };
+
+  useEffect(() => {
+    if (code.length === 6 && !verifying) {
+      void handleVerify(code);
+    }
+  }, [code, verifying]);
 
   const handleCancel = async () => {
     await supabase.auth.signOut();
@@ -91,7 +97,7 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
               {t('actions.cancel')}
             </Button>
             <Button
-              onClick={handleVerify}
+              onClick={() => handleVerify()}
               disabled={code.length !== 6 || verifying}
               className="flex-1"
             >
