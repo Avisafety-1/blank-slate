@@ -1,44 +1,33 @@
-Plan for å legge til avdelingspropagering for DJI FlightHub 2 API-nøkkel i selskapsinnstillinger.
+Jeg fant årsaken i `UploadDroneLogDialog`: når du velger «Legg til som ny flytur», settes `matchedLog` til `null`, men en `useEffect` auto-velger eksisterende match igjen dersom det finnes nøyaktig én flytur for valgt pilot på valgt oppdrag. Derfor blinker radio-knappen og går tilbake til eksisterende logg.
 
-1. Databasefelt for FH2-propagering
-- Legg til et nytt felt på `companies`, f.eks. `propagate_fh2_credentials boolean not null default false`.
-- Dette følger samme mønster som eksisterende `propagate_flight_alerts`, `propagate_mission_roles`, `propagate_sora_buffer_mode` osv.
+Plan:
+1. Legge til en eksplisitt bruker-valg-state for eksisterende flytur-valget, f.eks. `selectedFlightLogChoice`, med verdiene:
+   - eksisterende `flight_log.id`
+   - `__new_flight__`
+   - tom/automatisk før bruker har valgt
+2. Endre auto-match-logikken slik at den bare forhåndsvelger eksisterende logg før brukeren aktivt har valgt noe. Når brukeren velger `__new_flight__`, skal auto-match ikke kunne overstyre det.
+3. Oppdatere RadioGroup for «Eksisterende flyturer» til å bruke denne eksplisitte verdien, ikke bare `matchedLog ? id : '__new_flight__'`.
+4. Sørge for at valg nullstilles riktig når:
+   - man bytter oppdrag
+   - man bytter pilot
+   - dialogen resettes
+   - en ny logg behandles
+5. Beholde dagens lagringsflyt:
+   - eksisterende logg valgt → `Oppdater flylogg`
+   - `Legg til som ny flytur` valgt → `Lagre flylogg` på valgt oppdrag
+   - `Opprett nytt oppdrag` valgt → oppretter nytt oppdrag
 
-2. Admin-UI i selskapsinnstillinger
-- I `ChildCompaniesSection` legges det inn en egen toggle under DJI FlightHub 2-kortet:
-  - Label: «Gjelder for alle underavdelinger»
-  - Forklaring: «Når aktivert arver underavdelinger FlightHub 2-nøkkelen fra morselskapet og kan ikke overstyre den.»
-- Toggle vises på morselskap og lagres på selskapet.
-- Når toggle aktiveres:
-  - underavdelinger låses til arvet FH2-tilkobling
-  - eksisterende egen FH2-nøkkel i underavdeling bør ikke brukes så lenge arven er aktiv
-- Når toggle deaktiveres:
-  - underavdelinger kan igjen bruke egen FH2-nøkkel eller konfigurere ny.
+Teknisk hovedendring:
+```ts
+// Når bruker velger ny flytur:
+setSelectedFlightLogChoice('__new_flight__');
+setMatchedLog(null);
 
-3. Lås underavdelingers FH2-felt når arvet
-- Når aktivt selskap er en underavdeling og morselskapet har `propagate_fh2_credentials = true`:
-  - API-nøkkel-input deaktiveres
-  - Lagre/Slett-knapper skjules eller disables
-  - det vises badge/tekst «Arvet fra [morselskap]»
-  - test/bruk av tilkoblingen fungerer fortsatt via arvet nøkkel
-- Dette speiler låsemønsteret som allerede brukes for SORA, roller og flylogg-varsler.
+// Auto-match kun hvis bruker ikke allerede har valgt:
+if (!selectedFlightLogChoice && pilotLogs.length === 1) {
+  setMatchedLog(pilotLogs[0]);
+  setSelectedFlightLogChoice(pilotLogs[0].id);
+}
+```
 
-4. Edge Function-logikk for faktisk arv
-- Oppdater `flighthub2-proxy` slik at fallback til morselskapets FH2-token/base URL kun skjer når morselskapet har `propagate_fh2_credentials = true`.
-- Hvis underavdelingen har egen nøkkel og arv ikke er aktiv, brukes underavdelingens nøkkel.
-- Hvis arv er aktiv, prioriteres morselskapets nøkkel slik UI og faktisk API-bruk er konsistent.
-
-5. Synkronisering av status i frontend
-- Oppdater henting av selskapsdata i `ChildCompaniesSection` til å inkludere `propagate_fh2_credentials` både for eget selskap og parent.
-- Oppdater FH2-statusbadge slik den tydelig viser:
-  - «Tilkoblet» for egen nøkkel
-  - «Arvet tilkobling» når underavdeling bruker morselskapets nøkkel.
-- Etter lagring/sletting/toggling refreshes lokal FH2-state.
-
-Tekniske detaljer
-- Berørte filer forventet:
-  - `supabase/migrations/...` for nytt boolean-felt
-  - `supabase/functions/flighthub2-proxy/index.ts` for parent-fallback-regel
-  - `src/components/admin/ChildCompaniesSection.tsx` for UI, state og låsing
-- Ingen hemmeligheter flyttes til frontend; FH2-nøkkelen fortsetter å lagres kryptert via eksisterende `save_fh2_token`/`get_fh2_token`-flyt.
-- Eksisterende direkte fallback til parent strammes inn slik «gjelder for alle avdelinger» faktisk styrer om underavdelinger skal arve FH2 eller ikke.
+Dette gjør at «Legg til som ny flytur» forblir valgt og ikke hopper tilbake til matchen på eksisterende flylogg.
