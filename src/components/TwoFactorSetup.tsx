@@ -1,17 +1,24 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-import { Shield, ShieldCheck, ShieldOff, Loader2, Copy, CheckCircle2 } from "lucide-react";
+import { Shield, ShieldCheck, ShieldOff, Loader2, Copy, CheckCircle2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 type EnrollState = 'idle' | 'enrolling' | 'verifying';
+type PendingMfaSetup = {
+  factorId: string;
+  qrCode: string;
+  secret: string;
+  uri?: string;
+};
+
+const PENDING_MFA_SETUP_KEY = "avisafe_pending_mfa_setup";
 
 export const TwoFactorSetup = () => {
   const { t } = useTranslation();
@@ -21,6 +28,7 @@ export const TwoFactorSetup = () => {
   const [enrollState, setEnrollState] = useState<EnrollState>('idle');
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
+  const [totpUri, setTotpUri] = useState<string | null>(null);
   const [verifyCode, setVerifyCode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [showDisableDialog, setShowDisableDialog] = useState(false);
@@ -31,6 +39,55 @@ export const TwoFactorSetup = () => {
     checkMfaStatus();
   }, []);
 
+  const clearPendingSetup = () => {
+    try {
+      sessionStorage.removeItem(PENDING_MFA_SETUP_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  const savePendingSetup = (setup: PendingMfaSetup) => {
+    try {
+      sessionStorage.setItem(PENDING_MFA_SETUP_KEY, JSON.stringify(setup));
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  const restorePendingSetup = (verifiedFactorId?: string) => {
+    try {
+      const raw = sessionStorage.getItem(PENDING_MFA_SETUP_KEY);
+      if (!raw) return false;
+
+      const pending = JSON.parse(raw) as PendingMfaSetup;
+      if (!pending.factorId || pending.factorId === verifiedFactorId || !pending.qrCode || !pending.secret) {
+        clearPendingSetup();
+        return false;
+      }
+
+      setFactorId(pending.factorId);
+      setQrCode(pending.qrCode);
+      setSecret(pending.secret);
+      setTotpUri(pending.uri ?? null);
+      setEnrollState('verifying');
+      return true;
+    } catch {
+      clearPendingSetup();
+      return false;
+    }
+  };
+
+  const cleanupUnverifiedFactors = async () => {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) throw error;
+
+    const unverifiedFactors = data.totp.filter(f => (f.status as string) === 'unverified');
+    await Promise.all(
+      unverifiedFactors.map(factor => supabase.auth.mfa.unenroll({ factorId: factor.id })),
+    );
+  };
+
   const checkMfaStatus = async () => {
     try {
       const { data, error } = await supabase.auth.mfa.listFactors();
@@ -40,9 +97,12 @@ export const TwoFactorSetup = () => {
       if (totpFactor) {
         setIsEnabled(true);
         setFactorId(totpFactor.id);
+        clearPendingSetup();
       } else {
         setIsEnabled(false);
-        setFactorId(null);
+        if (!restorePendingSetup()) {
+          setFactorId(null);
+        }
       }
     } catch (err) {
       console.error('Error checking MFA status:', err);
@@ -54,29 +114,37 @@ export const TwoFactorSetup = () => {
   const handleEnroll = async () => {
     setEnrollState('enrolling');
     try {
-      // First, clean up any unverified factors
-      const { data: existingFactors } = await supabase.auth.mfa.listFactors();
-      if (existingFactors?.totp) {
-        for (const factor of existingFactors.totp) {
-          if ((factor.status as string) === 'unverified') {
-            await supabase.auth.mfa.unenroll({ factorId: factor.id });
-          }
-        }
-      }
+      await cleanupUnverifiedFactors();
 
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'Authenticator',
+        friendlyName: `AviSafe 2FA ${new Date().toISOString()}`,
       });
       if (error) throw error;
 
       setQrCode(data.totp.qr_code);
       setSecret(data.totp.secret);
+      setTotpUri(data.totp.uri ?? null);
       setFactorId(data.id);
+      savePendingSetup({
+        factorId: data.id,
+        qrCode: data.totp.qr_code,
+        secret: data.totp.secret,
+        uri: data.totp.uri,
+      });
       setEnrollState('verifying');
     } catch (err: any) {
       console.error('MFA enroll error:', err);
-      toast.error(err.message || t('twoFactor.enrollError'));
+      if (err?.code === 'mfa_factor_name_conflict' || String(err?.message ?? '').includes('friendly name')) {
+        try {
+          await cleanupUnverifiedFactors();
+        } catch (cleanupError) {
+          console.error('MFA cleanup error:', cleanupError);
+        }
+        toast.error(t('twoFactor.factorConflict'));
+      } else {
+        toast.error(err.message || t('twoFactor.enrollError'));
+      }
       setEnrollState('idle');
     }
   };
@@ -102,7 +170,9 @@ export const TwoFactorSetup = () => {
       setEnrollState('idle');
       setQrCode(null);
       setSecret(null);
+      setTotpUri(null);
       setVerifyCode("");
+      clearPendingSetup();
       toast.success(t('twoFactor.enabled'));
     } catch (err: any) {
       console.error('MFA verify error:', err);
@@ -139,9 +209,15 @@ export const TwoFactorSetup = () => {
       await navigator.clipboard.writeText(secret);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      toast.success(t('twoFactor.secretCopied'));
     } catch {
       toast.error("Kunne ikke kopiere");
     }
+  };
+
+  const handleOpenAuthenticator = () => {
+    if (!totpUri) return;
+    window.location.href = totpUri;
   };
 
   const handleCancel = async () => {
@@ -160,8 +236,10 @@ export const TwoFactorSetup = () => {
     setEnrollState('idle');
     setQrCode(null);
     setSecret(null);
+    setTotpUri(null);
     setVerifyCode("");
     setFactorId(null);
+    clearPendingSetup();
   };
 
   if (loading) {
