@@ -37,6 +37,7 @@ import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { DeviationReportsSection } from "@/components/dashboard/DeviationReportsSection";
+import { MissionSoraRouteDocumentation } from "@/components/dashboard/MissionSoraRouteDocumentation";
 import {
   statusColors,
   incidentSeverityColors,
@@ -673,6 +674,8 @@ export const MissionCard = ({
           )}
         </div>
       )}
+
+      <MissionSoraRouteDocumentation route={mission.route} />
 
       {/* Incidents Section */}
       {mission.incidents?.length > 0 && (
