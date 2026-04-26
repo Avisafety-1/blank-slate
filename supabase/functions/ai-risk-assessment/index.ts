@@ -102,6 +102,12 @@ VIKTIG KONTEKST: Denne re-vurderingen ER selve den komplette SORA-analysen. Når
 
 VIKTIG: Brukerens manuelle kommentarer kan inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC utover det AI-en opprinnelig beregnet. Du MÅ vurdere disse kommentarene som gyldige mitigeringer og justere fGRC/ARC deretter FØR du slår opp SAIL.
 
+### KONSISTENS MELLOM SCORE OG ANBEFALING
+- overall_score 7.0-10.0 skal gi recommendation="go".
+- overall_score 5.0-6.9 skal gi recommendation="caution" med forholdsregler.
+- recommendation="no-go" skal kun brukes hvis overall_score er under 5.0 eller en faktisk hard stop/absolutt begrensning er identifisert.
+- En score på 5.0 er forhøyet risiko som krever tiltak, men er IKKE no-go alene.
+
 ### STEG 7: SAIL-OPPSLAG (EKSAKT MATRISE)
 Bruk den endelige fGRC (etter alle mitigeringer inkl. brukerkommentarer) og residual ARC for å slå opp SAIL:
 
@@ -299,6 +305,16 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
 
       console.log('SORA analysis complete:', soraAnalysis.sail, soraAnalysis.residual_risk_level);
 
+      const soraOverallScore = normalizeRiskScore(soraAnalysis.overall_score) ?? normalizeRiskScore(previousAnalysis.overall_score);
+      if (soraOverallScore !== null) {
+        soraAnalysis.overall_score = soraOverallScore;
+      }
+      soraAnalysis.recommendation = deriveRiskRecommendation(
+        soraOverallScore,
+        soraAnalysis.hard_stop_triggered === true,
+        previousAnalysis.recommendation
+      );
+
       // Get user's profile for company_id
       const { data: profile } = await supabase
         .from('profiles')
@@ -320,8 +336,8 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           pilot_experience_score: previousAnalysis.categories?.pilot_experience?.score || null,
           mission_complexity_score: previousAnalysis.categories?.mission_complexity?.score || null,
           equipment_score: previousAnalysis.categories?.equipment?.score || null,
-          overall_score: soraAnalysis.overall_score || previousAnalysis.overall_score,
-          recommendation: soraAnalysis.recommendation || previousAnalysis.recommendation,
+          overall_score: soraOverallScore ?? previousAnalysis.overall_score,
+          recommendation: soraAnalysis.recommendation,
           ai_analysis: previousAnalysis,
           pilot_comments: pilotComments,
           sora_output: soraAnalysis,
