@@ -1069,6 +1069,12 @@ Du skal vurdere 5 kategorier på en skala fra 1 til 10:
 HØY SCORE = BRA (lav risiko, trygt)
 LAV SCORE = DÅRLIG (høy risiko, farlig)
 
+### KONSISTENS MELLOM SCORE OG ANBEFALING
+- overall_score 7.0-10.0 skal gi recommendation="go".
+- overall_score 5.0-6.9 skal gi recommendation="caution" med forholdsregler.
+- recommendation="no-go" skal kun brukes hvis overall_score er under 5.0 eller HARD STOP er utløst.
+- En score på 5.0 er forhøyet risiko som krever tiltak, men er IKKE no-go alene.
+
 ### GENERELLE KRAV
 - Skill tydelig mellom:
   • Faktiske inputdata
@@ -1560,28 +1566,22 @@ Returner en JSON-respons med denne strukturen:
       throw new Error('Invalid AI response format');
     }
 
-    // Normalize scores to ensure they are on 1-10 scale (fix if AI returns percentages like 0.3 instead of 3)
-    const normalizeScore = (score: number | undefined | null): number | null => {
-      if (score === undefined || score === null) return null;
-      // If score is less than 1, it's likely a decimal (0.3 = 30%) - convert to 1-10 scale
-      if (score > 0 && score < 1) {
-        return Math.round(score * 10);
-      }
-      // Clamp to 1-10 range
-      return Math.max(1, Math.min(10, Math.round(score)));
-    };
-
     // Normalize all category scores
     if (aiAnalysis.categories) {
       for (const key of Object.keys(aiAnalysis.categories)) {
         if (aiAnalysis.categories[key]?.score !== undefined) {
-          aiAnalysis.categories[key].score = normalizeScore(aiAnalysis.categories[key].score) ?? aiAnalysis.categories[key].score;
+          aiAnalysis.categories[key].score = normalizeRiskScore(aiAnalysis.categories[key].score) ?? aiAnalysis.categories[key].score;
         }
       }
     }
     if (aiAnalysis.overall_score !== undefined) {
-      aiAnalysis.overall_score = normalizeScore(aiAnalysis.overall_score) ?? aiAnalysis.overall_score;
+      aiAnalysis.overall_score = normalizeRiskScore(aiAnalysis.overall_score) ?? aiAnalysis.overall_score;
     }
+    aiAnalysis.recommendation = deriveRiskRecommendation(
+      aiAnalysis.overall_score,
+      aiAnalysis.hard_stop_triggered === true,
+      aiAnalysis.recommendation
+    );
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
