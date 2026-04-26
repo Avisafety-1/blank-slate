@@ -18,6 +18,33 @@ interface PilotInput {
   skipWeatherEvaluation: boolean;
 }
 
+const normalizeRiskScore = (score: number | string | undefined | null): number | null => {
+  if (score === undefined || score === null) return null;
+  const numericScore = typeof score === 'number' ? score : Number(score);
+  if (!Number.isFinite(numericScore)) return null;
+  if (numericScore > 0 && numericScore < 1) return Math.round(numericScore * 10);
+  return Math.max(1, Math.min(10, Math.round(numericScore)));
+};
+
+const deriveRiskRecommendation = (
+  score: number | string | undefined | null,
+  hardStopTriggered = false,
+  fallback: string = 'caution'
+): 'go' | 'caution' | 'no-go' => {
+  if (hardStopTriggered) return 'no-go';
+  const normalizedScore = normalizeRiskScore(score);
+  if (normalizedScore === null) {
+    const normalizedFallback = fallback?.toLowerCase();
+    if (normalizedFallback === 'go' || normalizedFallback === 'caution' || normalizedFallback === 'no-go') {
+      return normalizedFallback;
+    }
+    return 'caution';
+  }
+  if (normalizedScore >= 7) return 'go';
+  if (normalizedScore >= 5) return 'caution';
+  return 'no-go';
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
