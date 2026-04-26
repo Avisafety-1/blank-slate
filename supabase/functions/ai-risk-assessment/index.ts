@@ -1665,6 +1665,22 @@ Returner en JSON-respons med denne strukturen:
       aiAnalysis.recommendation
     );
 
+    if (deterministicAlos) {
+      aiAnalysis.ground_risk_analysis = {
+        ...(aiAnalysis.ground_risk_analysis || {}),
+        characteristic_dimension: `${primaryDroneCharacteristicDimensionM}m`,
+        max_speed_category: droneCatalogMatch?.max_speed_mps
+          ? `${droneCatalogMatch.max_speed_mps} m/s`
+          : aiAnalysis.ground_risk_analysis?.max_speed_category,
+        drone_weight_kg: droneCatalogMatch?.weight_kg ?? droneData?.vekt ?? aiAnalysis.ground_risk_analysis?.drone_weight_kg,
+      };
+      aiAnalysis.operation_classification = {
+        ...(aiAnalysis.operation_classification || {}),
+        alos_max_m: deterministicAlos.alosMaxM,
+        alos_calculation: deterministicAlos.alosCalculation,
+      };
+    }
+
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
 
