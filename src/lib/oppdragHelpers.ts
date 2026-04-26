@@ -26,6 +26,16 @@ export const getApprovalStatusLabel = (status?: string | null, compact = false) 
   }
 };
 
+export const shouldShowApprovalBadge = (showApproval: boolean, status?: string | null) =>
+  showApproval && !!(status || "not_approved");
+
+export const canSubmitForApproval = (status?: string | null) =>
+  !status || status === "not_approved";
+
+export const shouldShowSoraBadge = (sora?: unknown | null) => !!sora;
+
+export const shouldShowAIRiskBadge = (risk?: unknown | null) => !!risk;
+
 export const getSoraBadgeColor = (status?: string | null) => {
   switch (status) {
     case "Ferdig":
