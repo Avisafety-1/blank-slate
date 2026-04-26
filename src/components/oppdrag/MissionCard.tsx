@@ -113,6 +113,7 @@ export const MissionCard = ({
   const { companyId, departmentsEnabled } = useAuth();
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
+  const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
   const [expandedMapOpen, setExpandedMapOpen] = useState(false);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
@@ -134,6 +135,11 @@ export const MissionCard = ({
       toast.success('Ninox-godkjenning bekreftet');
     }
     setNinoxConfirmOpen(false);
+  };
+
+  const handleSubmitForApproval = () => {
+    setApprovalConfirmOpen(false);
+    onSubmitForApproval(mission);
   };
 
   return (
@@ -167,7 +173,7 @@ export const MissionCard = ({
                 className={`text-xs ${getApprovalStatusColor(approvalStatus)} ${approvalClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                 onClick={approvalClickable ? (e) => {
                   e.stopPropagation();
-                  onSubmitForApproval(mission);
+                  setApprovalConfirmOpen(true);
                 } : undefined}
               >
                 {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
@@ -277,7 +283,7 @@ export const MissionCard = ({
               Tilknytt sjekkliste
             </DropdownMenuItem>
             {showApproval && canSubmitForApproval(mission.approval_status) && (
-              <DropdownMenuItem onClick={() => onSubmitForApproval(mission)}>
+              <DropdownMenuItem onClick={() => setApprovalConfirmOpen(true)}>
                 <Send className="h-4 w-4 mr-2" />
                 Send til godkjenning
               </DropdownMenuItem>
