@@ -291,19 +291,28 @@ export const TwoFactorSetup = () => {
                 <p className="text-xs text-muted-foreground">{t('twoFactor.scanQrDesc')}</p>
               </div>
 
+              {totpUri && (
+                <Button onClick={handleOpenAuthenticator} className="w-full" type="button">
+                  <Smartphone className="h-4 w-4 mr-2" />
+                  {t('twoFactor.openAuthenticator')}
+                </Button>
+              )}
+
               <div className="flex justify-center">
                 <img src={qrCode} alt="QR Code" className="w-36 h-36 sm:w-48 sm:h-48 rounded-lg border" />
               </div>
 
               {secret && (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">{t('twoFactor.manualEntry')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('twoFactor.manualEntryDesc')}</p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-md font-mono break-all select-all">
                       {secret}
                     </code>
-                    <Button variant="ghost" size="icon" onClick={handleCopySecret} className="shrink-0">
+                    <Button variant="outline" onClick={handleCopySecret} className="shrink-0">
                       {copied ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+                      <span className="hidden sm:inline">{t('twoFactor.copySecret')}</span>
                     </Button>
                   </div>
                 </div>
