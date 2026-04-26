@@ -776,7 +776,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       if (error) throw error;
 
       if (data?.token_ok) {
-        if (data.working_base_url) {
+        if (data.working_base_url && !fh2Locked) {
           await supabase
             .from("companies")
             .update({ flighthub2_base_url: data.working_base_url } as any)
@@ -799,6 +799,28 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       toast.error(err?.message || "Tilkobling feilet");
     } finally {
       setTestingFh2(false);
+    }
+  };
+
+  const handleToggleApplyFh2ToChildren = async (checked: boolean) => {
+    if (!companyId) return;
+    setApplyFh2ToChildren(checked);
+    setSavingSettings(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("companies")
+        .update({ propagate_fh2_credentials: checked })
+        .eq("id", companyId);
+      if (error) throw error;
+      toast.success(checked
+        ? "FlightHub 2-tilkobling gjelder nå for alle underavdelinger"
+        : "Underavdelinger kan nå bruke egen FlightHub 2-tilkobling"
+      );
+    } catch (err: any) {
+      setApplyFh2ToChildren(!checked);
+      toast.error(err?.message || "Kunne ikke lagre FlightHub 2-innstilling");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
