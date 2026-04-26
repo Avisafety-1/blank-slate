@@ -523,6 +523,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setMatchCandidates([]);
     setMatchedMissions([]);
     setSelectedMissionId('');
+    setSelectedFlightLogChoice('');
     setSelectedDroneId("");
     setDjiEmail("");
     setDjiPassword("");
@@ -1348,6 +1349,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         setMatchCandidates(enrichedLogs);
         if (pilotLogs.length === 1) {
           setMatchedLog(pilotLogs[0]);
+          setSelectedFlightLogChoice(pilotLogs[0].id);
           toast.info('Fant eksisterende flytur for valgt pilot på oppdraget.');
         } else if (pilotLogs.length > 1) {
           toast.info('Oppdraget har flere eksisterende flyturer for valgt pilot. Velg om du vil oppdatere en eller legge til ny.');
@@ -1987,9 +1989,12 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
 
   const handlePilotChange = (newPilotId: string) => {
     setPilotId(newPilotId);
+    setSelectedFlightLogChoice('');
     if (!selectedMissionId || selectedMissionId === '__new__') return;
     const pilotLogs = getPilotLogsForMission(selectedMissionId, newPilotId);
-    setMatchedLog(pilotLogs.length === 1 ? pilotLogs[0] : null);
+    const nextMatch = pilotLogs.length === 1 ? pilotLogs[0] : null;
+    setMatchedLog(nextMatch);
+    setSelectedFlightLogChoice(nextMatch?.id || '');
   };
 
   // ── Render ──
