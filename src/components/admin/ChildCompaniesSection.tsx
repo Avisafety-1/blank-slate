@@ -347,6 +347,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setApplySoraDefaultsToChildren(!!(data as any).propagate_sora_buffer_mode);
       setApplyFh2ToChildren(!!(data as any).propagate_fh2_credentials);
 
+      let parentPropagatesFh2 = false;
       // Load parent inheritance data (propagation flags + values)
       if (parentId) {
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
@@ -390,7 +391,6 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           id: r.id, profile_id: r.profile_id, full_name: recProfileMap[r.profile_id] || null,
         }));
 
-        let parentPropagatesFh2 = false;
         if (parent) {
           parentPropagatesFh2 = !!parent.propagate_fh2_credentials;
           setParentNavn(parent.navn || "");
