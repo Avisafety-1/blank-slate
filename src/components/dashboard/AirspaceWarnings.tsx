@@ -97,6 +97,8 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
         const warningsArray: AirspaceWarning[] = rawArray.map((r) => {
           // Severity hierarchy: inside a zone is more severe, nearby is one step less
           const baseSeverity = r.severity; // WARNING, CAUTION, or INFO from DB
+          const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
+          const is5km = r.z_type === '5KM';
           let level: AirspaceWarning["level"];
           
           if (is5km && r.route_inside) {
@@ -111,9 +113,6 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
           }
           const distMeters = Math.round(r.min_distance);
           let message: string;
-
-          const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
-          const is5km = r.z_type === '5KM';
 
           if (isCtrOrTiz) {
             if (r.route_inside) {
