@@ -176,6 +176,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     }
 
     const hasChanges = settings.droneId !== next.droneId
+      || settings.droneName !== next.droneName
       || (next.characteristicDimensionM !== undefined && settings.characteristicDimensionM !== next.characteristicDimensionM)
       || (next.groundSpeedMps !== undefined && settings.groundSpeedMps !== next.groundSpeedMps);
 
