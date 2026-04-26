@@ -390,7 +390,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           id: r.id, profile_id: r.profile_id, full_name: recProfileMap[r.profile_id] || null,
         }));
 
+        let parentPropagatesFh2 = false;
         if (parent) {
+          parentPropagatesFh2 = !!parent.propagate_fh2_credentials;
           setParentNavn(parent.navn || "");
           setInherited({
             show_all_airspace_warnings: parent.show_all_airspace_warnings ?? false,
@@ -441,6 +443,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
       const hasOwnCred = !!cred;
       if (hasOwnCred && !fh2Editing.current) setFh2Token("••••••••");
+      if (!hasOwnCred && !fh2Editing.current) setFh2Token("");
 
       // Always try test-connection — edge function handles parent fallback
       try {
@@ -450,8 +453,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         if (testData?.token_ok) {
           setFh2Connected(true);
           setFh2Projects(testData.project_names || []);
-          setFh2Inherited(!hasOwnCred);
+          setFh2Inherited(parentId ? parentPropagatesFh2 : false);
         } else {
+          setFh2Connected(false);
           setFh2Inherited(false);
         }
       } catch {
