@@ -457,7 +457,10 @@ Deno.serve(async (req: Request) => {
               if (normalizedUrl !== (fh2BaseUrl || "").replace(/\/+$/, "")) {
                 result.alternate_region_worked = true;
               }
-              await supabase.from("companies").update({ flighthub2_base_url: normalizedUrl }).eq("id", profile.company_id);
+              await supabase
+                .from("companies")
+                .update({ flighthub2_base_url: normalizedUrl })
+                .eq("id", useParentFh2 ? (company as any).parent_company_id : profile.company_id);
               console.log(`✅ ${variant.name} worked on ${baseUrl}, saved base URL`);
               break;
             }
