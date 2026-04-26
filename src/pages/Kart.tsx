@@ -181,6 +181,8 @@ export default function KartPage() {
         if (state.existingRoute.soraSettings) {
           setSoraSettings(state.existingRoute.soraSettings);
         }
+          setShowAdjacentArea(!!state.existingRoute.adjacentAreaDocumentation?.enabled);
+          setAdjacentResult((state.existingRoute.adjacentAreaDocumentation as any) || null);
       }
     }
     if (state?.focusFlightId) {
@@ -316,6 +318,8 @@ export default function KartPage() {
     } else {
       setSoraSettings(defaultSoraSettings);
     }
+    setShowAdjacentArea(!!route?.adjacentAreaDocumentation?.enabled);
+    setAdjacentResult((route?.adjacentAreaDocumentation as any) || null);
   }, [defaultSoraSettings]);
 
   const handleCancelRoute = () => {
