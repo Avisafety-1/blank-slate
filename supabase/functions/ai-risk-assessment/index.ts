@@ -18,6 +18,33 @@ interface PilotInput {
   skipWeatherEvaluation: boolean;
 }
 
+const normalizeRiskScore = (score: number | string | undefined | null): number | null => {
+  if (score === undefined || score === null) return null;
+  const numericScore = typeof score === 'number' ? score : Number(score);
+  if (!Number.isFinite(numericScore)) return null;
+  if (numericScore > 0 && numericScore < 1) return Math.round(numericScore * 10);
+  return Math.max(1, Math.min(10, Math.round(numericScore)));
+};
+
+const deriveRiskRecommendation = (
+  score: number | string | undefined | null,
+  hardStopTriggered = false,
+  fallback: string = 'caution'
+): 'go' | 'caution' | 'no-go' => {
+  if (hardStopTriggered) return 'no-go';
+  const normalizedScore = normalizeRiskScore(score);
+  if (normalizedScore === null) {
+    const normalizedFallback = fallback?.toLowerCase();
+    if (normalizedFallback === 'go' || normalizedFallback === 'caution' || normalizedFallback === 'no-go') {
+      return normalizedFallback;
+    }
+    return 'caution';
+  }
+  if (normalizedScore >= 7) return 'go';
+  if (normalizedScore >= 5) return 'caution';
+  return 'no-go';
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -74,6 +101,12 @@ Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjenge
 VIKTIG KONTEKST: Denne re-vurderingen ER selve den komplette SORA-analysen. Når den opprinnelige vurderingen sier "SORA er påkrevd" eller "manglende SORA", betyr det at DENNE outputen er løsningen på det kravet. Du skal IKKE gjenta bekymringer om "manglende SORA" eller "ufullstendig SORA" i summary eller andre felter — denne analysen MED dens SAIL, containment og OSO-output ER den fullstendige SORA-en.
 
 VIKTIG: Brukerens manuelle kommentarer kan inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC utover det AI-en opprinnelig beregnet. Du MÅ vurdere disse kommentarene som gyldige mitigeringer og justere fGRC/ARC deretter FØR du slår opp SAIL.
+
+### KONSISTENS MELLOM SCORE OG ANBEFALING
+- overall_score 7.0-10.0 skal gi recommendation="go".
+- overall_score 5.0-6.9 skal gi recommendation="caution" med forholdsregler.
+- recommendation="no-go" skal kun brukes hvis overall_score er under 5.0 eller en faktisk hard stop/absolutt begrensning er identifisert.
+- En score på 5.0 er forhøyet risiko som krever tiltak, men er IKKE no-go alene.
 
 ### STEG 7: SAIL-OPPSLAG (EKSAKT MATRISE)
 Bruk den endelige fGRC (etter alle mitigeringer inkl. brukerkommentarer) og residual ARC for å slå opp SAIL:
@@ -272,6 +305,16 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
 
       console.log('SORA analysis complete:', soraAnalysis.sail, soraAnalysis.residual_risk_level);
 
+      const soraOverallScore = normalizeRiskScore(soraAnalysis.overall_score) ?? normalizeRiskScore(previousAnalysis.overall_score);
+      if (soraOverallScore !== null) {
+        soraAnalysis.overall_score = soraOverallScore;
+      }
+      soraAnalysis.recommendation = deriveRiskRecommendation(
+        soraOverallScore,
+        soraAnalysis.hard_stop_triggered === true,
+        previousAnalysis.recommendation
+      );
+
       // Get user's profile for company_id
       const { data: profile } = await supabase
         .from('profiles')
@@ -293,8 +336,8 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           pilot_experience_score: previousAnalysis.categories?.pilot_experience?.score || null,
           mission_complexity_score: previousAnalysis.categories?.mission_complexity?.score || null,
           equipment_score: previousAnalysis.categories?.equipment?.score || null,
-          overall_score: soraAnalysis.overall_score || previousAnalysis.overall_score,
-          recommendation: soraAnalysis.recommendation || previousAnalysis.recommendation,
+          overall_score: soraOverallScore ?? previousAnalysis.overall_score,
+          recommendation: soraAnalysis.recommendation,
           ai_analysis: previousAnalysis,
           pilot_comments: pilotComments,
           sora_output: soraAnalysis,
@@ -1026,6 +1069,12 @@ Du skal vurdere 5 kategorier på en skala fra 1 til 10:
 HØY SCORE = BRA (lav risiko, trygt)
 LAV SCORE = DÅRLIG (høy risiko, farlig)
 
+### KONSISTENS MELLOM SCORE OG ANBEFALING
+- overall_score 7.0-10.0 skal gi recommendation="go".
+- overall_score 5.0-6.9 skal gi recommendation="caution" med forholdsregler.
+- recommendation="no-go" skal kun brukes hvis overall_score er under 5.0 eller HARD STOP er utløst.
+- En score på 5.0 er forhøyet risiko som krever tiltak, men er IKKE no-go alene.
+
 ### GENERELLE KRAV
 - Skill tydelig mellom:
   • Faktiske inputdata
@@ -1517,28 +1566,22 @@ Returner en JSON-respons med denne strukturen:
       throw new Error('Invalid AI response format');
     }
 
-    // Normalize scores to ensure they are on 1-10 scale (fix if AI returns percentages like 0.3 instead of 3)
-    const normalizeScore = (score: number | undefined | null): number | null => {
-      if (score === undefined || score === null) return null;
-      // If score is less than 1, it's likely a decimal (0.3 = 30%) - convert to 1-10 scale
-      if (score > 0 && score < 1) {
-        return Math.round(score * 10);
-      }
-      // Clamp to 1-10 range
-      return Math.max(1, Math.min(10, Math.round(score)));
-    };
-
     // Normalize all category scores
     if (aiAnalysis.categories) {
       for (const key of Object.keys(aiAnalysis.categories)) {
         if (aiAnalysis.categories[key]?.score !== undefined) {
-          aiAnalysis.categories[key].score = normalizeScore(aiAnalysis.categories[key].score) ?? aiAnalysis.categories[key].score;
+          aiAnalysis.categories[key].score = normalizeRiskScore(aiAnalysis.categories[key].score) ?? aiAnalysis.categories[key].score;
         }
       }
     }
     if (aiAnalysis.overall_score !== undefined) {
-      aiAnalysis.overall_score = normalizeScore(aiAnalysis.overall_score) ?? aiAnalysis.overall_score;
+      aiAnalysis.overall_score = normalizeRiskScore(aiAnalysis.overall_score) ?? aiAnalysis.overall_score;
     }
+    aiAnalysis.recommendation = deriveRiskRecommendation(
+      aiAnalysis.overall_score,
+      aiAnalysis.hard_stop_triggered === true,
+      aiAnalysis.recommendation
+    );
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
