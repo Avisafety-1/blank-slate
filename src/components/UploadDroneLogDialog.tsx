@@ -285,6 +285,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [matchCandidates, setMatchCandidates] = useState<MatchedFlightLog[]>([]);
   const [matchedMissions, setMatchedMissions] = useState<Array<{ id: string; tittel: string; tidspunkt: string; status: string; lokasjon: string }>>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
+  const [selectedFlightLogChoice, setSelectedFlightLogChoice] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // DJI login state
@@ -347,15 +348,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   useEffect(() => {
     if (!pilotId || !selectedMissionId || selectedMissionId === '__new__') return;
+    if (selectedFlightLogChoice) return;
     const pilotMatches = matchCandidates.filter(
       c => c.mission_id === selectedMissionId && (c.pilot_ids || []).includes(pilotId)
     );
     if (matchedLog && !(matchedLog.pilot_ids || []).includes(pilotId)) {
-      setMatchedLog(pilotMatches[0] || null);
+      const nextMatch = pilotMatches[0] || null;
+      setMatchedLog(nextMatch);
+      setSelectedFlightLogChoice(nextMatch?.id || '');
     } else if (!matchedLog && pilotMatches.length === 1) {
       setMatchedLog(pilotMatches[0]);
+      setSelectedFlightLogChoice(pilotMatches[0].id);
     }
-  }, [pilotId, selectedMissionId, matchCandidates, matchedLog]);
+  }, [pilotId, selectedMissionId, matchCandidates, matchedLog, selectedFlightLogChoice]);
 
   // Initialize warning actions when result changes
   useEffect(() => {
@@ -518,6 +523,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setMatchCandidates([]);
     setMatchedMissions([]);
     setSelectedMissionId('');
+    setSelectedFlightLogChoice('');
     setSelectedDroneId("");
     setDjiEmail("");
     setDjiPassword("");
@@ -1343,6 +1349,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         setMatchCandidates(enrichedLogs);
         if (pilotLogs.length === 1) {
           setMatchedLog(pilotLogs[0]);
+          setSelectedFlightLogChoice(pilotLogs[0].id);
           toast.info('Fant eksisterende flytur for valgt pilot på oppdraget.');
         } else if (pilotLogs.length > 1) {
           toast.info('Oppdraget har flere eksisterende flyturer for valgt pilot. Velg om du vil oppdatere en eller legge til ny.');
@@ -1982,9 +1989,12 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
 
   const handlePilotChange = (newPilotId: string) => {
     setPilotId(newPilotId);
+    setSelectedFlightLogChoice('');
     if (!selectedMissionId || selectedMissionId === '__new__') return;
     const pilotLogs = getPilotLogsForMission(selectedMissionId, newPilotId);
-    setMatchedLog(pilotLogs.length === 1 ? pilotLogs[0] : null);
+    const nextMatch = pilotLogs.length === 1 ? pilotLogs[0] : null;
+    setMatchedLog(nextMatch);
+    setSelectedFlightLogChoice(nextMatch?.id || '');
   };
 
   // ── Render ──
@@ -2726,7 +2736,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 ? 'Et oppdrag matcher tidspunktet for denne flyloggen:'
                 : `${matchedMissions.length} oppdrag matcher tidspunktet. Velg hvilket oppdrag flyloggen tilhører:`}
             </p>
-            <RadioGroup value={selectedMissionId} onValueChange={(val) => { setSelectedMissionId(val); setMatchedLog(null); }}>
+            <RadioGroup value={selectedMissionId} onValueChange={(val) => { setSelectedMissionId(val); setMatchedLog(null); setSelectedFlightLogChoice(''); }}>
               {matchedMissions.map((m) => (
                 <label key={m.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
                   <RadioGroupItem value={m.id} />
@@ -2757,8 +2767,9 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
               <p className="text-xs text-muted-foreground mb-2">Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.</p>
             )}
             <RadioGroup
-              value={matchedLog ? matchedLog.id : '__new_flight__'}
+              value={selectedFlightLogChoice || (matchedLog ? matchedLog.id : '__new_flight__')}
               onValueChange={(val) => {
+                setSelectedFlightLogChoice(val);
                 if (val === '__new_flight__') {
                   setMatchedLog(null);
                 } else {
@@ -2833,9 +2844,9 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => {
             if (selectedPendingLogId) {
-              setSelectedPendingLogId(null); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId('');
+              setSelectedPendingLogId(null); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); setSelectedFlightLogChoice('');
             } else {
-              setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId('');
+              setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); setSelectedFlightLogChoice('');
             }
           }}>{t('actions.back')}</Button>
           {matchedLog ? (
