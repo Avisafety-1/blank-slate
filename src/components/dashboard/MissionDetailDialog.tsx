@@ -25,6 +25,14 @@ import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 import { NotamDialog } from "./NotamDialog";
 import { DeviationReportsSection } from "./DeviationReportsSection";
 import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
+import {
+  statusColors,
+  getAIRiskBadgeColor,
+  getAIRiskLabel,
+  formatAIRiskScore,
+  getApprovalStatusColor,
+  getSoraBadgeColor,
+} from "@/lib/oppdragHelpers";
 
 type Mission = any;
 
@@ -35,44 +43,6 @@ interface MissionDetailDialogProps {
   onMissionUpdated?: () => void;
   onEditRoute?: (mission: any) => void;
 }
-
-const statusColors: Record<string, string> = {
-  Planlagt: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30",
-  Pågående: "bg-status-yellow/20 text-yellow-700 dark:text-yellow-300 border-status-yellow/30",
-  Fullført: "bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30",
-};
-
-const getAIRiskBadgeColor = (recommendation: string) => {
-  switch (recommendation?.toLowerCase()) {
-    case 'proceed':
-      return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
-    case 'proceed_with_caution':
-      return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
-    case 'not_recommended':
-      return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
-    default:
-      return 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30';
-  }
-};
-
-const getAIRiskLabel = (recommendation: string) => {
-  switch (recommendation?.toLowerCase()) {
-    case 'proceed':
-      return 'Anbefalt';
-    case 'proceed_with_caution':
-      return 'Forsiktighet';
-    case 'not_recommended':
-      return 'Ikke anbefalt';
-    default:
-      return recommendation || 'Ukjent';
-  }
-};
-
-const formatAIRiskScore = (score: unknown) => {
-  const n = typeof score === "number" ? score : Number(score);
-  if (!Number.isFinite(n)) return "—/10";
-  return `${n.toFixed(1)}/10`;
-};
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
   const { companyId } = useAuth();
