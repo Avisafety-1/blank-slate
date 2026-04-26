@@ -633,13 +633,7 @@ export const MissionCard = ({
                 <Edit className="h-3 w-3 mr-1" />
                 Rediger
               </Button>
-              <Badge variant="outline" className={
-                mission.sora.sora_status === "Ferdig" 
-                  ? "bg-green-500/20 text-green-300 border-green-500/30"
-                  : mission.sora.sora_status === "Pågår"
-                  ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
-                  : "bg-gray-500/20 text-gray-300 border-gray-500/30"
-              }>
+              <Badge variant="outline" className={getSoraBadgeColor(mission.sora.sora_status)}>
                 {mission.sora.sora_status}
               </Badge>
             </div>
