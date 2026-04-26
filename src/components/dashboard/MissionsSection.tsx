@@ -256,26 +256,22 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     />
                     {showApproval && (() => {
                       const approvalStatus = mission.approval_status || 'not_approved';
-                      const approvalLabel = approvalStatus === 'approved' ? 'Godkjent' : approvalStatus === 'pending_approval' ? 'Venter' : 'Ikke godkjent';
-                      const approvalColor = approvalStatus === 'approved' 
-                        ? 'bg-status-green/20 text-green-700 dark:text-green-300' 
-                        : approvalStatus === 'pending_approval' 
-                          ? 'bg-status-yellow/20 text-yellow-700 dark:text-yellow-300' 
-                          : 'bg-status-red/20 text-red-700 dark:text-red-300';
                       const isClickable = approvalStatus === 'not_approved' || !mission.approval_status;
                       return (
                         <Badge 
-                          className={`${approvalColor} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                          variant="outline"
+                          className={`${getApprovalStatusColor(approvalStatus)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                           onClick={isClickable ? (e: React.MouseEvent) => {
                             e.stopPropagation();
                             setApprovalConfirmMissionId(mission.id);
                           } : undefined}
                         >
-                          {approvalLabel}
+                          {getApprovalStatusLabel(approvalStatus, true)}
                         </Badge>
                       );
                     })()}
                     <Badge 
+                      variant="outline"
                       onClick={(e) => handleSoraClick(mission, e)}
                       className={`${getSoraBadgeColor(missionSoras[mission.id]?.sora_status || "Ikke startet")} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80`}
                     >
@@ -285,6 +281,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     </Badge>
                     {missionAIRisks[mission.id] && (
                       <Badge 
+                        variant="outline"
                         className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -298,11 +295,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       </Badge>
                     )}
                     {mission.notam_text && (
-                      <Badge className={`${
-                        mission.notam_submitted_at
-                          ? 'bg-green-500/20 text-green-700 dark:text-green-300'
-                          : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                      } text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
+                      <Badge variant="outline" className={`${getNotamBadgeColor(!!mission.notam_submitted_at)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
                         <Radio className="w-3 h-3 mr-1" />
                         NOTAM
                       </Badge>
