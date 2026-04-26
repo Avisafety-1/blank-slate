@@ -843,6 +843,22 @@ export const MissionCard = ({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Send til godkjenning?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Er du sikker på at du vil sende dette oppdraget til godkjenning?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogAction onClick={handleSubmitForApproval}>
+            Send til godkjenning
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     <FlightAnalysisDialog
       open={analysisOpen}
       onOpenChange={setAnalysisOpen}
