@@ -40,6 +40,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
@@ -63,6 +64,7 @@ interface DocumentCardModalProps {
   onDeleteSuccess: () => void;
   isAdmin: boolean;
   isCreating: boolean;
+  isOwnerCompany?: boolean;
 }
 
 const CATEGORIES: { value: DocumentCategory; label: string }[] = [
@@ -98,8 +100,9 @@ const DocumentCardModal = ({
   onDeleteSuccess,
   isAdmin,
   isCreating,
+  isOwnerCompany = true,
 }: DocumentCardModalProps) => {
-  const { companyId } = useAuth();
+  const { companyId, isSuperAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -272,7 +275,7 @@ const DocumentCardModal = ({
   };
 
   const onSubmit = async (data: FormData) => {
-    if (!isAdmin || !companyId) return;
+    if (!canManageDocument || !companyId) return;
 
     setIsSubmitting(true);
     try {
@@ -344,7 +347,7 @@ const DocumentCardModal = ({
   };
 
   const handleDelete = async () => {
-    if (!document || !isAdmin) return;
+    if (!document || !canManageDocument) return;
 
     setIsDeleting(true);
     try {
@@ -360,7 +363,9 @@ const DocumentCardModal = ({
     }
   };
 
-  const readOnly = !isAdmin;
+  const canManageDocument = isAdmin && (isCreating || isOwnerCompany || isSuperAdmin);
+  const readOnly = !canManageDocument;
+  const isSharedDocument = !!document && !isCreating && !isOwnerCompany && !isSuperAdmin;
 
   return (
     <>
@@ -380,6 +385,15 @@ const DocumentCardModal = ({
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {isSharedDocument && (
+                <Alert>
+                  <Building2 className="h-4 w-4" />
+                  <AlertDescription>
+                    Dette dokumentet er delt fra {(document as any).company_name || "et annet selskap"} og kan ikke endres eller slettes her.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <FormField
                 control={form.control}
                 name="kategori"
@@ -687,7 +701,7 @@ const DocumentCardModal = ({
               )}
 
               <DialogFooter className="gap-2">
-                {isAdmin && !isCreating && (
+                {canManageDocument && !isCreating && (
                   <Button
                     type="button"
                     variant="destructive"
@@ -701,7 +715,7 @@ const DocumentCardModal = ({
                 <Button type="button" variant="outline" onClick={onClose}>
                   {readOnly ? "Lukk" : "Avbryt"}
                 </Button>
-                {isAdmin && (
+                {canManageDocument && (
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? "Lagrer..." : "Lagre"}
                   </Button>
