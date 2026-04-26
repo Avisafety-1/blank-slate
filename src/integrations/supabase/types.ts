@@ -413,6 +413,7 @@ export type Database = {
           parent_company_id: string | null
           propagate_airspace_warnings: boolean
           propagate_deviation_report: boolean
+          propagate_fh2_credentials: boolean
           propagate_flight_alerts: boolean
           propagate_hide_reporter: boolean
           propagate_mission_approval: boolean
@@ -462,6 +463,7 @@ export type Database = {
           parent_company_id?: string | null
           propagate_airspace_warnings?: boolean
           propagate_deviation_report?: boolean
+          propagate_fh2_credentials?: boolean
           propagate_flight_alerts?: boolean
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
@@ -511,6 +513,7 @@ export type Database = {
           parent_company_id?: string | null
           propagate_airspace_warnings?: boolean
           propagate_deviation_report?: boolean
+          propagate_fh2_credentials?: boolean
           propagate_flight_alerts?: boolean
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean

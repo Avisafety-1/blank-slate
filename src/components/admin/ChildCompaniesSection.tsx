@@ -87,6 +87,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_sora_buffer_mode: boolean;
     propagate_mission_roles: boolean;
     propagate_flight_alerts: boolean;
+    propagate_fh2_credentials: boolean;
     safesky_callsign_propagate: boolean;
     safesky_callsign_prefix: string | null;
     safesky_callsign_variable: 'counter' | 'drone_registration';
@@ -107,6 +108,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [applyRolesToChildren, setApplyRolesToChildren] = useState(false);
   const [applyAlertsToChildren, setApplyAlertsToChildren] = useState(false);
   const [applySoraDefaultsToChildren, setApplySoraDefaultsToChildren] = useState(false);
+  const [applyFh2ToChildren, setApplyFh2ToChildren] = useState(false);
   const [missionRoles, setMissionRoles] = useState<{id: string; name: string}[]>([]);
   const [newRoleName, setNewRoleName] = useState("");
   const [savingRole, setSavingRole] = useState(false);
@@ -144,6 +146,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [fh2Connected, setFh2Connected] = useState(false);
   const [fh2Projects, setFh2Projects] = useState<string[]>([]);
   const [fh2Inherited, setFh2Inherited] = useState(false);
+  const fh2Locked = isChildDept && !!inherited?.propagate_fh2_credentials;
 
   const fetchFlightAlerts = useCallback(async () => {
     if (!companyId) return;
@@ -317,7 +320,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -342,13 +345,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setApplyRolesToChildren(!!(data as any).propagate_mission_roles);
       setApplyAlertsToChildren(!!(data as any).propagate_flight_alerts);
       setApplySoraDefaultsToChildren(!!(data as any).propagate_sora_buffer_mode);
+      setApplyFh2ToChildren(!!(data as any).propagate_fh2_credentials);
 
+      let parentPropagatesFh2 = false;
       // Load parent inheritance data (propagation flags + values)
       if (parentId) {
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
@@ -387,6 +392,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         }));
 
         if (parent) {
+          parentPropagatesFh2 = !!parent.propagate_fh2_credentials;
           setParentNavn(parent.navn || "");
           setInherited({
             show_all_airspace_warnings: parent.show_all_airspace_warnings ?? false,
@@ -403,6 +409,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             propagate_sora_buffer_mode: parent.propagate_sora_buffer_mode ?? false,
             propagate_mission_roles: parent.propagate_mission_roles ?? false,
             propagate_flight_alerts: parent.propagate_flight_alerts ?? false,
+            propagate_fh2_credentials: parent.propagate_fh2_credentials ?? false,
             safesky_callsign_propagate: parent.safesky_callsign_propagate ?? false,
             safesky_callsign_prefix: parent.safesky_callsign_prefix ?? null,
             safesky_callsign_variable: ((parent.safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter'),
@@ -436,6 +443,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
       const hasOwnCred = !!cred;
       if (hasOwnCred && !fh2Editing.current) setFh2Token("••••••••");
+      if (!hasOwnCred && !fh2Editing.current) setFh2Token("");
 
       // Always try test-connection — edge function handles parent fallback
       try {
@@ -445,8 +453,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         if (testData?.token_ok) {
           setFh2Connected(true);
           setFh2Projects(testData.project_names || []);
-          setFh2Inherited(!hasOwnCred);
+          setFh2Inherited(parentId ? parentPropagatesFh2 : false);
         } else {
+          setFh2Connected(false);
           setFh2Inherited(false);
         }
       } catch {
@@ -772,7 +781,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       if (error) throw error;
 
       if (data?.token_ok) {
-        if (data.working_base_url) {
+        if (data.working_base_url && !fh2Locked) {
           await supabase
             .from("companies")
             .update({ flighthub2_base_url: data.working_base_url } as any)
@@ -795,6 +804,28 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       toast.error(err?.message || "Tilkobling feilet");
     } finally {
       setTestingFh2(false);
+    }
+  };
+
+  const handleToggleApplyFh2ToChildren = async (checked: boolean) => {
+    if (!companyId) return;
+    setApplyFh2ToChildren(checked);
+    setSavingSettings(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("companies")
+        .update({ propagate_fh2_credentials: checked })
+        .eq("id", companyId);
+      if (error) throw error;
+      toast.success(checked
+        ? "FlightHub 2-tilkobling gjelder nå for alle underavdelinger"
+        : "Underavdelinger kan nå bruke egen FlightHub 2-tilkobling"
+      );
+    } catch (err: any) {
+      setApplyFh2ToChildren(!checked);
+      toast.error(err?.message || "Kunne ikke lagre FlightHub 2-innstilling");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -1618,7 +1649,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               </div>
               <div className="flex items-center gap-2">
                 {fh2Connected && (
-                  <Badge variant="default" className="text-xs bg-green-600">
+                  <Badge variant="default" className="text-xs">
                     {fh2Inherited ? "Arvet tilkobling" : "Tilkoblet"}
                   </Badge>
                 )}
@@ -1629,17 +1660,25 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           <CollapsibleContent className="mt-4">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label className="text-xs">Organisasjonsnøkkel (FlightHub Sync)</Label>
+                <Label className="text-xs flex items-center gap-1.5">
+                  Organisasjonsnøkkel (FlightHub Sync)
+                  {fh2Locked && (
+                    <Badge variant="secondary" className="text-[10px] gap-1">
+                      <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                    </Badge>
+                  )}
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     type={fh2ShowToken ? "text" : "password"}
                     value={fh2Token}
                     onChange={(e) => setFh2Token(e.target.value)}
                     onFocus={() => { if (fh2Token === FH2_MASK) { fh2Editing.current = true; setFh2Token(""); } }}
-                    placeholder="Lim inn FlightHub Sync-nøkkel..."
+                    placeholder={fh2Locked ? "Arves fra morselskapet" : "Lim inn FlightHub Sync-nøkkel..."}
                     className="h-8 text-sm font-mono"
+                    disabled={fh2Locked}
                   />
-                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)} disabled={fh2Locked}>
                     {fh2ShowToken ? "Skjul" : "Vis"}
                   </Button>
                 </div>
@@ -1649,22 +1688,39 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               </div>
 
               <div className="flex gap-2">
-                {fh2Token && fh2Token !== FH2_MASK && (
+                {!fh2Locked && fh2Token && fh2Token !== FH2_MASK && (
                   <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
                     {savingFh2 ? "Lagrer..." : "Lagre"}
                   </Button>
                 )}
-                {fh2Token === FH2_MASK && (
+                {(fh2Token === FH2_MASK || fh2Locked) && (
                   <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2} className="h-8">
                     {testingFh2 ? "Tester..." : "Test tilkobling"}
                   </Button>
                 )}
-                {fh2Connected && (
+                {!fh2Locked && fh2Connected && (
                   <Button variant="destructive" size="sm" onClick={handleDeleteFh2} disabled={savingFh2} className="h-8">
                     <Trash2 className="h-3.5 w-3.5 mr-1" /> Slett
                   </Button>
                 )}
               </div>
+
+              {!isChildDept && departmentsEnabled && (
+                <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                  <Label htmlFor="apply-fh2-children" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert arver underavdelinger FlightHub 2-nøkkelen fra morselskapet og kan ikke overstyre den.
+                    </div>
+                  </Label>
+                  <Switch
+                    id="apply-fh2-children"
+                    checked={applyFh2ToChildren}
+                    onCheckedChange={handleToggleApplyFh2ToChildren}
+                    disabled={savingSettings}
+                  />
+                </div>
+              )}
 
               {fh2Connected && (
                 <div className="space-y-3">

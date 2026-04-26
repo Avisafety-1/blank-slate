@@ -188,12 +188,24 @@ Deno.serve(async (req: Request) => {
       .single();
 
     let fh2BaseUrl = ((company as any)?.flighthub2_base_url || "").trim();
+    let parentCompany: any = null;
+    let useParentFh2 = false;
+
+    if ((company as any)?.parent_company_id) {
+      const { data: parent } = await supabase
+        .from("companies")
+        .select("flighthub2_base_url, propagate_fh2_credentials")
+        .eq("id", (company as any).parent_company_id)
+        .single();
+      parentCompany = parent;
+      useParentFh2 = !!(parent as any)?.propagate_fh2_credentials;
+    }
 
     // Decrypt token from vault table
     let fh2Token = "";
     if (encKey) {
       const { data: decrypted } = await supabase.rpc("get_fh2_token", {
-        p_company_id: profile.company_id,
+        p_company_id: useParentFh2 ? (company as any).parent_company_id : profile.company_id,
         p_key: encKey,
       });
       fh2Token = (decrypted || "").trim();
@@ -204,8 +216,12 @@ Deno.serve(async (req: Request) => {
       fh2Token = fh2Token.substring(7).trim();
     }
 
-    // Fallback to parent company
-    if (!fh2Token && (company as any)?.parent_company_id) {
+    if (useParentFh2 && parentCompany) {
+      fh2BaseUrl = ((parentCompany as any)?.flighthub2_base_url || fh2BaseUrl).trim();
+    }
+
+    // Fallback to parent company only when inheritance is enabled
+    if (!fh2Token && useParentFh2 && (company as any)?.parent_company_id) {
       if (encKey) {
         const { data: parentDecrypted } = await supabase.rpc("get_fh2_token", {
           p_company_id: (company as any).parent_company_id,
@@ -214,12 +230,7 @@ Deno.serve(async (req: Request) => {
         fh2Token = (parentDecrypted || "").trim();
       }
       if (!fh2BaseUrl) {
-        const { data: parent } = await supabase
-          .from("companies")
-          .select("flighthub2_base_url")
-          .eq("id", (company as any).parent_company_id)
-          .single();
-        fh2BaseUrl = ((parent as any)?.flighthub2_base_url || "").trim();
+        fh2BaseUrl = ((parentCompany as any)?.flighthub2_base_url || "").trim();
       }
     }
 
@@ -446,7 +457,10 @@ Deno.serve(async (req: Request) => {
               if (normalizedUrl !== (fh2BaseUrl || "").replace(/\/+$/, "")) {
                 result.alternate_region_worked = true;
               }
-              await supabase.from("companies").update({ flighthub2_base_url: normalizedUrl }).eq("id", profile.company_id);
+              await supabase
+                .from("companies")
+                .update({ flighthub2_base_url: normalizedUrl })
+                .eq("id", useParentFh2 ? (company as any).parent_company_id : profile.company_id);
               console.log(`✅ ${variant.name} worked on ${baseUrl}, saved base URL`);
               break;
             }
