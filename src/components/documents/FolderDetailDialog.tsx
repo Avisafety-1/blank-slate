@@ -13,11 +13,12 @@ import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialo
 import { Document } from "@/types";
 
 interface FolderDetailDialogProps {
-  folder: { id: string; name: string } | null;
+  folder: { id: string; name: string; company_id?: string; inherited?: boolean } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRefresh: () => void;
   isAdmin: boolean;
+  canManage?: boolean;
 }
 
 interface FolderTab {
@@ -34,8 +35,9 @@ interface FolderDoc {
   kategori: string;
 }
 
-export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAdmin }: FolderDetailDialogProps) => {
+export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAdmin, canManage }: FolderDetailDialogProps) => {
   const { companyId } = useAuth();
+  const canManageFolder = canManage ?? (isAdmin && !folder?.inherited);
   const [folderDocs, setFolderDocs] = useState<FolderDoc[]>([]);
   const [tabs, setTabs] = useState<FolderTab[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null); // null = "Alle"
@@ -288,7 +290,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
           ) : (
             <div className="flex items-center gap-2">
               <DialogTitle>{folder.name}</DialogTitle>
-              {isAdmin && (
+              {canManageFolder && (
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditName(folder.name); setEditing(true); }}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
@@ -299,7 +301,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         </DialogHeader>
 
         {/* Tabs bar */}
-        {(tabs.length > 0 || isAdmin) && !showPicker && (
+        {(tabs.length > 0 || canManageFolder) && !showPicker && (
           <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-border">
             <button
               onClick={() => setActiveTab(null)}
@@ -333,7 +335,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                     >
                       {tab.name}
                     </button>
-                    {isAdmin && (
+                    {canManageFolder && (
                       <div className="hidden group-hover:flex items-center">
                         <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => { setEditingTabId(tab.id); setEditingTabName(tab.name); }}>
                           <Pencil className="h-2.5 w-2.5" />
@@ -347,12 +349,12 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                 )}
               </div>
             ))}
-            {isAdmin && !showNewTab && (
+            {canManageFolder && !showNewTab && (
               <button onClick={() => setShowNewTab(true)} className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                 <Plus className="h-3.5 w-3.5" />
               </button>
             )}
-            {isAdmin && showNewTab && (
+            {canManageFolder && showNewTab && (
               <div className="flex items-center gap-1">
                 <Input
                   value={newTabName}
@@ -402,7 +404,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                     <div key={doc.id} className="flex items-start gap-2 p-2 rounded hover:bg-accent/10 cursor-pointer" onClick={() => handleDocClick(doc.document_id)}>
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <span className="text-sm flex-1 break-words leading-snug">{doc.tittel}</span>
-                      {isAdmin && (
+                      {canManageFolder && (
                         <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); removeDoc(doc.id); }}>
                           <X className="h-3.5 w-3.5" />
                         </Button>
@@ -412,7 +414,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                 </div>
               )}
             </ScrollArea>
-            {isAdmin && (
+            {canManageFolder && (
               <div className="space-y-3 pt-2 border-t">
                 {hasChildren && (
                   <label className="flex items-center gap-2 cursor-pointer">
