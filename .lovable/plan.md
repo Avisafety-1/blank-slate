@@ -1,79 +1,45 @@
-Jeg lager en nedlastbar PowerPoint-presentasjon for AviSafe-kurs med fokus på `/kart` og alle hovedfunksjonene der.
+Jeg foreslår å forbedre 2FA-flyten slik at den fungerer bedre når brukeren setter opp 2FA på samme mobil som appen er åpen på.
 
-Innholdet blir strukturert som et praktisk kursløp:
+## Problem
+Dagens oppsett viser QR-kode og en manuell hemmelig nøkkel. På mobil er dette tungvint fordi:
+- man kan ikke skanne QR-koden med samme telefon
+- kopiering av manuell nøkkel krever ofte at man går ut av appen
+- når man kommer tilbake kan oppsettet være borte
+- Supabase-feilen `A factor with the friendly name "Authenticator" already exists` vises som en rar teknisk feilmelding hvis en uferdig faktor ligger igjen
 
-1. **Introduksjon til kartmodulen**
-   - Hva `/kart` brukes til operativt
-   - Hovedområder i skjermbildet: kartflate, hurtigknapper, kartlag, trafikk og ruteplanlegging
+## Plan
 
-2. **Navigasjon og grunnkart**
-   - Standardkart, satellittkart og topografisk kart
-   - Zoom, panorering, egen posisjon og selskaps-/oppdragsfokus
+1. Gjør 2FA-oppsettet mobilvennlig
+   - Legg til en tydelig knapp: `Åpne i autentiseringsapp`.
+   - Knappen bruker TOTP-URI-en fra Supabase, slik at mobilen kan åpne Google Authenticator, Microsoft Authenticator, 1Password, Authy e.l. direkte uten QR-skanning.
+   - Behold QR-koden for PC/nettbrett der brukeren kan skanne med en annen enhet.
 
-3. **Kartlag og operative datakilder**
-   - Luftrom OpenAIP
-   - RPAS 5 km-soner
-   - NSM forbudsområder
-   - RMZ/TMZ/ATZ
-   - Fareområder P/R/D
-   - Flyplasser og hindringer
-   - Verneområder, SSB arealbruk, befolkning, tettsteder
-   - Kraftledninger og skipstrafikk/NAIS
-   - Live NOTAM
+2. Forbedre manuell kode-flyten
+   - Gjør den manuelle nøkkelen enklere å kopiere med tydelig `Kopier nøkkel`-knapp.
+   - Legg til kort instruksjon: kopier nøkkelen, åpne autentiseringsappen, velg manuell oppføring, lim inn nøkkel, gå tilbake og skriv inn 6-sifret kode.
+   - Gjør teksten mer forståelig på norsk.
 
-4. **Live situasjonsbilde**
-   - SafeSky lufttrafikk
-   - Live droner
-   - Aktive flyginger/advisories og pilotposisjoner
-   - Når og hvorfor man bruker disse lagene
+3. Bevar uferdig 2FA-oppsett mens brukeren bytter app
+   - Lagre midlertidig `factorId`, QR/URI og hemmelig nøkkel i komponentens/session storage under oppsett.
+   - Når brukeren kommer tilbake til profilen, kan oppsettet fortsette i stedet for at siden nullstilles.
+   - Når brukeren bekrefter eller avbryter, ryddes midlertidig lagring.
 
-5. **Værfunksjon**
-   - Aktivering av værmodus
-   - Klikk i kartet for lokale værdata
-   - Bruk i operativ beslutning og risikovurdering
+4. Rydd opp i eksisterende MFA-konflikter
+   - Ved aktivering skal appen først sjekke både verifiserte og uverifiserte TOTP-faktorer.
+   - Uverifiserte gamle faktorer slettes før ny opprettelse.
+   - Hvis Supabase likevel svarer med `mfa_factor_name_conflict`, skal appen vise en forståelig melding og prøve å rydde opp, i stedet for å vise rå teknisk feil.
 
-6. **Oppdrag i kartet**
-   - Vise planlagte og utførte oppdrag
-   - Åpne oppdragsdetaljer fra kartet
-   - Bruke kartet for oversikt før flyging
+5. Unngå fast `friendlyName`-kollisjon
+   - Endre intern faktor-navngiving fra fast `Authenticator` til et mer unikt navn, for eksempel `AviSafe 2FA <dato/tid>`.
+   - Dette reduserer risikoen for samme konflikt senere.
 
-7. **Ruteplanlegging**
-   - Starte ny rute
-   - Legge til rutepunkter med klikk
-   - Dra punkter for å flytte dem
-   - Høyreklikk/slett punkt, angre og nullstill
-   - Total distanse og områdeberegning
-   - Lagre rute til oppdrag eller som ny planlagt rute
+6. Oppdater norske og engelske oversettelser
+   - Legg til tekster for `Åpne i autentiseringsapp`, instruksjoner, kopiering og konflikt/rydde-feil.
 
-8. **Pilotposisjon og VLOS**
-   - Plassere pilot
-   - VLOS-radius og avstandsindikator
-   - Bruk for å vurdere om ruten ligger innen synsrekkevidde
+## Teknisk
+Endringene gjøres hovedsakelig i:
+- `src/components/TwoFactorSetup.tsx`
+- `src/i18n/locales/no.json`
+- `src/i18n/locales/en.json`
 
-9. **KML/KMZ-import og eksterne verktøy**
-   - Importere rute fra KML/KMZ
-   - IPPC-knapp for NOTAM-sjekk
-   - Sensor-knapp for NSM/sensorregistrering
-
-10. **SORA-volum og tilstøtende område**
-    - Aktivere SORA volum
-    - Flight Geography, Contingency og Ground Risk buffer
-    - Tilstøtende område-analyse med befolkningsdata
-    - Hvordan dette brukes i dokumentasjon og planlegging
-
-11. **FlightHub 2**
-    - Når FH2-knappen vises
-    - Sende rute og SORA-korridor til DJI FlightHub 2
-
-12. **Beste praksis / kursoppsummering**
-    - Anbefalt arbeidsflyt: kartlag først, planlegg rute, sjekk luftrom/NOTAM/vær, vurder VLOS/SORA, lagre og dokumenter
-
-Visuelt lager jeg presentasjonen som en moderne mørk SaaS-presentasjon i AviSafe-stil: glassmorfisme, blå aksentfarger, store skjermbilder, callouts/markeringer, ikoner og korte forklaringer i stedet for tunge tekstslides.
-
-Jeg bruker screenshot fra appen. Siden du ga innlogging, vil jeg i gjennomføringsmodus logge inn i preview, ta relevante skjermbilder av `/kart` og eventuelt ruteplanleggingsmodus/kartlagspanel, og bruke disse i presentasjonen.
-
-Teknisk leveranse:
-- Genererer en `.pptx` i `/mnt/documents/`
-- Konverterer presentasjonen til bilder for visuell QA av alle slides
-- Retter eventuelle layoutproblemer før levering
-- Leverer nedlastbar PowerPoint-fil med kort QA-oppsummering
+Jeg vil ikke endre Supabase-databasen. Dette er en frontend-forbedring av eksisterende Supabase MFA-funksjonalitet.
