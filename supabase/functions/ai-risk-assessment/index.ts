@@ -45,6 +45,54 @@ const deriveRiskRecommendation = (
   return 'no-go';
 };
 
+const normalizeDroneModelName = (value: string): string => value
+  .toLowerCase()
+  .replace(/\bdji\b|\bautel\b|\bparrot\b|\bskydio\b|\byuneec\b/g, '')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+  .replace(/\s+/g, ' ');
+
+const pickBestDroneModelMatch = <T extends { name: string }>(models: T[], droneModelName: string): T | null => {
+  const normalizedDroneName = normalizeDroneModelName(droneModelName);
+  if (!normalizedDroneName) return null;
+
+  const exact = models.find((model) => normalizeDroneModelName(model.name) === normalizedDroneName);
+  if (exact) return exact;
+
+  const candidates = models
+    .map((model) => {
+      const normalizedCatalogName = normalizeDroneModelName(model.name);
+      const catalogTokens = normalizedCatalogName.split(' ').filter(Boolean);
+      const droneTokens = normalizedDroneName.split(' ').filter(Boolean);
+      const sharedTokens = catalogTokens.filter((token) => droneTokens.includes(token)).length;
+      const contains = normalizedCatalogName.includes(normalizedDroneName) || normalizedDroneName.includes(normalizedCatalogName);
+      return { model, score: (contains ? 100 : 0) + sharedTokens * 10 - Math.abs(catalogTokens.length - droneTokens.length) };
+    })
+    .filter((candidate) => candidate.score >= 18)
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.model ?? null;
+};
+
+const isFixedWingDrone = (droneModel?: string | null, catalogCategory?: string | null): boolean => {
+  const value = `${droneModel ?? ''} ${catalogCategory ?? ''}`.toLowerCase();
+  return /fixed|wing|fastving|fly|plane|vtol/.test(value);
+};
+
+const calculateAlos = (characteristicDimensionM?: number | null, fixedWing = false) => {
+  if (typeof characteristicDimensionM !== 'number' || !Number.isFinite(characteristicDimensionM) || characteristicDimensionM <= 0) {
+    return null;
+  }
+  const multiplier = fixedWing ? 490 : 327;
+  const offset = fixedWing ? 30 : 20;
+  const alosMaxM = Math.round(multiplier * characteristicDimensionM + offset);
+  return {
+    alosMaxM,
+    alosCalculation: `${multiplier} × ${characteristicDimensionM}m + ${offset}m = ${alosMaxM}m`,
+    formula: fixedWing ? 'fixed-wing' : 'multirotor',
+  };
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
