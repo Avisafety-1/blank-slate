@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio } from "lucide-react";
+import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -20,6 +20,8 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
+import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
+import { NotamDialog } from "./NotamDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   statusColors,
@@ -60,6 +62,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const [selectedAIRiskMission, setSelectedAIRiskMission] = useState<Mission | null>(null);
   const [approvalConfirmMissionId, setApprovalConfirmMissionId] = useState<string | null>(null);
+  const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
+  const [notamMission, setNotamMission] = useState<Mission | null>(null);
   // For SORA badge click - open RiskAssessmentDialog with manual-sora tab
   const [soraMissionForDialog, setSoraMissionForDialog] = useState<Mission | null>(null);
 
@@ -210,6 +214,15 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     fetchMissions();
   };
 
+  const handleChecklistCompleted = async (checklistId: string) => {
+    if (!checklistMission?.id) return;
+    const existing: string[] = checklistMission.checklist_completed_ids || [];
+    const completed = existing.includes(checklistId) ? existing : [...existing, checklistId];
+    await supabase.from('missions').update({ checklist_completed_ids: completed }).eq('id', checklistMission.id);
+    setChecklistMission(prev => prev ? { ...prev, checklist_completed_ids: completed } : prev);
+    fetchMissions();
+  };
+
   const submitMissionForApproval = async (missionId: string) => {
     const missionToApprove = missions.find((m: any) => m.id === missionId);
 
@@ -343,23 +356,41 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                         {t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })}
                       </Badge>
                     )}
-                    {shouldShowAIRiskBadge(missionAIRisks[mission.id]) && (
-                      <Badge 
+                    <Badge 
+                      variant="outline"
+                      className={`${missionAIRisks[mission.id] ? getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation) : 'bg-gray-500/20 text-gray-900 border-gray-500/30'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAIRiskMission({ ...mission, aiRisk: missionAIRisks[mission.id] || null });
+                        setRiskDialogInitialTab(missionAIRisks[mission.id] ? 'history' : 'input');
+                        setRiskDialogOpen(true);
+                      }}
+                    >
+                      <Brain className="w-3 h-3 mr-1" />
+                      {missionAIRisks[mission.id] ? missionAIRisks[mission.id].overall_score.toFixed(1) : 'Risiko'}
+                    </Badge>
+                    {mission.checklist_ids?.length > 0 && (
+                      <Badge
                         variant="outline"
-                        className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
+                        className={`${mission.checklist_ids.every((id: string) => mission.checklist_completed_ids?.includes(id)) ? 'bg-green-500/20 text-green-900 border-green-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedAIRiskMission({ ...mission, aiRisk: missionAIRisks[mission.id] });
-                          setRiskDialogInitialTab('history');
-                          setRiskDialogOpen(true);
+                          setChecklistMission(mission);
                         }}
                       >
-                        <Brain className="w-3 h-3 mr-1" />
-                        {missionAIRisks[mission.id].overall_score.toFixed(1)}
+                        <ClipboardCheck className="w-3 h-3 mr-1" />
+                        Sjekkliste
                       </Badge>
                     )}
                     {mission.notam_text && (
-                      <Badge variant="outline" className={`${getNotamBadgeColor(!!mission.notam_submitted_at)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
+                      <Badge
+                        variant="outline"
+                        className={`${getNotamBadgeColor(!!mission.notam_submitted_at)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNotamMission(mission);
+                        }}
+                      >
                         <Radio className="w-3 h-3 mr-1" />
                         NOTAM
                       </Badge>
@@ -423,6 +454,22 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         mission={selectedAIRiskMission || soraMissionForDialog}
         initialTab={riskDialogInitialTab}
         onSoraSaved={fetchMissions}
+      />
+
+      <ChecklistExecutionDialog
+        open={!!checklistMission}
+        onOpenChange={(open) => !open && setChecklistMission(null)}
+        checklistIds={checklistMission?.checklist_ids || []}
+        completedIds={checklistMission?.checklist_completed_ids || []}
+        itemName={checklistMission?.tittel || 'Oppdrag'}
+        onComplete={handleChecklistCompleted}
+      />
+
+      <NotamDialog
+        open={!!notamMission}
+        onOpenChange={(open) => !open && setNotamMission(null)}
+        mission={notamMission}
+        onSaved={fetchMissions}
       />
 
       <AlertDialog open={!!approvalConfirmMissionId} onOpenChange={(open) => !open && setApprovalConfirmMissionId(null)}>
