@@ -675,8 +675,6 @@ export const MissionCard = ({
         </div>
       )}
 
-      <MissionSoraRouteDocumentation route={mission.route} />
-
       {/* Incidents Section */}
       {mission.incidents?.length > 0 && (
         <div className="pt-2 border-t border-border/50">
@@ -817,6 +815,7 @@ export const MissionCard = ({
           </div>
         </div>
       )}
+      <MissionSoraRouteDocumentation route={mission.route} />
     </GlassCard>
 
     <AlertDialog open={ninoxConfirmOpen} onOpenChange={setNinoxConfirmOpen}>
