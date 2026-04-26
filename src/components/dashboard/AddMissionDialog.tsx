@@ -31,14 +31,12 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
-import { createSoraDocumentationPdf } from "@/lib/soraDocumentationPdf";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
   totalDistance: number;
   soraSettings?: any;
   adjacentAreaDocumentation?: any;
-  _createSoraDocumentation?: boolean;
 }
 
 interface AddMissionDialogProps {
@@ -438,27 +436,7 @@ export const AddMissionDialog = ({
         throw new Error("Kunne ikke hente brukerinformasjon");
       }
 
-      const createSoraDocIfNeeded = async (missionId: string) => {
-        if (!routeData?._createSoraDocumentation) return;
-        try {
-          const created = await createSoraDocumentationPdf({
-            missionId,
-            missionTitle: formData.tittel,
-            missionTime: formData.tidspunkt,
-            companyId: profile.company_id,
-            userId: user.id,
-            route: routeData as any,
-          });
-          if (created) toast.success("SORA beregningsgrunnlag lagret som dokument på oppdraget");
-        } catch (docError) {
-          console.error("Could not create SORA documentation:", docError);
-          toast.warning("Oppdraget ble lagret, men SORA-dokumentasjonen kunne ikke opprettes");
-        }
-      };
-      const routeForStorage = routeData ? (() => {
-        const { _createSoraDocumentation, ...cleanRoute } = routeData as any;
-        return cleanRoute;
-      })() : routeData;
+      const routeForStorage = routeData;
 
       if (mission) {
         // UPDATE mode
@@ -593,8 +571,6 @@ export const AddMissionDialog = ({
           if (documentsError) throw documentsError;
         }
 
-        await createSoraDocIfNeeded(mission.id);
-
         // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
           const checklistDocIds = selectedDocuments.filter(id => {
@@ -723,8 +699,6 @@ export const AddMissionDialog = ({
           
           if (documentsError) throw documentsError;
         }
-
-        await createSoraDocIfNeeded(createdMission.id);
 
         // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
