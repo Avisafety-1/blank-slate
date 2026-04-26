@@ -33,10 +33,11 @@ interface DocumentDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   document: Document | null;
   status: string;
+  canManage?: boolean;
 }
 
-export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: DocumentDetailDialogProps) => {
-  const { user, ensureValidToken, isAdmin } = useAuth();
+export const DocumentDetailDialog = ({ open, onOpenChange, document, status, canManage }: DocumentDetailDialogProps) => {
+  const { user, ensureValidToken, isAdmin, isSuperAdmin, companyId } = useAuth();
   const [downloading, setDownloading] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
@@ -90,6 +91,9 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
   const fileTypeInfo = getFileTypeInfo(document?.fil_navn);
   
   if (!document) return null;
+
+  const ownsDocument = !document.company_id || document.company_id === companyId;
+  const canManageDocument = canManage ?? (isAdmin && (ownsDocument || isSuperAdmin));
 
   const handleOpenDocument = async () => {
     try {
@@ -183,7 +187,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
   };
 
   const handleUpdateExpiryDate = async () => {
-    if (!document.id || !editedDate) return;
+    if (!document.id || !editedDate || !canManageDocument) return;
 
     try {
       const { error } = await supabase
@@ -205,7 +209,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
   };
 
   const handleDeleteDocument = async () => {
-    if (!document.id || deleting) return;
+    if (!document.id || deleting || !canManageDocument) return;
     if (!document.fil_url && !document.nettside_url) return;
 
     setDeleting(true);
@@ -306,7 +310,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
                 <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground">Gyldig til</p>
-                  {isEditing && isAdmin ? (
+                  {isEditing && canManageDocument ? (
                     <div className="flex gap-2 items-center mt-1">
                       <Input
                         type="date"
@@ -326,7 +330,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
                       <p className="text-base">
                         {format(document.gyldig_til, "dd. MMMM yyyy", { locale: nb })}
                       </p>
-                      {isAdmin && (
+                      {canManageDocument && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -495,7 +499,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status }: D
                 )}
               </div>
               
-              {isAdmin && (
+              {canManageDocument && (
                 <Button
                   variant="destructive"
                   className="w-full"
