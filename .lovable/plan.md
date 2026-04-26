@@ -1,42 +1,58 @@
-Dette bør ikke ta stor plass hvis vi gjør det som en kompakt PDF/JSON-basert dokumentasjon ved lagring. Typisk størrelse blir sannsynligvis ca. 50–300 KB per dokument, avhengig av om vi inkluderer kartbilde. Uten kartbilde er det ofte svært lite. Selv ved 1 000 oppdrag er dette normalt bare titalls til noen hundre MB. Det som virkelig kan ta plass er skjermbilder/kartbilder i høy oppløsning; derfor bør dokumentasjonen starte som en tekstlig/tablåbasert PDF og eventuelt ett komprimert kartbilde senere.
-
 Plan:
 
-1. Utvid rutens lagrede SORA-data
-- Når brukeren har aktivert «SORA volum» og/eller «Tilstøtende», lagres ikke bare selve SORA-innstillingene, men også et lite dokumentasjonsgrunnlag sammen med ruten.
-- For tilstøtende områder lagres resultatet som allerede beregnes i UI: radius, areal, total befolkning, gjennomsnittlig tetthet, SORA-kategori, UA size, SAIL, outdoor assemblies, containment-krav og datakilde.
-- Dette unngår at dokumentet må gjenskape beregningen senere med andre data.
+1. Slutt å opprette automatisk SORA-PDF som dokument
+- Fjerne kallene som genererer og laster opp `SORA beregningsgrunnlag` som PDF ved lagring av oppdrag/rute.
+- Beholde selve beregningsgrunnlaget i `missions.route`, fordi det allerede oppdateres når ruten lagres på nytt.
+- Fjerne den interne `_createSoraDocumentation`-flaggen fra lagringsflyten slik at den ikke brukes til dokumentoppretting.
 
-2. Lag en egen PDF-generator for SORA-grunnlag
-- Opprett en funksjon som lager en kompakt PDF med:
-  - Oppdragstittel, dato, rute-/operasjonsinformasjon
-  - SORA volum: Flight Geography, Contingency, Ground Risk Buffer, høyde, buffer-modus
-  - Dronegrunnlag: valgt drone, CD, V0/ground speed, UA size
-  - Tilstøtende områder: beregningsradius, areal, innbyggere, tetthet, SORA-kategori, SAIL, outdoor assemblies og required containment
-  - Kilder/metode: JARUS SORA 2.5, CAA Norway SORA 2.5 calculator-logikk, SSB 250m befolkningsrutenett, samt tidspunkt for generering
-- Dokumentet lagres som PDF i eksisterende `documents` storage-bøtte.
+2. Lag en felles tekstvisning for SORA buffer og tilstøtende områder
+- Opprette en liten gjenbrukbar komponent, f.eks. `MissionSoraRouteDocumentation`, som leser fra `mission.route.soraSettings` og `mission.route.adjacentAreaDocumentation`.
+- Vise den som en ekspanderbar seksjon med tittel som f.eks. `SORA buffer og tilstøtende områder`.
+- Innhold ved SORA volum:
+  - Flight Geography
+  - Contingency buffer
+  - Contingency høyde
+  - Ground Risk Buffer
+  - Flyhøyde
+  - Buffermodus
+  - Drone/CD/V0 hvis lagret
+- Innhold ved tilstøtende områder:
+  - Tilstøtende radius
+  - Areal
+  - Innbyggere funnet
+  - Gjennomsnittlig tetthet
+  - Grense/kategori
+  - UA Size
+  - SAIL
+  - Outdoor assemblies
+  - Required containment
+  - Resultat/status
+  - Beregnet tidspunkt
+- Dersom bare én av funksjonene er brukt, vises bare den relevante delen.
 
-3. Koble PDF-en automatisk til oppdraget ved lagring
-- Når man trykker «Lagre» i ruteplanleggeren og ruten returneres til/opprettes på oppdraget, opprettes dokumentet bare dersom:
-  - SORA volum er huket av, og/eller
-  - Tilstøtende områder er huket av og har beregningsresultat
-- Etter opprettelse legges dokumentet inn i `documents` og kobles til oppdraget via `mission_documents`.
-- Tittel kan f.eks. være: `SORA beregningsgrunnlag - [oppdragstittel]`.
+3. Plasser seksjonen nederst på oppdraget
+- På oppdragskort/listen: legge inn en kompakt ekspanderbar rad nederst på hvert oppdragskort når ruten har SORA- eller tilstøtende-data.
+- I oppdragsdetaljdialogen: legge inn samme seksjon nederst i dialogen, etter eksisterende innhold/kommentarer, så brukeren kan se hele beregningsgrunnlaget uten å åpne dokumenter.
+- Stoppe klikk-bobling på ekspander-knappen slik at man ikke utilsiktet åpner hele oppdraget når man bare vil utvide beregningsgrunnlaget i kortet.
 
-4. Unngå unødvendig lagringsvekst og duplikater
-- Ved nyopprettelse: lag ett dokument per lagret oppdrag dersom SORA/tilstøtende er aktivert.
-- Ved senere ruteendring på eksisterende oppdrag: enten erstatte/arkivere forrige SORA-grunnlag eller lage ny versjon. Anbefalt start: lage ny versjon bare når ruten faktisk lagres på nytt, slik at historikken bevares.
-- Dokumentet bør ikke genereres bare fordi man skrur brytere av/på eller beregner i panelet; kun ved faktisk «Lagre».
+4. Sørg for at redigering av rute oppdaterer verdiene
+- Når ruten redigeres og lagres fra kartet, lagres ny `soraSettings` og ny `adjacentAreaDocumentation` direkte på `missions.route`.
+- Dersom SORA/tilstøtende er slått av ved ny lagring, fjernes de relevante lagrede feltene fra ruten.
+- Oppdragslisten/detaljdialogen refresher allerede etter lagring; seksjonen vil derfor vise siste lagrede verdier.
 
-5. UI-feedback
-- Etter lagring vises en toast, f.eks. «SORA beregningsgrunnlag lagret som dokument på oppdraget».
-- Hvis PDF-oppretting feiler etter at oppdraget er lagret, skal oppdraget fortsatt lagres, men brukeren får beskjed om at dokumentasjonen ikke kunne opprettes.
+5. Ta med ny funksjon i oppdragseksport til PDF
+- Utvide eksisterende `src/lib/oppdragPdfExport.ts` slik at `sections.sora` også inkluderer ruteplanens SORA buffer-/tilstøtende-grunnlag.
+- Legge dette inn som en tabell i oppdragsrapporten, uavhengig av om oppdraget også har en manuell SORA-analyse i `mission_sora`.
+- Bruke samme label-logikk som i UI for UA Size, tetthetskategori og outdoor assemblies.
 
 Tekniske detaljer:
 - Berørte filer sannsynligvis:
-  - `src/pages/Kart.tsx` for å ta med `showAdjacentArea` og `adjacentResult` i rutedata ved lagring.
-  - `src/types/map.ts` for å utvide `RouteData` med valgfri `adjacentAreaResult`/dokumentasjonsmetadata.
-  - `src/components/dashboard/AddMissionDialog.tsx` for å opprette PDF og koble den til nyopprettet/oppdatert oppdrag etter at `missions`-raden finnes.
-  - Ny fil, f.eks. `src/lib/soraDocumentationPdf.ts`, for selve PDF-genereringen og opplasting til `documents`.
-- Ingen databaseskjemaendring ser nødvendig ut, fordi eksisterende `documents` og `mission_documents` allerede dekker lagring og kobling.
-- For lagringsplass velges PDF uten tungt kartbilde i første versjon. Det gir liten filstørrelse og god revisjonssporing.
+  - `src/pages/Kart.tsx`
+  - `src/components/dashboard/AddMissionDialog.tsx`
+  - `src/components/dashboard/MissionsSection.tsx`
+  - `src/components/dashboard/MissionDetailDialog.tsx`
+  - `src/lib/oppdragPdfExport.ts`
+  - ny komponent, f.eks. `src/components/dashboard/MissionSoraRouteDocumentation.tsx`
+- `src/lib/soraDocumentationPdf.ts` kan stå ubrukt eller fjernes. Jeg anbefaler å fjerne/avkoble den fra flyten nå, siden ønsket funksjon ikke lenger skal opprette dokumenter.
+- Ingen databaseskjemaendring er nødvendig, fordi dataene allerede kan lagres på `missions.route` som JSON.
+- Eksisterende dokumenter som allerede er opprettet tidligere slettes ikke automatisk; dette unngår utilsiktet datatap. Nye oppdrag/ruteendringer vil ikke opprette nye SORA-PDF-dokumenter.
