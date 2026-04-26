@@ -146,6 +146,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [fh2Connected, setFh2Connected] = useState(false);
   const [fh2Projects, setFh2Projects] = useState<string[]>([]);
   const [fh2Inherited, setFh2Inherited] = useState(false);
+  const fh2Locked = isChildDept && !!inherited?.propagate_fh2_credentials;
 
   const fetchFlightAlerts = useCallback(async () => {
     if (!companyId) return;
