@@ -453,6 +453,30 @@ export const exportToPDF = async (
       yPos = (pdf as any).lastAutoTable.finalY + 10;
     }
     
+    // SORA route documentation
+    const routeSoraRows = getRouteSoraRows(mission.route as any);
+    if (sections.sora && routeSoraRows.length > 0) {
+      if (yPos > 230) {
+        pdf.addPage();
+        yPos = 20;
+      }
+
+      pdf.setFontSize(12);
+      setFontStyle(pdf, "bold");
+      pdf.text("SORA buffer og tilstøtende områder", 15, yPos);
+      yPos += 7;
+
+      autoTable(pdf, {
+        startY: yPos,
+        head: [],
+        body: routeSoraRows.map(([label, value]) => [sanitizeForPdf(label), sanitizeForPdf(value)]),
+        theme: "grid",
+        styles: { fontSize: 9, font: getPdfFontName() },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 55 }, 1: { cellWidth: pageWidth - 85 } }
+      });
+      yPos = (pdf as any).lastAutoTable.finalY + 10;
+    }
+
     // SORA
     if (sections.sora && mission.sora) {
       if (yPos > 250) {
