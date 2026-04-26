@@ -356,23 +356,41 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                         {t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })}
                       </Badge>
                     )}
-                    {shouldShowAIRiskBadge(missionAIRisks[mission.id]) && (
-                      <Badge 
+                    <Badge 
+                      variant="outline"
+                      className={`${missionAIRisks[mission.id] ? getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation) : 'bg-gray-500/20 text-gray-900 border-gray-500/30'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAIRiskMission({ ...mission, aiRisk: missionAIRisks[mission.id] || null });
+                        setRiskDialogInitialTab(missionAIRisks[mission.id] ? 'history' : 'input');
+                        setRiskDialogOpen(true);
+                      }}
+                    >
+                      <Brain className="w-3 h-3 mr-1" />
+                      {missionAIRisks[mission.id] ? missionAIRisks[mission.id].overall_score.toFixed(1) : 'Risiko'}
+                    </Badge>
+                    {mission.checklist_ids?.length > 0 && (
+                      <Badge
                         variant="outline"
-                        className={`${getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
+                        className={`${mission.checklist_ids.every((id: string) => mission.checklist_completed_ids?.includes(id)) ? 'bg-green-500/20 text-green-900 border-green-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedAIRiskMission({ ...mission, aiRisk: missionAIRisks[mission.id] });
-                          setRiskDialogInitialTab('history');
-                          setRiskDialogOpen(true);
+                          setChecklistMission(mission);
                         }}
                       >
-                        <Brain className="w-3 h-3 mr-1" />
-                        {missionAIRisks[mission.id].overall_score.toFixed(1)}
+                        <ClipboardCheck className="w-3 h-3 mr-1" />
+                        Sjekkliste
                       </Badge>
                     )}
                     {mission.notam_text && (
-                      <Badge variant="outline" className={`${getNotamBadgeColor(!!mission.notam_submitted_at)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
+                      <Badge
+                        variant="outline"
+                        className={`${getNotamBadgeColor(!!mission.notam_submitted_at)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNotamMission(mission);
+                        }}
+                      >
                         <Radio className="w-3 h-3 mr-1" />
                         NOTAM
                       </Badge>
