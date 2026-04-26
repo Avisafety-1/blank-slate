@@ -32,6 +32,10 @@ import {
   formatAIRiskScore,
   getApprovalStatusColor,
   getSoraBadgeColor,
+  canSubmitForApproval,
+  shouldShowAIRiskBadge,
+  shouldShowApprovalBadge,
+  shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
@@ -200,28 +204,22 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               latitude={currentMission.latitude}
               longitude={currentMission.longitude}
             />
-            {showApproval && currentMission.approval_status === 'pending_approval' && (
-              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('pending_approval')}`}>
-                <Clock className="h-3 w-3 mr-1" />
-                Venter godkjenning
-              </Badge>
-            )}
-            {showApproval && currentMission.approval_status === 'approved' && (
-              <Badge variant="outline" className={`text-xs ${getApprovalStatusColor('approved')}`}>
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Godkjent
-              </Badge>
-            )}
-            {showApproval && (!currentMission.approval_status || currentMission.approval_status === 'not_approved') && (
-              <Badge 
-                variant="outline" 
-                className={`text-xs ${getApprovalStatusColor('not_approved')} cursor-pointer hover:opacity-80 transition-opacity`}
-                onClick={() => setApprovalConfirmOpen(true)}
-              >
-                Ikke godkjent – Send til godkjenning
-              </Badge>
-            )}
-            {currentMission.aiRisk ? (
+            {shouldShowApprovalBadge(showApproval, currentMission.approval_status) && (() => {
+              const approvalStatus = currentMission.approval_status || 'not_approved';
+              const approvalClickable = canSubmitForApproval(currentMission.approval_status);
+              return (
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${getApprovalStatusColor(approvalStatus)} ${approvalClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                  onClick={approvalClickable ? () => setApprovalConfirmOpen(true) : undefined}
+                >
+                  {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
+                  {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                  {approvalStatus === 'pending_approval' ? 'Venter godkjenning' : approvalStatus === 'approved' ? 'Godkjent' : 'Ikke godkjent'}
+                </Badge>
+              );
+            })()}
+            {shouldShowAIRiskBadge(currentMission.aiRisk) && (
               <Badge 
                 className={`${getAIRiskBadgeColor(currentMission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}
                 onClick={() => {
@@ -232,23 +230,20 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 <Brain className="w-3 h-3 mr-1" />
                 AI: {getAIRiskLabel(currentMission.aiRisk.recommendation)} ({formatAIRiskScore(currentMission.aiRisk.overall_score)})
               </Badge>
-            ) : (
-              <Badge variant="outline" className="bg-gray-500/20 text-gray-900 border-gray-500/30">
-                <Brain className="w-3 h-3 mr-1" />
-                Risiko: Ikke vurdert
+            )}
+            {shouldShowSoraBadge(soraStatus) && (
+              <Badge 
+                variant="outline"
+                className={`cursor-pointer hover:opacity-80 transition-opacity ${getSoraBadgeColor(soraStatus)}`}
+                onClick={() => {
+                  setRiskDialogInitialTab('manual-sora');
+                  setRiskDialogOpen(true);
+                }}
+              >
+                <ShieldCheck className="w-3 h-3 mr-1" />
+                SORA: {soraStatus}
               </Badge>
             )}
-            <Badge 
-              variant="outline"
-              className={`cursor-pointer hover:opacity-80 transition-opacity ${getSoraBadgeColor(soraStatus || 'Ikke startet')}`}
-              onClick={() => {
-                setRiskDialogInitialTab('manual-sora');
-                setRiskDialogOpen(true);
-              }}
-            >
-              <ShieldCheck className="w-3 h-3 mr-1" />
-              SORA: {soraStatus || 'Ikke startet'}
-            </Badge>
             {has5kmZone && (
               <Badge
                 className={`border cursor-pointer hover:opacity-80 transition-opacity ${
