@@ -42,11 +42,19 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
   const [isExpanded, setIsExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const normalizeWarning = (warning: AirspaceWarning): AirspaceWarning => {
+    if (warning.zone_type === '5KM' && warning.is_inside) {
+      return { ...warning, level: 'warning' };
+    }
+    return warning;
+  };
+
   // Use cached warnings if available — skip RPC entirely
   useEffect(() => {
     if (cachedWarnings && cachedWarnings.length > 0) {
-      setWarnings(cachedWarnings);
-      onAirspaceResult?.(cachedWarnings);
+      const normalizedWarnings = cachedWarnings.map(normalizeWarning);
+      setWarnings(normalizedWarnings);
+      onAirspaceResult?.(normalizedWarnings);
       setLoading(false);
       return;
     }
@@ -89,9 +97,14 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
         const warningsArray: AirspaceWarning[] = rawArray.map((r) => {
           // Severity hierarchy: inside a zone is more severe, nearby is one step less
           const baseSeverity = r.severity; // WARNING, CAUTION, or INFO from DB
+          const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
+          const is5km = r.z_type === '5KM';
           let level: AirspaceWarning["level"];
           
-          if (r.route_inside) {
+          if (is5km && r.route_inside) {
+            // Inside a 5 km RPAS/Ninox approval zone must always be a red warning.
+            level = "warning";
+          } else if (r.route_inside) {
             // Inside: WARNING stays warning, CAUTION stays caution, INFO→caution
             level = baseSeverity === "WARNING" ? "warning" : "caution";
           } else {
@@ -100,9 +113,6 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
           }
           const distMeters = Math.round(r.min_distance);
           let message: string;
-
-          const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
-          const is5km = r.z_type === '5KM';
 
           if (isCtrOrTiz) {
             if (r.route_inside) {
