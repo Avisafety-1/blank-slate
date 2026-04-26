@@ -1649,7 +1649,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               </div>
               <div className="flex items-center gap-2">
                 {fh2Connected && (
-                  <Badge variant="default" className="text-xs bg-green-600">
+                  <Badge variant="default" className="text-xs">
                     {fh2Inherited ? "Arvet tilkobling" : "Tilkoblet"}
                   </Badge>
                 )}
@@ -1660,17 +1660,25 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           <CollapsibleContent className="mt-4">
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label className="text-xs">Organisasjonsnøkkel (FlightHub Sync)</Label>
+                <Label className="text-xs flex items-center gap-1.5">
+                  Organisasjonsnøkkel (FlightHub Sync)
+                  {fh2Locked && (
+                    <Badge variant="secondary" className="text-[10px] gap-1">
+                      <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                    </Badge>
+                  )}
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     type={fh2ShowToken ? "text" : "password"}
                     value={fh2Token}
                     onChange={(e) => setFh2Token(e.target.value)}
                     onFocus={() => { if (fh2Token === FH2_MASK) { fh2Editing.current = true; setFh2Token(""); } }}
-                    placeholder="Lim inn FlightHub Sync-nøkkel..."
+                    placeholder={fh2Locked ? "Arves fra morselskapet" : "Lim inn FlightHub Sync-nøkkel..."}
                     className="h-8 text-sm font-mono"
+                    disabled={fh2Locked}
                   />
-                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)}>
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)} disabled={fh2Locked}>
                     {fh2ShowToken ? "Skjul" : "Vis"}
                   </Button>
                 </div>
@@ -1680,22 +1688,39 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               </div>
 
               <div className="flex gap-2">
-                {fh2Token && fh2Token !== FH2_MASK && (
+                {!fh2Locked && fh2Token && fh2Token !== FH2_MASK && (
                   <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
                     {savingFh2 ? "Lagrer..." : "Lagre"}
                   </Button>
                 )}
-                {fh2Token === FH2_MASK && (
+                {(fh2Token === FH2_MASK || fh2Locked) && (
                   <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2} className="h-8">
                     {testingFh2 ? "Tester..." : "Test tilkobling"}
                   </Button>
                 )}
-                {fh2Connected && (
+                {!fh2Locked && fh2Connected && (
                   <Button variant="destructive" size="sm" onClick={handleDeleteFh2} disabled={savingFh2} className="h-8">
                     <Trash2 className="h-3.5 w-3.5 mr-1" /> Slett
                   </Button>
                 )}
               </div>
+
+              {!isChildDept && departmentsEnabled && (
+                <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                  <Label htmlFor="apply-fh2-children" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert arver underavdelinger FlightHub 2-nøkkelen fra morselskapet og kan ikke overstyre den.
+                    </div>
+                  </Label>
+                  <Switch
+                    id="apply-fh2-children"
+                    checked={applyFh2ToChildren}
+                    onCheckedChange={handleToggleApplyFh2ToChildren}
+                    disabled={savingSettings}
+                  />
+                </div>
+              )}
 
               {fh2Connected && (
                 <div className="space-y-3">
