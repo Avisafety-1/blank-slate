@@ -84,6 +84,9 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         nettside_url: data.nettside_url || undefined,
         beskrivelse: data.beskrivelse,
         merknader: undefined,
+        company_id: data.company_id,
+        visible_to_children: data.visible_to_children ?? false,
+        global_visibility: data.global_visibility ?? false,
       };
       setSelectedDocument(doc);
       setDocDetailOpen(true);
