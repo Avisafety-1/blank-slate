@@ -45,7 +45,7 @@ export const MissionSoraRouteDocumentation = ({ route, compact = false, classNam
       { label: "Ground Risk Buffer", value: fmt(sora.groundRiskDistance, 0, " m") },
       { label: "Flyhøyde", value: fmt(sora.flightAltitude, 0, " m AGL") },
       { label: "Buffermodus", value: sora.bufferMode === "convexHull" ? "Konveks" : "Rute-korridor" },
-      { label: "Drone", value: sora.droneId ? "Valgt i ruteplanlegger" : "Ikke valgt" },
+      { label: "Drone", value: sora.droneName || (sora.droneId ? "Valgt i ruteplanlegger" : "Ikke valgt") },
       { label: "CD", value: fmt(sora.characteristicDimensionM, 2, " m") },
       { label: "V0 / bakkehastighet", value: fmt(sora.groundSpeedMps, 1, " m/s") },
     );

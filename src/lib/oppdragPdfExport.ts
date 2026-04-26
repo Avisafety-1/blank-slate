@@ -33,7 +33,7 @@ const getRouteSoraRows = (route: any): string[][] => {
       ["Ground Risk Buffer", fmtRouteDocNumber(sora.groundRiskDistance, 0, " m")],
       ["Flyhøyde", fmtRouteDocNumber(sora.flightAltitude, 0, " m AGL")],
       ["Buffermodus", sora.bufferMode === "convexHull" ? "Konveks" : "Rute-korridor"],
-      ["Drone", sora.droneId ? "Valgt i ruteplanlegger" : "Ikke valgt"],
+      ["Drone", sora.droneName || (sora.droneId ? "Valgt i ruteplanlegger" : "Ikke valgt")],
       ["CD", fmtRouteDocNumber(sora.characteristicDimensionM, 2, " m")],
       ["V0 / bakkehastighet", fmtRouteDocNumber(sora.groundSpeedMps, 1, " m/s")],
     );
