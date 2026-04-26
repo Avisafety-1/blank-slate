@@ -22,7 +22,7 @@ interface Folder {
 }
 
 const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: FolderGridProps) => {
-  const [selectedFolder, setSelectedFolder] = useState<{ id: string; name: string } | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const { companyId: userCompanyId } = useAuth();
 
@@ -93,6 +93,7 @@ const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: Fold
         onOpenChange={setDetailOpen}
         onRefresh={refetch}
         isAdmin={isAdmin}
+        canManage={isAdmin && !selectedFolder?.inherited}
       />
     </>
   );
