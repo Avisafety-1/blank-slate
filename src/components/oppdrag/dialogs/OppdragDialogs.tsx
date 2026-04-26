@@ -308,7 +308,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                 ...(mission?.personnel?.length > 0 ? ['personnel'] : []),
                 ...(mission?.drones?.length > 0 ? ['drones'] : []),
                 ...(mission?.equipment?.length > 0 ? ['equipment'] : []),
-                ...(mission?.sora ? ['sora'] : []),
+                ...((mission?.sora || (mission?.route as any)?.soraSettings?.enabled || (mission?.route as any)?.adjacentAreaDocumentation?.enabled) ? ['sora'] : []),
                 ...(mission?.aiRisk ? ['riskAssessment'] : []),
                 ...(mission?.incidents?.length > 0 ? ['incidents'] : []),
                 ...(mission?.flightLogs?.length > 0 ? ['flightLogs'] : []),
