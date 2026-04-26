@@ -456,6 +456,22 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         onSoraSaved={fetchMissions}
       />
 
+      <ChecklistExecutionDialog
+        open={!!checklistMission}
+        onOpenChange={(open) => !open && setChecklistMission(null)}
+        checklistIds={checklistMission?.checklist_ids || []}
+        completedIds={checklistMission?.checklist_completed_ids || []}
+        itemName={checklistMission?.tittel || 'Oppdrag'}
+        onComplete={handleChecklistCompleted}
+      />
+
+      <NotamDialog
+        open={!!notamMission}
+        onOpenChange={(open) => !open && setNotamMission(null)}
+        mission={notamMission}
+        onSaved={fetchMissions}
+      />
+
       <AlertDialog open={!!approvalConfirmMissionId} onOpenChange={(open) => !open && setApprovalConfirmMissionId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
