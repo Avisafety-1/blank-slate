@@ -21,6 +21,10 @@ export interface Document {
   fil_url?: string;
   fil_navn?: string;
   nettside_url?: string;
+  company_id?: string | null;
+  company_name?: string | null;
+  visible_to_children?: boolean | null;
+  global_visibility?: boolean | null;
 }
 
 export type PersonRole = "Pilot" | "Tekniker" | "Operativ leder" | "Observatør" | "Annet";

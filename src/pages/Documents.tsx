@@ -31,6 +31,10 @@ export interface Document {
   opprettet_dato: string;
   oppdatert_dato: string | null;
   opprettet_av: string | null;
+  company_id?: string | null;
+  company_name?: string | null;
+  visible_to_children?: boolean | null;
+  global_visibility?: boolean | null;
 }
 
 const getDocumentStatus = (doc: Document): DocumentStatusFilter => {
@@ -222,6 +226,7 @@ const Documents = () => {
               onDeleteSuccess={handleDeleteSuccess}
               isAdmin={isAdmin}
               isCreating={isCreating}
+              isOwnerCompany={isCreating || selectedDocument?.company_id === companyId}
             />
           </div>
         </main>
