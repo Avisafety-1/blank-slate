@@ -253,8 +253,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <Badge
                 className={`border cursor-pointer hover:opacity-80 transition-opacity ${
                   ninoxApproved
-                    ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30'
-                    : 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30'
+                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
+                    : 'bg-red-500/20 text-red-900 border-red-500/30'
                 }`}
                 onClick={() => { if (!ninoxApproved) setNinoxConfirmOpen(true); }}
               >
