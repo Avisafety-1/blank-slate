@@ -2736,7 +2736,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 ? 'Et oppdrag matcher tidspunktet for denne flyloggen:'
                 : `${matchedMissions.length} oppdrag matcher tidspunktet. Velg hvilket oppdrag flyloggen tilhører:`}
             </p>
-            <RadioGroup value={selectedMissionId} onValueChange={(val) => { setSelectedMissionId(val); setMatchedLog(null); }}>
+            <RadioGroup value={selectedMissionId} onValueChange={(val) => { setSelectedMissionId(val); setMatchedLog(null); setSelectedFlightLogChoice(''); }}>
               {matchedMissions.map((m) => (
                 <label key={m.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
                   <RadioGroupItem value={m.id} />
@@ -2767,8 +2767,9 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
               <p className="text-xs text-muted-foreground mb-2">Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.</p>
             )}
             <RadioGroup
-              value={matchedLog ? matchedLog.id : '__new_flight__'}
+              value={selectedFlightLogChoice || (matchedLog ? matchedLog.id : '__new_flight__')}
               onValueChange={(val) => {
+                setSelectedFlightLogChoice(val);
                 if (val === '__new_flight__') {
                   setMatchedLog(null);
                 } else {
@@ -2843,9 +2844,9 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => {
             if (selectedPendingLogId) {
-              setSelectedPendingLogId(null); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId('');
+              setSelectedPendingLogId(null); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); setSelectedFlightLogChoice('');
             } else {
-              setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId('');
+              setStep('method'); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); setSelectedFlightLogChoice('');
             }
           }}>{t('actions.back')}</Button>
           {matchedLog ? (
