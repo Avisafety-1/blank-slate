@@ -41,6 +41,7 @@ export interface SoraSettings {
   groundRiskDistance: number;
   bufferMode?: "corridor" | "convexHull";
   droneId?: string;
+  droneName?: string;
   characteristicDimensionM?: number;
   groundSpeedMps?: number;
 }

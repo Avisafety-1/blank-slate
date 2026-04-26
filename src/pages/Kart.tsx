@@ -98,6 +98,7 @@ export default function KartPage() {
           setSoraDroneMaxSpeed(catalogSpeed);
           setSoraSettings(prev => prev.droneId === soraDroneId ? {
             ...prev,
+            droneName: data.modell,
             characteristicDimensionM: model?.characteristic_dimension_m ?? prev.characteristicDimensionM,
             groundSpeedMps: catalogSpeed ?? prev.groundSpeedMps,
           } : prev);
