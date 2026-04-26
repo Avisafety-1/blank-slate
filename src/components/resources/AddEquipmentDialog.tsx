@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addDays, format } from "date-fns";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
@@ -43,6 +43,13 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const { checklists } = useChecklists();
   const equipmentTypes = useEquipmentTypes(companyId, open);
+  const selectableEquipmentTypes = useMemo(() => {
+    const values = [...equipmentTypes];
+    if (defaultValues?.type && !values.some((type) => type.toLowerCase() === defaultValues.type!.toLowerCase())) {
+      values.unshift(defaultValues.type);
+    }
+    return values;
+  }, [equipmentTypes, defaultValues?.type]);
 
   useEffect(() => {
     const fetchCompanyId = async () => {
@@ -120,7 +127,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
         user_id: userId,
         company_id: companyId,
         navn: formData.get("navn") as string,
-        type: selectedType === "__other__" ? customType : selectedType,
+        type: typeValue,
         serienummer: (formData.get("serienummer") as string) || '',
         internal_serial: internalSerial || null,
         status: (formData.get("status") as string) || "Grønn",
@@ -186,7 +193,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
                   <SelectValue placeholder="Velg type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {equipmentTypes.map((t) => (
+                  {selectableEquipmentTypes.map((t) => (
                     <SelectItem key={t} value={t}>{t}</SelectItem>
                   ))}
                   <SelectItem value="__other__">Annet...</SelectItem>
