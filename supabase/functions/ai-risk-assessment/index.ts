@@ -1099,6 +1099,12 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         nextInspection: droneData.neste_inspeksjon,
         available: droneData.tilgjengelig,
         class: droneData.klasse,
+        catalogModel: droneCatalogMatch?.name ?? null,
+        category: droneCatalogMatch?.category ?? null,
+        characteristicDimensionM: primaryDroneCharacteristicDimensionM,
+        maxSpeedMps: droneCatalogMatch?.max_speed_mps ?? null,
+        weightKg: droneCatalogMatch?.weight_kg ?? droneData.vekt ?? null,
+        alos: deterministicAlos,
       } : null,
       pilotInputs: pilotInputs || {},
       landUse: landUseData,
@@ -1401,6 +1407,9 @@ Hvis operasjonen IKKE kan utføres i Åpen eller STS → SORA er påkrevd.
 Beregn maks VLOS-avstand (ALOS = Attitude Line of Sight):
 - Multirotor/helikopter: ALOS = 327 × CD + 20m (CD = karakteristisk dimensjon i meter)
 - Fastvinget fly: ALOS = 490 × CD + 30m
+- Bruk ALLTID primaryDrone.characteristicDimensionM når den finnes. Ikke estimer CD hvis denne verdien er oppgitt.
+- Hvis primaryDrone.alos finnes, bruk nøyaktig primaryDrone.alos.alosMaxM og primaryDrone.alos.alosCalculation i operation_classification.
+- Hvis CD ikke finnes i dronemodell-katalogen, skriv tydelig at CD er estimert.
 
 #### Buffersone-sjekk
 Sjekk om oppdraget har SORA-buffersoner beregnet. Se etter mission.route.soraSettings:
