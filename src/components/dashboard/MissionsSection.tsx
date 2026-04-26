@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio } from "lucide-react";
+import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -20,6 +20,8 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
+import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
+import { NotamDialog } from "./NotamDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   statusColors,
@@ -60,6 +62,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const [selectedAIRiskMission, setSelectedAIRiskMission] = useState<Mission | null>(null);
   const [approvalConfirmMissionId, setApprovalConfirmMissionId] = useState<string | null>(null);
+  const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
+  const [notamMission, setNotamMission] = useState<Mission | null>(null);
   // For SORA badge click - open RiskAssessmentDialog with manual-sora tab
   const [soraMissionForDialog, setSoraMissionForDialog] = useState<Mission | null>(null);
 
@@ -207,6 +211,15 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   };
 
   const handleRiskAssessmentSaved = () => {
+    fetchMissions();
+  };
+
+  const handleChecklistCompleted = async (checklistId: string) => {
+    if (!checklistMission?.id) return;
+    const existing: string[] = checklistMission.checklist_completed_ids || [];
+    const completed = existing.includes(checklistId) ? existing : [...existing, checklistId];
+    await supabase.from('missions').update({ checklist_completed_ids: completed }).eq('id', checklistMission.id);
+    setChecklistMission(prev => prev ? { ...prev, checklist_completed_ids: completed } : prev);
     fetchMissions();
   };
 
