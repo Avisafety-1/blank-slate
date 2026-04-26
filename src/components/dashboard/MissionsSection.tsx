@@ -19,6 +19,7 @@ import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
+import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 type Mission = any;
@@ -350,6 +351,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     </Badge>
                   )}
                 </div>
+                <MissionSoraRouteDocumentation route={mission.route} compact className="mt-2" />
               </div>
             ))
           )}
