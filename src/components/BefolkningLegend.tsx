@@ -8,12 +8,19 @@ const categories = [
   { color: "#400010", label: "5 000 eller flere bosatte per km²" },
 ];
 
-export function BefolkningLegend() {
+interface BefolkningLegendProps {
+  resolution?: "1km" | "250m";
+}
+
+export function BefolkningLegend({ resolution = "1km" }: BefolkningLegendProps) {
   return (
     <div className="absolute bottom-4 left-2 right-2 sm:left-auto sm:right-4 sm:w-auto bg-background/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-lg border border-border z-[1000]">
       <p className="text-[10px] sm:text-xs font-semibold text-foreground mb-1.5">
-        Befolkning per km² (SSB)
+        Befolkning per km² (SSB {resolution === "250m" ? "250 m" : "1 km"})
       </p>
+      {resolution === "250m" && (
+        <p className="text-[10px] text-muted-foreground mb-1.5">Risikovurdering bruker 250 m-ruter × 16.</p>
+      )}
       <div className="flex flex-col gap-1">
         {categories.map((c) => (
           <div key={c.label} className="flex items-center gap-2">
