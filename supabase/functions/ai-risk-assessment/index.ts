@@ -108,7 +108,107 @@ const derivePopulationDensityBand = (densityPerKm2: number): string => {
   if (densityPerKm2 < 100) return 'Tynt befolket (<100/km²)';
   if (densityPerKm2 < 500) return 'Befolket (<500/km²)';
   if (densityPerKm2 < 1500) return 'Tett befolket (<1500/km²)';
-  return 'Svært tett befolket (>1500/km²)';
+  return 'Folkemengder / svært tett befolket (>1500/km²)';
+};
+
+const GRC_DIMENSION_LIMITS = [1, 3, 8, 20, 40];
+const GRC_SPEED_LIMITS = [25, 35, 75, 120, 200];
+const GRC_MATRIX = [
+  [[1, 2, 3, 4, 5], [1, 2, 3, 5, 6], [2, 3, 4, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9]],
+  [[2, 3, 4, 5, 6], [2, 3, 4, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10]],
+  [[3, 4, 5, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10]],
+  [[4, 5, 6, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10], [7, 8, 9, 10, 10]],
+  [[5, 6, 7, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10], [7, 8, 9, 10, 10], [8, 9, 10, 10, 10]],
+] as const;
+
+const firstLimitIndex = (limits: number[], value: number): number => {
+  const index = limits.findIndex((limit) => value <= limit);
+  return index === -1 ? limits.length - 1 : index;
+};
+
+const populationClassIndex = (densityPerKm2: number): number => {
+  if (densityPerKm2 <= 0) return 0;
+  if (densityPerKm2 < 100) return 1;
+  if (densityPerKm2 < 500) return 2;
+  if (densityPerKm2 < 1500) return 3;
+  return 4;
+};
+
+const buildDeterministicGroundRisk = ({
+  characteristicDimensionM,
+  maxSpeedMps,
+  weightKg,
+  populationDensityValue,
+  populationDensityAverage,
+  populationData,
+  assignedEquipment,
+}: {
+  characteristicDimensionM: number;
+  maxSpeedMps: number;
+  weightKg: number | null;
+  populationDensityValue: number;
+  populationDensityAverage: number | null;
+  populationData: any | null;
+  assignedEquipment: any[];
+}) => {
+  const dimensionIndex = firstLimitIndex(GRC_DIMENSION_LIMITS, characteristicDimensionM);
+  const speedIndex = firstLimitIndex(GRC_SPEED_LIMITS, maxSpeedMps);
+  const popIndex = populationClassIndex(populationDensityValue);
+  const igrc = weightKg !== null && weightKg <= 0.25 && maxSpeedMps <= 25 && popIndex < 4
+    ? 1
+    : GRC_MATRIX[dimensionIndex][speedIndex][popIndex];
+  const controlledGroundMinimum = GRC_MATRIX[dimensionIndex][speedIndex][0];
+
+  const parachuteEvidence = assignedEquipment.find((e: any) => {
+    const text = `${e?.navn ?? ''} ${e?.type ?? ''} ${e?.beskrivelse ?? ''}`.toLowerCase();
+    return /fallskjerm|parachute|moc\s*2512|dvr|design verification/.test(text);
+  });
+  const parachuteText = parachuteEvidence
+    ? `${parachuteEvidence.navn ?? parachuteEvidence.type ?? 'Dokumentert energi-/fallskjermsystem'}`.toLowerCase()
+    : '';
+  const m2Reduction = parachuteText.includes('dvr') || parachuteText.includes('design verification')
+    ? -2
+    : parachuteEvidence && /fallskjerm|parachute|moc\s*2512/.test(parachuteText)
+      ? -1
+      : 0;
+  const reductions = [m2Reduction].filter((r) => r < 0);
+  const totalReduction = reductions.reduce((sum, reduction) => sum + reduction, 0);
+  const fgrc = Math.max(controlledGroundMinimum, igrc + totalReduction);
+  const dimensionClass = `≤${GRC_DIMENSION_LIMITS[dimensionIndex]} m`;
+  const speedClass = `≤${GRC_SPEED_LIMITS[speedIndex]} m/s`;
+  const populationBand = derivePopulationDensityBand(populationDensityValue);
+  const outsideSoraNote = igrc > 7 ? ' iGRC er over 7 og ligger utenfor ordinær SORA-matrise; dette krever særskilt/sertifisert vurdering.' : '';
+
+  return {
+    characteristic_dimension: `${formatNbNumber(characteristicDimensionM, 2)} m (${dimensionClass})`,
+    max_speed_category: `${formatNbNumber(maxSpeedMps, 1)} m/s (${speedClass})`,
+    drone_weight_kg: weightKg,
+    population_density_band: populationBand,
+    population_density_value: populationDensityValue,
+    population_density_average: populationDensityAverage,
+    population_density_calculation: populationData?.calculation ?? null,
+    population_density_driver: populationData?.driver ?? null,
+    population_density_source: populationData?.dataSource ?? 'SSB befolkning på rutenett 250 m (2025)',
+    population_density_footprint: populationData?.footprintDescription ?? 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.',
+    ssb_grid_population: populationData?.maxCellPopulation ?? null,
+    ssb_grid_resolution_m: populationData?.gridResolutionM ?? 250,
+    igrc,
+    fgrc,
+    total_reduction: fgrc - igrc,
+    controlled_ground_area: populationDensityValue <= 0,
+    grc_calculation_method: 'Systemberegnet etter fast SORA iGRC-matrise. AI-output kan ikke endre iGRC/fGRC.',
+    igrc_table_basis: `Dimensjonsklasse ${dimensionClass}, hastighetsklasse ${speedClass}, befolkningsklasse ${populationBand}`,
+    igrc_reasoning: `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${formatNbNumber(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${formatNbNumber(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${formatNbNumber(populationDensityValue)} personer/km² (${populationBand}).${outsideSoraNote}`,
+    mitigations: {
+      m1a_sheltering: { applicable: false, robustness: null, reduction: 0, reasoning: 'Ikke automatisk kreditert. Skjerming krever dokumentasjon på at eksponerte personer faktisk er beskyttet av strukturer.' },
+      m1b_operational_restrictions: { applicable: false, robustness: null, reduction: 0, reasoning: 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere ca. 90–99 % reduksjon av eksponerte personer.' },
+      m1c_ground_observation: { applicable: false, robustness: null, reduction: 0, reasoning: 'Ikke automatisk kreditert. Vanlig VLOS, pilot eller luftromsobservatør gir ikke fGRC-reduksjon uten eksplisitt dokumentert bakkebasert observasjon av overflyst område og evne til å endre flygemønster.' },
+      m2_impact_reduction: { applicable: m2Reduction < 0, robustness: m2Reduction === -2 ? 'High' : m2Reduction === -1 ? 'Medium' : null, reduction: m2Reduction, reasoning: m2Reduction < 0 ? `Reduksjon basert på dokumentert utstyr: ${parachuteEvidence?.navn ?? parachuteEvidence?.type}.` : 'Ingen dokumentert fallskjerm, MoC 2512 eller DVR-basert energi-/treffenergidemping funnet.' },
+    },
+    fgrc_reasoning: totalReduction < 0
+      ? `fGRC=${fgrc}: iGRC ${igrc} med dokumentert reduksjon ${totalReduction}. M1-grensen er håndhevet slik at fGRC ikke kan bli lavere enn kontrollert-bakkeområde-verdien ${controlledGroundMinimum}.`
+      : `fGRC=${fgrc}: Ingen dokumenterte GRC-reduserende mitigeringer er kreditert, derfor er fGRC lik iGRC. Observatør/pilot gir ikke automatisk -1 uten eksplisitt bakkebasert observasjon av overflyst område.`,
+  };
 };
 
 
