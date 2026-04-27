@@ -6,6 +6,7 @@ interface CompanySettings {
   show_all_airspace_warnings: boolean;
   hide_reporter_identity: boolean;
   require_mission_approval: boolean;
+  prevent_self_approval: boolean;
   require_sora_on_missions: boolean;
   require_sora_steps: number;
   deviation_report_enabled: boolean;
@@ -15,6 +16,7 @@ const defaultSettings: CompanySettings = {
   show_all_airspace_warnings: false,
   hide_reporter_identity: false,
   require_mission_approval: false,
+  prevent_self_approval: false,
   require_sora_on_missions: false,
   require_sora_steps: 1,
   deviation_report_enabled: false,
@@ -36,7 +38,7 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 
   const promise = (supabase
     .from("companies")
-    .select("show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled")
+    .select("show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled")
     .eq("id", companyId)
     .single() as any)
     .then(({ data }: any) => {
@@ -44,6 +46,7 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
         show_all_airspace_warnings: data?.show_all_airspace_warnings ?? false,
         hide_reporter_identity: data?.hide_reporter_identity ?? false,
         require_mission_approval: data?.require_mission_approval ?? false,
+        prevent_self_approval: data?.prevent_self_approval ?? false,
         require_sora_on_missions: data?.require_sora_on_missions ?? false,
         require_sora_steps: data?.require_sora_steps ?? 1,
         deviation_report_enabled: data?.deviation_report_enabled ?? false,
