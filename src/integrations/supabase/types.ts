@@ -411,6 +411,7 @@ export type Database = {
           navn: string
           org_nummer: string | null
           parent_company_id: string | null
+          prevent_self_approval: boolean
           propagate_airspace_warnings: boolean
           propagate_deviation_report: boolean
           propagate_fh2_credentials: boolean
@@ -418,6 +419,7 @@ export type Database = {
           propagate_hide_reporter: boolean
           propagate_mission_approval: boolean
           propagate_mission_roles: boolean
+          propagate_prevent_self_approval: boolean
           propagate_sora_approval: boolean
           propagate_sora_buffer_mode: boolean
           propagate_sora_config: boolean
@@ -461,6 +463,7 @@ export type Database = {
           navn: string
           org_nummer?: string | null
           parent_company_id?: string | null
+          prevent_self_approval?: boolean
           propagate_airspace_warnings?: boolean
           propagate_deviation_report?: boolean
           propagate_fh2_credentials?: boolean
@@ -468,6 +471,7 @@ export type Database = {
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
           propagate_mission_roles?: boolean
+          propagate_prevent_self_approval?: boolean
           propagate_sora_approval?: boolean
           propagate_sora_buffer_mode?: boolean
           propagate_sora_config?: boolean
@@ -511,6 +515,7 @@ export type Database = {
           navn?: string
           org_nummer?: string | null
           parent_company_id?: string | null
+          prevent_self_approval?: boolean
           propagate_airspace_warnings?: boolean
           propagate_deviation_report?: boolean
           propagate_fh2_credentials?: boolean
@@ -518,6 +523,7 @@ export type Database = {
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
           propagate_mission_roles?: boolean
+          propagate_prevent_self_approval?: boolean
           propagate_sora_approval?: boolean
           propagate_sora_buffer_mode?: boolean
           propagate_sora_config?: boolean
