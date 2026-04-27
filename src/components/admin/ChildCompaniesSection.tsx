@@ -323,7 +323,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -331,6 +331,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setShowAllAirspaceWarnings((data as any).show_all_airspace_warnings ?? false);
       setHideReporterIdentity((data as any).hide_reporter_identity ?? false);
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
+      setPreventSelfApproval((data as any).prevent_self_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       const parentId = (data as any).parent_company_id as string | null;
@@ -341,6 +342,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         (data as any).propagate_airspace_warnings ||
         (data as any).propagate_hide_reporter ||
         (data as any).propagate_mission_approval ||
+        (data as any).propagate_prevent_self_approval ||
         (data as any).propagate_sora_required ||
         (data as any).propagate_deviation_report
       );
@@ -356,7 +358,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
@@ -401,12 +403,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             show_all_airspace_warnings: parent.show_all_airspace_warnings ?? false,
             hide_reporter_identity: parent.hide_reporter_identity ?? false,
             require_mission_approval: parent.require_mission_approval ?? false,
+            prevent_self_approval: parent.prevent_self_approval ?? false,
             require_sora_on_missions: parent.require_sora_on_missions ?? false,
             require_sora_steps: parent.require_sora_steps ?? 1,
             deviation_report_enabled: parent.deviation_report_enabled ?? false,
             propagate_airspace_warnings: parent.propagate_airspace_warnings ?? false,
             propagate_hide_reporter: parent.propagate_hide_reporter ?? false,
             propagate_mission_approval: parent.propagate_mission_approval ?? false,
+            propagate_prevent_self_approval: parent.propagate_prevent_self_approval ?? false,
             propagate_sora_required: parent.propagate_sora_required ?? false,
             propagate_deviation_report: parent.propagate_deviation_report ?? false,
             propagate_sora_buffer_mode: parent.propagate_sora_buffer_mode ?? false,
