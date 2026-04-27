@@ -127,6 +127,7 @@ export const ProfileDialog = () => {
   const [pendingTraining, setPendingTraining] = useState<any[]>([]);
   const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
   const [canApproveMissions, setCanApproveMissions] = useState(false);
+  const [preventSelfApproval, setPreventSelfApproval] = useState(false);
   const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
@@ -271,12 +272,13 @@ export const ProfileDialog = () => {
       if (profileData?.company_id) {
         const { data: companyData } = await supabase
           .from("companies")
-          .select("navn")
+          .select("navn, prevent_self_approval")
           .eq("id", profileData.company_id)
           .single();
 
         if (companyData) {
           setCompany(companyData);
+          setPreventSelfApproval((companyData as any).prevent_self_approval === true);
         }
       }
 
