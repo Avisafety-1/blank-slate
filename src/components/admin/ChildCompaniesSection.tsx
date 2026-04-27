@@ -564,6 +564,32 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     toast.success("Innstilling lagret");
   };
 
+  const handleTogglePreventSelfApproval = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ prevent_self_approval: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applySettingsToChildren) {
+      await supabase
+        .from("companies")
+        .update({ prevent_self_approval: checked } as any)
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setPreventSelfApproval(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
   const handleToggleRequireSora = async (checked: boolean) => {
     if (!companyId) return;
 
