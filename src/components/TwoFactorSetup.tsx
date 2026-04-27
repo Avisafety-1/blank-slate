@@ -33,6 +33,7 @@ export const TwoFactorSetup = () => {
   const [verifying, setVerifying] = useState(false);
   const [showDisableDialog, setShowDisableDialog] = useState(false);
   const [disabling, setDisabling] = useState(false);
+  const [disableCode, setDisableCode] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -184,15 +185,32 @@ export const TwoFactorSetup = () => {
   };
 
   const handleDisable = async () => {
-    if (!factorId) return;
+    if (!factorId || disableCode.length !== 6) return;
 
     setDisabling(true);
     try {
-      const { error } = await supabase.auth.mfa.unenroll({ factorId });
-      if (error) throw error;
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId: challengeData.id,
+        code: disableCode,
+      });
+      if (verifyError) throw verifyError;
+
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
+
+      const verifiedFactors = factorsData.totp.filter(f => (f.status as string) === 'verified');
+      const factorsToRemove = verifiedFactors.length > 0 ? verifiedFactors : [{ id: factorId }];
+      const results = await Promise.all(factorsToRemove.map(factor => supabase.auth.mfa.unenroll({ factorId: factor.id })));
+      const unenrollError = results.find(result => result.error)?.error;
+      if (unenrollError) throw unenrollError;
 
       setIsEnabled(false);
       setFactorId(null);
+      setDisableCode("");
       setShowDisableDialog(false);
       toast.success(t('twoFactor.disabled'));
     } catch (err: any) {
@@ -389,11 +407,26 @@ export const TwoFactorSetup = () => {
               {t('twoFactor.disableDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label className="text-sm">{t('twoFactor.disableCodeLabel')}</Label>
+            <div className="flex justify-center">
+              <InputOTP maxLength={6} value={disableCode} onChange={setDisableCode}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={disabling}>{t('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel disabled={disabling} onClick={() => setDisableCode("")}>{t('actions.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDisable}
-              disabled={disabling}
+              disabled={disabling || disableCode.length !== 6}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {disabling && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
