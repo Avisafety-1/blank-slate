@@ -1766,6 +1766,21 @@ Returner en JSON-respons med denne strukturen:
       };
     }
 
+    if (populationData) {
+      aiAnalysis.ground_risk_analysis = {
+        ...(aiAnalysis.ground_risk_analysis || {}),
+        population_density_value: Math.round(populationData.maxDensity),
+        population_density_calculation: populationData.calculation ?? populationData.summary,
+        population_density_average: Number(populationData.avgDensity.toFixed(1)),
+        population_density_driver: populationData.driver ?? null,
+        population_density_source: populationData.dataSource ?? 'SSB befolkning på rutenett 250 m (2025)',
+        population_density_footprint: populationData.footprintDescription ?? 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.',
+        ssb_grid_population: populationData.maxCellPopulation ?? null,
+        ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
+        population_density_description: populationData.summary,
+      };
+    }
+
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
 
