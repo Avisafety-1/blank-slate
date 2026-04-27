@@ -97,6 +97,20 @@ type RouteCoord = { lat: number; lng: number };
 
 const metersPerDegLat = 111_320;
 
+const formatNbNumber = (value: number, maximumFractionDigits = 0): string =>
+  value.toLocaleString('nb-NO', {
+    maximumFractionDigits,
+    minimumFractionDigits: maximumFractionDigits,
+  });
+
+const derivePopulationDensityBand = (densityPerKm2: number): string => {
+  if (densityPerKm2 <= 0) return 'Kontrollert bakkeområde / ubebodd';
+  if (densityPerKm2 < 100) return 'Tynt befolket (<100/km²)';
+  if (densityPerKm2 < 500) return 'Befolket (<500/km²)';
+  if (densityPerKm2 < 1500) return 'Tett befolket (<1500/km²)';
+  return 'Svært tett befolket (>1500/km²)';
+};
+
 
 const distanceMeters = (a: RouteCoord, b: RouteCoord): number => {
   const avgLat = ((a.lat + b.lat) / 2) * Math.PI / 180;
@@ -195,8 +209,8 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
     gridResolutionM: 250,
     dataSource: 'SSB befolkning på rutenett 250 m (2025)',
     method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
-    calculation: `${maxCell.population} personer i 250 m-rute × 16 = ${Math.round(maxDensity)} personer/km²`,
-    footprintDescription: `Planlagt rute med Flight Geography + Contingency + Ground Risk Buffer (${Math.round(footprintBufferM)} m fra ruten).`,
+    calculation: `${formatNbNumber(maxCell.population)} personer i dimensjonerende 250 m-rute × 16 = ${formatNbNumber(Math.round(maxDensity))} personer/km²`,
+    footprintDescription: `Planlagt rute + Flight Geography + Contingency + Ground Risk Buffer (${formatNbNumber(Math.round(footprintBufferM))} m fra ruten).`,
     driver,
     driverCoordinate: maxCell.centroid,
   };
@@ -1767,17 +1781,25 @@ Returner en JSON-respons med denne strukturen:
     }
 
     if (populationData) {
+      const populationDensityValue = Math.round(populationData.maxDensity);
+      const populationDensityAverage = Number(populationData.avgDensity.toFixed(1));
+      const populationDensityBand = derivePopulationDensityBand(populationDensityValue);
+      const populationDensityDescription = populationData.cellCount > 0
+        ? `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? 'innenfor operasjonens fotavtrykk'}.`
+        : populationData.summary;
+
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
-        population_density_value: Math.round(populationData.maxDensity),
+        population_density_band: populationDensityBand,
+        population_density_value: populationDensityValue,
         population_density_calculation: populationData.calculation ?? populationData.summary,
-        population_density_average: Number(populationData.avgDensity.toFixed(1)),
+        population_density_average: populationDensityAverage,
         population_density_driver: populationData.driver ?? null,
         population_density_source: populationData.dataSource ?? 'SSB befolkning på rutenett 250 m (2025)',
         population_density_footprint: populationData.footprintDescription ?? 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.',
         ssb_grid_population: populationData.maxCellPopulation ?? null,
         ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
-        population_density_description: populationData.summary,
+        population_density_description: populationDensityDescription,
       };
     }
 

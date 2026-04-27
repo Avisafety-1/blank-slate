@@ -58,6 +58,12 @@ const mitigationLabels: Record<string, string> = {
   m2_impact_reduction: 'M2 Redusert treffenergi',
 };
 
+const formatNumber = (value: number, decimals = 0) =>
+  value.toLocaleString("nb-NO", {
+    maximumFractionDigits: decimals,
+    minimumFractionDigits: decimals,
+  });
+
 export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -107,9 +113,9 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
               </div>
             )}
             {data.population_density_value != null && (
-              <div>
+              <div className="col-span-2">
                 <span className="text-muted-foreground">Befolkning:</span>{' '}
-                <span className="font-medium">{data.population_density_value} /km²</span>
+                <span className="font-medium">{formatNumber(data.population_density_value)} /km²</span>
               </div>
             )}
           </div>
@@ -120,12 +126,12 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
 
           {(data.population_density_calculation || data.population_density_source || data.population_density_driver) && (
             <div className="rounded-md border border-border bg-muted/40 p-2 text-xs space-y-1">
-              <p className="font-medium text-foreground">SSB befolkningstetthet</p>
+              <p className="font-medium text-foreground">SSB befolkningstetthet – beregning</p>
               {data.population_density_source && <p className="text-muted-foreground">Datakilde: {data.population_density_source}</p>}
               {data.population_density_footprint && <p className="text-muted-foreground">Fotavtrykk: {data.population_density_footprint}</p>}
-              {data.population_density_calculation && <p className="text-foreground">{data.population_density_calculation}</p>}
-              {data.population_density_average != null && <p className="text-muted-foreground">Gjennomsnitt i fotavtrykk: {data.population_density_average.toLocaleString("nb-NO")} pers/km²</p>}
-              {data.population_density_driver && <p className="text-muted-foreground">Dimensjonerende rute: {data.population_density_driver}</p>}
+              {data.population_density_calculation && <p className="text-foreground">Beregning: {data.population_density_calculation}</p>}
+              {data.population_density_average != null && <p className="text-muted-foreground">Gjennomsnitt i fotavtrykk: {formatNumber(data.population_density_average, 1)} pers/km²</p>}
+              {data.population_density_driver && <p className="text-muted-foreground">Dimensjonerende del av ruten: {data.population_density_driver}</p>}
             </div>
           )}
 
