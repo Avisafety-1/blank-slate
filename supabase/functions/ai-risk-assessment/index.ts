@@ -1865,6 +1865,11 @@ Returner en JSON-respons med denne strukturen:
       aiAnalysis.recommendation
     );
 
+    const deterministicCharacteristicDimensionM = primaryDroneCharacteristicDimensionM
+      ?? (typeof droneData?.vekt === 'number' && droneData.vekt >= 5 ? 1.2 : typeof droneData?.vekt === 'number' && droneData.vekt >= 1 ? 0.6 : 0.3);
+    const deterministicMaxSpeedMps = Number(droneCatalogMatch?.max_speed_mps ?? (droneCatalogMatch?.max_wind_mps ? droneCatalogMatch.max_wind_mps * 2 : null) ?? 25);
+    const deterministicWeightKg = Number.isFinite(Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt)) ? Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt) : null;
+
     if (deterministicAlos) {
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
@@ -1881,17 +1886,28 @@ Returner en JSON-respons med denne strukturen:
       };
     }
 
+    const deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 0;
+    const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
+    const deterministicGroundRisk = buildDeterministicGroundRisk({
+      characteristicDimensionM: deterministicCharacteristicDimensionM,
+      maxSpeedMps: deterministicMaxSpeedMps,
+      weightKg: deterministicWeightKg,
+      populationDensityValue: deterministicPopulationDensityValue,
+      populationDensityAverage: deterministicPopulationDensityAverage,
+      populationData,
+      assignedEquipment,
+    });
+
     if (populationData) {
       const populationDensityValue = Math.round(populationData.maxDensity);
       const populationDensityAverage = Number(populationData.avgDensity.toFixed(1));
-      const populationDensityBand = derivePopulationDensityBand(populationDensityValue);
       const populationDensityDescription = populationData.cellCount > 0
         ? `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? 'innenfor operasjonens fotavtrykk'}.`
         : populationData.summary;
 
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
-        population_density_band: populationDensityBand,
+        ...deterministicGroundRisk,
         population_density_value: populationDensityValue,
         population_density_calculation: populationData.calculation ?? populationData.summary,
         population_density_average: populationDensityAverage,
@@ -1902,7 +1918,15 @@ Returner en JSON-respons med denne strukturen:
         ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
         population_density_description: populationDensityDescription,
       };
+    } else {
+      aiAnalysis.ground_risk_analysis = {
+        ...(aiAnalysis.ground_risk_analysis || {}),
+        ...deterministicGroundRisk,
+        population_density_description: 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
+      };
     }
+
+    console.log(`GRC deterministic: ${deterministicGroundRisk.igrc_table_basis} => iGRC=${deterministicGroundRisk.igrc}, reductions=${deterministicGroundRisk.total_reduction}, fGRC=${deterministicGroundRisk.fgrc}`);
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
