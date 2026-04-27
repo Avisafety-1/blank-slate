@@ -685,6 +685,11 @@ export const ProfileDialog = () => {
     if (!user) return;
     try {
       const mission = pendingApprovalMissions.find((m: any) => m.id === missionId);
+      const assignedIds = Array.isArray(mission?.personnel_profile_ids) ? mission.personnel_profile_ids : [];
+      if (preventSelfApproval && assignedIds.includes(user.id)) {
+        toast.error('Du er satt som flyger/personell på dette oppdraget og kan derfor ikke godkjenne det.');
+        return;
+      }
       const existingComments = Array.isArray(mission?.approver_comments) ? mission.approver_comments : [];
       let updatedComments = existingComments;
 
