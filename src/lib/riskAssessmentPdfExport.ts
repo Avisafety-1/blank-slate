@@ -122,7 +122,10 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (data.population_density_value != null) fields.push(["Befolkningstetthet (per km2)", String(data.population_density_value)]);
   if (data.population_density_average != null) fields.push(["Gj.snitt tetthet (per km2)", String(data.population_density_average)]);
   if (data.ssb_grid_population != null) fields.push(["Dimensjonerende SSB-rute", `${data.ssb_grid_population} personer (${data.ssb_grid_resolution_m || 250} m)`]);
+  if (data.grc_calculation_method) fields.push(["GRC-metode", sanitizeForPdf(data.grc_calculation_method)]);
+  if (data.igrc_table_basis) fields.push(["Tabellgrunnlag", sanitizeForPdf(data.igrc_table_basis)]);
   if (data.igrc != null) fields.push(["iGRC", String(data.igrc)]);
+  if (data.total_reduction != null) fields.push(["Dokumentert reduksjon", String(data.total_reduction)]);
   if (data.fgrc != null) fields.push(["fGRC (endelig)", String(data.fgrc)]);
 
   for (const [label, value] of fields) {
