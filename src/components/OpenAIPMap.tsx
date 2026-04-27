@@ -1003,8 +1003,11 @@ export function OpenAIPMap({
       )}
 
       {layers.find(l => l.id === "arealbruk")?.enabled && <ArealbrukLegend />}
-      {layers.find(l => l.id === "befolkning1km")?.enabled && <BefolkningLegend resolution="1km" />}
-      {layers.find(l => l.id === "befolkning250m")?.enabled && <BefolkningLegend resolution="250m" />}
+      {layers.find(l => l.id === "befolkning250m")?.enabled ? (
+        <BefolkningLegend resolution="250m" />
+      ) : layers.find(l => l.id === "befolkning1km")?.enabled ? (
+        <BefolkningLegend resolution="1km" />
+      ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
     </div>
   );
