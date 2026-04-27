@@ -148,13 +148,14 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (data.population_density_calculation || data.population_density_driver || data.population_density_source) {
     yPos = checkPageBreak(doc, yPos, 28);
     setFontStyle(doc, "bold");
-    doc.text("SSB-beregning:", 14, yPos);
+    doc.text("SSB-beregning (befolkningstetthet):", 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const ssbText = [
-      data.population_density_source,
-      data.population_density_footprint,
-      data.population_density_calculation,
+      data.population_density_source ? `Datakilde: ${data.population_density_source}` : null,
+      data.population_density_footprint ? `Fotavtrykk: ${data.population_density_footprint}` : null,
+      data.population_density_calculation ? `Beregning: ${data.population_density_calculation}` : null,
+      data.population_density_average != null ? `Gjennomsnitt i fotavtrykk: ${Number(data.population_density_average).toLocaleString("nb-NO", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} personer/km2` : null,
       data.population_density_driver ? `Dimensjonerende del av ruten: ${data.population_density_driver}` : null,
     ].filter(Boolean).join("\n");
     const lines = doc.splitTextToSize(sanitizeForPdf(ssbText), pageWidth - 28);
