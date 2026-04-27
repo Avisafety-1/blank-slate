@@ -1,45 +1,67 @@
-Jeg foreslår å forbedre 2FA-flyten slik at den fungerer bedre når brukeren setter opp 2FA på samme mobil som appen er åpen på.
+Jeg anbefaler å gå over til 250 m SSB-data for beregningene, men ikke nødvendigvis gjøre 250 m-laget til standard visuelt kartlag. Beregningene bør bruke 250 m fordi det gir riktig presisjon og passer malen dere beskriver. Kartvisning kan støtte 250 m som et valgbart lag, men med zoom-/bbox-begrensning slik at det ikke blir unødvendig tungt.
 
-## Problem
-Dagens oppsett viser QR-kode og en manuell hemmelig nøkkel. På mobil er dette tungvint fordi:
-- man kan ikke skanne QR-koden med samme telefon
-- kopiering av manuell nøkkel krever ofte at man går ut av appen
-- når man kommer tilbake kan oppsettet være borte
-- Supabase-feilen `A factor with the friendly name "Authenticator" already exists` vises som en rar teknisk feilmelding hvis en uferdig faktor ligger igjen
+Svar på belastning: Det blir ikke stor belastning hvis vi henter 250 m-data kun for aktuell rute/buffer og ikke for hele kartutsnittet hele tiden. 250 m gir opptil 16 ganger flere ruter enn 1 km, så vi bør begrense henting til operasjonsfotavtrykket og eventuelt kun vise 250 m-laget på høy zoom.
 
-## Plan
+Plan:
 
-1. Gjør 2FA-oppsettet mobilvennlig
-   - Legg til en tydelig knapp: `Åpne i autentiseringsapp`.
-   - Knappen bruker TOTP-URI-en fra Supabase, slik at mobilen kan åpne Google Authenticator, Microsoft Authenticator, 1Password, Authy e.l. direkte uten QR-skanning.
-   - Behold QR-koden for PC/nettbrett der brukeren kan skanne med en annen enhet.
+1. Endre bakkerisiko-/befolkningsberegning i AI-risikovurderingen
+- Bytt fra dagens 1 km WFS-oppslag i `ai-risk-assessment` til 250 m SSB-rutenett.
+- Beregn operasjonens fotavtrykk som:
+  - planlagt rute
+  - Flight Geography buffer
+  - Contingency buffer
+  - Ground Risk Buffer
+- Finn SSB 250 m-ruter som overlapper dette fotavtrykket.
+- Bruk høyeste overlappende rute som dimensjonerende verdi:
+  - `befolkning per 250m-rute × 16 = personer/km²`
+- Beregn også gjennomsnittlig befolkningstetthet for fotavtrykket som støtteinformasjon, men la høyeste rute styre kategorien/iGRC.
 
-2. Forbedre manuell kode-flyten
-   - Gjør den manuelle nøkkelen enklere å kopiere med tydelig `Kopier nøkkel`-knapp.
-   - Legg til kort instruksjon: kopier nøkkelen, åpne autentiseringsappen, velg manuell oppføring, lim inn nøkkel, gå tilbake og skriv inn 6-sifret kode.
-   - Gjør teksten mer forståelig på norsk.
+2. Legg inn sporbar dokumentasjon i risikovurderingen
+- Utvid `populationDensity`/`ground_risk_analysis` med forklarende felter, for eksempel:
+  - datakilde: SSB befolkning på rutenett 250 m, år 2025
+  - metode: høyeste overlappende 250 m-rute × 16
+  - høyeste 250 m-rute: antall personer i ruten
+  - dimensjonerende tetthet: personer/km²
+  - gjennomsnittlig tetthet i fotavtrykket
+  - antall overlappende ruter
+  - fotavtrykk/buffergrunnlag: FG + contingency + GRB
+  - drivende plassering: nærmeste rutepunkt eller rutesegment
+- Oppdater AI-prompten slik at teksten følger malen dere ga, og eksplisitt sier hvordan tallet er regnet ut.
 
-3. Bevar uferdig 2FA-oppsett mens brukeren bytter app
-   - Lagre midlertidig `factorId`, QR/URI og hemmelig nøkkel i komponentens/session storage under oppsett.
-   - Når brukeren kommer tilbake til profilen, kan oppsettet fortsette i stedet for at siden nullstilles.
-   - Når brukeren bekrefter eller avbryter, ryddes midlertidig lagring.
+3. Identifiser hvilket rutepunkt/segment som driver tallet
+- For den ruten med høyest befolkningstall finner vi nærmeste rutepunkt eller nærmeste rutesegment.
+- I rapporten vises f.eks.:
+  - “Dimensjonerende SSB-rute ligger nær segment P3–P4”
+  - eller “nær rutepunkt P2” hvis den ligger nærmest et punkt.
+- Hvis presis segmentplassering ikke kan fastslås trygt, faller teksten tilbake til koordinat/område og sier at ruten ligger innenfor operasjonens fotavtrykk.
 
-4. Rydd opp i eksisterende MFA-konflikter
-   - Ved aktivering skal appen først sjekke både verifiserte og uverifiserte TOTP-faktorer.
-   - Uverifiserte gamle faktorer slettes før ny opprettelse.
-   - Hvis Supabase likevel svarer med `mfa_factor_name_conflict`, skal appen vise en forståelig melding og prøve å rydde opp, i stedet for å vise rå teknisk feil.
+4. Oppdater visning i app og PDF
+- I `GroundRiskAnalysisSection` vises en tydelig beregningsforklaring under bakkerisiko:
+  - “SSB 250 m-rute: X personer × 16 = Y pers/km²”
+  - “Gjennomsnitt i fotavtrykk: Z pers/km²”
+  - “Dimensjonerende del av ruten: Pn–Pm”
+- I PDF-eksporten legges samme metode/forklaring inn, slik at risikovurderingen er dokumenterbar.
 
-5. Unngå fast `friendlyName`-kollisjon
-   - Endre intern faktor-navngiving fra fast `Authenticator` til et mer unikt navn, for eksempel `AviSafe 2FA <dato/tid>`.
-   - Dette reduserer risikoen for samme konflikt senere.
+5. Juster kartets SSB-lag
+- Endre dagens kartlag “Befolkning 1km² (SSB)” til enten:
+  - “Befolkning 250 m (SSB)” på høy zoom, eller
+  - to valg: “Befolkning 1 km” og “Befolkning 250 m”.
+- Jeg anbefaler to valg, med 250 m deaktivert som standard og begrenset til høy zoom, fordi 1 km er mer oversiktlig visuelt mens 250 m er riktig for beregning/dokumentasjon.
+- Oppdater legend-tekst slik at den tydelig sier om laget viser 1 km eller 250 m, og at risikovurderingen bruker 250 m.
 
-6. Oppdater norske og engelske oversettelser
-   - Legg til tekster for `Åpne i autentiseringsapp`, instruksjoner, kopiering og konflikt/rydde-feil.
+Teknisk gjennomføring:
 
-## Teknisk
-Endringene gjøres hovedsakelig i:
-- `src/components/TwoFactorSetup.tsx`
-- `src/i18n/locales/no.json`
-- `src/i18n/locales/en.json`
+- Gjenbruk/utvid eksisterende `ssb-population` edge function, som allerede støtter `resolution=250`.
+- Flytt eller dupliser nødvendig buffer-/polygonlogikk slik at edge functionen `ai-risk-assessment` kan bruke samme fotavtrykk som kartet.
+- Oppdater datatyper i `src/types/map.ts` og `AdjacentAreaResult`/relaterte visninger med nye dokumentasjonsfelter.
+- Oppdater `supabase/functions/ai-risk-assessment/index.ts` slik at 250 m-resultatet mates deterministisk inn i AI-vurderingen, i stedet for at modellen må gjette metode.
+- Ingen nye databasetabeller er nødvendig med mindre dere ønsker å lagre disse beregningsdetaljene separat; i første omgang kan de lagres i eksisterende JSON-resultat/rutedokumentasjon.
 
-Jeg vil ikke endre Supabase-databasen. Dette er en frontend-forbedring av eksisterende Supabase MFA-funksjonalitet.
+Forventet resultat:
+
+- Risikovurderingen følger malen:
+  “Vi bruker befolkningstetthetsdata fra SSB ... 250-meters rutenett ... høyeste overlappende rute × 16 ...”
+- Tallet blir etterprøvbart.
+- Buffer-sonene tas med.
+- Rapporten viser både dimensjonerende maksverdi og gjennomsnittlig tetthet.
+- Kartet kan vise 250 m uten at det blir tungt, fordi laget holdes valgfritt og zoom-begrenset.

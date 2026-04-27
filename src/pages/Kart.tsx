@@ -248,6 +248,12 @@ export default function KartPage() {
         requiredContainment: adjacentResult.requiredContainment,
         containmentLevel: adjacentResult.containmentLevel,
         statusText: adjacentResult.statusText,
+        dataSource: adjacentResult.dataSource,
+        method: adjacentResult.method,
+        calculation: adjacentResult.calculation,
+        driver: adjacentResult.driver,
+        maxCellPopulation: adjacentResult.maxCellPopulation,
+        gridResolutionM: adjacentResult.gridResolutionM,
       } : undefined,
     };
 

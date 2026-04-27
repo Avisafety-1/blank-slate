@@ -30,6 +30,12 @@ export interface AdjacentAreaDocumentation {
   requiredContainment: string;
   containmentLevel: string;
   statusText: string;
+  dataSource?: string;
+  method?: string;
+  calculation?: string;
+  driver?: string;
+  maxCellPopulation?: number;
+  gridResolutionM?: number;
 }
 
 export interface SoraSettings {

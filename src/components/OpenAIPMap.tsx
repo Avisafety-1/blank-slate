@@ -452,7 +452,13 @@ export function OpenAIPMap({
       layers: "befolkning_1km_2025", format: "image/png", transparent: true, opacity: 0.65,
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
-    layerConfigs.push({ id: "befolkning1km", name: "Befolkning 1km² (SSB)", layer: befolkningLayer, enabled: false, icon: "users" });
+    layerConfigs.push({ id: "befolkning1km", name: "Befolkning 1 km (SSB)", layer: befolkningLayer, enabled: false, icon: "users" });
+
+    const befolkning250Layer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/befolkning_paa_rutenett", {
+      layers: "befolkning_250m_2025", format: "image/png", transparent: true, opacity: 0.65,
+      attribution: 'Befolkning 250m © <a href="https://www.ssb.no">SSB</a>', minZoom: 11, maxZoom: 20, tiled: true, version: "1.3.0",
+    } as any);
+    layerConfigs.push({ id: "befolkning250m", name: "Befolkning 250 m (SSB)", layer: befolkning250Layer, enabled: false, icon: "users" });
 
     // SSB Tettsteder (urban settlements ≥200 residents)
     const tettstederLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/tettsteder", {
@@ -997,7 +1003,11 @@ export function OpenAIPMap({
       )}
 
       {layers.find(l => l.id === "arealbruk")?.enabled && <ArealbrukLegend />}
-      {layers.find(l => l.id === "befolkning1km")?.enabled && <BefolkningLegend />}
+      {layers.find(l => l.id === "befolkning250m")?.enabled ? (
+        <BefolkningLegend resolution="250m" />
+      ) : layers.find(l => l.id === "befolkning1km")?.enabled ? (
+        <BefolkningLegend resolution="1km" />
+      ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
     </div>
   );

@@ -210,6 +210,13 @@ export function AdjacentAreaPanel({
               <div className="text-muted-foreground">Gj.snitt tetthet</div>
               <div className="font-medium">{result.avgDensity.toFixed(1)} pers/km²</div>
 
+              {result.gridResolutionM && (
+                <>
+                  <div className="text-muted-foreground">Datagrunnlag</div>
+                  <div className="font-medium">SSB {result.gridResolutionM} m</div>
+                </>
+              )}
+
               <div className="text-muted-foreground">Grense</div>
               <div className="font-medium">
                 {POPULATION_DENSITY_LABELS[result.populationDensityCategory]}
@@ -246,6 +253,12 @@ export function AdjacentAreaPanel({
 
             {result.error && (
               <p className="text-xs text-destructive">{result.error}</p>
+            )}
+
+            {result.calculation && (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                {result.calculation}
+              </p>
             )}
 
           </div>

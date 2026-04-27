@@ -57,6 +57,8 @@ export const MissionSoraRouteDocumentation = ({ route, compact = false, classNam
       { label: "Areal", value: fmt(adjacent.adjacentAreaKm2, 1, " km²") },
       { label: "Innbyggere funnet", value: fmt(adjacent.totalPopulation, 0) },
       { label: "Gj.snitt tetthet", value: fmt(adjacent.avgDensity, 1, " pers/km²") },
+      { label: "Datagrunnlag", value: adjacent.dataSource || (adjacent.gridResolutionM ? `SSB ${adjacent.gridResolutionM} m` : "SSB 250 m") },
+      { label: "Beregning", value: adjacent.calculation || adjacent.method || "-" },
       { label: "Grense/kategori", value: POPULATION_DENSITY_LABELS[adjacent.populationDensityCategory as keyof typeof POPULATION_DENSITY_LABELS] ?? adjacent.populationDensityCategory ?? "-" },
       { label: "UA Size", value: UA_SIZE_LABELS[adjacent.uaSize as keyof typeof UA_SIZE_LABELS] ?? adjacent.uaSize ?? "-" },
       { label: "SAIL", value: adjacent.sail ? `SAIL ${adjacent.sail}` : "-" },

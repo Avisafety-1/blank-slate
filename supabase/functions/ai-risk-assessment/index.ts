@@ -93,6 +93,115 @@ const calculateAlos = (characteristicDimensionM?: number | null, fixedWing = fal
   };
 };
 
+type RouteCoord = { lat: number; lng: number };
+
+const metersPerDegLat = 111_320;
+
+
+const distanceMeters = (a: RouteCoord, b: RouteCoord): number => {
+  const avgLat = ((a.lat + b.lat) / 2) * Math.PI / 180;
+  const dx = (b.lng - a.lng) * metersPerDegLat * Math.cos(avgLat);
+  const dy = (b.lat - a.lat) * metersPerDegLat;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+const distanceToSegmentMeters = (p: RouteCoord, a: RouteCoord, b: RouteCoord): number => {
+  const avgLat = ((a.lat + b.lat + p.lat) / 3) * Math.PI / 180;
+  const scaleLng = metersPerDegLat * Math.cos(avgLat);
+  const px = p.lng * scaleLng, py = p.lat * metersPerDegLat;
+  const ax = a.lng * scaleLng, ay = a.lat * metersPerDegLat;
+  const bx = b.lng * scaleLng, by = b.lat * metersPerDegLat;
+  const vx = bx - ax, vy = by - ay;
+  const wx = px - ax, wy = py - ay;
+  const len2 = vx * vx + vy * vy;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (wx * vx + wy * vy) / len2));
+  const cx = ax + t * vx, cy = ay + t * vy;
+  return Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+};
+
+const nearestRouteDriver = (p: RouteCoord, route: RouteCoord[]): string => {
+  if (route.length === 0) return 'innenfor operasjonens fotavtrykk';
+  if (route.length === 1) return 'nær rutepunkt P1';
+  let best = { distance: Infinity, label: 'innenfor operasjonens fotavtrykk' };
+  route.forEach((point, index) => {
+    const d = distanceMeters(p, point);
+    if (d < best.distance) best = { distance: d, label: `nær rutepunkt P${index + 1}` };
+  });
+  for (let i = 0; i < route.length - 1; i++) {
+    const d = distanceToSegmentMeters(p, route[i], route[i + 1]);
+    if (d < best.distance) best = { distance: d, label: `nær segment P${i + 1}–P${i + 2}` };
+  }
+  return `${best.label} (${Math.round(best.distance)} m fra senter av SSB-ruten)`;
+};
+
+async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBufferM: number) {
+  if (route.length < 2) return null;
+
+  const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
+  const degLat = footprintBufferM / metersPerDegLat;
+  const degLng = footprintBufferM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
+  let minLat = Math.min(...route.map(p => p.lat)) - degLat;
+  let maxLat = Math.max(...route.map(p => p.lat)) + degLat;
+  let minLng = Math.min(...route.map(p => p.lng)) - degLng;
+  let maxLng = Math.max(...route.map(p => p.lng)) + degLng;
+
+  const wfsUrl = `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett?service=WFS&version=1.1.0&request=GetFeature&typeNames=befolkning_250m_2025&srsName=EPSG:4326&bbox=${minLng},${minLat},${maxLng},${maxLat}&maxFeatures=50000`;
+  console.log(`Fetching SSB 250m population WFS for footprint: buffer=${footprintBufferM}m`);
+
+  const resp = await fetch(wfsUrl, { signal: AbortSignal.timeout(10_000) });
+  if (!resp.ok) throw new Error(`SSB 250m WFS ${resp.status}`);
+  const gml = await resp.text();
+
+  const cells: Array<{ population: number; centroid: RouteCoord }> = [];
+  const memberRegex = /<gml:featureMember>([\s\S]*?)<\/gml:featureMember>/g;
+  let match;
+  while ((match = memberRegex.exec(gml)) !== null) {
+    const block = match[1];
+    const popMatch = block.match(/<ms:pop_tot>(\d+)<\/ms:pop_tot>/);
+    const population = popMatch ? parseInt(popMatch[1], 10) : 0;
+    if (population <= 0) continue;
+    const posListMatch = block.match(/<gml:posList[^>]*>([\s\S]*?)<\/gml:posList>/);
+    if (!posListMatch) continue;
+    const coords = posListMatch[1].trim().split(/\s+/).map(Number);
+    let sumLat = 0, sumLng = 0, count = 0;
+    for (let i = 0; i < coords.length - 2; i += 2) {
+      sumLat += coords[i];
+      sumLng += coords[i + 1];
+      count++;
+    }
+    if (count > 0) cells.push({ population, centroid: { lat: sumLat / count, lng: sumLng / count } });
+  }
+
+  const overlapping = cells.filter(cell => {
+    for (let i = 0; i < route.length - 1; i++) {
+      if (distanceToSegmentMeters(cell.centroid, route[i], route[i + 1]) <= footprintBufferM + 180) return true;
+    }
+    return false;
+  });
+  if (overlapping.length === 0) return null;
+
+  const maxCell = overlapping.reduce((best, cell) => cell.population > best.population ? cell : best, overlapping[0]);
+  const totalPopulation = overlapping.reduce((sum, cell) => sum + cell.population, 0);
+  const maxDensity = maxCell.population * 16;
+  const avgDensity = totalPopulation / Math.max(overlapping.length * 0.0625, 0.0625);
+  const driver = nearestRouteDriver(maxCell.centroid, route);
+
+  return {
+    maxDensity,
+    avgDensity,
+    cellCount: overlapping.length,
+    maxCellPopulation: maxCell.population,
+    totalPopulation,
+    gridResolutionM: 250,
+    dataSource: 'SSB befolkning på rutenett 250 m (2025)',
+    method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+    calculation: `${maxCell.population} personer i 250 m-rute × 16 = ${Math.round(maxDensity)} personer/km²`,
+    footprintDescription: `Planlagt rute med Flight Geography + Contingency + Ground Risk Buffer (${Math.round(footprintBufferM)} m fra ruten).`,
+    driver,
+    driverCoordinate: maxCell.centroid,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -753,7 +862,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       }
     }
 
-    // 9c. Fetch SSB population density (befolkning_paa_rutenett) via WFS
+    // 9c. Fetch SSB 250m population density for the operational footprint (route + SORA buffers)
     let populationData: {
       maxDensity: number;
       avgDensity: number;
@@ -761,101 +870,62 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       grcImpact: 'none' | 'moderate' | 'high' | 'very_high';
       grcIncrement: number;
       summary: string;
+      maxCellPopulation?: number;
+      totalPopulation?: number;
+      gridResolutionM?: number;
+      dataSource?: string;
+      method?: string;
+      calculation?: string;
+      footprintDescription?: string;
+      driver?: string;
+      driverCoordinate?: { lat: number; lng: number };
     } | null = null;
 
-    // Befolkningstetthet skal KUN beregnes ut fra selve flyruten,
+    // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
     if (routeCoords && routeCoords.length >= 2) {
       try {
-        const allCoords: { lat: number; lng: number }[] = routeCoords;
+        const soraData = mission.mission_sora?.[0];
+        const routeSora = (mission.route as any)?.soraSettings;
+        const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
+        const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
+        const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
+        const footprintBufferM = Math.max(fg + contingency + grb, 250);
+        const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM);
 
-        const degPerMeterLat = 1 / 111320;
-        const avgLatPop = allCoords.reduce((s, c) => s + c.lat, 0) / allCoords.length;
-        const degPerMeterLng = 1 / (111320 * Math.cos(avgLatPop * Math.PI / 180));
-        const bufferM = 1000; // 1km buffer for population grid (matches 1km² cell size)
-
-        let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-        for (const c of allCoords) {
-          if (c.lat < minLat) minLat = c.lat;
-          if (c.lat > maxLat) maxLat = c.lat;
-          if (c.lng < minLng) minLng = c.lng;
-          if (c.lng > maxLng) maxLng = c.lng;
-        }
-        minLat -= bufferM * degPerMeterLat;
-        maxLat += bufferM * degPerMeterLat;
-        minLng -= bufferM * degPerMeterLng;
-        maxLng += bufferM * degPerMeterLng;
-
-        // SSB befolkning_paa_rutenett WFS 2.0 — 1km² grid cells with population count
-        // Note: WFS 2.0 with EPSG:4326 requires lat,lng axis order for BBOX
-        const popWfsUrl = `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=befolkning_1km_2025&SRSNAME=EPSG:4326&BBOX=${minLat},${minLng},${maxLat},${maxLng},EPSG:4326&COUNT=100`;
-        console.log(`Fetching SSB population WFS: bbox=${minLat.toFixed(5)},${minLng.toFixed(5)},${maxLat.toFixed(5)},${maxLng.toFixed(5)}`);
-
-        const popResponse = await fetch(popWfsUrl, { signal: AbortSignal.timeout(8000) });
-        if (popResponse.ok) {
-          const popText = await popResponse.text();
-          console.log(`SSB population WFS response length: ${popText.length} chars`);
-
-          // Parse GML/XML response — extract population values from XML elements
-          // Look for common SSB field names in GML elements
-          const densities: number[] = [];
-          const popPatterns = [
-            /<[^>]*:?befolkning[^>]*>(\d+)<\//gi,
-            /<[^>]*:?pop_tot[^>]*>(\d+)<\//gi,
-            /<[^>]*:?pop[^>]*>(\d+)<\//gi,
-            /<[^>]*:?total[^>]*>(\d+)<\//gi,
-          ];
-          
-          for (const pattern of popPatterns) {
-            let match;
-            while ((match = pattern.exec(popText)) !== null) {
-              const val = parseInt(match[1], 10);
-              if (!isNaN(val)) densities.push(val);
-            }
-            if (densities.length > 0) break; // Use first pattern that matches
+        if (computed) {
+          const maxDensity = computed.maxDensity;
+          let grcImpact: 'none' | 'moderate' | 'high' | 'very_high' = 'none';
+          let grcIncrement = 0;
+          if (maxDensity >= 1500) {
+            grcImpact = 'very_high';
+            grcIncrement = 2;
+          } else if (maxDensity >= 500) {
+            grcImpact = 'high';
+            grcIncrement = 1;
+          } else if (maxDensity >= 100) {
+            grcImpact = 'moderate';
           }
 
-          console.log(`SSB population WFS: ${densities.length} density values parsed`);
-
-          if (densities.length > 0) {
-            const maxDensity = Math.max(...densities);
-            const avgDensity = densities.reduce((s, v) => s + v, 0) / densities.length;
-
-            // GRC thresholds per SORA: 500+/km² = populated, 1500+/km² = dense urban
-            let grcImpact: 'none' | 'moderate' | 'high' | 'very_high' = 'none';
-            let grcIncrement = 0;
-            let summary = '';
-
-            if (maxDensity >= 1500) {
-              grcImpact = 'very_high';
-              grcIncrement = 2;
-              summary = `Tett befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +2 (iGRC).`;
-            } else if (maxDensity >= 500) {
-              grcImpact = 'high';
-              grcIncrement = 1;
-              summary = `Befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +1 (iGRC).`;
-            } else if (maxDensity >= 100) {
-              grcImpact = 'moderate';
-              grcIncrement = 0;
-              summary = `Spredt bebyggelse: ${Math.round(maxDensity)} personer/km² (maks). Ingen ekstra GRC-økning.`;
-            } else {
-              grcImpact = 'none';
-              grcIncrement = 0;
-              summary = `Lav befolkningstetthet: ${Math.round(maxDensity)} personer/km² (maks). Lav bakkerisiko.`;
-            }
-
-            populationData = { maxDensity, avgDensity, cellCount: densities.length, grcImpact, grcIncrement, summary };
-            console.log(`Population data: max=${maxDensity}, avg=${avgDensity.toFixed(0)}, grcImpact=${grcImpact}, grcIncrement=+${grcIncrement}`);
-          } else {
-            console.log('SSB population WFS: no density values found in GML response');
-            // Log a snippet for debugging
-            console.log('GML snippet:', popText.substring(0, 500));
-          }
+          const summary = `SSB 250 m: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`;
+          populationData = { ...computed, grcImpact, grcIncrement, summary };
+          console.log(`Population data 250m: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}, driver=${computed.driver}`);
         } else {
-          console.error('SSB population WFS failed:', popResponse.status, await popResponse.text().catch(() => ''));
+          console.log('SSB 250m population: no overlapping populated cells found inside operational footprint');
+          populationData = {
+            maxDensity: 0,
+            avgDensity: 0,
+            cellCount: 0,
+            grcImpact: 'none',
+            grcIncrement: 0,
+            summary: 'Ingen befolkede SSB 250 m-ruter ble funnet innenfor operasjonens fotavtrykk.',
+            gridResolutionM: 250,
+            dataSource: 'SSB befolkning på rutenett 250 m (2025)',
+            method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+          };
         }
       } catch (e) {
-        console.error('SSB population fetch error (continuing without data):', e);
+        console.error('SSB 250m population fetch error (continuing without data):', e);
       }
     }
 
@@ -1347,8 +1417,16 @@ VIKTIG: En drone ≤250g med maks hastighet ≤25 m/s har alltid iGRC=1, uavheng
 
 Bruk kontekstdata:
 - primaryDrone/assignedDrones: Finn modell → estimer dimensjon og vekt
-- populationDensity.maxDensity: Befolkningstetthet
+- populationDensity.maxDensity: Dimensjonerende befolkningstetthet fra SSB 250 m-rutenett. Denne verdien styrer befolkningstetthetskategorien/iGRC.
+- populationDensity.avgDensity: Gjennomsnittlig tetthet i operasjonens fotavtrykk, kun som støtteinformasjon.
 - landUse: Arealbruk for kvalitativ vurdering
+
+SSB-metode for populationDensity:
+- Bruk alltid populationDensity.maxDensity når den finnes; ikke erstatt den med estimat.
+- Datagrunnlaget er SSB befolkning på rutenett 250 m (2025).
+- Beregningen dekker droneoperasjonens fotavtrykk: planlagt rute + Flight Geography + Contingency + Ground Risk Buffer.
+- Høyeste overlappende 250 m-rute er dimensjonerende: antall personer i ruten × 16 = personer/km².
+- Rapporten SKAL forklare formelen, gjennomsnittlig tetthet og hvilket rutepunkt/segment som driver tallet basert på populationDensity.calculation, populationDensity.driver og populationDensity.footprintDescription.
 
 #### Steg 2: Vurder mitigeringer (reduserer iGRC til fGRC)
 
@@ -1535,7 +1613,14 @@ Returner en JSON-respons med denne strukturen:
     "drone_weight_kg": <estimert MTOW i kg>,
     "population_density_band": "<Kontrollert bakkeområde|Tynt befolket (<100/km²)|Befolket (<500/km²)|Tett befolket (<1500/km²)|Folkemengder (>1500/km²)>",
     "population_density_description": "<kort beskrivelse av området>",
-    "population_density_value": <befolkningstetthet per km², fra SSB-data eller estimat>,
+    "population_density_value": <befolkningstetthet per km², bruk populationDensity.maxDensity når tilgjengelig>,
+    "population_density_calculation": "<SSB 250 m-beregning, f.eks. '12 personer i 250 m-rute × 16 = 192 personer/km²'>",
+    "population_density_average": <gjennomsnittlig befolkningstetthet i fotavtrykket, populationDensity.avgDensity eller null>,
+    "population_density_driver": "<hvilket rutepunkt/segment som driver tallet, fra populationDensity.driver>",
+    "population_density_source": "<datakilde og metode, f.eks. SSB befolkning på rutenett 250 m (2025)>",
+    "population_density_footprint": "<hvilke buffere/fotavtrykk beregningen dekker>",
+    "ssb_grid_population": <antall personer i dimensjonerende 250 m-rute eller null>,
+    "ssb_grid_resolution_m": 250,
     "igrc": <number 1-10>,
     "igrc_reasoning": "<kort forklaring av iGRC-beregningen>",
     "mitigations": {
@@ -1678,6 +1763,21 @@ Returner en JSON-respons med denne strukturen:
         ...(aiAnalysis.operation_classification || {}),
         alos_max_m: deterministicAlos.alosMaxM,
         alos_calculation: deterministicAlos.alosCalculation,
+      };
+    }
+
+    if (populationData) {
+      aiAnalysis.ground_risk_analysis = {
+        ...(aiAnalysis.ground_risk_analysis || {}),
+        population_density_value: Math.round(populationData.maxDensity),
+        population_density_calculation: populationData.calculation ?? populationData.summary,
+        population_density_average: Number(populationData.avgDensity.toFixed(1)),
+        population_density_driver: populationData.driver ?? null,
+        population_density_source: populationData.dataSource ?? 'SSB befolkning på rutenett 250 m (2025)',
+        population_density_footprint: populationData.footprintDescription ?? 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.',
+        ssb_grid_population: populationData.maxCellPopulation ?? null,
+        ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
+        population_density_description: populationData.summary,
       };
     }
 

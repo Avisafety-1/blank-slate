@@ -54,6 +54,12 @@ export interface AdjacentAreaResult {
   containmentLevel: string;
   /** Human-readable status text */
   statusText: string;
+  dataSource?: string;
+  method?: string;
+  calculation?: string;
+  driver?: string;
+  maxCellPopulation?: number;
+  gridResolutionM?: number;
   /** Loading / error state */
   error?: string;
 }
@@ -1031,6 +1037,7 @@ export async function computeAdjacentAreaDensity(
   const pass = requiredContainment !== "Out of scope" && requiredContainment !== "Error";
 
   const statusText = `Required containment: ${requiredContainment} · ${avgDensity.toFixed(1)} pers/km² (${POPULATION_DENSITY_LABELS[populationDensityCategory]})`;
+  const method = "SSB 250 m-ruter innenfor tilstøtende område summeres og deles på arealet.";
 
   return {
     adjacentRadiusM,
@@ -1046,5 +1053,9 @@ export async function computeAdjacentAreaDensity(
     requiredContainment,
     containmentLevel: requiredContainment,
     statusText,
+    dataSource: "SSB befolkning på rutenett 250 m (2025)",
+    method,
+    calculation: `${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} personer/km²`,
+    gridResolutionM: 250,
   };
 }
