@@ -1781,17 +1781,25 @@ Returner en JSON-respons med denne strukturen:
     }
 
     if (populationData) {
+      const populationDensityValue = Math.round(populationData.maxDensity);
+      const populationDensityAverage = Number(populationData.avgDensity.toFixed(1));
+      const populationDensityBand = derivePopulationDensityBand(populationDensityValue);
+      const populationDensityDescription = populationData.cellCount > 0
+        ? `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? 'innenfor operasjonens fotavtrykk'}.`
+        : populationData.summary;
+
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
-        population_density_value: Math.round(populationData.maxDensity),
+        population_density_band: populationDensityBand,
+        population_density_value: populationDensityValue,
         population_density_calculation: populationData.calculation ?? populationData.summary,
-        population_density_average: Number(populationData.avgDensity.toFixed(1)),
+        population_density_average: populationDensityAverage,
         population_density_driver: populationData.driver ?? null,
         population_density_source: populationData.dataSource ?? 'SSB befolkning på rutenett 250 m (2025)',
         population_density_footprint: populationData.footprintDescription ?? 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.',
         ssb_grid_population: populationData.maxCellPopulation ?? null,
         ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
-        population_density_description: populationData.summary,
+        population_density_description: populationDensityDescription,
       };
     }
 
