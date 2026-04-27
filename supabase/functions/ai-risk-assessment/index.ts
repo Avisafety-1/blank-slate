@@ -862,7 +862,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       }
     }
 
-    // 9c. Fetch SSB population density (befolkning_paa_rutenett) via WFS
+    // 9c. Fetch SSB 250m population density for the operational footprint (route + SORA buffers)
     let populationData: {
       maxDensity: number;
       avgDensity: number;
@@ -870,101 +870,62 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       grcImpact: 'none' | 'moderate' | 'high' | 'very_high';
       grcIncrement: number;
       summary: string;
+      maxCellPopulation?: number;
+      totalPopulation?: number;
+      gridResolutionM?: number;
+      dataSource?: string;
+      method?: string;
+      calculation?: string;
+      footprintDescription?: string;
+      driver?: string;
+      driverCoordinate?: { lat: number; lng: number };
     } | null = null;
 
-    // Befolkningstetthet skal KUN beregnes ut fra selve flyruten,
+    // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
     if (routeCoords && routeCoords.length >= 2) {
       try {
-        const allCoords: { lat: number; lng: number }[] = routeCoords;
+        const soraData = mission.mission_sora?.[0];
+        const routeSora = (mission.route as any)?.soraSettings;
+        const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
+        const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
+        const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
+        const footprintBufferM = Math.max(fg + contingency + grb, 250);
+        const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM);
 
-        const degPerMeterLat = 1 / 111320;
-        const avgLatPop = allCoords.reduce((s, c) => s + c.lat, 0) / allCoords.length;
-        const degPerMeterLng = 1 / (111320 * Math.cos(avgLatPop * Math.PI / 180));
-        const bufferM = 1000; // 1km buffer for population grid (matches 1km² cell size)
-
-        let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-        for (const c of allCoords) {
-          if (c.lat < minLat) minLat = c.lat;
-          if (c.lat > maxLat) maxLat = c.lat;
-          if (c.lng < minLng) minLng = c.lng;
-          if (c.lng > maxLng) maxLng = c.lng;
-        }
-        minLat -= bufferM * degPerMeterLat;
-        maxLat += bufferM * degPerMeterLat;
-        minLng -= bufferM * degPerMeterLng;
-        maxLng += bufferM * degPerMeterLng;
-
-        // SSB befolkning_paa_rutenett WFS 2.0 — 1km² grid cells with population count
-        // Note: WFS 2.0 with EPSG:4326 requires lat,lng axis order for BBOX
-        const popWfsUrl = `https://kart.ssb.no/api/mapserver/v1/wfs/befolkning_paa_rutenett?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=befolkning_1km_2025&SRSNAME=EPSG:4326&BBOX=${minLat},${minLng},${maxLat},${maxLng},EPSG:4326&COUNT=100`;
-        console.log(`Fetching SSB population WFS: bbox=${minLat.toFixed(5)},${minLng.toFixed(5)},${maxLat.toFixed(5)},${maxLng.toFixed(5)}`);
-
-        const popResponse = await fetch(popWfsUrl, { signal: AbortSignal.timeout(8000) });
-        if (popResponse.ok) {
-          const popText = await popResponse.text();
-          console.log(`SSB population WFS response length: ${popText.length} chars`);
-
-          // Parse GML/XML response — extract population values from XML elements
-          // Look for common SSB field names in GML elements
-          const densities: number[] = [];
-          const popPatterns = [
-            /<[^>]*:?befolkning[^>]*>(\d+)<\//gi,
-            /<[^>]*:?pop_tot[^>]*>(\d+)<\//gi,
-            /<[^>]*:?pop[^>]*>(\d+)<\//gi,
-            /<[^>]*:?total[^>]*>(\d+)<\//gi,
-          ];
-          
-          for (const pattern of popPatterns) {
-            let match;
-            while ((match = pattern.exec(popText)) !== null) {
-              const val = parseInt(match[1], 10);
-              if (!isNaN(val)) densities.push(val);
-            }
-            if (densities.length > 0) break; // Use first pattern that matches
+        if (computed) {
+          const maxDensity = computed.maxDensity;
+          let grcImpact: 'none' | 'moderate' | 'high' | 'very_high' = 'none';
+          let grcIncrement = 0;
+          if (maxDensity >= 1500) {
+            grcImpact = 'very_high';
+            grcIncrement = 2;
+          } else if (maxDensity >= 500) {
+            grcImpact = 'high';
+            grcIncrement = 1;
+          } else if (maxDensity >= 100) {
+            grcImpact = 'moderate';
           }
 
-          console.log(`SSB population WFS: ${densities.length} density values parsed`);
-
-          if (densities.length > 0) {
-            const maxDensity = Math.max(...densities);
-            const avgDensity = densities.reduce((s, v) => s + v, 0) / densities.length;
-
-            // GRC thresholds per SORA: 500+/km² = populated, 1500+/km² = dense urban
-            let grcImpact: 'none' | 'moderate' | 'high' | 'very_high' = 'none';
-            let grcIncrement = 0;
-            let summary = '';
-
-            if (maxDensity >= 1500) {
-              grcImpact = 'very_high';
-              grcIncrement = 2;
-              summary = `Tett befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +2 (iGRC).`;
-            } else if (maxDensity >= 500) {
-              grcImpact = 'high';
-              grcIncrement = 1;
-              summary = `Befolket område: ${Math.round(maxDensity)} personer/km² (maks). GRC økes med +1 (iGRC).`;
-            } else if (maxDensity >= 100) {
-              grcImpact = 'moderate';
-              grcIncrement = 0;
-              summary = `Spredt bebyggelse: ${Math.round(maxDensity)} personer/km² (maks). Ingen ekstra GRC-økning.`;
-            } else {
-              grcImpact = 'none';
-              grcIncrement = 0;
-              summary = `Lav befolkningstetthet: ${Math.round(maxDensity)} personer/km² (maks). Lav bakkerisiko.`;
-            }
-
-            populationData = { maxDensity, avgDensity, cellCount: densities.length, grcImpact, grcIncrement, summary };
-            console.log(`Population data: max=${maxDensity}, avg=${avgDensity.toFixed(0)}, grcImpact=${grcImpact}, grcIncrement=+${grcIncrement}`);
-          } else {
-            console.log('SSB population WFS: no density values found in GML response');
-            // Log a snippet for debugging
-            console.log('GML snippet:', popText.substring(0, 500));
-          }
+          const summary = `SSB 250 m: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`;
+          populationData = { ...computed, grcImpact, grcIncrement, summary };
+          console.log(`Population data 250m: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}, driver=${computed.driver}`);
         } else {
-          console.error('SSB population WFS failed:', popResponse.status, await popResponse.text().catch(() => ''));
+          console.log('SSB 250m population: no overlapping populated cells found inside operational footprint');
+          populationData = {
+            maxDensity: 0,
+            avgDensity: 0,
+            cellCount: 0,
+            grcImpact: 'none',
+            grcIncrement: 0,
+            summary: 'Ingen befolkede SSB 250 m-ruter ble funnet innenfor operasjonens fotavtrykk.',
+            gridResolutionM: 250,
+            dataSource: 'SSB befolkning på rutenett 250 m (2025)',
+            method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+          };
         }
       } catch (e) {
-        console.error('SSB population fetch error (continuing without data):', e);
+        console.error('SSB 250m population fetch error (continuing without data):', e);
       }
     }
 
