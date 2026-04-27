@@ -38,6 +38,8 @@ interface GroundRiskAnalysis {
   fgrc?: number;
   fgrc_reasoning?: string;
   controlled_ground_area?: boolean;
+  grc_calculation_method?: string;
+  igrc_table_basis?: string;
 }
 
 interface GroundRiskAnalysisSectionProps {
@@ -86,6 +88,9 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
             )}
             {data.controlled_ground_area && (
               <Badge variant="outline" className="text-[10px]">Kontrollert</Badge>
+            )}
+            {data.grc_calculation_method && (
+              <Badge variant="secondary" className="text-[10px]">Systemberegnet</Badge>
             )}
           </div>
           {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -160,6 +165,14 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
               </div>
               {data.igrc_reasoning && (
                 <p className="text-xs text-muted-foreground mt-1">{data.igrc_reasoning}</p>
+              )}
+              {(data.grc_calculation_method || data.igrc_table_basis) && (
+                <div className="rounded-md border border-border bg-muted/40 p-2 text-xs space-y-1 mt-2">
+                  {data.grc_calculation_method && <p className="font-medium text-foreground">{data.grc_calculation_method}</p>}
+                  {data.igrc_table_basis && <p className="text-muted-foreground">Tabellgrunnlag: {data.igrc_table_basis}</p>}
+                  {data.total_reduction != null && <p className="text-muted-foreground">Dokumentert reduksjon: {data.total_reduction}</p>}
+                  {data.fgrc != null && <p className="text-muted-foreground">Endelig fGRC: {data.fgrc}</p>}
+                </div>
               )}
             </div>
           )}
