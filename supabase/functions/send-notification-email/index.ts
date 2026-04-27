@@ -25,7 +25,7 @@ interface EmailRequest {
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
   mission?: { id?: string; tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
-  approvalMission?: { tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
+  approvalMission?: { id?: string; tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
   pilotComment?: { missionTitle: string; missionLocation: string; missionDate: string; comment: string; senderName: string; };
   trainingAssigned?: { recipientId: string; courseName: string; };
 }
