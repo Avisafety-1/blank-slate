@@ -1417,8 +1417,16 @@ VIKTIG: En drone ≤250g med maks hastighet ≤25 m/s har alltid iGRC=1, uavheng
 
 Bruk kontekstdata:
 - primaryDrone/assignedDrones: Finn modell → estimer dimensjon og vekt
-- populationDensity.maxDensity: Befolkningstetthet
+- populationDensity.maxDensity: Dimensjonerende befolkningstetthet fra SSB 250 m-rutenett. Denne verdien styrer befolkningstetthetskategorien/iGRC.
+- populationDensity.avgDensity: Gjennomsnittlig tetthet i operasjonens fotavtrykk, kun som støtteinformasjon.
 - landUse: Arealbruk for kvalitativ vurdering
+
+SSB-metode for populationDensity:
+- Bruk alltid populationDensity.maxDensity når den finnes; ikke erstatt den med estimat.
+- Datagrunnlaget er SSB befolkning på rutenett 250 m (2025).
+- Beregningen dekker droneoperasjonens fotavtrykk: planlagt rute + Flight Geography + Contingency + Ground Risk Buffer.
+- Høyeste overlappende 250 m-rute er dimensjonerende: antall personer i ruten × 16 = personer/km².
+- Rapporten SKAL forklare formelen, gjennomsnittlig tetthet og hvilket rutepunkt/segment som driver tallet basert på populationDensity.calculation, populationDensity.driver og populationDensity.footprintDescription.
 
 #### Steg 2: Vurder mitigeringer (reduserer iGRC til fGRC)
 
@@ -1605,7 +1613,14 @@ Returner en JSON-respons med denne strukturen:
     "drone_weight_kg": <estimert MTOW i kg>,
     "population_density_band": "<Kontrollert bakkeområde|Tynt befolket (<100/km²)|Befolket (<500/km²)|Tett befolket (<1500/km²)|Folkemengder (>1500/km²)>",
     "population_density_description": "<kort beskrivelse av området>",
-    "population_density_value": <befolkningstetthet per km², fra SSB-data eller estimat>,
+    "population_density_value": <befolkningstetthet per km², bruk populationDensity.maxDensity når tilgjengelig>,
+    "population_density_calculation": "<SSB 250 m-beregning, f.eks. '12 personer i 250 m-rute × 16 = 192 personer/km²'>",
+    "population_density_average": <gjennomsnittlig befolkningstetthet i fotavtrykket, populationDensity.avgDensity eller null>,
+    "population_density_driver": "<hvilket rutepunkt/segment som driver tallet, fra populationDensity.driver>",
+    "population_density_source": "<datakilde og metode, f.eks. SSB befolkning på rutenett 250 m (2025)>",
+    "population_density_footprint": "<hvilke buffere/fotavtrykk beregningen dekker>",
+    "ssb_grid_population": <antall personer i dimensjonerende 250 m-rute eller null>,
+    "ssb_grid_resolution_m": 250,
     "igrc": <number 1-10>,
     "igrc_reasoning": "<kort forklaring av iGRC-beregningen>",
     "mitigations": {
