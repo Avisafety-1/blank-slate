@@ -1165,7 +1165,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       try {
         const { data: droneModels } = await supabase
           .from('drone_models' as any)
-          .select('name, characteristic_dimension_m, max_speed_mps, weight_kg, category')
+          .select('name, characteristic_dimension_m, max_speed_mps, max_wind_mps, weight_kg, category')
           .or(`name.ilike.%${droneData.modell}%,name.ilike.%${String(droneData.modell).replace(/^DJI\s+/i, '')}%`)
           .limit(20);
 
@@ -1287,6 +1287,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         category: droneCatalogMatch?.category ?? null,
         characteristicDimensionM: primaryDroneCharacteristicDimensionM,
         maxSpeedMps: droneCatalogMatch?.max_speed_mps ?? null,
+        maxWindMps: droneCatalogMatch?.max_wind_mps ?? null,
         weightKg: droneCatalogMatch?.weight_kg ?? droneData.vekt ?? null,
         alos: deterministicAlos,
       } : null,
