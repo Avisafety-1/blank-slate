@@ -1161,34 +1161,27 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 );
               })()}
 
-              {/* Hindre egen godkjenning */}
-              {(() => {
-                const locked = isChildDept && !!inherited?.propagate_prevent_self_approval;
-                const value = locked ? inherited!.prevent_self_approval : preventSelfApproval;
-                return (
-                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
-                    <Label htmlFor="prevent-self-approval" className="flex-1 cursor-pointer pr-4">
-                      <div className="font-medium text-sm flex items-center gap-1.5">
-                        Kan ikke godkjenne egne oppdrag
-                        {locked && (
-                          <Badge variant="secondary" className="text-[10px] gap-1">
-                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Når aktivert kan en godkjenner ikke godkjenne oppdrag der vedkommende selv er satt som flyger/personell.
-                      </div>
-                    </Label>
-                    <Switch
-                      id="prevent-self-approval"
-                      checked={value}
-                      onCheckedChange={handleTogglePreventSelfApproval}
-                      disabled={savingSettings || locked}
-                    />
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                <Label htmlFor="prevent-self-approval" className="flex-1 cursor-pointer pr-4">
+                  <div className="font-medium text-sm flex items-center gap-1.5">
+                    Kan ikke godkjenne egne oppdrag
+                    {preventSelfApprovalLocked && (
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                      </Badge>
+                    )}
                   </div>
-                );
-              })()}
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Når oppdrag sendes til godkjenning kan flyger/personell på oppdraget ikke godkjenne det selv.
+                  </div>
+                </Label>
+                <Switch
+                  id="prevent-self-approval"
+                  checked={preventSelfApprovalValue}
+                  onCheckedChange={handleTogglePreventSelfApproval}
+                  disabled={savingSettings || preventSelfApprovalLocked}
+                />
+              </div>
 
               {/* Krev SORA */}
               {(() => {
