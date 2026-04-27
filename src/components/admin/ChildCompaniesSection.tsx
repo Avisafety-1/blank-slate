@@ -1039,6 +1039,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
   // Build the company object passed to dialog, with parent_company_id pre-set
   const dialogCompany = selectedCompany || undefined;
+  const preventSelfApprovalLocked = isChildDept && !!inherited?.propagate_prevent_self_approval;
+  const preventSelfApprovalValue = preventSelfApprovalLocked ? inherited!.prevent_self_approval : preventSelfApproval;
 
   return (
     <div className="space-y-4">
