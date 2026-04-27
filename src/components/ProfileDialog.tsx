@@ -358,18 +358,32 @@ export const ProfileDialog = () => {
         // Fetch AI risk assessments for pending missions
         const missionIds = (pendingMissions || []).map((m: any) => m.id);
         let riskMap: Record<string, any> = {};
+        let personnelMap: Record<string, string[]> = {};
         if (missionIds.length > 0) {
-          const { data: riskData } = await supabase
-            .from("mission_risk_assessments")
-            .select("*")
-            .in("mission_id", missionIds)
-            .order("created_at", { ascending: false });
+          const [riskResult, personnelResult] = await Promise.all([
+            supabase
+              .from("mission_risk_assessments")
+              .select("*")
+              .in("mission_id", missionIds)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("mission_personnel")
+              .select("mission_id, profile_id")
+              .in("mission_id", missionIds),
+          ]);
 
-          if (riskData) {
-            for (const r of riskData) {
+          if (riskResult.data) {
+            for (const r of riskResult.data) {
               if (!riskMap[r.mission_id]) {
                 riskMap[r.mission_id] = r;
               }
+            }
+          }
+
+          if (personnelResult.data) {
+            for (const p of personnelResult.data as any[]) {
+              if (!personnelMap[p.mission_id]) personnelMap[p.mission_id] = [];
+              if (p.profile_id) personnelMap[p.mission_id].push(p.profile_id);
             }
           }
         }
@@ -378,6 +392,7 @@ export const ProfileDialog = () => {
           (pendingMissions || []).map((m: any) => ({
             ...m,
             aiRisk: riskMap[m.id] || null,
+            personnel_profile_ids: personnelMap[m.id] || [],
           }))
         );
       } else {
