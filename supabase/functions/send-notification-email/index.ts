@@ -23,9 +23,9 @@ interface EmailRequest {
   campaignId?: string;
   newUser?: { fullName: string; email: string; companyName: string; };
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
-  mission?: { tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
+  mission?: { id?: string; tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
-  approvalMission?: { tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
+  approvalMission?: { id?: string; tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
   pilotComment?: { missionTitle: string; missionLocation: string; missionDate: string; comment: string; senderName: string; };
   trainingAssigned?: { recipientId: string; courseName: string; };
 }
@@ -161,7 +161,7 @@ serve(async (req: Request): Promise<Response> => {
       console.log(`[APPROVAL] approverProfiles count=${approverProfiles?.length ?? 0}`);
       if (!approverProfiles?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      const { data: approvalCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
+      const { data: approvalCompany } = await supabase.from('companies').select('parent_company_id, prevent_self_approval').eq('id', companyId).single();
       const parentId = approvalCompany?.parent_company_id;
       console.log(`[APPROVAL] companyId=${companyId}, parent=${parentId ?? 'none'}`);
 
@@ -174,10 +174,16 @@ serve(async (req: Request): Promise<Response> => {
         }
         return a.company_id === companyId;
       });
-      console.log(`[APPROVAL] Filtered approvers count=${approvers.length}, ids=${JSON.stringify(approvers.map((a:any) => a.id))}`);
-      if (!approvers.length) return new Response(JSON.stringify({ success: true, message: 'No approvers for this department' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      let eligibleApprovers = approvers;
+      if (approvalCompany?.prevent_self_approval && missionData?.id) {
+        const { data: personnel } = await supabase.from('mission_personnel').select('profile_id').eq('mission_id', missionData.id);
+        const assignedIds = new Set((personnel || []).map((p: any) => p.profile_id).filter(Boolean));
+        eligibleApprovers = approvers.filter((a: any) => !assignedIds.has(a.id));
+      }
+      console.log(`[APPROVAL] Filtered approvers count=${eligibleApprovers.length}, ids=${JSON.stringify(eligibleApprovers.map((a:any) => a.id))}`);
+      if (!eligibleApprovers.length) return new Response(JSON.stringify({ success: true, message: 'No eligible approvers for this department' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', approvers.map(u => u.id)).eq('email_mission_approval', true);
+      const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', eligibleApprovers.map(u => u.id)).eq('email_mission_approval', true);
       console.log(`[APPROVAL] notificationPrefs count=${notificationPrefs?.length ?? 0}`);
       if (!notificationPrefs?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers with notifications' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 

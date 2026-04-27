@@ -127,6 +127,7 @@ export const ProfileDialog = () => {
   const [pendingTraining, setPendingTraining] = useState<any[]>([]);
   const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
   const [canApproveMissions, setCanApproveMissions] = useState(false);
+  const [preventSelfApproval, setPreventSelfApproval] = useState(false);
   const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
@@ -271,12 +272,13 @@ export const ProfileDialog = () => {
       if (profileData?.company_id) {
         const { data: companyData } = await supabase
           .from("companies")
-          .select("navn")
+          .select("navn, prevent_self_approval")
           .eq("id", profileData.company_id)
           .single();
 
         if (companyData) {
           setCompany(companyData);
+          setPreventSelfApproval((companyData as any).prevent_self_approval === true);
         }
       }
 
@@ -356,18 +358,32 @@ export const ProfileDialog = () => {
         // Fetch AI risk assessments for pending missions
         const missionIds = (pendingMissions || []).map((m: any) => m.id);
         let riskMap: Record<string, any> = {};
+        let personnelMap: Record<string, string[]> = {};
         if (missionIds.length > 0) {
-          const { data: riskData } = await supabase
-            .from("mission_risk_assessments")
-            .select("*")
-            .in("mission_id", missionIds)
-            .order("created_at", { ascending: false });
+          const [riskResult, personnelResult] = await Promise.all([
+            supabase
+              .from("mission_risk_assessments")
+              .select("*")
+              .in("mission_id", missionIds)
+              .order("created_at", { ascending: false }),
+            supabase
+              .from("mission_personnel")
+              .select("mission_id, profile_id")
+              .in("mission_id", missionIds),
+          ]);
 
-          if (riskData) {
-            for (const r of riskData) {
+          if (riskResult.data) {
+            for (const r of riskResult.data) {
               if (!riskMap[r.mission_id]) {
                 riskMap[r.mission_id] = r;
               }
+            }
+          }
+
+          if (personnelResult.data) {
+            for (const p of personnelResult.data as any[]) {
+              if (!personnelMap[p.mission_id]) personnelMap[p.mission_id] = [];
+              if (p.profile_id) personnelMap[p.mission_id].push(p.profile_id);
             }
           }
         }
@@ -376,6 +392,7 @@ export const ProfileDialog = () => {
           (pendingMissions || []).map((m: any) => ({
             ...m,
             aiRisk: riskMap[m.id] || null,
+            personnel_profile_ids: personnelMap[m.id] || [],
           }))
         );
       } else {
@@ -668,6 +685,11 @@ export const ProfileDialog = () => {
     if (!user) return;
     try {
       const mission = pendingApprovalMissions.find((m: any) => m.id === missionId);
+      const assignedIds = Array.isArray(mission?.personnel_profile_ids) ? mission.personnel_profile_ids : [];
+      if (preventSelfApproval && assignedIds.includes(user.id)) {
+        toast.error('Du er satt som flyger/personell på dette oppdraget og kan derfor ikke godkjenne det.');
+        return;
+      }
       const existingComments = Array.isArray(mission?.approver_comments) ? mission.approver_comments : [];
       let updatedComments = existingComments;
 
@@ -1872,7 +1894,9 @@ export const ProfileDialog = () => {
                     <CardContent>
                       {pendingApprovalMissions.length > 0 ? (
                         <div className="space-y-4">
-                          {pendingApprovalMissions.map((mission) => (
+                          {pendingApprovalMissions.map((mission) => {
+                            const selfApprovalBlocked = preventSelfApproval && Array.isArray(mission.personnel_profile_ids) && mission.personnel_profile_ids.includes(user?.id);
+                            return (
                             <div
                               key={mission.id}
                               className="p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden min-w-0"
@@ -1922,6 +1946,11 @@ export const ProfileDialog = () => {
                               )}
 
                               {/* Approval section */}
+                              {selfApprovalBlocked && (
+                                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" onClick={(e) => e.stopPropagation()}>
+                                  Du er satt som flyger/personell på dette oppdraget og kan derfor ikke godkjenne det.
+                                </div>
+                              )}
                               {approvingMissionId === mission.id ? (
                                 <div className="space-y-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                                   <Textarea
@@ -1932,7 +1961,7 @@ export const ProfileDialog = () => {
                                     className="text-sm"
                                   />
                                   <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => handleApproveMission(mission.id)}>
+                                    <Button size="sm" onClick={() => handleApproveMission(mission.id)} disabled={selfApprovalBlocked}>
                                       <CheckCircle2 className="h-4 w-4 mr-1" />
                                       Godkjenn
                                     </Button>
@@ -1947,7 +1976,7 @@ export const ProfileDialog = () => {
                                     <MessageSquare className="h-4 w-4 mr-1" />
                                     Kommentar
                                   </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setApprovingMissionId(mission.id)}>
+                                  <Button size="sm" variant="outline" onClick={() => setApprovingMissionId(mission.id)} disabled={selfApprovalBlocked}>
                                     <CheckCircle2 className="h-4 w-4 mr-1" />
                                     Godkjenn
                                   </Button>
@@ -1969,7 +1998,8 @@ export const ProfileDialog = () => {
                                 </div>
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">Ingen oppdrag venter på godkjenning</p>

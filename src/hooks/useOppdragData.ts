@@ -354,7 +354,7 @@ export const useOppdragData = () => {
   }, []);
 
   // Handlers
-  const handleSubmitForApproval = async (mission: Mission, companySettings?: { require_sora_on_missions?: boolean; require_sora_steps?: number }, soraApprovalEnabled?: boolean) => {
+  const handleSubmitForApproval = async (mission: Mission, companySettings?: { require_sora_on_missions?: boolean; require_sora_steps?: number; prevent_self_approval?: boolean }, soraApprovalEnabled?: boolean) => {
     try {
       // Check if SORA is required (only when sora_based_approval is NOT active)
       if (companySettings?.require_sora_on_missions && !soraApprovalEnabled) {
@@ -382,6 +382,23 @@ export const useOppdragData = () => {
         return;
       }
 
+      if (companySettings?.prevent_self_approval) {
+        const { data: personnel, error: personnelError } = await supabase
+          .from('mission_personnel')
+          .select('profile_id')
+          .eq('mission_id', mission.id);
+
+        if (personnelError) throw personnelError;
+
+        const assignedIds = new Set((personnel || []).map((p: any) => p.profile_id).filter(Boolean));
+        const availableApprovers = (approvers || []).filter((a: any) => !assignedIds.has(a.id));
+
+        if (availableApprovers.length === 0) {
+          toast.error('Ingen tilgjengelige godkjennere. Alle godkjennere er tilknyttet oppdraget.');
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from('missions')
         .update({
@@ -398,6 +415,7 @@ export const useOppdragData = () => {
             type: 'notify_mission_approval',
             companyId,
             mission: {
+              id: mission.id,
               tittel: mission.tittel,
               lokasjon: mission.lokasjon,
               tidspunkt: mission.tidspunkt,
