@@ -1042,7 +1042,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
   return (
     <div className="space-y-4">
-      <Collapsible>
+      <Collapsible defaultOpen>
         <GlassCard>
           <CollapsibleTrigger className="w-full text-left">
             <div className="flex items-center justify-between">
