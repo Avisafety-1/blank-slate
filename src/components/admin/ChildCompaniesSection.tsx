@@ -873,6 +873,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         propagate_airspace_warnings: checked,
         propagate_hide_reporter: checked,
         propagate_mission_approval: checked,
+        propagate_prevent_self_approval: checked,
         propagate_sora_required: checked,
         propagate_deviation_report: checked,
       })
@@ -880,7 +881,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (checked) {
       await supabase
         .from("companies")
-        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, prevent_self_approval: preventSelfApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
         .eq("parent_company_id", companyId);
       toast.success("Selskapsinnstillinger anvendt på alle avdelinger og låst");
     } else {
