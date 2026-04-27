@@ -97,6 +97,20 @@ type RouteCoord = { lat: number; lng: number };
 
 const metersPerDegLat = 111_320;
 
+const formatNbNumber = (value: number, maximumFractionDigits = 0): string =>
+  value.toLocaleString('nb-NO', {
+    maximumFractionDigits,
+    minimumFractionDigits: maximumFractionDigits,
+  });
+
+const derivePopulationDensityBand = (densityPerKm2: number): string => {
+  if (densityPerKm2 <= 0) return 'Kontrollert bakkeområde / ubebodd';
+  if (densityPerKm2 < 100) return 'Tynt befolket (<100/km²)';
+  if (densityPerKm2 < 500) return 'Befolket (<500/km²)';
+  if (densityPerKm2 < 1500) return 'Tett befolket (<1500/km²)';
+  return 'Svært tett befolket (>1500/km²)';
+};
+
 
 const distanceMeters = (a: RouteCoord, b: RouteCoord): number => {
   const avgLat = ((a.lat + b.lat) / 2) * Math.PI / 180;
@@ -195,8 +209,8 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
     gridResolutionM: 250,
     dataSource: 'SSB befolkning på rutenett 250 m (2025)',
     method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
-    calculation: `${maxCell.population} personer i 250 m-rute × 16 = ${Math.round(maxDensity)} personer/km²`,
-    footprintDescription: `Planlagt rute med Flight Geography + Contingency + Ground Risk Buffer (${Math.round(footprintBufferM)} m fra ruten).`,
+    calculation: `${formatNbNumber(maxCell.population)} personer i dimensjonerende 250 m-rute × 16 = ${formatNbNumber(Math.round(maxDensity))} personer/km²`,
+    footprintDescription: `Planlagt rute + Flight Geography + Contingency + Ground Risk Buffer (${formatNbNumber(Math.round(footprintBufferM))} m fra ruten).`,
     driver,
     driverCoordinate: maxCell.centroid,
   };
