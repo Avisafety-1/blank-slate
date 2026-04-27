@@ -120,6 +120,8 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (data.drone_weight_kg != null) fields.push(["Dronevekt (kg)", String(data.drone_weight_kg)]);
   if (data.population_density_band) fields.push(["Befolkningstetthet", sanitizeForPdf(data.population_density_band)]);
   if (data.population_density_value != null) fields.push(["Befolkningstetthet (per km2)", String(data.population_density_value)]);
+  if (data.population_density_average != null) fields.push(["Gj.snitt tetthet (per km2)", String(data.population_density_average)]);
+  if (data.ssb_grid_population != null) fields.push(["Dimensjonerende SSB-rute", `${data.ssb_grid_population} personer (${data.ssb_grid_resolution_m || 250} m)`]);
   if (data.igrc != null) fields.push(["iGRC", String(data.igrc)]);
   if (data.fgrc != null) fields.push(["fGRC (endelig)", String(data.fgrc)]);
 
@@ -139,6 +141,23 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(data.igrc_reasoning), pageWidth - 28);
+    doc.text(lines, 14, yPos);
+    yPos += lines.length * 5 + 3;
+  }
+
+  if (data.population_density_calculation || data.population_density_driver || data.population_density_source) {
+    yPos = checkPageBreak(doc, yPos, 28);
+    setFontStyle(doc, "bold");
+    doc.text("SSB-beregning:", 14, yPos);
+    yPos += 5;
+    setFontStyle(doc, "normal");
+    const ssbText = [
+      data.population_density_source,
+      data.population_density_footprint,
+      data.population_density_calculation,
+      data.population_density_driver ? `Dimensjonerende del av ruten: ${data.population_density_driver}` : null,
+    ].filter(Boolean).join("\n");
+    const lines = doc.splitTextToSize(sanitizeForPdf(ssbText), pageWidth - 28);
     doc.text(lines, 14, yPos);
     yPos += lines.length * 5 + 3;
   }
