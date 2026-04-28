@@ -444,7 +444,7 @@ export function OpenAIPMap({
     // Create panes
     const paneConfig: Record<string, string> = {
       safeskyPane: '750', liveFlightPane: '720', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
-      obstaclePane: '660', nsmPane: '650', notamPane: '640',
+      obstaclePane: '660', nsmPane: '650', notamPane: '640', populationDensityPane: '635',
       rpasPane: '630', aipPane: '625', rmzPane: '620',
     };
     const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane']);
