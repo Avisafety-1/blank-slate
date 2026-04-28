@@ -1157,7 +1157,7 @@ export async function computeAdjacentAreaDensity(
   const outerPolys = makeBuffer(coords, sora, outerDist);
   const bbox = expandBboxMeters(bboxFromPolygons(outerPolys), 275);
 
-  const cells = await fetchSsbPopulationGrid(bbox, signal);
+  const cells = await fetchSsbPopulationGridTiled(bbox, signal);
 
   let totalPop = 0;
   const densityCells: SsbPopulationCell[] = [];
@@ -1230,7 +1230,7 @@ export async function computeSoraVolumePopulationDensity(
   const totalCoverageDist = soraVolumeDist + (adjacentRadiusM ?? 0);
   const coveragePolys = makeBuffer(coords, sora, Math.max(totalCoverageDist, 1));
   const bbox = expandBboxMeters(bboxFromPolygons(coveragePolys), 275);
-  const cells = await fetchSsbPopulationGrid(bbox, signal);
+  const cells = await fetchSsbPopulationGridTiled(bbox, signal);
 
   let totalPopulation = 0;
   let maxDensityCell: SsbPopulationCell | undefined;
