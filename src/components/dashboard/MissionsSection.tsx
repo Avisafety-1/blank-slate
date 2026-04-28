@@ -8,6 +8,7 @@ import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { MissionDetailDialog } from "./MissionDetailDialog";
 import { AddMissionDialog } from "./AddMissionDialog";
+import { MissionNotesDialog } from "./MissionNotesDialog";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -316,21 +317,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                 <div className="mb-1 sm:mb-1.5">
                   <div className="flex items-center gap-1.5 mb-1">
                     <h3 className="font-semibold text-xs sm:text-sm truncate">{mission.tittel}</h3>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      title="Kommenter/legg til merknad"
-                      aria-label="Kommenter/legg til merknad"
-                      className="h-6 w-6 shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCommentMission(mission);
-                        setCommentDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
                     {departmentsEnabled && mission.company_id !== companyId && mission.company_name && (
                       <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap shrink-0 gap-0.5 border-primary/30 text-primary">
                         <Building2 className="h-2.5 w-2.5" />
@@ -431,6 +417,29 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     </Badge>
                   )}
                 </div>
+                <div className="mt-2 pt-2 border-t border-border/40">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold text-muted-foreground">MERKNADER</p>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      title="Legg til merknad"
+                      aria-label="Legg til merknad"
+                      className="h-6 w-6 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCommentMission(mission);
+                        setCommentDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {mission.merknader && (
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2 whitespace-pre-wrap">{mission.merknader}</p>
+                  )}
+                </div>
                 <MissionSoraRouteDocumentation route={mission.route} compact className="mt-2" />
               </div>
             ))
@@ -451,14 +460,14 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         onMissionAdded={fetchMissions}
       />
 
-      <AddMissionDialog
+      <MissionNotesDialog
         open={commentDialogOpen}
         onOpenChange={(open) => {
           setCommentDialogOpen(open);
           if (!open) setCommentMission(null);
         }}
-        onMissionAdded={fetchMissions}
         mission={commentMission}
+        onSaved={fetchMissions}
       />
       
       <RiskAssessmentTypeDialog

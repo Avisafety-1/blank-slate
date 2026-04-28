@@ -32,6 +32,7 @@ import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
+import { MissionNotesDialog } from "@/components/dashboard/MissionNotesDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
@@ -118,6 +119,7 @@ export const MissionCard = ({
   const [expandedMapOpen, setExpandedMapOpen] = useState(false);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
   const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
@@ -150,17 +152,6 @@ export const MissionCard = ({
         <div className="space-y-2 flex-1 w-full">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg sm:text-xl font-semibold text-foreground">{mission.tittel}</h3>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              title="Kommenter/legg til merknad"
-              aria-label="Kommenter/legg til merknad"
-              className="h-8 w-8 shrink-0"
-              onClick={() => onEdit(mission)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
             {departmentsEnabled && mission.company_id !== companyId && mission.company_name && (
               <Badge variant="outline" className="text-xs gap-1 border-primary/30 text-primary">
                 <Building2 className="h-3 w-3" />
@@ -808,12 +799,27 @@ export const MissionCard = ({
       )}
 
       {/* Notes */}
-      {mission.merknader && (
-        <div className="pt-2 border-t border-border/50">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">MERKNADER</p>
-          <p className="text-sm text-foreground whitespace-pre-wrap">{mission.merknader}</p>
+      <div className="pt-2 border-t border-border/50">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="text-xs font-semibold text-muted-foreground">MERKNADER</p>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            title="Legg til merknad"
+            aria-label="Legg til merknad"
+            className="h-8 w-8 shrink-0"
+            onClick={() => setNotesDialogOpen(true)}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
         </div>
-      )}
+        {mission.merknader ? (
+          <p className="text-sm text-foreground whitespace-pre-wrap">{mission.merknader}</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">Ingen merknader</p>
+        )}
+      </div>
 
       {/* Approver Comments */}
       {Array.isArray(mission.approver_comments) && mission.approver_comments.length > 0 && (
@@ -875,6 +881,12 @@ export const MissionCard = ({
       onOpenChange={setAnalysisOpen}
       flightTrack={analysisTrack}
       droneName={mission.tittel}
+    />
+    <MissionNotesDialog
+      open={notesDialogOpen}
+      onOpenChange={setNotesDialogOpen}
+      mission={mission}
+      onSaved={fetchMissions}
     />
     <ExpandedMapDialog
       open={expandedMapOpen}
