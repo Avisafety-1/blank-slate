@@ -341,6 +341,15 @@ export function OpenAIPMap({
     }
 
     // SSB 250 m population density cells for the active SORA volume only.
+    if (leafletMapRef.current && !leafletMapRef.current.getPane('populationDensityPane')) {
+      leafletMapRef.current.createPane('populationDensityPane');
+      const pane = leafletMapRef.current.getPane('populationDensityPane');
+      if (pane) {
+        pane.style.zIndex = '635';
+        pane.style.pointerEvents = modeRef.current === 'routePlanning' ? 'none' : 'auto';
+      }
+    }
+
     if (!populationDensityLayerRef.current) {
       populationDensityLayerRef.current = L.layerGroup();
       if (leafletMapRef.current) {
