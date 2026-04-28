@@ -859,6 +859,76 @@ function pointInMultiPolygon(point: RoutePoint, polygons: RouteMultiPolygon): bo
   return polygons.some(polygon => pointInPolygon(point, polygon));
 }
 
+
+function segmentsIntersect(a: RoutePoint, b: RoutePoint, c: RoutePoint, d: RoutePoint): boolean {
+  const eps = 1e-12;
+  const orient = (p: RoutePoint, q: RoutePoint, r: RoutePoint) =>
+    (q.lng - p.lng) * (r.lat - p.lat) - (q.lat - p.lat) * (r.lng - p.lng);
+  const onSegment = (p: RoutePoint, q: RoutePoint, r: RoutePoint) =>
+    Math.min(p.lng, r.lng) - eps <= q.lng && q.lng <= Math.max(p.lng, r.lng) + eps &&
+    Math.min(p.lat, r.lat) - eps <= q.lat && q.lat <= Math.max(p.lat, r.lat) + eps;
+
+  const o1 = orient(a, b, c);
+  const o2 = orient(a, b, d);
+  const o3 = orient(c, d, a);
+  const o4 = orient(c, d, b);
+
+  if (Math.abs(o1) < eps && onSegment(a, c, b)) return true;
+  if (Math.abs(o2) < eps && onSegment(a, d, b)) return true;
+  if (Math.abs(o3) < eps && onSegment(c, a, d)) return true;
+  if (Math.abs(o4) < eps && onSegment(c, b, d)) return true;
+
+  return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0);
+}
+
+function polygonsIntersect(a: RoutePoint[], b: RoutePoint[]): boolean {
+  if (a.length < 3 || b.length < 3) return false;
+
+  if (a.some(point => pointInPolygon(point, b))) return true;
+  if (b.some(point => pointInPolygon(point, a))) return true;
+
+  for (let i = 0; i < a.length; i++) {
+    const a1 = a[i];
+    const a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      const b1 = b[j];
+      const b2 = b[(j + 1) % b.length];
+      if (segmentsIntersect(a1, a2, b1, b2)) return true;
+    }
+  }
+
+  return false;
+}
+
+function cellTouchesMultiPolygon(cell: SsbPopulationCell, polygons: RouteMultiPolygon): boolean {
+  const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
+  if (pointInMultiPolygon(pt, polygons)) return true;
+  if (!cell.polygon || cell.polygon.length < 3) return false;
+  return polygons.some(polygon => polygonsIntersect(cell.polygon!, polygon));
+}
+
+
+function cellInsideMultiPolygon(cell: SsbPopulationCell, polygons: RouteMultiPolygon): boolean {
+  const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
+  if (!cell.polygon || cell.polygon.length < 3) return pointInMultiPolygon(pt, polygons);
+  return cell.polygon.every(point => pointInMultiPolygon(point, polygons));
+}
+
+function expandBboxMeters(
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  meters: number
+) {
+  const avgLat = (bbox.minLat + bbox.maxLat) / 2;
+  const latDelta = meters / 111_320;
+  const lngDelta = meters / (111_320 * Math.max(Math.cos(avgLat * Math.PI / 180), 0.1));
+  return {
+    minLat: bbox.minLat - latDelta,
+    maxLat: bbox.maxLat + latDelta,
+    minLng: bbox.minLng - lngDelta,
+    maxLng: bbox.maxLng + lngDelta,
+  };
+}
+
 function polygonAreaKm2(polygon: RoutePoint[]): number {
   if (polygon.length < 3) return 0;
   const avgLat = polygon.reduce((s, p) => s + p.lat, 0) / polygon.length;
@@ -1018,7 +1088,7 @@ export async function computeAdjacentAreaDensity(
 
   const innerPolys = makeBuffer(coords, sora, innerDist);
   const outerPolys = makeBuffer(coords, sora, outerDist);
-  const bbox = bboxFromPolygons(outerPolys);
+  const bbox = expandBboxMeters(bboxFromPolygons(outerPolys), 275);
 
   const cells = await fetchSsbPopulationGrid(bbox, signal);
 
@@ -1026,8 +1096,7 @@ export async function computeAdjacentAreaDensity(
   const densityCells: SsbPopulationCell[] = [];
   let maxDensityCell: SsbPopulationCell | undefined;
   for (const cell of cells) {
-    const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
-    if (pointInMultiPolygon(pt, outerPolys) && !pointInMultiPolygon(pt, innerPolys)) {
+    if (cellTouchesMultiPolygon(cell, outerPolys) && !cellInsideMultiPolygon(cell, innerPolys)) {
       totalPop += cell.population;
       densityCells.push(cell);
       if (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0)) {
@@ -1040,8 +1109,10 @@ export async function computeAdjacentAreaDensity(
   const innerAreaKm2 = multiPolygonAreaKm2(innerPolys);
   const adjacentAreaKm2 = Math.max(outerAreaKm2 - innerAreaKm2, 0.01);
 
-  const avgDensity = totalPop / adjacentAreaKm2;
-  const populationDensityCategory = getPopulationDensityCategory(avgDensity, containment.uaSize);
+  const summedDensity = totalPop / adjacentAreaKm2;
+  const driverDensity = maxDensityCell?.densityPerKm2 ?? 0;
+  const avgDensity = driverDensity;
+  const populationDensityCategory = getPopulationDensityCategory(driverDensity, containment.uaSize);
   const threshold = getDensityThreshold(populationDensityCategory);
   const requiredContainment = calculateContainmentRequirement(
     containment.uaSize,
@@ -1051,8 +1122,8 @@ export async function computeAdjacentAreaDensity(
   );
   const pass = requiredContainment !== "Out of scope" && requiredContainment !== "Error";
 
-  const statusText = `Required containment: ${requiredContainment} · ${avgDensity.toFixed(1)} pers/km² (${POPULATION_DENSITY_LABELS[populationDensityCategory]})`;
-  const method = "SSB 250 m-ruter innenfor tilstøtende område summeres og deles på arealet.";
+  const statusText = `Required containment: ${requiredContainment} · pådriver ${driverDensity.toFixed(1)} pers/km² (${POPULATION_DENSITY_LABELS[populationDensityCategory]})`;
+  const method = "SSB 250 m-ruter som berører tilstøtende område vurderes; høyeste berørende 250 m-rute × 16 brukes som tetthetspådriver.";
 
   return {
     adjacentRadiusM,
@@ -1070,7 +1141,7 @@ export async function computeAdjacentAreaDensity(
     statusText,
     dataSource: "SSB befolkning på rutenett 250 m (2025)",
     method,
-    calculation: `${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} personer/km²`,
+    calculation: `Pådriver: ${(maxDensityCell?.population ?? 0).toLocaleString("nb-NO")} personer i høyeste 250 m-rute × 16 = ${driverDensity.toFixed(1)} personer/km². Sum i området: ${totalPop.toLocaleString("nb-NO")} innbyggere (${summedDensity.toFixed(1)} pers/km² fordelt på ${adjacentAreaKm2.toFixed(1)} km²).`,
     gridResolutionM: 250,
     maxCellPopulation: maxDensityCell?.population,
     densityCells,
@@ -1081,15 +1152,17 @@ export async function computeAdjacentAreaDensity(
 export async function computeSoraVolumePopulationDensity(
   coords: RoutePoint[],
   sora: SoraSettings,
+  adjacentRadiusM?: number,
   signal?: AbortSignal
 ): Promise<SoraPopulationDensityResult> {
   if (coords.length < 2) {
     return { cells: [], totalPopulation: 0, maxDensityPerKm2: 0, gridResolutionM: 250 };
   }
 
-  const outerDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
-  const volumePolys = makeBuffer(coords, sora, Math.max(outerDist, 1));
-  const bbox = bboxFromPolygons(volumePolys);
+  const soraVolumeDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
+  const totalCoverageDist = soraVolumeDist + (adjacentRadiusM ?? 0);
+  const coveragePolys = makeBuffer(coords, sora, Math.max(totalCoverageDist, 1));
+  const bbox = expandBboxMeters(bboxFromPolygons(coveragePolys), 275);
   const cells = await fetchSsbPopulationGrid(bbox, signal);
 
   let totalPopulation = 0;
@@ -1097,8 +1170,7 @@ export async function computeSoraVolumePopulationDensity(
   const visibleCells: SsbPopulationCell[] = [];
 
   for (const cell of cells) {
-    const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
-    if (!pointInMultiPolygon(pt, volumePolys)) continue;
+    if (!cellTouchesMultiPolygon(cell, coveragePolys)) continue;
 
     totalPopulation += cell.population;
     visibleCells.push(cell);
