@@ -388,10 +388,14 @@ export function OpenAIPMap({
       });
     }
     if (sora?.enabled && densityCells.length > 0) {
-      const maxDensity = Math.max(...densityCells.map(cell => cell.densityPerKm2 ?? cell.population * 16));
-      densityCells.forEach((cell) => {
+      const maxDensityIndex = densityCells.reduce((bestIndex, cell, index) => {
         const density = cell.densityPerKm2 ?? cell.population * 16;
-        const isHotspot = density === maxDensity;
+        const bestDensity = densityCells[bestIndex]?.densityPerKm2 ?? densityCells[bestIndex]?.population * 16 ?? -Infinity;
+        return density > bestDensity ? index : bestIndex;
+      }, 0);
+      densityCells.forEach((cell, index) => {
+        const density = cell.densityPerKm2 ?? cell.population * 16;
+        const isHotspot = index === maxDensityIndex;
         const densityLabel = `${Math.round(density).toLocaleString('nb-NO')} /km²`;
         const popup = `<strong>SSB 250 m-rute</strong><br/>${cell.population.toLocaleString('nb-NO')} personer i ruten<br/>${density.toLocaleString('nb-NO')} pers/km²${isHotspot ? '<br/><strong>Pådriver for utregning</strong>' : ''}`;
         const tooltip = `Pådriver · ${densityLabel}`;
