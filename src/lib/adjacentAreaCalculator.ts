@@ -1023,6 +1023,7 @@ export interface SsbPopulationCell {
   centroidLng: number;
   polygon?: RoutePoint[];
   densityPerKm2?: number;
+  isDriver?: boolean;
 }
 
 export async function fetchSsbPopulationGrid(
@@ -1176,10 +1177,9 @@ export async function computeAdjacentAreaDensity(
   const innerAreaKm2 = multiPolygonAreaKm2(innerPolys);
   const adjacentAreaKm2 = Math.max(outerAreaKm2 - innerAreaKm2, 0.01);
 
-  const summedDensity = totalPop / adjacentAreaKm2;
+  const avgDensity = totalPop / adjacentAreaKm2;
   const driverDensity = maxDensityCell?.densityPerKm2 ?? 0;
-  const avgDensity = driverDensity;
-  const populationDensityCategory = getPopulationDensityCategory(driverDensity, containment.uaSize);
+  const populationDensityCategory = getPopulationDensityCategory(avgDensity, containment.uaSize);
   const threshold = getDensityThreshold(populationDensityCategory);
   const requiredContainment = calculateContainmentRequirement(
     containment.uaSize,
@@ -1189,8 +1189,8 @@ export async function computeAdjacentAreaDensity(
   );
   const pass = requiredContainment !== "Out of scope" && requiredContainment !== "Error";
 
-  const statusText = `Required containment: ${requiredContainment} · pådriver ${driverDensity.toFixed(1)} pers/km² (${POPULATION_DENSITY_LABELS[populationDensityCategory]})`;
-  const method = "SSB 250 m-ruter som berører tilstøtende område vurderes; høyeste berørende 250 m-rute × 16 brukes som tetthetspådriver.";
+  const statusText = `Required containment: ${requiredContainment} · gj.snitt ${avgDensity.toFixed(1)} pers/km² (${POPULATION_DENSITY_LABELS[populationDensityCategory]})`;
+  const method = "SSB 250 m-ruter som berører tilstøtende donut-område summeres; containment beregnes fra gjennomsnittlig befolkningstetthet utenfor bakkerisikobufferen.";
 
   return {
     adjacentRadiusM,
@@ -1208,7 +1208,7 @@ export async function computeAdjacentAreaDensity(
     statusText,
     dataSource: "SSB befolkning på rutenett 250 m (2025)",
     method,
-    calculation: `Pådriver: ${(maxDensityCell?.population ?? 0).toLocaleString("nb-NO")} personer i høyeste 250 m-rute × 16 = ${driverDensity.toFixed(1)} personer/km². Sum i området: ${totalPop.toLocaleString("nb-NO")} innbyggere (${summedDensity.toFixed(1)} pers/km² fordelt på ${adjacentAreaKm2.toFixed(1)} km²).`,
+    calculation: `Gjennomsnitt: ${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} pers/km². Tetthetskategori: ${POPULATION_DENSITY_LABELS[populationDensityCategory]}. Høyeste 250 m-rute i området: ${(maxDensityCell?.population ?? 0).toLocaleString("nb-NO")} personer × 16 = ${driverDensity.toFixed(1)} pers/km² (kun kart-/pådriverinfo).`,
     gridResolutionM: 250,
     maxCellPopulation: maxDensityCell?.population,
     densityCells,
@@ -1228,6 +1228,7 @@ export async function computeSoraVolumePopulationDensity(
 
   const soraVolumeDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
   const totalCoverageDist = soraVolumeDist + (adjacentRadiusM ?? 0);
+  const driverPolys = makeBuffer(coords, sora, Math.max(soraVolumeDist, 1));
   const coveragePolys = makeBuffer(coords, sora, Math.max(totalCoverageDist, 1));
   const bbox = expandBboxMeters(bboxFromPolygons(coveragePolys), 275);
   const cells = await fetchSsbPopulationGridTiled(bbox, signal);
@@ -1241,15 +1242,18 @@ export async function computeSoraVolumePopulationDensity(
 
     totalPopulation += cell.population;
     visibleCells.push(cell);
-    if (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0)) {
+    if (cellTouchesMultiPolygon(cell, driverPolys) && (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0))) {
       maxDensityCell = cell;
     }
   }
 
+  const driverKey = maxDensityCell ? getCellKey(maxDensityCell) : null;
+  const markedCells = visibleCells.map(cell => ({ ...cell, isDriver: driverKey === getCellKey(cell) }));
+
   return {
-    cells: visibleCells,
+    cells: markedCells,
     coveragePolygons: coveragePolys,
-    maxDensityCell,
+    maxDensityCell: maxDensityCell ? { ...maxDensityCell, isDriver: true } : undefined,
     totalPopulation,
     maxDensityPerKm2: maxDensityCell?.densityPerKm2 ?? 0,
     gridResolutionM: 250,
