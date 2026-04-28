@@ -639,7 +639,7 @@ const Hendelser = () => {
     }
   };
 
-  const openInEccairs = async (e2Id: string) => {
+  const openInEccairs = async (e2Id: string, incidentId: string) => {
     if (!ECCAIRS_GATEWAY) {
       toast.error("ECCAIRS gateway URL er ikke konfigurert");
       return;
@@ -654,6 +654,7 @@ const Hendelser = () => {
     try {
       const url = new URL(`${ECCAIRS_GATEWAY}/api/eccairs/get-url`);
       url.searchParams.set("e2_id", e2Id);
+      url.searchParams.set("incident_id", incidentId);
       url.searchParams.set("environment", eccairsEnvironment);
 
       const r = await fetch(url.toString(), {
@@ -1233,7 +1234,7 @@ const Hendelser = () => {
                                     size="sm"
                                     onClick={(e) => { 
                                       e.preventDefault(); 
-                                      openInEccairs(exp.e2_id!); 
+                                      openInEccairs(exp.e2_id!, incident.id); 
                                     }}
                                   >
                                     <ExternalLink className="w-4 h-4 mr-2" />
