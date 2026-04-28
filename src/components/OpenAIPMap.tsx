@@ -37,7 +37,7 @@ import {
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
-import type { SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
+import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
@@ -69,6 +69,7 @@ interface OpenAIPMapProps {
   soraSettings?: SoraSettings;
   adjacentAreaRadiusM?: number;
   populationDensityCells?: SsbPopulationCell[];
+  populationDensityCoveragePolygons?: RouteMultiPolygon;
 }
 
 export function OpenAIPMap({ 
@@ -87,6 +88,7 @@ export function OpenAIPMap({
   soraSettings,
   adjacentAreaRadiusM,
   populationDensityCells,
+  populationDensityCoveragePolygons,
 }: OpenAIPMapProps) {
   const { user, companyLat, companyLon } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -107,8 +109,10 @@ export function OpenAIPMap({
   const soraLayerRef = useRef<L.LayerGroup | null>(null);
   const adjacentAreaLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityLayerRef = useRef<L.LayerGroup | null>(null);
+  const populationDensityRendererRef = useRef<L.Renderer | null>(null);
   const adjacentAreaRadiusMRef = useRef(adjacentAreaRadiusM);
   const populationDensityCellsRef = useRef<SsbPopulationCell[] | undefined>(populationDensityCells);
+  const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
