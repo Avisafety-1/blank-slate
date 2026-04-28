@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 /** Convert a Date to the local `YYYY-MM-DDTHH:mm` format expected by datetime-local inputs */
 function toLocalDatetimeString(date: Date): string {
@@ -65,6 +65,19 @@ type Equipment = any;
 type Customer = any;
 type Drone = any;
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const extractMentionedProfileIds = (text: string, profiles: Profile[]) => {
+  const mentioned = new Set<string>();
+  profiles.forEach((profile) => {
+    const name = profile.full_name?.trim();
+    if (!name) return;
+    const pattern = new RegExp(`(^|\\s)@${escapeRegExp(name)}(?=$|[\\s.,!?;:)\\]])`, 'i');
+    if (pattern.test(text)) mentioned.add(profile.id);
+  });
+  return mentioned;
+};
+
 export const AddMissionDialog = ({ 
   open, 
   onOpenChange, 
@@ -103,6 +116,9 @@ export const AddMissionDialog = ({
   const [newCustomerName, setNewCustomerName] = useState("");
   const [showNewCustomerInput, setShowNewCustomerInput] = useState(false);
   const [routeData, setRouteData] = useState<RouteData | null>(initialRouteData || null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const terminology = useTerminology();
   
   const [formData, setFormData] = useState({
@@ -126,6 +142,17 @@ export const AddMissionDialog = ({
     selectedEquipment,
     selectedPersonnel
   );
+
+  const mentionSuggestions = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const query = mentionQuery.trim().toLowerCase();
+    return profiles
+      .filter((profile) => {
+        const name = profile.full_name?.trim();
+        return name && (!query || name.toLowerCase().includes(query));
+      })
+      .slice(0, 6);
+  }, [mentionQuery, profiles]);
 
   useEffect(() => {
     if (open) {
