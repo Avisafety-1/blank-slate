@@ -426,10 +426,11 @@ export function OpenAIPMap({
     soraSettingsRef.current = soraSettings;
     adjacentAreaRadiusMRef.current = adjacentAreaRadiusM;
     populationDensityCellsRef.current = populationDensityCells;
+    populationDensityCoverageRef.current = populationDensityCoveragePolygons;
     if (routeLayerRef.current && leafletMapRef.current) {
       updateRouteDisplay();
     }
-  }, [soraSettings, adjacentAreaRadiusM, populationDensityCells, updateRouteDisplay]);
+  }, [soraSettings, adjacentAreaRadiusM, populationDensityCells, populationDensityCoveragePolygons, updateRouteDisplay]);
 
   // Sync mode ref and toggle interactivity
   useEffect(() => {
