@@ -848,6 +848,7 @@ const Hendelser = () => {
         },
         body: JSON.stringify({ 
           e2_id: exp.e2_id,
+          incident_id: incidentId,
           environment: eccairsEnvironment 
         }),
       });
