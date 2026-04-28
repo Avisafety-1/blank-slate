@@ -1228,6 +1228,7 @@ export async function computeSoraVolumePopulationDensity(
 
   const soraVolumeDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
   const totalCoverageDist = soraVolumeDist + (adjacentRadiusM ?? 0);
+  const driverPolys = makeBuffer(coords, sora, Math.max(soraVolumeDist, 1));
   const coveragePolys = makeBuffer(coords, sora, Math.max(totalCoverageDist, 1));
   const bbox = expandBboxMeters(bboxFromPolygons(coveragePolys), 275);
   const cells = await fetchSsbPopulationGridTiled(bbox, signal);
@@ -1241,15 +1242,18 @@ export async function computeSoraVolumePopulationDensity(
 
     totalPopulation += cell.population;
     visibleCells.push(cell);
-    if (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0)) {
+    if (cellTouchesMultiPolygon(cell, driverPolys) && (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0))) {
       maxDensityCell = cell;
     }
   }
 
+  const driverKey = maxDensityCell ? getCellKey(maxDensityCell) : null;
+  const markedCells = visibleCells.map(cell => ({ ...cell, isDriver: driverKey === getCellKey(cell) }));
+
   return {
-    cells: visibleCells,
+    cells: markedCells,
     coveragePolygons: coveragePolys,
-    maxDensityCell,
+    maxDensityCell: maxDensityCell ? { ...maxDensityCell, isDriver: true } : undefined,
     totalPopulation,
     maxDensityPerKm2: maxDensityCell?.densityPerKm2 ?? 0,
     gridResolutionM: 250,
