@@ -217,7 +217,12 @@ export default function KartPage() {
 
     const ctrl = new AbortController();
     setSoraDensityLoading(true);
-    computeSoraVolumePopulationDensity(currentRoute.coordinates, soraSettings, ctrl.signal)
+    computeSoraVolumePopulationDensity(
+      currentRoute.coordinates,
+      soraSettings,
+      showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined,
+      ctrl.signal
+    )
       .then((result) => {
         if (!ctrl.signal.aborted) {
           setSoraDensityResult(result);
@@ -232,7 +237,7 @@ export default function KartPage() {
       });
 
     return () => ctrl.abort();
-  }, [currentRoute.coordinates, soraSettings, showPopulationDensity]);
+  }, [currentRoute.coordinates, soraSettings, showPopulationDensity, showAdjacentArea, soraDroneMaxSpeed]);
 
   // KML import handler
   const handleKmlImport = async (file: File) => {
