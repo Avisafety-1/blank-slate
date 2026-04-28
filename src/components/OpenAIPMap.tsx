@@ -37,12 +37,12 @@ import {
 } from "@/lib/mapDataFetchers";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
-import type { SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
+import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
 const getPopulationDensityStyle = (density = 0, isHotspot = false): L.PathOptions => {
-  const color = density >= 5000 ? '#dc2626' : density >= 1000 ? '#ea580c' : density >= 250 ? '#f59e0b' : density >= 50 ? '#84cc16' : '#22c55e';
+  const color = density >= 5000 ? 'hsl(var(--destructive))' : density >= 250 ? 'hsl(var(--warning))' : 'hsl(var(--success))';
   return {
     color,
     fillColor: color,
@@ -69,6 +69,7 @@ interface OpenAIPMapProps {
   soraSettings?: SoraSettings;
   adjacentAreaRadiusM?: number;
   populationDensityCells?: SsbPopulationCell[];
+  populationDensityCoveragePolygons?: RouteMultiPolygon;
 }
 
 export function OpenAIPMap({ 
@@ -87,6 +88,7 @@ export function OpenAIPMap({
   soraSettings,
   adjacentAreaRadiusM,
   populationDensityCells,
+  populationDensityCoveragePolygons,
 }: OpenAIPMapProps) {
   const { user, companyLat, companyLon } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -107,8 +109,10 @@ export function OpenAIPMap({
   const soraLayerRef = useRef<L.LayerGroup | null>(null);
   const adjacentAreaLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityLayerRef = useRef<L.LayerGroup | null>(null);
+  const populationDensityRendererRef = useRef<L.Renderer | null>(null);
   const adjacentAreaRadiusMRef = useRef(adjacentAreaRadiusM);
   const populationDensityCellsRef = useRef<SsbPopulationCell[] | undefined>(populationDensityCells);
+  const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
@@ -340,14 +344,19 @@ export function OpenAIPMap({
       renderAdjacentAreaZone(points, adjRadius, adjacentAreaLayerRef.current, sora);
     }
 
-    // SSB 250 m population density cells for the active SORA volume only.
-    if (leafletMapRef.current && !leafletMapRef.current.getPane('populationDensityPane')) {
-      leafletMapRef.current.createPane('populationDensityPane');
-      const pane = leafletMapRef.current.getPane('populationDensityPane');
+    // SSB 250 m population density cells for the active SORA/adjacent coverage.
+    const map = leafletMapRef.current;
+    if (map && !map.getPane('populationDensityPane')) {
+      map.createPane('populationDensityPane');
+      const pane = map.getPane('populationDensityPane');
       if (pane) {
         pane.style.zIndex = '635';
         pane.style.pointerEvents = modeRef.current === 'routePlanning' ? 'none' : 'auto';
       }
+    }
+
+    if (map && !populationDensityRendererRef.current) {
+      populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' }).addTo(map);
     }
 
     if (!populationDensityLayerRef.current) {
@@ -359,11 +368,35 @@ export function OpenAIPMap({
     populationDensityLayerRef.current.clearLayers();
 
     const densityCells = populationDensityCellsRef.current ?? [];
+    const coveragePolygons = populationDensityCoverageRef.current ?? [];
+    const renderer = populationDensityRendererRef.current ?? undefined;
+    if (sora?.enabled && coveragePolygons.length > 0) {
+      coveragePolygons.forEach((coverage) => {
+        if (coverage.length < 3) return;
+        L.polygon(coverage.map(p => [p.lat, p.lng] as [number, number]), {
+          pane: 'populationDensityPane',
+          renderer,
+          interactive: false,
+          color: 'hsl(var(--info))',
+          fillColor: 'hsl(var(--info))',
+          weight: 1,
+          opacity: 0.32,
+          fillOpacity: 0.07,
+          dashArray: '4 4',
+          className: 'ssb-density-coverage',
+        } as L.PathOptions).addTo(populationDensityLayerRef.current!);
+      });
+    }
     if (sora?.enabled && densityCells.length > 0) {
-      const maxDensity = Math.max(...densityCells.map(cell => cell.densityPerKm2 ?? cell.population * 16));
-      densityCells.forEach((cell) => {
+      const maxDensityIndex = densityCells.reduce((bestIndex, cell, index) => {
         const density = cell.densityPerKm2 ?? cell.population * 16;
-        const isHotspot = density === maxDensity;
+        const bestCell = densityCells[bestIndex];
+        const bestDensity = bestCell ? (bestCell.densityPerKm2 ?? bestCell.population * 16) : -Infinity;
+        return density > bestDensity ? index : bestIndex;
+      }, 0);
+      densityCells.forEach((cell, index) => {
+        const density = cell.densityPerKm2 ?? cell.population * 16;
+        const isHotspot = index === maxDensityIndex;
         const densityLabel = `${Math.round(density).toLocaleString('nb-NO')} /km²`;
         const popup = `<strong>SSB 250 m-rute</strong><br/>${cell.population.toLocaleString('nb-NO')} personer i ruten<br/>${density.toLocaleString('nb-NO')} pers/km²${isHotspot ? '<br/><strong>Pådriver for utregning</strong>' : ''}`;
         const tooltip = `Pådriver · ${densityLabel}`;
@@ -376,7 +409,7 @@ export function OpenAIPMap({
         const interactive = modeRef.current !== 'routePlanning';
 
         if (cell.polygon && cell.polygon.length >= 3) {
-          const polygon = L.polygon(cell.polygon.map(p => [p.lat, p.lng] as [number, number]), { ...getPopulationDensityStyle(density, isHotspot), interactive })
+          const polygon = L.polygon(cell.polygon.map(p => [p.lat, p.lng] as [number, number]), { ...getPopulationDensityStyle(density, isHotspot), renderer, interactive })
             .bindPopup(popup);
           if (isHotspot) polygon.bindTooltip(tooltip, tooltipOptions);
           polygon.addTo(populationDensityLayerRef.current!);
@@ -398,10 +431,11 @@ export function OpenAIPMap({
     soraSettingsRef.current = soraSettings;
     adjacentAreaRadiusMRef.current = adjacentAreaRadiusM;
     populationDensityCellsRef.current = populationDensityCells;
+    populationDensityCoverageRef.current = populationDensityCoveragePolygons;
     if (routeLayerRef.current && leafletMapRef.current) {
       updateRouteDisplay();
     }
-  }, [soraSettings, adjacentAreaRadiusM, populationDensityCells, updateRouteDisplay]);
+  }, [soraSettings, adjacentAreaRadiusM, populationDensityCells, populationDensityCoveragePolygons, updateRouteDisplay]);
 
   // Sync mode ref and toggle interactivity
   useEffect(() => {
@@ -478,6 +512,7 @@ export function OpenAIPMap({
         pane.style.pointerEvents = (mode === 'routePlanning' && nonInteractivePanes.has(paneName)) ? 'none' : 'auto';
       }
     }
+    populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' }).addTo(map);
 
     // Sørg for at popup-bokser alltid ligger over alle kartlag
     const popupPane = map.getPane('popupPane');
@@ -808,6 +843,7 @@ export function OpenAIPMap({
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
       map.off('moveend', debouncedFetchNais);
+      populationDensityRendererRef.current = null;
       
       safeSkyManager.cleanup();
       map.off("click");

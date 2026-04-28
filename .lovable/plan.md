@@ -1,90 +1,46 @@
-Plan for @-tagging i merknader på oppdrag
+Jeg er enig i diagnosen: dette ser ut som en kombinasjon av to ting:
 
-Mål:
-- Når en bruker skriver `@` i merknader-feltet på et oppdrag, vises en søkbar liste over godkjente personer i eget selskap.
-- Valgte personer settes inn som synlige tags i merknaden.
-- Når oppdraget lagres/opprettes, får nye taggede personer e-post med hele merknaden og lenke til AviSafe.
+1. Hentingen er bundet til beregnet SORA/tilstøtende bbox, men dersom beregningen kjøres før/uten full tilstøtende radius eller blir avbrutt/erstattet av en mindre beregning, ender kartet med et delsett.
+2. Edge function returnerer kun SSB-ruter med `pop_tot > 0`, så ubebodde ruter vil uansett ikke vises. Det kan se ut som “manglende dekning”, selv om de manglende rutene egentlig er 0-befolkning eller ikke returneres av SSB WFS.
 
-Endringer som bygges:
+Jeg fant også en relevant Leaflet-feil (`appendChild`) som kan oppstå når SSB-laget tegnes før pane/renderer er stabilt opprettet. Det bør fikses samtidig, fordi det kan stoppe tegning av laget.
 
-1. UI for @-tagging i `AddMissionDialog`
-- Erstatte/utvide dagens enkle `Textarea` for `merknader` med en liten mention-funksjon.
-- Bruke eksisterende `profiles`-data som allerede lastes i oppdragsdialogen, men begrense listen til godkjente brukere i samme selskap.
-- Når brukeren skriver `@kar`, åpnes en popover under feltet med matchende navn.
-- Ved valg settes navnet inn i teksten som f.eks. `@Kari Nordmann`.
-- Feltet fortsetter å lagre vanlig tekst i `missions.merknader`, så eksisterende data og PDF-eksport påvirkes ikke.
+Plan for implementering:
 
-2. Robust deteksjon av taggede personer
-- Lage en hjelpefunksjon som finner hvilke profiler som er tagget i merknaden basert på navnene som finnes i selskapets personliste.
-- Unngå duplikater hvis samme person tagges flere ganger.
-- Ved redigering av oppdrag sendes e-post kun til nye tags som ikke fantes i merknaden før redigering, slik at brukere ikke spammes ved hver lagring.
-- Ved nytt oppdrag sendes e-post til alle taggede personer.
-- Avsender får ikke e-post til seg selv hvis de tagger seg selv, med mindre du ønsker det senere.
+1. Skille “beregningsdata” fra “kartvisningsdata”
+   - Beholde SORA-beregningen basert på høyeste SSB 250m-rute som berører ruten/buffersonen/tilstøtende område.
+   - Lage en tydeligere kartdata-flyt som alltid henter for hele beregnet coverage polygon, ikke dagens skjermutsnitt.
+   - Når “Tilstøtende” er på, skal coverage være: SORA-volum + tilstøtende radius.
+   - Når kun SORA-volum er på, skal coverage være: SORA-volum.
 
-3. Ny e-posttype i eksisterende varslingsfunksjon
-- Utvide `send-notification-email` med en ny type for `notify_mission_mention`.
-- Funksjonen slår opp mottakerens e-post sikkert server-side basert på profil-ID.
-- Den sjekker at mottakeren er godkjent og tilhører samme selskap som oppdraget.
-- Den bruker eksisterende firmatilpasset avsenderoppsett (`getEmailConfig`) og e-postsending via prosjektets etablerte Resend-oppsett.
+2. Sikre at zoom/panorering ikke begrenser SSB-rutene
+   - SSB 250m-rutene skal hentes fra route geometry/buffer geometry, ikke `map.getBounds()`.
+   - Legge inn cache/nøkkel basert på rute + SORA-settings + tilstøtende radius, slik at zoom ut/inn ikke trigger mindre/feil datasett.
+   - Ved endring av tilstøtende toggle, rute eller SORA-volum skal hele datasettet hentes på nytt.
 
-4. Informativ e-postmal
-- Legge inn standardmal i `supabase/functions/_shared/template-utils.ts`.
-- Malen skal inneholde:
-  - personlig hilsen
-  - hvem som tagget mottakeren
-  - oppdragstittel
-  - lokasjon
-  - tidspunkt
-  - hele merknaden/kommentaren
-  - knapp/lenke: “Åpne oppdraget i AviSafe”
-  - tydelig beskjed om at mottakeren er tagget og bør logge inn for å se kontekst
+3. Vise tydelig forskjell mellom “0 befolkning” og “ikke hentet”
+   - Siden SSB WFS-resultatet filtreres på `pop_tot > 0`, er det ikke garantert at vi får polygoner for tomme celler.
+   - Jeg vil legge inn en subtil dekningsoverlay over hele SORA/tilstøtende coverage-området når SSB 250m-laget er aktivt. Da ser brukeren at hele området er vurdert, mens bare ruter med befolkning tegnes som celler.
+   - Pådriver-ruten får fortsatt den eneste permanente labelen.
 
-Forslag til emne:
-`Du er tagget i et oppdrag: {{mission_title}}`
+4. Fikse Leaflet pane/renderer-feilen
+   - Opprette `populationDensityPane` én gang under map-init før lag legges til.
+   - Bruke et eksplisitt `L.svg({ pane: 'populationDensityPane' })` renderer for polygonene.
+   - Ikke tegne SSB-celler før kartet og pane/renderer er klare.
+   - Dette adresserer runtime-feilen `Cannot read properties of undefined (reading 'appendChild')`.
 
-Forslag til tekst i malen:
-- “Hei {{user_name}}, du har blitt tagget av {{sender_name}} i merknader på et oppdrag i AviSafe.”
-- “Logg inn i appen for å se oppdraget, rute, ressurser og øvrig kontekst.”
-- Merknaden vises i en egen uthevet boks.
+5. Forbedre forklaring i UI
+   - I SORA-/tilstøtende-panelet legge inn kort tekst: “Kartet viser befolkede SSB 250m-ruter innenfor hele beregnet område. Områder uten ruter betyr normalt 0 registrert befolkning i SSB-rutenettet, ikke at området er utelatt.”
+   - Beholde 1 km SSB-kartlaget i kartlag-menyen som før.
 
-5. Gjøre malen redigerbar i Admin
-- Legge den nye maltypen inn i `EmailTemplateEditor`, slik at superadmin kan tilpasse tekst, emne og variabler senere.
-- Variabler:
-  - `{{user_name}}`
-  - `{{sender_name}}`
-  - `{{mission_title}}`
-  - `{{mission_location}}`
-  - `{{mission_date}}`
-  - `{{mission_note}}`
-  - `{{company_name}}`
-  - `{{app_url}}`
+Tekniske filer som berøres:
+- `src/pages/Kart.tsx`: styrke datainnhenting/caching for hele SORA + tilstøtende coverage.
+- `src/lib/adjacentAreaCalculator.ts`: eventuelt returnere coverage-metadata og sikre at bbox beregnes fra full geometri.
+- `src/components/OpenAIPMap.tsx`: robust rendering av SSB 250m-celler, coverage-overlay og Leaflet pane/renderer-fiks.
+- Eventuelt `src/components/SoraSettingsPanel.tsx` / `AdjacentAreaPanel.tsx`: kort forklaring om at bare befolkede ruter tegnes.
 
-6. Varslingspreferanser
-- Jeg anbefaler å gjenbruke eksisterende e-postpreferanse for oppdragsvarsler i første omgang, eller sende mentions uansett fordi dette er en direkte tagg.
-- For best UX/sikkerhet mot å gå glipp av direkte tags: direkte @-tagg sendes uavhengig av “Nytt oppdrag”-varsler.
-- Hvis du heller vil ha egen av/på-innstilling for “E-post når jeg blir tagget i oppdrag”, kan jeg legge til en databasekolonne og valg i profildialogen, men det krever en liten migrasjon.
-
-Filer som sannsynligvis endres:
-- `src/components/dashboard/AddMissionDialog.tsx`
-- `supabase/functions/send-notification-email/index.ts`
-- `supabase/functions/_shared/template-utils.ts`
-- `src/components/admin/EmailTemplateEditor.tsx`
-
-Teknisk flyt:
-```text
-Bruker skriver merknad med @navn
-        ↓
-Oppdrag lagres/opprettes
-        ↓
-Frontend finner nye taggede profile_id-er
-        ↓
-Frontend kaller send-notification-email med notify_mission_mention
-        ↓
-Edge function validerer mottaker/selskap og henter e-post
-        ↓
-E-post sendes med firmakonfigurasjon og standard/custom mal
-```
-
-Merk:
-- Ingen endring i databasestrukturen er nødvendig hvis vi sender direkte tagg-varsler uten egen preferanse.
-- Hvis du ønsker egen varslingspreferanse for mentions, legger jeg til migrasjon for `notification_preferences.email_mission_mention` og et valg i profilen.
+Forventet resultat:
+- Når du zoomer ut etter å ha slått på “Tilstøtende”, skal kartet fortsatt vise alle SSB 250m-ruter med befolkning innenfor hele tilstøtende området.
+- Områder uten SSB-ruter skal fremstå som vurdert/dekket via subtil overlay, ikke som at systemet bare har hentet det som var på skjermen.
+- Kun “Pådriver” vises med permanent label, slik du ønsket.
+- Leaflet-feilen som kan stoppe tegningen fjernes.

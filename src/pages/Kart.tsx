@@ -80,6 +80,7 @@ export default function KartPage() {
   const [adjacentResult, setAdjacentResult] = useState<AdjacentAreaResult | null>(null);
   const [soraDensityResult, setSoraDensityResult] = useState<SoraPopulationDensityResult | null>(null);
   const [soraDensityLoading, setSoraDensityLoading] = useState(false);
+  const soraDensityCacheRef = useRef<Map<string, SoraPopulationDensityResult>>(new Map());
   const [soraOpen, setSoraOpen] = useState(false);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
 
@@ -208,9 +209,29 @@ export default function KartPage() {
     setCurrentRoute(route);
   }, []);
 
+  const soraDensityCacheKey = useMemo(() => JSON.stringify({
+    coordinates: currentRoute.coordinates.map((p) => [Number(p.lat.toFixed(6)), Number(p.lng.toFixed(6))]),
+    sora: {
+      enabled: soraSettings.enabled,
+      flightGeographyDistance: soraSettings.flightGeographyDistance,
+      contingencyDistance: soraSettings.contingencyDistance,
+      groundRiskDistance: soraSettings.groundRiskDistance,
+      bufferMode: soraSettings.bufferMode ?? "corridor",
+      groundSpeedMps: soraSettings.groundSpeedMps ?? soraDroneMaxSpeed ?? null,
+    },
+    adjacentRadiusM: showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : 0,
+  }), [currentRoute.coordinates, soraSettings, showAdjacentArea, soraDroneMaxSpeed]);
+
   useEffect(() => {
     if (!soraSettings.enabled || !showPopulationDensity || currentRoute.coordinates.length < 2) {
       setSoraDensityResult(null);
+      setSoraDensityLoading(false);
+      return;
+    }
+
+    const cached = soraDensityCacheRef.current.get(soraDensityCacheKey);
+    if (cached) {
+      setSoraDensityResult(cached);
       setSoraDensityLoading(false);
       return;
     }
@@ -225,6 +246,7 @@ export default function KartPage() {
     )
       .then((result) => {
         if (!ctrl.signal.aborted) {
+          soraDensityCacheRef.current.set(soraDensityCacheKey, result);
           setSoraDensityResult(result);
           setSoraDensityLoading(false);
         }
@@ -237,7 +259,7 @@ export default function KartPage() {
       });
 
     return () => ctrl.abort();
-  }, [currentRoute.coordinates, soraSettings, showPopulationDensity, showAdjacentArea, soraDroneMaxSpeed]);
+  }, [currentRoute.coordinates, soraSettings, showPopulationDensity, showAdjacentArea, soraDroneMaxSpeed, soraDensityCacheKey]);
 
   // KML import handler
   const handleKmlImport = async (file: File) => {
@@ -926,6 +948,7 @@ export default function KartPage() {
           soraSettings={soraSettings}
           adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
           populationDensityCells={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.cells : undefined}
+          populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
         />
       </div>
 

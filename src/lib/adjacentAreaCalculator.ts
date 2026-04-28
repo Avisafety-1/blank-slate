@@ -69,6 +69,7 @@ export interface AdjacentAreaResult {
 
 export interface SoraPopulationDensityResult {
   cells: SsbPopulationCell[];
+  coveragePolygons: RouteMultiPolygon;
   maxDensityCell?: SsbPopulationCell;
   totalPopulation: number;
   maxDensityPerKm2: number;
@@ -83,7 +84,7 @@ export interface AdjacentContainmentInput {
   outdoorAssemblies: OutdoorAssembliesCategory;
 }
 
-type RouteMultiPolygon = RoutePoint[][];
+export type RouteMultiPolygon = RoutePoint[][];
 
 type ContainmentMatrix = Record<UaSizeKey, Partial<Record<PopulationDensityCategory | "400k" | "40kTo400k", Record<OutdoorAssembliesCategory, Record<SailLevel, ContainmentRequirement>>>>>;
 
@@ -1156,7 +1157,7 @@ export async function computeSoraVolumePopulationDensity(
   signal?: AbortSignal
 ): Promise<SoraPopulationDensityResult> {
   if (coords.length < 2) {
-    return { cells: [], totalPopulation: 0, maxDensityPerKm2: 0, gridResolutionM: 250 };
+    return { cells: [], coveragePolygons: [], totalPopulation: 0, maxDensityPerKm2: 0, gridResolutionM: 250 };
   }
 
   const soraVolumeDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
@@ -1181,6 +1182,7 @@ export async function computeSoraVolumePopulationDensity(
 
   return {
     cells: visibleCells,
+    coveragePolygons: coveragePolys,
     maxDensityCell,
     totalPopulation,
     maxDensityPerKm2: maxDensityCell?.densityPerKm2 ?? 0,
