@@ -1,4 +1,5 @@
 import { SoraSettings } from "@/types/map";
+import type { SoraPopulationDensityResult } from "@/lib/adjacentAreaCalculator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,10 @@ interface SoraSettingsPanelProps {
   initialDroneId?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  showPopulationDensity?: boolean;
+  onShowPopulationDensityChange?: (show: boolean) => void;
+  populationDensityResult?: SoraPopulationDensityResult | null;
+  populationDensityLoading?: boolean;
 }
 
 interface CompanyDrone {
@@ -72,7 +77,7 @@ const FieldHint = ({ children }: { children: string }) => (
   <p className="text-[10px] leading-snug text-muted-foreground">{children}</p>
 );
 
-export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId, open: controlledOpen, onOpenChange }: SoraSettingsPanelProps) {
+export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId, open: controlledOpen, onOpenChange, showPopulationDensity = true, onShowPopulationDensityChange, populationDensityResult, populationDensityLoading = false }: SoraSettingsPanelProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
