@@ -60,6 +60,8 @@ export interface AdjacentAreaResult {
   driver?: string;
   maxCellPopulation?: number;
   gridResolutionM?: number;
+  densityCells?: SsbPopulationCell[];
+  maxDensityCell?: SsbPopulationCell;
   /** Loading / error state */
   error?: string;
 }
@@ -921,10 +923,12 @@ function makeBuffer(
 /*  SSB WFS population data fetch                                      */
 /* ------------------------------------------------------------------ */
 
-interface SsbPopulationCell {
+export interface SsbPopulationCell {
   population: number;
   centroidLat: number;
   centroidLng: number;
+  polygon?: RoutePoint[];
+  densityPerKm2?: number;
 }
 
 export async function fetchSsbPopulationGrid(
@@ -956,6 +960,8 @@ export async function fetchSsbPopulationGrid(
       population: feature.pop_tot,
       centroidLat: feature.centroidLat,
       centroidLng: feature.centroidLng,
+      polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
+      densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot * 16,
     });
   }
 
