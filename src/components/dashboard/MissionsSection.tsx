@@ -2,7 +2,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck } from "lucide-react";
+import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
@@ -51,6 +51,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [commentMission, setCommentMission] = useState<Mission | null>(null);
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
   const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
@@ -314,6 +316,21 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                 <div className="mb-1 sm:mb-1.5">
                   <div className="flex items-center gap-1.5 mb-1">
                     <h3 className="font-semibold text-xs sm:text-sm truncate">{mission.tittel}</h3>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      title="Kommenter/legg til merknad"
+                      aria-label="Kommenter/legg til merknad"
+                      className="h-6 w-6 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCommentMission(mission);
+                        setCommentDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                     {departmentsEnabled && mission.company_id !== companyId && mission.company_name && (
                       <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap shrink-0 gap-0.5 border-primary/30 text-primary">
                         <Building2 className="h-2.5 w-2.5" />
@@ -432,6 +449,16 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         onMissionAdded={fetchMissions}
+      />
+
+      <AddMissionDialog
+        open={commentDialogOpen}
+        onOpenChange={(open) => {
+          setCommentDialogOpen(open);
+          if (!open) setCommentMission(null);
+        }}
+        onMissionAdded={fetchMissions}
+        mission={commentMission}
       />
       
       <RiskAssessmentTypeDialog
