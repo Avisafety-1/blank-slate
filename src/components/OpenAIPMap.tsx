@@ -135,7 +135,7 @@ export function OpenAIPMap({
     pane.style.zIndex = '635';
     pane.style.pointerEvents = modeRef.current === 'routePlanning' ? 'none' : 'auto';
     return pane;
-  }, [getPopulationDensityRenderer]);
+  }, []);
 
   const getPopulationDensityRenderer = useCallback((map: L.Map): L.Renderer | undefined => {
     const pane = ensurePopulationDensityPane(map);
@@ -203,7 +203,7 @@ export function OpenAIPMap({
     newLayer.bringToBack();
     baseLayerRef.current = newLayer;
     setBaseLayerType(newType);
-  }, []);
+  }, [getPopulationDensityRenderer]);
 
   // Sync refs with state/props
   useEffect(() => {
