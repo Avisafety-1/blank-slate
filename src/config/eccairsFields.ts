@@ -251,7 +251,7 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
     type: 'text',
     group: 'aircraft',
     maxLength: 11,
-    helpText: 'Dronens serienummer (hentes automatisk fra tilknyttet oppdrag)',
+    helpText: 'ECCAIRS krever numerisk serienummer, maks 11 siffer. Hentes fra tilknyttet drone når mulig, ellers settes en numerisk standardverdi.',
     autoFromField: 'drone_serial_number'
   },
   {
