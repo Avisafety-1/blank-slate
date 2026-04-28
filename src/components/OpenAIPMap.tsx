@@ -344,14 +344,19 @@ export function OpenAIPMap({
       renderAdjacentAreaZone(points, adjRadius, adjacentAreaLayerRef.current, sora);
     }
 
-    // SSB 250 m population density cells for the active SORA volume only.
-    if (leafletMapRef.current && !leafletMapRef.current.getPane('populationDensityPane')) {
-      leafletMapRef.current.createPane('populationDensityPane');
-      const pane = leafletMapRef.current.getPane('populationDensityPane');
+    // SSB 250 m population density cells for the active SORA/adjacent coverage.
+    const map = leafletMapRef.current;
+    if (map && !map.getPane('populationDensityPane')) {
+      map.createPane('populationDensityPane');
+      const pane = map.getPane('populationDensityPane');
       if (pane) {
         pane.style.zIndex = '635';
         pane.style.pointerEvents = modeRef.current === 'routePlanning' ? 'none' : 'auto';
       }
+    }
+
+    if (map && !populationDensityRendererRef.current) {
+      populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' }).addTo(map);
     }
 
     if (!populationDensityLayerRef.current) {
@@ -363,6 +368,25 @@ export function OpenAIPMap({
     populationDensityLayerRef.current.clearLayers();
 
     const densityCells = populationDensityCellsRef.current ?? [];
+    const coveragePolygons = populationDensityCoverageRef.current ?? [];
+    const renderer = populationDensityRendererRef.current ?? undefined;
+    if (sora?.enabled && coveragePolygons.length > 0) {
+      coveragePolygons.forEach((coverage) => {
+        if (coverage.length < 3) return;
+        L.polygon(coverage.map(p => [p.lat, p.lng] as [number, number]), {
+          pane: 'populationDensityPane',
+          renderer,
+          interactive: false,
+          color: '#0ea5e9',
+          fillColor: '#0ea5e9',
+          weight: 1,
+          opacity: 0.32,
+          fillOpacity: 0.07,
+          dashArray: '4 4',
+          className: 'ssb-density-coverage',
+        } as L.PathOptions).addTo(populationDensityLayerRef.current!);
+      });
+    }
     if (sora?.enabled && densityCells.length > 0) {
       const maxDensity = Math.max(...densityCells.map(cell => cell.densityPerKm2 ?? cell.population * 16));
       densityCells.forEach((cell) => {
@@ -380,7 +404,7 @@ export function OpenAIPMap({
         const interactive = modeRef.current !== 'routePlanning';
 
         if (cell.polygon && cell.polygon.length >= 3) {
-          const polygon = L.polygon(cell.polygon.map(p => [p.lat, p.lng] as [number, number]), { ...getPopulationDensityStyle(density, isHotspot), interactive })
+          const polygon = L.polygon(cell.polygon.map(p => [p.lat, p.lng] as [number, number]), { ...getPopulationDensityStyle(density, isHotspot), renderer, interactive })
             .bindPopup(popup);
           if (isHotspot) polygon.bindTooltip(tooltip, tooltipOptions);
           polygon.addTo(populationDensityLayerRef.current!);
