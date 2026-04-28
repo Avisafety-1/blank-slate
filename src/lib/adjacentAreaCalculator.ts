@@ -859,6 +859,69 @@ function pointInMultiPolygon(point: RoutePoint, polygons: RouteMultiPolygon): bo
   return polygons.some(polygon => pointInPolygon(point, polygon));
 }
 
+
+function segmentsIntersect(a: RoutePoint, b: RoutePoint, c: RoutePoint, d: RoutePoint): boolean {
+  const eps = 1e-12;
+  const orient = (p: RoutePoint, q: RoutePoint, r: RoutePoint) =>
+    (q.lng - p.lng) * (r.lat - p.lat) - (q.lat - p.lat) * (r.lng - p.lng);
+  const onSegment = (p: RoutePoint, q: RoutePoint, r: RoutePoint) =>
+    Math.min(p.lng, r.lng) - eps <= q.lng && q.lng <= Math.max(p.lng, r.lng) + eps &&
+    Math.min(p.lat, r.lat) - eps <= q.lat && q.lat <= Math.max(p.lat, r.lat) + eps;
+
+  const o1 = orient(a, b, c);
+  const o2 = orient(a, b, d);
+  const o3 = orient(c, d, a);
+  const o4 = orient(c, d, b);
+
+  if (Math.abs(o1) < eps && onSegment(a, c, b)) return true;
+  if (Math.abs(o2) < eps && onSegment(a, d, b)) return true;
+  if (Math.abs(o3) < eps && onSegment(c, a, d)) return true;
+  if (Math.abs(o4) < eps && onSegment(c, b, d)) return true;
+
+  return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0);
+}
+
+function polygonsIntersect(a: RoutePoint[], b: RoutePoint[]): boolean {
+  if (a.length < 3 || b.length < 3) return false;
+
+  if (a.some(point => pointInPolygon(point, b))) return true;
+  if (b.some(point => pointInPolygon(point, a))) return true;
+
+  for (let i = 0; i < a.length; i++) {
+    const a1 = a[i];
+    const a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      const b1 = b[j];
+      const b2 = b[(j + 1) % b.length];
+      if (segmentsIntersect(a1, a2, b1, b2)) return true;
+    }
+  }
+
+  return false;
+}
+
+function cellTouchesMultiPolygon(cell: SsbPopulationCell, polygons: RouteMultiPolygon): boolean {
+  const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
+  if (pointInMultiPolygon(pt, polygons)) return true;
+  if (!cell.polygon || cell.polygon.length < 3) return false;
+  return polygons.some(polygon => polygonsIntersect(cell.polygon!, polygon));
+}
+
+function expandBboxMeters(
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  meters: number
+) {
+  const avgLat = (bbox.minLat + bbox.maxLat) / 2;
+  const latDelta = meters / 111_320;
+  const lngDelta = meters / (111_320 * Math.max(Math.cos(avgLat * Math.PI / 180), 0.1));
+  return {
+    minLat: bbox.minLat - latDelta,
+    maxLat: bbox.maxLat + latDelta,
+    minLng: bbox.minLng - lngDelta,
+    maxLng: bbox.maxLng + lngDelta,
+  };
+}
+
 function polygonAreaKm2(polygon: RoutePoint[]): number {
   if (polygon.length < 3) return 0;
   const avgLat = polygon.reduce((s, p) => s + p.lat, 0) / polygon.length;
