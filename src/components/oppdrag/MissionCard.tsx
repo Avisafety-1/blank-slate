@@ -150,6 +150,17 @@ export const MissionCard = ({
         <div className="space-y-2 flex-1 w-full">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg sm:text-xl font-semibold text-foreground">{mission.tittel}</h3>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              title="Kommenter/legg til merknad"
+              aria-label="Kommenter/legg til merknad"
+              className="h-8 w-8 shrink-0"
+              onClick={() => onEdit(mission)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
             {departmentsEnabled && mission.company_id !== companyId && mission.company_name && (
               <Badge variant="outline" className="text-xs gap-1 border-primary/30 text-primary">
                 <Building2 className="h-3 w-3" />
