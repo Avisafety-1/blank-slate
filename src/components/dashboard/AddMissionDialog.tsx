@@ -1171,12 +1171,35 @@ export const AddMissionDialog = ({
 
           <div>
             <Label htmlFor="merknader">{t('missions.notes')}</Label>
-            <Textarea
-              id="merknader"
-              value={formData.merknader}
-              onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
-              rows={2}
-            />
+            <div className="relative">
+              <Textarea
+                ref={notesTextareaRef}
+                id="merknader"
+                value={formData.merknader}
+                onChange={handleNotesChange}
+                onKeyUp={(e) => updateMentionState(e.currentTarget.value, e.currentTarget.selectionStart)}
+                onClick={(e) => updateMentionState(e.currentTarget.value, e.currentTarget.selectionStart)}
+                rows={2}
+                placeholder="Skriv merknad... Bruk @ for å tagge personer"
+              />
+              {mentionQuery !== null && mentionSuggestions.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                  {mentionSuggestions.map((profile) => (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      className="flex w-full items-center rounded-sm px-2 py-2 text-left text-sm hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertMention(profile);
+                      }}
+                    >
+                      <span className="truncate">{profile.full_name || 'Ukjent bruker'}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
