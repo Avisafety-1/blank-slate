@@ -340,7 +340,7 @@ export function OpenAIPMap({
       renderAdjacentAreaZone(points, adjRadius, adjacentAreaLayerRef.current, sora);
     }
 
-    // SSB 250 m population density cells for the active adjacent-area analysis
+    // SSB 250 m population density cells for the active SORA volume only.
     if (!populationDensityLayerRef.current) {
       populationDensityLayerRef.current = L.layerGroup();
       if (leafletMapRef.current) {
@@ -350,7 +350,7 @@ export function OpenAIPMap({
     populationDensityLayerRef.current.clearLayers();
 
     const densityCells = populationDensityCellsRef.current ?? [];
-    if (sora?.enabled && adjRadius && densityCells.length > 0) {
+    if (sora?.enabled && densityCells.length > 0) {
       const maxDensity = Math.max(...densityCells.map(cell => cell.densityPerKm2 ?? cell.population * 16));
       densityCells.forEach((cell) => {
         const density = cell.densityPerKm2 ?? cell.population * 16;
@@ -503,12 +503,6 @@ export function OpenAIPMap({
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
     layerConfigs.push({ id: "befolkning1km", name: "Befolkning 1 km (SSB)", layer: befolkningLayer, enabled: false, icon: "users" });
-
-    const befolkning250Layer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/befolkning_paa_rutenett", {
-      layers: "befolkning_250m_2025", format: "image/png", transparent: true, opacity: 0.65,
-      attribution: 'Befolkning 250m © <a href="https://www.ssb.no">SSB</a>', minZoom: 11, maxZoom: 20, tiled: true, version: "1.3.0",
-    } as any);
-    layerConfigs.push({ id: "befolkning250m", name: "Befolkning 250 m (SSB)", layer: befolkning250Layer, enabled: false, icon: "users" });
 
     // SSB Tettsteder (urban settlements ≥200 residents)
     const tettstederLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/tettsteder", {
