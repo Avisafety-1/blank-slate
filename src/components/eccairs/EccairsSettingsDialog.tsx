@@ -27,6 +27,8 @@ const ECCAIRS_GATEWAY = import.meta.env.VITE_ECCAIRS_GATEWAY_URL || "";
 interface EccairsSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  environment: Environment;
+  onEnvironmentChange: (environment: Environment) => void;
 }
 
 type Environment = "sandbox" | "prod";
@@ -40,6 +42,8 @@ const E2_BASE_URLS = {
 export function EccairsSettingsDialog({
   open,
   onOpenChange,
+  environment,
+  onEnvironmentChange,
 }: EccairsSettingsDialogProps) {
   const { companyId } = useAuth();
   const { hasAddon } = usePlanGating();
@@ -51,7 +55,6 @@ export function EccairsSettingsDialog({
     message: string;
   } | null>(null);
 
-  const [environment, setEnvironment] = useState<Environment>("sandbox");
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [hasExistingSecret, setHasExistingSecret] = useState(false);
@@ -229,7 +232,7 @@ export function EccairsSettingsDialog({
               <Label htmlFor="environment">Miljø</Label>
               <Select
                 value={environment}
-                onValueChange={(val) => setEnvironment(val as Environment)}
+                onValueChange={(val) => onEnvironmentChange(val as Environment)}
               >
                 <SelectTrigger id="environment">
                   <SelectValue />
