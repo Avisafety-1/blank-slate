@@ -41,6 +41,18 @@ import type { SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
+const getPopulationDensityStyle = (density = 0, isHotspot = false): L.PathOptions => {
+  const color = density >= 5000 ? '#dc2626' : density >= 1000 ? '#ea580c' : density >= 250 ? '#f59e0b' : density >= 50 ? '#84cc16' : '#22c55e';
+  return {
+    color,
+    fillColor: color,
+    weight: isHotspot ? 2.5 : 1,
+    opacity: isHotspot ? 1 : 0.75,
+    fillOpacity: isHotspot ? 0.58 : 0.34,
+    pane: 'populationDensityPane',
+  };
+};
+
 interface OpenAIPMapProps {
   onMissionClick?: (mission: any) => void;
   mode?: "view" | "routePlanning";
