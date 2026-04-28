@@ -255,10 +255,19 @@ export const AddMissionDialog = ({
   }, [open, mission, initialFormData, initialRouteData, initialSelectedPersonnel, initialSelectedEquipment, initialSelectedDrones, initialSelectedCustomer]);
 
   const fetchProfiles = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("approved", true);
+      .eq("approved", true)
+      .eq("company_id", currentProfile?.company_id || '');
     
     if (error) {
       toast.error(t('missions.couldNotLoadPersonnel'));
@@ -705,6 +714,18 @@ export const AddMissionDialog = ({
             .eq("id", mission.id);
         }
 
+        try {
+          await sendMentionNotifications({
+            missionId: mission.id,
+            previousNotes: mission.merknader || '',
+            currentNotes: formData.merknader,
+            companyId: profile.company_id,
+            senderId: user.id,
+          });
+        } catch (mentionError) {
+          console.error('Error sending mission mention notifications:', mentionError);
+        }
+
         toast.success(t('missions.missionUpdated'));
         onMissionAdded();
       } else {
@@ -860,6 +881,17 @@ export const AddMissionDialog = ({
           });
         } catch (emailError) {
           console.error('Error sending new mission notification:', emailError);
+        }
+
+        try {
+          await sendMentionNotifications({
+            missionId: createdMission.id,
+            currentNotes: formData.merknader,
+            companyId: profile.company_id,
+            senderId: user.id,
+          });
+        } catch (mentionError) {
+          console.error('Error sending mission mention notifications:', mentionError);
         }
 
         toast.success(t('missions.missionCreated'));
