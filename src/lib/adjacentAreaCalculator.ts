@@ -67,6 +67,14 @@ export interface AdjacentAreaResult {
   error?: string;
 }
 
+export interface SoraPopulationDensityResult {
+  cells: SsbPopulationCell[];
+  maxDensityCell?: SsbPopulationCell;
+  totalPopulation: number;
+  maxDensityPerKm2: number;
+  gridResolutionM: number;
+}
+
 export type ContainmentLevel = "low" | "low500" | "low5000" | "medium" | "high";
 
 export interface AdjacentContainmentInput {
@@ -1067,5 +1075,43 @@ export async function computeAdjacentAreaDensity(
     maxCellPopulation: maxDensityCell?.population,
     densityCells,
     maxDensityCell,
+  };
+}
+
+export async function computeSoraVolumePopulationDensity(
+  coords: RoutePoint[],
+  sora: SoraSettings,
+  signal?: AbortSignal
+): Promise<SoraPopulationDensityResult> {
+  if (coords.length < 2) {
+    return { cells: [], totalPopulation: 0, maxDensityPerKm2: 0, gridResolutionM: 250 };
+  }
+
+  const outerDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
+  const volumePolys = makeBuffer(coords, sora, Math.max(outerDist, 1));
+  const bbox = bboxFromPolygons(volumePolys);
+  const cells = await fetchSsbPopulationGrid(bbox, signal);
+
+  let totalPopulation = 0;
+  let maxDensityCell: SsbPopulationCell | undefined;
+  const visibleCells: SsbPopulationCell[] = [];
+
+  for (const cell of cells) {
+    const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
+    if (!pointInMultiPolygon(pt, volumePolys)) continue;
+
+    totalPopulation += cell.population;
+    visibleCells.push(cell);
+    if (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0)) {
+      maxDensityCell = cell;
+    }
+  }
+
+  return {
+    cells: visibleCells,
+    maxDensityCell,
+    totalPopulation,
+    maxDensityPerKm2: maxDensityCell?.densityPerKm2 ?? 0,
+    gridResolutionM: 250,
   };
 }
