@@ -1,50 +1,76 @@
-Jeg tror du har rett i at dette fortsatt ikke er komplett. Loggene viser at vi henter en større bbox for Trondheim, men kartbildet viser et mønster som tyder på at vi enten mister celler i datahenting/filtering, eller at Leaflet-feilen stopper tegning underveis.
+Du har rett: de siste endringene har blandet to ulike formål.
 
-Viktig observasjon: SSB WFS-kallet returnerer ca. 953 befolkede 250 m-ruter for bboxen som dekker området. Det er ikke nok til å forklare alle synlige hull i sentrale Trondheim dersom de faktisk har befolkning. Derfor bør vi gjøre dette mer robust enn dagens én stor bbox + lokal polygonfilter.
+Slik koden står nå er `computeAdjacentAreaDensity()` endret til å bruke høyeste 250 m-rute × 16 som `avgDensity`, og derfor havner eksempelet ditt på `18 160 pers/km²` og kategori `<50 000 pers/km²`. Det er feil for selve «Tilstøtende område»-vurderingen slik vi hadde den før.
 
-Plan for implementering:
+Historikken viser at før denne runden var tilstøtende område forklart og brukt slik:
 
-1. Hente SSB-data i flere mindre fliser over hele coverage-boksen
-   - I stedet for ett stort WFS-kall for hele tilstøtende bbox, dele bboxen opp i mindre del-bokser.
-   - Hente alle delene og slå sammen celler uten duplikater.
-   - Dette reduserer risiko for at SSB WFS returnerer ufullstendige resultater ved store områder, intern paging/maxFeatures, eller bbox-begrensninger.
-   - Coverage skal fortsatt være hele SORA-volum + tilstøtende radius, ikke kartets skjermutsnitt.
+```text
+SSB 250 m-ruter -> total befolkning i tilstøtende donut
+Tilstøtende areal km² -> total befolkning / areal
+Gjennomsnittlig tetthet -> SORA-kategori (<50, <500, <5 000, <50 000, No upper limit)
+```
 
-2. Gjøre polygonfilteret mer inkluderende for kant-/tilstøtende ruter
-   - Beholde regelen: ruter som berører coverage-området skal tas med.
-   - Justere/validere `cellTouchesMultiPolygon` slik at den ikke bare avhenger av centroid eller enkel polygonkryssing som kan feile på celler som ligger helt inne/har kantkontakt.
-   - Legge til enkel bbox-overlapp før full polygon-sjekk for mer stabil inkludering.
+Altså: for UA `<8 m` kan den beregnede gjennomsnittstettheten havne i kategorien `<50 pers/km²`, `<500 pers/km²`, osv. Det er ikke en fast grense på 50 for alle tilfeller; det er første/laveste kategori hvis gjennomsnittet er under eller lik 50. I skjermbildet ditt er totalen `185 948 / 219.5 km² = 847.3 pers/km²`, som normalt skal gi kategori `<5 000 pers/km²`, ikke `<50 000 pers/km²`.
 
-3. Sørge for at tilstøtende sone bruker samme geometri i beregning og kart
-   - Bekrefte at `computeSoraVolumePopulationDensity()` bruker nøyaktig samme totalradius som `renderAdjacentAreaZone()`:
-     - flight geography
-     - contingency
-     - ground risk
-     - adjacent radius
-   - Ved “Tilstøtende” på skal SSB 250 m-rutene hentes for hele denne ytre coverage-geometrien.
+Plan for å rette dette:
 
-4. Fikse Leaflet `appendChild`-feilen mer definitivt
-   - Ikke bruke `.addTo(map)` på en persistent SVG-renderer før pane er garantert klart.
-   - Lage en trygg helper som henter/oppretter `populationDensityPane` og renderer rett før tegning.
-   - Fallback: dersom pane/renderer mangler under en redraw, hopp over akkurat den redrawen i stedet for å kaste runtime error som stopper resten av laget.
+1. Skille «SORA-volum/buffersoner» og «Tilstøtende område» tydelig
+   - SORA-volum/buffersoner:
+     - beholder pådriver-logikken: høyeste SSB 250 m-rute som berører/overlapper rute eller buffersoner × 16.
+     - dette brukes til kartvisualisering og «Pådriver»-label på kartet.
+   - Tilstøtende område:
+     - går tilbake til gjennomsnittsberegning i donut-området utenfor bakkerisikobuffer og ut til adjacent radius.
+     - `avgDensity = totalPopulation / adjacentAreaKm2`.
+     - ikke bruke høyeste celle som `avgDensity` her.
 
-5. Bedre visuell/debug-informasjon i UI
-   - I SSB-linjen i SORA-panelet vise antall befolkede 250 m-ruter som faktisk er hentet/tegnet, f.eks. “953 ruter vurdert”.
-   - Beholde kun “Pådriver”-label permanent på kartet, som ønsket.
-   - Beholde 1 km SSB-kartlaget i kartlag-menyen uendret.
+2. Rette `computeAdjacentAreaDensity()`
+   - Beholde robust tiled SSB-henting og inkluderende polygonfilter.
+   - Beholde filtreringen til kun tilstøtende område:
+     - innenfor ytre tilstøtende geometri
+     - utenfor indre SORA-volum/bakkerisikobuffer
+   - Endre tilbake:
+     - `avgDensity = summedDensity`
+     - `populationDensityCategory = getPopulationDensityCategory(avgDensity, uaSize)`
+     - `threshold = getDensityThreshold(populationDensityCategory)`
+   - Beholde `maxDensityCell` kun som ekstra informativ verdi, ikke som grunnlag for containment for tilstøtende område.
+
+3. Oppdatere tekstene i «Tilstøtende»-panelet
+   - «Gj.snitt tetthet» skal vise reell gjennomsnittlig tetthet i donut-området.
+   - «Grense» bør endres til «SORA-kategori» eller «Tetthetskategori» for å unngå misforståelse.
+   - Statuslinjen skal si noe ala:
+     - `Required containment: Low · gj.snitt 847.3 pers/km² (< 5 000 pers/km²)`
+   - Forklaringslinjen skal ikke si at pådriveren bestemmer tilstøtende område. Den skal forklare:
+     - sum innbyggere
+     - areal
+     - gjennomsnitt
+     - valgt SORA-kategori
+   - «Høyeste tetthet langs ruten» kan enten fjernes fra Tilstøtende-panelet eller merkes tydelig som «Kartpådriver / høyeste 250 m-rute» slik at den ikke forveksles med gjennomsnittsgrunnlaget.
+
+4. Oppdatere SORA 250 m-kartlaget uten å endre tilstøtende-beregningen
+   - Kartet kan fortsatt vise SSB-ruter for hele SORA-volum + tilstøtende dekning når «Tilstøtende» er på.
+   - Kun pådriver-label skal vises på kartet, slik du ønsket.
+   - Pådriveren skal fortsatt velges fra relevante SSB-ruter som berører SORA-volum/buffersonene. Hvis tilstøtende område vises, skal ruter der kunne tegnes, men ikke endre tilstøtende gjennomsnitt til høyeste celle.
+
+5. Justere lagring/dokumentasjon ved rutesave
+   - `adjacentAreaDocumentation.avgDensity` skal lagre gjennomsnittet, ikke pådriveren.
+   - `maxCellPopulation`/`driver` kan fortsatt lagres som separat informasjonsfelt hvis relevant, men ikke erstatte `avgDensity`.
 
 Tekniske filer som berøres:
 - `src/lib/adjacentAreaCalculator.ts`
-  - innføre tiled SSB-fetch, deduplisering og mer robust cell-intersection.
-- `src/components/OpenAIPMap.tsx`
-  - stabilisere Leaflet pane/renderer og rendring av SSB-celler.
+  - rette beregningslogikken i `computeAdjacentAreaDensity()`.
+  - eventuelt tydeliggjøre `method`/`calculation`.
+- `src/components/AdjacentAreaPanel.tsx`
+  - justere labels/status/tekst slik at gjennomsnitt og pådriver ikke blandes.
 - `src/components/SoraSettingsPanel.tsx`
-  - vise antall vurderte/tegnede SSB 250 m-ruter.
-- Eventuelt `src/pages/Kart.tsx`
-  - ingen logisk endring forventet, men cache-nøkkelen beholdes/justeres ved behov.
+  - beholde SORA-volumets pådriverstatus og antall ruter vurdert.
+- `src/pages/Kart.tsx`
+  - sikre at dokumentasjon lagres med riktig gjennomsnitt.
+- Eventuelt `src/components/OpenAIPMap.tsx`
+  - kun små justeringer hvis pådriverutvelgelse må begrenses til SORA-volum/buffer og ikke til adjacent donut.
 
-Forventet resultat:
-- SSB 250 m-ruter med befolkning skal tegnes i hele tilstøtende sonen, også for de delene av Trondheim som nå mangler i skjermbildet.
-- Zoom/pan skal ikke begrense hvilke ruter som vises.
-- Hvis et område fortsatt ikke får ruter etter dette, er det mye mer sannsynlig at SSB ikke returnerer befolkede 250 m-celler der, og UI-en vil vise hvor mange ruter som faktisk er vurdert.
-- Leaflet-feilen som kan avbryte tegning av laget skal fjernes.
+Forventet resultat i eksempelet ditt:
+- «Innbyggere funnet»: ca. `185 948`
+- «Areal (donut)»: ca. `219.5 km²`
+- «Gj.snitt tetthet»: ca. `847.3 pers/km²`
+- «SORA-kategori»: `< 5 000 pers/km²`
+- Pådriver/høyeste rute kan fortsatt vises som separat kartinformasjon: `1 135 × 16 = 18 160 pers/km²`, men den skal ikke styre tilstøtende gjennomsnittsberegning.
