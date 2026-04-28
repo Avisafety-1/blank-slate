@@ -490,10 +490,16 @@ export function EccairsMappingDialog({
           )}
           <Input
             value={getFieldValue(field)}
-            onChange={(e) => setFieldValue(field, field.maxLength 
-              ? e.target.value.slice(0, field.maxLength) 
-              : e.target.value
-            )}
+            onChange={(e) => {
+              const nextValue = field.code === 244
+                ? e.target.value.replace(/\D/g, '').slice(0, field.maxLength ?? 11)
+                : field.maxLength 
+                  ? e.target.value.slice(0, field.maxLength) 
+                  : e.target.value;
+              setFieldValue(field, nextValue);
+            }}
+            inputMode={field.code === 244 ? 'numeric' : undefined}
+            pattern={field.code === 244 ? '[0-9]*' : undefined}
             placeholder={`Skriv ${field.label.toLowerCase()}...`}
           />
         </div>
