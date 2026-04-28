@@ -1120,9 +1120,14 @@ const Hendelser = () => {
                   {eccairsEnabled && (
                     <div className="pt-3 border-t border-border/50 space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          ECCAIRS Rapportering
-                        </p>
+                        <div className="flex flex-col gap-0.5">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            ECCAIRS Rapportering
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            Miljø: {eccairsEnvironment === 'prod' ? 'Produksjon' : 'Sandbox/test'}
+                          </span>
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
