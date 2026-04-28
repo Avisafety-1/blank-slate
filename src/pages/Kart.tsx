@@ -2,7 +2,7 @@ import { OpenAIPMap, RouteData, RoutePoint, SoraSettings } from "@/components/Op
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { AdjacentAreaPanel } from "@/components/AdjacentAreaPanel";
-import { calculateAdjacentRadius, type AdjacentAreaResult } from "@/lib/adjacentAreaCalculator";
+import { calculateAdjacentRadius, computeSoraVolumePopulationDensity, type AdjacentAreaResult, type SoraPopulationDensityResult } from "@/lib/adjacentAreaCalculator";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 // soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
@@ -78,6 +78,8 @@ export default function KartPage() {
   const [showAdjacentArea, setShowAdjacentArea] = useState(false);
   const [showPopulationDensity, setShowPopulationDensity] = useState(true);
   const [adjacentResult, setAdjacentResult] = useState<AdjacentAreaResult | null>(null);
+  const [soraDensityResult, setSoraDensityResult] = useState<SoraPopulationDensityResult | null>(null);
+  const [soraDensityLoading, setSoraDensityLoading] = useState(false);
   const [soraOpen, setSoraOpen] = useState(false);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
 
@@ -205,6 +207,32 @@ export default function KartPage() {
   const handleRouteChange = useCallback((route: RouteData) => {
     setCurrentRoute(route);
   }, []);
+
+  useEffect(() => {
+    if (!soraSettings.enabled || !showPopulationDensity || currentRoute.coordinates.length < 2) {
+      setSoraDensityResult(null);
+      setSoraDensityLoading(false);
+      return;
+    }
+
+    const ctrl = new AbortController();
+    setSoraDensityLoading(true);
+    computeSoraVolumePopulationDensity(currentRoute.coordinates, soraSettings, ctrl.signal)
+      .then((result) => {
+        if (!ctrl.signal.aborted) {
+          setSoraDensityResult(result);
+          setSoraDensityLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!ctrl.signal.aborted) {
+          setSoraDensityResult(null);
+          setSoraDensityLoading(false);
+        }
+      });
+
+    return () => ctrl.abort();
+  }, [currentRoute.coordinates, soraSettings, showPopulationDensity]);
 
   // KML import handler
   const handleKmlImport = async (file: File) => {
@@ -788,7 +816,11 @@ export default function KartPage() {
                   checked={soraSettings.enabled}
                   onCheckedChange={(checked) => {
                     setSoraSettings((s) => ({ ...s, enabled: checked }));
-                    if (!checked) setShowAdjacentArea(false);
+                    if (checked) setShowPopulationDensity(true);
+                    if (!checked) {
+                      setShowAdjacentArea(false);
+                      setSoraDensityResult(null);
+                    }
                   }}
                   onClick={(e) => e.stopPropagation()}
                   className="scale-90"
@@ -831,7 +863,18 @@ export default function KartPage() {
             </div>
 
             {/* SORA Settings content */}
-            <SoraSettingsPanel settings={soraSettings} onChange={setSoraSettings} onDroneSelected={setSoraDroneId} initialDroneId={soraSettings.droneId} open={soraOpen} onOpenChange={setSoraOpen} />
+            <SoraSettingsPanel
+              settings={soraSettings}
+              onChange={setSoraSettings}
+              onDroneSelected={setSoraDroneId}
+              initialDroneId={soraSettings.droneId}
+              open={soraOpen}
+              onOpenChange={setSoraOpen}
+              showPopulationDensity={showPopulationDensity}
+              onShowPopulationDensityChange={setShowPopulationDensity}
+              populationDensityResult={soraDensityResult}
+              populationDensityLoading={soraDensityLoading}
+            />
 
             {/* Adjacent Area content */}
             {soraSettings.enabled && (
@@ -841,8 +884,6 @@ export default function KartPage() {
                 maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
                 active={showAdjacentArea}
                 onShowAdjacentArea={setShowAdjacentArea}
-                showPopulationDensity={showPopulationDensity}
-                onShowPopulationDensity={setShowPopulationDensity}
                 onResultChange={setAdjacentResult}
                 open={adjacentOpen}
                 onOpenChange={setAdjacentOpen}
@@ -879,7 +920,7 @@ export default function KartPage() {
           onFocusFlightHandled={() => setFocusFlightId(null)}
           soraSettings={soraSettings}
           adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
-          populationDensityCells={showAdjacentArea && showPopulationDensity ? adjacentResult?.densityCells : undefined}
+          populationDensityCells={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.cells : undefined}
         />
       </div>
 

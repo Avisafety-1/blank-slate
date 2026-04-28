@@ -1,4 +1,5 @@
 import { SoraSettings } from "@/types/map";
+import type { SoraPopulationDensityResult } from "@/lib/adjacentAreaCalculator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,10 @@ interface SoraSettingsPanelProps {
   initialDroneId?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  showPopulationDensity?: boolean;
+  onShowPopulationDensityChange?: (show: boolean) => void;
+  populationDensityResult?: SoraPopulationDensityResult | null;
+  populationDensityLoading?: boolean;
 }
 
 interface CompanyDrone {
@@ -72,7 +77,7 @@ const FieldHint = ({ children }: { children: string }) => (
   <p className="text-[10px] leading-snug text-muted-foreground">{children}</p>
 );
 
-export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId, open: controlledOpen, onOpenChange }: SoraSettingsPanelProps) {
+export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId, open: controlledOpen, onOpenChange, showPopulationDensity = true, onShowPopulationDensityChange, populationDensityResult, populationDensityLoading = false }: SoraSettingsPanelProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
@@ -548,6 +553,20 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-sm bg-red-500/40 border border-red-500/60" /> Ground risk
         </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium">SSB 250 m befolkningstetthet</p>
+          <p className="text-[11px] text-muted-foreground">
+            {populationDensityLoading
+              ? "Henter aktuelle ruter rundt SORA-volum…"
+              : populationDensityResult?.maxDensityCell
+                ? `Høyeste tetthet: ${(populationDensityResult.maxDensityPerKm2).toLocaleString("nb-NO")} pers/km²`
+                : "Viser kun relevante ruter rundt SORA-volum"}
+          </p>
+        </div>
+        <Switch checked={showPopulationDensity} onCheckedChange={onShowPopulationDensityChange} />
       </div>
     </div>
   );
