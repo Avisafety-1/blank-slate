@@ -49,8 +49,15 @@ serve(async (req) => {
 
     const gml = await resp.text();
 
-    // Parse GML to extract population cells
-    const features: Array<{ pop_tot: number; centroidLat: number; centroidLng: number }> = [];
+    // Parse GML to extract population cells, including the polygon so the
+    // frontend can render the same 250 m grid used for risk calculations.
+    const features: Array<{
+      pop_tot: number;
+      centroidLat: number;
+      centroidLng: number;
+      polygon: Array<{ lat: number; lng: number }>;
+      densityPerKm2: number;
+    }> = [];
 
     // Extract each featureMember block
     const memberRegex = /<gml:featureMember>([\s\S]*?)<\/gml:featureMember>/g;
@@ -70,9 +77,13 @@ serve(async (req) => {
       const coords = posListMatch[1].trim().split(/\s+/).map(Number);
       // posList is pairs of lat lng (WFS 1.1.0 EPSG:4326 axis order)
       let sumLat = 0, sumLng = 0, count = 0;
+      const polygon: Array<{ lat: number; lng: number }> = [];
       for (let i = 0; i < coords.length - 2; i += 2) {
-        sumLat += coords[i];
-        sumLng += coords[i + 1];
+        const lat = coords[i];
+        const lng = coords[i + 1];
+        sumLat += lat;
+        sumLng += lng;
+        polygon.push({ lat, lng });
         count++;
       }
       if (count === 0) continue;
@@ -81,6 +92,9 @@ serve(async (req) => {
         pop_tot: pop,
         centroidLat: sumLat / count,
         centroidLng: sumLng / count,
+        polygon,
+        // 250 m cell = 1/16 km², so population × 16 gives people/km².
+        densityPerKm2: resolution === "1000" ? pop : pop * 16,
       });
     }
 
