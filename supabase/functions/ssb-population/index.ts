@@ -19,7 +19,8 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const bbox = url.searchParams.get("bbox");
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const bbox = url.searchParams.get("bbox") || body?.bbox;
     if (!bbox) {
       return new Response(JSON.stringify({ error: "Missing bbox parameter" }), {
         status: 400,
@@ -29,7 +30,7 @@ serve(async (req) => {
 
     // bbox expected: minLng,minLat,maxLng,maxLat
     // SSB WFS 1.1.0 with EPSG:4326 uses lon,lat order in bbox
-    const resolution = url.searchParams.get("resolution") || "250";
+    const resolution = url.searchParams.get("resolution") || body?.resolution || "250";
     const typeName = resolution === "1000" ? "befolkning_1km_2025" : "befolkning_250m_2025";
     const maxFeatures = resolution === "1000" ? 10000 : 50000;
 
