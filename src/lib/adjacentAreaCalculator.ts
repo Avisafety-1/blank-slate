@@ -1020,10 +1020,16 @@ export async function computeAdjacentAreaDensity(
   const cells = await fetchSsbPopulationGrid(bbox, signal);
 
   let totalPop = 0;
+  const densityCells: SsbPopulationCell[] = [];
+  let maxDensityCell: SsbPopulationCell | undefined;
   for (const cell of cells) {
     const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
     if (pointInMultiPolygon(pt, outerPolys) && !pointInMultiPolygon(pt, innerPolys)) {
       totalPop += cell.population;
+      densityCells.push(cell);
+      if (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0)) {
+        maxDensityCell = cell;
+      }
     }
   }
 
@@ -1063,5 +1069,8 @@ export async function computeAdjacentAreaDensity(
     method,
     calculation: `${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} personer/km²`,
     gridResolutionM: 250,
+    maxCellPopulation: maxDensityCell?.population,
+    densityCells,
+    maxDensityCell,
   };
 }
