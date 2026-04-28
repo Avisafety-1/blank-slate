@@ -1,142 +1,90 @@
-## Kort svar
+Plan for @-tagging i merknader på oppdrag
 
-### Hvilke filer må endres?
+Mål:
+- Når en bruker skriver `@` i merknader-feltet på et oppdrag, vises en søkbar liste over godkjente personer i eget selskap.
+- Valgte personer settes inn som synlige tags i merknaden.
+- Når oppdraget lagres/opprettes, får nye taggede personer e-post med hele merknaden og lenke til AviSafe.
 
-For å fikse dette riktig må jeg sannsynligvis endre disse filene:
+Endringer som bygges:
 
-1. `src/pages/Hendelser.tsx`
-   - Dette er hovedfeilen: innsending/utkast/oppdatering/sletting/open-url bruker i dag `ECCAIRS_ENV` fra `.env`/build config.
-   - I denne koden er `VITE_ECCAIRS_ENV="sandbox"`, så rapporthandlingene sender `environment: "sandbox"` uansett hva du har valgt i innstillingsdialogen.
+1. UI for @-tagging i `AddMissionDialog`
+- Erstatte/utvide dagens enkle `Textarea` for `merknader` med en liten mention-funksjon.
+- Bruke eksisterende `profiles`-data som allerede lastes i oppdragsdialogen, men begrense listen til godkjente brukere i samme selskap.
+- Når brukeren skriver `@kar`, åpnes en popover under feltet med matchende navn.
+- Ved valg settes navnet inn i teksten som f.eks. `@Kari Nordmann`.
+- Feltet fortsetter å lagre vanlig tekst i `missions.merknader`, så eksisterende data og PDF-eksport påvirkes ikke.
 
-2. `src/components/eccairs/EccairsAttachmentUpload.tsx`
-   - Vedlegg er også hardkodet til sandbox:
-     ```ts
-     formData.append("environment", "sandbox");
-     ```
-   - Den må få aktivt miljø fra `/hendelser`.
+2. Robust deteksjon av taggede personer
+- Lage en hjelpefunksjon som finner hvilke profiler som er tagget i merknaden basert på navnene som finnes i selskapets personliste.
+- Unngå duplikater hvis samme person tagges flere ganger.
+- Ved redigering av oppdrag sendes e-post kun til nye tags som ikke fantes i merknaden før redigering, slik at brukere ikke spammes ved hver lagring.
+- Ved nytt oppdrag sendes e-post til alle taggede personer.
+- Avsender får ikke e-post til seg selv hvis de tagger seg selv, med mindre du ønsker det senere.
 
-3. `src/components/eccairs/EccairsSettingsDialog.tsx`
-   - Ikke nødvendigvis for lagring av credentials, for den delen ser riktig ut.
-   - Men den bør kobles mot aktivt valgt miljø, slik at dropdown-valget faktisk styrer rapportflyten og ikke bare hvilken credential-rad man redigerer/tester.
+3. Ny e-posttype i eksisterende varslingsfunksjon
+- Utvide `send-notification-email` med en ny type for `notify_mission_mention`.
+- Funksjonen slår opp mottakerens e-post sikkert server-side basert på profil-ID.
+- Den sjekker at mottakeren er godkjent og tilhører samme selskap som oppdraget.
+- Den bruker eksisterende firmatilpasset avsenderoppsett (`getEmailConfig`) og e-postsending via prosjektets etablerte Resend-oppsett.
 
-Muligens ingen databaseendring trengs.
+4. Informativ e-postmal
+- Legge inn standardmal i `supabase/functions/_shared/template-utils.ts`.
+- Malen skal inneholde:
+  - personlig hilsen
+  - hvem som tagget mottakeren
+  - oppdragstittel
+  - lokasjon
+  - tidspunkt
+  - hele merknaden/kommentaren
+  - knapp/lenke: “Åpne oppdraget i AviSafe”
+  - tydelig beskjed om at mottakeren er tagget og bør logge inn for å se kontekst
 
-## Lagres sandbox og prod forskjellig?
+Forslag til emne:
+`Du er tagget i et oppdrag: {{mission_title}}`
 
-Ja. Credentials lagres per selskap og per miljø.
+Forslag til tekst i malen:
+- “Hei {{user_name}}, du har blitt tagget av {{sender_name}} i merknader på et oppdrag i AviSafe.”
+- “Logg inn i appen for å se oppdraget, rute, ressurser og øvrig kontekst.”
+- Merknaden vises i en egen uthevet boks.
 
-Tabellen `eccairs_integrations` har unik nøkkel på:
+5. Gjøre malen redigerbar i Admin
+- Legge den nye maltypen inn i `EmailTemplateEditor`, slik at superadmin kan tilpasse tekst, emne og variabler senere.
+- Variabler:
+  - `{{user_name}}`
+  - `{{sender_name}}`
+  - `{{mission_title}}`
+  - `{{mission_location}}`
+  - `{{mission_date}}`
+  - `{{mission_note}}`
+  - `{{company_name}}`
+  - `{{app_url}}`
 
+6. Varslingspreferanser
+- Jeg anbefaler å gjenbruke eksisterende e-postpreferanse for oppdragsvarsler i første omgang, eller sende mentions uansett fordi dette er en direkte tagg.
+- For best UX/sikkerhet mot å gå glipp av direkte tags: direkte @-tagg sendes uavhengig av “Nytt oppdrag”-varsler.
+- Hvis du heller vil ha egen av/på-innstilling for “E-post når jeg blir tagget i oppdrag”, kan jeg legge til en databasekolonne og valg i profildialogen, men det krever en liten migrasjon.
+
+Filer som sannsynligvis endres:
+- `src/components/dashboard/AddMissionDialog.tsx`
+- `supabase/functions/send-notification-email/index.ts`
+- `supabase/functions/_shared/template-utils.ts`
+- `src/components/admin/EmailTemplateEditor.tsx`
+
+Teknisk flyt:
 ```text
-company_id + environment
-```
-
-Det betyr at disse er separate rader:
-
-```text
-company_id = Avisafe, environment = sandbox
-company_id = Avisafe, environment = prod
-```
-
-De skal altså ikke være felles, og de skal ikke overskrive hverandre så lenge `environment` sendes riktig ved lagring.
-
-Når du velger `Sandbox (test)` i dropdownen og lagrer, oppdateres sandbox-raden.
-Når du velger `Produksjon` og lagrer, oppdateres prod-raden.
-
-Passordet lagres kryptert i feltet:
-
-```text
-e2_client_secret_encrypted
-```
-
-Og funksjonen `update_eccairs_credentials` bruker `ON CONFLICT (company_id, environment)`, så den oppdaterer kun raden for valgt miljø.
-
-## Blir brukernavn/passord overskrevet i Supabase?
-
-Ikke mellom sandbox og prod, nei.
-
-Det som kan overskrives er samme miljø for samme selskap:
-
-```text
-Avisafe + sandbox -> overskriver tidligere sandbox-credentials
-Avisafe + prod    -> overskriver tidligere prod-credentials
-```
-
-Men:
-
-```text
-Avisafe + sandbox overskriver ikke Avisafe + prod
-Avisafe + prod overskriver ikke Avisafe + sandbox
-```
-
-Det ser korrekt ut i databasefunksjonen.
-
-## Henter fly.io appen credentials fra Supabase/AviSafe eller fra env i fly.io?
-
-Basert på frontend-koden og databasefunksjonene ser designet slik ut:
-
-```text
-AviSafe frontend sender:
-incident_id + environment
-
-Fly.io gateway mottar:
-environment = sandbox/prod
-
-Gateway henter credentials for:
-company_id + environment
-
-Supabase RPC dekrypterer:
-e2_client_id + e2_client_secret
-```
-
-Det finnes også en indikator i `EccairsSettingsDialog` som viser om testtilkobling bruker:
-
-```text
-credentials_source === "database"
-```
-
-Det tyder på at fly.io-gatewayen kan ha fallback til globale env-credentials, men at den foretrukne/forventede kilden er database-credentials per selskap når de finnes.
-
-Det viktigste i feilen din er derfor: frontend sender fortsatt `sandbox`, og da ber gatewayen om sandbox-credentials. Produksjonscredentials blir da ikke brukt, selv om de er lagret og testet OK.
-
-## Hva som skal endres
-
-1. Fjerne låsingen mot `VITE_ECCAIRS_ENV` i `Hendelser.tsx`.
-2. Innføre aktivt ECCAIRS-miljø på `/hendelser`, for eksempel `eccairsEnvironment`.
-3. Bruke `eccairsEnvironment` i alle ECCAIRS-kall:
-   - opprett utkast
-   - oppdater utkast
-   - slett utkast
-   - send inn
-   - åpne i ECCAIRS
-   - hente status fra `eccairs_exports`
-   - realtime-filter for `eccairs_exports`
-4. Koble `EccairsAttachmentUpload` til samme miljø, så vedlegg ikke alltid går til sandbox.
-5. Koble dropdownen i `EccairsSettingsDialog` tilbake til aktivt miljø i `/hendelser`, slik at valgt Produksjon/Test faktisk styrer hvor rapporten sendes.
-6. Legge inn tydelig visning/logging av aktivt miljø, slik at du ser om en innsending faktisk bruker `prod`.
-
-## Forventet resultat
-
-Etter endringen blir flyten:
-
-```text
-Du velger Produksjon på /hendelser
+Bruker skriver merknad med @navn
         ↓
-AviSafe sender environment: "prod"
+Oppdrag lagres/opprettes
         ↓
-Fly.io gateway henter prod-credentials fra Supabase for Avisafe
+Frontend finner nye taggede profile_id-er
         ↓
-Rapporten sendes til ECCAIRS produksjon
+Frontend kaller send-notification-email med notify_mission_mention
+        ↓
+Edge function validerer mottaker/selskap og henter e-post
+        ↓
+E-post sendes med firmakonfigurasjon og standard/custom mal
 ```
 
-Og for test:
-
-```text
-Du velger Sandbox/test på /hendelser
-        ↓
-AviSafe sender environment: "sandbox"
-        ↓
-Fly.io gateway henter sandbox-credentials fra Supabase for Avisafe
-        ↓
-Rapporten sendes til ECCAIRS UAT/test
-```
+Merk:
+- Ingen endring i databasestrukturen er nødvendig hvis vi sender direkte tagg-varsler uten egen preferanse.
+- Hvis du ønsker egen varslingspreferanse for mentions, legger jeg til migrasjon for `notification_preferences.email_mission_mention` og et valg i profilen.
