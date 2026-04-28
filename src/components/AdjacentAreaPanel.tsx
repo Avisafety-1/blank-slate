@@ -217,7 +217,7 @@ export function AdjacentAreaPanel({
                 </>
               )}
 
-              <div className="text-muted-foreground">Grense</div>
+              <div className="text-muted-foreground">Tetthetskategori</div>
               <div className="font-medium">
                 {POPULATION_DENSITY_LABELS[result.populationDensityCategory]}
               </div>
@@ -258,13 +258,6 @@ export function AdjacentAreaPanel({
             {result.calculation && (
               <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                 {result.calculation}
-              </p>
-            )}
-
-            {result.maxDensityCell && (
-              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                Høyeste tetthet langs ruten: {((result.maxDensityCell.densityPerKm2 ?? result.maxDensityCell.population * 16)).toLocaleString("nb-NO")} pers/km²
-                ({result.maxDensityCell.population.toLocaleString("nb-NO")} personer i 250 m-ruten).
               </p>
             )}
 
