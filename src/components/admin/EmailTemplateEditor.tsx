@@ -591,6 +591,22 @@ const superadminTemplateTypes = [
     },
   },
   {
+    value: "mission_mention_notification",
+    label: "Tagget i oppdrag (Superadmin)",
+    variables: ["{{user_name}}", "{{sender_name}}", "{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_note}}", "{{company_name}}", "{{app_url}}"],
+    defaultSubject: "Du er tagget i et oppdrag: {{mission_title}}",
+    previewData: {
+      user_name: "Kari Nordmann",
+      sender_name: "Ole Hansen",
+      mission_title: "Inspeksjon av vindmøller",
+      mission_location: "Fosen, Trøndelag",
+      mission_date: "15. januar 2025 kl. 10:00",
+      mission_note: "@Kari Nordmann kan du vurdere værvindu og bekrefte at ruten er innenfor operatørens prosedyrer?",
+      company_name: "Ditt Selskap AS",
+      app_url: "https://app.avisafe.no/oppdrag",
+    },
+  },
+  {
     value: "password_reset",
     label: "Passord tilbakestilling (Superadmin)",
     variables: ["{{user_name}}", "{{reset_link}}", "{{company_name}}"],
