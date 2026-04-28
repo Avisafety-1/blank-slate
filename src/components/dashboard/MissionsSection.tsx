@@ -2,13 +2,12 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck, Pencil } from "lucide-react";
+import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { MissionDetailDialog } from "./MissionDetailDialog";
 import { AddMissionDialog } from "./AddMissionDialog";
-import { MissionNotesDialog } from "./MissionNotesDialog";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,8 +51,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [commentMission, setCommentMission] = useState<Mission | null>(null);
-  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
   const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
@@ -417,29 +414,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     </Badge>
                   )}
                 </div>
-                <div className="mt-2 pt-2 border-t border-border/40">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[10px] font-semibold text-muted-foreground">MERKNADER</p>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      title="Legg til merknad"
-                      aria-label="Legg til merknad"
-                      className="h-6 w-6 shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCommentMission(mission);
-                        setCommentDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                  {mission.merknader && (
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2 whitespace-pre-wrap">{mission.merknader}</p>
-                  )}
-                </div>
                 <MissionSoraRouteDocumentation route={mission.route} compact className="mt-2" />
               </div>
             ))
@@ -460,16 +434,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         onMissionAdded={fetchMissions}
       />
 
-      <MissionNotesDialog
-        open={commentDialogOpen}
-        onOpenChange={(open) => {
-          setCommentDialogOpen(open);
-          if (!open) setCommentMission(null);
-        }}
-        mission={commentMission}
-        onSaved={fetchMissions}
-      />
-      
       <RiskAssessmentTypeDialog
         open={riskTypeDialogOpen}
         onOpenChange={setRiskTypeDialogOpen}
