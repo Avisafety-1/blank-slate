@@ -560,10 +560,10 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           <p className="text-xs font-medium">SSB 250 m befolkningstetthet</p>
           <p className="text-[11px] text-muted-foreground">
             {populationDensityLoading
-              ? "Henter aktuelle ruter rundt SORA-volum…"
+              ? "Henter aktuelle ruter rundt hele beregnet område…"
               : populationDensityResult?.maxDensityCell
                 ? `Pådriver: ${(populationDensityResult.maxDensityPerKm2).toLocaleString("nb-NO")} pers/km² · ${populationDensityResult.maxDensityCell.population.toLocaleString("nb-NO")} pers × 16`
-                : "Viser SSB-ruter som berører rute og buffersoner"}
+                : "Viser befolkede SSB-ruter; tomme felt er normalt 0 registrert befolkning"}
           </p>
         </div>
         <Switch checked={showPopulationDensity} onCheckedChange={onShowPopulationDensityChange} />
