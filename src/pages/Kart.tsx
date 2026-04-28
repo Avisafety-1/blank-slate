@@ -76,6 +76,7 @@ export default function KartPage() {
   const [soraDroneModel, setSoraDroneModel] = useState<string | undefined>(undefined);
   const [soraDroneMaxSpeed, setSoraDroneMaxSpeed] = useState<number | undefined>(undefined);
   const [showAdjacentArea, setShowAdjacentArea] = useState(false);
+  const [showPopulationDensity, setShowPopulationDensity] = useState(true);
   const [adjacentResult, setAdjacentResult] = useState<AdjacentAreaResult | null>(null);
   const [soraOpen, setSoraOpen] = useState(false);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
@@ -840,6 +841,8 @@ export default function KartPage() {
                 maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
                 active={showAdjacentArea}
                 onShowAdjacentArea={setShowAdjacentArea}
+                showPopulationDensity={showPopulationDensity}
+                onShowPopulationDensity={setShowPopulationDensity}
                 onResultChange={setAdjacentResult}
                 open={adjacentOpen}
                 onOpenChange={setAdjacentOpen}
@@ -876,6 +879,7 @@ export default function KartPage() {
           onFocusFlightHandled={() => setFocusFlightId(null)}
           soraSettings={soraSettings}
           adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
+          populationDensityCells={showAdjacentArea && showPopulationDensity ? adjacentResult?.densityCells : undefined}
         />
       </div>
 

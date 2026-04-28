@@ -19,7 +19,8 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const bbox = url.searchParams.get("bbox");
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const bbox = url.searchParams.get("bbox") || body?.bbox;
     if (!bbox) {
       return new Response(JSON.stringify({ error: "Missing bbox parameter" }), {
         status: 400,
@@ -29,7 +30,7 @@ serve(async (req) => {
 
     // bbox expected: minLng,minLat,maxLng,maxLat
     // SSB WFS 1.1.0 with EPSG:4326 uses lon,lat order in bbox
-    const resolution = url.searchParams.get("resolution") || "250";
+    const resolution = url.searchParams.get("resolution") || body?.resolution || "250";
     const typeName = resolution === "1000" ? "befolkning_1km_2025" : "befolkning_250m_2025";
     const maxFeatures = resolution === "1000" ? 10000 : 50000;
 
@@ -49,8 +50,15 @@ serve(async (req) => {
 
     const gml = await resp.text();
 
-    // Parse GML to extract population cells
-    const features: Array<{ pop_tot: number; centroidLat: number; centroidLng: number }> = [];
+    // Parse GML to extract population cells, including the polygon so the
+    // frontend can render the same 250 m grid used for risk calculations.
+    const features: Array<{
+      pop_tot: number;
+      centroidLat: number;
+      centroidLng: number;
+      polygon: Array<{ lat: number; lng: number }>;
+      densityPerKm2: number;
+    }> = [];
 
     // Extract each featureMember block
     const memberRegex = /<gml:featureMember>([\s\S]*?)<\/gml:featureMember>/g;
@@ -70,9 +78,13 @@ serve(async (req) => {
       const coords = posListMatch[1].trim().split(/\s+/).map(Number);
       // posList is pairs of lat lng (WFS 1.1.0 EPSG:4326 axis order)
       let sumLat = 0, sumLng = 0, count = 0;
+      const polygon: Array<{ lat: number; lng: number }> = [];
       for (let i = 0; i < coords.length - 2; i += 2) {
-        sumLat += coords[i];
-        sumLng += coords[i + 1];
+        const lat = coords[i];
+        const lng = coords[i + 1];
+        sumLat += lat;
+        sumLng += lng;
+        polygon.push({ lat, lng });
         count++;
       }
       if (count === 0) continue;
@@ -81,6 +93,9 @@ serve(async (req) => {
         pop_tot: pop,
         centroidLat: sumLat / count,
         centroidLng: sumLng / count,
+        polygon,
+        // 250 m cell = 1/16 km², so population × 16 gives people/km².
+        densityPerKm2: resolution === "1000" ? pop : pop * 16,
       });
     }
 

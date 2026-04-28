@@ -11,6 +11,7 @@
  */
 
 import type { RoutePoint, SoraSettings } from "@/types/map";
+import { supabase } from "@/integrations/supabase/client";
 import {
   bufferPolygon,
   computeConvexHull,
@@ -60,6 +61,8 @@ export interface AdjacentAreaResult {
   driver?: string;
   maxCellPopulation?: number;
   gridResolutionM?: number;
+  densityCells?: SsbPopulationCell[];
+  maxDensityCell?: SsbPopulationCell;
   /** Loading / error state */
   error?: string;
 }
@@ -921,33 +924,29 @@ function makeBuffer(
 /*  SSB WFS population data fetch                                      */
 /* ------------------------------------------------------------------ */
 
-interface SsbPopulationCell {
+export interface SsbPopulationCell {
   population: number;
   centroidLat: number;
   centroidLng: number;
+  polygon?: RoutePoint[];
+  densityPerKm2?: number;
 }
 
 export async function fetchSsbPopulationGrid(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
   const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
-  const url = `${supabaseUrl}/functions/v1/ssb-population?bbox=${encodeURIComponent(bboxStr)}`;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
-  const resp = await fetch(url, {
-    signal,
-    headers: { apikey: supabaseKey },
+  const { data, error } = await supabase.functions.invoke("ssb-population", {
+    body: { bbox: bboxStr, resolution: "250" },
   });
 
-  if (!resp.ok) {
-    const errBody = await resp.text().catch(() => "");
-    throw new Error(`SSB population proxy error: ${resp.status} ${errBody}`);
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  if (error) {
+    throw new Error(`SSB population proxy error: ${error.message}`);
   }
-
-  const data = await resp.json();
   const cells: SsbPopulationCell[] = [];
   if (!data?.features) return cells;
 
@@ -956,6 +955,8 @@ export async function fetchSsbPopulationGrid(
       population: feature.pop_tot,
       centroidLat: feature.centroidLat,
       centroidLng: feature.centroidLng,
+      polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
+      densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot * 16,
     });
   }
 
@@ -1014,10 +1015,16 @@ export async function computeAdjacentAreaDensity(
   const cells = await fetchSsbPopulationGrid(bbox, signal);
 
   let totalPop = 0;
+  const densityCells: SsbPopulationCell[] = [];
+  let maxDensityCell: SsbPopulationCell | undefined;
   for (const cell of cells) {
     const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
     if (pointInMultiPolygon(pt, outerPolys) && !pointInMultiPolygon(pt, innerPolys)) {
       totalPop += cell.population;
+      densityCells.push(cell);
+      if (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0)) {
+        maxDensityCell = cell;
+      }
     }
   }
 
@@ -1057,5 +1064,8 @@ export async function computeAdjacentAreaDensity(
     method,
     calculation: `${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} personer/km²`,
     gridResolutionM: 250,
+    maxCellPopulation: maxDensityCell?.population,
+    densityCells,
+    maxDensityCell,
   };
 }
