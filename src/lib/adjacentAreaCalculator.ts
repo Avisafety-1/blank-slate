@@ -907,6 +907,13 @@ function cellTouchesMultiPolygon(cell: SsbPopulationCell, polygons: RouteMultiPo
   return polygons.some(polygon => polygonsIntersect(cell.polygon!, polygon));
 }
 
+
+function cellInsideMultiPolygon(cell: SsbPopulationCell, polygons: RouteMultiPolygon): boolean {
+  const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
+  if (!cell.polygon || cell.polygon.length < 3) return pointInMultiPolygon(pt, polygons);
+  return cell.polygon.every(point => pointInMultiPolygon(point, polygons));
+}
+
 function expandBboxMeters(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   meters: number
@@ -1089,7 +1096,7 @@ export async function computeAdjacentAreaDensity(
   const densityCells: SsbPopulationCell[] = [];
   let maxDensityCell: SsbPopulationCell | undefined;
   for (const cell of cells) {
-    if (cellTouchesMultiPolygon(cell, outerPolys) && !cellTouchesMultiPolygon(cell, innerPolys)) {
+    if (cellTouchesMultiPolygon(cell, outerPolys) && !cellInsideMultiPolygon(cell, innerPolys)) {
       totalPop += cell.population;
       densityCells.push(cell);
       if (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0)) {
