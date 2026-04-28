@@ -23,6 +23,7 @@ const ECCAIRS_GATEWAY_KEY = import.meta.env.VITE_ECCAIRS_GATEWAY_KEY || "";
 interface EccairsAttachmentUploadProps {
   incidentId: string;
   e2Id: string;
+  environment: "sandbox" | "prod";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
@@ -54,6 +55,7 @@ async function getAccessToken() {
 export function EccairsAttachmentUpload({
   incidentId,
   e2Id,
+  environment,
   open,
   onOpenChange,
   onSuccess,
@@ -193,7 +195,7 @@ export function EccairsAttachmentUpload({
         formData.append("overwrite", "true");
         formData.append("versionType", "DRAFT");
         formData.append("incident_id", incidentId);
-        formData.append("environment", "sandbox");
+        formData.append("environment", environment);
 
         const res = await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/attachments/${encodeURIComponent(e2Id)}`, {
           method: "POST",
