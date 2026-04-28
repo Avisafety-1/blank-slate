@@ -286,6 +286,47 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </body>
 </html>`,
 
+  mission_mention_notification: `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+.content { background: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+.mission-info { background: white; padding: 18px; border-radius: 8px; margin: 16px 0; border: 1px solid #e5e7eb; }
+.note-box { background: white; padding: 20px; border-radius: 8px; margin: 18px 0; border-left: 4px solid #3b82f6; }
+.button { display: inline-block; background: #1e40af; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1 style="margin: 0;">Du er tagget i et oppdrag</h1>
+</div>
+<div class="content">
+<p>Hei {{user_name}},</p>
+<p><strong>{{sender_name}}</strong> har tagget deg i merknader på et oppdrag i AviSafe.</p>
+<div class="mission-info">
+<h2 style="margin-top: 0; color: #1e40af;">{{mission_title}}</h2>
+<p><strong>Lokasjon:</strong> {{mission_location}}</p>
+<p><strong>Tidspunkt:</strong> {{mission_date}}</p>
+</div>
+<div class="note-box">
+<p style="margin: 0 0 8px 0;"><strong>Merknad:</strong></p>
+<p style="margin: 0;">{{mission_note}}</p>
+</div>
+<p>Logg inn i appen for å se oppdraget, rute, ressurser og øvrig kontekst.</p>
+<p style="text-align: center;">
+<a href="{{app_url}}" class="button">Åpne oppdraget i AviSafe</a>
+</p>
+<p>Med vennlig hilsen,<br>{{company_name}}</p>
+</div>
+</div>
+</body>
+</html>`,
+
   password_reset: `<!DOCTYPE html>
 <html>
 <head>
@@ -547,6 +588,22 @@ const superadminTemplateTypes = [
       incident_location: "Oslo Lufthavn",
       incident_description: "Dronen måtte nødlande grunnet lavt batteri under testflyging.",
       company_name: "Ditt Selskap AS",
+    },
+  },
+  {
+    value: "mission_mention_notification",
+    label: "Tagget i oppdrag (Superadmin)",
+    variables: ["{{user_name}}", "{{sender_name}}", "{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_note}}", "{{company_name}}", "{{app_url}}"],
+    defaultSubject: "Du er tagget i et oppdrag: {{mission_title}}",
+    previewData: {
+      user_name: "Kari Nordmann",
+      sender_name: "Ole Hansen",
+      mission_title: "Inspeksjon av vindmøller",
+      mission_location: "Fosen, Trøndelag",
+      mission_date: "15. januar 2025 kl. 10:00",
+      mission_note: "@Kari Nordmann kan du vurdere værvindu og bekrefte at ruten er innenfor operatørens prosedyrer?",
+      company_name: "Ditt Selskap AS",
+      app_url: "https://app.avisafe.no/oppdrag",
     },
   },
   {

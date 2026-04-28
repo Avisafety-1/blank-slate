@@ -27,8 +27,17 @@ interface EmailRequest {
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
   approvalMission?: { id?: string; tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
   pilotComment?: { missionTitle: string; missionLocation: string; missionDate: string; comment: string; senderName: string; };
+  missionMention?: { recipientId: string; senderId?: string; senderName: string; missionTitle: string; missionLocation?: string; missionDate: string; missionNote: string; };
   trainingAssigned?: { recipientId: string; courseName: string; };
 }
+
+const escapeHtml = (value: string) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;')
+  .replace(/\n/g, '<br>');
 
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -37,7 +46,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
+    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -251,6 +260,45 @@ serve(async (req: Request): Promise<Response> => {
         emailsSent++;
       }
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    // Handle mission mention notification
+    if (type === 'notify_mission_mention' && companyId && missionId && missionMention) {
+      const { data: recipientProfile } = await supabase
+        .from('profiles')
+        .select('id, full_name, company_id, approved')
+        .eq('id', missionMention.recipientId)
+        .maybeSingle();
+
+      if (!recipientProfile?.approved || recipientProfile.company_id !== companyId) {
+        return new Response(JSON.stringify({ success: true, message: 'Recipient not eligible' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const { data: { user: recipientUser } } = await supabase.auth.admin.getUserById(missionMention.recipientId);
+      if (!recipientUser?.email) {
+        return new Response(JSON.stringify({ success: true, message: 'No email' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
+      const missionDate = new Date(missionMention.missionDate).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const appUrl = `https://app.avisafe.no/oppdrag?missionId=${missionId}`;
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_mention_notification', {
+        user_name: recipientProfile.full_name || 'Bruker',
+        sender_name: missionMention.senderName,
+        mission_title: missionMention.missionTitle,
+        mission_location: missionMention.missionLocation || 'Ikke oppgitt',
+        mission_date: missionDate,
+        mission_note: escapeHtml(missionMention.missionNote || ''),
+        company_name: company?.navn || '',
+        app_url: appUrl,
+      });
+
+      const emailConfig = await getEmailConfig(companyId);
+      const fromName = emailConfig.fromName || "AviSafe";
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+
+      await sendEmail({ from: senderAddress, to: recipientUser.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // Handle training assigned notification

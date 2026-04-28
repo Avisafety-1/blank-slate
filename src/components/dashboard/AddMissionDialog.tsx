@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 /** Convert a Date to the local `YYYY-MM-DDTHH:mm` format expected by datetime-local inputs */
 function toLocalDatetimeString(date: Date): string {
@@ -65,6 +65,19 @@ type Equipment = any;
 type Customer = any;
 type Drone = any;
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const extractMentionedProfileIds = (text: string, profiles: Profile[]) => {
+  const mentioned = new Set<string>();
+  profiles.forEach((profile) => {
+    const name = profile.full_name?.trim();
+    if (!name) return;
+    const pattern = new RegExp(`(^|\\s)@${escapeRegExp(name)}(?=$|[\\s.,!?;:)\\]])`, 'i');
+    if (pattern.test(text)) mentioned.add(profile.id);
+  });
+  return mentioned;
+};
+
 export const AddMissionDialog = ({ 
   open, 
   onOpenChange, 
@@ -103,6 +116,9 @@ export const AddMissionDialog = ({
   const [newCustomerName, setNewCustomerName] = useState("");
   const [showNewCustomerInput, setShowNewCustomerInput] = useState(false);
   const [routeData, setRouteData] = useState<RouteData | null>(initialRouteData || null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const terminology = useTerminology();
   
   const [formData, setFormData] = useState({
@@ -126,6 +142,17 @@ export const AddMissionDialog = ({
     selectedEquipment,
     selectedPersonnel
   );
+
+  const mentionSuggestions = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const query = mentionQuery.trim().toLowerCase();
+    return profiles
+      .filter((profile) => {
+        const name = profile.full_name?.trim();
+        return name && (!query || name.toLowerCase().includes(query));
+      })
+      .slice(0, 6);
+  }, [mentionQuery, profiles]);
 
   useEffect(() => {
     if (open) {
@@ -228,10 +255,19 @@ export const AddMissionDialog = ({
   }, [open, mission, initialFormData, initialRouteData, initialSelectedPersonnel, initialSelectedEquipment, initialSelectedDrones, initialSelectedCustomer]);
 
   const fetchProfiles = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("approved", true);
+      .eq("approved", true)
+      .eq("company_id", currentProfile?.company_id || '');
     
     if (error) {
       toast.error(t('missions.couldNotLoadPersonnel'));
@@ -408,6 +444,67 @@ export const AddMissionDialog = ({
       console.error("Error creating customer:", error);
       toast.error(t('missions.couldNotCreateCustomer'));
     }
+  };
+
+  const updateMentionState = (value: string, cursorPosition: number) => {
+    const beforeCursor = value.slice(0, cursorPosition);
+    const match = beforeCursor.match(/(^|\s)@([^@\s]*)$/);
+    if (match) {
+      setMentionStart(cursorPosition - match[2].length - 1);
+      setMentionQuery(match[2]);
+    } else {
+      setMentionStart(null);
+      setMentionQuery(null);
+    }
+  };
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setFormData({ ...formData, merknader: value });
+    updateMentionState(value, e.target.selectionStart);
+  };
+
+  const insertMention = (profile: Profile) => {
+    const name = profile.full_name?.trim();
+    if (!name || mentionStart === null) return;
+    const textarea = notesTextareaRef.current;
+    const cursor = textarea?.selectionStart ?? formData.merknader.length;
+    const nextValue = `${formData.merknader.slice(0, mentionStart)}@${name} ${formData.merknader.slice(cursor)}`;
+    const nextCursor = mentionStart + name.length + 2;
+    setFormData({ ...formData, merknader: nextValue });
+    setMentionStart(null);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      notesTextareaRef.current?.focus();
+      notesTextareaRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
+
+  const sendMentionNotifications = async ({ missionId, previousNotes, currentNotes, companyId, senderId }: { missionId: string; previousNotes?: string; currentNotes: string; companyId: string; senderId: string }) => {
+    const currentMentions = extractMentionedProfileIds(currentNotes, profiles);
+    const previousMentions = extractMentionedProfileIds(previousNotes || '', profiles);
+    const newMentionIds = [...currentMentions].filter((id) => id !== senderId && !previousMentions.has(id));
+    if (!newMentionIds.length) return;
+
+    const senderProfile = profiles.find((p) => p.id === senderId);
+    const missionDate = formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : new Date().toISOString();
+
+    await Promise.all(newMentionIds.map((recipientId) => supabase.functions.invoke('send-notification-email', {
+      body: {
+        type: 'notify_mission_mention',
+        companyId,
+        missionId,
+        missionMention: {
+          recipientId,
+          senderId,
+          senderName: senderProfile?.full_name || 'En kollega',
+          missionTitle: formData.tittel || 'Oppdrag uten tittel',
+          missionLocation: formData.lokasjon || 'Ikke oppgitt',
+          missionDate,
+          missionNote: currentNotes,
+        }
+      }
+    })));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -617,6 +714,18 @@ export const AddMissionDialog = ({
             .eq("id", mission.id);
         }
 
+        try {
+          await sendMentionNotifications({
+            missionId: mission.id,
+            previousNotes: mission.merknader || '',
+            currentNotes: formData.merknader,
+            companyId: profile.company_id,
+            senderId: user.id,
+          });
+        } catch (mentionError) {
+          console.error('Error sending mission mention notifications:', mentionError);
+        }
+
         toast.success(t('missions.missionUpdated'));
         onMissionAdded();
       } else {
@@ -772,6 +881,17 @@ export const AddMissionDialog = ({
           });
         } catch (emailError) {
           console.error('Error sending new mission notification:', emailError);
+        }
+
+        try {
+          await sendMentionNotifications({
+            missionId: createdMission.id,
+            currentNotes: formData.merknader,
+            companyId: profile.company_id,
+            senderId: user.id,
+          });
+        } catch (mentionError) {
+          console.error('Error sending mission mention notifications:', mentionError);
         }
 
         toast.success(t('missions.missionCreated'));
@@ -1051,12 +1171,35 @@ export const AddMissionDialog = ({
 
           <div>
             <Label htmlFor="merknader">{t('missions.notes')}</Label>
-            <Textarea
-              id="merknader"
-              value={formData.merknader}
-              onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
-              rows={2}
-            />
+            <div className="relative">
+              <Textarea
+                ref={notesTextareaRef}
+                id="merknader"
+                value={formData.merknader}
+                onChange={handleNotesChange}
+                onKeyUp={(e) => updateMentionState(e.currentTarget.value, e.currentTarget.selectionStart)}
+                onClick={(e) => updateMentionState(e.currentTarget.value, e.currentTarget.selectionStart)}
+                rows={2}
+                placeholder="Skriv merknad... Bruk @ for å tagge personer"
+              />
+              {mentionQuery !== null && mentionSuggestions.length > 0 && (
+                <div className="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                  {mentionSuggestions.map((profile) => (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      className="flex w-full items-center rounded-sm px-2 py-2 text-left text-sm hover:bg-muted/50 focus:bg-muted/50 focus:outline-none"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertMention(profile);
+                      }}
+                    >
+                      <span className="truncate">{profile.full_name || 'Ukjent bruker'}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
