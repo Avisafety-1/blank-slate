@@ -356,14 +356,16 @@ export function OpenAIPMap({
         const density = cell.densityPerKm2 ?? cell.population * 16;
         const isHotspot = density === maxDensity;
         const popup = `<strong>SSB 250 m-rute</strong><br/>${cell.population.toLocaleString('nb-NO')} personer<br/>${density.toLocaleString('nb-NO')} pers/km²${isHotspot ? '<br/><strong>Høyeste tetthet på ruten</strong>' : ''}`;
+        const interactive = modeRef.current !== 'routePlanning';
 
         if (cell.polygon && cell.polygon.length >= 3) {
-          L.polygon(cell.polygon.map(p => [p.lat, p.lng] as [number, number]), getPopulationDensityStyle(density, isHotspot))
+          L.polygon(cell.polygon.map(p => [p.lat, p.lng] as [number, number]), { ...getPopulationDensityStyle(density, isHotspot), interactive })
             .bindPopup(popup)
             .addTo(populationDensityLayerRef.current!);
         } else {
           L.circleMarker([cell.centroidLat, cell.centroidLng], {
             ...getPopulationDensityStyle(density, isHotspot),
+            interactive,
             radius: isHotspot ? 7 : 4,
           }).bindPopup(popup).addTo(populationDensityLayerRef.current!);
         }
@@ -447,7 +449,7 @@ export function OpenAIPMap({
       obstaclePane: '660', nsmPane: '650', notamPane: '640', populationDensityPane: '635',
       rpasPane: '630', aipPane: '625', rmzPane: '620',
     };
-    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane']);
+    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane', 'populationDensityPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
