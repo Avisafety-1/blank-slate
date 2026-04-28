@@ -437,6 +437,67 @@ export const AddMissionDialog = ({
     }
   };
 
+  const updateMentionState = (value: string, cursorPosition: number) => {
+    const beforeCursor = value.slice(0, cursorPosition);
+    const match = beforeCursor.match(/(^|\s)@([^@\s]*)$/);
+    if (match) {
+      setMentionStart(cursorPosition - match[2].length - 1);
+      setMentionQuery(match[2]);
+    } else {
+      setMentionStart(null);
+      setMentionQuery(null);
+    }
+  };
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setFormData({ ...formData, merknader: value });
+    updateMentionState(value, e.target.selectionStart);
+  };
+
+  const insertMention = (profile: Profile) => {
+    const name = profile.full_name?.trim();
+    if (!name || mentionStart === null) return;
+    const textarea = notesTextareaRef.current;
+    const cursor = textarea?.selectionStart ?? formData.merknader.length;
+    const nextValue = `${formData.merknader.slice(0, mentionStart)}@${name} ${formData.merknader.slice(cursor)}`;
+    const nextCursor = mentionStart + name.length + 2;
+    setFormData({ ...formData, merknader: nextValue });
+    setMentionStart(null);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      notesTextareaRef.current?.focus();
+      notesTextareaRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
+
+  const sendMentionNotifications = async ({ missionId, previousNotes, currentNotes, companyId, senderId }: { missionId: string; previousNotes?: string; currentNotes: string; companyId: string; senderId: string }) => {
+    const currentMentions = extractMentionedProfileIds(currentNotes, profiles);
+    const previousMentions = extractMentionedProfileIds(previousNotes || '', profiles);
+    const newMentionIds = [...currentMentions].filter((id) => id !== senderId && !previousMentions.has(id));
+    if (!newMentionIds.length) return;
+
+    const senderProfile = profiles.find((p) => p.id === senderId);
+    const missionDate = formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : new Date().toISOString();
+
+    await Promise.all(newMentionIds.map((recipientId) => supabase.functions.invoke('send-notification-email', {
+      body: {
+        type: 'notify_mission_mention',
+        companyId,
+        missionId,
+        missionMention: {
+          recipientId,
+          senderId,
+          senderName: senderProfile?.full_name || 'En kollega',
+          missionTitle: formData.tittel || 'Oppdrag uten tittel',
+          missionLocation: formData.lokasjon || 'Ikke oppgitt',
+          missionDate,
+          missionNote: currentNotes,
+        }
+      }
+    })));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
