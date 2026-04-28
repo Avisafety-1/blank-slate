@@ -203,7 +203,7 @@ export function OpenAIPMap({
     newLayer.bringToBack();
     baseLayerRef.current = newLayer;
     setBaseLayerType(newType);
-  }, [getPopulationDensityRenderer]);
+  }, []);
 
   // Sync refs with state/props
   useEffect(() => {
@@ -433,7 +433,7 @@ export function OpenAIPMap({
         }
       });
     }
-  }, []);
+  }, [getPopulationDensityRenderer]);
 
   // Sync soraSettings ref and redraw
   useEffect(() => {
