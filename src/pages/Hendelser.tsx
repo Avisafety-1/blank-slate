@@ -87,7 +87,6 @@ const statusColors: Record<string, string> = {
 
 // ---- ECCAIRS config ----
 const ECCAIRS_GATEWAY = import.meta.env.VITE_ECCAIRS_GATEWAY_URL || "";
-const ECCAIRS_ENV: "sandbox" | "prod" = (import.meta.env.VITE_ECCAIRS_ENV as "sandbox" | "prod") || "sandbox";
 const ECCAIRS_GATEWAY_KEY = import.meta.env.VITE_ECCAIRS_GATEWAY_KEY || "";
 
 // Helper: get Supabase access token
@@ -96,6 +95,7 @@ async function getAccessToken() {
   return session?.access_token || null;
 }
 
+type EccairsEnvironment = 'sandbox' | 'prod';
 type EccairsExportStatus = 'pending' | 'draft_created' | 'draft_updated' | 'submitted' | 'failed';
 
 type EccairsExport = {
@@ -107,7 +107,7 @@ type EccairsExport = {
   e2_version: string | null;
   last_attempt_at: string | null;
   last_error: string | null;
-  environment: 'sandbox' | 'prod';
+  environment: EccairsEnvironment;
   attempts: number;
   response: any;
 };
@@ -168,8 +168,18 @@ const Hendelser = () => {
   const [attachmentDialogOpen, setAttachmentDialogOpen] = useState(false);
   const [attachmentIncident, setAttachmentIncident] = useState<{ id: string; e2Id: string } | null>(null);
   const [eccairsSettingsOpen, setEccairsSettingsOpen] = useState(false);
+  const [eccairsEnvironment, setEccairsEnvironment] = useState<EccairsEnvironment>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('eccairs_environment') : null;
+    return saved === 'prod' ? 'prod' : 'sandbox';
+  });
   const [eccairsSubmitConfirmOpen, setEccairsSubmitConfirmOpen] = useState(false);
   const [eccairsSubmitIncidentId, setEccairsSubmitIncidentId] = useState<string | null>(null);
+
+  const handleEccairsEnvironmentChange = (environment: EccairsEnvironment) => {
+    setEccairsEnvironment(environment);
+    window.localStorage.setItem('eccairs_environment', environment);
+    setEccairsExports({});
+  };
 
   useEffect(() => {
     if (!authLoading && !user && navigator.onLine) {
@@ -203,7 +213,7 @@ const Hendelser = () => {
         if (!navigator.onLine) return;
         fetchIncidents();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'eccairs_exports', filter: `environment=eq.${ECCAIRS_ENV}` }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'eccairs_exports', filter: `environment=eq.${eccairsEnvironment}` }, (payload) => {
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const exportData = payload.new as unknown as EccairsExport;
           setEccairsExports(prev => ({
@@ -252,7 +262,7 @@ const Hendelser = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [companyId]);
+  }, [companyId, eccairsEnvironment]);
 
   // Fetch comment counts and comments when incidents change
   useEffect(() => {
@@ -339,7 +349,7 @@ const Hendelser = () => {
         const { data, error } = await supabase
           .from('eccairs_exports')
           .select('*')
-          .eq('environment', ECCAIRS_ENV)
+          .eq('environment', eccairsEnvironment)
           .in('incident_id', incidentIds);
 
         if (error) throw error;
@@ -356,7 +366,7 @@ const Hendelser = () => {
     };
 
     fetchEccairsExports();
-  }, [incidents]);
+  }, [incidents, eccairsEnvironment]);
 
   // ECCAIRS exports and comments are now handled by the consolidated hendelser-main channel above
 
@@ -521,7 +531,7 @@ const Hendelser = () => {
         .upsert({
           incident_id: incidentId,
           company_id: incidentRow.company_id,
-          environment: ECCAIRS_ENV,
+          environment: eccairsEnvironment,
           status: 'pending',
           last_attempt_at: nowIso,
           attempts: (currentExport?.attempts ?? 0) + 1,
@@ -541,7 +551,7 @@ const Hendelser = () => {
           'Authorization': `Bearer ${accessToken}`,
           ...(ECCAIRS_GATEWAY_KEY ? { 'x-api-key': ECCAIRS_GATEWAY_KEY } : {}),
         },
-        body: JSON.stringify({ incident_id: incidentId, environment: ECCAIRS_ENV }),
+        body: JSON.stringify({ incident_id: incidentId, environment: eccairsEnvironment }),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -573,7 +583,7 @@ const Hendelser = () => {
               last_attempt_at: new Date().toISOString(),
             })
             .eq('incident_id', incidentId)
-            .eq('environment', ECCAIRS_ENV);
+            .eq('environment', eccairsEnvironment);
           
           return; // Exit early
         }
@@ -593,7 +603,7 @@ const Hendelser = () => {
           last_attempt_at: new Date().toISOString(),
         })
         .eq('incident_id', incidentId)
-        .eq('environment', ECCAIRS_ENV)
+        .eq('environment', eccairsEnvironment)
         .select('*')
         .single();
 
@@ -615,7 +625,7 @@ const Hendelser = () => {
           last_attempt_at: new Date().toISOString(),
         })
         .eq('incident_id', incidentId)
-        .eq('environment', ECCAIRS_ENV)
+        .eq('environment', eccairsEnvironment)
         .select('*')
         .single();
 
@@ -644,7 +654,7 @@ const Hendelser = () => {
     try {
       const url = new URL(`${ECCAIRS_GATEWAY}/api/eccairs/get-url`);
       url.searchParams.set("e2_id", e2Id);
-      url.searchParams.set("environment", ECCAIRS_ENV);
+      url.searchParams.set("environment", eccairsEnvironment);
 
       const r = await fetch(url.toString(), {
         headers: {
@@ -708,7 +718,7 @@ const Hendelser = () => {
           "Authorization": `Bearer ${accessToken}`,
           ...(ECCAIRS_GATEWAY_KEY ? { "x-api-key": ECCAIRS_GATEWAY_KEY } : {}),
         },
-        body: JSON.stringify({ incident_id: incidentId, environment: ECCAIRS_ENV }),
+        body: JSON.stringify({ incident_id: incidentId, environment: eccairsEnvironment }),
       });
 
       const json = await res.json().catch(() => ({}));
@@ -760,7 +770,7 @@ const Hendelser = () => {
         },
         body: JSON.stringify({ 
           incident_id: incidentId, 
-          environment: ECCAIRS_ENV
+          environment: eccairsEnvironment
         }),
       });
 
@@ -793,7 +803,7 @@ const Hendelser = () => {
           last_attempt_at: new Date().toISOString(),
         })
         .eq('incident_id', incidentId)
-        .eq('environment', ECCAIRS_ENV);
+        .eq('environment', eccairsEnvironment);
 
       toast.success("ECCAIRS-utkast oppdatert");
     } catch (err: any) {
@@ -838,7 +848,7 @@ const Hendelser = () => {
         },
         body: JSON.stringify({ 
           e2_id: exp.e2_id,
-          environment: ECCAIRS_ENV 
+          environment: eccairsEnvironment 
         }),
       });
 
@@ -853,7 +863,7 @@ const Hendelser = () => {
         .from('eccairs_exports')
         .delete()
         .eq('incident_id', incidentId)
-        .eq('environment', ECCAIRS_ENV);
+        .eq('environment', eccairsEnvironment);
 
       // Oppdater state - fjern fra exports
       setEccairsExports(prev => {
@@ -1336,6 +1346,7 @@ const Hendelser = () => {
         <EccairsAttachmentUpload
           incidentId={attachmentIncident.id}
           e2Id={attachmentIncident.e2Id}
+          environment={eccairsEnvironment}
           open={attachmentDialogOpen}
           onOpenChange={(open) => {
             setAttachmentDialogOpen(open);
@@ -1347,6 +1358,8 @@ const Hendelser = () => {
       <EccairsSettingsDialog
         open={eccairsSettingsOpen}
         onOpenChange={setEccairsSettingsOpen}
+        environment={eccairsEnvironment}
+        onEnvironmentChange={handleEccairsEnvironmentChange}
       />
 
       <AlertDialog open={eccairsSubmitConfirmOpen} onOpenChange={setEccairsSubmitConfirmOpen}>
