@@ -280,6 +280,7 @@ const baseSchema = Joi.object({
 
 const getUrlSchema = Joi.object({
   e2_id: Joi.string().required(),
+  incident_id: Joi.string().uuid().optional(),
   environment: Joi.string().valid("sandbox", "prod").default("sandbox"),
 }).unknown(false);
 
@@ -660,11 +661,22 @@ app.get("/api/eccairs/get-url", async (req, res) => {
     const { error, value } = getUrlSchema.validate(req.query || {});
     if (error) return res.status(400).json({ ok: false, error: error.details[0].message });
 
-    const { e2_id, environment } = value;
+    const { e2_id, incident_id, environment } = value;
 
-    // For get-url we use global credentials as we don't have company context
-    const token = await getE2AccessToken();
-    const base = process.env.E2_BASE_URL;
+    let integration = null;
+    if (incident_id) {
+      const access = await assertIncidentAccess({ jwt: req.jwt, incident_id });
+      if (!access.ok) return res.status(access.status).json({ ok: false, error: access.error });
+
+      const integrationRes = await loadIntegration({ company_id: access.incident.company_id, environment });
+      if (!integrationRes.ok) {
+        return res.status(integrationRes.status).json({ ok: false, error: integrationRes.error, details: integrationRes.details });
+      }
+      integration = integrationRes.integration;
+    }
+
+    const token = await getE2AccessToken(integration);
+    const base = integration?.e2_base_url || process.env.E2_BASE_URL;
     if (!base) return res.status(500).json({ ok: false, error: "E2_BASE_URL mangler" });
 
     const url = `${base}/occurrences/get-URL/${encodeURIComponent(e2_id)}`;
@@ -677,7 +689,7 @@ app.get("/api/eccairs/get-url", async (req, res) => {
     }
 
     const openUrl = j?.data?.url || null;
-    return res.json({ ok: true, e2_id, environment, url: openUrl, raw: j, used: url });
+    return res.json({ ok: true, e2_id, environment, url: openUrl, raw: j, used: url, credentials_source: integration?.credentials_source || 'environment' });
   } catch (err) {
     console.error("Feil i /api/eccairs/get-url:", err);
     return res.status(500).json({ ok: false, error: String(err.message || err) });
