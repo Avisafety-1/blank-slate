@@ -2,7 +2,7 @@ import { OpenAIPMap, RouteData, RoutePoint, SoraSettings } from "@/components/Op
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { AdjacentAreaPanel } from "@/components/AdjacentAreaPanel";
-import { calculateAdjacentRadius, type AdjacentAreaResult } from "@/lib/adjacentAreaCalculator";
+import { calculateAdjacentRadius, computeSoraVolumePopulationDensity, type AdjacentAreaResult, type SoraPopulationDensityResult } from "@/lib/adjacentAreaCalculator";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 // soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
@@ -78,6 +78,8 @@ export default function KartPage() {
   const [showAdjacentArea, setShowAdjacentArea] = useState(false);
   const [showPopulationDensity, setShowPopulationDensity] = useState(true);
   const [adjacentResult, setAdjacentResult] = useState<AdjacentAreaResult | null>(null);
+  const [soraDensityResult, setSoraDensityResult] = useState<SoraPopulationDensityResult | null>(null);
+  const [soraDensityLoading, setSoraDensityLoading] = useState(false);
   const [soraOpen, setSoraOpen] = useState(false);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
 
