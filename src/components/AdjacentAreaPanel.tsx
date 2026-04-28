@@ -27,6 +27,8 @@ interface AdjacentAreaPanelProps {
   maxSpeedMps?: number;
   active?: boolean;
   onShowAdjacentArea?: (show: boolean) => void;
+  showPopulationDensity?: boolean;
+  onShowPopulationDensity?: (show: boolean) => void;
   onResultChange?: (result: AdjacentAreaResult | null) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -39,6 +41,8 @@ export function AdjacentAreaPanel({
   maxSpeedMps,
   active = false,
   onShowAdjacentArea,
+  showPopulationDensity = true,
+  onShowPopulationDensity,
   onResultChange,
   open: controlledOpen,
   onOpenChange,
@@ -258,6 +262,23 @@ export function AdjacentAreaPanel({
             {result.calculation && (
               <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                 {result.calculation}
+              </p>
+            )}
+
+            <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Vis befolkningstetthet på kart</p>
+                <p className="text-[11px] text-muted-foreground">
+                  SSB 250 m-ruter · populasjon × 16 = pers/km²
+                </p>
+              </div>
+              <Switch checked={showPopulationDensity} onCheckedChange={onShowPopulationDensity} />
+            </div>
+
+            {result.maxDensityCell && (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                Høyeste tetthet langs ruten: {((result.maxDensityCell.densityPerKm2 ?? result.maxDensityCell.population * 16)).toLocaleString("nb-NO")} pers/km²
+                ({result.maxDensityCell.population.toLocaleString("nb-NO")} personer i 250 m-ruten).
               </p>
             )}
 
