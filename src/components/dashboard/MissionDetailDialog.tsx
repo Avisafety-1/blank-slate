@@ -25,6 +25,7 @@ import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 import { NotamDialog } from "./NotamDialog";
 import { DeviationReportsSection } from "./DeviationReportsSection";
 import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
+import { MissionNotesDialog } from "./MissionNotesDialog";
 import {
   statusColors,
   getAIRiskBadgeColor,
@@ -72,6 +73,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
   const [notamDialogOpen, setNotamDialogOpen] = useState(false);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
 
   // Reset cached warnings when mission changes
   useEffect(() => {
@@ -313,6 +315,28 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 </p>
               </div>
           </div>
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-sm font-medium text-muted-foreground">Merknader</p>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                title="Legg til merknad"
+                aria-label="Legg til merknad"
+                className="h-8 w-8 shrink-0"
+                onClick={() => setNotesDialogOpen(true)}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+            </div>
+            {currentMission.merknader ? (
+              <p className="text-sm whitespace-pre-wrap">{currentMission.merknader}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Ingen merknader</p>
+            )}
           </div>
 
           <MissionResourceSections mission={currentMission} open={open} />
@@ -596,6 +620,18 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       onSaved={() => {
         onMissionUpdated?.();
         // Re-fetch live mission
+        supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
+          if (data) setLiveMission(data);
+        });
+      }}
+    />
+
+    <MissionNotesDialog
+      open={notesDialogOpen}
+      onOpenChange={setNotesDialogOpen}
+      mission={currentMission}
+      onSaved={() => {
+        onMissionUpdated?.();
         supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
           if (data) setLiveMission(data);
         });
