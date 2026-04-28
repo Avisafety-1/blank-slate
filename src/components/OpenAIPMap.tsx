@@ -42,7 +42,7 @@ import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCal
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 
 const getPopulationDensityStyle = (density = 0, isHotspot = false): L.PathOptions => {
-  const color = density >= 5000 ? '#dc2626' : density >= 1000 ? '#ea580c' : density >= 250 ? '#f59e0b' : density >= 50 ? '#84cc16' : '#22c55e';
+  const color = density >= 5000 ? 'hsl(var(--destructive))' : density >= 250 ? 'hsl(var(--warning))' : 'hsl(var(--success))';
   return {
     color,
     fillColor: color,
@@ -377,8 +377,8 @@ export function OpenAIPMap({
           pane: 'populationDensityPane',
           renderer,
           interactive: false,
-          color: '#0ea5e9',
-          fillColor: '#0ea5e9',
+          color: 'hsl(var(--info))',
+          fillColor: 'hsl(var(--info))',
           weight: 1,
           opacity: 0.32,
           fillOpacity: 0.07,
