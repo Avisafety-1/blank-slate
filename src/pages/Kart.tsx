@@ -948,6 +948,7 @@ export default function KartPage() {
           soraSettings={soraSettings}
           adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
           populationDensityCells={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.cells : undefined}
+          populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
         />
       </div>
 
