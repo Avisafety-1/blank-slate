@@ -905,7 +905,21 @@ function cellTouchesMultiPolygon(cell: SsbPopulationCell, polygons: RouteMultiPo
   const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
   if (pointInMultiPolygon(pt, polygons)) return true;
   if (!cell.polygon || cell.polygon.length < 3) return false;
-  return polygons.some(polygon => polygonsIntersect(cell.polygon!, polygon));
+  const cellBounds = bboxFromPolygons([cell.polygon]);
+  return polygons.some(polygon => {
+    const polygonBounds = bboxFromPolygons([polygon]);
+    if (
+      cellBounds.maxLat < polygonBounds.minLat ||
+      cellBounds.minLat > polygonBounds.maxLat ||
+      cellBounds.maxLng < polygonBounds.minLng ||
+      cellBounds.minLng > polygonBounds.maxLng
+    ) {
+      return false;
+    }
+
+    if (polygonsIntersect(cell.polygon!, polygon)) return true;
+    return cell.polygon!.some(point => pointInPolygon(point, polygon)) || polygon.some(point => pointInPolygon(point, cell.polygon!));
+  });
 }
 
 
@@ -1040,6 +1054,58 @@ export async function fetchSsbPopulationGrid(
   }
 
   return cells;
+}
+
+function splitBboxIntoTiles(
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  maxTileKm = 4
+) {
+  const avgLat = (bbox.minLat + bbox.maxLat) / 2;
+  const latStep = maxTileKm / 111.32;
+  const lngStep = maxTileKm / (111.32 * Math.max(Math.cos(avgLat * Math.PI / 180), 0.1));
+  const tiles: Array<{ minLat: number; maxLat: number; minLng: number; maxLng: number }> = [];
+
+  for (let minLat = bbox.minLat; minLat < bbox.maxLat; minLat += latStep) {
+    for (let minLng = bbox.minLng; minLng < bbox.maxLng; minLng += lngStep) {
+      tiles.push({
+        minLat,
+        maxLat: Math.min(minLat + latStep, bbox.maxLat),
+        minLng,
+        maxLng: Math.min(minLng + lngStep, bbox.maxLng),
+      });
+    }
+  }
+
+  return tiles;
+}
+
+function getCellKey(cell: SsbPopulationCell): string {
+  const lat = Math.round(cell.centroidLat * 1_000_000);
+  const lng = Math.round(cell.centroidLng * 1_000_000);
+  return `${lat}:${lng}:${cell.population}`;
+}
+
+export async function fetchSsbPopulationGridTiled(
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  signal?: AbortSignal
+): Promise<SsbPopulationCell[]> {
+  const tiles = splitBboxIntoTiles(bbox);
+  if (tiles.length <= 1) return fetchSsbPopulationGrid(bbox, signal);
+
+  const uniqueCells = new Map<string, SsbPopulationCell>();
+  const concurrency = 4;
+  for (let i = 0; i < tiles.length; i += concurrency) {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const batch = tiles.slice(i, i + concurrency);
+    const results = await Promise.all(batch.map(tile => fetchSsbPopulationGrid(tile, signal)));
+    for (const cells of results) {
+      for (const cell of cells) {
+        uniqueCells.set(getCellKey(cell), cell);
+      }
+    }
+  }
+
+  return Array.from(uniqueCells.values());
 }
 
 /* ------------------------------------------------------------------ */
