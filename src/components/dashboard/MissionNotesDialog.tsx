@@ -9,7 +9,13 @@ import { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 
 type Profile = Tables<"profiles">;
-type Mission = any;
+type Mission = {
+  id: string;
+  tittel?: string | null;
+  lokasjon?: string | null;
+  tidspunkt?: string | null;
+  merknader?: string | null;
+};
 
 interface MissionNotesDialogProps {
   open: boolean;
