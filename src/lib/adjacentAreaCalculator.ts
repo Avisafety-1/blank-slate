@@ -1081,7 +1081,7 @@ export async function computeAdjacentAreaDensity(
 
   const innerPolys = makeBuffer(coords, sora, innerDist);
   const outerPolys = makeBuffer(coords, sora, outerDist);
-  const bbox = bboxFromPolygons(outerPolys);
+  const bbox = expandBboxMeters(bboxFromPolygons(outerPolys), 275);
 
   const cells = await fetchSsbPopulationGrid(bbox, signal);
 
@@ -1090,7 +1090,7 @@ export async function computeAdjacentAreaDensity(
   let maxDensityCell: SsbPopulationCell | undefined;
   for (const cell of cells) {
     const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
-    if (pointInMultiPolygon(pt, outerPolys) && !pointInMultiPolygon(pt, innerPolys)) {
+    if (cellTouchesMultiPolygon(cell, outerPolys) && !cellTouchesMultiPolygon(cell, innerPolys)) {
       totalPop += cell.population;
       densityCells.push(cell);
       if (!maxDensityCell || (cell.densityPerKm2 ?? 0) > (maxDensityCell.densityPerKm2 ?? 0)) {
@@ -1144,15 +1144,17 @@ export async function computeAdjacentAreaDensity(
 export async function computeSoraVolumePopulationDensity(
   coords: RoutePoint[],
   sora: SoraSettings,
+  adjacentRadiusM?: number,
   signal?: AbortSignal
 ): Promise<SoraPopulationDensityResult> {
   if (coords.length < 2) {
     return { cells: [], totalPopulation: 0, maxDensityPerKm2: 0, gridResolutionM: 250 };
   }
 
-  const outerDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
-  const volumePolys = makeBuffer(coords, sora, Math.max(outerDist, 1));
-  const bbox = bboxFromPolygons(volumePolys);
+  const soraVolumeDist = sora.flightGeographyDistance + sora.contingencyDistance + sora.groundRiskDistance;
+  const totalCoverageDist = soraVolumeDist + (adjacentRadiusM ?? 0);
+  const coveragePolys = makeBuffer(coords, sora, Math.max(totalCoverageDist, 1));
+  const bbox = expandBboxMeters(bboxFromPolygons(coveragePolys), 275);
   const cells = await fetchSsbPopulationGrid(bbox, signal);
 
   let totalPopulation = 0;
@@ -1161,7 +1163,7 @@ export async function computeSoraVolumePopulationDensity(
 
   for (const cell of cells) {
     const pt: RoutePoint = { lat: cell.centroidLat, lng: cell.centroidLng };
-    if (!pointInMultiPolygon(pt, volumePolys)) continue;
+    if (!cellTouchesMultiPolygon(cell, coveragePolys)) continue;
 
     totalPopulation += cell.population;
     visibleCells.push(cell);
