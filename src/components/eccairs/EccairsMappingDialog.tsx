@@ -114,6 +114,12 @@ export function EccairsMappingDialog({
     }
   };
 
+  const ECCAIRS_SERIAL_FALLBACK = '99999999999';
+  const normalizeEccairsSerialNumber = (value: string | null | undefined) => {
+    const digits = (value ?? '').replace(/\D/g, '').slice(0, 11);
+    return digits || ECCAIRS_SERIAL_FALLBACK;
+  };
+
   // Get occurrence class for display (code 431)
   const occurrenceClassValue = getFieldValue(ECCAIRS_FIELDS.find(f => f.code === 431)!);
 
@@ -156,7 +162,9 @@ export function EccairsMappingDialog({
           } else {
             const value = field.type === 'select' ? attr.value_id : attr.text_value;
             if (value) {
-              newValues[makeFieldKey(field)] = value;
+              newValues[makeFieldKey(field)] = field.code === 244
+                ? normalizeEccairsSerialNumber(value)
+                : value;
             }
           }
         }
@@ -253,9 +261,9 @@ export function EccairsMappingDialog({
         if (narrativeText) {
           newValues[makeFieldKey(field)] = narrativeText;
         }
-      } else if (field.code === 244 && incident.drone_serial_number) {
+      } else if (field.code === 244) {
         // Auto-fill aircraft serial number from drone
-        newValues[makeFieldKey(field)] = incident.drone_serial_number;
+        newValues[makeFieldKey(field)] = normalizeEccairsSerialNumber(incident.drone_serial_number);
       } else if (field.defaultValue) {
         newValues[makeFieldKey(field)] = field.defaultValue;
       }
@@ -291,7 +299,8 @@ export function EccairsMappingDialog({
       const attributesToSave: Array<{ code: number; data: AttributeData }> = [];
       
       ECCAIRS_FIELDS.forEach(field => {
-        const value = derivedValues[makeFieldKey(field)] ?? field.defaultValue ?? '';
+        const rawValue = derivedValues[makeFieldKey(field)] ?? field.defaultValue ?? '';
+        const value = field.code === 244 ? normalizeEccairsSerialNumber(rawValue) : rawValue;
         if (!value) return;
         
         attributesToSave.push({
