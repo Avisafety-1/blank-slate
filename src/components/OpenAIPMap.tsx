@@ -507,6 +507,7 @@ export function OpenAIPMap({
         pane.style.pointerEvents = (mode === 'routePlanning' && nonInteractivePanes.has(paneName)) ? 'none' : 'auto';
       }
     }
+    populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' }).addTo(map);
 
     // Sørg for at popup-bokser alltid ligger over alle kartlag
     const popupPane = map.getPane('popupPane');
@@ -837,6 +838,7 @@ export function OpenAIPMap({
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
       map.off('moveend', debouncedFetchNais);
+      populationDensityRendererRef.current = null;
       
       safeSkyManager.cleanup();
       map.off("click");
