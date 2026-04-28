@@ -125,6 +125,27 @@ export function OpenAIPMap({
   const onMissionClickRef = useRef<typeof onMissionClick>(onMissionClick);
   const onRouteChangeRef = useRef<typeof onRouteChange>(onRouteChange);
 
+  const ensurePopulationDensityPane = useCallback((map: L.Map): HTMLElement | null => {
+    if (!map.getPane('populationDensityPane')) {
+      map.createPane('populationDensityPane');
+    }
+
+    const pane = map.getPane('populationDensityPane');
+    if (!pane) return null;
+    pane.style.zIndex = '635';
+    pane.style.pointerEvents = modeRef.current === 'routePlanning' ? 'none' : 'auto';
+    return pane;
+  }, []);
+
+  const getPopulationDensityRenderer = useCallback((map: L.Map): L.Renderer | undefined => {
+    const pane = ensurePopulationDensityPane(map);
+    if (!pane) return undefined;
+    if (!populationDensityRendererRef.current || !(populationDensityRendererRef.current as any)._map) {
+      populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' });
+    }
+    return populationDensityRendererRef.current ?? undefined;
+  }, [ensurePopulationDensityPane]);
+
   const setGeoJsonInteractivity = useCallback(
     (geoJson: L.GeoJSON<any> | null, enabled: boolean) => {
       if (!geoJson) return;
@@ -346,18 +367,7 @@ export function OpenAIPMap({
 
     // SSB 250 m population density cells for the active SORA/adjacent coverage.
     const map = leafletMapRef.current;
-    if (map && !map.getPane('populationDensityPane')) {
-      map.createPane('populationDensityPane');
-      const pane = map.getPane('populationDensityPane');
-      if (pane) {
-        pane.style.zIndex = '635';
-        pane.style.pointerEvents = modeRef.current === 'routePlanning' ? 'none' : 'auto';
-      }
-    }
-
-    if (map && !populationDensityRendererRef.current) {
-      populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' }).addTo(map);
-    }
+    const renderer = map ? getPopulationDensityRenderer(map) : undefined;
 
     if (!populationDensityLayerRef.current) {
       populationDensityLayerRef.current = L.layerGroup();
@@ -369,7 +379,6 @@ export function OpenAIPMap({
 
     const densityCells = populationDensityCellsRef.current ?? [];
     const coveragePolygons = populationDensityCoverageRef.current ?? [];
-    const renderer = populationDensityRendererRef.current ?? undefined;
     if (sora?.enabled && coveragePolygons.length > 0) {
       coveragePolygons.forEach((coverage) => {
         if (coverage.length < 3) return;
@@ -424,7 +433,7 @@ export function OpenAIPMap({
         }
       });
     }
-  }, []);
+  }, [getPopulationDensityRenderer]);
 
   // Sync soraSettings ref and redraw
   useEffect(() => {
@@ -512,7 +521,8 @@ export function OpenAIPMap({
         pane.style.pointerEvents = (mode === 'routePlanning' && nonInteractivePanes.has(paneName)) ? 'none' : 'auto';
       }
     }
-    populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' }).addTo(map);
+    ensurePopulationDensityPane(map);
+    populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' });
 
     // Sørg for at popup-bokser alltid ligger over alle kartlag
     const popupPane = map.getPane('popupPane');

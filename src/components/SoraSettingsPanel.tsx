@@ -562,7 +562,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             {populationDensityLoading
               ? "Henter aktuelle ruter rundt hele beregnet område…"
               : populationDensityResult?.maxDensityCell
-                ? `Pådriver: ${(populationDensityResult.maxDensityPerKm2).toLocaleString("nb-NO")} pers/km² · ${populationDensityResult.maxDensityCell.population.toLocaleString("nb-NO")} pers × 16`
+                ? `Pådriver: ${(populationDensityResult.maxDensityPerKm2).toLocaleString("nb-NO")} pers/km² · ${populationDensityResult.cells.length.toLocaleString("nb-NO")} ruter vurdert`
                 : "Viser befolkede SSB-ruter; tomme felt er normalt 0 registrert befolkning"}
           </p>
         </div>
