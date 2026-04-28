@@ -135,7 +135,7 @@ export function OpenAIPMap({
     pane.style.zIndex = '635';
     pane.style.pointerEvents = modeRef.current === 'routePlanning' ? 'none' : 'auto';
     return pane;
-  }, []);
+  }, [getPopulationDensityRenderer]);
 
   const getPopulationDensityRenderer = useCallback((map: L.Map): L.Renderer | undefined => {
     const pane = ensurePopulationDensityPane(map);
@@ -521,7 +521,8 @@ export function OpenAIPMap({
         pane.style.pointerEvents = (mode === 'routePlanning' && nonInteractivePanes.has(paneName)) ? 'none' : 'auto';
       }
     }
-    populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' }).addTo(map);
+    ensurePopulationDensityPane(map);
+    populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' });
 
     // Sørg for at popup-bokser alltid ligger over alle kartlag
     const popupPane = map.getPane('popupPane');
