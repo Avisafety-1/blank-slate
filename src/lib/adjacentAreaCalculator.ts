@@ -11,6 +11,7 @@
  */
 
 import type { RoutePoint, SoraSettings } from "@/types/map";
+import { supabase } from "@/integrations/supabase/client";
 import {
   bufferPolygon,
   computeConvexHull,
@@ -935,23 +936,17 @@ export async function fetchSsbPopulationGrid(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
   const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
-  const url = `${supabaseUrl}/functions/v1/ssb-population?bbox=${encodeURIComponent(bboxStr)}`;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
-  const resp = await fetch(url, {
-    signal,
-    headers: { apikey: supabaseKey },
+  const { data, error } = await supabase.functions.invoke("ssb-population", {
+    body: { bbox: bboxStr, resolution: "250" },
   });
 
-  if (!resp.ok) {
-    const errBody = await resp.text().catch(() => "");
-    throw new Error(`SSB population proxy error: ${resp.status} ${errBody}`);
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  if (error) {
+    throw new Error(`SSB population proxy error: ${error.message}`);
   }
-
-  const data = await resp.json();
   const cells: SsbPopulationCell[] = [];
   if (!data?.features) return cells;
 
