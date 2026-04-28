@@ -339,16 +339,47 @@ export function OpenAIPMap({
     if (adjRadius && adjRadius > 0 && sora?.enabled && points.length >= 1) {
       renderAdjacentAreaZone(points, adjRadius, adjacentAreaLayerRef.current, sora);
     }
+
+    // SSB 250 m population density cells for the active adjacent-area analysis
+    if (!populationDensityLayerRef.current) {
+      populationDensityLayerRef.current = L.layerGroup();
+      if (leafletMapRef.current) {
+        populationDensityLayerRef.current.addTo(leafletMapRef.current);
+      }
+    }
+    populationDensityLayerRef.current.clearLayers();
+
+    const densityCells = populationDensityCellsRef.current ?? [];
+    if (sora?.enabled && adjRadius && densityCells.length > 0) {
+      const maxDensity = Math.max(...densityCells.map(cell => cell.densityPerKm2 ?? cell.population * 16));
+      densityCells.forEach((cell) => {
+        const density = cell.densityPerKm2 ?? cell.population * 16;
+        const isHotspot = density === maxDensity;
+        const popup = `<strong>SSB 250 m-rute</strong><br/>${cell.population.toLocaleString('nb-NO')} personer<br/>${density.toLocaleString('nb-NO')} pers/km²${isHotspot ? '<br/><strong>Høyeste tetthet på ruten</strong>' : ''}`;
+
+        if (cell.polygon && cell.polygon.length >= 3) {
+          L.polygon(cell.polygon.map(p => [p.lat, p.lng] as [number, number]), getPopulationDensityStyle(density, isHotspot))
+            .bindPopup(popup)
+            .addTo(populationDensityLayerRef.current!);
+        } else {
+          L.circleMarker([cell.centroidLat, cell.centroidLng], {
+            ...getPopulationDensityStyle(density, isHotspot),
+            radius: isHotspot ? 7 : 4,
+          }).bindPopup(popup).addTo(populationDensityLayerRef.current!);
+        }
+      });
+    }
   }, []);
 
   // Sync soraSettings ref and redraw
   useEffect(() => {
     soraSettingsRef.current = soraSettings;
     adjacentAreaRadiusMRef.current = adjacentAreaRadiusM;
+    populationDensityCellsRef.current = populationDensityCells;
     if (routeLayerRef.current && leafletMapRef.current) {
       updateRouteDisplay();
     }
-  }, [soraSettings, adjacentAreaRadiusM, updateRouteDisplay]);
+  }, [soraSettings, adjacentAreaRadiusM, populationDensityCells, updateRouteDisplay]);
 
   // Sync mode ref and toggle interactivity
   useEffect(() => {
