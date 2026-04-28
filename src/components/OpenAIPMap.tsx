@@ -355,11 +355,20 @@ export function OpenAIPMap({
       densityCells.forEach((cell) => {
         const density = cell.densityPerKm2 ?? cell.population * 16;
         const isHotspot = density === maxDensity;
-        const popup = `<strong>SSB 250 m-rute</strong><br/>${cell.population.toLocaleString('nb-NO')} personer<br/>${density.toLocaleString('nb-NO')} pers/km²${isHotspot ? '<br/><strong>Høyeste tetthet på ruten</strong>' : ''}`;
+        const densityLabel = `${Math.round(density).toLocaleString('nb-NO')} /km²`;
+        const popup = `<strong>SSB 250 m-rute</strong><br/>${cell.population.toLocaleString('nb-NO')} personer i ruten<br/>${density.toLocaleString('nb-NO')} pers/km²${isHotspot ? '<br/><strong>Pådriver for utregning</strong>' : ''}`;
+        const tooltip = `${isHotspot ? 'Pådriver · ' : ''}${densityLabel}`;
+        const tooltipOptions: L.TooltipOptions = {
+          permanent: true,
+          direction: 'center',
+          className: isHotspot ? 'ssb-density-label ssb-density-label-hotspot' : 'ssb-density-label',
+          opacity: isHotspot ? 1 : 0.92,
+        };
         const interactive = modeRef.current !== 'routePlanning';
 
         if (cell.polygon && cell.polygon.length >= 3) {
           L.polygon(cell.polygon.map(p => [p.lat, p.lng] as [number, number]), { ...getPopulationDensityStyle(density, isHotspot), interactive })
+            .bindTooltip(tooltip, tooltipOptions)
             .bindPopup(popup)
             .addTo(populationDensityLayerRef.current!);
         } else {
@@ -367,7 +376,7 @@ export function OpenAIPMap({
             ...getPopulationDensityStyle(density, isHotspot),
             interactive,
             radius: isHotspot ? 7 : 4,
-          }).bindPopup(popup).addTo(populationDensityLayerRef.current!);
+          }).bindTooltip(tooltip, tooltipOptions).bindPopup(popup).addTo(populationDensityLayerRef.current!);
         }
       });
     }
