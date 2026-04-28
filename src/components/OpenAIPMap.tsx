@@ -390,7 +390,8 @@ export function OpenAIPMap({
     if (sora?.enabled && densityCells.length > 0) {
       const maxDensityIndex = densityCells.reduce((bestIndex, cell, index) => {
         const density = cell.densityPerKm2 ?? cell.population * 16;
-        const bestDensity = densityCells[bestIndex]?.densityPerKm2 ?? densityCells[bestIndex]?.population * 16 ?? -Infinity;
+        const bestCell = densityCells[bestIndex];
+        const bestDensity = bestCell ? (bestCell.densityPerKm2 ?? bestCell.population * 16) : -Infinity;
         return density > bestDensity ? index : bestIndex;
       }, 0);
       densityCells.forEach((cell, index) => {
