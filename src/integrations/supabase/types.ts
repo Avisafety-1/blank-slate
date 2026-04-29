@@ -406,6 +406,7 @@ export type Database = {
           flighthub2_token: string | null
           hide_reporter_identity: boolean
           id: string
+          incident_reports_visible_to_all_companies: boolean
           kontakt_epost: string | null
           kontakt_telefon: string | null
           navn: string
@@ -458,6 +459,7 @@ export type Database = {
           flighthub2_token?: string | null
           hide_reporter_identity?: boolean
           id?: string
+          incident_reports_visible_to_all_companies?: boolean
           kontakt_epost?: string | null
           kontakt_telefon?: string | null
           navn: string
@@ -510,6 +512,7 @@ export type Database = {
           flighthub2_token?: string | null
           hide_reporter_identity?: boolean
           id?: string
+          incident_reports_visible_to_all_companies?: boolean
           kontakt_epost?: string | null
           kontakt_telefon?: string | null
           navn?: string
@@ -5607,6 +5610,10 @@ export type Database = {
         Args: { _company_id: string }
         Returns: Json
       }
+      get_effective_parent_company_id: {
+        Args: { _company_id: string }
+        Returns: string
+      }
       get_effective_sora_approval_config: {
         Args: { _company_id: string }
         Returns: Json
@@ -5667,6 +5674,10 @@ export type Database = {
         }[]
       }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
+      get_user_incident_visible_company_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_user_readable_company_ids: {
         Args: { _user_id: string }
         Returns: string[]
