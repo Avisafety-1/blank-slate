@@ -161,8 +161,20 @@ serve(async (req: Request): Promise<Response> => {
       const { data: adminProfiles } = await supabase.from('profiles').select('id').in('company_id', companyIds).in('id', adminRoles.map(r => r.user_id));
       if (!adminProfiles?.length) return new Response(JSON.stringify({ message: 'No admins in company' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-      const { data: preferences } = await supabase.from('notification_preferences').select('user_id').in('user_id', adminProfiles.map(p => p.id)).eq('email_new_user_pending', true);
-      if (!preferences?.length) return new Response(JSON.stringify({ message: 'No admins with notifications' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const sameCompanyAdminIds = adminProfiles.filter((p: any) => p.company_id === companyId).map((p: any) => p.id);
+      const parentAdminIds = childCompany?.parent_company_id
+        ? adminProfiles.filter((p: any) => p.company_id === childCompany.parent_company_id).map((p: any) => p.id)
+        : [];
+      const [{ data: sameCompanyPrefs }, { data: parentPrefs }] = await Promise.all([
+        sameCompanyAdminIds.length
+          ? supabase.from('notification_preferences').select('user_id').in('user_id', sameCompanyAdminIds).eq('email_new_user_pending', true)
+          : Promise.resolve({ data: [] }),
+        parentAdminIds.length
+          ? supabase.from('notification_preferences').select('user_id').in('user_id', parentAdminIds).eq('email_child_new_user_pending', true)
+          : Promise.resolve({ data: [] }),
+      ]);
+      const notificationUserIds = [...new Set([...(sameCompanyPrefs || []).map((p: any) => p.user_id), ...(parentPrefs || []).map((p: any) => p.user_id)])];
+      if (!notificationUserIds.length) return new Response(JSON.stringify({ message: 'No admins with notifications' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const templateResult = await getEmailTemplateWithFallback(companyId, 'admin_new_user', { new_user_name: newUser.fullName, new_user_email: newUser.email, company_name: newUser.companyName });
 
@@ -171,8 +183,8 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
       let sentCount = 0;
-      for (const pref of preferences) {
-        const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
+      for (const userId of notificationUserIds) {
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
         if (!user?.email) continue;
         await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         sentCount++;
