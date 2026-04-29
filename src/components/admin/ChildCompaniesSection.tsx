@@ -620,6 +620,32 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     toast.success("Innstilling lagret");
   };
 
+  const handleToggleAllUsersCanAcknowledgeMaintenance = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await (supabase as any)
+      .from("companies")
+      .update({ all_users_can_acknowledge_maintenance: checked })
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applySettingsToChildren) {
+      await (supabase as any)
+        .from("companies")
+        .update({ all_users_can_acknowledge_maintenance: checked })
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setAllUsersCanAcknowledgeMaintenance(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
   const handleToggleRequireSora = async (checked: boolean) => {
     if (!companyId) return;
 
