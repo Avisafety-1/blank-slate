@@ -3,6 +3,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
 import { broadcastSession, broadcastSignOut, onTabMessage, type TabSyncMessage } from "@/lib/authTabSync";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
+import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
 
@@ -33,6 +34,8 @@ interface CachedProfile {
   stripeExempt: boolean;
   departmentsEnabled: boolean;
   accessibleCompanies?: AccessibleCompany[];
+  underTraining?: boolean;
+  trainingModuleAccess?: TrainingModuleKey[];
   cachedAt?: number;
 }
 
@@ -74,6 +77,9 @@ interface AuthContextType {
   isBillingOwner: boolean;
   seatCount: number;
   accessibleCompanies: AccessibleCompany[];
+  underTraining: boolean;
+  trainingModuleAccess: TrainingModuleKey[];
+  hasTrainingModuleAccess: (moduleKey: TrainingModuleKey) => boolean;
   authRefreshing: boolean;
   authInitialized: boolean;
   signOut: () => Promise<void>;
