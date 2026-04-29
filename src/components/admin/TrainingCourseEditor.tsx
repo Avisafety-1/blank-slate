@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import { YouTubeClipPlayer, parseYouTubeId, parseTimeInput, formatSeconds } from "@/components/training/YouTubeClipPlayer";
 import { TrainingModulePicker } from "@/components/training/TrainingModulePicker";
-import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
+import { TRAINING_MODULE_KEYS, normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // Set worker
@@ -413,6 +413,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
 
   const contentSlideCount = slides.filter(s => s.slide_type === "content").length;
   const questionSlideCount = slides.filter(s => s.slide_type === "question").length;
+  const allModulesSelected = TRAINING_MODULE_KEYS.every((moduleKey) => unlocksModules.includes(moduleKey));
 
   return (
     <div className="space-y-6">
@@ -471,8 +472,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-2 pt-2">
               <p className="text-xs text-muted-foreground">
-                Disse modulene blir tilgjengelige for brukere under opplæring når kurset er bestått.
+                Disse modulene blir tilgjengelige for brukere under opplæring når kurset er bestått. Velges alle moduler, slås «Under opplæring» av ved bestått kurs.
               </p>
+              <Button
+                type="button"
+                variant={allModulesSelected ? "outline" : "secondary"}
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => setUnlocksModules(allModulesSelected ? [] : [...TRAINING_MODULE_KEYS])}
+              >
+                {allModulesSelected ? "Fjern alle moduler" : "Lås opp alle moduler"}
+              </Button>
               <TrainingModulePicker selected={unlocksModules} onChange={setUnlocksModules} />
             </CollapsibleContent>
           </Collapsible>
