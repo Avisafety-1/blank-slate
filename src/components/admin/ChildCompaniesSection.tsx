@@ -542,6 +542,25 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     toast.success("Innstilling lagret");
   };
 
+  const handleToggleIncidentReportsVisibleToAllCompanies = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ incident_reports_visible_to_all_companies: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    setSavingSettings(false);
+    setIncidentReportsVisibleToAllCompanies(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
   const handleToggleRequireMissionApproval = async (checked: boolean) => {
     if (!companyId) return;
     setSavingSettings(true);
