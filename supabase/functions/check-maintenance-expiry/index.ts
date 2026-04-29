@@ -241,10 +241,6 @@ serve(async (req) => {
       const authUser = authUsers?.users.find((u: any) => u.id === pref.user_id);
       if (!authUser?.email) continue;
 
-      const reminderDays = pref.inspection_reminder_days || 14;
-      const reminderDate = new Date(today);
-      reminderDate.setDate(reminderDate.getDate() + reminderDays);
-
       const itemsNeedingAttention: MaintenanceItem[] = [];
 
       // ── Drones: use calculated status instead of reminder days ──
@@ -280,6 +276,8 @@ serve(async (req) => {
       for (const equip of companyEquipment) {
         const expiryDate = new Date(equip.neste_vedlikehold);
         expiryDate.setHours(0, 0, 0, 0);
+        const reminderDate = new Date(today);
+        reminderDate.setDate(reminderDate.getDate() + (equip.varsel_dager ?? 14));
         if (expiryDate <= reminderDate && expiryDate >= today) {
           itemsNeedingAttention.push({
             id: equip.id, name: equip.navn, type: 'equipment', expiryDate,
@@ -295,6 +293,8 @@ serve(async (req) => {
       for (const acc of companyAccessories) {
         const expiryDate = new Date(acc.neste_vedlikehold);
         expiryDate.setHours(0, 0, 0, 0);
+        const reminderDate = new Date(today);
+        reminderDate.setDate(reminderDate.getDate() + (acc.varsel_dager ?? 14));
         if (expiryDate <= reminderDate && expiryDate >= today) {
           itemsNeedingAttention.push({
             id: acc.id, name: acc.navn, type: 'accessory', expiryDate,
