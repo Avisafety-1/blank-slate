@@ -196,7 +196,28 @@ const Admin = () => {
 
       if (profilesError) throw profilesError;
 
-      setProfiles((profilesData || []) as Profile[]);
+      const loadedProfiles = (profilesData || []) as Profile[];
+      setProfiles(loadedProfiles);
+
+      const approvedProfileIds = loadedProfiles.filter((p) => p.approved).map((p) => p.id);
+      if (approvedProfileIds.length > 0) {
+        const { data: passedAssignments } = await supabase
+          .from("training_assignments")
+          .select("profile_id, training_courses(unlocks_modules)")
+          .in("profile_id", approvedProfileIds)
+          .eq("passed", true);
+
+        const unlockedByProfile = (passedAssignments || []).reduce<UnlockedModuleAccess>((acc, assignment: any) => {
+          acc[assignment.profile_id] = normalizeTrainingModules([
+            ...(acc[assignment.profile_id] || []),
+            ...normalizeTrainingModules(assignment.training_courses?.unlocks_modules),
+          ]);
+          return acc;
+        }, {});
+        setCourseUnlockedModules(unlockedByProfile);
+      } else {
+        setCourseUnlockedModules({});
+      }
 
       // Fetch all user roles
       const { data: rolesData, error: rolesError } = await supabase
