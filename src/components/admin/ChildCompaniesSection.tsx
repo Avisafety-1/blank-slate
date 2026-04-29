@@ -66,6 +66,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [incidentReportsVisibleToAllCompanies, setIncidentReportsVisibleToAllCompanies] = useState(false);
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [preventSelfApproval, setPreventSelfApproval] = useState(false);
+  const [allUsersCanAcknowledgeMaintenance, setAllUsersCanAcknowledgeMaintenance] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
@@ -80,6 +81,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     incident_reports_visible_to_all_companies: boolean;
     require_mission_approval: boolean;
     prevent_self_approval: boolean;
+    all_users_can_acknowledge_maintenance: boolean;
     require_sora_on_missions: boolean;
     require_sora_steps: number;
     deviation_report_enabled: boolean;
@@ -87,6 +89,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_hide_reporter: boolean;
     propagate_mission_approval: boolean;
     propagate_prevent_self_approval: boolean;
+    propagate_all_users_can_acknowledge_maintenance: boolean;
     propagate_sora_required: boolean;
     propagate_deviation_report: boolean;
     propagate_sora_buffer_mode: boolean;
