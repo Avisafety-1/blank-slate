@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface CompanySettings {
   show_all_airspace_warnings: boolean;
   hide_reporter_identity: boolean;
+  incident_reports_visible_to_all_companies: boolean;
   require_mission_approval: boolean;
   prevent_self_approval: boolean;
   require_sora_on_missions: boolean;
@@ -15,6 +16,7 @@ interface CompanySettings {
 const defaultSettings: CompanySettings = {
   show_all_airspace_warnings: false,
   hide_reporter_identity: false,
+  incident_reports_visible_to_all_companies: false,
   require_mission_approval: false,
   prevent_self_approval: false,
   require_sora_on_missions: false,
@@ -63,20 +65,21 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 }
 
 export function useCompanySettings() {
-  const { companyId } = useAuth();
+  const { companyId, parentCompanyId } = useAuth();
   const [settings, setSettings] = useState<CompanySettings>(defaultSettings);
 
   useEffect(() => {
-    if (!companyId) return;
+    const effectiveSettingsCompanyId = parentCompanyId || companyId;
+    if (!effectiveSettingsCompanyId) return;
 
-    const cached = cache[companyId];
+    const cached = cache[effectiveSettingsCompanyId];
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       setSettings(cached.settings);
       return;
     }
 
-    fetchCompanySettings(companyId).then(setSettings);
-  }, [companyId]);
+    fetchCompanySettings(effectiveSettingsCompanyId).then(setSettings);
+  }, [companyId, parentCompanyId]);
 
   return settings;
 }
