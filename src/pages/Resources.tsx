@@ -142,7 +142,8 @@ const Resources = () => {
           *,
           companies(navn),
           drone_accessories(drone_id, neste_vedlikehold, varsel_dager),
-          drone_equipment(drone_id, equipment:equipment_id(id, neste_vedlikehold, varsel_dager))
+          drone_equipment(drone_id, equipment:equipment_id(id, neste_vedlikehold, varsel_dager)),
+          drone_personnel(id, profile:profile_id(id, full_name, tittel))
         `)
         .eq("aktiv", true)
         .order("opprettet_dato", { ascending: false });
@@ -356,6 +357,28 @@ const Resources = () => {
   const uniqueEquipmentTypes = [...new Set(equipment.map(e => e.type).filter(Boolean))].sort();
   const uniquePersonnelRoles = [...new Set(personnel.map(p => p.tittel).filter(Boolean))].sort();
 
+  const getDronePersonnelNames = (drone: any): string[] =>
+    (drone.drone_personnel || [])
+      .map((link: any) => link.profile?.full_name)
+      .filter(Boolean);
+
+  const getDronePilotLabel = (drone: any): string | null => {
+    const names = getDronePersonnelNames(drone);
+    if (names.length === 0) return null;
+    return names.length === 1 ? names[0] : `${names[0]} +${names.length - 1}`;
+  };
+
+  const matchesDroneSearch = (drone: any, searchLower: string): boolean => {
+    const personnelNames = getDronePersonnelNames(drone).join(" ").toLowerCase();
+    return Boolean(
+      drone.modell?.toLowerCase().includes(searchLower) ||
+      drone.registrering?.toLowerCase().includes(searchLower) ||
+      drone.registration_number?.toLowerCase().includes(searchLower) ||
+      drone.merknader?.toLowerCase().includes(searchLower) ||
+      personnelNames.includes(searchLower)
+    );
+  };
+
   // Helper to get person's worst competency status
   const getPersonStatus = (person: any): string => {
     if (!person.personnel_competencies || person.personnel_competencies.length === 0) return "Grønn";
@@ -461,11 +484,7 @@ const Resources = () => {
                   .filter((drone) => {
                     if (droneSearch) {
                       const searchLower = droneSearch.toLowerCase();
-                      if (!(
-                        drone.modell?.toLowerCase().includes(searchLower) ||
-                        drone.registrering?.toLowerCase().includes(searchLower) ||
-                        drone.merknader?.toLowerCase().includes(searchLower)
-                      )) return false;
+                      if (!matchesDroneSearch(drone, searchLower)) return false;
                     }
                     if (droneModelFilter !== "alle" && drone.modell !== droneModelFilter) return false;
                     if (droneStatusFilter !== "alle") {
@@ -493,8 +512,11 @@ const Resources = () => {
                     }}
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <div>
+                      <div className="min-w-0 flex-1 pr-2">
                         <h3 className="font-semibold">{drone.modell}</h3>
+                        {getDronePilotLabel(drone) && (
+                          <p className="text-sm text-muted-foreground truncate">Pilot: {getDronePilotLabel(drone)}</p>
+                        )}
                         {drone.registration_number && (
                           <p className="text-sm text-muted-foreground">Reg.nr: {drone.registration_number}</p>
                         )}
@@ -519,7 +541,7 @@ const Resources = () => {
                 {drones.filter((drone) => {
                     if (droneSearch) {
                       const searchLower = droneSearch.toLowerCase();
-                      if (!(drone.modell?.toLowerCase().includes(searchLower) || drone.registrering?.toLowerCase().includes(searchLower) || drone.merknader?.toLowerCase().includes(searchLower))) return false;
+                      if (!matchesDroneSearch(drone, searchLower)) return false;
                     }
                     if (droneModelFilter !== "alle" && drone.modell !== droneModelFilter) return false;
                     if (droneStatusFilter !== "alle" && (drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) !== droneStatusFilter) return false;
