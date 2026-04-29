@@ -337,7 +337,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
         kategori: incident.kategori,
         lokasjon: incident.lokasjon,
         rapportert_av: incident.rapportert_av,
-        reported_anonymously: incident.reported_anonymously,
+        reported_anonymously: (incident as any).reported_anonymously,
         hovedaarsak: incident.hovedaarsak,
         medvirkende_aarsak: incident.medvirkende_aarsak,
         bilde_url: (incident as any).bilde_url || null,
