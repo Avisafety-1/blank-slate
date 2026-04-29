@@ -389,6 +389,7 @@ export type Database = {
           adresse_lat: number | null
           adresse_lon: number | null
           aktiv: boolean
+          all_users_can_acknowledge_maintenance: boolean
           ardupilot_enabled: boolean
           before_takeoff_checklist_id: string | null
           before_takeoff_checklist_ids: string[] | null
@@ -414,6 +415,7 @@ export type Database = {
           parent_company_id: string | null
           prevent_self_approval: boolean
           propagate_airspace_warnings: boolean
+          propagate_all_users_can_acknowledge_maintenance: boolean
           propagate_deviation_report: boolean
           propagate_fh2_credentials: boolean
           propagate_flight_alerts: boolean
@@ -442,6 +444,7 @@ export type Database = {
           adresse_lat?: number | null
           adresse_lon?: number | null
           aktiv?: boolean
+          all_users_can_acknowledge_maintenance?: boolean
           ardupilot_enabled?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
@@ -467,6 +470,7 @@ export type Database = {
           parent_company_id?: string | null
           prevent_self_approval?: boolean
           propagate_airspace_warnings?: boolean
+          propagate_all_users_can_acknowledge_maintenance?: boolean
           propagate_deviation_report?: boolean
           propagate_fh2_credentials?: boolean
           propagate_flight_alerts?: boolean
@@ -495,6 +499,7 @@ export type Database = {
           adresse_lat?: number | null
           adresse_lon?: number | null
           aktiv?: boolean
+          all_users_can_acknowledge_maintenance?: boolean
           ardupilot_enabled?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
@@ -520,6 +525,7 @@ export type Database = {
           parent_company_id?: string | null
           prevent_self_approval?: boolean
           propagate_airspace_warnings?: boolean
+          propagate_all_users_can_acknowledge_maintenance?: boolean
           propagate_deviation_report?: boolean
           propagate_fh2_credentials?: boolean
           propagate_flight_alerts?: boolean
