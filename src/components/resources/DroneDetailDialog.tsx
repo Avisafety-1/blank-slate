@@ -1109,7 +1109,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       Inspeksjon
                     </p>
                     {(() => {
-                      const isTechRestricted = drone.technical_responsible_id && user?.id !== drone.technical_responsible_id;
+                      const isTechRestricted = drone.technical_responsible_id && !allUsersCanAcknowledgeMaintenance && user?.id !== drone.technical_responsible_id;
                       return (
                         <TooltipProvider>
                           <Tooltip>
@@ -1971,7 +1971,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   noneLabel="Ingen"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Kun denne personen kan utføre inspeksjon og mottar vedlikeholdsvarsel
+                  Denne personen mottar vedlikeholdsvarsel. Kvittering kan begrenses til teknisk ansvarlig eller åpnes for alle via selskapsinnstillinger.
                 </p>
               </div>
 
