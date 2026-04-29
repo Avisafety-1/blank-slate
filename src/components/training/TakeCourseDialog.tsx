@@ -43,10 +43,11 @@ interface CourseData {
   validity_months: number | null;
   display_mode: string;
   fullscreen: boolean;
+  unlocks_modules?: string[] | null;
 }
 
 export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted }: Props) => {
-  const { user } = useAuth();
+  const { user, refetchUserInfo } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
   const [slides, setSlides] = useState<SlideData[]>([]);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
@@ -321,6 +322,9 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
       if (updateError) {
         console.error("Error updating assignment:", updateError);
+      }
+      if (didPass && course?.unlocks_modules?.length) {
+        await refetchUserInfo();
       }
     } catch (err) {
       console.error("Error submitting:", err);
