@@ -481,7 +481,7 @@ serve(async (req) => {
     console.log(`Maintenance check complete. Sent ${totalEmailsSent} emails, ${totalPushSent} push notifications.`);
 
     return new Response(
-      JSON.stringify({ success: true, emailsSent: totalEmailsSent, pushSent: totalPushSent, usersChecked: notificationPrefs.length, dronesNotified: dronesNeedingNotification.length }),
+      JSON.stringify({ success: true, emailsSent: totalEmailsSent, pushSent: totalPushSent, usersChecked: (notificationPrefs || []).length, dronesNotified: dronesNeedingNotification.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 
