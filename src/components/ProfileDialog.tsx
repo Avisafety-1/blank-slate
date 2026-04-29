@@ -430,11 +430,11 @@ export const ProfileDialog = () => {
             email_document_expiry: false,
             email_new_user_pending: false,
             email_followup_assigned: true,
-            email_child_incidents: false,
-            email_child_missions: false,
-            email_child_new_user_pending: false,
-            email_child_document_expiry: false,
-            email_child_maintenance_reminder: false,
+            email_child_incidents: true,
+            email_child_missions: true,
+            email_child_new_user_pending: true,
+            email_child_document_expiry: true,
+            email_child_maintenance_reminder: true,
             email_inspection_reminder: false,
             inspection_reminder_days: 14,
           })
@@ -445,11 +445,11 @@ export const ProfileDialog = () => {
       } else {
         setNotificationPrefs({
           ...prefsData,
-          email_child_incidents: prefsData.email_child_incidents ?? false,
-          email_child_missions: prefsData.email_child_missions ?? false,
-          email_child_new_user_pending: prefsData.email_child_new_user_pending ?? false,
-          email_child_document_expiry: prefsData.email_child_document_expiry ?? false,
-          email_child_maintenance_reminder: prefsData.email_child_maintenance_reminder ?? false,
+          email_child_incidents: prefsData.email_child_incidents ?? true,
+          email_child_missions: prefsData.email_child_missions ?? true,
+          email_child_new_user_pending: prefsData.email_child_new_user_pending ?? true,
+          email_child_document_expiry: prefsData.email_child_document_expiry ?? true,
+          email_child_maintenance_reminder: prefsData.email_child_maintenance_reminder ?? true,
           email_inspection_reminder: prefsData.email_inspection_reminder ?? false,
           inspection_reminder_days: prefsData.inspection_reminder_days ?? 14,
         });
@@ -1765,7 +1765,7 @@ export const ProfileDialog = () => {
                                 <p className="text-xs text-muted-foreground">Motta e-post når en avdeling registrerer en hendelse.</p>
                               </div>
                               <Switch
-                                checked={notificationPrefs?.email_child_incidents ?? false}
+                                checked={notificationPrefs?.email_child_incidents ?? true}
                                 onCheckedChange={(checked) => updateNotificationPref('email_child_incidents', checked)}
                               />
                             </div>
@@ -1778,7 +1778,7 @@ export const ProfileDialog = () => {
                                 <p className="text-xs text-muted-foreground">Motta e-post når en avdeling oppretter et oppdrag.</p>
                               </div>
                               <Switch
-                                checked={notificationPrefs?.email_child_missions ?? false}
+                                checked={notificationPrefs?.email_child_missions ?? true}
                                 onCheckedChange={(checked) => updateNotificationPref('email_child_missions', checked)}
                               />
                             </div>
@@ -1791,7 +1791,7 @@ export const ProfileDialog = () => {
                                 <p className="text-xs text-muted-foreground">Motta e-post når en bruker venter på godkjenning i en avdeling.</p>
                               </div>
                               <Switch
-                                checked={notificationPrefs?.email_child_new_user_pending ?? false}
+                                checked={notificationPrefs?.email_child_new_user_pending ?? true}
                                 onCheckedChange={(checked) => updateNotificationPref('email_child_new_user_pending', checked)}
                               />
                             </div>
@@ -1804,7 +1804,7 @@ export const ProfileDialog = () => {
                                 <p className="text-xs text-muted-foreground">Motta e-post når dokumentfrister i avdelinger nærmer seg.</p>
                               </div>
                               <Switch
-                                checked={notificationPrefs?.email_child_document_expiry ?? false}
+                                checked={notificationPrefs?.email_child_document_expiry ?? true}
                                 onCheckedChange={(checked) => updateNotificationPref('email_child_document_expiry', checked)}
                               />
                             </div>
@@ -1817,7 +1817,7 @@ export const ProfileDialog = () => {
                                 <p className="text-xs text-muted-foreground">Motta e-post når ressurser i avdelinger krever vedlikehold eller inspeksjon.</p>
                               </div>
                               <Switch
-                                checked={notificationPrefs?.email_child_maintenance_reminder ?? false}
+                                checked={notificationPrefs?.email_child_maintenance_reminder ?? true}
                                 onCheckedChange={(checked) => updateNotificationPref('email_child_maintenance_reminder', checked)}
                               />
                             </div>

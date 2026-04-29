@@ -199,19 +199,14 @@ serve(async (req) => {
       .select('user_id, inspection_reminder_days, email_inspection_reminder, push_enabled, push_maintenance_reminder')
       .or('email_inspection_reminder.eq.true,and(push_enabled.eq.true,push_maintenance_reminder.eq.true)');
 
-    if (!notificationPrefs || notificationPrefs.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, message: 'No users with reminders enabled' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    const userIds = notificationPrefs.map((p: any) => p.user_id);
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, company_id, full_name')
-      .in('id', userIds)
-      .eq('approved', true);
+    const userIds = (notificationPrefs || []).map((p: any) => p.user_id);
+    const { data: profiles } = userIds.length
+      ? await supabase
+          .from('profiles')
+          .select('id, company_id, full_name')
+          .in('id', userIds)
+          .eq('approved', true)
+      : { data: [] };
 
     const { data: authUsers } = await supabase.auth.admin.listUsers();
 
@@ -239,7 +234,7 @@ serve(async (req) => {
     let totalPushSent = 0;
     const parentMaintenanceNotificationKeys = new Set<string>();
 
-    for (const pref of notificationPrefs) {
+    for (const pref of notificationPrefs || []) {
       const profile = profiles?.find((p: any) => p.id === pref.user_id);
       if (!profile) continue;
 
@@ -410,6 +405,70 @@ serve(async (req) => {
       }
     }
 
+    // Notify parent-company admins independently of local users' reminder settings.
+    const childItemsByCompany = new Map<string, MaintenanceItem[]>();
+    for (const drone of drones || []) {
+      const info = droneStatusMap.get(drone.id);
+      if (!info || info.status === 'Grønn' || drone.maintenance_notification_sent) continue;
+      const expiryDate = drone.neste_inspeksjon ? new Date(drone.neste_inspeksjon) : new Date();
+      expiryDate.setHours(0, 0, 0, 0);
+      const daysUntil = drone.neste_inspeksjon ? Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      const items = childItemsByCompany.get(drone.company_id) || [];
+      items.push({ id: drone.id, name: drone.modell, type: 'drone', expiryDate, daysUntilExpiry: daysUntil, companyId: drone.company_id, statusLevel: info.status });
+      childItemsByCompany.set(drone.company_id, items);
+    }
+
+    const defaultReminderDate = new Date(today);
+    defaultReminderDate.setDate(defaultReminderDate.getDate() + 14);
+    for (const equip of equipment || []) {
+      const expiryDate = new Date(equip.neste_vedlikehold);
+      expiryDate.setHours(0, 0, 0, 0);
+      if (expiryDate > defaultReminderDate || expiryDate < today) continue;
+      const items = childItemsByCompany.get(equip.company_id) || [];
+      items.push({ id: equip.id, name: equip.navn, type: 'equipment', expiryDate, daysUntilExpiry: Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), companyId: equip.company_id, statusLevel: 'Gul' });
+      childItemsByCompany.set(equip.company_id, items);
+    }
+
+    for (const acc of accessories || []) {
+      const expiryDate = new Date(acc.neste_vedlikehold);
+      expiryDate.setHours(0, 0, 0, 0);
+      if (expiryDate > defaultReminderDate || expiryDate < today) continue;
+      const items = childItemsByCompany.get(acc.company_id) || [];
+      items.push({ id: acc.id, name: acc.navn, type: 'accessory', expiryDate, daysUntilExpiry: Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), companyId: acc.company_id, statusLevel: 'Gul' });
+      childItemsByCompany.set(acc.company_id, items);
+    }
+
+    for (const [childCompanyId, items] of childItemsByCompany) {
+      const parentCompanyId = parentByCompany.get(childCompanyId);
+      if (!parentCompanyId || !items.length) continue;
+      const parentRecipientIds = await getParentAdminIdsWithPreference(supabase, parentCompanyId, 'email_child_maintenance_reminder');
+      if (!parentRecipientIds.length) continue;
+
+      const { data: childCompany } = await supabase.from('companies').select('navn').eq('id', childCompanyId).single();
+      const emailConfig = await getEmailConfig(childCompanyId);
+      const senderAddress = formatSenderAddress(emailConfig.fromName || 'AviSafe', emailConfig.fromEmail);
+      const itemsListHtml = items.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry).map((item) => {
+        const typeLabels: Record<string, string> = { drone: 'Drone', equipment: 'Utstyr', accessory: 'Tilbehør' };
+        const dateStr = item.expiryDate.toLocaleDateString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric' });
+        const urgencyColor = item.statusLevel === 'Rød' ? '#ef4444' : '#f59e0b';
+        const statusText = item.type === 'drone' ? (item.statusLevel === 'Rød' ? 'Forfalt' : 'Nærmer seg') : `om ${item.daysUntilExpiry} ${item.daysUntilExpiry === 1 ? 'dag' : 'dager'}`;
+        return `<div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:15px;border-left:4px solid ${urgencyColor};"><h3 style="color:#333;font-size:16px;margin:0 0 8px 0;">${item.name}</h3><div style="margin-bottom:5px;"><strong style="color:#666;">Type:</strong><span style="color:#333;margin-left:8px;">${typeLabels[item.type]}</span></div><div><strong style="color:#666;">Status:</strong><span style="color:${urgencyColor};margin-left:8px;">${statusText}</span></div><div><strong style="color:#666;">Avdeling:</strong><span style="color:#333;margin-left:8px;">${childCompany?.navn || 'Avdeling'}</span></div></div>`;
+      }).join('');
+      const emailSubject = `Vedlikeholdspåminnelse i avdeling: ${items.length} ${items.length === 1 ? 'ressurs' : 'ressurser'} krever oppmerksomhet`;
+      const emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;line-height:1.6;color:#333;margin:0;padding:0;"><div style="max-width:600px;margin:0 auto;padding:20px;"><div style="background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);color:white;padding:30px 20px;border-radius:12px 12px 0 0;text-align:center;"><h1 style="margin:0;font-size:24px;">Vedlikeholdspåminnelse</h1><p style="margin:10px 0 0 0;opacity:0.9;">${childCompany?.navn || 'Avdeling'}</p></div><div style="background:#ffffff;padding:30px 20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;"><p style="color:#666;margin-bottom:20px;">Følgende ressurser i en avdeling krever oppmerksomhet:</p>${itemsListHtml}<p style="color:#666;margin-top:25px;">Logg inn i AviSafe for å se detaljer og registrere vedlikehold.</p></div></div></body></html>`;
+
+      const itemKey = items.map((item) => item.id).sort().join(',');
+      for (const parentUserId of parentRecipientIds) {
+        const key = `${parentUserId}:${itemKey}`;
+        if (parentMaintenanceNotificationKeys.has(key)) continue;
+        parentMaintenanceNotificationKeys.add(key);
+        const parentAuthUser = authUsers?.users.find((u: any) => u.id === parentUserId);
+        if (!parentAuthUser?.email) continue;
+        await sendEmail({ from: senderAddress, to: parentAuthUser.email, subject: sanitizeSubject(emailSubject), html: emailHtml });
+        totalEmailsSent++;
+      }
+    }
+
     // ── Mark drones as notified ──
     if (dronesNeedingNotification.length > 0) {
       await supabase
@@ -422,7 +481,7 @@ serve(async (req) => {
     console.log(`Maintenance check complete. Sent ${totalEmailsSent} emails, ${totalPushSent} push notifications.`);
 
     return new Response(
-      JSON.stringify({ success: true, emailsSent: totalEmailsSent, pushSent: totalPushSent, usersChecked: notificationPrefs.length, dronesNotified: dronesNeedingNotification.length }),
+      JSON.stringify({ success: true, emailsSent: totalEmailsSent, pushSent: totalPushSent, usersChecked: (notificationPrefs || []).length, dronesNotified: dronesNeedingNotification.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
 

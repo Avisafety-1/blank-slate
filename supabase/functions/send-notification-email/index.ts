@@ -21,6 +21,7 @@ interface EmailRequest {
   missionId?: string;
   sentBy?: string;
   campaignId?: string;
+  excludeUserIds?: string[];
   newUser?: { fullName: string; email: string; companyName: string; };
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
   mission?: { id?: string; tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
@@ -69,7 +70,7 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
+    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, excludeUserIds = [], newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -96,7 +97,9 @@ serve(async (req: Request): Promise<Response> => {
           ? supabase.from('notification_preferences').select('user_id').in('user_id', responsibleIds).eq('email_new_incident', true)
           : Promise.resolve({ data: [] }),
       ]);
-      const notificationUserIds = [...new Set([...(sameCompanyPrefs || []).map((p: any) => p.user_id), ...(responsiblePrefs || []).map((p: any) => p.user_id), ...parentAdminIds])];
+      const excludedUserIds = new Set(excludeUserIds.filter(Boolean));
+      const notificationUserIds = [...new Set([...(sameCompanyPrefs || []).map((p: any) => p.user_id), ...(responsiblePrefs || []).map((p: any) => p.user_id), ...parentAdminIds])]
+        .filter((userId) => !excludedUserIds.has(userId));
       if (!notificationUserIds.length) return new Response(JSON.stringify({ success: true, message: 'No users to notify' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
@@ -150,7 +153,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle new user notification to admins
     if (type === 'notify_admins_new_user' && companyId && newUser) {
-      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').in('role', ['administrator', 'superadmin']);
+      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
       if (!adminRoles?.length) return new Response(JSON.stringify({ message: 'No admins' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const { data: childCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
@@ -217,7 +220,7 @@ serve(async (req: Request): Promise<Response> => {
       console.log(`[APPROVAL] Started — companyId=${companyId}`);
       const missionData = mission || approvalMission;
 
-      const { data: adminRolesForApproval } = await supabase.from('user_roles').select('user_id').in('role', ['administrator', 'superadmin']);
+      const { data: adminRolesForApproval } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
       if (!adminRolesForApproval?.length) return new Response(JSON.stringify({ success: true, message: 'No admins' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
