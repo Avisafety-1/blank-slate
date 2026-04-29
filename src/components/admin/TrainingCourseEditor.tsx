@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Trash2, Upload, FileText, HelpCircle, Image as ImageIcon, Youtube } from "lucide-react";
+import { ArrowLeft, ChevronDown, Plus, Trash2, Upload, FileText, HelpCircle, Image as ImageIcon, Youtube } from "lucide-react";
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import { YouTubeClipPlayer, parseYouTubeId, parseTimeInput, formatSeconds } from "@/components/training/YouTubeClipPlayer";
 import { TrainingModulePicker } from "@/components/training/TrainingModulePicker";
 import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // Set worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -56,6 +57,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [displayMode, setDisplayMode] = useState<"list" | "paginated">("paginated");
   const [fullscreen, setFullscreen] = useState(false);
   const [unlocksModules, setUnlocksModules] = useState<TrainingModuleKey[]>([]);
+  const [unlocksModulesOpen, setUnlocksModulesOpen] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!courseId);
@@ -457,15 +459,23 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
             <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
           </div>
-          <div className="space-y-2 pt-3 border-t">
-            <div>
-              <Label>Låser opp moduler ved bestått kurs</Label>
-              <p className="text-xs text-muted-foreground mt-1">
+          <Collapsible open={unlocksModulesOpen} onOpenChange={setUnlocksModulesOpen} className="pt-3 border-t">
+            <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left hover:bg-muted/50 transition-colors">
+              <div>
+                <Label className="cursor-pointer">Låser opp moduler ved bestått kurs</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {unlocksModules.length > 0 ? `${unlocksModules.length} moduler valgt` : "Ingen moduler valgt"}
+                </p>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${unlocksModulesOpen ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 pt-2">
+              <p className="text-xs text-muted-foreground">
                 Disse modulene blir tilgjengelige for brukere under opplæring når kurset er bestått.
               </p>
-            </div>
-            <TrainingModulePicker selected={unlocksModules} onChange={setUnlocksModules} />
-          </div>
+              <TrainingModulePicker selected={unlocksModules} onChange={setUnlocksModules} />
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 
