@@ -70,16 +70,26 @@ export function useCompanySettings() {
   const [settings, setSettings] = useState<CompanySettings>(defaultSettings);
 
   useEffect(() => {
-    const effectiveSettingsCompanyId = parentCompanyId || companyId;
-    if (!effectiveSettingsCompanyId) return;
+    if (!companyId) return;
 
-    const cached = cache[effectiveSettingsCompanyId];
+    const cached = cache[companyId];
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       setSettings(cached.settings);
       return;
     }
 
-    fetchCompanySettings(effectiveSettingsCompanyId).then(setSettings);
+    fetchCompanySettings(companyId).then(async (ownSettings) => {
+      if (!parentCompanyId) {
+        setSettings(ownSettings);
+        return;
+      }
+
+      const parentSettings = await fetchCompanySettings(parentCompanyId);
+      setSettings({
+        ...ownSettings,
+        incident_reports_visible_to_all_companies: parentSettings.incident_reports_visible_to_all_companies,
+      });
+    });
   }, [companyId, parentCompanyId]);
 
   return settings;
