@@ -556,6 +556,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setArdupilotFlightlogEnabled(profileData.ardupilotFlightlogEnabled);
       setDepartmentsEnabled(profileData.departmentsEnabled);
       setStripeExempt(profileData.stripeExempt);
+      setUnderTraining(profileData.underTraining ?? false);
+      setTrainingModuleAccess(profileData.trainingModuleAccess ?? []);
       setProfileLoaded(true);
 
       // Apply accessible companies
@@ -1078,6 +1080,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isBillingOwner,
       seatCount,
       accessibleCompanies,
+      underTraining,
+      trainingModuleAccess,
+      hasTrainingModuleAccess: (moduleKey) => !underTraining || trainingModuleAccess.includes(moduleKey),
       authRefreshing,
       authInitialized,
       signOut, 
