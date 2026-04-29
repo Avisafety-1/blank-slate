@@ -182,15 +182,15 @@ serve(async (req) => {
         .eq('company_id', companyId)
         .eq('approved', true);
 
-      if (!eligibleUsers || eligibleUsers.length === 0) continue;
+      const userIds = (eligibleUsers || []).map(u => u.id);
 
-      const userIds = eligibleUsers.map(u => u.id);
-
-      const { data: notificationPrefs } = await supabase
-        .from('notification_preferences')
-        .select('user_id')
-        .in('user_id', userIds)
-        .eq('email_document_expiry', true);
+      const { data: notificationPrefs } = userIds.length
+        ? await supabase
+            .from('notification_preferences')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('email_document_expiry', true)
+        : { data: [] };
 
       const { data: companyData } = await supabase
         .from('companies')
