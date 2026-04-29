@@ -119,6 +119,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [lastFlown, setLastFlown] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
   const [technicalResponsibleName, setTechnicalResponsibleName] = useState<string | null>(null);
+  const [allUsersCanAcknowledgeMaintenance, setAllUsersCanAcknowledgeMaintenance] = useState(false);
   const [formTechnicalResponsibleId, setFormTechnicalResponsibleId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     modell: "",
@@ -331,6 +332,17 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       .eq("id", drone.technical_responsible_id)
       .single();
     setTechnicalResponsibleName(data?.full_name || "Ukjent");
+  };
+
+  const fetchMaintenanceAcknowledgementSetting = async () => {
+    const targetCompanyId = drone?.company_id || companyId;
+    if (!targetCompanyId) { setAllUsersCanAcknowledgeMaintenance(false); return; }
+    const { data } = await (supabase as any)
+      .from("companies")
+      .select("all_users_can_acknowledge_maintenance")
+      .eq("id", targetCompanyId)
+      .maybeSingle();
+    setAllUsersCanAcknowledgeMaintenance((data as any)?.all_users_can_acknowledge_maintenance === true);
   };
 
   const fetchLatestWarning = async () => {
