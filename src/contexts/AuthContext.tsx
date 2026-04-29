@@ -522,6 +522,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // --- Apply Phase 1 state immediately ---
       setCompanyId(profileData.companyId);
       setCompanyName(profileData.companyName);
+      setParentCompanyId(profileData.parentCompanyId);
+      setParentCompanyName(profileData.parentCompanyName);
       setCompanyType(profileData.companyType);
       setCompanyLat(profileData.companyLat);
       setCompanyLon(profileData.companyLon);
@@ -1029,6 +1031,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       loading, 
       companyId, 
       companyName, 
+      parentCompanyId,
+      parentCompanyName,
       companyType, 
       companyLat,
       companyLon,
