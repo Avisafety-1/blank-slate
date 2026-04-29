@@ -21,6 +21,6 @@ export const normalizeTrainingModules = (modules: unknown): TrainingModuleKey[] 
 };
 
 export const dashboardComponentToModule = (component: string): TrainingModuleKey | null => {
-  const match = TRAINING_MODULES.find((module) => module.dashboardComponents.includes(component));
+  const match = TRAINING_MODULES.find((module) => (module.dashboardComponents as readonly string[]).includes(component));
   return match?.key ?? null;
 };
