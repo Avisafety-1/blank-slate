@@ -93,7 +93,7 @@ export function OpenAIPMap({
   populationDensityCells,
   populationDensityCoveragePolygons,
 }: OpenAIPMapProps) {
-  const { user, companyName, parentCompanyName, companyLat, companyLon } = useAuth();
+  const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -505,7 +505,7 @@ export function OpenAIPMap({
 
   // ==================== MAIN MAP INIT useEffect ====================
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !profileLoaded) return;
 
     const startCenter = initialCenter || DEFAULT_POS;
     const map = L.map(mapRef.current).setView(startCenter, initialCenter ? 13 : 8);
@@ -875,7 +875,7 @@ export function OpenAIPMap({
       mapChannel.unsubscribe();
       map.remove();
     };
-  }, []);
+  }, [profileLoaded, isTensioHierarchy]);
 
   // Recenter map when initialCenter changes
   useEffect(() => {
