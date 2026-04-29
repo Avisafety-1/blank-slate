@@ -384,6 +384,23 @@ serve(async (req) => {
         await sendEmail({ from: senderAddress, to: authUser.email, subject: sanitizeSubject(emailSubject), html: emailHtml });
         totalEmailsSent++;
         console.log(`Email sent to ${authUser.email}`);
+
+        const childCompanyIds = [...new Set(itemsNeedingAttention.map((item) => item.companyId))];
+        const parentRecipientIds = new Set<string>();
+        for (const childCompanyId of childCompanyIds) {
+          const parentCompanyId = parentByCompany.get(childCompanyId);
+          if (!parentCompanyId || parentCompanyId === profile.company_id) continue;
+          const ids = await getParentAdminIdsWithPreference(supabase, parentCompanyId, 'email_child_maintenance_reminder');
+          ids.forEach((id) => parentRecipientIds.add(id));
+        }
+
+        for (const parentUserId of parentRecipientIds) {
+          if (parentUserId === pref.user_id) continue;
+          const parentAuthUser = authUsers?.users.find((u: any) => u.id === parentUserId);
+          if (!parentAuthUser?.email) continue;
+          await sendEmail({ from: senderAddress, to: parentAuthUser.email, subject: sanitizeSubject(emailSubject), html: emailHtml });
+          totalEmailsSent++;
+        }
       } catch (emailError) {
         console.error(`Error sending email to ${authUser.email}:`, emailError);
       }
