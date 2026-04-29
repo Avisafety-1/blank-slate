@@ -19,6 +19,8 @@ interface CachedSession {
 interface CachedProfile {
   companyId: string | null;
   companyName: string | null;
+  parentCompanyId: string | null;
+  parentCompanyName: string | null;
   companyType: CompanyType;
   companyLat: number | null;
   companyLon: number | null;
@@ -46,6 +48,8 @@ interface AuthContextType {
   loading: boolean;
   companyId: string | null;
   companyName: string | null;
+  parentCompanyId: string | null;
+  parentCompanyName: string | null;
   companyType: CompanyType;
   companyLat: number | null;
   companyLon: number | null;
@@ -85,6 +89,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   companyId: null,
   companyName: null,
+  parentCompanyId: null,
+  parentCompanyName: null,
   companyType: null,
   companyLat: null,
   companyLon: null,
@@ -143,6 +149,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [parentCompanyId, setParentCompanyId] = useState<string | null>(null);
+  const [parentCompanyName, setParentCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
   const [companyLat, setCompanyLat] = useState<number | null>(null);
   const [companyLon, setCompanyLon] = useState<number | null>(null);
@@ -172,6 +180,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     setCompanyId(null);
     setCompanyName(null);
+    setParentCompanyId(null);
+    setParentCompanyName(null);
     setCompanyType(null);
     setCompanyLat(null);
     setCompanyLon(null);
@@ -266,6 +276,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const cached: CachedProfile = JSON.parse(raw);
       setCompanyId(cached.companyId);
       setCompanyName(cached.companyName);
+      setParentCompanyId(cached.parentCompanyId ?? null);
+      setParentCompanyName(cached.parentCompanyName ?? null);
       setCompanyType(cached.companyType);
       setCompanyLat(cached.companyLat);
       setCompanyLon(cached.companyLon);
@@ -432,6 +444,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let profileData: CachedProfile = {
         companyId: companyId,
         companyName: companyName,
+        parentCompanyId: parentCompanyId,
+        parentCompanyName: parentCompanyName,
         companyType: 'droneoperator',
         companyLat: null,
         companyLon: null,
@@ -454,13 +468,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const company = profileResult.data?.companies as any;
-      const parentCompanyId = company?.parent_company_id;
+      const resolvedParentCompanyId = company?.parent_company_id;
 
       if (profileResult.data) {
         const profile = profileResult.data;
         profileData.companyId = profile.company_id;
         profileData.isApproved = profile.approved ?? false;
         profileData.companyName = company?.navn || null;
+        profileData.parentCompanyId = resolvedParentCompanyId || null;
+        profileData.parentCompanyName = null;
         profileData.companyType = company?.selskapstype || 'droneoperator';
         profileData.companyLat = company?.adresse_lat || null;
         profileData.companyLon = company?.adresse_lon || null;
@@ -470,19 +486,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.departmentsEnabled = company?.departments_enabled ?? false;
 
         // Inherit parent company settings if needed
-        if (parentCompanyId) {
+        if (resolvedParentCompanyId) {
           try {
             const { data: parentCompany } = await supabase
               .from('companies')
-              .select('stripe_exempt, dji_flightlog_enabled, dji_auto_sync_enabled, dronelog_api_key, eccairs_enabled, dronetag_enabled, ardupilot_enabled')
-              .eq('id', parentCompanyId)
+              .select('navn, stripe_exempt, dji_flightlog_enabled, dji_auto_sync_enabled, dronelog_api_key, eccairs_enabled, dronetag_enabled, ardupilot_enabled')
+              .eq('id', resolvedParentCompanyId)
               .single();
             // Re-check version after await
             if (myVersion !== refreshVersionRef.current) return;
             if (parentCompany) {
+              profileData.parentCompanyName = (parentCompany as any).navn || null;
               profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
               profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
-              console.log('AuthContext: Inherited settings from parent company', parentCompanyId);
+              console.log('AuthContext: Inherited settings from parent company', resolvedParentCompanyId);
             }
           } catch { /* ignore */ }
         }
@@ -505,6 +522,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // --- Apply Phase 1 state immediately ---
       setCompanyId(profileData.companyId);
       setCompanyName(profileData.companyName);
+      setParentCompanyId(profileData.parentCompanyId);
+      setParentCompanyName(profileData.parentCompanyName);
       setCompanyType(profileData.companyType);
       setCompanyLat(profileData.companyLat);
       setCompanyLon(profileData.companyLon);
@@ -1012,6 +1031,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       loading, 
       companyId, 
       companyName, 
+      parentCompanyId,
+      parentCompanyName,
       companyType, 
       companyLat,
       companyLon,

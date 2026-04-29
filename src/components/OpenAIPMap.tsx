@@ -40,6 +40,9 @@ import { showWeatherPopup } from "@/lib/mapWeatherPopup";
 import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
+const TENSIO_WMS_URL = "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer";
+
+const isTensioName = (name?: string | null) => name?.toLowerCase().includes("tensio") ?? false;
 
 const getPopulationDensityStyle = (density = 0, isHotspot = false): L.PathOptions => {
   const color = density >= 5000 ? 'hsl(var(--destructive))' : density >= 250 ? 'hsl(var(--warning))' : 'hsl(var(--success))';
@@ -90,7 +93,8 @@ export function OpenAIPMap({
   populationDensityCells,
   populationDensityCoveragePolygons,
 }: OpenAIPMapProps) {
-  const { user, companyLat, companyLon } = useAuth();
+  const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
+  const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
@@ -501,7 +505,7 @@ export function OpenAIPMap({
 
   // ==================== MAIN MAP INIT useEffect ====================
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !profileLoaded) return;
 
     const startCenter = initialCenter || DEFAULT_POS;
     const map = L.map(mapRef.current).setView(startCenter, initialCenter ? 13 : 8);
@@ -510,10 +514,10 @@ export function OpenAIPMap({
     // Create panes
     const paneConfig: Record<string, string> = {
       safeskyPane: '750', liveFlightPane: '720', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
-      obstaclePane: '660', nsmPane: '650', notamPane: '640', populationDensityPane: '635',
+      powerPane: '700', tensioPowerPane: '699', obstaclePane: '660', nsmPane: '650', notamPane: '640', populationDensityPane: '635',
       rpasPane: '630', aipPane: '625', rmzPane: '620',
     };
-    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane', 'populationDensityPane']);
+    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane', 'populationDensityPane', 'tensioPowerPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
@@ -577,11 +581,21 @@ export function OpenAIPMap({
     } as any);
     layerConfigs.push({ id: "tettsteder", name: "Tettsteder (SSB)", layer: tettstederLayer, enabled: false, icon: "users" });
 
-    // NVE Kraftledninger (vector via ArcGIS REST)
-    if (!map.getPane('powerPane')) {
-      map.createPane('powerPane');
-      map.getPane('powerPane')!.style.zIndex = '700';
+    // Tensio luftnett (WMS) — kun for Tensio og underavdelinger
+    if (isTensioHierarchy) {
+      const tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
+        layers: "0,1,2,3,4,5,6,7,8,9",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.75,
+        attribution: "Tensio luftnett",
+        version: "1.3.0",
+        pane: "tensioPowerPane",
+      } as any).addTo(map);
+      layerConfigs.push({ id: "tensio_luftnett", name: "Luftnett Tensio", layer: tensioLuftnettLayer, enabled: true, icon: "zap" });
     }
+
+    // NVE Kraftledninger (vector via ArcGIS REST)
     const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
 
@@ -861,7 +875,7 @@ export function OpenAIPMap({
       mapChannel.unsubscribe();
       map.remove();
     };
-  }, []);
+  }, [profileLoaded, isTensioHierarchy]);
 
   // Recenter map when initialCenter changes
   useEffect(() => {
