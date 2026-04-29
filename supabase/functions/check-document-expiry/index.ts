@@ -8,6 +8,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const ADMIN_ROLES = ['administrator', 'admin', 'superadmin'];
+
+async function getParentAdminIdsWithPreference(supabase: any, parentCompanyId: string, preferenceColumn: string): Promise<string[]> {
+  const { data: roles } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
+  if (!roles?.length) return [];
+
+  const { data: admins } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('company_id', parentCompanyId)
+    .eq('approved', true)
+    .in('id', roles.map((r: any) => r.user_id));
+  if (!admins?.length) return [];
+
+  const { data: prefs } = await supabase
+    .from('notification_preferences')
+    .select('user_id')
+    .in('user_id', admins.map((a: any) => a.id))
+    .eq(preferenceColumn, true);
+
+  return [...new Set((prefs || []).map((p: any) => p.user_id))];
+}
+
 async function sendPushNotifications(supabase: any, companyId: string, title: string, body: string) {
   try {
     const { data: profiles } = await supabase
