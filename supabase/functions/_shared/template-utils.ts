@@ -47,7 +47,7 @@ export function replaceTemplateVariables(
   return result;
 }
 
-const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
 
 /**
  * Returns a standard AviSafe logo header for emails

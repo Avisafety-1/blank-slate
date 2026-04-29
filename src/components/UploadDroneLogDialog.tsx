@@ -1936,7 +1936,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const pilotName = selectedPilot ? (selectedPilot as any).full_name || 'Ukjent pilot' : 'Ukjent pilot';
       const flightDate = parsedResult.startTime ? format(parseFlightDate(parsedResult.startTime) || new Date(), 'dd.MM.yyyy HH:mm') : format(new Date(), 'dd.MM.yyyy HH:mm');
 
-      const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+      const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
       const html = `<!DOCTYPE html>
 <html><head><style>
 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
