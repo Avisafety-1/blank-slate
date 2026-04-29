@@ -758,6 +758,8 @@ export function OpenAIPMap({
           const coords = [...routePointsRef.current];
           cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
         }
+      } else if (weatherEnabledRef.current) {
+        showWeatherPopup(map, lat, lng);
       } else if (isTensioHierarchy && tensioLuftnettLayer && map.hasLayer(tensioLuftnettLayer)) {
         try {
           const response = await fetch(buildTensioFeatureInfoUrl(map, e.latlng));
@@ -773,8 +775,6 @@ export function OpenAIPMap({
         } catch (err) {
           console.warn("Kunne ikke hente Tensio objektinformasjon:", err);
         }
-      } else if (weatherEnabledRef.current) {
-        showWeatherPopup(map, lat, lng);
       }
     };
 
