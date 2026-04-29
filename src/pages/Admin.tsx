@@ -89,6 +89,8 @@ interface UserRole {
   role: string;
 }
 
+type UnlockedModuleAccess = Record<string, TrainingModuleKey[]>;
+
 const availableRoles = [
   { value: "superadmin", labelKey: "roles.superadmin", superadminOnly: true },
   { value: "administrator", labelKey: "roles.administrator" },
@@ -105,6 +107,7 @@ const Admin = () => {
   const { t } = useTranslation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [courseUnlockedModules, setCourseUnlockedModules] = useState<UnlockedModuleAccess>({});
   
   const [loadingData, setLoadingData] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
