@@ -63,7 +63,7 @@ const formatFeatureInfoPopup = (title: string, properties: Record<string, unknow
   return `<div style="min-width:190px;max-width:280px;"><strong>${escapePopupHtml(title)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
 };
 
-const buildTensioFeatureInfoUrl = (map: L.Map, latlng: L.LatLng) => {
+const buildTensioFeatureInfoUrl = (map: L.Map, latlng: L.LatLng, infoFormat = "application/geo+json") => {
   const size = map.getSize();
   const point = map.latLngToContainerPoint(latlng);
   const crs = map.options.crs;
@@ -83,11 +83,17 @@ const buildTensioFeatureInfoUrl = (map: L.Map, latlng: L.LatLng) => {
     i: String(Math.round(point.x)),
     j: String(Math.round(point.y)),
     feature_count: "5",
-    info_format: "application/geo+json",
+    info_format: infoFormat,
     format: "image/png",
     transparent: "true",
   });
   return `${TENSIO_WMS_URL}?${params.toString()}`;
+};
+
+const formatPlainFeatureInfoPopup = (title: string, text: string) => {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 12);
+  if (!lines.length || lines.every((line) => /no features|empty|none/i.test(line))) return "";
+  return `<div style="min-width:190px;max-width:280px;"><strong>${escapePopupHtml(title)}</strong><div style="margin-top:6px;font-size:12px;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere;">${escapePopupHtml(lines.join("\n"))}</div></div>`;
 };
 
 const getPopulationDensityStyle = (density = 0, isHotspot = false): L.PathOptions => {
