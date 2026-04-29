@@ -237,6 +237,7 @@ serve(async (req) => {
 
     let totalEmailsSent = 0;
     let totalPushSent = 0;
+    const parentMaintenanceNotificationKeys = new Set<string>();
 
     for (const pref of notificationPrefs) {
       const profile = profiles?.find((p: any) => p.id === pref.user_id);
@@ -396,6 +397,9 @@ serve(async (req) => {
 
         for (const parentUserId of parentRecipientIds) {
           if (parentUserId === pref.user_id) continue;
+          const key = `${parentUserId}:${itemsNeedingAttention.map((item) => item.id).sort().join(',')}`;
+          if (parentMaintenanceNotificationKeys.has(key)) continue;
+          parentMaintenanceNotificationKeys.add(key);
           const parentAuthUser = authUsers?.users.find((u: any) => u.id === parentUserId);
           if (!parentAuthUser?.email) continue;
           await sendEmail({ from: senderAddress, to: parentAuthUser.email, subject: sanitizeSubject(emailSubject), html: emailHtml });
