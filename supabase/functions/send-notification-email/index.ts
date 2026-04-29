@@ -80,11 +80,24 @@ serve(async (req: Request): Promise<Response> => {
         const { data } = await supabase.from('profiles').select('id').eq('company_id', incidentCompany.parent_company_id).eq('approved', true).eq('can_be_incident_responsible', true);
         parentResponsibles = data || [];
       }
-      const eligibleUsers = [...(sameCompanyUsers || []), ...parentResponsibles];
+      const parentAdminIds = incidentCompany?.parent_company_id
+        ? await getParentAdminIdsWithPreference(supabase, incidentCompany.parent_company_id, 'email_child_incidents')
+        : [];
+      const eligibleUsers = [...(sameCompanyUsers || []), ...parentResponsibles, ...parentAdminIds.map((id) => ({ id }))];
       if (!eligibleUsers?.length) return new Response(JSON.stringify({ success: true, message: 'No users' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', eligibleUsers.map(u => u.id)).eq('email_new_incident', true);
-      if (!notificationPrefs?.length) return new Response(JSON.stringify({ success: true, message: 'No users to notify' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      const sameCompanyIds = [...new Set((sameCompanyUsers || []).map((u: any) => u.id))];
+      const responsibleIds = [...new Set(parentResponsibles.map((u: any) => u.id))];
+      const [{ data: sameCompanyPrefs }, { data: responsiblePrefs }] = await Promise.all([
+        sameCompanyIds.length
+          ? supabase.from('notification_preferences').select('user_id').in('user_id', sameCompanyIds).eq('email_new_incident', true)
+          : Promise.resolve({ data: [] }),
+        responsibleIds.length
+          ? supabase.from('notification_preferences').select('user_id').in('user_id', responsibleIds).eq('email_new_incident', true)
+          : Promise.resolve({ data: [] }),
+      ]);
+      const notificationUserIds = [...new Set([...(sameCompanyPrefs || []).map((p: any) => p.user_id), ...(responsiblePrefs || []).map((p: any) => p.user_id), ...parentAdminIds])];
+      if (!notificationUserIds.length) return new Response(JSON.stringify({ success: true, message: 'No users to notify' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
       const templateResult = await getEmailTemplateWithFallback(companyId, 'incident_notification', { incident_title: incident.tittel, incident_severity: incident.alvorlighetsgrad, incident_location: incident.lokasjon || 'Ikke oppgitt', incident_description: incident.beskrivelse || '', company_name: company?.navn || '' });
@@ -94,8 +107,8 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
       let emailsSent = 0;
-      for (const pref of notificationPrefs) {
-        const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
+      for (const userId of notificationUserIds) {
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
         if (!user?.email) continue;
         await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
@@ -105,11 +118,16 @@ serve(async (req: Request): Promise<Response> => {
 
     // Handle new mission notification
     if (type === 'notify_new_mission' && companyId && mission) {
+      const { data: missionCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
       const { data: eligibleUsers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true);
       if (!eligibleUsers?.length) return new Response(JSON.stringify({ success: true, message: 'No users' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', eligibleUsers.map(u => u.id)).eq('email_new_mission', true);
-      if (!notificationPrefs?.length) return new Response(JSON.stringify({ success: true, message: 'No users to notify' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      const parentAdminIds = missionCompany?.parent_company_id
+        ? await getParentAdminIdsWithPreference(supabase, missionCompany.parent_company_id, 'email_child_missions')
+        : [];
+      const notificationUserIds = [...new Set([...(notificationPrefs || []).map((p: any) => p.user_id), ...parentAdminIds])];
+      if (!notificationUserIds.length) return new Response(JSON.stringify({ success: true, message: 'No users to notify' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
       const missionDate = new Date(mission.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -120,8 +138,8 @@ serve(async (req: Request): Promise<Response> => {
       const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
       let emailsSent = 0;
-      for (const pref of notificationPrefs) {
-        const { data: { user } } = await supabase.auth.admin.getUserById(pref.user_id);
+      for (const userId of notificationUserIds) {
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
         if (!user?.email) continue;
         await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
