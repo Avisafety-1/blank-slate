@@ -448,7 +448,13 @@ const Hendelser = () => {
         incident.tittel.toLowerCase().includes(query) || 
         incident.beskrivelse?.toLowerCase().includes(query) || 
         incident.kategori?.toLowerCase().includes(query) || 
-        incident.rapportert_av?.toLowerCase().includes(query) || 
+        getIncidentReporterDisplayName({
+          incident,
+          hideReporterIdentity: companySettings.hide_reporter_identity,
+          isAdmin,
+          isParentCompany: !parentCompanyId,
+          departmentsEnabled,
+        })?.toLowerCase().includes(query) ||
         incident.lokasjon?.toLowerCase().includes(query) ||
         incident.incident_number?.toLowerCase().includes(query)
       );
