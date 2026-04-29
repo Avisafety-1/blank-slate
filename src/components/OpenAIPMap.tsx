@@ -589,6 +589,7 @@ export function OpenAIPMap({
     baseLayerRef.current = osmLayer;
 
     const layerConfigs: LayerConfig[] = [];
+    let tensioLuftnettLayer: L.TileLayer.WMS | null = null;
 
     // OpenAIP airspace
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
@@ -629,7 +630,7 @@ export function OpenAIPMap({
 
     // Tensio luftnett (WMS) — kun for Tensio og underavdelinger
     if (isTensioHierarchy) {
-      const tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
+      tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
         layers: "0,1,2,3,4,5,6,7,8,9",
         format: "image/png",
         transparent: true,
@@ -756,6 +757,21 @@ export function OpenAIPMap({
         if (cb) {
           const coords = [...routePointsRef.current];
           cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
+        }
+      } else if (isTensioHierarchy && tensioLuftnettLayer && map.hasLayer(tensioLuftnettLayer)) {
+        try {
+          const response = await fetch(buildTensioFeatureInfoUrl(map, e.latlng));
+          if (!response.ok) return;
+          const data = await response.json();
+          const feature = data?.features?.find((item: any) => item?.properties && Object.keys(item.properties).length > 0);
+          if (feature?.properties) {
+            L.popup({ maxWidth: 300 })
+              .setLatLng(e.latlng)
+              .setContent(formatFeatureInfoPopup("Luftnett Tensio", feature.properties))
+              .openOn(map);
+          }
+        } catch (err) {
+          console.warn("Kunne ikke hente Tensio objektinformasjon:", err);
         }
       } else if (weatherEnabledRef.current) {
         showWeatherPopup(map, lat, lng);
