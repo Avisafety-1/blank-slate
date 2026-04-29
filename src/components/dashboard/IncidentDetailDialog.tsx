@@ -17,6 +17,7 @@ import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { getIncidentReporterDisplayName } from "@/lib/incidentVisibility";
 
 type Incident = Tables<"incidents">;
 
@@ -52,7 +53,7 @@ const statusColors = {
 };
 
 export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest }: IncidentDetailDialogProps) => {
-  const { user, companyId, ensureValidToken, isAdmin, departmentsEnabled } = useAuth();
+  const { user, companyId, parentCompanyId, ensureValidToken, isAdmin, departmentsEnabled } = useAuth();
   const companySettings = useCompanySettings();
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [relatedMission, setRelatedMission] = useState<{ id: string; tittel: string; lokasjon: string; status: string } | null>(null);
@@ -336,6 +337,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
         kategori: incident.kategori,
         lokasjon: incident.lokasjon,
         rapportert_av: incident.rapportert_av,
+        reported_anonymously: incident.reported_anonymously,
         hovedaarsak: incident.hovedaarsak,
         medvirkende_aarsak: incident.medvirkende_aarsak,
         bilde_url: (incident as any).bilde_url || null,
@@ -345,6 +347,10 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
       relatedMissionTitle: relatedMission?.tittel || null,
       companyId,
       userId: user.id,
+      hideReporterIdentity: companySettings.hide_reporter_identity,
+      isAdmin,
+      isParentCompany: !parentCompanyId,
+      departmentsEnabled,
     });
 
     if (success) {
