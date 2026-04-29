@@ -89,6 +89,8 @@ interface UserRole {
   role: string;
 }
 
+type UnlockedModuleAccess = Record<string, TrainingModuleKey[]>;
+
 const availableRoles = [
   { value: "superadmin", labelKey: "roles.superadmin", superadminOnly: true },
   { value: "administrator", labelKey: "roles.administrator" },
@@ -105,6 +107,7 @@ const Admin = () => {
   const { t } = useTranslation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [courseUnlockedModules, setCourseUnlockedModules] = useState<UnlockedModuleAccess>({});
   
   const [loadingData, setLoadingData] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
@@ -193,7 +196,28 @@ const Admin = () => {
 
       if (profilesError) throw profilesError;
 
-      setProfiles((profilesData || []) as Profile[]);
+      const loadedProfiles = (profilesData || []) as Profile[];
+      setProfiles(loadedProfiles);
+
+      const approvedProfileIds = loadedProfiles.filter((p) => p.approved).map((p) => p.id);
+      if (approvedProfileIds.length > 0) {
+        const { data: passedAssignments } = await supabase
+          .from("training_assignments")
+          .select("profile_id, training_courses(unlocks_modules)")
+          .in("profile_id", approvedProfileIds)
+          .eq("passed", true);
+
+        const unlockedByProfile = (passedAssignments || []).reduce<UnlockedModuleAccess>((acc, assignment: any) => {
+          acc[assignment.profile_id] = normalizeTrainingModules([
+            ...(acc[assignment.profile_id] || []),
+            ...normalizeTrainingModules(assignment.training_courses?.unlocks_modules),
+          ]);
+          return acc;
+        }, {});
+        setCourseUnlockedModules(unlockedByProfile);
+      } else {
+        setCourseUnlockedModules({});
+      }
 
       // Fetch all user roles
       const { data: rolesData, error: rolesError } = await supabase
@@ -582,6 +606,36 @@ const Admin = () => {
       toast.error("Kunne ikke oppdatere modultilgang");
     }
   };
+
+  const openAllModulesForUser = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ under_training: false, training_module_access: [] } as any)
+        .eq("id", userId);
+      if (error) throw error;
+
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, under_training: false, training_module_access: [] } : p
+      ));
+      if (userId === user?.id) {
+        await refetchUserInfo();
+      }
+      toast.success("Alle moduler er åpnet for brukeren");
+    } catch (error) {
+      console.error("Error opening all modules:", error);
+      toast.error("Kunne ikke åpne alle moduler");
+    }
+  };
+
+  const getManualTrainingModules = (profile: Profile) => normalizeTrainingModules(profile.training_module_access);
+
+  const getCourseUnlockedModules = (profile: Profile) => normalizeTrainingModules(courseUnlockedModules[profile.id] || []);
+
+  const getEffectiveTrainingModules = (profile: Profile) => normalizeTrainingModules([
+    ...getManualTrainingModules(profile),
+    ...getCourseUnlockedModules(profile),
+  ]);
 
 
   const changeDepartment = async (userId: string, newCompanyId: string) => {
@@ -1124,8 +1178,10 @@ const Admin = () => {
                                       </div>
                                       {profile.under_training && (
                                         <TrainingModulePicker
-                                          selected={normalizeTrainingModules(profile.training_module_access)}
+                                          selected={getManualTrainingModules(profile)}
+                                          lockedModules={getCourseUnlockedModules(profile)}
                                           onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                          onOpenAllModules={() => openAllModulesForUser(profile.id)}
                                           disabled={!canManageRoles}
                                         />
                                       )}
@@ -1286,14 +1342,16 @@ const Admin = () => {
                                   <Popover>
                                     <PopoverTrigger asChild>
                                       <Button variant="outline" size="sm" className="h-7 text-xs px-2">
-                                        {normalizeTrainingModules(profile.training_module_access).length} mod.
+                                        {getEffectiveTrainingModules(profile).length} mod.
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-72 p-3 z-[1300]" align="start">
                                       <p className="text-xs font-medium mb-2">Tilgang før kurs er bestått</p>
                                       <TrainingModulePicker
-                                        selected={normalizeTrainingModules(profile.training_module_access)}
+                                        selected={getManualTrainingModules(profile)}
+                                        lockedModules={getCourseUnlockedModules(profile)}
                                         onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                        onOpenAllModules={() => openAllModulesForUser(profile.id)}
                                         disabled={!canManageRoles}
                                       />
                                     </PopoverContent>
