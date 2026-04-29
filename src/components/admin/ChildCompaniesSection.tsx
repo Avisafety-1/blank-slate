@@ -328,7 +328,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -338,6 +338,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setIncidentReportsVisibleToAllCompanies((data as any).incident_reports_visible_to_all_companies ?? false);
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setPreventSelfApproval((data as any).prevent_self_approval ?? false);
+      setAllUsersCanAcknowledgeMaintenance((data as any).all_users_can_acknowledge_maintenance ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       const parentId = (data as any).parent_company_id as string | null;
@@ -349,6 +350,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         (data as any).propagate_hide_reporter ||
         (data as any).propagate_mission_approval ||
         (data as any).propagate_prevent_self_approval ||
+        (data as any).propagate_all_users_can_acknowledge_maintenance ||
         (data as any).propagate_sora_required ||
         (data as any).propagate_deviation_report
       );
@@ -364,7 +366,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
