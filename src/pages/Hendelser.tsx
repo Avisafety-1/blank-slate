@@ -1041,7 +1041,21 @@ const Hendelser = () => {
                     {incident.rapportert_av && (
                       <div className="flex items-start gap-2">
                         <User className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                        <span>Rapportert av: {companySettings.hide_reporter_identity && !(isAdmin && departmentsEnabled) ? "Anonym" : incident.rapportert_av}</span>
+                        <span>
+                          Rapportert av: {getIncidentReporterDisplayName({
+                            incident,
+                            hideReporterIdentity: companySettings.hide_reporter_identity,
+                            isAdmin,
+                            isParentCompany: !parentCompanyId,
+                            departmentsEnabled,
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {incident.company_name && incident.company_id !== companyId && (
+                      <div className="flex items-start gap-2">
+                        <Building2 className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <span>Avdeling: {incident.company_name}</span>
                       </div>
                     )}
                     {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && (
