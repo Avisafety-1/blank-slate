@@ -17,6 +17,7 @@ import { IdleTimeoutWarning } from "@/components/IdleTimeoutWarning";
 import { ForceReloadBanner } from "@/components/ForceReloadBanner";
 import { useForceReload } from "@/hooks/useForceReload";
 import { PlanRestricted } from "@/components/PlanRestricted";
+import { TrainingModuleRestricted } from "@/components/TrainingModuleRestricted";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 
@@ -186,13 +187,13 @@ const App = () => {
                   {/* Protected routes with shared Header - app domain */}
                   <Route element={<AuthenticatedLayout />}>
                     <Route path="/" element={<DomainGuard><Index /></DomainGuard>} />
-                    <Route path="/ressurser" element={<DomainGuard><Resources /></DomainGuard>} />
-                    <Route path="/kart" element={<DomainGuard><KartPage /></DomainGuard>} />
-                    <Route path="/dokumenter" element={<DomainGuard><Documents /></DomainGuard>} />
-                    <Route path="/kalender" element={<DomainGuard><Kalender /></DomainGuard>} />
-                    <Route path="/hendelser" element={<DomainGuard><PlanRestricted feature="incidents"><Hendelser /></PlanRestricted></DomainGuard>} />
-                    <Route path="/status" element={<DomainGuard><PlanRestricted feature="status"><Status /></PlanRestricted></DomainGuard>} />
-                    <Route path="/oppdrag" element={<DomainGuard><Oppdrag /></DomainGuard>} />
+                    <Route path="/ressurser" element={<DomainGuard><TrainingModuleRestricted moduleKey="resources"><Resources /></TrainingModuleRestricted></DomainGuard>} />
+                    <Route path="/kart" element={<DomainGuard><TrainingModuleRestricted moduleKey="map"><KartPage /></TrainingModuleRestricted></DomainGuard>} />
+                    <Route path="/dokumenter" element={<DomainGuard><TrainingModuleRestricted moduleKey="documents"><Documents /></TrainingModuleRestricted></DomainGuard>} />
+                    <Route path="/kalender" element={<DomainGuard><TrainingModuleRestricted moduleKey="calendar"><Kalender /></TrainingModuleRestricted></DomainGuard>} />
+                    <Route path="/hendelser" element={<DomainGuard><TrainingModuleRestricted moduleKey="incidents"><PlanRestricted feature="incidents"><Hendelser /></PlanRestricted></TrainingModuleRestricted></DomainGuard>} />
+                    <Route path="/status" element={<DomainGuard><TrainingModuleRestricted moduleKey="status"><PlanRestricted feature="status"><Status /></PlanRestricted></TrainingModuleRestricted></DomainGuard>} />
+                    <Route path="/oppdrag" element={<DomainGuard><TrainingModuleRestricted moduleKey="missions"><Oppdrag /></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/changelog" element={<DomainGuard><Changelog /></DomainGuard>} />
                   </Route>
                   
