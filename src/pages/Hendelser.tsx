@@ -484,7 +484,11 @@ const Hendelser = () => {
       oppfolgingsansvarligName: incident.oppfolgingsansvarlig_id ? oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] || null : null,
       relatedMissionTitle: incident.mission_id ? missions[incident.mission_id]?.tittel || null : null,
       companyId,
-      userId: user.id
+      userId: user.id,
+      hideReporterIdentity: companySettings.hide_reporter_identity,
+      isAdmin,
+      isParentCompany: !parentCompanyId,
+      departmentsEnabled,
     });
 
     if (success) {
