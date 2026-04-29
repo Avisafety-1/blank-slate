@@ -1155,6 +1155,29 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 );
               })()}
 
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                <Label htmlFor="incident-reports-visible-all" className="flex-1 cursor-pointer pr-4">
+                  <div className="font-medium text-sm flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4" />
+                    Hendelsesrapporter synlig for alle selskaper
+                    {isChildDept && (
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <Lock className="w-2.5 h-2.5" /> Styres av {parentNavn}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Når aktivert kan morselskapet og alle avdelinger se hendelsesrapporter fra hverandre.
+                  </div>
+                </Label>
+                <Switch
+                  id="incident-reports-visible-all"
+                  checked={isChildDept ? !!inherited?.incident_reports_visible_to_all_companies : incidentReportsVisibleToAllCompanies}
+                  onCheckedChange={handleToggleIncidentReportsVisibleToAllCompanies}
+                  disabled={savingSettings || isChildDept}
+                />
+              </div>
+
               {/* Krev godkjenning */}
               {(() => {
                 const locked = isChildDept && !!inherited?.propagate_mission_approval;
