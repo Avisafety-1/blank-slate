@@ -1,113 +1,54 @@
-Plan: Legge til Tensio luftnett som eget kartlag kun for Tensio
+Plan for å gjøre kraftledningslag klikkbart
 
-Mål
-- Legge til WMS-kartlaget fra Tensio som et nytt valg i kartlagsmenyen.
-- Kartlaget skal bare vises for brukere i selskapet Tensio og avdelinger under Tensio.
-- For Tensio-hierarkiet skal Tensio-kartlaget være standard på.
-- For Tensio-hierarkiet skal NVE-kartlaget være standard av.
-- For alle andre selskaper skal Tensio-kartlaget ikke være synlig i kartlagsmenyen, og NVE beholder dagens oppførsel.
+Målet er at brukeren kan trykke på kraftledningene i kartet og få opp tilgjengelig informasjon om linjen/objektet. NVE-laget har allerede delvis popup-støtte fordi det hentes som vektordata. Tensio-laget er WMS-bilder, så der må vi bruke WMS GetFeatureInfo ved klikk.
 
-Foreslått brukeropplevelse
-- I kartlagspanelet vises et nytt valg, for eksempel:
-  - «Luftnett Tensio»
-- Dette valget vises kun når aktivt selskap er Tensio eller en avdeling/datterselskap under Tensio.
-- Når en Tensio-bruker åpner kartet, er «Luftnett Tensio» allerede aktivert.
-- «Kraftledninger (NVE)» forblir tilgjengelig, men står av som standard for Tensio.
-- Andre kunder ser ikke Tensio-laget i det hele tatt.
+Endringer som foreslås:
 
-Teknisk plan
+1. Beholde NVE som klikkbart vektorlag
+- Kontrollere og eventuelt forbedre eksisterende popup for `Kraftledninger (NVE)`.
+- Vise mer robust info fra feltene som finnes, for eksempel navn, eier, spenning, nettnivå/type og andre relevante felt dersom de finnes.
+- Fortsatt deaktivere interaktivitet i ruteplanlegging der kartklikk brukes til å tegne rute.
 
-1. Identifisere om aktivt selskap er Tensio eller under Tensio
-- Utvide `AuthContext` med `parentCompanyId`, slik at kartkomponenten kan vite om brukeren tilhører et morselskap eller en avdeling.
-- `AuthContext` henter allerede `companies.parent_company_id`, så dette krever bare at verdien lagres i context og cache.
-- Legge til en helper i kartkomponenten som avgjør om aktivt selskap er i Tensio-hierarkiet.
+2. Legge til klikkstøtte for `Luftnett Tensio`
+- Siden Tensio-laget er et WMS-bildelag, legger vi på en kartklikk-handler når laget er aktivt.
+- Ved klikk sendes en `GetFeatureInfo`-forespørsel til:
+  `https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer`
+- Tjenesten støtter `GetFeatureInfo` og layerne `0-9` er `queryable`, så dette skal kunne gi objektinformasjon tilbake.
+- Bruke `INFO_FORMAT=application/geo+json` først, med fallback til `text/html` eller `text/plain` hvis nødvendig.
 
-Foreslått logikk:
-```ts
-const TENSIO_COMPANY_NAME = "tensio";
+3. Vise popup på kartet
+- Når Tensio returnerer treff, åpnes en Leaflet-popup på klikkpunktet.
+- Popupen får tittel som f.eks. `Luftnett Tensio` og viser felter fra objektet i en ryddig tabell/listing.
+- Skjule tekniske/tomme felt der det er mulig, og begrense antall felt slik at popupen fungerer på mobil.
+- Hvis det ikke finnes treff på klikkpunktet, vises ingen popup, slik at kartet ikke blir forstyrrende.
 
-const isTensioCompany =
-  companyName?.toLowerCase().includes("tensio") ||
-  parentCompanyName?.toLowerCase().includes("tensio");
-```
+4. Respektere tilgang og standardvalg
+- Tensio GetFeatureInfo aktiveres kun når brukeren er i Tensio-hierarkiet og `Luftnett Tensio`-laget finnes.
+- Den følger samme av/på-status som laget i kartlagsmenyen.
+- NVE forblir default av for Tensio, default uendret for andre, slik det ble implementert tidligere.
 
-Bedre/mer robust variant:
-- Hvis Tensio sin faktiske `company_id` er kjent eller kan slås opp én gang, bruk ID i stedet for navn.
-- For produksjon anbefales ID-basert kontroll:
-```ts
-const isTensioHierarchy =
-  companyId === TENSIO_COMPANY_ID || parentCompanyId === TENSIO_COMPANY_ID;
-```
+5. Ruteplanlegging og kartinteraksjon
+- I `routePlanning`-modus skal kraftledningsklikk ikke hindre plassering av rutepunkter.
+- Derfor deaktiveres popup/GetFeatureInfo i ruteplanlegging, eller ignoreres når modus er `routePlanning`.
 
-Hvis vi ikke kjenner Tensio-ID på forhånd, kan vi hente Tensio-selskapet via `companies` basert på navn og sammenligne mot `companyId`/`parentCompanyId`. Dette er fortsatt kun frontend-tilgang til et offentlig kartlag, ikke sensitiv data.
+Tekniske detaljer
 
-2. Legge inn Tensio WMS-laget i `OpenAIPMap`
-- Opprette WMS-layer med Leaflet:
-```ts
-const tensioLuftnettLayer = L.tileLayer.wms(
-  "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer",
-  {
-    layers: "0,1,2,3,4,5,6,7,8,9",
-    format: "image/png",
-    transparent: true,
-    opacity: 0.75,
-    attribution: "Tensio luftnett",
-    version: "1.3.0",
-  }
-);
-```
+- Hovedfil: `src/components/OpenAIPMap.tsx`
+  - Legge til refs for Tensio-lagets enabled-status og eventuelt WMS-lag-instans.
+  - Legge til `map.on('click', handleTensioFeatureInfoClick)` og rydde opp i cleanup.
+  - Beregne WMS 1.3.0 GetFeatureInfo-parametre fra kartets bounds, størrelse og klikkpunkt.
+  - For EPSG:4326 i WMS 1.3.0 brukes korrekt BBOX-akseorden dersom tjenesten krever det.
 
-- Kun legge laget inn i `layerConfigs` når `isTensioHierarchy === true`.
-- Når `isTensioHierarchy === true`, legge laget direkte på kartet med `.addTo(map)` slik at det er default på.
-- Bruke samme `zap`-ikon som NVE-laget, eller eventuelt et eget ikon hvis ønskelig.
+- Støttefunksjon kan legges i samme fil eller i `src/lib/mapDataFetchers.ts`:
+  - `buildWmsGetFeatureInfoUrl(...)`
+  - `formatFeatureInfoPopup(...)`
+  - `sanitizePopupValue(...)`
 
-3. Justere NVE default bare for Tensio
-- Dagens NVE-lag er allerede default av.
-- Jeg vil likevel gjøre logikken eksplisitt slik at Tensio-regelen ikke påvirker andre lag:
-  - Tensio: «Luftnett Tensio» på, «Kraftledninger (NVE)» av.
-  - Ikke-Tensio: «Luftnett Tensio» skjult, «Kraftledninger (NVE)» som i dag.
+- Eksisterende NVE-funksjon i `src/lib/mapDataFetchers.ts` kan utvides for bedre popup-format og feltvisning.
 
-4. Sørge for riktig visuell prioritet i kartet
-- Tensio WMS-laget bør få egen pane, f.eks. `tensioPowerPane`, med omtrent samme z-index som kraftlinjer.
-- Siden WMS er et bildebasert lag, må pane/opacity settes slik at det ikke skjuler viktige lag som NOTAM, ruteplanlegging og popups.
-- Anbefalt:
-```ts
-map.createPane("tensioPowerPane");
-map.getPane("tensioPowerPane")!.style.zIndex = "699";
-```
-- Popups/tooltip-pane beholdes høyere, som i dag.
+Forventet resultat
 
-5. Kartlagsmeny og toggling
-- Vanlig `handleLayerToggle` kan brukes for WMS-laget, siden det ikke trenger viewport-fetch slik NVE-laget gjør.
-- Ingen ny database-tabell eller RLS-policy trengs for selve kartlaget, siden datakilden er en ekstern offentlig WMS.
-- Tilgangsbegrensningen skjer i UI: laget tilbys bare til Tensio-hierarkiet.
-
-6. Hensyn til ruteplanlegging
-- I ruteplanlegging må laget ikke hindre klikk på kartet.
-- Sette `pointerEvents = "none"` på Tensio-pane i `routePlanning`, tilsvarende eksisterende mønster for ikke-interaktive kartlag.
-- WMS-laget har uansett ikke vanlige Leaflet-vektorobjekter, men pane-regelen gjør dette tryggere på mobil/iPad.
-
-7. Testing
-- Teste som Tensio-bruker/avdeling:
-  - «Luftnett Tensio» vises i kartlagsmenyen.
-  - Laget er på ved åpning av kartet.
-  - NVE-laget er av ved åpning.
-  - Man kan slå Tensio-laget av/på.
-- Teste som ikke-Tensio:
-  - «Luftnett Tensio» vises ikke.
-  - NVE-laget fungerer som før.
-- Teste på mobilbredde 360px:
-  - Kartlagsmenyen får plass.
-  - Kartinteraksjon fungerer i ruteplanlegging.
-
-Filer som sannsynligvis endres
-- `src/contexts/AuthContext.tsx`
-  - legge til `parentCompanyId` og eventuelt `parentCompanyName` i auth context/cache.
-- `src/components/OpenAIPMap.tsx`
-  - legge til Tensio WMS-lag, condition for synlighet og default på.
-  - justere pane/z-index og eventuell pointer-events-logikk.
-
-Mulig alternativ uten AuthContext-endring
-- Hente `parent_company_id` direkte i `OpenAIPMap` basert på `companyId`.
-- Dette gir mindre endring i auth, men legger en ekstra Supabase-spørring i kartkomponenten.
-- Jeg anbefaler AuthContext-varianten fordi `parent_company_id` allerede hentes der, og det kan gjenbrukes senere.
+- Tensio-brukere kan slå på/ha på `Luftnett Tensio`, klikke på en ledning og få mer informasjon.
+- Andre selskaper ser ikke Tensio-laget og får ingen Tensio-spørringer.
+- NVE-laget er fortsatt klikkbart når det slås på, med forbedret popup der data finnes.
+- Ruteplanlegging påvirkes ikke av klikkbare kartlag.
