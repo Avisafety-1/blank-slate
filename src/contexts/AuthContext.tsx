@@ -444,6 +444,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let profileData: CachedProfile = {
         companyId: companyId,
         companyName: companyName,
+        parentCompanyId: parentCompanyId,
+        parentCompanyName: parentCompanyName,
         companyType: 'droneoperator',
         companyLat: null,
         companyLon: null,
@@ -473,6 +475,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.companyId = profile.company_id;
         profileData.isApproved = profile.approved ?? false;
         profileData.companyName = company?.navn || null;
+        profileData.parentCompanyId = parentCompanyId || null;
+        profileData.parentCompanyName = null;
         profileData.companyType = company?.selskapstype || 'droneoperator';
         profileData.companyLat = company?.adresse_lat || null;
         profileData.companyLon = company?.adresse_lon || null;
@@ -492,6 +496,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // Re-check version after await
             if (myVersion !== refreshVersionRef.current) return;
             if (parentCompany) {
+              profileData.parentCompanyName = (parentCompany as any).navn || null;
               profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
               profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
               console.log('AuthContext: Inherited settings from parent company', parentCompanyId);
