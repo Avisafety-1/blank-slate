@@ -1341,6 +1341,24 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 );
               })()}
 
+              {/* Settings propagation toggle — only for parent companies */}
+              {!isChildDept && (
+                <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                  <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
+                    <div className="font-medium text-sm">Disse innstillingene gjelder for alle underavdelinger</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Når aktivert settes innstillingene over på alle avdelinger og avdelingene kan ikke overstyre dem
+                    </div>
+                  </Label>
+                  <Switch
+                    id="apply-settings-children"
+                    checked={applySettingsToChildren}
+                    onCheckedChange={handleToggleApplySettingsToChildren}
+                    disabled={savingSettings}
+                  />
+                </div>
+              )}
+
               {/* Avviksrapport */}
               {(() => {
                 const locked = isChildDept && !!inherited?.propagate_deviation_report;
@@ -1390,23 +1408,6 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 );
               })()}
-              {/* Settings propagation toggle — only for parent companies */}
-              {!isChildDept && (
-                <div className="border-t pt-2 flex items-center justify-between">
-                  <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      Når aktivert settes innstillingene over på alle avdelinger og avdelingene kan ikke overstyre dem
-                    </div>
-                  </Label>
-                  <Switch
-                    id="apply-settings-children"
-                    checked={applySettingsToChildren}
-                    onCheckedChange={handleToggleApplySettingsToChildren}
-                    disabled={savingSettings}
-                  />
-                </div>
-              )}
               {(() => {
                 const soraLocked = isChildDept && !!inherited?.propagate_sora_buffer_mode;
                 const bufMode = soraLocked ? inherited!.default_buffer_mode : defaultBufferMode;
