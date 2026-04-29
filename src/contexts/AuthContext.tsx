@@ -19,6 +19,8 @@ interface CachedSession {
 interface CachedProfile {
   companyId: string | null;
   companyName: string | null;
+  parentCompanyId: string | null;
+  parentCompanyName: string | null;
   companyType: CompanyType;
   companyLat: number | null;
   companyLon: number | null;
@@ -46,6 +48,8 @@ interface AuthContextType {
   loading: boolean;
   companyId: string | null;
   companyName: string | null;
+  parentCompanyId: string | null;
+  parentCompanyName: string | null;
   companyType: CompanyType;
   companyLat: number | null;
   companyLon: number | null;
@@ -85,6 +89,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   companyId: null,
   companyName: null,
+  parentCompanyId: null,
+  parentCompanyName: null,
   companyType: null,
   companyLat: null,
   companyLon: null,
