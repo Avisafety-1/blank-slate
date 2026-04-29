@@ -374,7 +374,7 @@ const Hendelser = () => {
 
   useEffect(() => {
     filterIncidents();
-  }, [incidents, searchQuery, selectedStatus]);
+  }, [incidents, searchQuery, selectedStatus, companySettings.hide_reporter_identity, isAdmin, parentCompanyId, departmentsEnabled]);
 
   const fetchIncidents = async () => {
     // 1. Load cache first
