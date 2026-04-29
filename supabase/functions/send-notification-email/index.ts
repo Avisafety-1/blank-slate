@@ -39,6 +39,29 @@ const escapeHtml = (value: string) => value
   .replace(/'/g, '&#39;')
   .replace(/\n/g, '<br>');
 
+const ADMIN_ROLES = ['administrator', 'admin', 'superadmin'];
+
+async function getParentAdminIdsWithPreference(supabase: any, parentCompanyId: string, preferenceColumn: string): Promise<string[]> {
+  const { data: roles } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
+  if (!roles?.length) return [];
+
+  const { data: admins } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('company_id', parentCompanyId)
+    .eq('approved', true)
+    .in('id', roles.map((r: any) => r.user_id));
+  if (!admins?.length) return [];
+
+  const { data: prefs } = await supabase
+    .from('notification_preferences')
+    .select('user_id')
+    .in('user_id', admins.map((a: any) => a.id))
+    .eq(preferenceColumn, true);
+
+  return [...new Set((prefs || []).map((p: any) => p.user_id))];
+}
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
