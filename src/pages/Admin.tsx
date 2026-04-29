@@ -607,6 +607,36 @@ const Admin = () => {
     }
   };
 
+  const openAllModulesForUser = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ under_training: false, training_module_access: [] } as any)
+        .eq("id", userId);
+      if (error) throw error;
+
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, under_training: false, training_module_access: [] } : p
+      ));
+      if (userId === user?.id) {
+        await refetchUserInfo();
+      }
+      toast.success("Alle moduler er åpnet for brukeren");
+    } catch (error) {
+      console.error("Error opening all modules:", error);
+      toast.error("Kunne ikke åpne alle moduler");
+    }
+  };
+
+  const getManualTrainingModules = (profile: Profile) => normalizeTrainingModules(profile.training_module_access);
+
+  const getCourseUnlockedModules = (profile: Profile) => normalizeTrainingModules(courseUnlockedModules[profile.id] || []);
+
+  const getEffectiveTrainingModules = (profile: Profile) => normalizeTrainingModules([
+    ...getManualTrainingModules(profile),
+    ...getCourseUnlockedModules(profile),
+  ]);
+
 
   const changeDepartment = async (userId: string, newCompanyId: string) => {
     try {
