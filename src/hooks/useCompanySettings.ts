@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface CompanySettings {
   show_all_airspace_warnings: boolean;
   hide_reporter_identity: boolean;
+  incident_reports_visible_to_all_companies: boolean;
   require_mission_approval: boolean;
   prevent_self_approval: boolean;
   require_sora_on_missions: boolean;
@@ -15,6 +16,7 @@ interface CompanySettings {
 const defaultSettings: CompanySettings = {
   show_all_airspace_warnings: false,
   hide_reporter_identity: false,
+  incident_reports_visible_to_all_companies: false,
   require_mission_approval: false,
   prevent_self_approval: false,
   require_sora_on_missions: false,
@@ -38,13 +40,14 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 
   const promise = (supabase
     .from("companies")
-    .select("show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled")
+    .select("show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled")
     .eq("id", companyId)
     .single() as any)
     .then(({ data }: any) => {
       const s: CompanySettings = {
         show_all_airspace_warnings: data?.show_all_airspace_warnings ?? false,
         hide_reporter_identity: data?.hide_reporter_identity ?? false,
+        incident_reports_visible_to_all_companies: data?.incident_reports_visible_to_all_companies ?? false,
         require_mission_approval: data?.require_mission_approval ?? false,
         prevent_self_approval: data?.prevent_self_approval ?? false,
         require_sora_on_missions: data?.require_sora_on_missions ?? false,
@@ -63,7 +66,7 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 }
 
 export function useCompanySettings() {
-  const { companyId } = useAuth();
+  const { companyId, parentCompanyId } = useAuth();
   const [settings, setSettings] = useState<CompanySettings>(defaultSettings);
 
   useEffect(() => {
@@ -75,8 +78,19 @@ export function useCompanySettings() {
       return;
     }
 
-    fetchCompanySettings(companyId).then(setSettings);
-  }, [companyId]);
+    fetchCompanySettings(companyId).then(async (ownSettings) => {
+      if (!parentCompanyId) {
+        setSettings(ownSettings);
+        return;
+      }
+
+      const parentSettings = await fetchCompanySettings(parentCompanyId);
+      setSettings({
+        ...ownSettings,
+        incident_reports_visible_to_all_companies: parentSettings.incident_reports_visible_to_all_companies,
+      });
+    });
+  }, [companyId, parentCompanyId]);
 
   return settings;
 }

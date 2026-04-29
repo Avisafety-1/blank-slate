@@ -33,6 +33,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { getAttributeLabel } from "@/config/eccairsFields";
+import { getIncidentReporterDisplayName } from "@/lib/incidentVisibility";
 
 type IncidentComment = {
   id: string;
@@ -57,6 +58,7 @@ type Incident = {
   mission_id: string | null;
   oppfolgingsansvarlig_id: string | null;
   company_id: string;
+  company_name?: string | null;
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
   incident_number: string | null;
@@ -142,7 +144,7 @@ const getEccairsStatusClass = (status?: string): string => {
 const Hendelser = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading, companyId, departmentsEnabled, isAdmin } = useAuth();
+  const { user, loading: authLoading, companyId, parentCompanyId, departmentsEnabled, isAdmin } = useAuth();
   const companySettings = useCompanySettings();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
@@ -372,7 +374,7 @@ const Hendelser = () => {
 
   useEffect(() => {
     filterIncidents();
-  }, [incidents, searchQuery, selectedStatus]);
+  }, [incidents, searchQuery, selectedStatus, companySettings.hide_reporter_identity, isAdmin, parentCompanyId, departmentsEnabled]);
 
   const fetchIncidents = async () => {
     // 1. Load cache first
@@ -446,7 +448,13 @@ const Hendelser = () => {
         incident.tittel.toLowerCase().includes(query) || 
         incident.beskrivelse?.toLowerCase().includes(query) || 
         incident.kategori?.toLowerCase().includes(query) || 
-        incident.rapportert_av?.toLowerCase().includes(query) || 
+        getIncidentReporterDisplayName({
+          incident,
+          hideReporterIdentity: companySettings.hide_reporter_identity,
+          isAdmin,
+          isParentCompany: !parentCompanyId,
+          departmentsEnabled,
+        })?.toLowerCase().includes(query) ||
         incident.lokasjon?.toLowerCase().includes(query) ||
         incident.incident_number?.toLowerCase().includes(query)
       );
@@ -482,7 +490,11 @@ const Hendelser = () => {
       oppfolgingsansvarligName: incident.oppfolgingsansvarlig_id ? oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] || null : null,
       relatedMissionTitle: incident.mission_id ? missions[incident.mission_id]?.tittel || null : null,
       companyId,
-      userId: user.id
+      userId: user.id,
+      hideReporterIdentity: companySettings.hide_reporter_identity,
+      isAdmin,
+      isParentCompany: !parentCompanyId,
+      departmentsEnabled,
     });
 
     if (success) {
@@ -1035,7 +1047,21 @@ const Hendelser = () => {
                     {incident.rapportert_av && (
                       <div className="flex items-start gap-2">
                         <User className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                        <span>Rapportert av: {companySettings.hide_reporter_identity && !(isAdmin && departmentsEnabled) ? "Anonym" : incident.rapportert_av}</span>
+                        <span>
+                          Rapportert av: {getIncidentReporterDisplayName({
+                            incident,
+                            hideReporterIdentity: companySettings.hide_reporter_identity,
+                            isAdmin,
+                            isParentCompany: !parentCompanyId,
+                            departmentsEnabled,
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {incident.company_name && incident.company_id !== companyId && (
+                      <div className="flex items-start gap-2">
+                        <Building2 className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                        <span>Avdeling: {incident.company_name}</span>
                       </div>
                     )}
                     {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && (

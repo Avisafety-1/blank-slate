@@ -63,6 +63,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [showAllAirspaceWarnings, setShowAllAirspaceWarnings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [hideReporterIdentity, setHideReporterIdentity] = useState(false);
+  const [incidentReportsVisibleToAllCompanies, setIncidentReportsVisibleToAllCompanies] = useState(false);
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [preventSelfApproval, setPreventSelfApproval] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
@@ -76,6 +77,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [inherited, setInherited] = useState<{
     show_all_airspace_warnings: boolean;
     hide_reporter_identity: boolean;
+    incident_reports_visible_to_all_companies: boolean;
     require_mission_approval: boolean;
     prevent_self_approval: boolean;
     require_sora_on_missions: boolean;
@@ -323,13 +325,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
       .eq("id", companyId)
       .single();
     if (data) {
       setParentCompanyName(data.navn);
       setShowAllAirspaceWarnings((data as any).show_all_airspace_warnings ?? false);
       setHideReporterIdentity((data as any).hide_reporter_identity ?? false);
+      setIncidentReportsVisibleToAllCompanies((data as any).incident_reports_visible_to_all_companies ?? false);
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setPreventSelfApproval((data as any).prevent_self_approval ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
@@ -358,7 +361,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
@@ -402,6 +405,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           setInherited({
             show_all_airspace_warnings: parent.show_all_airspace_warnings ?? false,
             hide_reporter_identity: parent.hide_reporter_identity ?? false,
+            incident_reports_visible_to_all_companies: parent.incident_reports_visible_to_all_companies ?? false,
             require_mission_approval: parent.require_mission_approval ?? false,
             prevent_self_approval: parent.prevent_self_approval ?? false,
             require_sora_on_missions: parent.require_sora_on_missions ?? false,
@@ -534,6 +538,25 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
     setSavingSettings(false);
     setHideReporterIdentity(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
+  const handleToggleIncidentReportsVisibleToAllCompanies = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await supabase
+      .from("companies")
+      .update({ incident_reports_visible_to_all_companies: checked } as any)
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    setSavingSettings(false);
+    setIncidentReportsVisibleToAllCompanies(checked);
     invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
   };
@@ -1131,6 +1154,29 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 );
               })()}
+
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                <Label htmlFor="incident-reports-visible-all" className="flex-1 cursor-pointer pr-4">
+                  <div className="font-medium text-sm flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4" />
+                    Hendelsesrapporter synlig for alle selskaper
+                    {isChildDept && (
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <Lock className="w-2.5 h-2.5" /> Styres av {parentNavn}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Når aktivert kan morselskapet og alle avdelinger se hendelsesrapporter fra hverandre.
+                  </div>
+                </Label>
+                <Switch
+                  id="incident-reports-visible-all"
+                  checked={isChildDept ? !!inherited?.incident_reports_visible_to_all_companies : incidentReportsVisibleToAllCompanies}
+                  onCheckedChange={handleToggleIncidentReportsVisibleToAllCompanies}
+                  disabled={savingSettings || isChildDept}
+                />
+              </div>
 
               {/* Krev godkjenning */}
               {(() => {

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addPdfHeader, addSectionHeader, checkPageBreak, arePdfFontsLoaded } from "./pdfUtils";
+import { getIncidentReporterDisplayName } from "./incidentVisibility";
 
 type Incident = {
   id: string;
@@ -14,6 +15,7 @@ type Incident = {
   kategori: string | null;
   lokasjon: string | null;
   rapportert_av: string | null;
+  reported_anonymously?: boolean | null;
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
   bilde_url: string | null;
@@ -42,6 +44,10 @@ interface ExportOptions {
   relatedMissionTitle: string | null;
   companyId: string;
   userId: string;
+  hideReporterIdentity?: boolean;
+  isAdmin?: boolean;
+  isParentCompany?: boolean;
+  departmentsEnabled?: boolean;
 }
 
 export const exportIncidentPDF = async ({
@@ -51,6 +57,10 @@ export const exportIncidentPDF = async ({
   relatedMissionTitle,
   companyId,
   userId,
+  hideReporterIdentity = false,
+  isAdmin = false,
+  isParentCompany = false,
+  departmentsEnabled = false,
 }: ExportOptions): Promise<boolean> => {
   try {
     // Fetch company name
@@ -73,6 +83,7 @@ export const exportIncidentPDF = async ({
     doc.setFontSize(10);
     setFontStyle(doc, "normal");
 
+    const reporterName = getIncidentReporterDisplayName({ incident, hideReporterIdentity, isAdmin, isParentCompany, departmentsEnabled });
     const details: [string, string][] = [
       ["Status", sanitizeForPdf(incident.status)],
       ["Alvorlighetsgrad", sanitizeForPdf(incident.alvorlighetsgrad)],
@@ -81,7 +92,7 @@ export const exportIncidentPDF = async ({
       ["Medvirkende arsak", sanitizeForPdf(incident.medvirkende_aarsak) || "Ikke spesifisert"],
       ["Hendelsestidspunkt", formatDateForPdf(incident.hendelsestidspunkt)],
       ["Lokasjon", sanitizeForPdf(incident.lokasjon) || "Ikke spesifisert"],
-      ["Rapportert av", sanitizeForPdf(incident.rapportert_av) || "Ikke spesifisert"],
+      ["Rapportert av", sanitizeForPdf(reporterName) || "Ikke spesifisert"],
       ["Oppfolgingsansvarlig", sanitizeForPdf(oppfolgingsansvarligName) || "Ikke tildelt"],
     ];
 
