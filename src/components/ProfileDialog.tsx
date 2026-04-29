@@ -94,6 +94,11 @@ interface NotificationPreferences {
   email_document_expiry: boolean;
   email_new_user_pending: boolean;
   email_followup_assigned: boolean;
+  email_child_incidents: boolean;
+  email_child_missions: boolean;
+  email_child_new_user_pending: boolean;
+  email_child_document_expiry: boolean;
+  email_child_maintenance_reminder: boolean;
   email_inspection_reminder: boolean;
   inspection_reminder_days: number;
   push_enabled: boolean;
@@ -114,7 +119,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, companyId, parentCompanyId, accessibleCompanies, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -166,6 +171,7 @@ export const ProfileDialog = () => {
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
+  const canConfigureChildNotifications = isAdmin && !parentCompanyId && accessibleCompanies.some((c) => c.id === companyId && c.isParent);
 
   // Fast badge-count effect: runs immediately on mount, independent of heavy fetchUserData
   useEffect(() => {
@@ -424,6 +430,11 @@ export const ProfileDialog = () => {
             email_document_expiry: false,
             email_new_user_pending: false,
             email_followup_assigned: true,
+            email_child_incidents: false,
+            email_child_missions: false,
+            email_child_new_user_pending: false,
+            email_child_document_expiry: false,
+            email_child_maintenance_reminder: false,
             email_inspection_reminder: false,
             inspection_reminder_days: 14,
           })
@@ -434,6 +445,11 @@ export const ProfileDialog = () => {
       } else {
         setNotificationPrefs({
           ...prefsData,
+          email_child_incidents: prefsData.email_child_incidents ?? false,
+          email_child_missions: prefsData.email_child_missions ?? false,
+          email_child_new_user_pending: prefsData.email_child_new_user_pending ?? false,
+          email_child_document_expiry: prefsData.email_child_document_expiry ?? false,
+          email_child_maintenance_reminder: prefsData.email_child_maintenance_reminder ?? false,
           email_inspection_reminder: prefsData.email_inspection_reminder ?? false,
           inspection_reminder_days: prefsData.inspection_reminder_days ?? 14,
         });
@@ -1731,6 +1747,83 @@ export const ProfileDialog = () => {
                           </div>
                         )}
                       </div>
+
+                      {canConfigureChildNotifications && (
+                        <>
+                          <Separator className="my-6" />
+                          <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
+                            <div className="space-y-1">
+                              <h4 className="font-medium">Varslinger fra avdelinger</h4>
+                              <p className="text-xs text-muted-foreground">
+                                Gjelder hendelser og frister i avdelinger under mor-selskapet ditt.
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Nye hendelser i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når en avdeling registrerer en hendelse.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_incidents ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_incidents', checked)}
+                              />
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Nye oppdrag i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når en avdeling oppretter et oppdrag.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_missions ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_missions', checked)}
+                              />
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Nye brukere i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når en bruker venter på godkjenning i en avdeling.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_new_user_pending ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_new_user_pending', checked)}
+                              />
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Dokumenter som utløper i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når dokumentfrister i avdelinger nærmer seg.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_document_expiry ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_document_expiry', checked)}
+                              />
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Vedlikehold i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når ressurser i avdelinger krever vedlikehold eller inspeksjon.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_maintenance_reminder ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_maintenance_reminder', checked)}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                       
                       {/* Push Notifications Section */}
                       <Separator className="my-6" />

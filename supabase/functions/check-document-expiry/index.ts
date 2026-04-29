@@ -8,6 +8,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const ADMIN_ROLES = ['administrator', 'admin', 'superadmin'];
+
+async function getParentAdminIdsWithPreference(supabase: any, parentCompanyId: string, preferenceColumn: string): Promise<string[]> {
+  const { data: roles } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
+  if (!roles?.length) return [];
+
+  const { data: admins } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('company_id', parentCompanyId)
+    .eq('approved', true)
+    .in('id', roles.map((r: any) => r.user_id));
+  if (!admins?.length) return [];
+
+  const { data: prefs } = await supabase
+    .from('notification_preferences')
+    .select('user_id')
+    .in('user_id', admins.map((a: any) => a.id))
+    .eq(preferenceColumn, true);
+
+  return [...new Set((prefs || []).map((p: any) => p.user_id))];
+}
+
 async function sendPushNotifications(supabase: any, companyId: string, title: string, body: string) {
   try {
     const { data: profiles } = await supabase
@@ -159,29 +182,31 @@ serve(async (req) => {
         .eq('company_id', companyId)
         .eq('approved', true);
 
-      if (!eligibleUsers || eligibleUsers.length === 0) continue;
+      const userIds = (eligibleUsers || []).map(u => u.id);
 
-      const userIds = eligibleUsers.map(u => u.id);
-
-      const { data: notificationPrefs } = await supabase
-        .from('notification_preferences')
-        .select('user_id')
-        .in('user_id', userIds)
-        .eq('email_document_expiry', true);
-
-      const usersToNotify = notificationPrefs?.map(pref => pref.user_id) || [];
-      if (usersToNotify.length === 0) continue;
-
-      const { data: authUsers } = await supabase.auth.admin.listUsers();
-      if (!authUsers) continue;
+      const { data: notificationPrefs } = userIds.length
+        ? await supabase
+            .from('notification_preferences')
+            .select('user_id')
+            .in('user_id', userIds)
+            .eq('email_document_expiry', true)
+        : { data: [] };
 
       const { data: companyData } = await supabase
         .from('companies')
-        .select('navn')
+        .select('navn, parent_company_id')
         .eq('id', companyId)
         .single();
 
       const companyName = companyData?.navn || 'Selskapet';
+      const parentAdminIds = companyData?.parent_company_id
+        ? await getParentAdminIdsWithPreference(supabase, companyData.parent_company_id, 'email_child_document_expiry')
+        : [];
+      const usersToNotify = [...new Set([...(notificationPrefs?.map(pref => pref.user_id) || []), ...parentAdminIds])];
+      if (usersToNotify.length === 0) continue;
+
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      if (!authUsers) continue;
 
       const { data: template } = await supabase
         .from('email_templates')

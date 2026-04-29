@@ -8,6 +8,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const ADMIN_ROLES = ['administrator', 'admin', 'superadmin'];
+
+async function getParentAdminIdsWithPreference(supabase: any, parentCompanyId: string, preferenceColumn: string): Promise<string[]> {
+  const { data: roles } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
+  if (!roles?.length) return [];
+
+  const { data: admins } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('company_id', parentCompanyId)
+    .eq('approved', true)
+    .in('id', roles.map((r: any) => r.user_id));
+  if (!admins?.length) return [];
+
+  const { data: prefs } = await supabase
+    .from('notification_preferences')
+    .select('user_id')
+    .in('user_id', admins.map((a: any) => a.id))
+    .eq(preferenceColumn, true);
+
+  return [...new Set((prefs || []).map((p: any) => p.user_id))];
+}
+
 interface MaintenanceItem {
   id: string;
   name: string;
@@ -159,6 +182,17 @@ serve(async (req) => {
       .select('id, navn, neste_vedlikehold, company_id')
       .not('neste_vedlikehold', 'is', null);
 
+    const companyIdsWithResources = [...new Set([
+      ...(drones || []).map((d: any) => d.company_id),
+      ...(equipment || []).map((e: any) => e.company_id),
+      ...(accessories || []).map((a: any) => a.company_id),
+    ].filter(Boolean))];
+
+    const { data: resourceCompanies } = companyIdsWithResources.length
+      ? await supabase.from('companies').select('id, parent_company_id').in('id', companyIdsWithResources)
+      : { data: [] };
+    const parentByCompany = new Map((resourceCompanies || []).map((c: any) => [c.id, c.parent_company_id]));
+
     // ── Notification prefs ──
     const { data: notificationPrefs } = await supabase
       .from('notification_preferences')
@@ -203,6 +237,7 @@ serve(async (req) => {
 
     let totalEmailsSent = 0;
     let totalPushSent = 0;
+    const parentMaintenanceNotificationKeys = new Set<string>();
 
     for (const pref of notificationPrefs) {
       const profile = profiles?.find((p: any) => p.id === pref.user_id);
@@ -350,6 +385,26 @@ serve(async (req) => {
         await sendEmail({ from: senderAddress, to: authUser.email, subject: sanitizeSubject(emailSubject), html: emailHtml });
         totalEmailsSent++;
         console.log(`Email sent to ${authUser.email}`);
+
+        const childCompanyIds = [...new Set(itemsNeedingAttention.map((item) => item.companyId))];
+        const parentRecipientIds = new Set<string>();
+        for (const childCompanyId of childCompanyIds) {
+          const parentCompanyId = parentByCompany.get(childCompanyId);
+          if (!parentCompanyId || parentCompanyId === profile.company_id) continue;
+          const ids = await getParentAdminIdsWithPreference(supabase, parentCompanyId, 'email_child_maintenance_reminder');
+          ids.forEach((id) => parentRecipientIds.add(id));
+        }
+
+        for (const parentUserId of parentRecipientIds) {
+          if (parentUserId === pref.user_id) continue;
+          const key = `${parentUserId}:${itemsNeedingAttention.map((item) => item.id).sort().join(',')}`;
+          if (parentMaintenanceNotificationKeys.has(key)) continue;
+          parentMaintenanceNotificationKeys.add(key);
+          const parentAuthUser = authUsers?.users.find((u: any) => u.id === parentUserId);
+          if (!parentAuthUser?.email) continue;
+          await sendEmail({ from: senderAddress, to: parentAuthUser.email, subject: sanitizeSubject(emailSubject), html: emailHtml });
+          totalEmailsSent++;
+        }
       } catch (emailError) {
         console.error(`Error sending email to ${authUser.email}:`, emailError);
       }
