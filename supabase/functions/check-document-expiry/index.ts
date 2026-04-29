@@ -192,19 +192,21 @@ serve(async (req) => {
         .in('user_id', userIds)
         .eq('email_document_expiry', true);
 
-      const usersToNotify = notificationPrefs?.map(pref => pref.user_id) || [];
-      if (usersToNotify.length === 0) continue;
-
-      const { data: authUsers } = await supabase.auth.admin.listUsers();
-      if (!authUsers) continue;
-
       const { data: companyData } = await supabase
         .from('companies')
-        .select('navn')
+        .select('navn, parent_company_id')
         .eq('id', companyId)
         .single();
 
       const companyName = companyData?.navn || 'Selskapet';
+      const parentAdminIds = companyData?.parent_company_id
+        ? await getParentAdminIdsWithPreference(supabase, companyData.parent_company_id, 'email_child_document_expiry')
+        : [];
+      const usersToNotify = [...new Set([...(notificationPrefs?.map(pref => pref.user_id) || []), ...parentAdminIds])];
+      if (usersToNotify.length === 0) continue;
+
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      if (!authUsers) continue;
 
       const { data: template } = await supabase
         .from('email_templates')
