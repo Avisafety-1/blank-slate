@@ -1112,15 +1112,6 @@ const Admin = () => {
                                         </Select>
                                       </div>
                                     )}
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
-                                      <Switch
-                                        checked={profile.is_technical_responsible === true}
-                                        onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
-                                        className="scale-75"
-                                        disabled={!canManageRoles}
-                                      />
-                                    </div>
                                     <div className="space-y-2 rounded-md border border-border p-2">
                                       <div className="flex items-center justify-between">
                                         <span className="text-xs text-muted-foreground">Under opplæring</span>
@@ -1138,6 +1129,15 @@ const Admin = () => {
                                           disabled={!canManageRoles}
                                         />
                                       )}
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
+                                      <Switch
+                                        checked={profile.is_technical_responsible === true}
+                                        onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
+                                        className="scale-75"
+                                        disabled={!canManageRoles}
+                                      />
                                     </div>
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
