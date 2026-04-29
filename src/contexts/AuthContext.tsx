@@ -149,6 +149,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [parentCompanyId, setParentCompanyId] = useState<string | null>(null);
+  const [parentCompanyName, setParentCompanyName] = useState<string | null>(null);
   const [companyType, setCompanyType] = useState<CompanyType>(null);
   const [companyLat, setCompanyLat] = useState<number | null>(null);
   const [companyLon, setCompanyLon] = useState<number | null>(null);
@@ -178,6 +180,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     setCompanyId(null);
     setCompanyName(null);
+    setParentCompanyId(null);
+    setParentCompanyName(null);
     setCompanyType(null);
     setCompanyLat(null);
     setCompanyLon(null);
@@ -272,6 +276,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const cached: CachedProfile = JSON.parse(raw);
       setCompanyId(cached.companyId);
       setCompanyName(cached.companyName);
+      setParentCompanyId(cached.parentCompanyId ?? null);
+      setParentCompanyName(cached.parentCompanyName ?? null);
       setCompanyType(cached.companyType);
       setCompanyLat(cached.companyLat);
       setCompanyLon(cached.companyLon);
