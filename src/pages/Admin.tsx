@@ -538,6 +538,42 @@ const Admin = () => {
     }
   };
 
+  const toggleUnderTraining = async (userId: string, currentValue: boolean) => {
+    try {
+      const newValue = !currentValue;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ under_training: newValue } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, under_training: newValue } : p
+      ));
+      toast.success(newValue ? 'Bruker er satt under opplæring' : 'Opplæringsmodus er slått av');
+    } catch (error) {
+      console.error("Error toggling under training:", error);
+      toast.error("Kunne ikke oppdatere opplæringsstatus");
+    }
+  };
+
+  const updateTrainingModuleAccess = async (userId: string, modules: TrainingModuleKey[]) => {
+    const normalized = normalizeTrainingModules(modules);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ training_module_access: normalized } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, training_module_access: normalized } : p
+      ));
+      toast.success('Modultilgang oppdatert');
+    } catch (error) {
+      console.error("Error updating training module access:", error);
+      toast.error("Kunne ikke oppdatere modultilgang");
+    }
+  };
+
 
   const changeDepartment = async (userId: string, newCompanyId: string) => {
     try {
