@@ -216,6 +216,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsBillingOwner(false);
     setSeatCount(1);
     setAccessibleCompanies([]);
+    setUnderTraining(false);
+    setTrainingModuleAccess([]);
   };
 
   const getErrorMessage = (error: unknown): string => {
@@ -300,6 +302,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setArdupilotFlightlogEnabled(cached.ardupilotFlightlogEnabled ?? false);
       setDepartmentsEnabled(cached.departmentsEnabled ?? false);
       setStripeExempt(cached.stripeExempt ?? false);
+      setUnderTraining(cached.underTraining ?? false);
+      setTrainingModuleAccess(normalizeTrainingModules(cached.trainingModuleAccess));
       if (cached.accessibleCompanies?.length) {
         setAccessibleCompanies(cached.accessibleCompanies);
       }
@@ -420,6 +424,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .select(`
             company_id,
             approved,
+            under_training,
+            training_module_access,
             companies (
               id,
               navn,
@@ -468,6 +474,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         ardupilotFlightlogEnabled: false,
         stripeExempt: false,
         departmentsEnabled: false,
+        underTraining: false,
+        trainingModuleAccess: [],
       };
 
       if (profileResult.error && roleResult.error) {
@@ -485,6 +493,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const profile = profileResult.data;
         profileData.companyId = profile.company_id;
         profileData.isApproved = profile.approved ?? false;
+        profileData.underTraining = (profile as any).under_training ?? false;
+        profileData.trainingModuleAccess = normalizeTrainingModules((profile as any).training_module_access);
         profileData.companyName = company?.navn || null;
         profileData.parentCompanyId = resolvedParentCompanyId || null;
         profileData.parentCompanyName = null;
