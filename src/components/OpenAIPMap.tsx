@@ -40,6 +40,9 @@ import { showWeatherPopup } from "@/lib/mapWeatherPopup";
 import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
+const TENSIO_WMS_URL = "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer";
+
+const isTensioName = (name?: string | null) => name?.toLowerCase().includes("tensio") ?? false;
 
 const getPopulationDensityStyle = (density = 0, isHotspot = false): L.PathOptions => {
   const color = density >= 5000 ? 'hsl(var(--destructive))' : density >= 250 ? 'hsl(var(--warning))' : 'hsl(var(--success))';
@@ -90,7 +93,8 @@ export function OpenAIPMap({
   populationDensityCells,
   populationDensityCoveragePolygons,
 }: OpenAIPMapProps) {
-  const { user, companyLat, companyLon } = useAuth();
+  const { user, companyName, parentCompanyName, companyLat, companyLon } = useAuth();
+  const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
@@ -510,10 +514,10 @@ export function OpenAIPMap({
     // Create panes
     const paneConfig: Record<string, string> = {
       safeskyPane: '750', liveFlightPane: '720', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
-      obstaclePane: '660', nsmPane: '650', notamPane: '640', populationDensityPane: '635',
+      powerPane: '700', tensioPowerPane: '699', obstaclePane: '660', nsmPane: '650', notamPane: '640', populationDensityPane: '635',
       rpasPane: '630', aipPane: '625', rmzPane: '620',
     };
-    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane', 'populationDensityPane']);
+    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane', 'populationDensityPane', 'tensioPowerPane']);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
