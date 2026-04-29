@@ -182,6 +182,17 @@ serve(async (req) => {
       .select('id, navn, neste_vedlikehold, company_id')
       .not('neste_vedlikehold', 'is', null);
 
+    const companyIdsWithResources = [...new Set([
+      ...(drones || []).map((d: any) => d.company_id),
+      ...(equipment || []).map((e: any) => e.company_id),
+      ...(accessories || []).map((a: any) => a.company_id),
+    ].filter(Boolean))];
+
+    const { data: resourceCompanies } = companyIdsWithResources.length
+      ? await supabase.from('companies').select('id, parent_company_id').in('id', companyIdsWithResources)
+      : { data: [] };
+    const parentByCompany = new Map((resourceCompanies || []).map((c: any) => [c.id, c.parent_company_id]));
+
     // ── Notification prefs ──
     const { data: notificationPrefs } = await supabase
       .from('notification_preferences')
