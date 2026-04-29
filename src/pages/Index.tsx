@@ -37,6 +37,7 @@ import { useFlightTimer } from "@/hooks/useFlightTimer";
 import { StartFlightDialog } from "@/components/StartFlightDialog";
 import { PasskeyPromptDialog } from "@/components/PasskeyPromptDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { dashboardComponentToModule } from "@/config/trainingModules";
 
 const STORAGE_KEY = "dashboard-layout";
 
@@ -52,7 +53,7 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, ardupilotFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo } = useAuth();
+  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, ardupilotFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo, underTraining, hasTrainingModuleAccess } = useAuth();
   const hasFlightLogUpload = djiFlightlogEnabled || ardupilotFlightlogEnabled;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -360,6 +361,9 @@ const Index = () => {
   const abortSignal = abortControllerRef.current.signal;
 
   const renderSection = (component: string) => {
+    const moduleKey = dashboardComponentToModule(component);
+    if (moduleKey && !hasTrainingModuleAccess(moduleKey)) return null;
+
     // Defer heavy data-fetching sections until readyToFetch is true
     const isDeferred = ["documents", "missions", "incidents", "status", "kpi"].includes(component);
     if (isDeferred && !readyToFetch) return null;
