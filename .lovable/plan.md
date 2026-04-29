@@ -1,54 +1,61 @@
-Plan for å gjøre kraftledningslag klikkbart
+Plan for ny selskapsinnstilling: «Hendelsesrapporter synlig for alle selskaper»
 
-Målet er at brukeren kan trykke på kraftledningene i kartet og få opp tilgjengelig informasjon om linjen/objektet. NVE-laget har allerede delvis popup-støtte fordi det hentes som vektordata. Tensio-laget er WMS-bilder, så der må vi bruke WMS GetFeatureInfo ved klikk.
+Målet er at et morselskap kan aktivere én innstilling som gjør at hendelser registrert i morselskapet og alle underavdelinger vises på tvers av hele selskapsstrukturen. Innstillingen skal ikke ha «gjelder for underavdelinger», fordi effekten automatisk gjelder hele konsern-/avdelingshierarkiet når den er aktivert.
 
-Endringer som foreslås:
+1. Database: legg til ny innstilling på companies
+- Legge til et nytt boolean-felt på `companies`, f.eks. `incident_reports_visible_to_all_companies boolean not null default false`.
+- Feltet lagres på selskapet som aktiverer innstillingen. For en avdeling vil appen sjekke morselskapets verdi, slik at man slipper egen propagasjons-/arvelogikk.
 
-1. Beholde NVE som klikkbart vektorlag
-- Kontrollere og eventuelt forbedre eksisterende popup for `Kraftledninger (NVE)`.
-- Vise mer robust info fra feltene som finnes, for eksempel navn, eier, spenning, nettnivå/type og andre relevante felt dersom de finnes.
-- Fortsatt deaktivere interaktivitet i ruteplanlegging der kartklikk brukes til å tegne rute.
+2. Database/RLS: utvid lesetilgang for incidents
+- Oppdatere SELECT-policy for `incidents` slik at brukere fortsatt ser det de ser i dag via `get_user_visible_company_ids(auth.uid())`.
+- I tillegg: hvis morselskapet for brukerens selskap har aktivert `incident_reports_visible_to_all_companies`, skal brukeren kunne lese hendelser der `company_id` tilhører samme morselskap eller en av morselskapets avdelinger.
+- Dette bør gjøres via en `SECURITY DEFINER`-hjelpefunksjon for å unngå rekursiv RLS mot `companies`/`incidents` og følge eksisterende RLS-mønster i prosjektet.
+- Oppdatere tilhørende SELECT-policy for `incident_comments`, slik at kommentarer på hendelser som nå blir synlige på tvers av avdelinger også kan leses.
 
-2. Legge til klikkstøtte for `Luftnett Tensio`
-- Siden Tensio-laget er et WMS-bildelag, legger vi på en kartklikk-handler når laget er aktivt.
-- Ved klikk sendes en `GetFeatureInfo`-forespørsel til:
-  `https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer`
-- Tjenesten støtter `GetFeatureInfo` og layerne `0-9` er `queryable`, så dette skal kunne gi objektinformasjon tilbake.
-- Bruke `INFO_FORMAT=application/geo+json` først, med fallback til `text/html` eller `text/plain` hvis nødvendig.
+3. Selskapsinnstillinger i admin
+- Legge til toggle i `Selskapsinnstillinger`:
+  - Label: «Hendelsesrapporter synlig for alle selskaper»
+  - Beskrivelse: «Når aktivert kan alle avdelinger i samme selskap se hendelsesrapporter fra hverandre. Innstillingen styres av morselskapet og trenger ikke ‘gjelder for underavdelinger’.»
+- For morselskap: togglen kan endres.
+- For underavdeling: vise morselskapets verdi som låst/arvet informasjon, siden underavdelingen ikke skal styre dette selv.
+- Ikke koble denne innstillingen til eksisterende `applySettingsToChildren` eller `propagate_*`-felter.
 
-3. Vise popup på kartet
-- Når Tensio returnerer treff, åpnes en Leaflet-popup på klikkpunktet.
-- Popupen får tittel som f.eks. `Luftnett Tensio` og viser felter fra objektet i en ryddig tabell/listing.
-- Skjule tekniske/tomme felt der det er mulig, og begrense antall felt slik at popupen fungerer på mobil.
-- Hvis det ikke finnes treff på klikkpunktet, vises ingen popup, slik at kartet ikke blir forstyrrende.
+4. Appens company settings-hook
+- Utvide `useCompanySettings` med det nye feltet.
+- For underavdelinger må hooken hente effektiv verdi fra morselskapet når relevant, slik at visninger og anonymitetslogikk kan bruke samme settings-objekt uten duplisering.
+- Invalidering av settings-cache beholdes ved lagring.
 
-4. Respektere tilgang og standardvalg
-- Tensio GetFeatureInfo aktiveres kun når brukeren er i Tensio-hierarkiet og `Luftnett Tensio`-laget finnes.
-- Den følger samme av/på-status som laget i kartlagsmenyen.
-- NVE forblir default av for Tensio, default uendret for andre, slik det ble implementert tidligere.
+5. Hendelseslisten og filtrering
+- `Hendelser`-siden henter allerede `incidents` uten lokal company-filter, og RLS bestemmer hva brukeren får. Etter RLS-endringen skal listen automatisk kunne inneholde hendelser fra andre avdelinger når innstillingen er aktiv.
+- Legge til/validere visning av selskaps-/avdelingsnavn i hendelseskortet når listen inneholder flere selskaper, slik at det er tydelig hvilken avdeling hendelsen kommer fra.
+- Offline cache-nøkkelen beholdes per innlogget selskap, men innholdet kan nå inkludere flere avdelinger når innstillingen er aktiv.
 
-5. Ruteplanlegging og kartinteraksjon
-- I `routePlanning`-modus skal kraftledningsklikk ikke hindre plassering av rutepunkter.
-- Derfor deaktiveres popup/GetFeatureInfo i ruteplanlegging, eller ignoreres når modus er `routePlanning`.
+6. Anonymitet / pilotnavn
+- Eksisterende logikk skjuler navn ved `reported_anonymously` eller `hide_reporter_identity`, og viser navn for admin i morselskap når avdelinger er aktivert.
+- Jeg vil stramme dette opp slik at:
+  - Hvis `reported_anonymously = true`: navnet skjules for alle unntatt admin i morselskapet.
+  - Hvis global «Skjul identitet til rapportør» er aktiv: samme prinsipp, navnet skjules for vanlige brukere/avdelinger.
+  - Listevisning og detaljdialog bruker samme hjelpefunksjon, slik at de ikke viser ulike resultater.
+- PDF-eksport bør også respektere samme anonymitetsregel, slik at anonym rapportør ikke lekker i eksport for avdelingsbrukere.
 
-Tekniske detaljer
+7. Status/statistikk
+- Eksisterende status/statistikk-spørringer for hendelser går også via `incidents` og vil derfor følge RLS. Når innstillingen er aktiv, kan hendelsestall inkludere hele selskapsstrukturen.
+- Om ønskelig kan visningen senere få filter per avdeling, men det er ikke nødvendig for denne innstillingen.
 
-- Hovedfil: `src/components/OpenAIPMap.tsx`
-  - Legge til refs for Tensio-lagets enabled-status og eventuelt WMS-lag-instans.
-  - Legge til `map.on('click', handleTensioFeatureInfoClick)` og rydde opp i cleanup.
-  - Beregne WMS 1.3.0 GetFeatureInfo-parametre fra kartets bounds, størrelse og klikkpunkt.
-  - For EPSG:4326 i WMS 1.3.0 brukes korrekt BBOX-akseorden dersom tjenesten krever det.
-
-- Støttefunksjon kan legges i samme fil eller i `src/lib/mapDataFetchers.ts`:
-  - `buildWmsGetFeatureInfoUrl(...)`
-  - `formatFeatureInfoPopup(...)`
-  - `sanitizePopupValue(...)`
-
-- Eksisterende NVE-funksjon i `src/lib/mapDataFetchers.ts` kan utvides for bedre popup-format og feltvisning.
+Tekniske endringer
+- Supabase migration:
+  - Ny kolonne på `companies`.
+  - Ny/oppdatert `SECURITY DEFINER`-funksjon for effektive synlige hendelsesselskaper.
+  - Oppdatert SELECT-policy for `incidents`.
+  - Oppdatert SELECT-policy for `incident_comments`.
+- Frontend:
+  - `src/hooks/useCompanySettings.ts`
+  - `src/components/admin/ChildCompaniesSection.tsx`
+  - `src/pages/Hendelser.tsx`
+  - `src/components/dashboard/IncidentDetailDialog.tsx`
+  - `src/lib/incidentPdfExport.ts`
 
 Forventet resultat
-
-- Tensio-brukere kan slå på/ha på `Luftnett Tensio`, klikke på en ledning og få mer informasjon.
-- Andre selskaper ser ikke Tensio-laget og får ingen Tensio-spørringer.
-- NVE-laget er fortsatt klikkbart når det slås på, med forbedret popup der data finnes.
-- Ruteplanlegging påvirkes ikke av klikkbare kartlag.
+- Morselskap kan slå på én innstilling som gjør hendelser synlige på tvers av alle avdelinger i samme selskapsstruktur.
+- Underavdelinger får ikke egen «gjelder for underavdelinger» for denne innstillingen.
+- Anonyme rapporter viser ikke pilot/rapportørnavn for avdelinger eller vanlige brukere, men morselskapets admin kan fortsatt se navnet.
