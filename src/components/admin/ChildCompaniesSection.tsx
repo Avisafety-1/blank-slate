@@ -63,6 +63,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [showAllAirspaceWarnings, setShowAllAirspaceWarnings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [hideReporterIdentity, setHideReporterIdentity] = useState(false);
+  const [incidentReportsVisibleToAllCompanies, setIncidentReportsVisibleToAllCompanies] = useState(false);
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [preventSelfApproval, setPreventSelfApproval] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
@@ -76,6 +77,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [inherited, setInherited] = useState<{
     show_all_airspace_warnings: boolean;
     hide_reporter_identity: boolean;
+    incident_reports_visible_to_all_companies: boolean;
     require_mission_approval: boolean;
     prevent_self_approval: boolean;
     require_sora_on_missions: boolean;
