@@ -779,7 +779,13 @@ export function OpenAIPMap({
               .openOn(map);
           }
         } catch (err) {
-          console.warn("Kunne ikke hente Tensio objektinformasjon:", err);
+          try {
+            const fallback = await fetch(buildTensioFeatureInfoUrl(map, e.latlng, "text/plain"));
+            const popup = fallback.ok ? formatPlainFeatureInfoPopup("Luftnett Tensio", await fallback.text()) : "";
+            if (popup) L.popup({ maxWidth: 300 }).setLatLng(e.latlng).setContent(popup).openOn(map);
+          } catch (fallbackErr) {
+            console.warn("Kunne ikke hente Tensio objektinformasjon:", fallbackErr);
+          }
         }
       }
     };
