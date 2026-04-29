@@ -1098,6 +1098,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const dialogCompany = selectedCompany || undefined;
   const preventSelfApprovalLocked = isChildDept && !!inherited?.propagate_prevent_self_approval;
   const preventSelfApprovalValue = preventSelfApprovalLocked ? inherited!.prevent_self_approval : preventSelfApproval;
+  const allUsersCanAcknowledgeMaintenanceLocked = isChildDept && !!inherited?.propagate_all_users_can_acknowledge_maintenance;
+  const allUsersCanAcknowledgeMaintenanceValue = allUsersCanAcknowledgeMaintenanceLocked
+    ? inherited!.all_users_can_acknowledge_maintenance
+    : allUsersCanAcknowledgeMaintenance;
 
   return (
     <div className="space-y-4">
