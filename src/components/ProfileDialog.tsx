@@ -430,11 +430,11 @@ export const ProfileDialog = () => {
             email_document_expiry: false,
             email_new_user_pending: false,
             email_followup_assigned: true,
-            email_child_incidents: false,
-            email_child_missions: false,
-            email_child_new_user_pending: false,
-            email_child_document_expiry: false,
-            email_child_maintenance_reminder: false,
+            email_child_incidents: true,
+            email_child_missions: true,
+            email_child_new_user_pending: true,
+            email_child_document_expiry: true,
+            email_child_maintenance_reminder: true,
             email_inspection_reminder: false,
             inspection_reminder_days: 14,
           })
@@ -445,11 +445,11 @@ export const ProfileDialog = () => {
       } else {
         setNotificationPrefs({
           ...prefsData,
-          email_child_incidents: prefsData.email_child_incidents ?? false,
-          email_child_missions: prefsData.email_child_missions ?? false,
-          email_child_new_user_pending: prefsData.email_child_new_user_pending ?? false,
-          email_child_document_expiry: prefsData.email_child_document_expiry ?? false,
-          email_child_maintenance_reminder: prefsData.email_child_maintenance_reminder ?? false,
+          email_child_incidents: prefsData.email_child_incidents ?? true,
+          email_child_missions: prefsData.email_child_missions ?? true,
+          email_child_new_user_pending: prefsData.email_child_new_user_pending ?? true,
+          email_child_document_expiry: prefsData.email_child_document_expiry ?? true,
+          email_child_maintenance_reminder: prefsData.email_child_maintenance_reminder ?? true,
           email_inspection_reminder: prefsData.email_inspection_reminder ?? false,
           inspection_reminder_days: prefsData.inspection_reminder_days ?? 14,
         });
