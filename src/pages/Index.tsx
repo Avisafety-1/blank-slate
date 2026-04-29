@@ -496,8 +496,8 @@ const Index = () => {
                 <Square className="w-4 h-4 mr-1" />
                 {t('actions.endFlight')}
               </Button>
-            </div>}
             </div>
+          </div>}
 
             {/* Mobile: Active flights */}
             <div className="lg:hidden mb-3 sm:mb-4">
