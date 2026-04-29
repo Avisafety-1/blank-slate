@@ -778,6 +778,19 @@ const KRAFT_LAYERS: KraftLayerDef[] = [
   { layerId: 4, label: "Mast/stolpe", color: "#64748b", weight: 0, minZoom: 16, isPoint: true },
 ];
 
+const escapePopupHtml = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const getFirstProperty = (props: Record<string, unknown>, keys: string[]) => {
+  const match = keys.find((key) => props[key] !== null && props[key] !== undefined && String(props[key]).trim() !== "");
+  return match ? props[match] : "";
+};
+
 export async function fetchKraftledningerInBounds(params: {
   layer: L.LayerGroup;
   bounds: L.LatLngBounds;
@@ -828,13 +841,18 @@ export async function fetchKraftledningerInBounds(params: {
           } : undefined,
           onEachFeature: mode !== "routePlanning" ? (feature, l) => {
             const p = feature.properties || {};
-            const name = p.NAVN || p.navn || p.Navn || p.name || "";
-            const eier = p.EIER || p.eier || p.Eier || "";
-            const spenning = p.SPENNING || p.spenning || p.Spenning || "";
-            let popup = `<strong>${def.label}</strong>`;
-            if (name) popup += `<br/>${name}`;
-            if (eier) popup += `<br/>Eier: ${eier}`;
-            if (spenning) popup += `<br/>Spenning: ${spenning} kV`;
+            const details = [
+              ["Navn", getFirstProperty(p, ["NAVN", "navn", "Navn", "name", "Name"])],
+              ["Eier", getFirstProperty(p, ["EIER", "eier", "Eier", "NETTSELSKAP", "nettselskap"])],
+              ["Spenning", getFirstProperty(p, ["SPENNING", "spenning", "Spenning", "SPENNING_KV", "spenning_kv"])],
+              ["Type", getFirstProperty(p, ["TYPE", "type", "Type", "NETTNIVA", "NETTNIVÅ", "nettniva", "nettnivå"])],
+              ["Status", getFirstProperty(p, ["STATUS", "status", "Status"])],
+            ].filter(([, value]) => value !== "");
+            const rows = details.map(([label, value]) => {
+              const suffix = label === "Spenning" && !String(value).toLowerCase().includes("kv") ? " kV" : "";
+              return `<div style="display:grid;grid-template-columns:72px 1fr;gap:8px;font-size:12px;line-height:1.35;padding:2px 0;"><span style="color:#64748b;">${escapePopupHtml(label)}</span><strong style="font-weight:600;overflow-wrap:anywhere;">${escapePopupHtml(value)}${suffix}</strong></div>`;
+            }).join("");
+            const popup = `<div style="min-width:180px;max-width:280px;"><strong>${escapePopupHtml(def.label)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
             l.bindPopup(popup);
           } : undefined,
         });
