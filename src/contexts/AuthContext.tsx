@@ -418,7 +418,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       // === PHASE 1: Fast queries (profile, role, accessible companies) ===
-      const [profileResult, roleResult, accessibleResult] = await Promise.all([
+      const [profileResult, roleResult, accessibleResult, passedTrainingResult] = await Promise.all([
         supabase
           .from('profiles')
           .select(`
@@ -448,6 +448,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('user_id', userId)
           .maybeSingle(),
         supabase.rpc('get_user_accessible_companies', { _user_id: userId }),
+        supabase
+          .from('training_assignments')
+          .select('training_courses(unlocks_modules)')
+          .eq('profile_id', userId)
+          .eq('passed', true),
       ]);
 
       // Stale write guard — if a newer refresh has started, discard this result
@@ -535,6 +540,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.userRole = userRole;
         profileData.isSuperAdmin = isSuperAdmin;
         profileData.isAdmin = isAdmin;
+      }
+
+      if (!passedTrainingResult.error && passedTrainingResult.data) {
+        const unlockedModules = (passedTrainingResult.data || []).flatMap((assignment: any) =>
+          normalizeTrainingModules(assignment.training_courses?.unlocks_modules)
+        );
+        profileData.trainingModuleAccess = normalizeTrainingModules([
+          ...(profileData.trainingModuleAccess || []),
+          ...unlockedModules,
+        ]);
       }
 
       // Final stale-write check before applying state
