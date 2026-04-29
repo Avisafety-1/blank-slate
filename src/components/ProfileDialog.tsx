@@ -94,6 +94,11 @@ interface NotificationPreferences {
   email_document_expiry: boolean;
   email_new_user_pending: boolean;
   email_followup_assigned: boolean;
+  email_child_incidents: boolean;
+  email_child_missions: boolean;
+  email_child_new_user_pending: boolean;
+  email_child_document_expiry: boolean;
+  email_child_maintenance_reminder: boolean;
   email_inspection_reminder: boolean;
   inspection_reminder_days: number;
   push_enabled: boolean;
@@ -114,7 +119,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, companyId, parentCompanyId, accessibleCompanies, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -166,6 +171,7 @@ export const ProfileDialog = () => {
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
+  const canConfigureChildNotifications = isAdmin && !parentCompanyId && accessibleCompanies.some((c) => c.id === companyId && c.isParent);
 
   // Fast badge-count effect: runs immediately on mount, independent of heavy fetchUserData
   useEffect(() => {
