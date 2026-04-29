@@ -337,12 +337,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       };
 
       if (cId) {
-        const { error } = await supabase.from("training_courses").update(coursePayload).eq("id", cId);
+        const { error } = await supabase.from("training_courses").update(coursePayload as any).eq("id", cId);
         if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from("training_courses")
-          .insert({ ...coursePayload, company_id: companyId, created_by: user?.id, status: "draft" })
+          .insert({ ...coursePayload, company_id: companyId, created_by: user?.id, status: "draft" } as any)
           .select("id")
           .single();
         if (error) throw error;
