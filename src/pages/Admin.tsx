@@ -1112,6 +1112,24 @@ const Admin = () => {
                                         disabled={!canManageRoles}
                                       />
                                     </div>
+                                    <div className="space-y-2 rounded-md border border-border p-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">Under opplæring</span>
+                                        <Switch
+                                          checked={profile.under_training === true}
+                                          onCheckedChange={() => toggleUnderTraining(profile.id, profile.under_training === true)}
+                                          className="scale-75"
+                                          disabled={!canManageRoles}
+                                        />
+                                      </div>
+                                      {profile.under_training && (
+                                        <TrainingModulePicker
+                                          selected={normalizeTrainingModules(profile.training_module_access)}
+                                          onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                          disabled={!canManageRoles}
+                                        />
+                                      )}
+                                    </div>
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
                                       <Switch
@@ -1246,6 +1264,32 @@ const Admin = () => {
                                   disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Teknisk ansvarlig</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
+                                <Switch
+                                  checked={profile.under_training === true}
+                                  onCheckedChange={() => toggleUnderTraining(profile.id, profile.under_training === true)}
+                                  className="scale-75"
+                                  disabled={!canManageRoles}
+                                />
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">Under opplæring</span>
+                                {profile.under_training && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" size="sm" className="h-7 text-xs px-2">
+                                        {normalizeTrainingModules(profile.training_module_access).length} mod.
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-72 p-3 z-[1300]" align="start">
+                                      <p className="text-xs font-medium mb-2">Tilgang før kurs er bestått</p>
+                                      <TrainingModulePicker
+                                        selected={normalizeTrainingModules(profile.training_module_access)}
+                                        onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                        disabled={!canManageRoles}
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
                               </div>
                               <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
                                 <Switch
