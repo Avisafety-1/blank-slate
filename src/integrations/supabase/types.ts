@@ -4479,7 +4479,9 @@ export type Database = {
           signature_url: string | null
           telefon: string | null
           tittel: string | null
+          training_module_access: string[]
           uas_operator_number: string | null
+          under_training: boolean
           updated_at: string | null
         }
         Insert: {
@@ -4505,7 +4507,9 @@ export type Database = {
           signature_url?: string | null
           telefon?: string | null
           tittel?: string | null
+          training_module_access?: string[]
           uas_operator_number?: string | null
+          under_training?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -4531,7 +4535,9 @@ export type Database = {
           signature_url?: string | null
           telefon?: string | null
           tittel?: string | null
+          training_module_access?: string[]
           uas_operator_number?: string | null
+          under_training?: boolean
           updated_at?: string | null
         }
         Relationships: [
@@ -4891,6 +4897,7 @@ export type Database = {
           source_manual_id: string | null
           status: string
           title: string
+          unlocks_modules: string[]
           updated_at: string
           validity_months: number | null
           visible_to_children: boolean
@@ -4912,6 +4919,7 @@ export type Database = {
           source_manual_id?: string | null
           status?: string
           title: string
+          unlocks_modules?: string[]
           updated_at?: string
           validity_months?: number | null
           visible_to_children?: boolean
@@ -4933,6 +4941,7 @@ export type Database = {
           source_manual_id?: string | null
           status?: string
           title?: string
+          unlocks_modules?: string[]
           updated_at?: string
           validity_months?: number | null
           visible_to_children?: boolean
@@ -6470,6 +6479,10 @@ export type Database = {
           p_restriction_type: string
         }
         Returns: string
+      }
+      validate_training_module_keys: {
+        Args: { _modules: string[] }
+        Returns: boolean
       }
     }
     Enums: {

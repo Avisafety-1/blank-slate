@@ -3,6 +3,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
 import { broadcastSession, broadcastSignOut, onTabMessage, type TabSyncMessage } from "@/lib/authTabSync";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
+import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
 
@@ -33,6 +34,8 @@ interface CachedProfile {
   stripeExempt: boolean;
   departmentsEnabled: boolean;
   accessibleCompanies?: AccessibleCompany[];
+  underTraining?: boolean;
+  trainingModuleAccess?: TrainingModuleKey[];
   cachedAt?: number;
 }
 
@@ -74,6 +77,9 @@ interface AuthContextType {
   isBillingOwner: boolean;
   seatCount: number;
   accessibleCompanies: AccessibleCompany[];
+  underTraining: boolean;
+  trainingModuleAccess: TrainingModuleKey[];
+  hasTrainingModuleAccess: (moduleKey: TrainingModuleKey) => boolean;
   authRefreshing: boolean;
   authInitialized: boolean;
   signOut: () => Promise<void>;
@@ -115,6 +121,9 @@ const AuthContext = createContext<AuthContextType>({
   isBillingOwner: false,
   seatCount: 1,
   accessibleCompanies: [],
+  underTraining: false,
+  trainingModuleAccess: [],
+  hasTrainingModuleAccess: () => true,
   authRefreshing: false,
   authInitialized: false,
   signOut: async () => {},
@@ -174,6 +183,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isBillingOwner, setIsBillingOwner] = useState(false);
   const [seatCount, setSeatCount] = useState(1);
   const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
+  const [underTraining, setUnderTraining] = useState(false);
+  const [trainingModuleAccess, setTrainingModuleAccess] = useState<TrainingModuleKey[]>([]);
 
   const resetAuthState = () => {
     setSession(null);
@@ -205,6 +216,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsBillingOwner(false);
     setSeatCount(1);
     setAccessibleCompanies([]);
+    setUnderTraining(false);
+    setTrainingModuleAccess([]);
   };
 
   const getErrorMessage = (error: unknown): string => {
@@ -289,6 +302,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setArdupilotFlightlogEnabled(cached.ardupilotFlightlogEnabled ?? false);
       setDepartmentsEnabled(cached.departmentsEnabled ?? false);
       setStripeExempt(cached.stripeExempt ?? false);
+      setUnderTraining(cached.underTraining ?? false);
+      setTrainingModuleAccess(normalizeTrainingModules(cached.trainingModuleAccess));
       if (cached.accessibleCompanies?.length) {
         setAccessibleCompanies(cached.accessibleCompanies);
       }
@@ -403,12 +418,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       // === PHASE 1: Fast queries (profile, role, accessible companies) ===
-      const [profileResult, roleResult, accessibleResult] = await Promise.all([
+      const [profileResult, roleResult, accessibleResult, passedTrainingResult] = await Promise.all([
         supabase
           .from('profiles')
           .select(`
             company_id,
             approved,
+            under_training,
+            training_module_access,
             companies (
               id,
               navn,
@@ -431,6 +448,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('user_id', userId)
           .maybeSingle(),
         supabase.rpc('get_user_accessible_companies', { _user_id: userId }),
+        supabase
+          .from('training_assignments')
+          .select('training_courses(unlocks_modules)')
+          .eq('profile_id', userId)
+          .eq('passed', true),
       ]);
 
       // Stale write guard — if a newer refresh has started, discard this result
@@ -457,6 +479,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         ardupilotFlightlogEnabled: false,
         stripeExempt: false,
         departmentsEnabled: false,
+        underTraining: false,
+        trainingModuleAccess: [],
       };
 
       if (profileResult.error && roleResult.error) {
@@ -474,6 +498,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const profile = profileResult.data;
         profileData.companyId = profile.company_id;
         profileData.isApproved = profile.approved ?? false;
+        profileData.underTraining = (profile as any).under_training ?? false;
+        profileData.trainingModuleAccess = normalizeTrainingModules((profile as any).training_module_access);
         profileData.companyName = company?.navn || null;
         profileData.parentCompanyId = resolvedParentCompanyId || null;
         profileData.parentCompanyName = null;
@@ -516,6 +542,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.isAdmin = isAdmin;
       }
 
+      if (!passedTrainingResult.error && passedTrainingResult.data) {
+        const unlockedModules = (passedTrainingResult.data || []).flatMap((assignment: any) =>
+          normalizeTrainingModules(assignment.training_courses?.unlocks_modules)
+        );
+        profileData.trainingModuleAccess = normalizeTrainingModules([
+          ...(profileData.trainingModuleAccess || []),
+          ...unlockedModules,
+        ]);
+      }
+
       // Final stale-write check before applying state
       if (myVersion !== refreshVersionRef.current) return;
 
@@ -535,6 +571,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setArdupilotFlightlogEnabled(profileData.ardupilotFlightlogEnabled);
       setDepartmentsEnabled(profileData.departmentsEnabled);
       setStripeExempt(profileData.stripeExempt);
+      setUnderTraining(profileData.underTraining ?? false);
+      setTrainingModuleAccess(profileData.trainingModuleAccess ?? []);
       setProfileLoaded(true);
 
       // Apply accessible companies
@@ -1057,6 +1095,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isBillingOwner,
       seatCount,
       accessibleCompanies,
+      underTraining,
+      trainingModuleAccess,
+      hasTrainingModuleAccess: (moduleKey) => !underTraining || trainingModuleAccess.includes(moduleKey),
       authRefreshing,
       authInitialized,
       signOut, 

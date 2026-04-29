@@ -39,6 +39,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { TrainingSection } from "@/components/admin/TrainingSection";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
+import { TrainingModulePicker } from "@/components/training/TrainingModulePicker";
+import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 import { useTranslation } from "react-i18next";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import { PLANS, ADDONS } from "@/config/subscriptionPlans";
@@ -71,6 +73,8 @@ interface Profile {
   company_id?: string | null;
   companies?: { navn: string } | null;
   is_technical_responsible?: boolean;
+  under_training?: boolean;
+  training_module_access?: TrainingModuleKey[] | null;
 }
 
 interface ChildCompanyOption {
@@ -531,6 +535,42 @@ const Admin = () => {
     } catch (error) {
       console.error("Error toggling tech responsible:", error);
       toast.error("Kunne ikke oppdatere innstilling");
+    }
+  };
+
+  const toggleUnderTraining = async (userId: string, currentValue: boolean) => {
+    try {
+      const newValue = !currentValue;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ under_training: newValue } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, under_training: newValue } : p
+      ));
+      toast.success(newValue ? 'Bruker er satt under opplæring' : 'Opplæringsmodus er slått av');
+    } catch (error) {
+      console.error("Error toggling under training:", error);
+      toast.error("Kunne ikke oppdatere opplæringsstatus");
+    }
+  };
+
+  const updateTrainingModuleAccess = async (userId: string, modules: TrainingModuleKey[]) => {
+    const normalized = normalizeTrainingModules(modules);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ training_module_access: normalized } as any)
+        .eq("id", userId);
+      if (error) throw error;
+      setProfiles(prev => prev.map(p =>
+        p.id === userId ? { ...p, training_module_access: normalized } : p
+      ));
+      toast.success('Modultilgang oppdatert');
+    } catch (error) {
+      console.error("Error updating training module access:", error);
+      toast.error("Kunne ikke oppdatere modultilgang");
     }
   };
 
@@ -1072,6 +1112,24 @@ const Admin = () => {
                                         disabled={!canManageRoles}
                                       />
                                     </div>
+                                    <div className="space-y-2 rounded-md border border-border p-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">Under opplæring</span>
+                                        <Switch
+                                          checked={profile.under_training === true}
+                                          onCheckedChange={() => toggleUnderTraining(profile.id, profile.under_training === true)}
+                                          className="scale-75"
+                                          disabled={!canManageRoles}
+                                        />
+                                      </div>
+                                      {profile.under_training && (
+                                        <TrainingModulePicker
+                                          selected={normalizeTrainingModules(profile.training_module_access)}
+                                          onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                          disabled={!canManageRoles}
+                                        />
+                                      )}
+                                    </div>
                                     <div className="flex items-center justify-between">
                                       <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
                                       <Switch
@@ -1206,6 +1264,32 @@ const Admin = () => {
                                   disabled={!canManageRoles}
                                 />
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">Teknisk ansvarlig</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
+                                <Switch
+                                  checked={profile.under_training === true}
+                                  onCheckedChange={() => toggleUnderTraining(profile.id, profile.under_training === true)}
+                                  className="scale-75"
+                                  disabled={!canManageRoles}
+                                />
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">Under opplæring</span>
+                                {profile.under_training && (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" size="sm" className="h-7 text-xs px-2">
+                                        {normalizeTrainingModules(profile.training_module_access).length} mod.
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-72 p-3 z-[1300]" align="start">
+                                      <p className="text-xs font-medium mb-2">Tilgang før kurs er bestått</p>
+                                      <TrainingModulePicker
+                                        selected={normalizeTrainingModules(profile.training_module_access)}
+                                        onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                        disabled={!canManageRoles}
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
                               </div>
                               <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
                                 <Switch

@@ -37,6 +37,7 @@ import { useFlightTimer } from "@/hooks/useFlightTimer";
 import { StartFlightDialog } from "@/components/StartFlightDialog";
 import { PasskeyPromptDialog } from "@/components/PasskeyPromptDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { dashboardComponentToModule } from "@/config/trainingModules";
 
 const STORAGE_KEY = "dashboard-layout";
 
@@ -52,7 +53,7 @@ const defaultLayout = [
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, ardupilotFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo } = useAuth();
+  const { user, loading, isApproved, profileLoaded, djiFlightlogEnabled, ardupilotFlightlogEnabled, checkSubscription, authRefreshing, authInitialized, refetchUserInfo, underTraining, hasTrainingModuleAccess } = useAuth();
   const hasFlightLogUpload = djiFlightlogEnabled || ardupilotFlightlogEnabled;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -360,6 +361,10 @@ const Index = () => {
   const abortSignal = abortControllerRef.current.signal;
 
   const renderSection = (component: string) => {
+    if (component === "kpi" && !hasTrainingModuleAccess("status") && !hasTrainingModuleAccess("resources")) return null;
+    const moduleKey = dashboardComponentToModule(component);
+    if (moduleKey && component !== "kpi" && !hasTrainingModuleAccess(moduleKey)) return null;
+
     // Defer heavy data-fetching sections until readyToFetch is true
     const isDeferred = ["documents", "missions", "incidents", "status", "kpi"].includes(component);
     if (isDeferred && !readyToFetch) return null;
@@ -384,6 +389,12 @@ const Index = () => {
     }
   };
 
+  const canRenderDashboardComponent = (component: string) => {
+    if (component === "kpi") return hasTrainingModuleAccess("status") || hasTrainingModuleAccess("resources");
+    const moduleKey = dashboardComponentToModule(component);
+    return !moduleKey || hasTrainingModuleAccess(moduleKey);
+  };
+
   return (
     <DashboardRealtimeContext.Provider value={dashboardRealtime}>
     <div className="min-h-screen relative w-full overflow-x-hidden">
@@ -404,7 +415,7 @@ const Index = () => {
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           {/* Mobile-only flight buttons */}
-          <div className="flex flex-col gap-2 mb-3 lg:hidden">
+          {!underTraining && <div className="flex flex-col gap-2 mb-3 lg:hidden">
             {/* Mobile-only: log flight / upload dropdown */}
             {hasFlightLogUpload ? (
               <DropdownMenu>
@@ -493,12 +504,12 @@ const Index = () => {
                 {t('actions.endFlight')}
               </Button>
             </div>
-            </div>
+          </div>}
 
             {/* Mobile: Active flights */}
-            <div className="lg:hidden mb-3 sm:mb-4">
+            {hasTrainingModuleAccess("missions") && <div className="lg:hidden mb-3 sm:mb-4">
               <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
-            </div>
+            </div>}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={layout.map((item) => item.id)} strategy={rectSortingStrategy}>
               <div className="space-y-3 sm:space-y-4">
@@ -519,7 +530,7 @@ const Index = () => {
                   </div>
                   <div className="lg:col-span-3">
                     {layout
-                      .filter((item) => item.component === "status")
+                      .filter((item) => item.component === "status" && canRenderDashboardComponent(item.component))
                       .map((item) => (
                         <DraggableSection key={item.id} id={item.id}>
                           {renderSection(item.component)}
@@ -531,7 +542,7 @@ const Index = () => {
                 {/* Mobile/Tablet: Missions right after Status */}
                 <div className="lg:hidden">
                   {layout
-                    .filter((item) => item.component === "missions")
+                    .filter((item) => item.component === "missions" && canRenderDashboardComponent(item.component))
                     .map((item) => (
                       <DraggableSection key={`mobile-${item.id}`} id={item.id}>
                         {renderSection(item.component)}
@@ -544,7 +555,7 @@ const Index = () => {
                   {/* Left Column */}
                   <div className="lg:col-span-3 flex flex-col gap-3 sm:gap-4">
                     {layout
-                      .filter((item) => ["documents", "calendar"].includes(item.component))
+                      .filter((item) => ["documents", "calendar"].includes(item.component) && canRenderDashboardComponent(item.component))
                       .map((item) => (
                         <DraggableSection key={item.id} id={item.id} className={item.component === "calendar" ? "flex-1 flex flex-col" : ""}>
                           {renderSection(item.component)}
@@ -555,7 +566,7 @@ const Index = () => {
                   {/* Center Column - Drone space and missions */}
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
                     {/* Flight Log buttons */}
-                    <div className="flex flex-col gap-2">
+                    {!underTraining && <div className="flex flex-col gap-2">
                       {hasFlightLogUpload ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -644,12 +655,12 @@ const Index = () => {
                           {t('actions.endFlight')}
                         </Button>
                       </div>
-                    </div>
+                    </div>}
 
                     {/* Active flights - Desktop */}
-                    <div className="hidden lg:block">
+                    {hasTrainingModuleAccess("missions") && <div className="hidden lg:block">
                       <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
-                    </div>
+                    </div>}
 
                     {/* AI Search Bar - Desktop */}
                     <div className="hidden lg:block">
@@ -661,7 +672,7 @@ const Index = () => {
                       {layout &&
                         layout.length > 0 &&
                         layout
-                          .filter((item) => item.component === "missions")
+                          .filter((item) => item.component === "missions" && canRenderDashboardComponent(item.component))
                           .map((item) => (
                             <DraggableSection key={item.id} id={item.id}>
                               {renderSection(item.component)}
@@ -673,14 +684,14 @@ const Index = () => {
                   {/* Right Column */}
                   <div className="lg:col-span-3 flex flex-col gap-3 sm:gap-4">
                     {layout
-                      .filter((item) => item.component === "incidents")
+                      .filter((item) => item.component === "incidents" && canRenderDashboardComponent(item.component))
                       .map((item) => (
                         <DraggableSection key={item.id} id={item.id} className="flex-1">
                           {renderSection(item.component)}
                         </DraggableSection>
                       ))}
                     {layout
-                      .filter((item) => item.component === "kpi")
+                      .filter((item) => item.component === "kpi" && canRenderDashboardComponent(item.component))
                       .map((item) => (
                         <DraggableSection key={item.id} id={item.id}>
                           {renderSection(item.component)}

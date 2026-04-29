@@ -12,6 +12,8 @@ import { ArrowLeft, Plus, Trash2, Upload, FileText, HelpCircle, Image as ImageIc
 import { toast } from "sonner";
 import * as pdfjsLib from "pdfjs-dist";
 import { YouTubeClipPlayer, parseYouTubeId, parseTimeInput, formatSeconds } from "@/components/training/YouTubeClipPlayer";
+import { TrainingModulePicker } from "@/components/training/TrainingModulePicker";
+import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 
 // Set worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -53,6 +55,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [hasPermanentValidity, setHasPermanentValidity] = useState(true);
   const [displayMode, setDisplayMode] = useState<"list" | "paginated">("paginated");
   const [fullscreen, setFullscreen] = useState(false);
+  const [unlocksModules, setUnlocksModules] = useState<TrainingModuleKey[]>([]);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!!courseId);
@@ -81,6 +84,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         setHasPermanentValidity(!course.validity_months);
         setDisplayMode((course as any).display_mode === "list" ? "list" : "paginated");
         setFullscreen((course as any).fullscreen || false);
+        setUnlocksModules(normalizeTrainingModules((course as any).unlocks_modules));
       }
 
       const { data: questionsData } = await supabase
@@ -328,16 +332,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         validity_months: hasPermanentValidity ? null : validityMonths,
         display_mode: displayMode,
         fullscreen,
+        unlocks_modules: unlocksModules,
         updated_at: new Date().toISOString(),
       };
 
       if (cId) {
-        const { error } = await supabase.from("training_courses").update(coursePayload).eq("id", cId);
+        const { error } = await supabase.from("training_courses").update(coursePayload as any).eq("id", cId);
         if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from("training_courses")
-          .insert({ ...coursePayload, company_id: companyId, created_by: user?.id, status: "draft" })
+          .insert({ ...coursePayload, company_id: companyId, created_by: user?.id, status: "draft" } as any)
           .select("id")
           .single();
         if (error) throw error;
@@ -451,6 +456,15 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           <div className="flex items-center gap-3 mt-3">
             <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
             <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
+          </div>
+          <div className="space-y-2 pt-3 border-t">
+            <div>
+              <Label>Låser opp moduler ved bestått kurs</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Disse modulene blir tilgjengelige for brukere under opplæring når kurset er bestått.
+              </p>
+            </div>
+            <TrainingModulePicker selected={unlocksModules} onChange={setUnlocksModules} />
           </div>
         </CardContent>
       </Card>

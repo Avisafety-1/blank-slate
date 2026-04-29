@@ -17,6 +17,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import type { TrainingModuleKey } from "@/config/trainingModules";
 
 interface Company {
   id: string;
@@ -25,7 +26,7 @@ interface Company {
 
 export const Header = () => {
   const navigate = useNavigate();
-  const { signOut, companyName, isSuperAdmin, isAdmin, companyId, refetchUserInfo, user, accessibleCompanies, switchCompany } = useAuth();
+  const { signOut, companyName, isSuperAdmin, isAdmin, companyId, accessibleCompanies, switchCompany, hasTrainingModuleAccess } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const { t, i18n } = useTranslation();
 
@@ -87,6 +88,7 @@ export const Header = () => {
   };
 
   const displayLang = i18n.language?.startsWith('en') ? 'NO' : 'EN';
+  const canShowModule = (moduleKey: TrainingModuleKey) => hasTrainingModuleAccess(moduleKey);
 
   return (
     <header className="bg-card/95 border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-[1100] w-full">
@@ -123,13 +125,13 @@ export const Header = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card/95 border-glass z-[1150]">
-                <DropdownMenuItem onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>
+                {canShowModule('missions') && <DropdownMenuItem onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>}
+                {canShowModule('map') && <DropdownMenuItem onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>}
+                {canShowModule('documents') && <DropdownMenuItem onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>}
+                {canShowModule('calendar') && <DropdownMenuItem onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>}
+                {canShowModule('incidents') && <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>}
+                {canShowModule('status') && <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>}
+                {canShowModule('resources') && <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>}
                 {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
                   <DropdownMenuItem onClick={() => navigate("/statistikk")}>
                     <BarChart3 className="w-4 h-4 mr-2" />
@@ -190,13 +192,13 @@ export const Header = () => {
           
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1 flex-shrink">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>
+            {canShowModule('missions') && <Button variant="ghost" size="sm" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</Button>}
+            {canShowModule('map') && <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>}
+            {canShowModule('documents') && <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>}
+            {canShowModule('calendar') && <Button variant="ghost" size="sm" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</Button>}
+            {canShowModule('incidents') && <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>}
+            {canShowModule('status') && <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>}
+            {canShowModule('resources') && <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>}
             <Button variant="ghost" size="sm" onClick={() => navigate("/changelog")} title="Driftstatus">
               <Activity className="w-4 h-4" />
             </Button>
