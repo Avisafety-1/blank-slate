@@ -357,6 +357,28 @@ const Resources = () => {
   const uniqueEquipmentTypes = [...new Set(equipment.map(e => e.type).filter(Boolean))].sort();
   const uniquePersonnelRoles = [...new Set(personnel.map(p => p.tittel).filter(Boolean))].sort();
 
+  const getDronePersonnelNames = (drone: any): string[] =>
+    (drone.drone_personnel || [])
+      .map((link: any) => link.profile?.full_name)
+      .filter(Boolean);
+
+  const getDronePilotLabel = (drone: any): string | null => {
+    const names = getDronePersonnelNames(drone);
+    if (names.length === 0) return null;
+    return names.length === 1 ? names[0] : `${names[0]} +${names.length - 1}`;
+  };
+
+  const matchesDroneSearch = (drone: any, searchLower: string): boolean => {
+    const personnelNames = getDronePersonnelNames(drone).join(" ").toLowerCase();
+    return Boolean(
+      drone.modell?.toLowerCase().includes(searchLower) ||
+      drone.registrering?.toLowerCase().includes(searchLower) ||
+      drone.registration_number?.toLowerCase().includes(searchLower) ||
+      drone.merknader?.toLowerCase().includes(searchLower) ||
+      personnelNames.includes(searchLower)
+    );
+  };
+
   // Helper to get person's worst competency status
   const getPersonStatus = (person: any): string => {
     if (!person.personnel_competencies || person.personnel_competencies.length === 0) return "Grønn";
