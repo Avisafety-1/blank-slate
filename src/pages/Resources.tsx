@@ -484,11 +484,7 @@ const Resources = () => {
                   .filter((drone) => {
                     if (droneSearch) {
                       const searchLower = droneSearch.toLowerCase();
-                      if (!(
-                        drone.modell?.toLowerCase().includes(searchLower) ||
-                        drone.registrering?.toLowerCase().includes(searchLower) ||
-                        drone.merknader?.toLowerCase().includes(searchLower)
-                      )) return false;
+                      if (!matchesDroneSearch(drone, searchLower)) return false;
                     }
                     if (droneModelFilter !== "alle" && drone.modell !== droneModelFilter) return false;
                     if (droneStatusFilter !== "alle") {
@@ -516,8 +512,11 @@ const Resources = () => {
                     }}
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <div>
+                      <div className="min-w-0 flex-1 pr-2">
                         <h3 className="font-semibold">{drone.modell}</h3>
+                        {getDronePilotLabel(drone) && (
+                          <p className="text-sm text-muted-foreground truncate">Pilot: {getDronePilotLabel(drone)}</p>
+                        )}
                         {drone.registration_number && (
                           <p className="text-sm text-muted-foreground">Reg.nr: {drone.registration_number}</p>
                         )}
@@ -542,7 +541,7 @@ const Resources = () => {
                 {drones.filter((drone) => {
                     if (droneSearch) {
                       const searchLower = droneSearch.toLowerCase();
-                      if (!(drone.modell?.toLowerCase().includes(searchLower) || drone.registrering?.toLowerCase().includes(searchLower) || drone.merknader?.toLowerCase().includes(searchLower))) return false;
+                      if (!matchesDroneSearch(drone, searchLower)) return false;
                     }
                     if (droneModelFilter !== "alle" && drone.modell !== droneModelFilter) return false;
                     if (droneStatusFilter !== "alle" && (drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) !== droneStatusFilter) return false;
