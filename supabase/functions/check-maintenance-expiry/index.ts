@@ -418,12 +418,12 @@ serve(async (req) => {
       childItemsByCompany.set(drone.company_id, items);
     }
 
-    const defaultReminderDate = new Date(today);
-    defaultReminderDate.setDate(defaultReminderDate.getDate() + 14);
     for (const equip of equipment || []) {
       const expiryDate = new Date(equip.neste_vedlikehold);
       expiryDate.setHours(0, 0, 0, 0);
-      if (expiryDate > defaultReminderDate || expiryDate < today) continue;
+      const reminderDate = new Date(today);
+      reminderDate.setDate(reminderDate.getDate() + (equip.varsel_dager ?? 14));
+      if (expiryDate > reminderDate || expiryDate < today) continue;
       const items = childItemsByCompany.get(equip.company_id) || [];
       items.push({ id: equip.id, name: equip.navn, type: 'equipment', expiryDate, daysUntilExpiry: Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), companyId: equip.company_id, statusLevel: 'Gul' });
       childItemsByCompany.set(equip.company_id, items);
@@ -432,7 +432,9 @@ serve(async (req) => {
     for (const acc of accessories || []) {
       const expiryDate = new Date(acc.neste_vedlikehold);
       expiryDate.setHours(0, 0, 0, 0);
-      if (expiryDate > defaultReminderDate || expiryDate < today) continue;
+      const reminderDate = new Date(today);
+      reminderDate.setDate(reminderDate.getDate() + (acc.varsel_dager ?? 14));
+      if (expiryDate > reminderDate || expiryDate < today) continue;
       const items = childItemsByCompany.get(acc.company_id) || [];
       items.push({ id: acc.id, name: acc.navn, type: 'accessory', expiryDate, daysUntilExpiry: Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)), companyId: acc.company_id, statusLevel: 'Gul' });
       childItemsByCompany.set(acc.company_id, items);
