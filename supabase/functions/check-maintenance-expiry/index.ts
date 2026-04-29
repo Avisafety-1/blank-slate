@@ -173,13 +173,13 @@ serve(async (req) => {
     // ── Equipment & accessories (unchanged — still date-based) ──
     const { data: equipment } = await supabase
       .from('equipment')
-      .select('id, navn, neste_vedlikehold, company_id, aktiv')
+      .select('id, navn, neste_vedlikehold, company_id, aktiv, varsel_dager')
       .eq('aktiv', true)
       .not('neste_vedlikehold', 'is', null);
 
     const { data: accessories } = await supabase
       .from('drone_accessories')
-      .select('id, navn, neste_vedlikehold, company_id')
+      .select('id, navn, neste_vedlikehold, company_id, varsel_dager')
       .not('neste_vedlikehold', 'is', null);
 
     const companyIdsWithResources = [...new Set([
@@ -196,7 +196,7 @@ serve(async (req) => {
     // ── Notification prefs ──
     const { data: notificationPrefs } = await supabase
       .from('notification_preferences')
-      .select('user_id, inspection_reminder_days, email_inspection_reminder, push_enabled, push_maintenance_reminder')
+      .select('user_id, email_inspection_reminder, push_enabled, push_maintenance_reminder')
       .or('email_inspection_reminder.eq.true,and(push_enabled.eq.true,push_maintenance_reminder.eq.true)');
 
     const userIds = (notificationPrefs || []).map((p: any) => p.user_id);
