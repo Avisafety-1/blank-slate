@@ -361,8 +361,9 @@ const Index = () => {
   const abortSignal = abortControllerRef.current.signal;
 
   const renderSection = (component: string) => {
+    if (component === "kpi" && !hasTrainingModuleAccess("status") && !hasTrainingModuleAccess("resources")) return null;
     const moduleKey = dashboardComponentToModule(component);
-    if (moduleKey && !hasTrainingModuleAccess(moduleKey)) return null;
+    if (moduleKey && component !== "kpi" && !hasTrainingModuleAccess(moduleKey)) return null;
 
     // Defer heavy data-fetching sections until readyToFetch is true
     const isDeferred = ["documents", "missions", "incidents", "status", "kpi"].includes(component);
@@ -389,6 +390,7 @@ const Index = () => {
   };
 
   const canRenderDashboardComponent = (component: string) => {
+    if (component === "kpi") return hasTrainingModuleAccess("status") || hasTrainingModuleAccess("resources");
     const moduleKey = dashboardComponentToModule(component);
     return !moduleKey || hasTrainingModuleAccess(moduleKey);
   };
