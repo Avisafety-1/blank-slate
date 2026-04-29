@@ -581,11 +581,21 @@ export function OpenAIPMap({
     } as any);
     layerConfigs.push({ id: "tettsteder", name: "Tettsteder (SSB)", layer: tettstederLayer, enabled: false, icon: "users" });
 
-    // NVE Kraftledninger (vector via ArcGIS REST)
-    if (!map.getPane('powerPane')) {
-      map.createPane('powerPane');
-      map.getPane('powerPane')!.style.zIndex = '700';
+    // Tensio luftnett (WMS) — kun for Tensio og underavdelinger
+    if (isTensioHierarchy) {
+      const tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
+        layers: "0,1,2,3,4,5,6,7,8,9",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.75,
+        attribution: "Tensio luftnett",
+        version: "1.3.0",
+        pane: "tensioPowerPane",
+      } as any).addTo(map);
+      layerConfigs.push({ id: "tensio_luftnett", name: "Luftnett Tensio", layer: tensioLuftnettLayer, enabled: true, icon: "zap" });
     }
+
+    // NVE Kraftledninger (vector via ArcGIS REST)
     const kraftledningerLayer = L.layerGroup();
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
 
