@@ -478,7 +478,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 beskrivelse: formData.beskrivelse,
                 alvorlighetsgrad: formData.alvorlighetsgrad,
                 lokasjon: formData.lokasjon
-              }
+              },
+              excludeUserIds: formData.oppfolgingsansvarlig_id ? [formData.oppfolgingsansvarlig_id] : []
             }
           });
         } catch (emailError) {
