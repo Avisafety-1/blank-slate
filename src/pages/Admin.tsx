@@ -1178,8 +1178,10 @@ const Admin = () => {
                                       </div>
                                       {profile.under_training && (
                                         <TrainingModulePicker
-                                          selected={normalizeTrainingModules(profile.training_module_access)}
+                                          selected={getEffectiveTrainingModules(profile)}
+                                          lockedModules={getCourseUnlockedModules(profile)}
                                           onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                          onOpenAllModules={() => openAllModulesForUser(profile.id)}
                                           disabled={!canManageRoles}
                                         />
                                       )}
@@ -1340,14 +1342,16 @@ const Admin = () => {
                                   <Popover>
                                     <PopoverTrigger asChild>
                                       <Button variant="outline" size="sm" className="h-7 text-xs px-2">
-                                        {normalizeTrainingModules(profile.training_module_access).length} mod.
+                                        {getEffectiveTrainingModules(profile).length} mod.
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-72 p-3 z-[1300]" align="start">
                                       <p className="text-xs font-medium mb-2">Tilgang før kurs er bestått</p>
                                       <TrainingModulePicker
-                                        selected={normalizeTrainingModules(profile.training_module_access)}
+                                        selected={getEffectiveTrainingModules(profile)}
+                                        lockedModules={getCourseUnlockedModules(profile)}
                                         onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                        onOpenAllModules={() => openAllModulesForUser(profile.id)}
                                         disabled={!canManageRoles}
                                       />
                                     </PopoverContent>
