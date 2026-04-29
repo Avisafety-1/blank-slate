@@ -44,6 +44,58 @@ const TENSIO_WMS_URL = "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/lu
 
 const isTensioName = (name?: string | null) => name?.toLowerCase().includes("tensio") ?? false;
 
+const escapePopupHtml = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const formatFeatureInfoPopup = (title: string, properties: Record<string, unknown>) => {
+  const hiddenKeys = new Set(["objectid", "globalid", "shape", "shape_length", "shape__length", "shape_area", "shape__area"]);
+  const rows = Object.entries(properties)
+    .filter(([key, value]) => value !== null && value !== undefined && String(value).trim() !== "" && !hiddenKeys.has(key.toLowerCase()))
+    .slice(0, 10)
+    .map(([key, value]) => `<div style="display:grid;grid-template-columns:minmax(78px,0.9fr) minmax(110px,1.2fr);gap:8px;font-size:12px;line-height:1.35;padding:2px 0;"><span style="color:#64748b;overflow-wrap:anywhere;">${escapePopupHtml(key)}</span><strong style="font-weight:600;overflow-wrap:anywhere;">${escapePopupHtml(value)}</strong></div>`)
+    .join("");
+
+  return `<div style="min-width:190px;max-width:280px;"><strong>${escapePopupHtml(title)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
+};
+
+const buildTensioFeatureInfoUrl = (map: L.Map, latlng: L.LatLng, infoFormat = "application/geo+json") => {
+  const size = map.getSize();
+  const point = map.latLngToContainerPoint(latlng);
+  const crs = map.options.crs;
+  const sw = crs.project(map.getBounds().getSouthWest());
+  const ne = crs.project(map.getBounds().getNorthEast());
+  const params = new URLSearchParams({
+    service: "WMS",
+    request: "GetFeatureInfo",
+    version: "1.3.0",
+    layers: "0,1,2,3,4,5,6,7,8,9",
+    query_layers: "0,1,2,3,4,5,6,7,8,9",
+    styles: "",
+    crs: "EPSG:3857",
+    bbox: `${sw.x},${sw.y},${ne.x},${ne.y}`,
+    width: String(size.x),
+    height: String(size.y),
+    i: String(Math.round(point.x)),
+    j: String(Math.round(point.y)),
+    feature_count: "5",
+    info_format: infoFormat,
+    format: "image/png",
+    transparent: "true",
+  });
+  return `${TENSIO_WMS_URL}?${params.toString()}`;
+};
+
+const formatPlainFeatureInfoPopup = (title: string, text: string) => {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 12);
+  if (!lines.length || lines.every((line) => /no features|empty|none/i.test(line))) return "";
+  return `<div style="min-width:190px;max-width:280px;"><strong>${escapePopupHtml(title)}</strong><div style="margin-top:6px;font-size:12px;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere;">${escapePopupHtml(lines.join("\n"))}</div></div>`;
+};
+
 const getPopulationDensityStyle = (density = 0, isHotspot = false): L.PathOptions => {
   const color = density >= 5000 ? 'hsl(var(--destructive))' : density >= 250 ? 'hsl(var(--warning))' : 'hsl(var(--success))';
   return {
@@ -543,6 +595,7 @@ export function OpenAIPMap({
     baseLayerRef.current = osmLayer;
 
     const layerConfigs: LayerConfig[] = [];
+    let tensioLuftnettLayer: L.TileLayer.WMS | null = null;
 
     // OpenAIP airspace
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
@@ -583,7 +636,7 @@ export function OpenAIPMap({
 
     // Tensio luftnett (WMS) — kun for Tensio og underavdelinger
     if (isTensioHierarchy) {
-      const tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
+      tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
         layers: "0,1,2,3,4,5,6,7,8,9",
         format: "image/png",
         transparent: true,
@@ -713,6 +766,27 @@ export function OpenAIPMap({
         }
       } else if (weatherEnabledRef.current) {
         showWeatherPopup(map, lat, lng);
+      } else if (isTensioHierarchy && tensioLuftnettLayer && map.hasLayer(tensioLuftnettLayer)) {
+        try {
+          const response = await fetch(buildTensioFeatureInfoUrl(map, e.latlng));
+          if (!response.ok) return;
+          const data = await response.json();
+          const feature = data?.features?.find((item: any) => item?.properties && Object.keys(item.properties).length > 0);
+          if (feature?.properties) {
+            L.popup({ maxWidth: 300 })
+              .setLatLng(e.latlng)
+              .setContent(formatFeatureInfoPopup("Luftnett Tensio", feature.properties))
+              .openOn(map);
+          }
+        } catch (err) {
+          try {
+            const fallback = await fetch(buildTensioFeatureInfoUrl(map, e.latlng, "text/plain"));
+            const popup = fallback.ok ? formatPlainFeatureInfoPopup("Luftnett Tensio", await fallback.text()) : "";
+            if (popup) L.popup({ maxWidth: 300 }).setLatLng(e.latlng).setContent(popup).openOn(map);
+          } catch (fallbackErr) {
+            console.warn("Kunne ikke hente Tensio objektinformasjon:", fallbackErr);
+          }
+        }
       }
     };
 
