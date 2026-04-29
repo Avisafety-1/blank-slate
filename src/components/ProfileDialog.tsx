@@ -145,7 +145,6 @@ export const ProfileDialog = () => {
   const [loading, setLoading] = useState(true);
   const isAdmin = authIsAdmin;
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
-  const [inspectionReminderDaysDraft, setInspectionReminderDaysDraft] = useState<string>("14");
   const [missionReminderHoursDraft, setMissionReminderHoursDraft] = useState<string>("24");
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<Profile>>({});
@@ -246,11 +245,6 @@ export const ProfileDialog = () => {
         });
     }
   }, [user, profileDialogOpen]);
-
-  useEffect(() => {
-    if (notificationPrefs?.inspection_reminder_days === undefined || notificationPrefs?.inspection_reminder_days === null) return;
-    setInspectionReminderDaysDraft(String(notificationPrefs.inspection_reminder_days));
-  }, [notificationPrefs?.inspection_reminder_days]);
 
   useEffect(() => {
     if (notificationPrefs?.mission_reminder_hours === undefined || notificationPrefs?.mission_reminder_hours === null) return;
@@ -1717,35 +1711,6 @@ export const ProfileDialog = () => {
                             }
                           />
                         </div>
-                        {notificationPrefs?.email_inspection_reminder && (
-                          <div className="flex items-center gap-2 pl-4">
-                            <Label className="text-sm text-muted-foreground whitespace-nowrap">
-                              {t('profile.notificationOptions.daysBeforeInspection')}:
-                            </Label>
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={inspectionReminderDaysDraft}
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                if (raw === '') {
-                                  setInspectionReminderDaysDraft('');
-                                  return;
-                                }
-                                if (!/^\d+$/.test(raw)) return;
-                                const normalized = raw.replace(/^0+(?=\d)/, '');
-                                setInspectionReminderDaysDraft(normalized);
-                              }}
-                              onBlur={() => {
-                                const parsed = Math.max(0, Math.min(90, parseInt(inspectionReminderDaysDraft || '0', 10) || 0));
-                                setInspectionReminderDaysDraft(String(parsed));
-                                updateNotificationPref('inspection_reminder_days', parsed);
-                              }}
-                              className="w-20 h-8"
-                            />
-                          </div>
-                        )}
                       </div>
 
                       {canConfigureChildNotifications && (
