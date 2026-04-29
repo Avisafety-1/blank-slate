@@ -262,6 +262,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchMissionsSinceInspection();
       fetchLatestWarning();
       fetchTechnicalResponsibleName();
+      fetchMaintenanceAcknowledgementSetting();
       fetchLastFlown();
     }
   }, [drone]);
