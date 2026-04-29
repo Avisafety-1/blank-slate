@@ -39,6 +39,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { TrainingSection } from "@/components/admin/TrainingSection";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
+import { TrainingModulePicker } from "@/components/training/TrainingModulePicker";
+import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 import { useTranslation } from "react-i18next";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import { PLANS, ADDONS } from "@/config/subscriptionPlans";
@@ -71,6 +73,8 @@ interface Profile {
   company_id?: string | null;
   companies?: { navn: string } | null;
   is_technical_responsible?: boolean;
+  under_training?: boolean;
+  training_module_access?: TrainingModuleKey[] | null;
 }
 
 interface ChildCompanyOption {
