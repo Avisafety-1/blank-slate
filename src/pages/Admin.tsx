@@ -96,7 +96,7 @@ const availableRoles = [
 ];
 
 const Admin = () => {
-  const { user, loading, companyId, companyName, isSuperAdmin, isAdmin, signOut, departmentsEnabled, ensureValidToken } = useAuth();
+  const { user, loading, companyId, companyName, isSuperAdmin, isAdmin, signOut, departmentsEnabled, ensureValidToken, refetchUserInfo } = useAuth();
   const { canAccess, hasAddon, currentPlan, seatCount, bypass } = usePlanGating();
   const { subscriptionAddons } = useAuth();
   const canManageRoles = canAccess('access_control');
@@ -541,14 +541,20 @@ const Admin = () => {
   const toggleUnderTraining = async (userId: string, currentValue: boolean) => {
     try {
       const newValue = !currentValue;
+      const updatePayload = newValue
+        ? { under_training: true }
+        : { under_training: false, training_module_access: [] };
       const { error } = await supabase
         .from("profiles")
-        .update({ under_training: newValue } as any)
+        .update(updatePayload as any)
         .eq("id", userId);
       if (error) throw error;
       setProfiles(prev => prev.map(p =>
-        p.id === userId ? { ...p, under_training: newValue } : p
+        p.id === userId ? { ...p, under_training: newValue, training_module_access: newValue ? p.training_module_access : [] } : p
       ));
+      if (userId === user?.id) {
+        await refetchUserInfo();
+      }
       toast.success(newValue ? 'Bruker er satt under opplæring' : 'Opplæringsmodus er slått av');
     } catch (error) {
       console.error("Error toggling under training:", error);
@@ -567,6 +573,9 @@ const Admin = () => {
       setProfiles(prev => prev.map(p =>
         p.id === userId ? { ...p, training_module_access: normalized } : p
       ));
+      if (userId === user?.id) {
+        await refetchUserInfo();
+      }
       toast.success('Modultilgang oppdatert');
     } catch (error) {
       console.error("Error updating training module access:", error);

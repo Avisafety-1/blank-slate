@@ -876,15 +876,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             if (isCacheFresh(session.user.id)) {
-              // Cache is fresh (<5 min) — skip expensive DB queries, just check subscription
-              console.log('AuthContext: Cache fresh, skipping full refresh on page reload');
-              const ver = ++refreshVersionRef.current;
-              fireSubscriptionCheck(session.user.id, ver);
-              setAuthRefreshing(false);
-              setAuthInitialized(true);
-            } else {
-              refreshAuthState(session.user.id, 'initial-session');
+              console.log('AuthContext: Cache fresh, validating profile access from server');
             }
+            refreshAuthState(session.user.id, 'initial-session');
           } else {
             // Offline — mark as initialized with cached data
             setAuthInitialized(true);
@@ -966,6 +960,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, SOFT_REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [session]);
+
+  useEffect(() => {
+    if (!user?.id || !navigator.onLine) return;
+
+    const channel = supabase
+      .channel(`current-profile-access-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        () => {
+          refreshAuthState(user.id, 'profile-access-change');
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const signOut = async () => {
     await clearLocalAuthData(user?.id);
