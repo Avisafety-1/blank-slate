@@ -496,14 +496,19 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             )}
 
             {incident.rapportert_av && (() => {
-              const isAnonymous = incident.reported_anonymously || companySettings.hide_reporter_identity;
-              const showName = !isAnonymous || (isAdmin && departmentsEnabled);
+              const reporterName = getIncidentReporterDisplayName({
+                incident,
+                hideReporterIdentity: companySettings.hide_reporter_identity,
+                isAdmin,
+                isParentCompany: !parentCompanyId,
+                departmentsEnabled,
+              });
               return (
                 <div className="flex items-start gap-3">
                   <User className="w-5 h-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Rapportert av</p>
-                    <p className="text-base">{showName ? incident.rapportert_av : "Anonym"}</p>
+                    <p className="text-base">{reporterName}</p>
                   </div>
                 </div>
               );
