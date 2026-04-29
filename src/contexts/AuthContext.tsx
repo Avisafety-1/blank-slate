@@ -121,6 +121,9 @@ const AuthContext = createContext<AuthContextType>({
   isBillingOwner: false,
   seatCount: 1,
   accessibleCompanies: [],
+  underTraining: false,
+  trainingModuleAccess: [],
+  hasTrainingModuleAccess: () => true,
   authRefreshing: false,
   authInitialized: false,
   signOut: async () => {},
@@ -180,6 +183,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isBillingOwner, setIsBillingOwner] = useState(false);
   const [seatCount, setSeatCount] = useState(1);
   const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
+  const [underTraining, setUnderTraining] = useState(false);
+  const [trainingModuleAccess, setTrainingModuleAccess] = useState<TrainingModuleKey[]>([]);
 
   const resetAuthState = () => {
     setSession(null);
