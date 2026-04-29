@@ -507,9 +507,9 @@ const Index = () => {
           </div>}
 
             {/* Mobile: Active flights */}
-            <div className="lg:hidden mb-3 sm:mb-4">
+            {hasTrainingModuleAccess("missions") && <div className="lg:hidden mb-3 sm:mb-4">
               <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
-            </div>
+            </div>}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={layout.map((item) => item.id)} strategy={rectSortingStrategy}>
               <div className="space-y-3 sm:space-y-4">
@@ -658,9 +658,9 @@ const Index = () => {
                     </div>}
 
                     {/* Active flights - Desktop */}
-                    <div className="hidden lg:block">
+                    {hasTrainingModuleAccess("missions") && <div className="hidden lg:block">
                       <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
-                    </div>
+                    </div>}
 
                     {/* AI Search Bar - Desktop */}
                     <div className="hidden lg:block">
