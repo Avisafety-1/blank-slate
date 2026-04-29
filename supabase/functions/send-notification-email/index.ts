@@ -120,9 +120,10 @@ serve(async (req: Request): Promise<Response> => {
     if (type === 'notify_new_mission' && companyId && mission) {
       const { data: missionCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
       const { data: eligibleUsers } = await supabase.from('profiles').select('id').eq('company_id', companyId).eq('approved', true);
-      if (!eligibleUsers?.length) return new Response(JSON.stringify({ success: true, message: 'No users' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      const { data: notificationPrefs } = await supabase.from('notification_preferences').select('user_id').in('user_id', eligibleUsers.map(u => u.id)).eq('email_new_mission', true);
+      const { data: notificationPrefs } = eligibleUsers?.length
+        ? await supabase.from('notification_preferences').select('user_id').in('user_id', eligibleUsers.map(u => u.id)).eq('email_new_mission', true)
+        : { data: [] };
       const parentAdminIds = missionCompany?.parent_company_id
         ? await getParentAdminIdsWithPreference(supabase, missionCompany.parent_company_id, 'email_child_missions')
         : [];
