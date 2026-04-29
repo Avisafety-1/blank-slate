@@ -145,7 +145,6 @@ export const ProfileDialog = () => {
   const [loading, setLoading] = useState(true);
   const isAdmin = authIsAdmin;
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
-  const [inspectionReminderDaysDraft, setInspectionReminderDaysDraft] = useState<string>("14");
   const [missionReminderHoursDraft, setMissionReminderHoursDraft] = useState<string>("24");
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<Profile>>({});
@@ -246,11 +245,6 @@ export const ProfileDialog = () => {
         });
     }
   }, [user, profileDialogOpen]);
-
-  useEffect(() => {
-    if (notificationPrefs?.inspection_reminder_days === undefined || notificationPrefs?.inspection_reminder_days === null) return;
-    setInspectionReminderDaysDraft(String(notificationPrefs.inspection_reminder_days));
-  }, [notificationPrefs?.inspection_reminder_days]);
 
   useEffect(() => {
     if (notificationPrefs?.mission_reminder_hours === undefined || notificationPrefs?.mission_reminder_hours === null) return;
