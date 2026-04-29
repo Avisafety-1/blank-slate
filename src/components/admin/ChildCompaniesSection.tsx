@@ -1267,6 +1267,28 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 />
               </div>
 
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                <Label htmlFor="all-users-maintenance-ack" className="flex-1 cursor-pointer pr-4">
+                  <div className="font-medium text-sm flex items-center gap-1.5">
+                    Alle brukere kan kvittere ut vedlikehold på ressurser
+                    {allUsersCanAcknowledgeMaintenanceLocked && (
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Når aktivert kan alle brukere med tilgang til ressursen utføre vedlikehold/inspeksjon selv om teknisk ansvarlig er satt. Teknisk ansvarlig styrer fortsatt hvem i avdelingen som får vedlikeholdsvarsel.
+                  </div>
+                </Label>
+                <Switch
+                  id="all-users-maintenance-ack"
+                  checked={allUsersCanAcknowledgeMaintenanceValue}
+                  onCheckedChange={handleToggleAllUsersCanAcknowledgeMaintenance}
+                  disabled={savingSettings || allUsersCanAcknowledgeMaintenanceLocked}
+                />
+              </div>
+
               {/* Krev SORA */}
               {(() => {
                 const locked = isChildDept && !!inherited?.propagate_sora_required;
