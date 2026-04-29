@@ -4080,11 +4080,6 @@ export type Database = {
           email_child_missions: boolean
           email_child_new_user_pending: boolean
           email_document_expiry: boolean
-          email_child_document_expiry: boolean
-          email_child_incidents: boolean
-          email_child_maintenance_reminder: boolean
-          email_child_missions: boolean
-          email_child_new_user_pending: boolean
           email_followup_assigned: boolean
           email_inspection_reminder: boolean
           email_mission_approval: boolean
@@ -4110,11 +4105,6 @@ export type Database = {
           email_child_missions?: boolean
           email_child_new_user_pending?: boolean
           email_document_expiry?: boolean
-          email_child_document_expiry?: boolean
-          email_child_incidents?: boolean
-          email_child_maintenance_reminder?: boolean
-          email_child_missions?: boolean
-          email_child_new_user_pending?: boolean
           email_followup_assigned?: boolean
           email_inspection_reminder?: boolean
           email_mission_approval?: boolean
@@ -4140,11 +4130,6 @@ export type Database = {
           email_child_missions?: boolean
           email_child_new_user_pending?: boolean
           email_document_expiry?: boolean
-          email_child_document_expiry?: boolean
-          email_child_incidents?: boolean
-          email_child_maintenance_reminder?: boolean
-          email_child_missions?: boolean
-          email_child_new_user_pending?: boolean
           email_followup_assigned?: boolean
           email_inspection_reminder?: boolean
           email_mission_approval?: boolean
