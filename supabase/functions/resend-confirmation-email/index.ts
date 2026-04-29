@@ -66,7 +66,7 @@ serve(async (req) => {
     console.log(`Generated confirmation link for ${email}: ${confirmationLink}`);
 
     const confirmationSubject = `Bekreft e-postadressen din – ${companyName}`;
-    const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+    const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
     const confirmationHtml = `<!DOCTYPE html>
 <html>
 <head>

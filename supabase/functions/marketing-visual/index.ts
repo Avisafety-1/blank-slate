@@ -126,7 +126,7 @@ Layout:
 - Nordic aviation brand feeling — premium, restrained, atmospheric`;
 }
 
-const AVISAFE_LOGO_URL = "https://avisafev2.lovable.app/avisafe-logo-text.png";
+const AVISAFE_LOGO_URL = "https://app.avisafe.no/avisafe-logo-text.png";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

@@ -48,7 +48,7 @@ export const generateIncidentNotificationHTML = (incident: {
   alvorlighetsgrad: string;
   lokasjon?: string;
 }) => {
-  const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+  const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
   return `<!DOCTYPE html>
 <html>
 <head>

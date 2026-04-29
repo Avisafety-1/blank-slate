@@ -81,7 +81,7 @@ serve(async (req) => {
           const fromName = emailConfig.fromName || 'AviSafe';
           const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
-          const LOGO_URL = 'https://avisafev2.lovable.app/avisafe-logo-text.png';
+          const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
           const htmlContent = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
