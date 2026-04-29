@@ -468,14 +468,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const company = profileResult.data?.companies as any;
-      const parentCompanyId = company?.parent_company_id;
+      const resolvedParentCompanyId = company?.parent_company_id;
 
       if (profileResult.data) {
         const profile = profileResult.data;
         profileData.companyId = profile.company_id;
         profileData.isApproved = profile.approved ?? false;
         profileData.companyName = company?.navn || null;
-        profileData.parentCompanyId = parentCompanyId || null;
+        profileData.parentCompanyId = resolvedParentCompanyId || null;
         profileData.parentCompanyName = null;
         profileData.companyType = company?.selskapstype || 'droneoperator';
         profileData.companyLat = company?.adresse_lat || null;
@@ -486,12 +486,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.departmentsEnabled = company?.departments_enabled ?? false;
 
         // Inherit parent company settings if needed
-        if (parentCompanyId) {
+        if (resolvedParentCompanyId) {
           try {
             const { data: parentCompany } = await supabase
               .from('companies')
-              .select('stripe_exempt, dji_flightlog_enabled, dji_auto_sync_enabled, dronelog_api_key, eccairs_enabled, dronetag_enabled, ardupilot_enabled')
-              .eq('id', parentCompanyId)
+              .select('navn, stripe_exempt, dji_flightlog_enabled, dji_auto_sync_enabled, dronelog_api_key, eccairs_enabled, dronetag_enabled, ardupilot_enabled')
+              .eq('id', resolvedParentCompanyId)
               .single();
             // Re-check version after await
             if (myVersion !== refreshVersionRef.current) return;
@@ -499,7 +499,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               profileData.parentCompanyName = (parentCompany as any).navn || null;
               profileData.stripeExempt = parentCompany.stripe_exempt ?? profileData.stripeExempt;
               profileData.djiFlightlogEnabled = parentCompany.dji_flightlog_enabled ?? profileData.djiFlightlogEnabled;
-              console.log('AuthContext: Inherited settings from parent company', parentCompanyId);
+              console.log('AuthContext: Inherited settings from parent company', resolvedParentCompanyId);
             }
           } catch { /* ignore */ }
         }
