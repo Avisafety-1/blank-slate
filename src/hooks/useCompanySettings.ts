@@ -40,13 +40,14 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 
   const promise = (supabase
     .from("companies")
-    .select("show_all_airspace_warnings, hide_reporter_identity, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled")
+    .select("show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled")
     .eq("id", companyId)
     .single() as any)
     .then(({ data }: any) => {
       const s: CompanySettings = {
         show_all_airspace_warnings: data?.show_all_airspace_warnings ?? false,
         hide_reporter_identity: data?.hide_reporter_identity ?? false,
+        incident_reports_visible_to_all_companies: data?.incident_reports_visible_to_all_companies ?? false,
         require_mission_approval: data?.require_mission_approval ?? false,
         prevent_self_approval: data?.prevent_self_approval ?? false,
         require_sora_on_missions: data?.require_sora_on_missions ?? false,
