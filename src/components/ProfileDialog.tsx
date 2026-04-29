@@ -1747,6 +1747,83 @@ export const ProfileDialog = () => {
                           </div>
                         )}
                       </div>
+
+                      {canConfigureChildNotifications && (
+                        <>
+                          <Separator className="my-6" />
+                          <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
+                            <div className="space-y-1">
+                              <h4 className="font-medium">Varslinger fra avdelinger</h4>
+                              <p className="text-xs text-muted-foreground">
+                                Gjelder hendelser og frister i avdelinger under mor-selskapet ditt.
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Nye hendelser i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når en avdeling registrerer en hendelse.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_incidents ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_incidents', checked)}
+                              />
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Nye oppdrag i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når en avdeling oppretter et oppdrag.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_missions ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_missions', checked)}
+                              />
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Nye brukere i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når en bruker venter på godkjenning i en avdeling.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_new_user_pending ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_new_user_pending', checked)}
+                              />
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Dokumenter som utløper i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når dokumentfrister i avdelinger nærmer seg.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_document_expiry ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_document_expiry', checked)}
+                              />
+                            </div>
+
+                            <Separator />
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="space-y-0.5 flex-1">
+                                <label className="text-sm font-medium">Vedlikehold i avdelinger</label>
+                                <p className="text-xs text-muted-foreground">Motta e-post når ressurser i avdelinger krever vedlikehold eller inspeksjon.</p>
+                              </div>
+                              <Switch
+                                checked={notificationPrefs?.email_child_maintenance_reminder ?? false}
+                                onCheckedChange={(checked) => updateNotificationPref('email_child_maintenance_reminder', checked)}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                       
                       {/* Push Notifications Section */}
                       <Separator className="my-6" />
