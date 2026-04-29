@@ -408,7 +408,7 @@ const Index = () => {
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           {/* Mobile-only flight buttons */}
-          <div className="flex flex-col gap-2 mb-3 lg:hidden">
+          {!underTraining && <div className="flex flex-col gap-2 mb-3 lg:hidden">
             {/* Mobile-only: log flight / upload dropdown */}
             {hasFlightLogUpload ? (
               <DropdownMenu>
@@ -496,7 +496,7 @@ const Index = () => {
                 <Square className="w-4 h-4 mr-1" />
                 {t('actions.endFlight')}
               </Button>
-            </div>
+            </div>}
             </div>
 
             {/* Mobile: Active flights */}
@@ -559,7 +559,7 @@ const Index = () => {
                   {/* Center Column - Drone space and missions */}
                   <div className="lg:col-span-6 flex flex-col gap-3 sm:gap-4 h-full">
                     {/* Flight Log buttons */}
-                    <div className="flex flex-col gap-2">
+                    {!underTraining && <div className="flex flex-col gap-2">
                       {hasFlightLogUpload ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -648,7 +648,7 @@ const Index = () => {
                           {t('actions.endFlight')}
                         </Button>
                       </div>
-                    </div>
+                    </div>}
 
                     {/* Active flights - Desktop */}
                     <div className="hidden lg:block">
