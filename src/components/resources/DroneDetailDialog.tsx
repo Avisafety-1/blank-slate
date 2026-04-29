@@ -119,6 +119,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [lastFlown, setLastFlown] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
   const [technicalResponsibleName, setTechnicalResponsibleName] = useState<string | null>(null);
+  const [allUsersCanAcknowledgeMaintenance, setAllUsersCanAcknowledgeMaintenance] = useState(false);
   const [formTechnicalResponsibleId, setFormTechnicalResponsibleId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     modell: "",
@@ -261,6 +262,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       fetchMissionsSinceInspection();
       fetchLatestWarning();
       fetchTechnicalResponsibleName();
+      fetchMaintenanceAcknowledgementSetting();
       fetchLastFlown();
     }
   }, [drone]);
@@ -331,6 +333,17 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       .eq("id", drone.technical_responsible_id)
       .single();
     setTechnicalResponsibleName(data?.full_name || "Ukjent");
+  };
+
+  const fetchMaintenanceAcknowledgementSetting = async () => {
+    const targetCompanyId = drone?.company_id || companyId;
+    if (!targetCompanyId) { setAllUsersCanAcknowledgeMaintenance(false); return; }
+    const { data } = await (supabase as any)
+      .from("companies")
+      .select("all_users_can_acknowledge_maintenance")
+      .eq("id", targetCompanyId)
+      .maybeSingle();
+    setAllUsersCanAcknowledgeMaintenance((data as any)?.all_users_can_acknowledge_maintenance === true);
   };
 
   const fetchLatestWarning = async () => {
@@ -1096,7 +1109,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       Inspeksjon
                     </p>
                     {(() => {
-                      const isTechRestricted = drone.technical_responsible_id && user?.id !== drone.technical_responsible_id;
+                      const isTechRestricted = drone.technical_responsible_id && !allUsersCanAcknowledgeMaintenance && user?.id !== drone.technical_responsible_id;
                       return (
                         <TooltipProvider>
                           <Tooltip>
@@ -1958,7 +1971,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   noneLabel="Ingen"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Kun denne personen kan utføre inspeksjon og mottar vedlikeholdsvarsel
+                  Denne personen mottar vedlikeholdsvarsel. Kvittering kan begrenses til teknisk ansvarlig eller åpnes for alle via selskapsinnstillinger.
                 </p>
               </div>
 

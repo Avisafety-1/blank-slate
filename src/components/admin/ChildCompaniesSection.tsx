@@ -66,6 +66,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [incidentReportsVisibleToAllCompanies, setIncidentReportsVisibleToAllCompanies] = useState(false);
   const [requireMissionApproval, setRequireMissionApproval] = useState(false);
   const [preventSelfApproval, setPreventSelfApproval] = useState(false);
+  const [allUsersCanAcknowledgeMaintenance, setAllUsersCanAcknowledgeMaintenance] = useState(false);
   const [requireSoraOnMissions, setRequireSoraOnMissions] = useState(false);
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
@@ -80,6 +81,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     incident_reports_visible_to_all_companies: boolean;
     require_mission_approval: boolean;
     prevent_self_approval: boolean;
+    all_users_can_acknowledge_maintenance: boolean;
     require_sora_on_missions: boolean;
     require_sora_steps: number;
     deviation_report_enabled: boolean;
@@ -87,6 +89,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_hide_reporter: boolean;
     propagate_mission_approval: boolean;
     propagate_prevent_self_approval: boolean;
+    propagate_all_users_can_acknowledge_maintenance: boolean;
     propagate_sora_required: boolean;
     propagate_deviation_report: boolean;
     propagate_sora_buffer_mode: boolean;
@@ -325,7 +328,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -335,6 +338,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setIncidentReportsVisibleToAllCompanies((data as any).incident_reports_visible_to_all_companies ?? false);
       setRequireMissionApproval((data as any).require_mission_approval ?? false);
       setPreventSelfApproval((data as any).prevent_self_approval ?? false);
+      setAllUsersCanAcknowledgeMaintenance((data as any).all_users_can_acknowledge_maintenance ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
       const parentId = (data as any).parent_company_id as string | null;
@@ -346,6 +350,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         (data as any).propagate_hide_reporter ||
         (data as any).propagate_mission_approval ||
         (data as any).propagate_prevent_self_approval ||
+        (data as any).propagate_all_users_can_acknowledge_maintenance ||
         (data as any).propagate_sora_required ||
         (data as any).propagate_deviation_report
       );
@@ -361,7 +366,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
@@ -408,6 +413,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             incident_reports_visible_to_all_companies: parent.incident_reports_visible_to_all_companies ?? false,
             require_mission_approval: parent.require_mission_approval ?? false,
             prevent_self_approval: parent.prevent_self_approval ?? false,
+            all_users_can_acknowledge_maintenance: parent.all_users_can_acknowledge_maintenance ?? false,
             require_sora_on_missions: parent.require_sora_on_missions ?? false,
             require_sora_steps: parent.require_sora_steps ?? 1,
             deviation_report_enabled: parent.deviation_report_enabled ?? false,
@@ -415,6 +421,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             propagate_hide_reporter: parent.propagate_hide_reporter ?? false,
             propagate_mission_approval: parent.propagate_mission_approval ?? false,
             propagate_prevent_self_approval: parent.propagate_prevent_self_approval ?? false,
+            propagate_all_users_can_acknowledge_maintenance: parent.propagate_all_users_can_acknowledge_maintenance ?? false,
             propagate_sora_required: parent.propagate_sora_required ?? false,
             propagate_deviation_report: parent.propagate_deviation_report ?? false,
             propagate_sora_buffer_mode: parent.propagate_sora_buffer_mode ?? false,
@@ -609,6 +616,32 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
     setSavingSettings(false);
     setPreventSelfApproval(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
+  const handleToggleAllUsersCanAcknowledgeMaintenance = async (checked: boolean) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await (supabase as any)
+      .from("companies")
+      .update({ all_users_can_acknowledge_maintenance: checked })
+      .eq("id", companyId);
+    if (error) {
+      setSavingSettings(false);
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+
+    if (applySettingsToChildren) {
+      await (supabase as any)
+        .from("companies")
+        .update({ all_users_can_acknowledge_maintenance: checked })
+        .eq("parent_company_id", companyId);
+    }
+
+    setSavingSettings(false);
+    setAllUsersCanAcknowledgeMaintenance(checked);
     invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
   };
@@ -897,6 +930,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         propagate_hide_reporter: checked,
         propagate_mission_approval: checked,
         propagate_prevent_self_approval: checked,
+        propagate_all_users_can_acknowledge_maintenance: checked,
         propagate_sora_required: checked,
         propagate_deviation_report: checked,
       })
@@ -904,7 +938,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (checked) {
       await supabase
         .from("companies")
-        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, prevent_self_approval: preventSelfApproval, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
+        .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, prevent_self_approval: preventSelfApproval, all_users_can_acknowledge_maintenance: allUsersCanAcknowledgeMaintenance, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
         .eq("parent_company_id", companyId);
       toast.success("Selskapsinnstillinger anvendt på alle avdelinger og låst");
     } else {
@@ -1064,6 +1098,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const dialogCompany = selectedCompany || undefined;
   const preventSelfApprovalLocked = isChildDept && !!inherited?.propagate_prevent_self_approval;
   const preventSelfApprovalValue = preventSelfApprovalLocked ? inherited!.prevent_self_approval : preventSelfApproval;
+  const allUsersCanAcknowledgeMaintenanceLocked = isChildDept && !!inherited?.propagate_all_users_can_acknowledge_maintenance;
+  const allUsersCanAcknowledgeMaintenanceValue = allUsersCanAcknowledgeMaintenanceLocked
+    ? inherited!.all_users_can_acknowledge_maintenance
+    : allUsersCanAcknowledgeMaintenance;
 
   return (
     <div className="space-y-4">
@@ -1226,6 +1264,28 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   checked={preventSelfApprovalValue}
                   onCheckedChange={handleTogglePreventSelfApproval}
                   disabled={savingSettings || preventSelfApprovalLocked}
+                />
+              </div>
+
+              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
+                <Label htmlFor="all-users-maintenance-ack" className="flex-1 cursor-pointer pr-4">
+                  <div className="font-medium text-sm flex items-center gap-1.5">
+                    Alle brukere kan kvittere ut vedlikehold på ressurser
+                    {allUsersCanAcknowledgeMaintenanceLocked && (
+                      <Badge variant="secondary" className="text-[10px] gap-1">
+                        <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Når aktivert kan alle brukere med tilgang til ressursen utføre vedlikehold/inspeksjon selv om teknisk ansvarlig er satt. Teknisk ansvarlig styrer fortsatt hvem i avdelingen som får vedlikeholdsvarsel.
+                  </div>
+                </Label>
+                <Switch
+                  id="all-users-maintenance-ack"
+                  checked={allUsersCanAcknowledgeMaintenanceValue}
+                  onCheckedChange={handleToggleAllUsersCanAcknowledgeMaintenance}
+                  disabled={savingSettings || allUsersCanAcknowledgeMaintenanceLocked}
                 />
               </div>
 
