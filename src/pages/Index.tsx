@@ -388,6 +388,11 @@ const Index = () => {
     }
   };
 
+  const canRenderDashboardComponent = (component: string) => {
+    const moduleKey = dashboardComponentToModule(component);
+    return !moduleKey || hasTrainingModuleAccess(moduleKey);
+  };
+
   return (
     <DashboardRealtimeContext.Provider value={dashboardRealtime}>
     <div className="min-h-screen relative w-full overflow-x-hidden">
@@ -523,7 +528,7 @@ const Index = () => {
                   </div>
                   <div className="lg:col-span-3">
                     {layout
-                      .filter((item) => item.component === "status")
+                      .filter((item) => item.component === "status" && canRenderDashboardComponent(item.component))
                       .map((item) => (
                         <DraggableSection key={item.id} id={item.id}>
                           {renderSection(item.component)}
@@ -535,7 +540,7 @@ const Index = () => {
                 {/* Mobile/Tablet: Missions right after Status */}
                 <div className="lg:hidden">
                   {layout
-                    .filter((item) => item.component === "missions")
+                    .filter((item) => item.component === "missions" && canRenderDashboardComponent(item.component))
                     .map((item) => (
                       <DraggableSection key={`mobile-${item.id}`} id={item.id}>
                         {renderSection(item.component)}
@@ -548,7 +553,7 @@ const Index = () => {
                   {/* Left Column */}
                   <div className="lg:col-span-3 flex flex-col gap-3 sm:gap-4">
                     {layout
-                      .filter((item) => ["documents", "calendar"].includes(item.component))
+                      .filter((item) => ["documents", "calendar"].includes(item.component) && canRenderDashboardComponent(item.component))
                       .map((item) => (
                         <DraggableSection key={item.id} id={item.id} className={item.component === "calendar" ? "flex-1 flex flex-col" : ""}>
                           {renderSection(item.component)}
@@ -665,7 +670,7 @@ const Index = () => {
                       {layout &&
                         layout.length > 0 &&
                         layout
-                          .filter((item) => item.component === "missions")
+                          .filter((item) => item.component === "missions" && canRenderDashboardComponent(item.component))
                           .map((item) => (
                             <DraggableSection key={item.id} id={item.id}>
                               {renderSection(item.component)}
@@ -677,14 +682,14 @@ const Index = () => {
                   {/* Right Column */}
                   <div className="lg:col-span-3 flex flex-col gap-3 sm:gap-4">
                     {layout
-                      .filter((item) => item.component === "incidents")
+                      .filter((item) => item.component === "incidents" && canRenderDashboardComponent(item.component))
                       .map((item) => (
                         <DraggableSection key={item.id} id={item.id} className="flex-1">
                           {renderSection(item.component)}
                         </DraggableSection>
                       ))}
                     {layout
-                      .filter((item) => item.component === "kpi")
+                      .filter((item) => item.component === "kpi" && canRenderDashboardComponent(item.component))
                       .map((item) => (
                         <DraggableSection key={item.id} id={item.id}>
                           {renderSection(item.component)}
