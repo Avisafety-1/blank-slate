@@ -158,7 +158,7 @@ serve(async (req: Request): Promise<Response> => {
         companyIds.push(childCompany.parent_company_id);
       }
 
-      const { data: adminProfiles } = await supabase.from('profiles').select('id').in('company_id', companyIds).in('id', adminRoles.map(r => r.user_id));
+      const { data: adminProfiles } = await supabase.from('profiles').select('id, company_id').in('company_id', companyIds).in('id', adminRoles.map(r => r.user_id));
       if (!adminProfiles?.length) return new Response(JSON.stringify({ message: 'No admins in company' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const sameCompanyAdminIds = adminProfiles.filter((p: any) => p.company_id === companyId).map((p: any) => p.id);
