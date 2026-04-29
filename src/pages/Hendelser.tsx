@@ -33,6 +33,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { getAttributeLabel } from "@/config/eccairsFields";
+import { getIncidentReporterDisplayName } from "@/lib/incidentVisibility";
 
 type IncidentComment = {
   id: string;
@@ -57,6 +58,7 @@ type Incident = {
   mission_id: string | null;
   oppfolgingsansvarlig_id: string | null;
   company_id: string;
+  company_name?: string | null;
   hovedaarsak: string | null;
   medvirkende_aarsak: string | null;
   incident_number: string | null;
@@ -142,7 +144,7 @@ const getEccairsStatusClass = (status?: string): string => {
 const Hendelser = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading, companyId, departmentsEnabled, isAdmin } = useAuth();
+  const { user, loading: authLoading, companyId, parentCompanyId, departmentsEnabled, isAdmin } = useAuth();
   const companySettings = useCompanySettings();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
