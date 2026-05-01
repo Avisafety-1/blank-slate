@@ -137,6 +137,7 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
           landing_location: landing || null,
           flight_duration_minutes: newDuration,
           notes: notes || null,
+          operation_type: operationType,
         })
         .eq("id", log.id);
       if (updErr) throw updErr;
@@ -243,6 +244,21 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
             <div>
               <Label>Merknader</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+            </div>
+
+            <div>
+              <Label>Operasjonstype</Label>
+              <Select value={operationType} onValueChange={(v) => setOperationType(v as "VLOS" | "BVLOS" | "EVLOS")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="VLOS">VLOS</SelectItem>
+                  <SelectItem value="BVLOS">BVLOS</SelectItem>
+                  <SelectItem value="EVLOS">EVLOS</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Brukes i statistikken på Status-siden.</p>
             </div>
           </div>
         ) : null}
