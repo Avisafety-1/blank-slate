@@ -319,6 +319,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [unmatchedBatterySN, setUnmatchedBatterySN] = useState<string | null>(null);
   const [showAddEquipmentDialog, setShowAddEquipmentDialog] = useState(false);
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
+  const [operationType, setOperationType] = useState<"VLOS" | "BVLOS" | "EVLOS">("VLOS");
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
    const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
    const [updateDroneSnConfirmed, setUpdateDroneSnConfirmed] = useState(false);
@@ -536,6 +537,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setOldPilotIds([]);
     setOldEquipmentIds([]);
     setOldDroneId(null);
+    setOperationType("VLOS");
     setLogToLogbooks(true);
     setWarningActions({});
     setUnmatchedBatterySN(null);
@@ -1733,6 +1735,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
         notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
+        operation_type: operationType,
         ...extFields,
       } as any).select('id').single();
       if (logError) throw logError;
@@ -1797,6 +1800,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         landing_location: result.endPosition ? `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` : 'Ukjent',
         movements: 1, flight_track: { positions: flightTrack } as any,
         notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
+        operation_type: operationType,
         ...buildExtendedFields(result),
       };
 
@@ -2724,6 +2728,25 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
             }}
           />
         )}
+
+        {/* Operation type (VLOS / BVLOS / EVLOS) */}
+        <div className="rounded-lg border border-border p-3 space-y-1.5">
+          <Label htmlFor="upload-operation-type" className="text-sm font-medium">Operasjonstype</Label>
+          <Select
+            value={operationType}
+            onValueChange={(v) => setOperationType(v as "VLOS" | "BVLOS" | "EVLOS")}
+          >
+            <SelectTrigger id="upload-operation-type" className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="VLOS">VLOS — visuell siktforbindelse</SelectItem>
+              <SelectItem value="BVLOS">BVLOS — utenfor visuell rekkevidde</SelectItem>
+              <SelectItem value="EVLOS">EVLOS — utvidet med observatør</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Standard: VLOS. Brukes i statistikken på Status-siden.</p>
+        </div>
 
         {/* Logbook section */}
         {renderLogbookSection()}
