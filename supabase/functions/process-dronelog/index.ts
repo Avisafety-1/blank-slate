@@ -873,12 +873,15 @@ Deno.serve(async (req) => {
         // Helper: upload raw bytes via multipart /logs/upload
         const uploadRawBytes = async (fileBytes: Uint8Array, ext: string): Promise<Response | string> => {
           const fileName = `dji_${logId}${ext}`;
+          // DroneLog validates BOTH file extension and MIME type (Laravel `mimes:txt,zip`).
+          // Sending application/octet-stream causes 422 even when the extension is correct.
+          const fileMime = ext === ".zip" ? "application/zip" : ext === ".txt" ? "text/plain" : "application/octet-stream";
           const boundary = "----DronLogBoundary" + Date.now();
           const parts: string[] = [];
           for (const field of fieldList) {
             parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
           }
-          parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`);
+          parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${fileMime}\r\n\r\n`);
           const enc = new TextEncoder();
           const prefixBytes = enc.encode(parts.join(""));
           const suffixBytes = enc.encode(`\r\n--${boundary}--\r\n`);
@@ -886,7 +889,7 @@ Deno.serve(async (req) => {
           uploadBody.set(prefixBytes, 0);
           uploadBody.set(fileBytes, prefixBytes.length);
           uploadBody.set(suffixBytes, prefixBytes.length + fileBytes.length);
-          console.log(`[process-dronelog] uploading ${fileName} (${fileBytes.length} bytes) via /logs/upload`);
+          console.log(`[process-dronelog] uploading ${fileName} (${fileBytes.length} bytes, mime=${fileMime}) via /logs/upload`);
           const uploadRes = await fetch(`${DRONELOG_BASE}/logs/upload`, {
             method: "POST",
             headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": `multipart/form-data; boundary=${boundary}`, Accept: "application/json" },
