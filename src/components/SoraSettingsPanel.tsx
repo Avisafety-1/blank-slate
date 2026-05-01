@@ -174,7 +174,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     const catalogSpeed = catalogSpecs.max_speed_mps ?? (catalogSpecs.max_wind_mps != null ? catalogSpecs.max_wind_mps * 2 : null);
     const next: Partial<SoraSettings> = {
       droneId: selectedDroneId || undefined,
-      droneName: selectedDrone ? `${selectedDrone.modell} — ${selectedDrone.serienummer}` : undefined,
+      droneName: selectedDrone ? droneLabel(selectedDrone) : undefined,
     };
 
     if (catalogCd != null && !manualCdOverride) {
@@ -243,7 +243,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     onChange({
       ...settings,
       droneId: selectedDroneId || undefined,
-      droneName: selectedDrone ? `${selectedDrone.modell} — ${selectedDrone.serienummer}` : undefined,
+      droneName: selectedDrone ? droneLabel(selectedDrone) : undefined,
       characteristicDimensionM: Number(characteristicDimension) || undefined,
       groundSpeedMps: Number(groundSpeed) || undefined,
       contingencyDistance: suggestion.suggested_contingency_buffer_m,
@@ -260,14 +260,14 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         <Label className="text-xs text-muted-foreground flex items-center gap-1">
           <Plane className="h-3 w-3" /> Velg drone
         </Label>
-        <Select value={selectedDroneId} onValueChange={(v) => { const drone = drones.find((d) => d.id === v); setSelectedDroneId(v); setManualOverride(false); setManualCdOverride(false); setManualSpeedOverride(false); update({ droneId: v || undefined, droneName: drone ? `${drone.modell} — ${drone.serienummer}` : undefined }); onDroneSelected?.(v || null); }}>
+        <Select value={selectedDroneId} onValueChange={(v) => { const drone = drones.find((d) => d.id === v); setSelectedDroneId(v); setManualOverride(false); setManualCdOverride(false); setManualSpeedOverride(false); update({ droneId: v || undefined, droneName: drone ? droneLabel(drone) : undefined }); onDroneSelected?.(v || null); }}>
           <SelectTrigger className="h-8 text-sm">
             <SelectValue placeholder="Velg drone fra flåten" />
           </SelectTrigger>
           <SelectContent>
             {drones.map((d) => (
               <SelectItem key={d.id} value={d.id}>
-                {d.modell} — {d.serienummer}
+                {droneLabel(d)}
               </SelectItem>
             ))}
           </SelectContent>
