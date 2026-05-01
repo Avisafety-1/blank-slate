@@ -846,6 +846,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         flightDate: new Date().toISOString().split('T')[0],
         notes: "",
         markMissionCompleted: false,
+        operationType: "VLOS",
       });
       setSelectedEquipment([]);
       setLinkedPersonnel([]);
