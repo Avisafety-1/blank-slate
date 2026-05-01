@@ -24,6 +24,9 @@ interface PendingDjiLog {
   matched_battery_id: string | null;
   status: string;
   error_message: string | null;
+  error_code: string | null;
+  last_error_at: string | null;
+  retry_count: number | null;
   created_at: string;
   parsed_result: any;
   user_id: string | null;
