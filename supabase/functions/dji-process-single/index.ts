@@ -320,17 +320,22 @@ Deno.serve(async (req) => {
   const persistError = async (errorCode: string, errorMessage: string) => {
     if (!currentPendingLogId) return;
     try {
-      await serviceClient.rpc;
+      // Read current retry_count, then update with incremented value
+      const { data: current } = await serviceClient
+        .from("pending_dji_logs")
+        .select("retry_count")
+        .eq("id", currentPendingLogId)
+        .maybeSingle();
+      const nextRetry = (current?.retry_count ?? 0) + 1;
       await serviceClient
         .from("pending_dji_logs")
         .update({
           error_code: errorCode,
           error_message: errorMessage.slice(0, 500),
           last_error_at: new Date().toISOString(),
+          retry_count: nextRetry,
         })
         .eq("id", currentPendingLogId);
-      // increment retry_count separately to avoid race
-      await serviceClient.rpc("increment_pending_dji_retry", { _id: currentPendingLogId }).then(() => {}, () => {});
     } catch (e) {
       console.error("[dji-process-single] persistError failed:", e);
     }
