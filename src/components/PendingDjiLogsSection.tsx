@@ -140,11 +140,31 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
       <div className={`space-y-1.5 overflow-y-auto ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px]'}`}>
         {displayedLogs.map(log => {
           const ownerName = log.ownerName;
+          // Determine if this log has a recent error (rate-limit cooldown = 2 min)
+          const hasError = !!log.error_code;
+          const isRateLimited =
+            log.error_code === "rate_limit" &&
+            log.last_error_at &&
+            (Date.now() - new Date(log.last_error_at).getTime()) < 2 * 60 * 1000;
+          const errorLabel =
+            log.error_code === "rate_limit" ? "DJI begrenser forespørsler – vent litt før du prøver igjen"
+            : log.error_code === "parse_error" ? "Loggfilen kan ikke parses (DJI avviste filen)"
+            : log.error_code === "login_failed" ? "Innlogging mot DJI feilet"
+            : log.error_code === "download_failed" ? "Kunne ikke laste ned loggfilen fra DJI"
+            : log.error_message || null;
           return (
             <button
               key={log.id}
               onClick={() => onSelectLog(log)}
-              className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/30 transition-all text-left group"
+              disabled={isRateLimited}
+              title={errorLabel || undefined}
+              className={`w-full flex items-center gap-3 p-2.5 rounded-lg border transition-all text-left group ${
+                isRateLimited
+                  ? "border-yellow-500/40 bg-yellow-500/5 cursor-not-allowed opacity-70"
+                  : hasError
+                    ? "border-destructive/40 hover:border-destructive/60 hover:bg-muted/30"
+                    : "border-border hover:border-primary/50 hover:bg-muted/30"
+              }`}
             >
               <Plane className="w-4 h-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
@@ -152,11 +172,14 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                   <p className="text-xs font-medium truncate">
                     {log.aircraft_name || log.aircraft_sn || "Ukjent drone"}
                   </p>
-                  {log.matched_drone_id && (
+                  {log.matched_drone_id && !hasError && (
                     <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
                   )}
-                  {!log.matched_drone_id && (
+                  {!log.matched_drone_id && !hasError && (
                     <AlertTriangle className="w-3 h-3 text-yellow-500 shrink-0" />
+                  )}
+                  {hasError && (
+                    <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
@@ -170,6 +193,11 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                 </p>
                 {ownerName && (
                   <p className="text-[11px] text-muted-foreground">{ownerName}</p>
+                )}
+                {errorLabel && (
+                  <p className={`text-[11px] mt-0.5 ${isRateLimited ? "text-yellow-600" : "text-destructive"}`}>
+                    {errorLabel}
+                  </p>
                 )}
               </div>
               <Button
