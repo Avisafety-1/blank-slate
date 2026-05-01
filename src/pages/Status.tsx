@@ -101,6 +101,13 @@ const Status = () => {
   const [droneStatus, setDroneStatus] = useState<StatusData[]>([]);
   const [equipmentStatus, setEquipmentStatus] = useState<StatusData[]>([]);
   const [flightHoursByDrone, setFlightHoursByDrone] = useState<any[]>([]);
+  const [operationTypeStats, setOperationTypeStats] = useState<{
+    counts: { name: string; value: number }[];
+    hours: { name: string; value: number }[];
+    monthly: { month: string; VLOS: number; BVLOS: number; EVLOS: number }[];
+    totalFlights: number;
+    totalMinutes: number;
+  }>({ counts: [], hours: [], monthly: [], totalFlights: 0, totalMinutes: 0 });
   const [expiringDocs, setExpiringDocs] = useState<{ thirtyDays: number; sixtyDays: number; ninetyDays: number }>({
     thirtyDays: 0,
     sixtyDays: 0,
