@@ -4271,14 +4271,17 @@ export type Database = {
           created_at: string
           dji_log_id: string
           duration_seconds: number | null
+          error_code: string | null
           error_message: string | null
           flight_date: string | null
           id: string
+          last_error_at: string | null
           matched_battery_id: string | null
           matched_drone_id: string | null
           max_height_m: number | null
           parsed_result: Json | null
           processed_flight_log_id: string | null
+          retry_count: number
           sn_mismatch_suggestion: Json | null
           source_file_type: string | null
           status: string
@@ -4292,14 +4295,17 @@ export type Database = {
           created_at?: string
           dji_log_id: string
           duration_seconds?: number | null
+          error_code?: string | null
           error_message?: string | null
           flight_date?: string | null
           id?: string
+          last_error_at?: string | null
           matched_battery_id?: string | null
           matched_drone_id?: string | null
           max_height_m?: number | null
           parsed_result?: Json | null
           processed_flight_log_id?: string | null
+          retry_count?: number
           sn_mismatch_suggestion?: Json | null
           source_file_type?: string | null
           status?: string
@@ -4313,14 +4319,17 @@ export type Database = {
           created_at?: string
           dji_log_id?: string
           duration_seconds?: number | null
+          error_code?: string | null
           error_message?: string | null
           flight_date?: string | null
           id?: string
+          last_error_at?: string | null
           matched_battery_id?: string | null
           matched_drone_id?: string | null
           max_height_m?: number | null
           parsed_result?: Json | null
           processed_flight_log_id?: string | null
+          retry_count?: number
           sn_mismatch_suggestion?: Json | null
           source_file_type?: string | null
           status?: string
