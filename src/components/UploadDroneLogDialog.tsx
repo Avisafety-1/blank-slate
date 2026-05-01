@@ -1149,6 +1149,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           } else {
             toast.error(msg, { duration: 8000 });
           }
+          // Patch the row locally so the UI immediately shows the error state
+          // and the rate-limit cooldown without waiting for a full refresh.
+          pendingLogsRef.current?.updateLog(pendingLog.id, {
+            error_code: code,
+            error_message: msg,
+            last_error_at: new Date().toISOString(),
+          });
+          // Background refresh so other pilots see updated state too
           pendingLogsRef.current?.refresh();
           setIsProcessing(false);
           setProcessingLogId(null);
