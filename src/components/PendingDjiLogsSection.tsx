@@ -245,6 +245,21 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
           );
         })}
       </div>
+      {hasMore && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs"
+          onClick={() => fetchPendingLogs(logs.length, false)}
+          disabled={loadingMore}
+        >
+          {loadingMore ? (
+            <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Laster...</>
+          ) : (
+            "Last flere"
+          )}
+        </Button>
+      )}
     </div>
   );
 });
