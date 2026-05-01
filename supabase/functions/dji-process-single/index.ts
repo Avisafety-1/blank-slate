@@ -399,24 +399,36 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No DroneLog API key configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Login to DJI
+    // Login to DJI (with one retry on 429 rate-limit)
     const password = await decryptPassword(cred.dji_password_encrypted);
-    const loginRes = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
+    const doLogin = () => fetch(`${DRONELOG_BASE}/accounts/dji`, {
       method: "POST",
       headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ email: cred.dji_email, password }),
     });
+    let loginRes = await doLogin();
+    if (loginRes.status === 429) {
+      console.log("[dji-process-single] DJI login rate-limited, waiting 35s and retrying once");
+      await new Promise((r) => setTimeout(r, 35000));
+      loginRes = await doLogin();
+    }
 
     if (!loginRes.ok) {
       const errText = await loginRes.text();
-      return new Response(JSON.stringify({ error: `DJI login failed (${loginRes.status})`, upstreamStatus: loginRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (loginRes.status === 429) {
+        await persistError("rate_limit", `DJI login rate-limited (429): ${errText.slice(0, 200)}`);
+        return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om 1-2 minutter.");
+      }
+      await persistError("login_failed", `DJI login failed (${loginRes.status}): ${errText.slice(0, 200)}`);
+      return errorResponse("login_failed", `Innlogging mot DJI feilet (${loginRes.status}). Sjekk DJI-passordet i din profil.`);
     }
 
     const loginData = await loginRes.json();
     const accountId = loginData.result?.djiAccountId || loginData.result?.id || loginData.result?.accountId || cred.dji_account_id;
 
     if (!accountId) {
-      return new Response(JSON.stringify({ error: "Could not determine DJI account ID" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      await persistError("no_account_id", "Could not determine DJI account ID");
+      return errorResponse("no_account_id", "Fant ikke DJI-konto-ID.");
     }
 
     // Download the log file
@@ -429,7 +441,12 @@ Deno.serve(async (req) => {
 
     if (!fileRes.ok) {
       const errText = await fileRes.text();
-      return new Response(JSON.stringify({ error: `Download failed (${fileRes.status})`, upstreamStatus: fileRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (fileRes.status === 429) {
+        await persistError("rate_limit", `Download rate-limited (429): ${errText.slice(0, 200)}`);
+        return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om 1-2 minutter.");
+      }
+      await persistError("download_failed", `Download failed (${fileRes.status}): ${errText.slice(0, 200)}`);
+      return errorResponse("download_failed", `Kunne ikke laste ned loggfilen (${fileRes.status}).`);
     }
 
     const buffer = await fileRes.arrayBuffer();
@@ -439,7 +456,15 @@ Deno.serve(async (req) => {
 
     console.log(`[dji-process-single] Processing log ${logId} (${bytes.length} bytes, ${ext})`);
 
-    const parsed = await uploadAndParse(dronelogKey, bytes, ext, logId);
+    let parsed;
+    try {
+      parsed = await uploadAndParse(dronelogKey, bytes, ext, logId);
+    } catch (parseErr) {
+      const msg = String(parseErr);
+      console.error("[dji-process-single] uploadAndParse failed:", msg);
+      await persistError("parse_error", msg.slice(0, 400));
+      return errorResponse("parse_error", "Kunne ikke parse loggfilen (DJI API avviste filen). Loggen kan være korrupt eller for stor.");
+    }
 
     // Build search list: own + parent (so shared drones/batteries from a parent
     // company are auto-matched in child departments).
