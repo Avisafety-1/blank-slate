@@ -2502,6 +2502,7 @@ export type Database = {
           mission_id: string | null
           movements: number
           notes: string | null
+          operation_type: string
           rth_triggered: boolean | null
           safesky_mode: string | null
           source: string | null
@@ -2543,6 +2544,7 @@ export type Database = {
           mission_id?: string | null
           movements?: number
           notes?: string | null
+          operation_type?: string
           rth_triggered?: boolean | null
           safesky_mode?: string | null
           source?: string | null
@@ -2584,6 +2586,7 @@ export type Database = {
           mission_id?: string | null
           movements?: number
           notes?: string | null
+          operation_type?: string
           rth_triggered?: boolean | null
           safesky_mode?: string | null
           source?: string | null
