@@ -639,7 +639,7 @@ async function syncSingleUser(
     }
 
     // List logs
-    const listRes = await fetch(`${DRONELOG_BASE}/logs/${accountId}?limit=50`, {
+    const listRes = await fetch(`${DRONELOG_BASE}/logs/${accountId}?limit=200`, {
       headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
     });
 
