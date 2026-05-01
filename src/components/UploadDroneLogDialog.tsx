@@ -1140,6 +1140,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         });
         if (invokeError) throw new Error(invokeError.message || "Kunne ikke hente flydata");
 
+        // Edge function now returns 200 with success:false + error_code on parse failures
+        if (data && data.success === false) {
+          const code = data.error_code || "parse_error";
+          const msg = data.error || "Kunne ikke parse loggen.";
+          if (code === "rate_limit") {
+            toast.warning(msg, { duration: 8000 });
+          } else {
+            toast.error(msg, { duration: 8000 });
+          }
+          pendingLogsRef.current?.refresh();
+          setIsProcessing(false);
+          setProcessingLogId(null);
+          return;
+        }
+
         if (data.already_imported) {
           toast.info("Denne loggen er allerede importert.");
           pendingLogsRef.current?.refresh();

@@ -313,6 +313,40 @@ Deno.serve(async (req) => {
 
   const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+  // Helper: persist a parse error on the pending log and return a 200 response
+  // so the client doesn't get a generic "non-2xx" crash. The UI uses error_code
+  // to decide whether to show retry/disabled state.
+  let currentPendingLogId: string | null = null;
+  const persistError = async (errorCode: string, errorMessage: string) => {
+    if (!currentPendingLogId) return;
+    try {
+      // Read current retry_count, then update with incremented value
+      const { data: current } = await serviceClient
+        .from("pending_dji_logs")
+        .select("retry_count")
+        .eq("id", currentPendingLogId)
+        .maybeSingle();
+      const nextRetry = (current?.retry_count ?? 0) + 1;
+      await serviceClient
+        .from("pending_dji_logs")
+        .update({
+          error_code: errorCode,
+          error_message: errorMessage.slice(0, 500),
+          last_error_at: new Date().toISOString(),
+          retry_count: nextRetry,
+        })
+        .eq("id", currentPendingLogId);
+    } catch (e) {
+      console.error("[dji-process-single] persistError failed:", e);
+    }
+  };
+  const errorResponse = (errorCode: string, errorMessage: string, httpStatus = 200) => {
+    return new Response(
+      JSON.stringify({ success: false, error_code: errorCode, error: errorMessage }),
+      { status: httpStatus, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  };
+
   try {
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -329,6 +363,7 @@ Deno.serve(async (req) => {
     if (!pending_log_id) {
       return new Response(JSON.stringify({ error: "Missing pending_log_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    currentPendingLogId = pending_log_id;
 
     // Fetch the pending log
     const { data: pendingLog, error: plErr } = await serviceClient
@@ -369,24 +404,36 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No DroneLog API key configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Login to DJI
+    // Login to DJI (with one retry on 429 rate-limit)
     const password = await decryptPassword(cred.dji_password_encrypted);
-    const loginRes = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
+    const doLogin = () => fetch(`${DRONELOG_BASE}/accounts/dji`, {
       method: "POST",
       headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ email: cred.dji_email, password }),
     });
+    let loginRes = await doLogin();
+    if (loginRes.status === 429) {
+      console.log("[dji-process-single] DJI login rate-limited, waiting 35s and retrying once");
+      await new Promise((r) => setTimeout(r, 35000));
+      loginRes = await doLogin();
+    }
 
     if (!loginRes.ok) {
       const errText = await loginRes.text();
-      return new Response(JSON.stringify({ error: `DJI login failed (${loginRes.status})`, upstreamStatus: loginRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (loginRes.status === 429) {
+        await persistError("rate_limit", `DJI login rate-limited (429): ${errText.slice(0, 200)}`);
+        return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om 1-2 minutter.");
+      }
+      await persistError("login_failed", `DJI login failed (${loginRes.status}): ${errText.slice(0, 200)}`);
+      return errorResponse("login_failed", `Innlogging mot DJI feilet (${loginRes.status}). Sjekk DJI-passordet i din profil.`);
     }
 
     const loginData = await loginRes.json();
     const accountId = loginData.result?.djiAccountId || loginData.result?.id || loginData.result?.accountId || cred.dji_account_id;
 
     if (!accountId) {
-      return new Response(JSON.stringify({ error: "Could not determine DJI account ID" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      await persistError("no_account_id", "Could not determine DJI account ID");
+      return errorResponse("no_account_id", "Fant ikke DJI-konto-ID.");
     }
 
     // Download the log file
@@ -399,7 +446,12 @@ Deno.serve(async (req) => {
 
     if (!fileRes.ok) {
       const errText = await fileRes.text();
-      return new Response(JSON.stringify({ error: `Download failed (${fileRes.status})`, upstreamStatus: fileRes.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (fileRes.status === 429) {
+        await persistError("rate_limit", `Download rate-limited (429): ${errText.slice(0, 200)}`);
+        return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om 1-2 minutter.");
+      }
+      await persistError("download_failed", `Download failed (${fileRes.status}): ${errText.slice(0, 200)}`);
+      return errorResponse("download_failed", `Kunne ikke laste ned loggfilen (${fileRes.status}).`);
     }
 
     const buffer = await fileRes.arrayBuffer();
@@ -409,7 +461,15 @@ Deno.serve(async (req) => {
 
     console.log(`[dji-process-single] Processing log ${logId} (${bytes.length} bytes, ${ext})`);
 
-    const parsed = await uploadAndParse(dronelogKey, bytes, ext, logId);
+    let parsed;
+    try {
+      parsed = await uploadAndParse(dronelogKey, bytes, ext, logId);
+    } catch (parseErr) {
+      const msg = String(parseErr);
+      console.error("[dji-process-single] uploadAndParse failed:", msg);
+      await persistError("parse_error", msg.slice(0, 400));
+      return errorResponse("parse_error", "Kunne ikke parse loggfilen (DJI API avviste filen). Loggen kan være korrupt eller for stor.");
+    }
 
     // Build search list: own + parent (so shared drones/batteries from a parent
     // company are auto-matched in child departments).
@@ -540,6 +600,10 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error("[dji-process-single] Error:", error);
-    return new Response(JSON.stringify({ error: "Internal server error", details: String(error) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    await persistError("internal_error", String(error));
+    return new Response(
+      JSON.stringify({ success: false, error_code: "internal_error", error: "Intern feil ved parsing av loggen.", details: String(error) }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
