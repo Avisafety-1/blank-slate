@@ -18,7 +18,7 @@ import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, B
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { PendingDjiLogsSection } from "@/components/PendingDjiLogsSection";
+import { PendingDjiLogsSection, type PendingDjiLogsSectionRef } from "@/components/PendingDjiLogsSection";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { usePlanGating } from "@/hooks/usePlanGating";
@@ -267,7 +267,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const terminology = useTerminology();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pendingLogsRef = useRef<{ refresh: () => void }>(null);
+  const pendingLogsRef = useRef<PendingDjiLogsSectionRef>(null);
 
   const [step, setStep] = useState<Step>('method');
   const [file, setFile] = useState<File | null>(null);
@@ -1149,6 +1149,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           } else {
             toast.error(msg, { duration: 8000 });
           }
+          // Patch the row locally so the UI immediately shows the error state
+          // and the rate-limit cooldown without waiting for a full refresh.
+          pendingLogsRef.current?.updateLog(pendingLog.id, {
+            error_code: code,
+            error_message: msg,
+            last_error_at: new Date().toISOString(),
+          });
+          // Background refresh so other pilots see updated state too
           pendingLogsRef.current?.refresh();
           setIsProcessing(false);
           setProcessingLogId(null);

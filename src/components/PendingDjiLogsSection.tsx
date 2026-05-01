@@ -40,41 +40,66 @@ interface PendingDjiLogsSectionProps {
 
 export interface PendingDjiLogsSectionRef {
   refresh: () => void;
+  updateLog: (id: string, patch: Partial<PendingDjiLog>) => void;
 }
+
+const PAGE_SIZE = 200;
 
 export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog, expanded }, ref) => {
   const { companyId, user } = useAuth();
   const { hasAddon } = usePlanGating();
   const [logs, setLogs] = useState<PendingDjiLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [onlyMine, setOnlyMine] = useState(true);
   const djiEnabled = hasAddon('dji');
 
   useImperativeHandle(ref, () => ({
-    refresh: () => { if (companyId) fetchPendingLogs(); }
+    refresh: () => { if (companyId) fetchPendingLogs(0, true); },
+    updateLog: (id, patch) => {
+      setLogs(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
+    },
   }));
 
   useEffect(() => {
-    if (companyId) fetchPendingLogs();
-  }, [companyId]);
+    if (companyId) fetchPendingLogs(0, true);
+  }, [companyId, onlyMine]);
 
-  const fetchPendingLogs = async () => {
+  const fetchPendingLogs = async (offset: number, replace: boolean) => {
     if (!companyId) return;
-    setLoading(true);
-    const { data, error } = await supabase
+    if (replace) setLoading(true); else setLoadingMore(true);
+
+    let query = supabase
       .from("pending_dji_logs")
       .select("*")
       .eq("company_id", companyId)
-      .eq("status", "pending")
+      .eq("status", "pending");
+
+    if (onlyMine && user?.id) {
+      query = query.eq("user_id", user.id);
+    }
+
+    const { data, error } = await query
       .order("flight_date", { ascending: false })
-      .limit(50);
+      .range(offset, offset + PAGE_SIZE - 1);
 
     if (error) {
       console.error("Error fetching pending logs:", error);
     }
 
-    const rawLogs = (data || []) as PendingDjiLog[];
+    let rawLogs = (data || []) as PendingDjiLog[];
+
+    // Sort: errored or unparsed first (so they're visible)
+    rawLogs.sort((a, b) => {
+      const aPriority = a.error_code ? 0 : !a.parsed_result ? 1 : 2;
+      const bPriority = b.error_code ? 0 : !b.parsed_result ? 1 : 2;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      const aDate = a.flight_date ? new Date(a.flight_date).getTime() : 0;
+      const bDate = b.flight_date ? new Date(b.flight_date).getTime() : 0;
+      return bDate - aDate;
+    });
 
     // Fetch owner names for unique user_ids
     const userIds = [...new Set(rawLogs.map(l => l.user_id).filter(Boolean))] as string[];
@@ -87,8 +112,10 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
       rawLogs.forEach(l => { l.ownerName = l.user_id ? nameMap.get(l.user_id) || null : null; });
     }
 
-    setLogs(rawLogs);
+    setHasMore(rawLogs.length === PAGE_SIZE);
+    setLogs(prev => replace ? rawLogs : [...prev, ...rawLogs]);
     setLoading(false);
+    setLoadingMore(false);
   };
 
   const handleDismiss = async (e: React.MouseEvent, logId: string) => {
@@ -124,14 +151,15 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     <p className="text-xs text-muted-foreground">Ingen logger til behandling</p>
   );
 
-  const displayedLogs = onlyMine ? logs.filter(l => l.user_id === user?.id) : logs;
+  // Filter is now applied serverside via the onlyMine flag in fetchPendingLogs
+  const displayedLogs = logs;
 
   return (
     <div className={`space-y-2 ${expanded ? 'flex-1 flex flex-col min-h-0' : ''}`}>
       <div className="flex items-center gap-2 flex-wrap">
         <Clock className="w-4 h-4 text-primary" />
         <p className="text-sm font-medium">Ventende flylogger fra auto-sync</p>
-        <Badge variant="secondary" className="text-xs">{displayedLogs.length}</Badge>
+        <Badge variant="secondary" className="text-xs">{displayedLogs.length}{hasMore ? "+" : ""}</Badge>
         <div className="flex items-center gap-1.5">
           <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} className="scale-75" />
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
@@ -217,6 +245,21 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
           );
         })}
       </div>
+      {hasMore && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs"
+          onClick={() => fetchPendingLogs(logs.length, false)}
+          disabled={loadingMore}
+        >
+          {loadingMore ? (
+            <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Laster...</>
+          ) : (
+            "Last flere"
+          )}
+        </Button>
+      )}
     </div>
   );
 });
