@@ -1003,7 +1003,7 @@ export function OpenAIPMap({
           });
       }
       onFocusFlightHandled?.();
-    }, 1500);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [focusFlightId, onFocusFlightHandled]);
