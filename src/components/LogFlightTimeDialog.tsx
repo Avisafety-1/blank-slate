@@ -1341,6 +1341,25 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             <p className="text-xs text-muted-foreground mt-1">Antall landinger</p>
           </div>
 
+          {/* Operation type (VLOS / BVLOS / EVLOS) */}
+          <div>
+            <Label htmlFor="operation-type">Operasjonstype</Label>
+            <Select
+              value={formData.operationType}
+              onValueChange={(v) => setFormData({ ...formData, operationType: v as "VLOS" | "BVLOS" | "EVLOS" })}
+            >
+              <SelectTrigger id="operation-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="VLOS">VLOS — visuell siktforbindelse</SelectItem>
+                <SelectItem value="BVLOS">BVLOS — utenfor visuell rekkevidde</SelectItem>
+                <SelectItem value="EVLOS">EVLOS — utvidet med observatør</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Standard: VLOS. Brukes i statistikken på Status-siden.</p>
+          </div>
+
           {/* Notes */}
           <div>
             <Label htmlFor="notes">Merknad</Label>
