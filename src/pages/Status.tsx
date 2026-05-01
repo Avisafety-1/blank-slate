@@ -458,6 +458,56 @@ const Status = () => {
     setFlightLogsCount(count || 0);
   };
 
+  const fetchOperationTypeStatistics = async () => {
+    const { startDate, endDate } = getDateFilter();
+
+    const { data: logs } = await supabase
+      .from("flight_logs")
+      .select("operation_type, flight_duration_minutes, flight_date")
+      .gte("flight_date", startDate.toISOString().slice(0, 10))
+      .lte("flight_date", endDate.toISOString().slice(0, 10));
+
+    const rows = (logs || []) as Array<{
+      operation_type: string | null;
+      flight_duration_minutes: number | null;
+      flight_date: string;
+    }>;
+
+    const types: Array<"VLOS" | "BVLOS" | "EVLOS"> = ["VLOS", "BVLOS", "EVLOS"];
+    const countMap: Record<string, number> = { VLOS: 0, BVLOS: 0, EVLOS: 0 };
+    const minutesMap: Record<string, number> = { VLOS: 0, BVLOS: 0, EVLOS: 0 };
+
+    rows.forEach((r) => {
+      const t = (r.operation_type as "VLOS" | "BVLOS" | "EVLOS") || "VLOS";
+      const safeType = types.includes(t) ? t : "VLOS";
+      countMap[safeType]++;
+      minutesMap[safeType] += Number(r.flight_duration_minutes || 0);
+    });
+
+    const monthsToShow = getMonthsToShow();
+    const monthly: Record<string, { VLOS: number; BVLOS: number; EVLOS: number }> = {};
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const monthDate = subMonths(endDate, i);
+      const key = format(monthDate, "MMM yyyy", { locale: nb });
+      monthly[key] = { VLOS: 0, BVLOS: 0, EVLOS: 0 };
+    }
+    rows.forEach((r) => {
+      const monthKey = format(new Date(r.flight_date), "MMM yyyy", { locale: nb });
+      if (!monthly[monthKey]) return;
+      const t = (r.operation_type as "VLOS" | "BVLOS" | "EVLOS") || "VLOS";
+      const safeType = types.includes(t) ? t : "VLOS";
+      monthly[monthKey][safeType]++;
+    });
+
+    setOperationTypeStats({
+      counts: types.map((t) => ({ name: t, value: countMap[t] })),
+      hours: types.map((t) => ({ name: t, value: +(minutesMap[t] / 60).toFixed(2) })),
+      monthly: Object.entries(monthly).map(([month, v]) => ({ month, ...v })),
+      totalFlights: rows.length,
+      totalMinutes: minutesMap.VLOS + minutesMap.BVLOS + minutesMap.EVLOS,
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
