@@ -41,9 +41,15 @@ interface CompanyDrone {
   id: string;
   modell: string;
   serienummer: string;
+  registration_number: string | null;
   vekt: number | null;
   klasse: string | null;
 }
+
+const droneLabel = (d: Pick<CompanyDrone, "modell" | "serienummer" | "registration_number">): string => {
+  const id = d.registration_number?.trim() || d.serienummer?.trim();
+  return id ? `${d.modell} — ${id}` : d.modell;
+};
 
 interface CatalogSpecs {
   name: string;
