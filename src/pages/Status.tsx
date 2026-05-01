@@ -1598,6 +1598,112 @@ const Status = () => {
           </GlassCard>
         </div>
 
+        {/* Operation type (VLOS / BVLOS / EVLOS) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <GlassCard className="p-6">
+            <h2 className="text-xl font-semibold mb-4 text-foreground">
+              Operasjonstype – fordeling
+            </h2>
+            {operationTypeStats.totalFlights === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-sm text-muted-foreground">
+                Ingen flyturer i valgt periode
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={operationTypeStats.counts.filter((c) => c.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    dataKey="value"
+                    label={(entry: any) => `${entry.name}: ${entry.value}`}
+                  >
+                    {operationTypeStats.counts.filter((c) => c.value > 0).map((entry, idx) => {
+                      const colorMap: Record<string, string> = {
+                        VLOS: COLORS.success,
+                        BVLOS: COLORS.destructive,
+                        EVLOS: COLORS.warning,
+                      };
+                      return <Cell key={idx} fill={colorMap[entry.name] || COLORS.primary} />;
+                    })}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <h2 className="text-xl font-semibold mb-4 text-foreground">
+              Flytimer per operasjonstype
+            </h2>
+            <div className="space-y-4 pt-4">
+              {(["VLOS", "BVLOS", "EVLOS"] as const).map((type) => {
+                const hours = operationTypeStats.hours.find((h) => h.name === type)?.value || 0;
+                const totalH = operationTypeStats.totalMinutes / 60;
+                const pct = totalH > 0 ? (hours / totalH) * 100 : 0;
+                const colorMap: Record<string, string> = {
+                  VLOS: COLORS.success,
+                  BVLOS: COLORS.destructive,
+                  EVLOS: COLORS.warning,
+                };
+                return (
+                  <div key={type}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium text-foreground">{type}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {hours.toFixed(1)} t ({pct.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: colorMap[type] }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-3 border-t border-border text-xs text-muted-foreground">
+                Totalt {(operationTypeStats.totalMinutes / 60).toFixed(1)} timer fordelt på {operationTypeStats.totalFlights} flyturer.
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <h2 className="text-xl font-semibold mb-4 text-foreground">
+              Operasjonstype per måned
+            </h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={operationTypeStats.monthly}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="VLOS" stackId="op" fill={COLORS.success} />
+                <Bar dataKey="BVLOS" stackId="op" fill={COLORS.destructive} />
+                <Bar dataKey="EVLOS" stackId="op" fill={COLORS.warning} />
+              </BarChart>
+            </ResponsiveContainer>
+          </GlassCard>
+        </div>
+
         {/* Incident Statistics */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <GlassCard className="p-6">
