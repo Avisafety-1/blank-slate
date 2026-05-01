@@ -53,7 +53,7 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
       try {
         const { data: fl, error } = await supabase
           .from("flight_logs")
-          .select("id, company_id, flight_date, departure_location, landing_location, flight_duration_minutes, movements, notes")
+          .select("id, company_id, flight_date, departure_location, landing_location, flight_duration_minutes, movements, notes, operation_type")
           .eq("id", flightLogId)
           .single();
         if (error) throw error;
@@ -64,6 +64,8 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
         setLanding(fl.landing_location || "");
         setDurationMin(fl.flight_duration_minutes || 0);
         setNotes(fl.notes || "");
+        const ot = ((fl as any).operation_type as string) || "VLOS";
+        setOperationType((ot === "BVLOS" || ot === "EVLOS" || ot === "VLOS") ? ot : "VLOS");
 
         // Fetch current pilot from junction
         const { data: pilotRow } = await (supabase as any)
