@@ -151,14 +151,15 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     <p className="text-xs text-muted-foreground">Ingen logger til behandling</p>
   );
 
-  const displayedLogs = onlyMine ? logs.filter(l => l.user_id === user?.id) : logs;
+  // Filter is now applied serverside via the onlyMine flag in fetchPendingLogs
+  const displayedLogs = logs;
 
   return (
     <div className={`space-y-2 ${expanded ? 'flex-1 flex flex-col min-h-0' : ''}`}>
       <div className="flex items-center gap-2 flex-wrap">
         <Clock className="w-4 h-4 text-primary" />
         <p className="text-sm font-medium">Ventende flylogger fra auto-sync</p>
-        <Badge variant="secondary" className="text-xs">{displayedLogs.length}</Badge>
+        <Badge variant="secondary" className="text-xs">{displayedLogs.length}{hasMore ? "+" : ""}</Badge>
         <div className="flex items-center gap-1.5">
           <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} className="scale-75" />
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
