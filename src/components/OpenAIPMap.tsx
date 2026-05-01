@@ -703,13 +703,13 @@ export function OpenAIPMap({
             userMarkerRef.current.bindPopup("Din posisjon");
           }
           // Bare sentrer kartet hvis vi IKKE har en flight å fokusere på
-          if (!focusFlightId) {
+          if (!focusFlightIdRef.current) {
             map.setView(coords, 9);
           }
         },
         () => {
           console.log("Geolokasjon nektet");
-          if (!focusFlightId && companyLat && companyLon) {
+          if (!focusFlightIdRef.current && companyLat && companyLon) {
             map.setView([companyLat, companyLon], 10);
           }
         },
