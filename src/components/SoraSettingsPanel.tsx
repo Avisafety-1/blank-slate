@@ -135,7 +135,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     const fetchDrones = async () => {
       const { data } = await supabase
         .from("drones")
-        .select("id, modell, serienummer, vekt, klasse")
+        .select("id, modell, serienummer, registration_number, vekt, klasse")
         .eq("company_id", companyId)
         .eq("aktiv", true)
         .order("modell");
