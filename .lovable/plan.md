@@ -1,38 +1,49 @@
-## Problem
+## Mål
+Vise på `/status` hvor stor andel av flygingen som har vært VLOS / BVLOS / EVLOS — basert utelukkende på en velger i "Avslutt flyging"-dialogen (`LogFlightTimeDialog`). Default verdi: **VLOS**.
 
-Når man trykker "Vis på kart" på en aktiv flytur, navigeres man til `/kart` med `location.state.focusFlightId`. Hensikten er at kartet skal sentreres rundt flyturen, ikke rundt brukerens GPS-posisjon. Likevel hopper kartet til GPS-posisjonen.
+## 1. Datamodell
+Ny kolonne på `flight_logs`:
 
-## Årsak
+```
+operation_type text NOT NULL DEFAULT 'VLOS'
+  CHECK (operation_type IN ('VLOS','BVLOS','EVLOS'))
+```
 
-I `src/components/OpenAIPMap.tsx` setter init-effekten opp et `navigator.geolocation.getCurrentPosition`-kall (linje 687–711). Callbacken sjekker `if (!focusFlightId)` for å avgjøre om den skal sentrere på GPS — men `focusFlightId` her er **fanget i closure** ved tidspunktet kartet initialiseres.
+Indeks: `(company_id, operation_type, flight_date)` for raske aggregeringer.
 
-Tidslinjen ved klikk på "Vis på kart":
-1. `KartPage` monteres med `focusFlightId === null` (initial state).
-2. `OpenAIPMap` init-effekten kjører umiddelbart → starter `getCurrentPosition` med `focusFlightId === null` i closure.
-3. `useEffect([location.state])` i `Kart.tsx` kjører og kaller `setFocusFlightId(state.focusFlightId)`.
-4. Geolocation-callbacken fyrer asynkront (typisk 100–1500 ms senere) — den ser fortsatt `focusFlightId === null` (stale closure) → kjører `map.setView(coords, 9)` og hopper til brukerens GPS.
-5. Focus-effekten (linje 970–1003) prøver etter 1500 ms å sentrere på flyturen, men hvis geolocation-callbacken kommer etter den, vinner geolocation likevel.
+Backfill: alle eksisterende rader settes til `'VLOS'` (per din regel — velgeren er eneste sannhet, og default er VLOS).
 
-## Løsning
+Ingen auto-utleding fra `missions.notam_operation_type` eller `mission_risk_assessments` — som du ba om.
 
-Bruk en ref for `focusFlightId` slik at geolocation-callbacken alltid leser oppdatert verdi, og ikke overstyrer kartet hvis en flytur skal være i fokus.
+## 2. UI — `LogFlightTimeDialog`
+Legg til en `RadioGroup` (eller `Select`) "Operasjonstype" med tre valg: VLOS / BVLOS / EVLOS. Default `VLOS`. Verdi sendes med på begge `insert`-stedene (linje ~620 og ~752 i `LogFlightTimeDialog.tsx`).
 
-### Endringer i `src/components/OpenAIPMap.tsx`
+`EditFlightLogDialog` får samme felt slik at administratorer kan korrigere historiske flyturer.
 
-1. Legg til en ref som holdes synkronisert med `focusFlightId`:
-   ```ts
-   const focusFlightIdRef = useRef<string | null>(focusFlightId ?? null);
-   useEffect(() => { focusFlightIdRef.current = focusFlightId ?? null; }, [focusFlightId]);
-   ```
+Ingen endringer i `StartFlightDialog`, NOTAM-flyt, risikovurdering eller importflyter — disse leverer ikke verdien.
 
-2. I geolocation-callbackene (linje 700 og 706), bytt `if (!focusFlightId)` med `if (!focusFlightIdRef.current)` — både i success- og error-callbacken.
+## 3. Statistikk-seksjon på `/status`
+Ny kortgruppe "Operasjonstype" i operasjonell visning:
 
-3. Som ekstra sikkerhet: fjern den fastlagte 1500 ms forsinkelsen i focus-effekten (linje 973). Bruk i stedet en kort `setTimeout(..., 100)` + en retry hvis markøren ikke finnes (allerede dekket av Supabase-fallback). Dette gjør at sentrering på flyturen skjer raskt etter mount, slik at brukeren ikke ser GPS-hoppet selv ved cachet posisjon.
+- **Donut**: andel flyturer per type i valgt periode.
+- **KPI**: `X timer VLOS (Y%)` / `Z timer BVLOS (W%)` / `Q timer EVLOS (R%)` basert på `flight_duration_minutes`.
+- **Stablet søylediagram per måned** (gjenbruker `getMonthsToShow()` og periodefilter som finnes).
 
-Ingen endringer trengs i `Kart.tsx` eller `ActiveFlightsSection.tsx`.
+Ny `fetchOperationTypeStatistics()` i `Status.tsx`:
+```ts
+supabase
+  .from('flight_logs')
+  .select('operation_type, flight_duration_minutes, flight_date')
+  .gte('flight_date', startDate.toISOString().slice(0,10))
+  .lte('flight_date', endDate.toISOString().slice(0,10));
+```
+Aggregeres client-side. Eksport til Excel/PDF utvides med samme tall (følger eksisterende mønster i `handleExportExcel`/PDF).
 
-## Verifisering
+## Filer som endres
+- `supabase/migrations/<ny>.sql` — kolonne, CHECK, indeks, backfill av eksisterende rader til `'VLOS'`.
+- `src/components/LogFlightTimeDialog.tsx` — nytt felt + verdi i begge `insert`.
+- `src/components/EditFlightLogDialog.tsx` — nytt felt for korrigering.
+- `src/pages/Status.tsx` — ny seksjon, ny fetch, eksport-utvidelse.
 
-- Klikk "Vis på kart" på en aktiv flytur fra dashboard → kartet skal åpne sentrert på flyturen, uten å hoppe til GPS-posisjon.
-- Åpne `/kart` direkte (uten focusFlightId) → kartet skal fortsatt sentrere på GPS som før.
-- Nekt geolokasjon + åpne med focusFlightId → kartet skal vise flyturen, ikke companyLat/companyLon.
+## Effekt
+Alle eksisterende flyturer vises som VLOS i grafen (default). Fra og med denne endringen styres statistikken 100 % av valget piloten gjør i avslutt-dialogen.
