@@ -154,6 +154,7 @@ const Status = () => {
         fetchResourceStatistics(),
         fetchDocumentStatistics(),
         fetchDeviationStatistics(),
+        fetchOperationTypeStatistics(),
       ]);
       // Cache all state after successful fetch
       if (companyId) {
