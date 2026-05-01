@@ -319,6 +319,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [unmatchedBatterySN, setUnmatchedBatterySN] = useState<string | null>(null);
   const [showAddEquipmentDialog, setShowAddEquipmentDialog] = useState(false);
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
+  const [operationType, setOperationType] = useState<"VLOS" | "BVLOS" | "EVLOS">("VLOS");
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
    const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
    const [updateDroneSnConfirmed, setUpdateDroneSnConfirmed] = useState(false);
@@ -536,6 +537,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setOldPilotIds([]);
     setOldEquipmentIds([]);
     setOldDroneId(null);
+    setOperationType("VLOS");
     setLogToLogbooks(true);
     setWarningActions({});
     setUnmatchedBatterySN(null);
