@@ -150,6 +150,12 @@ export function OpenAIPMap({
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
+  // Keep focusFlightId in a ref so async geolocation callbacks see the latest value
+  // (otherwise the closure captured at map-init time stays null and GPS overrides the focus).
+  const focusFlightIdRef = useRef<string | null>(focusFlightId ?? null);
+  useEffect(() => {
+    focusFlightIdRef.current = focusFlightId ?? null;
+  }, [focusFlightId]);
   const missionsLayerRef = useRef<L.LayerGroup | null>(null);
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
   const nsmGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
@@ -697,13 +703,13 @@ export function OpenAIPMap({
             userMarkerRef.current.bindPopup("Din posisjon");
           }
           // Bare sentrer kartet hvis vi IKKE har en flight å fokusere på
-          if (!focusFlightId) {
+          if (!focusFlightIdRef.current) {
             map.setView(coords, 9);
           }
         },
         () => {
           console.log("Geolokasjon nektet");
-          if (!focusFlightId && companyLat && companyLon) {
+          if (!focusFlightIdRef.current && companyLat && companyLon) {
             map.setView([companyLat, companyLon], 10);
           }
         },
@@ -997,7 +1003,7 @@ export function OpenAIPMap({
           });
       }
       onFocusFlightHandled?.();
-    }, 1500);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [focusFlightId, onFocusFlightHandled]);
