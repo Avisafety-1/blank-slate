@@ -313,6 +313,35 @@ Deno.serve(async (req) => {
 
   const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+  // Helper: persist a parse error on the pending log and return a 200 response
+  // so the client doesn't get a generic "non-2xx" crash. The UI uses error_code
+  // to decide whether to show retry/disabled state.
+  let currentPendingLogId: string | null = null;
+  const persistError = async (errorCode: string, errorMessage: string) => {
+    if (!currentPendingLogId) return;
+    try {
+      await serviceClient.rpc;
+      await serviceClient
+        .from("pending_dji_logs")
+        .update({
+          error_code: errorCode,
+          error_message: errorMessage.slice(0, 500),
+          last_error_at: new Date().toISOString(),
+        })
+        .eq("id", currentPendingLogId);
+      // increment retry_count separately to avoid race
+      await serviceClient.rpc("increment_pending_dji_retry", { _id: currentPendingLogId }).then(() => {}, () => {});
+    } catch (e) {
+      console.error("[dji-process-single] persistError failed:", e);
+    }
+  };
+  const errorResponse = (errorCode: string, errorMessage: string, httpStatus = 200) => {
+    return new Response(
+      JSON.stringify({ success: false, error_code: errorCode, error: errorMessage }),
+      { status: httpStatus, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  };
+
   try {
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -329,6 +358,7 @@ Deno.serve(async (req) => {
     if (!pending_log_id) {
       return new Response(JSON.stringify({ error: "Missing pending_log_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    currentPendingLogId = pending_log_id;
 
     // Fetch the pending log
     const { data: pendingLog, error: plErr } = await serviceClient
