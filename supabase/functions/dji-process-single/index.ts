@@ -600,6 +600,10 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error("[dji-process-single] Error:", error);
-    return new Response(JSON.stringify({ error: "Internal server error", details: String(error) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    await persistError("internal_error", String(error));
+    return new Response(
+      JSON.stringify({ success: false, error_code: "internal_error", error: "Intern feil ved parsing av loggen.", details: String(error) }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
