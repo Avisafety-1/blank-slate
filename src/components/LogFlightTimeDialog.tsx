@@ -194,6 +194,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     flightDate: new Date().toISOString().split('T')[0],
     notes: "",
     markMissionCompleted: false,
+    operationType: "VLOS" as "VLOS" | "BVLOS" | "EVLOS",
   });
 
   const [departurePickerOpen, setDeparturePickerOpen] = useState(false);
@@ -275,6 +276,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         notes: "",
         // Default to checked when no mission is selected (will auto-create a new mission)
         markMissionCompleted: !prefilledMissionId,
+        operationType: "VLOS",
       });
       setSelectedEquipment([]);
       setLinkedPersonnel([]);
@@ -625,6 +627,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             completed_checklists: completedChecklistIds && completedChecklistIds.length > 0 ? completedChecklistIds : null,
             flight_track: flightTrackData,
             dronetag_device_id: dronetagDeviceId || null,
+            operation_type: formData.operationType,
           },
           description: 'Flylogg (offline)',
         });
@@ -682,6 +685,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           flightDate: new Date().toISOString().split('T')[0],
           notes: "",
           markMissionCompleted: false,
+          operationType: "VLOS",
         });
         setSelectedEquipment([]);
         setLinkedPersonnel([]);
@@ -757,6 +761,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           completed_checklists: completedChecklistIds && completedChecklistIds.length > 0 ? completedChecklistIds : null,
           flight_track: flightTrackData,
           dronetag_device_id: dronetagDeviceId || null,
+          operation_type: formData.operationType,
         })
         .select()
         .single();
@@ -843,6 +848,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         flightDate: new Date().toISOString().split('T')[0],
         notes: "",
         markMissionCompleted: false,
+        operationType: "VLOS",
       });
       setSelectedEquipment([]);
       setLinkedPersonnel([]);
@@ -870,6 +876,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       flightDate: new Date().toISOString().split('T')[0],
       notes: "",
       markMissionCompleted: false,
+      operationType: "VLOS",
     });
     setSelectedEquipment([]);
     setLinkedPersonnel([]);
@@ -1332,6 +1339,25 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               onChange={(e) => setFormData({ ...formData, movements: e.target.value === '' ? 0 : parseInt(e.target.value) })}
             />
             <p className="text-xs text-muted-foreground mt-1">Antall landinger</p>
+          </div>
+
+          {/* Operation type (VLOS / BVLOS / EVLOS) */}
+          <div>
+            <Label htmlFor="operation-type">Operasjonstype</Label>
+            <Select
+              value={formData.operationType}
+              onValueChange={(v) => setFormData({ ...formData, operationType: v as "VLOS" | "BVLOS" | "EVLOS" })}
+            >
+              <SelectTrigger id="operation-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="VLOS">VLOS — visuell siktforbindelse</SelectItem>
+                <SelectItem value="BVLOS">BVLOS — utenfor visuell rekkevidde</SelectItem>
+                <SelectItem value="EVLOS">EVLOS — utvidet med observatør</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Standard: VLOS. Brukes i statistikken på Status-siden.</p>
           </div>
 
           {/* Notes */}

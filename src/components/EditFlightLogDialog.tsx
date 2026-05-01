@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +27,7 @@ interface FlightLogRow {
   flight_duration_minutes: number;
   movements: number | null;
   notes: string | null;
+  operation_type: string | null;
 }
 
 export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }: EditFlightLogDialogProps) => {
@@ -40,6 +42,7 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
   const [landing, setLanding] = useState("");
   const [durationMin, setDurationMin] = useState<number>(0);
   const [notes, setNotes] = useState("");
+  const [operationType, setOperationType] = useState<"VLOS" | "BVLOS" | "EVLOS">("VLOS");
 
   useEffect(() => {
     if (!open || !flightLogId) return;
@@ -50,7 +53,7 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
       try {
         const { data: fl, error } = await supabase
           .from("flight_logs")
-          .select("id, company_id, flight_date, departure_location, landing_location, flight_duration_minutes, movements, notes")
+          .select("id, company_id, flight_date, departure_location, landing_location, flight_duration_minutes, movements, notes, operation_type")
           .eq("id", flightLogId)
           .single();
         if (error) throw error;
@@ -61,6 +64,8 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
         setLanding(fl.landing_location || "");
         setDurationMin(fl.flight_duration_minutes || 0);
         setNotes(fl.notes || "");
+        const ot = ((fl as any).operation_type as string) || "VLOS";
+        setOperationType((ot === "BVLOS" || ot === "EVLOS" || ot === "VLOS") ? ot : "VLOS");
 
         // Fetch current pilot from junction
         const { data: pilotRow } = await (supabase as any)
@@ -132,6 +137,7 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
           landing_location: landing || null,
           flight_duration_minutes: newDuration,
           notes: notes || null,
+          operation_type: operationType,
         })
         .eq("id", log.id);
       if (updErr) throw updErr;
@@ -238,6 +244,21 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
             <div>
               <Label>Merknader</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+            </div>
+
+            <div>
+              <Label>Operasjonstype</Label>
+              <Select value={operationType} onValueChange={(v) => setOperationType(v as "VLOS" | "BVLOS" | "EVLOS")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="VLOS">VLOS</SelectItem>
+                  <SelectItem value="BVLOS">BVLOS</SelectItem>
+                  <SelectItem value="EVLOS">EVLOS</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Brukes i statistikken på Status-siden.</p>
             </div>
           </div>
         ) : null}

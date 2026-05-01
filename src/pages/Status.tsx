@@ -101,6 +101,13 @@ const Status = () => {
   const [droneStatus, setDroneStatus] = useState<StatusData[]>([]);
   const [equipmentStatus, setEquipmentStatus] = useState<StatusData[]>([]);
   const [flightHoursByDrone, setFlightHoursByDrone] = useState<any[]>([]);
+  const [operationTypeStats, setOperationTypeStats] = useState<{
+    counts: { name: string; value: number }[];
+    hours: { name: string; value: number }[];
+    monthly: { month: string; VLOS: number; BVLOS: number; EVLOS: number }[];
+    totalFlights: number;
+    totalMinutes: number;
+  }>({ counts: [], hours: [], monthly: [], totalFlights: 0, totalMinutes: 0 });
   const [expiringDocs, setExpiringDocs] = useState<{ thirtyDays: number; sixtyDays: number; ninetyDays: number }>({
     thirtyDays: 0,
     sixtyDays: 0,
@@ -147,6 +154,7 @@ const Status = () => {
         fetchResourceStatistics(),
         fetchDocumentStatistics(),
         fetchDeviationStatistics(),
+        fetchOperationTypeStatistics(),
       ]);
       // Cache all state after successful fetch
       if (companyId) {
@@ -448,6 +456,56 @@ const Status = () => {
       .gte("flight_date", startDate.toISOString().slice(0, 10))
       .lte("flight_date", endDate.toISOString().slice(0, 10));
     setFlightLogsCount(count || 0);
+  };
+
+  const fetchOperationTypeStatistics = async () => {
+    const { startDate, endDate } = getDateFilter();
+
+    const { data: logs } = await supabase
+      .from("flight_logs")
+      .select("operation_type, flight_duration_minutes, flight_date")
+      .gte("flight_date", startDate.toISOString().slice(0, 10))
+      .lte("flight_date", endDate.toISOString().slice(0, 10));
+
+    const rows = (logs || []) as Array<{
+      operation_type: string | null;
+      flight_duration_minutes: number | null;
+      flight_date: string;
+    }>;
+
+    const types: Array<"VLOS" | "BVLOS" | "EVLOS"> = ["VLOS", "BVLOS", "EVLOS"];
+    const countMap: Record<string, number> = { VLOS: 0, BVLOS: 0, EVLOS: 0 };
+    const minutesMap: Record<string, number> = { VLOS: 0, BVLOS: 0, EVLOS: 0 };
+
+    rows.forEach((r) => {
+      const t = (r.operation_type as "VLOS" | "BVLOS" | "EVLOS") || "VLOS";
+      const safeType = types.includes(t) ? t : "VLOS";
+      countMap[safeType]++;
+      minutesMap[safeType] += Number(r.flight_duration_minutes || 0);
+    });
+
+    const monthsToShow = getMonthsToShow();
+    const monthly: Record<string, { VLOS: number; BVLOS: number; EVLOS: number }> = {};
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const monthDate = subMonths(endDate, i);
+      const key = format(monthDate, "MMM yyyy", { locale: nb });
+      monthly[key] = { VLOS: 0, BVLOS: 0, EVLOS: 0 };
+    }
+    rows.forEach((r) => {
+      const monthKey = format(new Date(r.flight_date), "MMM yyyy", { locale: nb });
+      if (!monthly[monthKey]) return;
+      const t = (r.operation_type as "VLOS" | "BVLOS" | "EVLOS") || "VLOS";
+      const safeType = types.includes(t) ? t : "VLOS";
+      monthly[monthKey][safeType]++;
+    });
+
+    setOperationTypeStats({
+      counts: types.map((t) => ({ name: t, value: countMap[t] })),
+      hours: types.map((t) => ({ name: t, value: +(minutesMap[t] / 60).toFixed(2) })),
+      monthly: Object.entries(monthly).map(([month, v]) => ({ month, ...v })),
+      totalFlights: rows.length,
+      totalMinutes: minutesMap.VLOS + minutesMap.BVLOS + minutesMap.EVLOS,
+    });
   };
 
   if (loading) {
@@ -1537,6 +1595,112 @@ const Status = () => {
                 <p className="text-sm text-muted-foreground mt-2">dager</p>
               </div>
             </div>
+          </GlassCard>
+        </div>
+
+        {/* Operation type (VLOS / BVLOS / EVLOS) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <GlassCard className="p-6">
+            <h2 className="text-xl font-semibold mb-4 text-foreground">
+              Operasjonstype – fordeling
+            </h2>
+            {operationTypeStats.totalFlights === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-sm text-muted-foreground">
+                Ingen flyturer i valgt periode
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={operationTypeStats.counts.filter((c) => c.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    dataKey="value"
+                    label={(entry: any) => `${entry.name}: ${entry.value}`}
+                  >
+                    {operationTypeStats.counts.filter((c) => c.value > 0).map((entry, idx) => {
+                      const colorMap: Record<string, string> = {
+                        VLOS: COLORS.success,
+                        BVLOS: COLORS.destructive,
+                        EVLOS: COLORS.warning,
+                      };
+                      return <Cell key={idx} fill={colorMap[entry.name] || COLORS.primary} />;
+                    })}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <h2 className="text-xl font-semibold mb-4 text-foreground">
+              Flytimer per operasjonstype
+            </h2>
+            <div className="space-y-4 pt-4">
+              {(["VLOS", "BVLOS", "EVLOS"] as const).map((type) => {
+                const hours = operationTypeStats.hours.find((h) => h.name === type)?.value || 0;
+                const totalH = operationTypeStats.totalMinutes / 60;
+                const pct = totalH > 0 ? (hours / totalH) * 100 : 0;
+                const colorMap: Record<string, string> = {
+                  VLOS: COLORS.success,
+                  BVLOS: COLORS.destructive,
+                  EVLOS: COLORS.warning,
+                };
+                return (
+                  <div key={type}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium text-foreground">{type}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {hours.toFixed(1)} t ({pct.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: colorMap[type] }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-3 border-t border-border text-xs text-muted-foreground">
+                Totalt {(operationTypeStats.totalMinutes / 60).toFixed(1)} timer fordelt på {operationTypeStats.totalFlights} flyturer.
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <h2 className="text-xl font-semibold mb-4 text-foreground">
+              Operasjonstype per måned
+            </h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={operationTypeStats.monthly}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="VLOS" stackId="op" fill={COLORS.success} />
+                <Bar dataKey="BVLOS" stackId="op" fill={COLORS.destructive} />
+                <Bar dataKey="EVLOS" stackId="op" fill={COLORS.warning} />
+              </BarChart>
+            </ResponsiveContainer>
           </GlassCard>
         </div>
 
