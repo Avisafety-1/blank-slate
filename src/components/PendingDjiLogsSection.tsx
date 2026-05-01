@@ -147,10 +147,6 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     );
   }
 
-  if (logs.length === 0) return (
-    <p className="text-xs text-muted-foreground">Ingen logger til behandling</p>
-  );
-
   // Filter is now applied serverside via the onlyMine flag in fetchPendingLogs
   const displayedLogs = logs;
 
@@ -160,11 +156,16 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
         <Clock className="w-4 h-4 text-primary" />
         <p className="text-sm font-medium">Ventende flylogger fra auto-sync</p>
         <Badge variant="secondary" className="text-xs">{displayedLogs.length}{hasMore ? "+" : ""}</Badge>
-        <div className="flex items-center gap-1.5">
-          <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} className="scale-75" />
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} />
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
         </div>
       </div>
+      {displayedLogs.length === 0 && (
+        <p className="text-xs text-muted-foreground py-1">
+          {onlyMine ? "Ingen ventende logger på deg. Skru av «Kun mine» for å se andres." : "Ingen logger til behandling"}
+        </p>
+      )}
       <div className={`space-y-1.5 overflow-y-auto ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px]'}`}>
         {displayedLogs.map(log => {
           const ownerName = log.ownerName;
