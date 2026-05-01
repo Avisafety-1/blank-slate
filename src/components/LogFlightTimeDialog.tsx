@@ -194,6 +194,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     flightDate: new Date().toISOString().split('T')[0],
     notes: "",
     markMissionCompleted: false,
+    operationType: "VLOS" as "VLOS" | "BVLOS" | "EVLOS",
   });
 
   const [departurePickerOpen, setDeparturePickerOpen] = useState(false);
