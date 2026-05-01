@@ -276,6 +276,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         notes: "",
         // Default to checked when no mission is selected (will auto-create a new mission)
         markMissionCompleted: !prefilledMissionId,
+        operationType: "VLOS",
       });
       setSelectedEquipment([]);
       setLinkedPersonnel([]);
