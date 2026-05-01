@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +27,7 @@ interface FlightLogRow {
   flight_duration_minutes: number;
   movements: number | null;
   notes: string | null;
+  operation_type: string | null;
 }
 
 export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }: EditFlightLogDialogProps) => {
@@ -40,6 +42,7 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
   const [landing, setLanding] = useState("");
   const [durationMin, setDurationMin] = useState<number>(0);
   const [notes, setNotes] = useState("");
+  const [operationType, setOperationType] = useState<"VLOS" | "BVLOS" | "EVLOS">("VLOS");
 
   useEffect(() => {
     if (!open || !flightLogId) return;
