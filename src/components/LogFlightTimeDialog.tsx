@@ -627,6 +627,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             completed_checklists: completedChecklistIds && completedChecklistIds.length > 0 ? completedChecklistIds : null,
             flight_track: flightTrackData,
             dronetag_device_id: dronetagDeviceId || null,
+            operation_type: formData.operationType,
           },
           description: 'Flylogg (offline)',
         });
@@ -760,6 +761,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           completed_checklists: completedChecklistIds && completedChecklistIds.length > 0 ? completedChecklistIds : null,
           flight_track: flightTrackData,
           dronetag_device_id: dronetagDeviceId || null,
+          operation_type: formData.operationType,
         })
         .select()
         .single();
