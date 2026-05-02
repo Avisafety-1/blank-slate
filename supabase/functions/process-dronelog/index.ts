@@ -930,30 +930,7 @@ Deno.serve(async (req) => {
         const fieldList = FIELDS.split(",").map(f => f.trim());
         const logUrl = downloadUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
 
-        // 1) Forsøk Fly-parser først (hvis konfigurert): last ned fra DroneLog/DJI og parse selv.
-        if (DJI_PARSER_URL && DJI_PARSER_TOKEN) {
-          try {
-            console.log(`[process-dronelog] trying Fly parser for log ${logId}`);
-            const dl = await fetch(logUrl, {
-              headers: { Authorization: `Bearer ${dronelogKey}` },
-            });
-            if (dl.ok) {
-              const bytes = new Uint8Array(await dl.arrayBuffer());
-              const csv = await tryFlyParser(bytes, `${logId}.txt`, fieldList);
-              if (csv) {
-                const result = parseCsvToResult(csv);
-                return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-              }
-              console.log(`[process-dronelog] Fly parser declined, falling back to DroneLog`);
-            } else {
-              console.warn(`[process-dronelog] download failed ${dl.status}, falling back to DroneLog URL-mode`);
-            }
-          } catch (e) {
-            console.warn(`[process-dronelog] Fly parser path threw: ${(e as Error).message}`);
-          }
-        }
-
-        // 2) Fall-back: last ned filen selv og upload som multipart til /logs/upload (stabil flyt).
+        // Last ned filen og upload som multipart til /logs/upload (stabil flyt — Fly-parseren er deaktivert).
         console.log(`[process-dronelog] downloading log ${logId} for /logs/upload fallback`);
         const dl = await fetch(logUrl, { headers: { Authorization: `Bearer ${dronelogKey}` } });
         if (!dl.ok) {
@@ -1160,14 +1137,7 @@ Deno.serve(async (req) => {
     const boundary = "----DronLogBoundary" + Date.now();
     const fieldList = FIELDS.split(",").map(f => f.trim());
 
-    // Try Fly.io parser first; fall back to DroneLog on null/422/error
-    const flyCsv = await tryFlyParser(fileBytes, fileName, fieldList);
-    if (flyCsv) {
-      console.log("[process-dronelog] file-upload: served by Fly parser");
-      const result = parseCsvToResult(flyCsv);
-      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    console.log("[process-dronelog] file-upload: Fly parser unavailable/unsupported, falling back to DroneLog");
+    // Fly-parseren er deaktivert — gå rett til DroneLog /logs/upload.
 
     const parts: string[] = [];
     for (const field of fieldList) {
