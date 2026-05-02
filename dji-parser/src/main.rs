@@ -23,7 +23,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::Serialize;
 use serde_json::{json, Value};
 use std::{io::Read, net::SocketAddr};
 use tracing::{error, info, warn};
