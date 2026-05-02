@@ -931,7 +931,7 @@ Deno.serve(async (req) => {
             const uploadErr = await uploadResult.clone().json().catch(() => null);
             if (uploadErr?.isUpstream500) {
               try {
-                console.log(`[process-dronelog] ZIP upload got upstream 500, trying ZIP->TXT fallback`);
+                console.log(`[process-dronelog] ZIP upload got upstream 500, trying ZIP->TXT->reZIP fallback`);
                 const zip = await JSZip.loadAsync(bytes);
                 const txtEntry = Object.values(zip.files).find((f) => !f.dir && f.name.toLowerCase().endsWith(".txt"));
 
@@ -941,12 +941,26 @@ Deno.serve(async (req) => {
                 }
 
                 const txtBytes = await txtEntry.async("uint8array");
-                console.log(`[process-dronelog] extracted ${txtEntry.name} (${txtBytes.length} bytes), retrying /logs/upload`);
+                console.log(`[process-dronelog] extracted ${txtEntry.name} (${txtBytes.length} bytes)`);
+
+                // 1) Forsøk rå .txt
                 const txtUploadResult = await uploadRawBytes(txtBytes, ".txt");
-                if (txtUploadResult instanceof Response) {
-                  return txtUploadResult;
+                if (!(txtUploadResult instanceof Response)) {
+                  csvText = txtUploadResult;
+                } else {
+                  // 2) Re-pakke TXT i en helt ny ZIP og send som .zip — DroneLog/Laravel
+                  //    sin finfo-MIME-detektering avviser binær .txt, men aksepterer ZIP.
+                  console.log(`[process-dronelog] TXT upload failed, repacking as fresh ZIP`);
+                  const freshZip = new JSZip();
+                  freshZip.file(txtEntry.name.split("/").pop() || `dji_${logId}.txt`, txtBytes);
+                  const zipBytes = await freshZip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+                  console.log(`[process-dronelog] re-zipped to ${zipBytes.length} bytes, retrying /logs/upload`);
+                  const reZipResult = await uploadRawBytes(zipBytes, ".zip");
+                  if (reZipResult instanceof Response) {
+                    return reZipResult;
+                  }
+                  csvText = reZipResult;
                 }
-                csvText = txtUploadResult;
               } catch (zipErr) {
                 console.error(`[process-dronelog] ZIP->TXT fallback threw:`, zipErr);
                 return uploadResult;
