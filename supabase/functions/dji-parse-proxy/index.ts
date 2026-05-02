@@ -22,7 +22,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const PARSER_URL = Deno.env.get("DJI_PARSER_URL");
+const PARSER_URL = (Deno.env.get("DJI_PARSER_URL") ?? "").replace(/\/+$/, "");
 const PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
 
 interface ProxyRequest {
