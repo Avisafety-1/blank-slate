@@ -211,6 +211,7 @@ async fn parse(headers: HeaderMap, mut multipart: Multipart) -> impl IntoRespons
     )
 }
 
+fn extract_txt_from_zip(bytes: &[u8]) -> Result<Vec<u8>, String> {
     let reader = std::io::Cursor::new(bytes);
     let mut zip = zip::ZipArchive::new(reader).map_err(|e| e.to_string())?;
     for i in 0..zip.len() {
