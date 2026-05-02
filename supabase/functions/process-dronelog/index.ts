@@ -12,7 +12,7 @@ const DRONELOG_BASE = "https://dronelogapi.com/api/v1";
 // Vår egen Fly.io-parser. Hvis konfigurert prøver vi den først, og faller
 // tilbake til DroneLog `/logs/upload` kun hvis Fly-parseren ikke støtter
 // formatet eller er nede.
-const DJI_PARSER_URL = Deno.env.get("DJI_PARSER_URL");
+const DJI_PARSER_URL = (Deno.env.get("DJI_PARSER_URL") ?? "").replace(/\/+$/, "");
 const DJI_PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
 
 /**
@@ -33,7 +33,9 @@ async function tryFlyParser(
       fileName,
     );
     form.append("fields", fields.join(","));
-    const res = await fetch(`${DJI_PARSER_URL}/parse`, {
+    const parseUrl = `${DJI_PARSER_URL}/parse`;
+    console.log(`[fly-parser] POST ${parseUrl} (${fileBytes.length} bytes)`);
+    const res = await fetch(parseUrl, {
       method: "POST",
       headers: { Authorization: `Bearer ${DJI_PARSER_TOKEN}` },
       body: form,
@@ -44,7 +46,8 @@ async function tryFlyParser(
       return null;
     }
     if (!res.ok) {
-      console.warn(`[fly-parser] error ${res.status}, falling back`);
+      const txt = await res.text().catch(() => "");
+      console.warn(`[fly-parser] error ${res.status}: ${txt.slice(0, 200)}, falling back`);
       return null;
     }
     const json = await res.json();
