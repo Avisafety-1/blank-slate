@@ -353,40 +353,41 @@ async function processLogByUrl(
 ): Promise<{ ok: true; parsed: ReturnType<typeof parseCsvMinimal> } | { ok: false; status: number; errText: string }> {
   const fieldList = FIELDS.split(",").map(f => f.trim());
 
-  // 1) Forsøk Fly-parser
+  // Last ned filen selv (DroneLog krever vår dronelogKey).
+  let bytes: Uint8Array;
+  try {
+    const dl = await fetch(fileUrl, { headers: { Authorization: `Bearer ${dronelogKey}` } });
+    if (!dl.ok) {
+      const errText = await dl.text().catch(() => "");
+      return { ok: false, status: dl.status, errText: `download: ${errText.slice(0, 200)}` };
+    }
+    bytes = new Uint8Array(await dl.arrayBuffer());
+  } catch (e) {
+    return { ok: false, status: 0, errText: `download exception: ${(e as Error).message}` };
+  }
+
+  // 1) Forsøk Fly-parser hvis konfigurert (sparer DroneLog-kvote når Rust-appen kjører).
   if (DJI_PARSER_URL && DJI_PARSER_TOKEN) {
     try {
-      const dl = await fetch(fileUrl, { headers: { Authorization: `Bearer ${dronelogKey}` } });
-      if (dl.ok) {
-        const bytes = new Uint8Array(await dl.arrayBuffer());
-        const csv = await tryFlyParserCsv(bytes, fieldList, logId);
-        if (csv) return { ok: true, parsed: parseCsvMinimal(csv) };
-      } else {
-        console.warn(`[dji-process-single] download failed ${dl.status}, falling back`);
-      }
+      const csv = await tryFlyParserCsv(bytes, fieldList, logId);
+      if (csv) return { ok: true, parsed: parseCsvMinimal(csv) };
     } catch (e) {
       console.warn(`[dji-process-single] fly path exception: ${(e as Error).message}`);
     }
   }
 
-  // 2) Fall-back: DroneLog POST /logs (URL-mode)
-  console.log(`[dji-process-single] processLogByUrl ${logId} via DroneLog POST /logs`);
-  const res = await fetch(`${DRONELOG_BASE}/logs`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${dronelogKey}`,
-      "Content-Type": "application/json",
-      Accept: "text/csv, application/json",
-    },
-    body: JSON.stringify({ url: fileUrl, fields: fieldList }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    return { ok: false, status: res.status, errText };
+  // 2) Fall-back: DroneLog /logs/upload med selve filbytene (stabil flyt).
+  console.log(`[dji-process-single] uploading ${bytes.length} bytes to DroneLog /logs/upload for ${logId}`);
+  try {
+    const parsed = await uploadAndParse(dronelogKey, bytes, ".txt", logId);
+    return { ok: true, parsed };
+  } catch (e) {
+    const msg = (e as Error).message;
+    // Forsøk å trekke ut HTTP-status fra "DroneLog upload failed (NNN): ..."
+    const m = /\((\d{3})\)/.exec(msg);
+    const status = m ? parseInt(m[1], 10) : 500;
+    return { ok: false, status, errText: msg };
   }
-  const csvText = await res.text();
-  return { ok: true, parsed: parseCsvMinimal(csvText) };
 }
 
 // ── Decrypt DJI password ──
