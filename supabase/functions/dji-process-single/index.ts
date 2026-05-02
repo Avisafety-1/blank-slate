@@ -304,6 +304,34 @@ async function uploadAndParse(dronelogKey: string, fileBytes: Uint8Array, ext: s
   return parseCsvMinimal(csvText);
 }
 
+// ── URL-basert prosessering (DJI Cloud) ──
+// Bruker POST /logs { url, fields } slik at DroneLog henter filen selv.
+// Dette unngår /logs/upload-stien som returnerer 422/500 på DJI Cloud-filer.
+async function processLogByUrl(
+  dronelogKey: string,
+  fileUrl: string,
+  logId: string,
+): Promise<{ ok: true; parsed: ReturnType<typeof parseCsvMinimal> } | { ok: false; status: number; errText: string }> {
+  const fieldList = FIELDS.split(",").map(f => f.trim());
+  console.log(`[dji-process-single] processLogByUrl ${logId} via POST /logs`);
+  const res = await fetch(`${DRONELOG_BASE}/logs`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${dronelogKey}`,
+      "Content-Type": "application/json",
+      Accept: "text/csv, application/json",
+    },
+    body: JSON.stringify({ url: fileUrl, fields: fieldList }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    return { ok: false, status: res.status, errText };
+  }
+  const csvText = await res.text();
+  return { ok: true, parsed: parseCsvMinimal(csvText) };
+}
+
 // ── Decrypt DJI password ──
 
 async function decryptPassword(encryptedB64: string): Promise<string> {
