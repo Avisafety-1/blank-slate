@@ -703,8 +703,8 @@ async function syncSingleUser(
       if (existing) continue;
 
       try {
-        console.log(`[dji-auto-sync] Downloading + parsing log ${logId}`);
-        const parsed = await downloadAndParseLog(dronelogKey, accountId, String(logId));
+        console.log(`[dji-auto-sync] Processing log ${logId} via POST /logs (URL-mode)`);
+        const parsed = await downloadAndParseLog(dronelogKey, accountId, String(logId), log.downloadUrl);
         const { matchedDroneId, matchedBatteryId, snMismatchSuggestion } = await matchDroneAndBattery(serviceClient, company.id, parsed);
 
         let alreadyImported = false;
