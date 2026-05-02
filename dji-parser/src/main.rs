@@ -211,27 +211,6 @@ async fn parse(headers: HeaderMap, mut multipart: Multipart) -> impl IntoRespons
     )
 }
 
-// DJILog is not Clone. To use fetch_keychains from a blocking task we'd need
-// to either re-parse or refactor. Simpler: re-parse the bytes. But we already
-// consumed them. Workaround: do fetch_keychains on the current async runtime
-// via spawn_blocking with `&self` via Arc. dji-log-parser's fetch_keychains
-// uses ureq (blocking) — since we're in async, blocking inline would stall the
-// runtime. Use std::thread::scope-style by running it via tokio::task::block_in_place.
-// To avoid the Clone issue we use block_in_place here.
-fn log_clone_hack(_log: &dji_log_parser::DJILog) -> DummyLog {
-    // placeholder type to satisfy Send across spawn_blocking — we replace the
-    // approach below: use block_in_place instead. See parse().
-    DummyLog
-}
-struct DummyLog;
-impl DummyLog {
-    #[allow(dead_code)]
-    fn fetch_keychains(&self, _: &str) -> Result<Vec<Vec<dji_log_parser::keychain::KeychainFeaturePoint>>, String> {
-        Err("unused".into())
-    }
-}
-
-fn extract_txt_from_zip(bytes: &[u8]) -> Result<Vec<u8>, String> {
     let reader = std::io::Cursor::new(bytes);
     let mut zip = zip::ZipArchive::new(reader).map_err(|e| e.to_string())?;
     for i in 0..zip.len() {
