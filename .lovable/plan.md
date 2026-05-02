@@ -1,54 +1,53 @@
-Feilen er fortsatt Rust/Cargo-versjon, men loggen viser nå tydelig at `rust:1.84-slim` ikke er nok:
+## Bakgrunn
 
-- `idna_adapter v1.2.2` krever `edition2024`
-- flere `icu_* v2.2.0`-pakker krever Rust `1.86`
-- fordi `Cargo.lock` mangler, henter Docker-builden nyeste transitive dependencies hver gang
+Du har rett — `dji-process-single` (og `dji-auto-sync` for cloud) bruker nå **URL-mode** mot DroneLog (`POST /logs` med `{url, fields}`), som krever at DroneLog selv kan hente filen fra `…/logs/{accountId}/{logId}/download`. Dette feiler ofte (404/timeouts) fordi:
 
-Plan:
+- DroneLog må re-autentisere mot DJI Cloud for å hente filen, og signed URL-en er kortvarig.
+- Vår egen Fly-parser returnerer 422 på alle filer (gammel Node-app som ikke støtter DJI-formatet), så vi faller tilbake til DroneLog URL-mode — som så feiler.
 
-1. Oppdater Dockerfile
-   - Endre build-image fra:
-     ```Dockerfile
-     FROM rust:1.84-slim AS build
-     ```
-     til:
-     ```Dockerfile
-     FROM rust:1.86-slim AS build
-     ```
-   - Dette matcher dependency-kravet som Fly.io-loggen viser.
+Den **gamle, stabile flyten** var: edge function laster ned filen først (med vår dronelogKey), og POSTer **selve filbytene** til `POST /logs/upload` som multipart. Det fungerer alltid fordi DroneLog ikke trenger å snakke med DJI Cloud i det hele tatt.
 
-2. Legg til og bruk `Cargo.lock`
-   - Generer/legg inn `dji-parser/Cargo.lock` for parser-appen.
-   - Oppdater Dockerfile slik at dependency cache kopierer både `Cargo.toml` og `Cargo.lock`:
-     ```Dockerfile
-     COPY Cargo.toml Cargo.lock ./
-     ```
-   - Dette gjør builden stabil, så Fly.io ikke plutselig plukker nyere crates som krever enda nyere Rust senere.
+`uploadAndParse()`-funksjonen finnes allerede i begge filer (linje 254 i `dji-process-single`, linje 268 i `dji-auto-sync`) — vi trenger bare å rute Cloud-flyten gjennom den.
 
-3. Sjekk Fly-app-navn
-   - `dji-parser/fly.toml` har:
-     ```toml
-     app = "avisafe-djilog-parser"
-     ```
-   - Men kommandoen din bruker:
-     ```bash
-     -a djilogparser
-     ```
-   - Build-feilen skyldes ikke dette, men etter build-fix bør vi sikre at du deployer til riktig app-navn. Enten bruker du `avisafe-djilog-parser`, eller så oppdaterer vi `fly.toml` hvis den faktiske appen heter `djilogparser`.
+## Hva endres
 
-4. Etter endring
-   - Deploy på nytt fra `dji-parser/`:
-     ```bash
-     fly deploy --app avisafe-djilog-parser
-     ```
-   - Test:
-     ```bash
-     curl https://avisafe-djilog-parser.fly.dev/health
-     ```
-     Forventet svar: `ok`
+### 1. `supabase/functions/dji-process-single/index.ts`
 
-Hvis du godkjenner, gjør jeg endringene i `dji-parser/Dockerfile` og legger inn dependency-locking slik at Fly.io-builden blir mer robust.
+Erstatt `processLogByUrl()`-flyten i hovedhandleren (rundt linje 536-557) med:
 
-<lov-actions>
-<lov-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</lov-link>
-</lov-actions>
+```text
+download fil fra DJI Cloud (med dronelogKey)
+  ↓ (følg redirects, hent bytes)
+forsøk Fly-parser hvis konfigurert (eksisterer allerede)
+  ↓ hvis 422/feil
+uploadAndParse(dronelogKey, bytes, ".txt", logId)   ← gammel, stabil flyt
+```
+
+Konkret:
+- Behold `tryFlyParserCsv()` som førsteforsøk (når den nye Rust-appen er deployet vil den fungere her).
+- Erstatt `processLogByUrl()` slik at fallback ikke lenger er `POST /logs` URL-mode, men `uploadAndParse(dronelogKey, bytes, ".txt", logId)`.
+- Hvis nedlasting feiler med 4xx → returner `download_failed` som før.
+
+### 2. `supabase/functions/dji-auto-sync/index.ts`
+
+Samme endring i `downloadAndParseLog()` (kalt linje 762): bytt URL-mode-fallback til `uploadAndParse()`-flyten.
+
+### 3. `supabase/functions/dji-parse-proxy/index.ts`
+
+Ingen endring nødvendig — denne funksjonen brukes kun av `process-dronelog` (manuell file upload-flyt) og fungerer som den skal: forsøker Fly-parser, faller tilbake til DroneLog `/logs/upload` ved 422.
+
+## Hva endres IKKE
+
+- `process-dronelog` (manuell upload) — bruker allerede `dji-parse-proxy` som faller tilbake riktig.
+- Fly-parseren (`dji-parser/`) — den er allerede oppdatert til Rust 1.90, og når du får deployet den vellykket vil den brukes som førsteforsøk i alle tre flyter automatisk.
+- DroneLog API-nøkkel-håndtering, login, retry på rate-limit, error-koder.
+
+## Forventet resultat
+
+- DJI Cloud-prosessering vil fungere igjen (samme stabilitet som før vi byttet til URL-mode).
+- Når Rust-Fly-parseren etterhvert kjører vellykket, vil den ta over som førsteforsøk uten ytterligere endringer — DroneLog blir kun fallback.
+- Du sparer DroneLog-kvote på alle filer Rust-parseren klarer (når den kjører).
+
+## Risiko
+
+- DroneLog `/logs/upload` har en MIME-type-quirk (Laravel finfo) som krever `.zip`-ekstensjon for binære DJI-filer — håndteres allerede i `uploadAndParse()` med `ZIP→TXT→re-ZIP`-fallback (linje 283-298). Beholdes som er.
