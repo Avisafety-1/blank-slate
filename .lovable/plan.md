@@ -1,21 +1,35 @@
-Jeg fant årsaken: Fly.io blir faktisk truffet. Feilen `Route POST://parse not found` kommer av at Supabase-secret `DJI_PARSER_URL` trolig slutter med `/`. Koden legger selv på `/parse`, så URL-en blir `https://djilogparser.fly.dev//parse`. Fastify tolker da ruten som `//parse`, som gir akkurat samme 404 som i Fly-loggene.
+# Implementering ferdig
 
-Plan:
+## Hva som er gjort
 
-1. Gjør Edge Function robust mot trailing slash
-   - Endre URL-byggingen i `process-dronelog` slik at `DJI_PARSER_URL` normaliseres før `/parse` legges på.
-   - Eksempel: `https://djilogparser.fly.dev/` og `https://djilogparser.fly.dev` skal begge bli `https://djilogparser.fly.dev/parse`.
+Erstattet TypeScript Fly-appen med Rust + `dji-log-parser` (Lucas Vauvillier).
+Den støtter nå krypterte v13+ logger fra DJI Fly / Pilot 2.
 
-2. Gjør samme fiks i proxy-funksjonen
-   - `dji-parse-proxy` bruker samme mønster (`${PARSER_URL}/parse`) og bør få samme normalisering, ellers kan samme feil dukke opp der senere.
+### Filer endret
+- `dji-parser/Cargo.toml` (NY)
+- `dji-parser/src/main.rs` (NY) — axum HTTP-server, multipart `/parse`
+- `dji-parser/Dockerfile` — multi-stage Rust build
+- `dji-parser/README.md` — ny dokumentasjon
+- `dji-parser/.dockerignore` — oppdatert for Rust
+- `dji-parser/src/parser/*` (SLETTET — gammel TS)
+- `dji-parser/package.json`, `tsconfig.json`, `node_modules` (SLETTET)
+- `supabase/functions/dji-parse-proxy/index.ts` — nytt frame-format mapping
 
-3. Bedre logging
-   - Logg normalisert parser-base uten å vise token.
-   - Logg upstream body ved ikke-OK svar, slik at 404/401/422 blir enklere å skille fremover.
+### Hva brukeren må gjøre
 
-4. Deploy og verifiser
-   - Deploy `process-dronelog` og `dji-parse-proxy`.
-   - Test at POST mot Fly går til `/parse` og ikke `//parse`.
-   - Etter at du laster opp på nytt, sjekker jeg Supabase-loggene for `served by Fly parser` eller eventuell parser-feil.
+1. **Skaff DJI API-nøkkel** fra https://developer.dji.com/ (kan ta dager).
+2. **Sett Fly secrets:**
+   ```
+   fly secrets set DJI_API_KEY=<api-nøkkel> --app avisafe-djilog-parser
+   ```
+   `AVISAFE_PARSER_TOKEN` er allerede satt.
+3. **Deploy Fly-appen:**
+   ```
+   cd dji-parser
+   fly deploy --app avisafe-djilog-parser
+   ```
+4. Test opplasting av `DJIFlightRecord_2025-12-18_[13-19-15].txt`.
 
-Merk: Du trenger ikke endre secret igjen hvis den nå står med trailing slash; koden skal tåle begge varianter etter fiksen.
+### Fallback
+Edge functions faller fortsatt tilbake til DroneLog API hvis Fly returnerer
+`{ fallback: true }` (f.eks. mens DJI_API_KEY ikke er satt).
