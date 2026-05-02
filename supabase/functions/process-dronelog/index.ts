@@ -9,6 +9,73 @@ const corsHeaders = {
 
 const DRONELOG_BASE = "https://dronelogapi.com/api/v1";
 
+// Vår egen Fly.io-parser. Hvis konfigurert prøver vi den først, og faller
+// tilbake til DroneLog `/logs/upload` kun hvis Fly-parseren ikke støtter
+// formatet eller er nede.
+const DJI_PARSER_URL = Deno.env.get("DJI_PARSER_URL");
+const DJI_PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
+
+/**
+ * Prøver vår egen Fly.io DJI-parser. Returnerer CSV-tekst på samme form som
+ * DroneLog API leverer, eller null hvis vi må falle tilbake.
+ */
+async function tryFlyParser(
+  fileBytes: Uint8Array,
+  fileName: string,
+  fields: string[],
+): Promise<string | null> {
+  if (!DJI_PARSER_URL || !DJI_PARSER_TOKEN) return null;
+  try {
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([fileBytes], { type: "application/octet-stream" }),
+      fileName,
+    );
+    form.append("fields", fields.join(","));
+    const res = await fetch(`${DJI_PARSER_URL}/parse`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${DJI_PARSER_TOKEN}` },
+      body: form,
+    });
+    if (res.status === 422) {
+      const j = await res.json().catch(() => ({}));
+      console.warn(`[fly-parser] unsupported: ${j.reason ?? "unknown"}`);
+      return null;
+    }
+    if (!res.ok) {
+      console.warn(`[fly-parser] error ${res.status}, falling back`);
+      return null;
+    }
+    const json = await res.json();
+    // Konverter parsed JSON til DroneLog-CSV-form
+    const samples: Array<Record<string, unknown>> = json.samples ?? [];
+    const details: Record<string, unknown> = json.details ?? {};
+    const cols = [...fields];
+    if (!cols.includes("OSD.flyTime [ms]")) cols.unshift("OSD.flyTime [ms]");
+    const esc = (v: unknown) => {
+      if (v === undefined || v === null) return "";
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [cols.map(esc).join(",")];
+    for (const s of samples) {
+      lines.push(
+        cols
+          .map((c) => esc(s[c] ?? (c.startsWith("DETAILS.") ? details[c] : "")))
+          .join(","),
+      );
+    }
+    console.log(
+      `[fly-parser] success: ${samples.length} samples, ${lines[0].split(",").length} columns`,
+    );
+    return lines.join("\n");
+  } catch (err) {
+    console.warn(`[fly-parser] exception: ${(err as Error).message}`);
+    return null;
+  }
+}
+
 // Expanded field list including new fields for dedup, RTH, cell deviation
 const FIELDS = [
   "OSD.latitude","OSD.longitude","OSD.altitude [m]","OSD.height [m]",
