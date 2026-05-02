@@ -925,12 +925,33 @@ Deno.serve(async (req) => {
         }
 
         const fieldList = FIELDS.split(",").map(f => f.trim());
-
-        // URL-mode: la DroneLog hente filen direkte fra DJI Cloud via POST /logs.
-        // Dette unngår den ødelagte /logs/upload-stien som returnerer 422/500.
         const logUrl = downloadUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
-        console.log(`[process-dronelog] processing DJI log ${logId} via POST /logs (URL-mode)`);
 
+        // 1) Forsøk Fly-parser først (hvis konfigurert): last ned fra DroneLog/DJI og parse selv.
+        if (DJI_PARSER_URL && DJI_PARSER_TOKEN) {
+          try {
+            console.log(`[process-dronelog] trying Fly parser for log ${logId}`);
+            const dl = await fetch(logUrl, {
+              headers: { Authorization: `Bearer ${dronelogKey}` },
+            });
+            if (dl.ok) {
+              const bytes = new Uint8Array(await dl.arrayBuffer());
+              const csv = await tryFlyParser(bytes, `${logId}.txt`, fieldList);
+              if (csv) {
+                const result = parseCsvToResult(csv);
+                return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+              }
+              console.log(`[process-dronelog] Fly parser declined, falling back to DroneLog`);
+            } else {
+              console.warn(`[process-dronelog] download failed ${dl.status}, falling back to DroneLog URL-mode`);
+            }
+          } catch (e) {
+            console.warn(`[process-dronelog] Fly parser path threw: ${(e as Error).message}`);
+          }
+        }
+
+        // 2) Fall-back: la DroneLog hente og parse via POST /logs (URL-mode)
+        console.log(`[process-dronelog] processing DJI log ${logId} via DroneLog POST /logs (URL-mode)`);
         const res = await fetch(`${DRONELOG_BASE}/logs`, {
           method: "POST",
           headers: {
