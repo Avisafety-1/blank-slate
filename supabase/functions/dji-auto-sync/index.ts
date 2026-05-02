@@ -254,7 +254,9 @@ async function uploadAndParse(dronelogKey: string, fileBytes: Uint8Array, ext: s
   for (const field of fieldList) {
     parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
   }
-  parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`);
+  // DroneLog (Laravel mimes:txt,zip) validerer både filendelse og MIME — octet-stream gir 422.
+  const fileMime = ext === ".zip" ? "application/zip" : ext === ".txt" ? "text/plain" : "application/octet-stream";
+  parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${fileMime}\r\n\r\n`);
   const enc = new TextEncoder();
   const prefixBytes = enc.encode(parts.join(""));
   const suffixBytes = enc.encode(`\r\n--${boundary}--\r\n`);
@@ -271,13 +273,23 @@ async function uploadAndParse(dronelogKey: string, fileBytes: Uint8Array, ext: s
 
   if (!uploadRes.ok) {
     const errText = await uploadRes.text();
+    // ZIP fra DJI Cloud trigger ofte 500 fra DroneLog. TXT-extract gir 422 fordi binær
+    // DJI .txt detekteres ikke som text/plain av Laravel finfo. Re-pakk i fersk ZIP.
     if (ext === ".zip" && uploadRes.status === 500) {
-      console.log(`[dji-auto-sync] ZIP upload got 500, trying ZIP->TXT fallback for ${logId}`);
+      console.log(`[dji-auto-sync] ZIP upload 500 for ${logId}, prøver ZIP->TXT->reZIP`);
       const zip = await JSZip.loadAsync(fileBytes);
       const txtEntry = Object.values(zip.files).find((f: any) => !f.dir && f.name.toLowerCase().endsWith(".txt"));
       if (txtEntry) {
         const txtBytes = await (txtEntry as any).async("uint8array");
-        return uploadAndParse(dronelogKey, txtBytes, ".txt", logId);
+        try {
+          return await uploadAndParse(dronelogKey, txtBytes, ".txt", logId);
+        } catch (txtErr) {
+          console.log(`[dji-auto-sync] TXT upload feilet for ${logId}, prøver re-zip`);
+          const freshZip = new JSZip();
+          freshZip.file((txtEntry as any).name.split("/").pop() || `dji_${logId}.txt`, txtBytes);
+          const zipBytes = await freshZip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+          return uploadAndParse(dronelogKey, zipBytes, ".zip", logId);
+        }
       }
     }
     throw new Error(`DroneLog upload failed (${uploadRes.status}): ${errText.slice(0, 300)}`);
