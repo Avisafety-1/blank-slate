@@ -312,8 +312,46 @@ async function decryptPassword(encryptedB64: string): Promise<string> {
 }
 
 // ── Process a single log via URL (DJI Cloud) ──
-// Bruker POST /logs { url, fields } slik at DroneLog henter filen selv,
-// og vi unngår den ødelagte /logs/upload-stien.
+// Forsøker først vår egen Fly.io-parser, faller tilbake til DroneLog POST /logs.
+const DJI_PARSER_URL = Deno.env.get("DJI_PARSER_URL");
+const DJI_PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
+
+async function tryFlyParserCsv(
+  fileBytes: Uint8Array,
+  fields: string[],
+  logId: string,
+): Promise<string | null> {
+  if (!DJI_PARSER_URL || !DJI_PARSER_TOKEN) return null;
+  try {
+    const form = new FormData();
+    form.append("file", new Blob([fileBytes], { type: "application/octet-stream" }), `${logId}.txt`);
+    form.append("fields", fields.join(","));
+    const res = await fetch(`${DJI_PARSER_URL}/parse`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${DJI_PARSER_TOKEN}` },
+      body: form,
+    });
+    if (res.status === 422) { console.warn(`[dji-auto-sync] fly parser unsupported`); return null; }
+    if (!res.ok) { console.warn(`[dji-auto-sync] fly parser ${res.status}`); return null; }
+    const json = await res.json();
+    const samples: Array<Record<string, unknown>> = json.samples ?? [];
+    const details: Record<string, unknown> = json.details ?? {};
+    const cols = [...fields];
+    if (!cols.includes("OSD.flyTime [ms]")) cols.unshift("OSD.flyTime [ms]");
+    const esc = (v: unknown) => {
+      if (v === undefined || v === null) return "";
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [cols.map(esc).join(",")];
+    for (const s of samples) lines.push(cols.map(c => esc(s[c] ?? (c.startsWith("DETAILS.") ? details[c] : ""))).join(","));
+    return lines.join("\n");
+  } catch (e) {
+    console.warn(`[dji-auto-sync] fly parser exception: ${(e as Error).message}`);
+    return null;
+  }
+}
+
 async function downloadAndParseLog(
   dronelogKey: string,
   accountId: string,
@@ -323,6 +361,23 @@ async function downloadAndParseLog(
   const fieldList = FIELDS.split(",").map(f => f.trim());
   const fileUrl = preferredUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
 
+  // 1) Forsøk Fly-parser
+  if (DJI_PARSER_URL && DJI_PARSER_TOKEN) {
+    try {
+      const dl = await fetch(fileUrl, { headers: { Authorization: `Bearer ${dronelogKey}` } });
+      if (dl.ok) {
+        const bytes = new Uint8Array(await dl.arrayBuffer());
+        const csv = await tryFlyParserCsv(bytes, fieldList, logId);
+        if (csv) return parseCsvMinimal(csv);
+      } else {
+        console.warn(`[dji-auto-sync] download failed ${dl.status}, falling back`);
+      }
+    } catch (e) {
+      console.warn(`[dji-auto-sync] fly path exception: ${(e as Error).message}`);
+    }
+  }
+
+  // 2) Fall-back: DroneLog POST /logs (URL-mode)
   const res = await fetch(`${DRONELOG_BASE}/logs`, {
     method: "POST",
     headers: {
