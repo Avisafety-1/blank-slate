@@ -1100,7 +1100,10 @@ Deno.serve(async (req) => {
     for (const field of fieldList) {
       parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
     }
-    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`);
+    // DroneLog (Laravel mimes:txt,zip) validerer både filendelse og MIME — octet-stream gir 422.
+    const lowerName = fileName.toLowerCase();
+    const directMime = lowerName.endsWith(".zip") ? "application/zip" : lowerName.endsWith(".txt") ? "text/plain" : (file.type || "application/octet-stream");
+    parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${directMime}\r\n\r\n`);
 
     const textEncoder = new TextEncoder();
     const prefixBytes = textEncoder.encode(parts.join(""));

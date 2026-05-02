@@ -254,7 +254,9 @@ async function uploadAndParse(dronelogKey: string, fileBytes: Uint8Array, ext: s
   for (const field of fieldList) {
     parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
   }
-  parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`);
+  // DroneLog (Laravel mimes:txt,zip) validerer både filendelse og MIME — octet-stream gir 422.
+  const fileMime = ext === ".zip" ? "application/zip" : ext === ".txt" ? "text/plain" : "application/octet-stream";
+  parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${fileMime}\r\n\r\n`);
   const enc = new TextEncoder();
   const prefixBytes = enc.encode(parts.join(""));
   const suffixBytes = enc.encode(`\r\n--${boundary}--\r\n`);
