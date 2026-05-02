@@ -1104,6 +1104,15 @@ Deno.serve(async (req) => {
     const boundary = "----DronLogBoundary" + Date.now();
     const fieldList = FIELDS.split(",").map(f => f.trim());
 
+    // Try Fly.io parser first; fall back to DroneLog on null/422/error
+    const flyCsv = await tryFlyParser(fileBytes, fileName, fieldList);
+    if (flyCsv) {
+      console.log("[process-dronelog] file-upload: served by Fly parser");
+      const result = parseCsvToResult(flyCsv);
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    console.log("[process-dronelog] file-upload: Fly parser unavailable/unsupported, falling back to DroneLog");
+
     const parts: string[] = [];
     for (const field of fieldList) {
       parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
