@@ -311,30 +311,35 @@ async function decryptPassword(encryptedB64: string): Promise<string> {
   return new TextDecoder().decode(decrypted);
 }
 
-// ── Download + parse a single log ──
-
+// ── Process a single log via URL (DJI Cloud) ──
+// Bruker POST /logs { url, fields } slik at DroneLog henter filen selv,
+// og vi unngår den ødelagte /logs/upload-stien.
 async function downloadAndParseLog(
   dronelogKey: string,
   accountId: string,
   logId: string,
+  preferredUrl?: string,
 ): Promise<ReturnType<typeof parseCsvMinimal>> {
-  const downloadUrl = `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
-  const fileRes = await fetch(downloadUrl, {
-    headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/octet-stream" },
-    redirect: "follow",
+  const fieldList = FIELDS.split(",").map(f => f.trim());
+  const fileUrl = preferredUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
+
+  const res = await fetch(`${DRONELOG_BASE}/logs`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${dronelogKey}`,
+      "Content-Type": "application/json",
+      Accept: "text/csv, application/json",
+    },
+    body: JSON.stringify({ url: fileUrl, fields: fieldList }),
   });
 
-  if (!fileRes.ok) {
-    const errText = await fileRes.text();
-    throw new Error(`Download failed (${fileRes.status}): ${errText.slice(0, 200)}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`DroneLog process-by-url failed (${res.status}): ${errText.slice(0, 300)}`);
   }
 
-  const buffer = await fileRes.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  const isZip = bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4B;
-  const ext = isZip ? ".zip" : ".txt";
-
-  return uploadAndParse(dronelogKey, bytes, ext, logId);
+  const csvText = await res.text();
+  return parseCsvMinimal(csvText);
 }
 
 // ── Auto-match drone/battery by serial ──
@@ -698,8 +703,8 @@ async function syncSingleUser(
       if (existing) continue;
 
       try {
-        console.log(`[dji-auto-sync] Downloading + parsing log ${logId}`);
-        const parsed = await downloadAndParseLog(dronelogKey, accountId, String(logId));
+        console.log(`[dji-auto-sync] Processing log ${logId} via POST /logs (URL-mode)`);
+        const parsed = await downloadAndParseLog(dronelogKey, accountId, String(logId), log.downloadUrl);
         const { matchedDroneId, matchedBatteryId, snMismatchSuggestion } = await matchDroneAndBattery(serviceClient, company.id, parsed);
 
         let alreadyImported = false;

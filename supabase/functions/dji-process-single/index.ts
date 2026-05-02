@@ -304,6 +304,34 @@ async function uploadAndParse(dronelogKey: string, fileBytes: Uint8Array, ext: s
   return parseCsvMinimal(csvText);
 }
 
+// ── URL-basert prosessering (DJI Cloud) ──
+// Bruker POST /logs { url, fields } slik at DroneLog henter filen selv.
+// Dette unngår /logs/upload-stien som returnerer 422/500 på DJI Cloud-filer.
+async function processLogByUrl(
+  dronelogKey: string,
+  fileUrl: string,
+  logId: string,
+): Promise<{ ok: true; parsed: ReturnType<typeof parseCsvMinimal> } | { ok: false; status: number; errText: string }> {
+  const fieldList = FIELDS.split(",").map(f => f.trim());
+  console.log(`[dji-process-single] processLogByUrl ${logId} via POST /logs`);
+  const res = await fetch(`${DRONELOG_BASE}/logs`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${dronelogKey}`,
+      "Content-Type": "application/json",
+      Accept: "text/csv, application/json",
+    },
+    body: JSON.stringify({ url: fileUrl, fields: fieldList }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    return { ok: false, status: res.status, errText };
+  }
+  const csvText = await res.text();
+  return { ok: true, parsed: parseCsvMinimal(csvText) };
+}
+
 // ── Decrypt DJI password ──
 
 async function decryptPassword(encryptedB64: string): Promise<string> {
@@ -448,40 +476,30 @@ Deno.serve(async (req) => {
       return errorResponse("no_account_id", "Fant ikke DJI-konto-ID.");
     }
 
-    // Download the log file
+    // Process the log via URL (DroneLog henter filen selv fra DJI Cloud)
     const logId = pendingLog.dji_log_id;
     const downloadUrl = `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
-    const fileRes = await fetch(downloadUrl, {
-      headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/octet-stream" },
-      redirect: "follow",
-    });
 
-    if (!fileRes.ok) {
-      const errText = await fileRes.text();
-      if (fileRes.status === 429) {
-        await persistError("rate_limit", `Download rate-limited (429): ${errText.slice(0, 200)}`);
+    console.log(`[dji-process-single] Processing log ${logId} via POST /logs (URL-mode)`);
+
+    const result = await processLogByUrl(dronelogKey, downloadUrl, logId);
+
+    if (!result.ok) {
+      const { status, errText } = result;
+      console.error(`[dji-process-single] processLogByUrl failed (${status}): ${errText.slice(0, 300)}`);
+      if (status === 429) {
+        await persistError("rate_limit", `DroneLog rate-limited (429): ${errText.slice(0, 200)}`);
         return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om 1-2 minutter.");
       }
-      await persistError("download_failed", `Download failed (${fileRes.status}): ${errText.slice(0, 200)}`);
-      return errorResponse("download_failed", `Kunne ikke laste ned loggfilen (${fileRes.status}).`);
+      if (status === 404) {
+        await persistError("download_failed", `Log not found (404): ${errText.slice(0, 200)}`);
+        return errorResponse("download_failed", "Loggfilen ble ikke funnet hos DJI.");
+      }
+      await persistError("parse_error", `DroneLog ${status}: ${errText.slice(0, 300)}`);
+      return errorResponse("parse_error", `DroneLog API kunne ikke prosessere loggen (${status}). Prøv igjen senere.`);
     }
 
-    const buffer = await fileRes.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    const isZip = bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4B;
-    const ext = isZip ? ".zip" : ".txt";
-
-    console.log(`[dji-process-single] Processing log ${logId} (${bytes.length} bytes, ${ext})`);
-
-    let parsed;
-    try {
-      parsed = await uploadAndParse(dronelogKey, bytes, ext, logId);
-    } catch (parseErr) {
-      const msg = String(parseErr);
-      console.error("[dji-process-single] uploadAndParse failed:", msg);
-      await persistError("parse_error", msg.slice(0, 400));
-      return errorResponse("parse_error", "Kunne ikke parse loggfilen (DJI API avviste filen). Loggen kan være korrupt eller for stor.");
-    }
+    const parsed = result.parsed;
 
     // Build search list: own + parent (so shared drones/batteries from a parent
     // company are auto-matched in child departments).
