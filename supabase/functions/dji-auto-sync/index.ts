@@ -361,40 +361,27 @@ async function downloadAndParseLog(
   const fieldList = FIELDS.split(",").map(f => f.trim());
   const fileUrl = preferredUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
 
-  // 1) Forsøk Fly-parser
+  // Last ned filbytes selv (DroneLog krever vår dronelogKey).
+  const dl = await fetch(fileUrl, { headers: { Authorization: `Bearer ${dronelogKey}` } });
+  if (!dl.ok) {
+    const errText = await dl.text().catch(() => "");
+    throw new Error(`DJI Cloud download failed (${dl.status}): ${errText.slice(0, 300)}`);
+  }
+  const bytes = new Uint8Array(await dl.arrayBuffer());
+
+  // 1) Forsøk Fly-parser hvis konfigurert (sparer DroneLog-kvote når Rust-appen kjører).
   if (DJI_PARSER_URL && DJI_PARSER_TOKEN) {
     try {
-      const dl = await fetch(fileUrl, { headers: { Authorization: `Bearer ${dronelogKey}` } });
-      if (dl.ok) {
-        const bytes = new Uint8Array(await dl.arrayBuffer());
-        const csv = await tryFlyParserCsv(bytes, fieldList, logId);
-        if (csv) return parseCsvMinimal(csv);
-      } else {
-        console.warn(`[dji-auto-sync] download failed ${dl.status}, falling back`);
-      }
+      const csv = await tryFlyParserCsv(bytes, fieldList, logId);
+      if (csv) return parseCsvMinimal(csv);
     } catch (e) {
       console.warn(`[dji-auto-sync] fly path exception: ${(e as Error).message}`);
     }
   }
 
-  // 2) Fall-back: DroneLog POST /logs (URL-mode)
-  const res = await fetch(`${DRONELOG_BASE}/logs`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${dronelogKey}`,
-      "Content-Type": "application/json",
-      Accept: "text/csv, application/json",
-    },
-    body: JSON.stringify({ url: fileUrl, fields: fieldList }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`DroneLog process-by-url failed (${res.status}): ${errText.slice(0, 300)}`);
-  }
-
-  const csvText = await res.text();
-  return parseCsvMinimal(csvText);
+  // 2) Fall-back: DroneLog /logs/upload med selve filbytene (stabil flyt).
+  console.log(`[dji-auto-sync] uploading ${bytes.length} bytes to DroneLog /logs/upload for ${logId}`);
+  return await uploadAndParse(dronelogKey, bytes, ".txt", logId);
 }
 
 // ── Auto-match drone/battery by serial ──
