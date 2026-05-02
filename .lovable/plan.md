@@ -1,30 +1,60 @@
-Jeg fant hvorfor dette fortsatt skjer: forrige fiks ble lagt inn i `process-dronelog`, men DJI Cloud-flyten bruker også `dji-auto-sync` og `dji-process-single`. Begge disse har fortsatt hardkodet `Content-Type: application/octet-stream` når de videresender DJI Cloud-filen til DroneLog `/logs/upload`. Det gir samme 422-feil: `The file field must be a file of type: txt, zip`.
+Jeg sjekket loggene. Feilen kommer fortsatt fra `process-dronelog`, ikke fra de to funksjonene vi endret sist.
+
+Loggene viser at UI-et ved valg av DJI Cloud-logg kaller action `dji-process-log` i `process-dronelog`, og den gamle koden kjører fortsatt:
+
+```text
+[process-dronelog] downloading file from .../logs/{accountId}/{logId}/download
+[process-dronelog] downloaded ... bytes (.zip), uploading via /logs/upload
+[process-dronelog] upload failed: 500 { "message": "Server Error" }
+[process-dronelog] TXT upload failed ...
+[process-dronelog] re-zipped ... retrying /logs/upload
+[process-dronelog] upload failed: 500
+```
+
+Det betyr at endringen i `dji-process-single` og `dji-auto-sync` ikke treffer denne manuelle “velg logg fra DJI Cloud”-flyten. Den bruker fortsatt `process-dronelog` sin gamle download + `/logs/upload`-sti.
 
 Plan:
 
-1. Oppdatere `supabase/functions/dji-auto-sync/index.ts`
-   - Endre upload-helperen til å sette MIME basert på filtype:
-     - `.zip` -> `application/zip`
-     - `.txt` -> `text/plain; charset=utf-8` eller `text/plain`
-   - Beholde ZIP -> TXT fallback når ZIP-opplasting feiler.
-   - Sørge for at fallback-TXT også sendes med korrekt MIME.
+1. Endre `process-dronelog` for action `dji-process-log`
+   - Bytt fra:
+     - `GET /logs/{accountId}/{logId}/download`
+     - lokal nedlasting
+     - `POST /logs/upload`
+   - Til:
+     - `POST /api/v1/logs`
+     - JSON body med `url` og `fields`
+   - Bruk `downloadUrl` fra listen hvis den finnes, ellers fallback til `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`.
 
-2. Oppdatere `supabase/functions/dji-process-single/index.ts`
-   - Samme MIME-fiks som over.
-   - Dette er funksjonen som brukes når en ventende DJI-logg åpnes/behandles manuelt fra køen.
+2. Beholde upload-stien kun for manuell filopplasting
+   - Nederste delen av `process-dronelog` som håndterer brukeropplastede `.txt/.zip`-filer skal fortsatt bruke `/logs/upload`.
+   - Bare DJI Cloud-actionen endres.
 
-3. Herding av `process-dronelog` slik at den er konsekvent
-   - Flytte/standardisere MIME-valg til samme logikk som de to andre funksjonene.
-   - Eventuelt sette TXT til `text/plain; charset=utf-8` hvis DroneLog fortsatt avviser ren `text/plain`.
-   - Legge inn tydeligere logging for filnavn, extension og MIME ved upload, uten å logge tokens/passord.
+3. Forbedre logging og feilmelding
+   - Legg inn tydelig logg:
+     - `[process-dronelog] processing DJI log via POST /logs (URL-mode)`
+   - Hvis DroneLog returnerer feil fra URL-prosessering, returner upstream status og details slik at vi ser om det er `/logs` eller URL-tilgang som feiler.
 
-4. Verifisere etter endring
-   - De deployede edge functionene testes/observeres via Supabase logs.
-   - Forventet resultat: DJI Cloud download lykkes, ZIP forsøkes, og hvis DroneLog gir 500 på ZIP, fallback til TXT skal ikke lenger stoppe på 422.
+4. Deploy `process-dronelog`
+   - Deploy bare denne edge-funksjonen.
+   - Etterpå kan du teste samme DJI-logg på nytt. Da skal loggene ikke lenger inneholde `uploading ... via /logs/upload` for DJI Cloud-valg.
 
-Berørte filer:
-- `supabase/functions/dji-auto-sync/index.ts`
-- `supabase/functions/dji-process-single/index.ts`
-- `supabase/functions/process-dronelog/index.ts`
+Teknisk endring:
 
-Ingen databaseendring trengs.
+```ts
+const logUrl = downloadUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
+
+const res = await fetch(`${DRONELOG_BASE}/logs`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${dronelogKey}`,
+    "Content-Type": "application/json",
+    Accept: "text/csv, application/json",
+  },
+  body: JSON.stringify({
+    url: logUrl,
+    fields: fieldList,
+  }),
+});
+```
+
+Hvis responsen er CSV parses den som før med `parseCsvToResult(csvText)`.

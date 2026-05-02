@@ -858,127 +858,33 @@ Deno.serve(async (req) => {
         }
 
         const fieldList = FIELDS.split(",").map(f => f.trim());
-        let csvText: string | null = null;
 
-        // Helper: handle 429/500 responses uniformly
-        const handleUpstreamError = (res: Response, errText: string, context: string) => {
-          console.error(`[process-dronelog] ${context} failed: ${res.status} ${errText.slice(0, 300)}`);
+        // URL-mode: la DroneLog hente filen direkte fra DJI Cloud via POST /logs.
+        // Dette unngår den ødelagte /logs/upload-stien som returnerer 422/500.
+        const logUrl = downloadUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
+        console.log(`[process-dronelog] processing DJI log ${logId} via POST /logs (URL-mode)`);
+
+        const res = await fetch(`${DRONELOG_BASE}/logs`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${dronelogKey}`,
+            "Content-Type": "application/json",
+            Accept: "text/csv, application/json",
+          },
+          body: JSON.stringify({ url: logUrl, fields: fieldList }),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error(`[process-dronelog] POST /logs failed: ${res.status} ${errText.slice(0, 300)}`);
           if (res.status === 429) {
             const retryAfter = res.headers.get("Retry-After") || null;
             return new Response(JSON.stringify({ error: "Too many requests", upstreamStatus: 429, retryAfter, remaining: null }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
-          return new Response(JSON.stringify({ error: `DroneLog API error (${context})`, details: errText.slice(0, 500), upstreamStatus: res.status, isUpstream500: res.status === 500 }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        };
-
-        // Helper: upload raw bytes via multipart /logs/upload
-        const uploadRawBytes = async (fileBytes: Uint8Array, ext: string): Promise<Response | string> => {
-          const fileName = `dji_${logId}${ext}`;
-          // DroneLog validates BOTH file extension and MIME type (Laravel `mimes:txt,zip`).
-          // Sending application/octet-stream causes 422 even when the extension is correct.
-          const fileMime = ext === ".zip" ? "application/zip" : ext === ".txt" ? "text/plain" : "application/octet-stream";
-          const boundary = "----DronLogBoundary" + Date.now();
-          const parts: string[] = [];
-          for (const field of fieldList) {
-            parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fields[]"\r\n\r\n${field}\r\n`);
-          }
-          parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${fileMime}\r\n\r\n`);
-          const enc = new TextEncoder();
-          const prefixBytes = enc.encode(parts.join(""));
-          const suffixBytes = enc.encode(`\r\n--${boundary}--\r\n`);
-          const uploadBody = new Uint8Array(prefixBytes.length + fileBytes.length + suffixBytes.length);
-          uploadBody.set(prefixBytes, 0);
-          uploadBody.set(fileBytes, prefixBytes.length);
-          uploadBody.set(suffixBytes, prefixBytes.length + fileBytes.length);
-          console.log(`[process-dronelog] uploading ${fileName} (${fileBytes.length} bytes, mime=${fileMime}) via /logs/upload`);
-          const uploadRes = await fetch(`${DRONELOG_BASE}/logs/upload`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": `multipart/form-data; boundary=${boundary}`, Accept: "application/json" },
-            body: uploadBody,
-          });
-          if (!uploadRes.ok) {
-            const errText = await uploadRes.text();
-            return handleUpstreamError(uploadRes, errText, "upload");
-          }
-          return await uploadRes.text();
-        };
-
-        // ── Download file from DJI Cloud, then upload via /logs/upload ──
-        const logUrl = downloadUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
-        console.log(`[process-dronelog] downloading file from ${logUrl.slice(0, 120)}`);
-
-        const fileRes = await fetch(logUrl, {
-          headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/octet-stream" },
-          redirect: "follow",
-        });
-
-        if (!fileRes.ok) {
-          const dlErr = await fileRes.text();
-          console.error(`[process-dronelog] download failed: ${fileRes.status} ${dlErr.slice(0, 300)}`);
-          return handleUpstreamError(fileRes, dlErr, "download");
+          return new Response(JSON.stringify({ error: "DroneLog API error (process-url)", details: errText.slice(0, 500), upstreamStatus: res.status, isUpstream500: res.status === 500 }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        const buffer = await fileRes.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        const isZip = bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4B;
-        const ext = isZip ? ".zip" : ".txt";
-        console.log(`[process-dronelog] downloaded ${bytes.length} bytes (${ext}), uploading via /logs/upload`);
-
-        const uploadResult = await uploadRawBytes(bytes, ext);
-        if (uploadResult instanceof Response) {
-          // Some DJI downloads arrive as ZIPs that DroneLog /logs/upload rejects with 500.
-          // Fallback: extract first .txt from ZIP and retry once as plain text.
-          if (isZip && uploadResult.status === 502) {
-            const uploadErr = await uploadResult.clone().json().catch(() => null);
-            if (uploadErr?.isUpstream500) {
-              try {
-                console.log(`[process-dronelog] ZIP upload got upstream 500, trying ZIP->TXT->reZIP fallback`);
-                const zip = await JSZip.loadAsync(bytes);
-                const txtEntry = Object.values(zip.files).find((f) => !f.dir && f.name.toLowerCase().endsWith(".txt"));
-
-                if (!txtEntry) {
-                  console.error(`[process-dronelog] ZIP fallback failed: no .txt entry in archive`);
-                  return uploadResult;
-                }
-
-                const txtBytes = await txtEntry.async("uint8array");
-                console.log(`[process-dronelog] extracted ${txtEntry.name} (${txtBytes.length} bytes)`);
-
-                // 1) Forsøk rå .txt
-                const txtUploadResult = await uploadRawBytes(txtBytes, ".txt");
-                if (!(txtUploadResult instanceof Response)) {
-                  csvText = txtUploadResult;
-                } else {
-                  // 2) Re-pakke TXT i en helt ny ZIP og send som .zip — DroneLog/Laravel
-                  //    sin finfo-MIME-detektering avviser binær .txt, men aksepterer ZIP.
-                  console.log(`[process-dronelog] TXT upload failed, repacking as fresh ZIP`);
-                  const freshZip = new JSZip();
-                  freshZip.file(txtEntry.name.split("/").pop() || `dji_${logId}.txt`, txtBytes);
-                  const zipBytes = await freshZip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
-                  console.log(`[process-dronelog] re-zipped to ${zipBytes.length} bytes, retrying /logs/upload`);
-                  const reZipResult = await uploadRawBytes(zipBytes, ".zip");
-                  if (reZipResult instanceof Response) {
-                    return reZipResult;
-                  }
-                  csvText = reZipResult;
-                }
-              } catch (zipErr) {
-                console.error(`[process-dronelog] ZIP->TXT fallback threw:`, zipErr);
-                return uploadResult;
-              }
-            } else {
-              return uploadResult;
-            }
-          } else {
-            return uploadResult; // non-zip or non-500 upload error
-          }
-        } else {
-          csvText = uploadResult;
-        }
-
-        if (!csvText) {
-          return new Response(JSON.stringify({ error: "Could not retrieve or process DJI log" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
-
+        const csvText = await res.text();
         console.log(`[process-dronelog] CSV response length: ${csvText.length}`);
         const result = parseCsvToResult(csvText);
         return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
