@@ -146,6 +146,8 @@ async fn parse(headers: HeaderMap, mut multipart: Multipart) -> impl IntoRespons
     info!("dji log version={}", log.version);
 
     // --- keychains for v13+ ---
+    // fetch_keychains uses blocking ureq; wrap in block_in_place so we don't
+    // stall the async runtime but still keep `&log` borrow.
     let keychains = if log.version >= 13 {
         let api_key = std::env::var("DJI_API_KEY").unwrap_or_default();
         if api_key.is_empty() {
@@ -154,22 +156,16 @@ async fn parse(headers: HeaderMap, mut multipart: Multipart) -> impl IntoRespons
                 format!("v{} log requires DJI_API_KEY (not configured)", log.version),
             );
         }
-        // fetch_keychains is blocking (ureq). Run on blocking pool.
-        let api_key_owned = api_key.clone();
-        let log_for_kc = log_clone_hack(&log);
-        let kc = tokio::task::spawn_blocking(move || log_for_kc.fetch_keychains(&api_key_owned))
-            .await
-            .map_err(|e| format!("join: {e}"));
+        let kc = tokio::task::block_in_place(|| log.fetch_keychains(&api_key));
         match kc {
-            Ok(Ok(k)) => Some(k),
-            Ok(Err(e)) => {
+            Ok(k) => Some(k),
+            Err(e) => {
                 error!("fetch_keychains failed: {e}");
                 return err(
                     StatusCode::UNPROCESSABLE_ENTITY,
                     format!("fetch_keychains: {e}"),
                 );
             }
-            Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e),
         }
     } else {
         None
