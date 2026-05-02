@@ -369,17 +369,7 @@ async function downloadAndParseLog(
   }
   const bytes = new Uint8Array(await dl.arrayBuffer());
 
-  // 1) Forsøk Fly-parser hvis konfigurert (sparer DroneLog-kvote når Rust-appen kjører).
-  if (DJI_PARSER_URL && DJI_PARSER_TOKEN) {
-    try {
-      const csv = await tryFlyParserCsv(bytes, fieldList, logId);
-      if (csv) return parseCsvMinimal(csv);
-    } catch (e) {
-      console.warn(`[dji-auto-sync] fly path exception: ${(e as Error).message}`);
-    }
-  }
-
-  // 2) Fall-back: DroneLog /logs/upload med selve filbytene (stabil flyt).
+  // Last opp filbytene rett til DroneLog /logs/upload (stabil flyt — Fly-parseren er deaktivert).
   console.log(`[dji-auto-sync] uploading ${bytes.length} bytes to DroneLog /logs/upload for ${logId}`);
   return await uploadAndParse(dronelogKey, bytes, ".txt", logId);
 }
