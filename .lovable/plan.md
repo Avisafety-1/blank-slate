@@ -1,35 +1,54 @@
-# Implementering ferdig
+Feilen er fortsatt Rust/Cargo-versjon, men loggen viser nå tydelig at `rust:1.84-slim` ikke er nok:
 
-## Hva som er gjort
+- `idna_adapter v1.2.2` krever `edition2024`
+- flere `icu_* v2.2.0`-pakker krever Rust `1.86`
+- fordi `Cargo.lock` mangler, henter Docker-builden nyeste transitive dependencies hver gang
 
-Erstattet TypeScript Fly-appen med Rust + `dji-log-parser` (Lucas Vauvillier).
-Den støtter nå krypterte v13+ logger fra DJI Fly / Pilot 2.
+Plan:
 
-### Filer endret
-- `dji-parser/Cargo.toml` (NY)
-- `dji-parser/src/main.rs` (NY) — axum HTTP-server, multipart `/parse`
-- `dji-parser/Dockerfile` — multi-stage Rust build
-- `dji-parser/README.md` — ny dokumentasjon
-- `dji-parser/.dockerignore` — oppdatert for Rust
-- `dji-parser/src/parser/*` (SLETTET — gammel TS)
-- `dji-parser/package.json`, `tsconfig.json`, `node_modules` (SLETTET)
-- `supabase/functions/dji-parse-proxy/index.ts` — nytt frame-format mapping
+1. Oppdater Dockerfile
+   - Endre build-image fra:
+     ```Dockerfile
+     FROM rust:1.84-slim AS build
+     ```
+     til:
+     ```Dockerfile
+     FROM rust:1.86-slim AS build
+     ```
+   - Dette matcher dependency-kravet som Fly.io-loggen viser.
 
-### Hva brukeren må gjøre
+2. Legg til og bruk `Cargo.lock`
+   - Generer/legg inn `dji-parser/Cargo.lock` for parser-appen.
+   - Oppdater Dockerfile slik at dependency cache kopierer både `Cargo.toml` og `Cargo.lock`:
+     ```Dockerfile
+     COPY Cargo.toml Cargo.lock ./
+     ```
+   - Dette gjør builden stabil, så Fly.io ikke plutselig plukker nyere crates som krever enda nyere Rust senere.
 
-1. **Skaff DJI API-nøkkel** fra https://developer.dji.com/ (kan ta dager).
-2. **Sett Fly secrets:**
-   ```
-   fly secrets set DJI_API_KEY=<api-nøkkel> --app avisafe-djilog-parser
-   ```
-   `AVISAFE_PARSER_TOKEN` er allerede satt.
-3. **Deploy Fly-appen:**
-   ```
-   cd dji-parser
-   fly deploy --app avisafe-djilog-parser
-   ```
-4. Test opplasting av `DJIFlightRecord_2025-12-18_[13-19-15].txt`.
+3. Sjekk Fly-app-navn
+   - `dji-parser/fly.toml` har:
+     ```toml
+     app = "avisafe-djilog-parser"
+     ```
+   - Men kommandoen din bruker:
+     ```bash
+     -a djilogparser
+     ```
+   - Build-feilen skyldes ikke dette, men etter build-fix bør vi sikre at du deployer til riktig app-navn. Enten bruker du `avisafe-djilog-parser`, eller så oppdaterer vi `fly.toml` hvis den faktiske appen heter `djilogparser`.
 
-### Fallback
-Edge functions faller fortsatt tilbake til DroneLog API hvis Fly returnerer
-`{ fallback: true }` (f.eks. mens DJI_API_KEY ikke er satt).
+4. Etter endring
+   - Deploy på nytt fra `dji-parser/`:
+     ```bash
+     fly deploy --app avisafe-djilog-parser
+     ```
+   - Test:
+     ```bash
+     curl https://avisafe-djilog-parser.fly.dev/health
+     ```
+     Forventet svar: `ok`
+
+Hvis du godkjenner, gjør jeg endringene i `dji-parser/Dockerfile` og legger inn dependency-locking slik at Fly.io-builden blir mer robust.
+
+<lov-actions>
+<lov-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</lov-link>
+</lov-actions>
