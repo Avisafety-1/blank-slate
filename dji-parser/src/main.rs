@@ -55,11 +55,6 @@ async fn health() -> &'static str {
     "ok"
 }
 
-#[derive(Serialize)]
-struct ErrBody<'a> {
-    error: &'a str,
-    reason: String,
-}
 
 fn err(status: StatusCode, reason: impl Into<String>) -> (StatusCode, Json<Value>) {
     (
