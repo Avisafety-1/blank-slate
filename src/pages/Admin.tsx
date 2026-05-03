@@ -91,8 +91,8 @@ interface UserRole {
 
 type UnlockedModuleAccess = Record<string, TrainingModuleKey[]>;
 
+// Superadmin er bevisst utelatt — kan ikke tildeles via UI
 const availableRoles = [
-  { value: "superadmin", labelKey: "roles.superadmin", superadminOnly: true },
   { value: "administrator", labelKey: "roles.administrator" },
   { value: "bruker", labelKey: "roles.bruker" },
 ];
