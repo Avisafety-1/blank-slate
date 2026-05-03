@@ -2020,6 +2020,75 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
   const getAllLogsForMission = (missionId: string) =>
     matchCandidates.filter(c => c.mission_id === missionId);
 
+  // Search missions manually (when auto-match doesn't help)
+  const searchMissionsManual = async (q: string) => {
+    if (!companyId) return;
+    setManualLoading(true);
+    try {
+      let query = supabase
+        .from('missions')
+        .select('id, tittel, tidspunkt, status, lokasjon, kunde')
+        .eq('company_id', companyId);
+      const trimmed = q.trim();
+      if (trimmed.length > 0) {
+        const safe = trimmed.replace(/[%,]/g, '');
+        query = query.or(`tittel.ilike.%${safe}%,lokasjon.ilike.%${safe}%,kunde.ilike.%${safe}%`);
+      }
+      const { data, error } = await query.order('tidspunkt', { ascending: false }).limit(50);
+      if (error) throw error;
+      setManualResults((data || []) as any);
+    } catch (e) {
+      console.error('Manual mission search error:', e);
+      setManualResults([]);
+    } finally {
+      setManualLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!manualPickerOpen) return;
+    const t = setTimeout(() => { searchMissionsManual(manualSearch); }, 250);
+    return () => clearTimeout(t);
+  }, [manualSearch, manualPickerOpen, companyId]);
+
+  const handleManualMissionSelect = async (mission: { id: string; tittel: string; tidspunkt: string; status: string; lokasjon: string }) => {
+    setMatchedMissions(prev => prev.find(x => x.id === mission.id) ? prev : [mission, ...prev]);
+    setSelectedMissionId(mission.id);
+    setMatchedLog(null);
+    setSelectedFlightLogChoice('');
+    setManualPickerOpen(false);
+    // Fetch existing flight logs for this mission and merge into matchCandidates
+    try {
+      const { data: logs } = await supabase
+        .from('flight_logs')
+        .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, drones(modell)')
+        .eq('mission_id', mission.id);
+      if (logs && logs.length > 0) {
+        // Fetch pilots for these logs
+        const logIds = logs.map((l: any) => l.id);
+        const { data: pilots } = await supabase
+          .from('flight_log_personnel')
+          .select('flight_log_id, profile_id')
+          .in('flight_log_id', logIds);
+        const pilotMap = new Map<string, string[]>();
+        (pilots || []).forEach((p: any) => {
+          const arr = pilotMap.get(p.flight_log_id) || [];
+          arr.push(p.profile_id);
+          pilotMap.set(p.flight_log_id, arr);
+        });
+        const enriched = logs.map((l: any) => ({ ...l, pilot_ids: pilotMap.get(l.id) || [] }));
+        setMatchCandidates(prev => {
+          const existing = new Set(prev.map(c => c.id));
+          const merged = [...prev];
+          enriched.forEach((e: any) => { if (!existing.has(e.id)) merged.push(e); });
+          return merged;
+        });
+      }
+    } catch (e) {
+      console.error('Failed to fetch logs for selected mission:', e);
+    }
+  };
+
   const handlePilotChange = (newPilotId: string) => {
     setPilotId(newPilotId);
     setSelectedFlightLogChoice('');
