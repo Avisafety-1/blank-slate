@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, Linkedin, Loader2, CheckCircle2 } from "lucide-react";
+import { Save, Linkedin, Loader2, CheckCircle2, RefreshCw, Users } from "lucide-react";
 import { BRAND_VOICE_DEFAULTS } from "./marketingPresets";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
