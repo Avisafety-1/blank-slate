@@ -21,9 +21,13 @@ interface Props {
   results: MissionOption[];
   onSelect: (m: MissionOption) => void;
   triggerLabel: string;
+  limit: number;
+  onLoadMore: () => void;
 }
 
-export const ManualMissionPicker = ({ open, onOpenChange, search, onSearchChange, loading, results, onSelect, triggerLabel }: Props) => {
+export const ManualMissionPicker = ({ open, onOpenChange, search, onSearchChange, loading, results, onSelect, triggerLabel, limit, onLoadMore }: Props) => {
+  const visible = results.slice(0, limit);
+  const hasMore = results.length > visible.length;
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
@@ -49,7 +53,7 @@ export const ManualMissionPicker = ({ open, onOpenChange, search, onSearchChange
             {!loading && results.length === 0 && (
               <CommandEmpty>Ingen oppdrag funnet</CommandEmpty>
             )}
-            {!loading && results.map((m) => (
+            {!loading && visible.map((m) => (
               <CommandItem
                 key={m.id}
                 value={m.id}
@@ -64,6 +68,18 @@ export const ManualMissionPicker = ({ open, onOpenChange, search, onSearchChange
                 </span>
               </CommandItem>
             ))}
+            {!loading && hasMore && (
+              <div className="p-2 border-t border-border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={(e) => { e.preventDefault(); onLoadMore(); }}
+                >
+                  Last inn flere ({results.length - visible.length} igjen)
+                </Button>
+              </div>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
