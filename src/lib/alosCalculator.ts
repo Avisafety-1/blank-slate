@@ -1,23 +1,18 @@
 // Calculates ALOS (Attitude Line of Sight) — the maximum VLOS distance.
-// Mirrors the logic in supabase/functions/ai-risk-assessment/index.ts.
+// Avisafe-policy: bruk multirotor-formelen for ALLE droner i systemet
+// (også FlyCart 100 og lignende), siden vi ikke opererer fastvinget.
 //
-// Multirotor/helikopter:  ALOS = 327 × CD + 20 m
-// Fastvinget/VTOL:        ALOS = 490 × CD + 30 m
+// ALOS = 327 × CD + 20 m
 
 export type AlosResult = {
   alosMaxM: number;
   alosCalculation: string;
-  formula: 'multirotor' | 'fixed-wing';
-};
-
-export const isFixedWingDrone = (droneModel?: string | null): boolean => {
-  if (!droneModel) return false;
-  return /fixed|wing|fastving|fly|plane|vtol/i.test(droneModel);
+  formula: 'multirotor';
 };
 
 export function calculateAlos(
   characteristicDimensionM?: number | null,
-  droneModel?: string | null,
+  _droneModel?: string | null,
 ): AlosResult | null {
   if (
     typeof characteristicDimensionM !== 'number' ||
@@ -26,13 +21,12 @@ export function calculateAlos(
   ) {
     return null;
   }
-  const fixedWing = isFixedWingDrone(droneModel);
-  const multiplier = fixedWing ? 490 : 327;
-  const offset = fixedWing ? 30 : 20;
+  const multiplier = 327;
+  const offset = 20;
   const alosMaxM = Math.round(multiplier * characteristicDimensionM + offset);
   return {
     alosMaxM,
     alosCalculation: `${multiplier} × ${characteristicDimensionM}m + ${offset}m = ${alosMaxM}m`,
-    formula: fixedWing ? 'fixed-wing' : 'multirotor',
+    formula: 'multirotor',
   };
 }
