@@ -1461,7 +1461,7 @@ const Admin = () => {
                                     <SelectValue placeholder={t('admin.selectRole')} />
                                   </SelectTrigger>
                                   <SelectContent className="z-50">
-                                    {availableRoles.filter(role => !role.superadminOnly || isSuperAdmin).map((role) => (
+                                    {availableRoles.map((role) => (
                                       <SelectItem key={role.value} value={role.value}>
                                         {t(role.labelKey)}
                                       </SelectItem>
