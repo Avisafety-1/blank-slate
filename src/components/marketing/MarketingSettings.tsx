@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, Linkedin, Loader2, CheckCircle2, RefreshCw, Users } from "lucide-react";
+import { Save, Linkedin, Loader2, CheckCircle2, RefreshCw, Users, Mail, Send } from "lucide-react";
 import { BRAND_VOICE_DEFAULTS } from "./marketingPresets";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +32,7 @@ export const MarketingSettings = () => {
   const { companyId } = useAuth();
   const [connectingLinkedin, setConnectingLinkedin] = useState(false);
   const [syncingAudience, setSyncingAudience] = useState(false);
+  const [sendingWeekly, setSendingWeekly] = useState<"none" | "dry" | "live">("none");
   const [customRules, setCustomRules] = useState("");
   const [bannedPhrases, setBannedPhrases] = useState("");
   const [ctaStyle, setCtaStyle] = useState("soft");
@@ -113,6 +114,24 @@ export const MarketingSettings = () => {
       toast.error(e.message || "Kunne ikke synkronisere brukere");
     } finally {
       setSyncingAudience(false);
+    }
+  };
+
+  const handleWeeklyReport = async (dryRun: boolean) => {
+    setSendingWeekly(dryRun ? "dry" : "live");
+    try {
+      const { data, error } = await supabase.functions.invoke("weekly-company-report", { body: { dryRun } });
+      if (error) throw error;
+      const d = data as { companies?: number; recipients?: number; sent?: number; skipped?: number; errors?: string[] };
+      const errMsg = (d.errors && d.errors.length > 0) ? ` · ${d.errors.length} feil` : "";
+      toast.success(
+        `${dryRun ? "Tørrkjøring" : "Sending"} ferdig: ${d.sent ?? 0} ${dryRun ? "ville bli sendt" : "sendt"}, ${d.skipped ?? 0} hoppet over (${d.companies ?? 0} selskaper, ${d.recipients ?? 0} mottakere)${errMsg}`
+      );
+      if (d.errors && d.errors.length > 0) console.warn("Weekly report errors:", d.errors);
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke kjøre ukesrapport");
+    } finally {
+      setSendingWeekly("none");
     }
   };
 
@@ -366,6 +385,50 @@ export const MarketingSettings = () => {
             {syncingAudience ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Synkroniser alle eksisterende brukere nå
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Weekly report */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Mail className="w-4 h-4" />
+            Ukesrapport – auto mandag 07:00
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-start gap-2 p-3 rounded-md bg-green-500/10 border border-green-500/20">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <p className="font-medium text-green-700 dark:text-green-400">Aktivert</p>
+              <p className="text-muted-foreground">
+                Sendes automatisk hver mandag (06:00 UTC ≈ 07:00 Oslo) til admins per selskap.
+                Mor-selskap får konsernrapport (mor + alle avdelinger). Avdeling-admins får kun rapport for egen avdeling.
+                Inneholder flytimer/oppdrag, avvik, vedlikehold, dokumenter og kompetanser. Forrige uke = man–søn.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => handleWeeklyReport(true)}
+              disabled={sendingWeekly !== "none"}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              {sendingWeekly === "dry" ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Tørrkjør (ingen e-post sendes)
+            </Button>
+            <Button
+              onClick={() => handleWeeklyReport(false)}
+              disabled={sendingWeekly !== "none"}
+              size="sm"
+              className="gap-2"
+            >
+              {sendingWeekly === "live" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send testrapport for forrige uke nå
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
