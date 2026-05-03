@@ -118,6 +118,8 @@ interface OpenAIPMapProps {
   onStartRoutePlanning?: () => void;
   onPilotPositionChange?: (position: RoutePoint | undefined) => void;
   pilotPosition?: RoutePoint;
+  pilotVlosRadiusM?: number;
+  pilotAlosCalculation?: string;
   isPlacingPilot?: boolean;
   focusFlightId?: string | null;
   onFocusFlightHandled?: () => void;
@@ -137,6 +139,8 @@ export function OpenAIPMap({
   onStartRoutePlanning,
   onPilotPositionChange,
   pilotPosition,
+  pilotVlosRadiusM,
+  pilotAlosCalculation,
   isPlacingPilot,
   focusFlightId,
   onFocusFlightHandled,
@@ -1018,7 +1022,10 @@ export function OpenAIPMap({
     
     if (!pilotPosition) return;
     
-    const VLOS_RADIUS = 120;
+    const VLOS_RADIUS = pilotVlosRadiusM && pilotVlosRadiusM > 0 ? Math.round(pilotVlosRadiusM) : 120;
+    const alosLine = pilotAlosCalculation
+      ? `<br/><span style="font-size: 12px;">ALOS: ${pilotAlosCalculation}</span>`
+      : `<br/><span style="font-size: 11px; color: #999;">(standard 120 m – velg drone i SORA for ALOS)</span>`;
     
     const pilotIcon = L.divIcon({
       className: '',
@@ -1041,7 +1048,7 @@ export function OpenAIPMap({
       icon: pilotIcon, draggable: mode === 'routePlanning', pane: 'routePane',
     });
     
-    marker.bindPopup(`<div><strong>👤 Pilotposisjon</strong><br/><span style="font-size: 11px; color: #666;">Dra for å flytte</span><br/><span style="font-size: 12px;">VLOS-radius: ${VLOS_RADIUS}m</span></div>`);
+    marker.bindPopup(`<div><strong>👤 Pilotposisjon</strong><br/><span style="font-size: 11px; color: #666;">Dra for å flytte</span><br/><span style="font-size: 12px;">VLOS-radius: ${VLOS_RADIUS}m</span>${alosLine}</div>`);
     
     if (mode === 'routePlanning') {
       marker.on('dragend', (e: any) => {
@@ -1060,7 +1067,7 @@ export function OpenAIPMap({
     });
     circle.addTo(pilotLayerRef.current);
     pilotCircleRef.current = circle;
-  }, [pilotPosition, mode]);
+  }, [pilotPosition, mode, pilotVlosRadiusM, pilotAlosCalculation]);
 
   const handleLayerToggle = (id: string, enabled: boolean) => {
     const map = leafletMapRef.current;
