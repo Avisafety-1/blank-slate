@@ -156,9 +156,17 @@ function renderEmail(opts: {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="width:600px;min-width:600px;max-width:600px;table-layout:fixed;border-collapse:separate">
         <tr><td width="600" style="background:#0f172a;padding:24px;border-radius:10px 10px 0 0;width:600px">
-          <img src="cid:avisafe-logo" alt="AviSafe" width="150" style="display:block;width:150px;max-width:150px;height:auto;margin:0 0 18px;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:1px;line-height:1px" />
-          <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:600">Ukesrapport — ${opts.scopeLabel}</h1>
-          <p style="margin:4px 0 0;color:#94a3b8;font-size:13px">${opts.companyName} · Uke ${opts.weekNum} (${opts.weekRange})</p>
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;table-layout:fixed">
+            <tr>
+              <td valign="middle" style="vertical-align:middle">
+                <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:600">Ukesrapport — ${opts.scopeLabel}</h1>
+                <p style="margin:4px 0 0;color:#94a3b8;font-size:13px">${opts.companyName} · Uke ${opts.weekNum} (${opts.weekRange})</p>
+              </td>
+              <td valign="middle" align="right" width="150" style="vertical-align:middle;width:150px">
+                <img src="cid:avisafe-logo" alt="AviSafe" width="140" style="display:block;width:140px;max-width:140px;height:auto;border:0;outline:none;text-decoration:none;color:#ffffff;font-size:1px;line-height:1px;margin-left:auto" />
+              </td>
+            </tr>
+          </table>
         </td></tr>
         <tr><td width="600" style="background:#f8fafc;padding:20px;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 10px 10px;width:600px;word-break:break-word">
           <table width="560" cellpadding="0" cellspacing="0" role="presentation" align="center" style="width:560px;min-width:560px;max-width:560px;table-layout:fixed;border-collapse:separate;mso-table-lspace:0pt;mso-table-rspace:0pt">
