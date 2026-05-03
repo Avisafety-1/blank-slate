@@ -31,6 +31,7 @@ const platformIntegrations = [
 export const MarketingSettings = () => {
   const { companyId } = useAuth();
   const [connectingLinkedin, setConnectingLinkedin] = useState(false);
+  const [syncingAudience, setSyncingAudience] = useState(false);
   const [customRules, setCustomRules] = useState("");
   const [bannedPhrases, setBannedPhrases] = useState("");
   const [ctaStyle, setCtaStyle] = useState("soft");
