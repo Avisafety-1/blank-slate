@@ -3,6 +3,7 @@ import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog"
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { AdjacentAreaPanel } from "@/components/AdjacentAreaPanel";
 import { calculateAdjacentRadius, computeSoraVolumePopulationDensity, type AdjacentAreaResult, type SoraPopulationDensityResult } from "@/lib/adjacentAreaCalculator";
+import { calculateAlos } from "@/lib/alosCalculator";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 // soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
@@ -453,13 +454,21 @@ export default function KartPage() {
     window.open('https://www.ippc.no/ippc/index.jsp', '_blank');
   };
 
+  // ALOS-based VLOS radius (falls back to 120 m when no drone selected)
+  const alosInfo = useMemo(() => {
+    if (!soraSettings.enabled) return null;
+    return calculateAlos(soraSettings.characteristicDimensionM, soraDroneModel);
+  }, [soraSettings.enabled, soraSettings.characteristicDimensionM, soraDroneModel]);
+
+  const vlosRadiusM = alosInfo?.alosMaxM ?? 120;
+
   // Calculate VLOS distances
   const vlisInfo = useMemo(() => {
     if (!pilotPosition || currentRoute.coordinates.length === 0) {
       return null;
     }
     
-    const VLOS_LIMIT = 0.12; // 120m in km (max altitude VLOS)
+    const VLOS_LIMIT = vlosRadiusM / 1000; // km
     let maxDistance = 0;
     let pointsOutside = 0;
     
@@ -483,8 +492,9 @@ export default function KartPage() {
       maxDistanceMeters: Math.round(maxDistance * 1000),
       pointsOutside,
       isWithinVLOS: pointsOutside === 0,
+      vlosLimitMeters: vlosRadiusM,
     };
-  }, [pilotPosition, currentRoute.coordinates]);
+  }, [pilotPosition, currentRoute.coordinates, vlosRadiusM]);
 
   if (loading) {
     return (
@@ -942,6 +952,8 @@ export default function KartPage() {
           onStartRoutePlanning={handleStartRoutePlanning}
           onPilotPositionChange={handlePilotPositionChange}
           pilotPosition={pilotPosition}
+          pilotVlosRadiusM={vlosRadiusM}
+          pilotAlosCalculation={alosInfo?.alosCalculation}
           isPlacingPilot={isPlacingPilot}
           focusFlightId={focusFlightId}
           onFocusFlightHandled={() => setFocusFlightId(null)}
