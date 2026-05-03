@@ -2865,6 +2865,16 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 </div>
               </label>
             </RadioGroup>
+            <ManualMissionPicker
+              open={manualPickerOpen}
+              onOpenChange={setManualPickerOpen}
+              search={manualSearch}
+              onSearchChange={setManualSearch}
+              loading={manualLoading}
+              results={manualResults}
+              onSelect={handleManualMissionSelect}
+              triggerLabel="Ikke riktig oppdrag? Søk etter et annet oppdrag"
+            />
           </div>
         )}
 
