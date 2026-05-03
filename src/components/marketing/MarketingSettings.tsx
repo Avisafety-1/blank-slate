@@ -338,6 +338,37 @@ export const MarketingSettings = () => {
         </CardContent>
       </Card>
 
+      {/* Resend Audience auto-sync */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Resend Audience – brukersynk
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2 p-3 rounded-md bg-green-500/10 border border-green-500/20">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <div className="text-xs">
+              <p className="font-medium text-green-700 dark:text-green-400">Auto-synk aktiv</p>
+              <p className="text-muted-foreground">
+                Nye, endrede og slettede brukere speiles automatisk til Resend Audience.
+                Avmelding via Resend respekteres og overskrives ikke.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={handleSyncAudience}
+            disabled={syncingAudience}
+            variant="outline"
+            className="gap-2"
+          >
+            {syncingAudience ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Synkroniser alle eksisterende brukere nå
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Platform integrations */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-2">
