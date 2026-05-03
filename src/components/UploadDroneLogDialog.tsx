@@ -2034,9 +2034,21 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         const safe = trimmed.replace(/[%,]/g, '');
         query = query.or(`tittel.ilike.%${safe}%,lokasjon.ilike.%${safe}%,kunde.ilike.%${safe}%`);
       }
-      const { data, error } = await query.order('tidspunkt', { ascending: false }).limit(50);
+      // Fetch a generous batch; we sort/limit client-side based on flight date proximity
+      const { data, error } = await query.order('tidspunkt', { ascending: false }).limit(500);
       if (error) throw error;
-      setManualResults((data || []) as any);
+      let rows = (data || []) as any[];
+      // Sort by closeness to flight start time when available
+      const refRaw = result?.startTime;
+      const ref = refRaw ? new Date(refRaw).getTime() : null;
+      if (ref && !Number.isNaN(ref)) {
+        rows = rows.sort((a, b) => {
+          const da = a.tidspunkt ? Math.abs(new Date(a.tidspunkt).getTime() - ref) : Number.POSITIVE_INFINITY;
+          const db = b.tidspunkt ? Math.abs(new Date(b.tidspunkt).getTime() - ref) : Number.POSITIVE_INFINITY;
+          return da - db;
+        });
+      }
+      setManualResults(rows);
     } catch (e) {
       console.error('Manual mission search error:', e);
       setManualResults([]);
@@ -2047,6 +2059,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
 
   useEffect(() => {
     if (!manualPickerOpen) return;
+    setManualLimit(10);
     const t = setTimeout(() => { searchMissionsManual(manualSearch); }, 250);
     return () => clearTimeout(t);
   }, [manualSearch, manualPickerOpen, companyId]);
