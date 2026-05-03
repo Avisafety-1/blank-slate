@@ -1,59 +1,48 @@
 ## Mål
 
-Legge til en «Finner du ikke oppdraget ditt?» / «Ikke riktig oppdrag?»-knapp i `UploadDroneLogDialog`, slik at brukeren alltid kan søke opp og velge et oppdrag manuelt — uavhengig av om auto-matchingen fant noe, fant feil oppdrag, eller ikke fant noe.
+Når bruker velger drone i SORA-volum-panelet, skal VLOS-radius rundt pilotposisjon beregnes ut fra ALOS i stedet for fast 120 m. Beregningen skal vises i popup når man klikker på pilotmarkøren.
 
-## Hvor
+## ALOS-formel (samme som AI-risikovurdering)
 
-Filen `src/components/UploadDroneLogDialog.tsx`, i området rundt linje 2777–2870 hvor matchede oppdrag (`matchedMissions`) og «ingen match»-meldingen vises.
+- Multirotor/helikopter: `ALOS = 327 × CD + 20 m`
+- Fastvinget/VTOL: `ALOS = 490 × CD + 30 m`
 
-## UI-flyt
+CD (karakteristisk dimensjon) hentes allerede inn til `soraSettings.characteristicDimensionM` i `Kart.tsx` (linje 106) når drone velges. Dronetype detekteres fra modellnavn (regex `fixed|wing|fastving|fly|plane|vtol`).
 
-1. **Når auto-match finner oppdrag** (`matchedMissions.length > 0`): Under radio-listen vises en liten lenke-knapp:
-   > «Ikke riktig oppdrag? Søk etter et annet oppdrag»
+Hvis ingen drone er valgt eller CD mangler → fallback 120 m (dagens oppførsel).
 
-2. **Når ingen match** (`matchedMissions.length === 0`): I den blå info-boksen («Ingen eksisterende oppdrag matcher…») vises i tillegg knapp:
-   > «Finner du ikke oppdraget ditt? Søk i alle oppdrag»
+## Endringer
 
-3. Klikk åpner en `Popover` med `Command`/`CommandInput`/`CommandList` (samme mønster som andre søkbare velgere i prosjektet, f.eks. `SearchablePersonSelect`):
-   - Søker i selskapets oppdrag (samme `companyId`-scope som auto-matchen bruker).
-   - Viser tittel, dato (`tidspunkt`), lokasjon og status.
-   - Default sortert etter dato desc; filtrerer på fritekst i tittel/lokasjon/kunde.
-   - Begrens til siste ~200 (ev. paginert «vis flere» hvis trengs senere — start enkelt).
+### 1. Ny helper `src/lib/alosCalculator.ts`
+Eksporterer:
+```ts
+calculateAlos(cdM?: number|null, droneModel?: string|null): {
+  alosMaxM: number;
+  alosCalculation: string; // "327 × 0.35m + 20m = 134m"
+  formula: 'multirotor' | 'fixed-wing';
+} | null
+```
+Identisk logikk som `supabase/functions/ai-risk-assessment/index.ts` linje 77–94.
 
-4. Når brukeren velger et oppdrag fra søket:
-   - Hvis det ikke allerede er i `matchedMissions`, legges det til i listen og blir automatisk valgt (`setSelectedMissionId(m.id)`).
-   - Eksisterende «Eksisterende flyturer for valgt pilot…»-blokk (linje 2809) fungerer da uendret, fordi den henter data via `selectedMissionId`.
-   - Vi henter også eksisterende `flight_logs` for det valgte oppdraget og legger inn i `matchCandidates` (samme mønster som i auto-match-blokken rundt linje 1362–1373), slik at duplikat-visning og «oppdater eksisterende flytur» fortsatt fungerer.
+### 2. `src/pages/Kart.tsx`
+- Beregn `alosInfo` via memo basert på `soraSettings.characteristicDimensionM` + `soraDroneModel`.
+- Bruk `alosInfo?.alosMaxM ?? 120` som `VLOS_LIMIT` i `vlisInfo` (linje 456–487).
+- Send `vlosRadiusM` og `alosCalculation` ned til `<OpenAIPMap>` (begge stedene markøren brukes, linje 944 og 972).
 
-## Tekniske detaljer
+### 3. `src/components/OpenAIPMap.tsx`
+- Legg til props `vlosRadiusM?: number` og `alosCalculation?: string`.
+- I pilot-effect (linje 1011–1063):
+  - Bruk `VLOS_RADIUS = vlosRadiusM ?? 120`.
+  - Popup viser:
+    - "Pilotposisjon"
+    - "Dra for å flytte"
+    - "VLOS-radius: {N} m"
+    - Hvis `alosCalculation` finnes: "ALOS: {formel}" (f.eks. "327 × 0.35m + 20m = 134m")
+    - Hvis ikke: "(standard 120 m – velg drone i SORA for ALOS)"
 
-- Ny lokal state: `manualPickerOpen: boolean`, `manualSearch: string`, `manualResults: Mission[]`, `manualLoading: boolean`.
-- Ny funksjon `searchMissions(q)`:
-  ```ts
-  supabase.from('missions')
-    .select('id, tittel, tidspunkt, lokasjon, status, kunde')
-    .eq('company_id', companyId)
-    .or(`tittel.ilike.%${q}%,lokasjon.ilike.%${q}%,kunde.ilike.%${q}%`)
-    .order('tidspunkt', { ascending: false })
-    .limit(50);
-  ```
-  Hvis `q` er tom: hent siste 50 uten `.or`. Debounce 250 ms.
-- Ny funksjon `handleManualMissionSelect(mission)`:
-  1. `setMatchedMissions(prev => prev.find(x => x.id === mission.id) ? prev : [mission, ...prev])`
-  2. `setSelectedMissionId(mission.id)`
-  3. `setMatchedLog(null); setSelectedFlightLogChoice('')`
-  4. Hent eksisterende flight_logs for oppdraget og merge inn i `matchCandidates` (filter ut duplikater på `id`).
-  5. Lukk popover.
-- Bruker eksisterende komponenter: `Popover`, `Command`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandItem`, `Button`. Ingen nye dependencies.
-
-## Stil
-
-- Lenke-knappen: `variant="link"` eller `variant="ghost"` med `size="sm"`, ikon `Search`. Norsk tekst, lavmælt — ikke konkurrer med radio-valgene.
-- Popover-innhold: `w-[360px] p-0`, samme glassmorphism som ellers (default popover-styling holder).
-- Resultatrad: tittel fet, dato/lokasjon i `text-muted-foreground text-xs`, status-badge til høyre.
+### 4. UI-tekst i topp-panelet (valgfri liten justering)
+"utenfor"-telleren i `vlisInfo` bruker automatisk ny grense, så ingen ekstra endring nødvendig der.
 
 ## Ikke i scope
-
-- Endringer i auto-match-logikk eller edge functions.
-- Paginering ut over første 50 treff (kan utvides senere ved behov).
-- Manuelt valg fra ekspandert split-view-listen i `PendingDjiLogsSection` (samme dialog brukes når man klikker en pending-log, så endringen dekker også den flyten automatisk).
+- Ingen endring i selve SORA-buffer-tegningen.
+- Ingen endring i AI-risikovurdering eller PDF-eksport.
