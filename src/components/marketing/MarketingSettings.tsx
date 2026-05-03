@@ -102,6 +102,20 @@ export const MarketingSettings = () => {
     }
   };
 
+  const handleSyncAudience = async () => {
+    setSyncingAudience(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backfill-resend-audience", { body: {} });
+      if (error) throw error;
+      const d = data as { total?: number; added?: number; updated?: number; failed?: number; skipped?: number };
+      toast.success(`Synk fullført: ${d.added ?? 0} lagt til, ${d.updated ?? 0} oppdatert, ${d.failed ?? 0} feilet (av ${d.total ?? 0})`);
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke synkronisere brukere");
+    } finally {
+      setSyncingAudience(false);
+    }
+  };
+
   const handleSave = () => {
     const settings = {
       customRules,
