@@ -1,48 +1,51 @@
-## Mål
+# Auto-synk brukere → Resend Audience
 
-Når bruker velger drone i SORA-volum-panelet, skal VLOS-radius rundt pilotposisjon beregnes ut fra ALOS i stedet for fast 120 m. Beregningen skal vises i popup når man klikker på pilotmarkøren.
+Mål: Alle brukere (`profiles.email`) i systemet skal automatisk speiles til Resend Audience (`RESEND_AUDIENCE_ID`), slik at audience alltid er oppdatert uten manuell vedlikehold.
 
-## ALOS-formel (samme som AI-risikovurdering)
+## Hvordan det skal fungere
 
-- Multirotor/helikopter: `ALOS = 327 × CD + 20 m`
-- Fastvinget/VTOL: `ALOS = 490 × CD + 30 m`
+1. **Ved ny bruker** → legges til i Resend Audience.
+2. **Ved e-post endring** → oppdateres (gammel slettes, ny opprettes).
+3. **Ved sletting av bruker** → fjernes fra Resend Audience.
+4. **Backfill** → alle eksisterende 47 profiler synkes én gang.
+5. **Opt-out respekteres** → hvis bruker står som `unsubscribed` i Resend (manuelt avmeldt), gjenopprettes ikke abonnementet automatisk.
 
-CD (karakteristisk dimensjon) hentes allerede inn til `soraSettings.characteristicDimensionM` i `Kart.tsx` (linje 106) når drone velges. Dronetype detekteres fra modellnavn (regex `fixed|wing|fastving|fly|plane|vtol`).
+## Teknisk
 
-Hvis ingen drone er valgt eller CD mangler → fallback 120 m (dagens oppførsel).
+### Ny edge function: `sync-user-to-resend-audience`
+- Tar `{ action: 'upsert' | 'delete', email, first_name?, last_name?, old_email? }`
+- Bruker `RESEND_API_KEY` + `RESEND_AUDIENCE_ID` (allerede konfigurert).
+- `upsert`: POST `/audiences/{id}/contacts` (Resend håndterer duplikater idempotent — 200 hvis finnes).
+- `delete`: DELETE `/audiences/{id}/contacts/{email}` (Resend støtter sletting på e-post).
+- Logger feil, returnerer 200 selv ved enkeltfeil for ikke å blokkere triggere.
 
-## Endringer
+### Database trigger på `public.profiles`
+Bruker `pg_net` (allerede aktivert via eksisterende cron-jobber) for asynkrone HTTP-kall:
+- `AFTER INSERT` → kall edge function med `action='upsert'` hvis email er satt.
+- `AFTER UPDATE` på `email` → kall med `action='upsert'` (ny) + `delete` (gammel hvis endret).
+- `AFTER DELETE` → kall med `action='delete'`.
 
-### 1. Ny helper `src/lib/alosCalculator.ts`
-Eksporterer:
-```ts
-calculateAlos(cdM?: number|null, droneModel?: string|null): {
-  alosMaxM: number;
-  alosCalculation: string; // "327 × 0.35m + 20m = 134m"
-  formula: 'multirotor' | 'fixed-wing';
-} | null
-```
-Identisk logikk som `supabase/functions/ai-risk-assessment/index.ts` linje 77–94.
+Trigger-funksjonen er `SECURITY DEFINER` og leser `service_role_key` fra Vault (samme mønster som `process-email-queue`).
 
-### 2. `src/pages/Kart.tsx`
-- Beregn `alosInfo` via memo basert på `soraSettings.characteristicDimensionM` + `soraDroneModel`.
-- Bruk `alosInfo?.alosMaxM ?? 120` som `VLOS_LIMIT` i `vlisInfo` (linje 456–487).
-- Send `vlosRadiusM` og `alosCalculation` ned til `<OpenAIPMap>` (begge stedene markøren brukes, linje 944 og 972).
+### Ny edge function: `backfill-resend-audience`
+- Krever superadmin-auth.
+- Henter alle `profiles.email` (47 stk) og synker batch-vis (delay 200ms for å unngå rate-limit).
+- Returnerer summering `{ added, skipped, failed }`.
+- Knapp legges i `MarketingSettings.tsx` under "Plattformintegrasjoner" → "Synkroniser alle brukere til Resend nå".
 
-### 3. `src/components/OpenAIPMap.tsx`
-- Legg til props `vlosRadiusM?: number` og `alosCalculation?: string`.
-- I pilot-effect (linje 1011–1063):
-  - Bruk `VLOS_RADIUS = vlosRadiusM ?? 120`.
-  - Popup viser:
-    - "Pilotposisjon"
-    - "Dra for å flytte"
-    - "VLOS-radius: {N} m"
-    - Hvis `alosCalculation` finnes: "ALOS: {formel}" (f.eks. "327 × 0.35m + 20m = 134m")
-    - Hvis ikke: "(standard 120 m – velg drone i SORA for ALOS)"
+### Status-indikator
+Liten badge i `MarketingSettings.tsx`:
+- Viser "Auto-synk aktiv" når trigger er installert.
+- Lenke til Resend Audience i dashbord.
 
-### 4. UI-tekst i topp-panelet (valgfri liten justering)
-"utenfor"-telleren i `vlisInfo` bruker automatisk ny grense, så ingen ekstra endring nødvendig der.
+## Filer som endres / opprettes
 
-## Ikke i scope
-- Ingen endring i selve SORA-buffer-tegningen.
-- Ingen endring i AI-risikovurdering eller PDF-eksport.
+- `supabase/functions/sync-user-to-resend-audience/index.ts` (ny)
+- `supabase/functions/backfill-resend-audience/index.ts` (ny)
+- Migrasjon: trigger-funksjon + 3 triggere på `profiles`
+- `src/components/marketing/MarketingSettings.tsx` (legg til backfill-knapp + status)
+
+## Spørsmål før implementering
+
+1. Skal **alle** brukere synkes, eller kun de med `approved = true`?
+2. Skal vi respektere et eget opt-out felt (f.eks. ny kolonne `newsletter_opt_out`), eller stole kun på Resend sitt `unsubscribed`-flagg (anbefalt — én sannhetskilde)?
