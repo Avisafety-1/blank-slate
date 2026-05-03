@@ -2937,8 +2937,18 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
             </div>
           </div>
         ) : matchedMissions.length === 0 ? (
-          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 space-y-2">
             <p className="text-sm text-blue-800 dark:text-blue-300">{t('dronelog.noMatch', 'Ingen eksisterende oppdrag matcher tidspunktet. Du kan opprette et nytt oppdrag.')}</p>
+            <ManualMissionPicker
+              open={manualPickerOpen}
+              onOpenChange={setManualPickerOpen}
+              search={manualSearch}
+              onSearchChange={setManualSearch}
+              loading={manualLoading}
+              results={manualResults}
+              onSelect={handleManualMissionSelect}
+              triggerLabel="Finner du ikke oppdraget ditt? Søk i alle oppdrag"
+            />
           </div>
         ) : null}
 
