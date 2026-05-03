@@ -2887,6 +2887,8 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
               results={manualResults}
               onSelect={handleManualMissionSelect}
               triggerLabel="Ikke riktig oppdrag? Søk etter et annet oppdrag"
+              limit={manualLimit}
+              onLoadMore={() => setManualLimit(l => l + 10)}
             />
           </div>
         )}
