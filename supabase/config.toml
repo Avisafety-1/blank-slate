@@ -185,3 +185,9 @@ verify_jwt = true
 
 [functions.suggest-course-topics]
 verify_jwt = true
+
+[functions.weekly-company-report]
+verify_jwt = false
+
+[functions.unsubscribe-weekly-report]
+verify_jwt = false
