@@ -2027,12 +2027,12 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
     try {
       let query = supabase
         .from('missions')
-        .select('id, tittel, tidspunkt, status, lokasjon, kunde')
+        .select('id, tittel, tidspunkt, status, lokasjon, beskrivelse')
         .eq('company_id', companyId);
       const trimmed = q.trim();
       if (trimmed.length > 0) {
         const safe = trimmed.replace(/[%,]/g, '');
-        query = query.or(`tittel.ilike.%${safe}%,lokasjon.ilike.%${safe}%,kunde.ilike.%${safe}%`);
+        query = query.or(`tittel.ilike.%${safe}%,lokasjon.ilike.%${safe}%,beskrivelse.ilike.%${safe}%`);
       }
       // Fetch a generous batch; we sort/limit client-side based on flight date proximity
       const { data, error } = await query.order('tidspunkt', { ascending: false }).limit(500);
