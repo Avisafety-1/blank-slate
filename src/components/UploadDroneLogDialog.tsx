@@ -2064,19 +2064,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, drones(modell)')
         .eq('mission_id', mission.id);
       if (logs && logs.length > 0) {
-        // Fetch pilots for these logs
-        const logIds = logs.map((l: any) => l.id);
-        const { data: pilots } = await supabase
-          .from('flight_log_personnel')
-          .select('flight_log_id, profile_id')
-          .in('flight_log_id', logIds);
-        const pilotMap = new Map<string, string[]>();
-        (pilots || []).forEach((p: any) => {
-          const arr = pilotMap.get(p.flight_log_id) || [];
-          arr.push(p.profile_id);
-          pilotMap.set(p.flight_log_id, arr);
-        });
-        const enriched = logs.map((l: any) => ({ ...l, pilot_ids: pilotMap.get(l.id) || [] }));
+        const enriched = await enrichLogsWithPilots(logs);
         setMatchCandidates(prev => {
           const existing = new Set(prev.map(c => c.id));
           const merged = [...prev];
