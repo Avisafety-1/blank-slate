@@ -70,10 +70,10 @@ function renderEmail(opts: {
   competencies: Array<{ name: string; user: string; due: string; overdue: boolean }>;
   unsubscribeUrl: string;
 }) {
-  // Card with consistent inner width (always 100% of the 560px content column)
+  // Card with consistent inner width (560 = 600 - 2*20 padding from outer cell)
   const card = (title: string, body: string) => `
-    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;table-layout:fixed">
-      <tr><td style="padding:18px 20px;width:100%">
+    <table width="560" cellpadding="0" cellspacing="0" role="presentation" align="center" style="width:560px;max-width:100%;margin:0 auto 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;table-layout:fixed">
+      <tr><td style="padding:18px 20px">
         <h2 style="margin:0 0 14px;font-size:15px;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:600">${title}</h2>
         ${body}
       </td></tr>
@@ -155,7 +155,7 @@ function renderEmail(opts: {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:600px;table-layout:fixed">
         <tr><td style="background:#0f172a;padding:24px;border-radius:10px 10px 0 0;width:600px">
-          <img src="${APP_URL}/avisafe-logo-text-white.png" alt="AviSafe" height="28" style="display:block;height:28px;width:auto;margin:0 0 14px;border:0;outline:none;text-decoration:none" />
+          <img src="cid:avisafe-logo" alt="AviSafe" height="24" style="display:block;height:24px;width:auto;margin:0 0 14px;border:0;outline:none;text-decoration:none" />
           <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:600">Ukesrapport — ${opts.scopeLabel}</h1>
           <p style="margin:4px 0 0;color:#94a3b8;font-size:13px">${opts.companyName} · Uke ${opts.weekNum} (${opts.weekRange})</p>
         </td></tr>
