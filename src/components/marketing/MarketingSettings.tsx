@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, Linkedin, Loader2, CheckCircle2 } from "lucide-react";
+import { Save, Linkedin, Loader2, CheckCircle2, RefreshCw, Users } from "lucide-react";
 import { BRAND_VOICE_DEFAULTS } from "./marketingPresets";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +31,7 @@ const platformIntegrations = [
 export const MarketingSettings = () => {
   const { companyId } = useAuth();
   const [connectingLinkedin, setConnectingLinkedin] = useState(false);
+  const [syncingAudience, setSyncingAudience] = useState(false);
   const [customRules, setCustomRules] = useState("");
   const [bannedPhrases, setBannedPhrases] = useState("");
   const [ctaStyle, setCtaStyle] = useState("soft");
@@ -98,6 +99,20 @@ export const MarketingSettings = () => {
       toast.error(e.message || "Feil ved LinkedIn-kobling");
     } finally {
       setConnectingLinkedin(false);
+    }
+  };
+
+  const handleSyncAudience = async () => {
+    setSyncingAudience(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backfill-resend-audience", { body: {} });
+      if (error) throw error;
+      const d = data as { total?: number; added?: number; updated?: number; failed?: number; skipped?: number };
+      toast.success(`Synk fullført: ${d.added ?? 0} lagt til, ${d.updated ?? 0} oppdatert, ${d.failed ?? 0} feilet (av ${d.total ?? 0})`);
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke synkronisere brukere");
+    } finally {
+      setSyncingAudience(false);
     }
   };
 
@@ -320,6 +335,37 @@ export const MarketingSettings = () => {
             <p>3. Generer en Access Token for Instagram-kontoen din</p>
             <p>4. Legg til som Supabase secrets: <code>INSTAGRAM_ACCESS_TOKEN</code> og <code>INSTAGRAM_BUSINESS_ACCOUNT_ID</code></p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Resend Audience auto-sync */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Resend Audience – brukersynk
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2 p-3 rounded-md bg-green-500/10 border border-green-500/20">
+            <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+            <div className="text-xs">
+              <p className="font-medium text-green-700 dark:text-green-400">Auto-synk aktiv</p>
+              <p className="text-muted-foreground">
+                Nye, endrede og slettede brukere speiles automatisk til Resend Audience.
+                Avmelding via Resend respekteres og overskrives ikke.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={handleSyncAudience}
+            disabled={syncingAudience}
+            variant="outline"
+            className="gap-2"
+          >
+            {syncingAudience ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Synkroniser alle eksisterende brukere nå
+          </Button>
         </CardContent>
       </Card>
 
