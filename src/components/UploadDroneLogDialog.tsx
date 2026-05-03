@@ -19,6 +19,7 @@ import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resourc
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PendingDjiLogsSection, type PendingDjiLogsSectionRef } from "@/components/PendingDjiLogsSection";
+import { ManualMissionPicker } from "@/components/ManualMissionPicker";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { usePlanGating } from "@/hooks/usePlanGating";
@@ -287,6 +288,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [selectedFlightLogChoice, setSelectedFlightLogChoice] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [manualPickerOpen, setManualPickerOpen] = useState(false);
+  const [manualSearch, setManualSearch] = useState('');
+  const [manualResults, setManualResults] = useState<Array<{ id: string; tittel: string; tidspunkt: string; status: string; lokasjon: string }>>([]);
+  const [manualLoading, setManualLoading] = useState(false);
 
   // DJI login state
   const [djiEmail, setDjiEmail] = useState("");
@@ -2014,6 +2019,63 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
   const getAllLogsForMission = (missionId: string) =>
     matchCandidates.filter(c => c.mission_id === missionId);
 
+  // Search missions manually (when auto-match doesn't help)
+  const searchMissionsManual = async (q: string) => {
+    if (!companyId) return;
+    setManualLoading(true);
+    try {
+      let query = supabase
+        .from('missions')
+        .select('id, tittel, tidspunkt, status, lokasjon, kunde')
+        .eq('company_id', companyId);
+      const trimmed = q.trim();
+      if (trimmed.length > 0) {
+        const safe = trimmed.replace(/[%,]/g, '');
+        query = query.or(`tittel.ilike.%${safe}%,lokasjon.ilike.%${safe}%,kunde.ilike.%${safe}%`);
+      }
+      const { data, error } = await query.order('tidspunkt', { ascending: false }).limit(50);
+      if (error) throw error;
+      setManualResults((data || []) as any);
+    } catch (e) {
+      console.error('Manual mission search error:', e);
+      setManualResults([]);
+    } finally {
+      setManualLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!manualPickerOpen) return;
+    const t = setTimeout(() => { searchMissionsManual(manualSearch); }, 250);
+    return () => clearTimeout(t);
+  }, [manualSearch, manualPickerOpen, companyId]);
+
+  const handleManualMissionSelect = async (mission: { id: string; tittel: string; tidspunkt: string; status: string; lokasjon: string }) => {
+    setMatchedMissions(prev => prev.find(x => x.id === mission.id) ? prev : [mission, ...prev]);
+    setSelectedMissionId(mission.id);
+    setMatchedLog(null);
+    setSelectedFlightLogChoice('');
+    setManualPickerOpen(false);
+    // Fetch existing flight logs for this mission and merge into matchCandidates
+    try {
+      const { data: logs } = await supabase
+        .from('flight_logs')
+        .select('id, flight_date, flight_duration_minutes, drone_id, departure_location, landing_location, mission_id, drones(modell)')
+        .eq('mission_id', mission.id);
+      if (logs && logs.length > 0) {
+        const enriched = await enrichLogsWithPilots(logs);
+        setMatchCandidates(prev => {
+          const existing = new Set(prev.map(c => c.id));
+          const merged = [...prev];
+          enriched.forEach((e: any) => { if (!existing.has(e.id)) merged.push(e); });
+          return merged;
+        });
+      }
+    } catch (e) {
+      console.error('Failed to fetch logs for selected mission:', e);
+    }
+  };
+
   const handlePilotChange = (newPilotId: string) => {
     setPilotId(newPilotId);
     setSelectedFlightLogChoice('');
@@ -2802,6 +2864,16 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 </div>
               </label>
             </RadioGroup>
+            <ManualMissionPicker
+              open={manualPickerOpen}
+              onOpenChange={setManualPickerOpen}
+              search={manualSearch}
+              onSearchChange={setManualSearch}
+              loading={manualLoading}
+              results={manualResults}
+              onSelect={handleManualMissionSelect}
+              triggerLabel="Ikke riktig oppdrag? Søk etter et annet oppdrag"
+            />
           </div>
         )}
 
@@ -2864,8 +2936,18 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
             </div>
           </div>
         ) : matchedMissions.length === 0 ? (
-          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 space-y-2">
             <p className="text-sm text-blue-800 dark:text-blue-300">{t('dronelog.noMatch', 'Ingen eksisterende oppdrag matcher tidspunktet. Du kan opprette et nytt oppdrag.')}</p>
+            <ManualMissionPicker
+              open={manualPickerOpen}
+              onOpenChange={setManualPickerOpen}
+              search={manualSearch}
+              onSearchChange={setManualSearch}
+              loading={manualLoading}
+              results={manualResults}
+              onSelect={handleManualMissionSelect}
+              triggerLabel="Finner du ikke oppdraget ditt? Søk i alle oppdrag"
+            />
           </div>
         ) : null}
 
