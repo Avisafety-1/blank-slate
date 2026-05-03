@@ -54,6 +54,102 @@ function pctChange(curr: number, prev: number): string {
   return `${sign}${diff.toFixed(0)}%`;
 }
 
+// ----- Chart helper (QuickChart returns PNG, works in all email clients) -----
+function chartUrl(config: Record<string, unknown>, w = 520, h = 240): string {
+  const json = encodeURIComponent(JSON.stringify(config));
+  return `https://quickchart.io/chart?bkg=white&w=${w}&h=${h}&c=${json}`;
+}
+
+function barCompareChart(label1: string, val1: number, label2: string, val2: number, title: string) {
+  return chartUrl({
+    type: "bar",
+    data: {
+      labels: [label2, label1], // forrige uke til venstre, denne til høyre
+      datasets: [{
+        label: title,
+        data: [val2, val1],
+        backgroundColor: ["#94a3b8", "#0f172a"],
+        borderRadius: 6,
+      }],
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: title, font: { size: 13 }, color: "#0f172a" },
+        datalabels: { anchor: "end", align: "top", color: "#0f172a", font: { weight: "bold", size: 12 } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#475569" } },
+        y: { beginAtZero: true, grid: { color: "#e5e7eb" }, ticks: { color: "#475569", precision: 0 } },
+      },
+    },
+  });
+}
+
+function severityChart(bySeverity: Record<string, number>, openCount: number) {
+  const labels: string[] = [];
+  const data: number[] = [];
+  const colors: string[] = [];
+  const palette: Record<string, string> = {
+    "kritisk": "#b91c1c",
+    "høy": "#dc2626",
+    "alvorlig": "#dc2626",
+    "moderat": "#f59e0b",
+    "medium": "#f59e0b",
+    "lav": "#10b981",
+    "ukjent": "#94a3b8",
+  };
+  for (const [k, v] of Object.entries(bySeverity)) {
+    labels.push(k.charAt(0).toUpperCase() + k.slice(1));
+    data.push(v);
+    colors.push(palette[k.toLowerCase()] || "#64748b");
+  }
+  if (data.length === 0) {
+    labels.push("Åpne totalt");
+    data.push(openCount);
+    colors.push("#0f172a");
+  }
+  return chartUrl({
+    type: "bar",
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6 }] },
+    options: {
+      indexAxis: "y",
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: "Nye avvik fordelt på alvorlighetsgrad", font: { size: 13 }, color: "#0f172a" },
+        datalabels: { anchor: "end", align: "right", color: "#0f172a", font: { weight: "bold" } },
+      },
+      scales: {
+        x: { beginAtZero: true, grid: { color: "#e5e7eb" }, ticks: { color: "#475569", precision: 0 } },
+        y: { grid: { display: false }, ticks: { color: "#475569" } },
+      },
+    },
+  });
+}
+
+function deptChart(rows: Array<{ name: string; missions: number; flightHoursH: string }>) {
+  return chartUrl({
+    type: "bar",
+    data: {
+      labels: rows.map(r => r.name),
+      datasets: [
+        { label: "Oppdrag", data: rows.map(r => r.missions), backgroundColor: "#0f172a", borderRadius: 4 },
+        { label: "Flytimer", data: rows.map(r => parseFloat(r.flightHoursH)), backgroundColor: "#3b82f6", borderRadius: 4 },
+      ],
+    },
+    options: {
+      plugins: {
+        legend: { position: "bottom", labels: { color: "#475569", font: { size: 11 } } },
+        title: { display: true, text: "Per avdeling", font: { size: 13 }, color: "#0f172a" },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#475569" } },
+        y: { beginAtZero: true, grid: { color: "#e5e7eb" }, ticks: { color: "#475569", precision: 0 } },
+      },
+    },
+  }, 520, 280);
+}
+
 // ----- HTML template ----------------------------------------------
 function renderEmail(opts: {
   companyName: string;
@@ -68,10 +164,11 @@ function renderEmail(opts: {
   competencies: Array<{ name: string; user: string; due: string; overdue: boolean }>;
   unsubscribeUrl: string;
 }) {
+  // Card with consistent inner width (always 100% of the 560px content column)
   const card = (title: string, body: string) => `
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px">
-      <tr><td style="padding:16px 20px">
-        <h2 style="margin:0 0 12px;font-size:15px;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">${title}</h2>
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;table-layout:fixed">
+      <tr><td style="padding:18px 20px;width:100%">
+        <h2 style="margin:0 0 14px;font-size:15px;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:600">${title}</h2>
         ${body}
       </td></tr>
     </table>`;
@@ -80,66 +177,95 @@ function renderEmail(opts: {
     `<tr><td style="padding:6px 0;color:#475569;font-size:13px">${label}</td><td style="padding:6px 0;text-align:right;font-weight:600;color:${warn ? "#b91c1c" : "#0f172a"};font-size:13px">${value}</td></tr>`;
 
   const emptyOk = (msg: string) =>
-    `<div style="padding:10px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;color:#065f46;font-size:13px">✓ ${msg}</div>`;
+    `<div style="padding:10px 12px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px;color:#065f46;font-size:13px">${msg}</div>`;
+
+  const flightHoursNow = parseFloat(opts.activity.flightHoursH);
+  const flightHoursPrev = parseFloat(opts.activity.flightHoursPrevH);
+
+  const activityChart = `
+    <div style="text-align:center;margin:0 0 12px">
+      <img src="${barCompareChart("Denne uka", opts.activity.missions, "Forrige uke", opts.activity.missionsPrev, "Antall oppdrag")}" alt="Oppdrag" width="520" style="max-width:100%;height:auto;display:block;margin:0 auto" />
+    </div>
+    <div style="text-align:center;margin:0 0 12px">
+      <img src="${barCompareChart("Denne uka", flightHoursNow, "Forrige uke", flightHoursPrev, "Flytimer")}" alt="Flytimer" width="520" style="max-width:100%;height:auto;display:block;margin:0 auto" />
+    </div>`;
 
   const activityRows = `
-    <table width="100%" cellpadding="0" cellspacing="0">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
       ${row("Antall oppdrag", `${opts.activity.missions} (${pctChange(opts.activity.missions, opts.activity.missionsPrev)})`)}
-      ${row("Flytimer", `${opts.activity.flightHoursH}h (${pctChange(parseFloat(opts.activity.flightHoursH), parseFloat(opts.activity.flightHoursPrevH))})`)}
+      ${row("Flytimer", `${opts.activity.flightHoursH}h (${pctChange(flightHoursNow, flightHoursPrev)})`)}
       ${row("Antall flyvninger", String(opts.activity.flights))}
     </table>`;
 
   const dept = opts.departmentBreakdown && opts.departmentBreakdown.length > 0
-    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;border-top:1px solid #e5e7eb;padding-top:8px">
-        <tr><th style="text-align:left;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">AVDELING</th><th style="text-align:right;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">OPPDRAG</th><th style="text-align:right;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">TIMER</th><th style="text-align:right;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">FLY</th></tr>
-        ${opts.departmentBreakdown.map(d => `<tr><td style="padding:4px 0;font-size:12px;color:#0f172a">${d.name}</td><td style="text-align:right;font-size:12px">${d.missions}</td><td style="text-align:right;font-size:12px">${d.flightHoursH}</td><td style="text-align:right;font-size:12px">${d.flights}</td></tr>`).join("")}
-      </table>`
+    ? `<div style="margin-top:14px;border-top:1px solid #e5e7eb;padding-top:12px">
+        <div style="text-align:center;margin:0 0 10px">
+          <img src="${deptChart(opts.departmentBreakdown)}" alt="Per avdeling" width="520" style="max-width:100%;height:auto;display:block;margin:0 auto" />
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="table-layout:fixed">
+          <tr>
+            <th style="text-align:left;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">AVDELING</th>
+            <th style="text-align:right;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">OPPDRAG</th>
+            <th style="text-align:right;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">TIMER</th>
+            <th style="text-align:right;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">FLY</th>
+          </tr>
+          ${opts.departmentBreakdown.map(d => `<tr>
+            <td style="padding:4px 0;font-size:12px;color:#0f172a">${d.name}</td>
+            <td style="text-align:right;font-size:12px">${d.missions}</td>
+            <td style="text-align:right;font-size:12px">${d.flightHoursH}</td>
+            <td style="text-align:right;font-size:12px">${d.flights}</td>
+          </tr>`).join("")}
+        </table>
+      </div>`
     : "";
 
-  const incidentsBody = opts.incidents.newCount === 0 && opts.incidents.openCount === 0
+  const hasIncidentData = opts.incidents.newCount > 0 || opts.incidents.openCount > 0;
+  const incidentsBody = !hasIncidentData
     ? emptyOk("Ingen nye eller åpne avvik")
-    : `<table width="100%" cellpadding="0" cellspacing="0">
+    : `<div style="text-align:center;margin:0 0 12px">
+        <img src="${severityChart(opts.incidents.bySeverity, opts.incidents.openCount)}" alt="Avvik" width="520" style="max-width:100%;height:auto;display:block;margin:0 auto" />
+      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
         ${row("Nye avvik forrige uke", String(opts.incidents.newCount), opts.incidents.newCount > 0)}
         ${row("Åpne avvik totalt", String(opts.incidents.openCount), opts.incidents.openCount > 0)}
-        ${Object.entries(opts.incidents.bySeverity).map(([s, c]) => row(`  – ${s}`, String(c))).join("")}
       </table>`;
 
   const listItems = (items: Array<{ name: string; due: string; overdue: boolean; user?: string }>) =>
     items.map(i => `<tr>
         <td style="padding:5px 0;font-size:13px;color:#0f172a">${i.name}${i.user ? ` <span style="color:#64748b">(${i.user})</span>` : ""}</td>
-        <td style="padding:5px 0;text-align:right;font-size:12px;color:${i.overdue ? "#b91c1c" : "#b45309"};font-weight:600">${i.overdue ? "FORFALT" : ""} ${i.due}</td>
+        <td style="padding:5px 0;text-align:right;font-size:12px;color:${i.overdue ? "#b91c1c" : "#b45309"};font-weight:600;white-space:nowrap">${i.overdue ? "FORFALT " : ""}${i.due}</td>
       </tr>`).join("");
 
   const maintBody = opts.maintenance.drones.length === 0 && opts.maintenance.equipment.length === 0
     ? emptyOk("Ingen vedlikehold forfaller neste 30 dager")
-    : `<table width="100%" cellpadding="0" cellspacing="0">
+    : `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="table-layout:fixed">
         ${opts.maintenance.drones.length > 0 ? `<tr><td colspan="2" style="padding:6px 0 2px;font-size:11px;color:#64748b;font-weight:500">DRONER</td></tr>${listItems(opts.maintenance.drones)}` : ""}
         ${opts.maintenance.equipment.length > 0 ? `<tr><td colspan="2" style="padding:8px 0 2px;font-size:11px;color:#64748b;font-weight:500">UTSTYR</td></tr>${listItems(opts.maintenance.equipment)}` : ""}
       </table>`;
 
   const docsBody = opts.documents.length === 0
     ? emptyOk("Ingen dokumenter forfaller neste 30 dager")
-    : `<table width="100%" cellpadding="0" cellspacing="0">${listItems(opts.documents)}</table>`;
+    : `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="table-layout:fixed">${listItems(opts.documents)}</table>`;
 
   const compBody = opts.competencies.length === 0
     ? emptyOk("Ingen kompetanser forfaller neste 30 dager")
-    : `<table width="100%" cellpadding="0" cellspacing="0">${listItems(opts.competencies)}</table>`;
+    : `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="table-layout:fixed">${listItems(opts.competencies)}</table>`;
 
   return `<!doctype html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f1f5f9;padding:24px 12px">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px">
+      <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:600px">
         <tr><td style="background:#0f172a;padding:24px;border-radius:10px 10px 0 0">
-          <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:600">Ukesrapport · ${opts.scopeLabel}</h1>
+          <h1 style="margin:0;color:#ffffff;font-size:18px;font-weight:600">Ukesrapport — ${opts.scopeLabel}</h1>
           <p style="margin:4px 0 0;color:#94a3b8;font-size:13px">${opts.companyName} · Uke ${opts.weekNum} (${opts.weekRange})</p>
         </td></tr>
         <tr><td style="background:#f8fafc;padding:20px;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 10px 10px">
-          ${card("📊 Aktivitet forrige uke", activityRows + dept)}
-          ${card("⚠️ Avvik & hendelser", incidentsBody)}
-          ${card("🔧 Vedlikehold (forfalt + neste 30 dager)", maintBody)}
-          ${card("📄 Dokumenter med utløp", docsBody)}
-          ${card("👤 Personell-kompetanser", compBody)}
+          ${card("Aktivitet forrige uke", activityChart + activityRows + dept)}
+          ${card("Avvik og hendelser", incidentsBody)}
+          ${card("Vedlikehold (forfalt og neste 30 dager)", maintBody)}
+          ${card("Dokumenter med utløp", docsBody)}
+          ${card("Personell-kompetanser", compBody)}
           <p style="margin:16px 0 0;font-size:11px;color:#94a3b8;text-align:center">
             Du mottar denne rapporten fordi du er admin i ${opts.companyName}.
             <a href="${opts.unsubscribeUrl}" style="color:#64748b;text-decoration:underline">Avmeld ukesrapporten</a>
@@ -150,6 +276,7 @@ function renderEmail(opts: {
   </table>
 </body></html>`;
 }
+
 
 // ----- Main --------------------------------------------------------
 serve(async (req) => {
