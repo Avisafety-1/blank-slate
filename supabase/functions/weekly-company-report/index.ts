@@ -1,17 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
-
-// Load logo file once at boot, encode as base64 for Resend inline attachment
-let LOGO_B64: string | null = null;
-try {
-  const bytes = await Deno.readFile(new URL("./avisafe-logo-white.png", import.meta.url));
-  LOGO_B64 = encodeBase64(bytes);
-} catch (e) {
-  console.warn("Could not load logo file:", (e as Error).message);
-}
+import { AVISAFE_LOGO_B64 } from "./logo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -415,12 +406,12 @@ serve(async (req) => {
         }
 
         try {
-          const attachments = LOGO_B64 ? [{
+          const attachments = [{
             filename: "avisafe-logo.png",
-            content: LOGO_B64,
+            content: AVISAFE_LOGO_B64,
             content_id: "avisafe-logo",
             content_type: "image/png",
-          }] : undefined;
+          }];
           await sendEmail({ from: senderAddress, to: r.email, subject, html: personalHtml, attachments });
           if (!overrideEmail) {
             await supabase.from("weekly_report_sends").insert({
