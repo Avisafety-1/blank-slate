@@ -160,9 +160,10 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  let body: { dryRun?: boolean; companyId?: string; trigger?: string } = {};
+  let body: { dryRun?: boolean; companyId?: string; trigger?: string; recipientEmail?: string } = {};
   try { body = await req.json(); } catch { /* empty */ }
   const dryRun = !!body.dryRun;
+  const overrideEmail = body.recipientEmail?.trim().toLowerCase() || null;
 
   const { weekStart, weekEnd, isoWeek, isoYear, prevWeekStart, prevWeekEnd } = getPreviousISOWeek();
   const weekRange = `${fmtDate(weekStart)}–${fmtDate(new Date(weekEnd.getTime() - 86400000))}`;
@@ -285,33 +286,44 @@ serve(async (req) => {
           }));
       }
 
-      // --- Skip empty?
+      // --- Skip empty? (skip check when overriding recipient – we want to see template)
       const totallyEmpty =
         missionsCount === 0 && totalMinutes === 0 &&
         (newIncRes.data?.length ?? 0) === 0 && (openIncRes.count ?? 0) === 0 &&
         droneItems.length === 0 && equipItems.length === 0 && docItems.length === 0 && compItems.length === 0;
 
-      if (totallyEmpty) {
+      if (totallyEmpty && !overrideEmail) {
         summary.skipped++;
         continue;
       }
 
-      // --- Recipients: admins of THIS company (not parent's admins for departments)
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("role", ["admin", "administrator", "superadmin"]);
-      const adminUserIds = [...new Set((roles || []).map((r: any) => r.user_id))];
-      if (adminUserIds.length === 0) continue;
+      // --- Recipients
+      let recipients: any[] = [];
+      if (overrideEmail) {
+        const { data: r } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .eq("email", overrideEmail)
+          .maybeSingle();
+        if (r) recipients = [r];
+      } else {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .in("role", ["admin", "administrator", "superadmin"]);
+        const adminUserIds = [...new Set((roles || []).map((r: any) => r.user_id))];
+        if (adminUserIds.length === 0) continue;
 
-      const { data: recipients } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, weekly_report_unsubscribed")
-        .in("id", adminUserIds)
-        .eq("company_id", company.id)
-        .eq("approved", true)
-        .eq("weekly_report_unsubscribed", false)
-        .not("email", "is", null);
+        const { data: rs } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, weekly_report_unsubscribed")
+          .in("id", adminUserIds)
+          .eq("company_id", company.id)
+          .eq("approved", true)
+          .eq("weekly_report_unsubscribed", false)
+          .not("email", "is", null);
+        recipients = rs || [];
+      }
 
       const html = renderEmail({
         companyName: company.navn,
@@ -337,18 +349,20 @@ serve(async (req) => {
       const senderAddress = formatSenderAddress(emailConfig.fromName || "AviSafe", emailConfig.fromEmail);
       const subject = sanitizeSubject(`Ukesrapport ${company.navn} (${scopeLabel}) – uke ${isoWeek}`);
 
-      for (const r of (recipients || []) as any[]) {
+      for (const r of recipients) {
         summary.recipients++;
-        // Idempotency check
-        const { data: existing } = await supabase
-          .from("weekly_report_sends")
-          .select("id")
-          .eq("company_id", company.id)
-          .eq("recipient_user_id", r.id)
-          .eq("iso_year", isoYear)
-          .eq("iso_week", isoWeek)
-          .maybeSingle();
-        if (existing) { summary.skipped++; continue; }
+        // Idempotency check (skipped on override so you can re-test)
+        if (!overrideEmail) {
+          const { data: existing } = await supabase
+            .from("weekly_report_sends")
+            .select("id")
+            .eq("company_id", company.id)
+            .eq("recipient_user_id", r.id)
+            .eq("iso_year", isoYear)
+            .eq("iso_week", isoWeek)
+            .maybeSingle();
+          if (existing) { summary.skipped++; continue; }
+        }
 
         // Personalised unsubscribe link (signed token = base64(user_id:hmac))
         const token = btoa(`${r.id}:${isoYear}:${isoWeek}`);
