@@ -33,6 +33,8 @@ export const MarketingSettings = () => {
   const [connectingLinkedin, setConnectingLinkedin] = useState(false);
   const [syncingAudience, setSyncingAudience] = useState(false);
   const [sendingWeekly, setSendingWeekly] = useState<"none" | "dry" | "live">("none");
+  const [testEmail, setTestEmail] = useState("");
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [customRules, setCustomRules] = useState("");
   const [bannedPhrases, setBannedPhrases] = useState("");
   const [ctaStyle, setCtaStyle] = useState("soft");
@@ -132,6 +134,35 @@ export const MarketingSettings = () => {
       toast.error(e.message || "Kunne ikke kjøre ukesrapport");
     } finally {
       setSendingWeekly("none");
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    const email = testEmail.trim().toLowerCase();
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      toast.error("Skriv inn en gyldig e-postadresse");
+      return;
+    }
+    if (!companyId) {
+      toast.error("Mangler selskap-ID");
+      return;
+    }
+    setSendingTestEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("weekly-company-report", {
+        body: { companyId, recipientEmail: email },
+      });
+      if (error) throw error;
+      const d = data as { sent?: number; errors?: string[] };
+      if (d.errors && d.errors.length > 0) {
+        toast.error(`Feil: ${d.errors[0]}`);
+      } else {
+        toast.success(`Testrapport sendt til ${email}`);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Kunne ikke sende testrapport");
+    } finally {
+      setSendingTestEmail(false);
     }
   };
 
@@ -428,6 +459,33 @@ export const MarketingSettings = () => {
               {sendingWeekly === "live" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Send testrapport for forrige uke nå
             </Button>
+          </div>
+
+          <div className="pt-3 border-t border-border space-y-2">
+            <p className="text-xs font-medium text-foreground">Send testrapport til en bestemt e-post</p>
+            <p className="text-xs text-muted-foreground">
+              Bruker data fra ditt nåværende selskap (forrige uke). Hopper over avmeldings- og dedup-sjekker.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                type="email"
+                placeholder="navn@firma.no"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                disabled={sendingTestEmail}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSendTestEmail}
+                disabled={sendingTestEmail || !testEmail.trim()}
+                size="sm"
+                variant="outline"
+                className="gap-2"
+              >
+                {sendingTestEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Send test
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
