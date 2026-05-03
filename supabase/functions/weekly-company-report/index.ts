@@ -54,101 +54,7 @@ function pctChange(curr: number, prev: number): string {
   return `${sign}${diff.toFixed(0)}%`;
 }
 
-// ----- Chart helper (QuickChart returns PNG, works in all email clients) -----
-function chartUrl(config: Record<string, unknown>, w = 520, h = 240): string {
-  const json = encodeURIComponent(JSON.stringify(config));
-  return `https://quickchart.io/chart?bkg=white&w=${w}&h=${h}&c=${json}`;
-}
-
-function barCompareChart(label1: string, val1: number, label2: string, val2: number, title: string) {
-  return chartUrl({
-    type: "bar",
-    data: {
-      labels: [label2, label1], // forrige uke til venstre, denne til høyre
-      datasets: [{
-        label: title,
-        data: [val2, val1],
-        backgroundColor: ["#94a3b8", "#0f172a"],
-        borderRadius: 6,
-      }],
-    },
-    options: {
-      plugins: {
-        legend: { display: false },
-        title: { display: true, text: title, font: { size: 13 }, color: "#0f172a" },
-        datalabels: { anchor: "end", align: "top", color: "#0f172a", font: { weight: "bold", size: 12 } },
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: "#475569" } },
-        y: { beginAtZero: true, grid: { color: "#e5e7eb" }, ticks: { color: "#475569", precision: 0 } },
-      },
-    },
-  });
-}
-
-function severityChart(bySeverity: Record<string, number>, openCount: number) {
-  const labels: string[] = [];
-  const data: number[] = [];
-  const colors: string[] = [];
-  const palette: Record<string, string> = {
-    "kritisk": "#b91c1c",
-    "høy": "#dc2626",
-    "alvorlig": "#dc2626",
-    "moderat": "#f59e0b",
-    "medium": "#f59e0b",
-    "lav": "#10b981",
-    "ukjent": "#94a3b8",
-  };
-  for (const [k, v] of Object.entries(bySeverity)) {
-    labels.push(k.charAt(0).toUpperCase() + k.slice(1));
-    data.push(v);
-    colors.push(palette[k.toLowerCase()] || "#64748b");
-  }
-  if (data.length === 0) {
-    labels.push("Åpne totalt");
-    data.push(openCount);
-    colors.push("#0f172a");
-  }
-  return chartUrl({
-    type: "bar",
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6 }] },
-    options: {
-      indexAxis: "y",
-      plugins: {
-        legend: { display: false },
-        title: { display: true, text: "Nye avvik fordelt på alvorlighetsgrad", font: { size: 13 }, color: "#0f172a" },
-        datalabels: { anchor: "end", align: "right", color: "#0f172a", font: { weight: "bold" } },
-      },
-      scales: {
-        x: { beginAtZero: true, grid: { color: "#e5e7eb" }, ticks: { color: "#475569", precision: 0 } },
-        y: { grid: { display: false }, ticks: { color: "#475569" } },
-      },
-    },
-  });
-}
-
-function deptChart(rows: Array<{ name: string; missions: number; flightHoursH: string }>) {
-  return chartUrl({
-    type: "bar",
-    data: {
-      labels: rows.map(r => r.name),
-      datasets: [
-        { label: "Oppdrag", data: rows.map(r => r.missions), backgroundColor: "#0f172a", borderRadius: 4 },
-        { label: "Flytimer", data: rows.map(r => parseFloat(r.flightHoursH)), backgroundColor: "#3b82f6", borderRadius: 4 },
-      ],
-    },
-    options: {
-      plugins: {
-        legend: { position: "bottom", labels: { color: "#475569", font: { size: 11 } } },
-        title: { display: true, text: "Per avdeling", font: { size: 13 }, color: "#0f172a" },
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: "#475569" } },
-        y: { beginAtZero: true, grid: { color: "#e5e7eb" }, ticks: { color: "#475569", precision: 0 } },
-      },
-    },
-  }, 520, 280);
-}
+// (Charts removed — plain HTML tables only)
 
 // ----- HTML template ----------------------------------------------
 function renderEmail(opts: {
@@ -182,13 +88,7 @@ function renderEmail(opts: {
   const flightHoursNow = parseFloat(opts.activity.flightHoursH);
   const flightHoursPrev = parseFloat(opts.activity.flightHoursPrevH);
 
-  const activityChart = `
-    <div style="text-align:center;margin:0 0 12px">
-      <img src="${barCompareChart("Denne uka", opts.activity.missions, "Forrige uke", opts.activity.missionsPrev, "Antall oppdrag")}" alt="Oppdrag" width="520" style="max-width:100%;height:auto;display:block;margin:0 auto" />
-    </div>
-    <div style="text-align:center;margin:0 0 12px">
-      <img src="${barCompareChart("Denne uka", flightHoursNow, "Forrige uke", flightHoursPrev, "Flytimer")}" alt="Flytimer" width="520" style="max-width:100%;height:auto;display:block;margin:0 auto" />
-    </div>`;
+  const activityChart = "";
 
   const activityRows = `
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
@@ -199,9 +99,6 @@ function renderEmail(opts: {
 
   const dept = opts.departmentBreakdown && opts.departmentBreakdown.length > 0
     ? `<div style="margin-top:14px;border-top:1px solid #e5e7eb;padding-top:12px">
-        <div style="text-align:center;margin:0 0 10px">
-          <img src="${deptChart(opts.departmentBreakdown)}" alt="Per avdeling" width="520" style="max-width:100%;height:auto;display:block;margin:0 auto" />
-        </div>
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="table-layout:fixed">
           <tr>
             <th style="text-align:left;font-size:11px;color:#64748b;font-weight:500;padding:6px 0">AVDELING</th>
@@ -220,14 +117,15 @@ function renderEmail(opts: {
     : "";
 
   const hasIncidentData = opts.incidents.newCount > 0 || opts.incidents.openCount > 0;
+  const severityRows = Object.entries(opts.incidents.bySeverity)
+    .map(([k, v]) => row(`Alvorlighetsgrad: ${k.charAt(0).toUpperCase() + k.slice(1)}`, String(v), true))
+    .join("");
   const incidentsBody = !hasIncidentData
     ? emptyOk("Ingen nye eller åpne avvik")
-    : `<div style="text-align:center;margin:0 0 12px">
-        <img src="${severityChart(opts.incidents.bySeverity, opts.incidents.openCount)}" alt="Avvik" width="520" style="max-width:100%;height:auto;display:block;margin:0 auto" />
-      </div>
-      <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    : `<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
         ${row("Nye avvik forrige uke", String(opts.incidents.newCount), opts.incidents.newCount > 0)}
         ${row("Åpne avvik totalt", String(opts.incidents.openCount), opts.incidents.openCount > 0)}
+        ${severityRows}
       </table>`;
 
   const listItems = (items: Array<{ name: string; due: string; overdue: boolean; user?: string }>) =>
