@@ -289,6 +289,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [selectedFlightLogChoice, setSelectedFlightLogChoice] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [manualPickerOpen, setManualPickerOpen] = useState(false);
+  const [manualSearch, setManualSearch] = useState('');
+  const [manualResults, setManualResults] = useState<Array<{ id: string; tittel: string; tidspunkt: string; status: string; lokasjon: string }>>([]);
+  const [manualLoading, setManualLoading] = useState(false);
 
   // DJI login state
   const [djiEmail, setDjiEmail] = useState("");
