@@ -21,6 +21,7 @@ import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resourc
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PendingDjiLogsSection, type PendingDjiLogsSectionRef } from "@/components/PendingDjiLogsSection";
+import { ManualMissionPicker } from "@/components/ManualMissionPicker";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { usePlanGating } from "@/hooks/usePlanGating";
