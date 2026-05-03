@@ -376,15 +376,17 @@ serve(async (req) => {
 
         try {
           await sendEmail({ from: senderAddress, to: r.email, subject, html: personalHtml });
-          await supabase.from("weekly_report_sends").insert({
-            company_id: company.id,
-            recipient_user_id: r.id,
-            recipient_email: r.email,
-            scope_label: scopeLabel,
-            iso_year: isoYear,
-            iso_week: isoWeek,
-            status: "sent",
-          });
+          if (!overrideEmail) {
+            await supabase.from("weekly_report_sends").insert({
+              company_id: company.id,
+              recipient_user_id: r.id,
+              recipient_email: r.email,
+              scope_label: scopeLabel,
+              iso_year: isoYear,
+              iso_week: isoWeek,
+              status: "sent",
+            });
+          }
           summary.sent++;
           await new Promise(res => setTimeout(res, 200)); // gentle rate-limit
         } catch (e: any) {
