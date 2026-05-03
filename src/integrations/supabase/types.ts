@@ -4495,6 +4495,7 @@ export type Database = {
           uas_operator_number: string | null
           under_training: boolean
           updated_at: string | null
+          weekly_report_unsubscribed: boolean
         }
         Insert: {
           adresse?: string | null
@@ -4523,6 +4524,7 @@ export type Database = {
           uas_operator_number?: string | null
           under_training?: boolean
           updated_at?: string | null
+          weekly_report_unsubscribed?: boolean
         }
         Update: {
           adresse?: string | null
@@ -4551,6 +4553,7 @@ export type Database = {
           uas_operator_number?: string | null
           under_training?: boolean
           updated_at?: string | null
+          weekly_report_unsubscribed?: boolean
         }
         Relationships: [
           {
@@ -5153,6 +5156,45 @@ export type Database = {
           restriction_type?: string | null
           synced_at?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      weekly_report_sends: {
+        Row: {
+          company_id: string
+          error_message: string | null
+          id: string
+          iso_week: number
+          iso_year: number
+          recipient_email: string
+          recipient_user_id: string
+          scope_label: string
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          company_id: string
+          error_message?: string | null
+          id?: string
+          iso_week: number
+          iso_year: number
+          recipient_email: string
+          recipient_user_id: string
+          scope_label: string
+          sent_at?: string
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          error_message?: string | null
+          id?: string
+          iso_week?: number
+          iso_year?: number
+          recipient_email?: string
+          recipient_user_id?: string
+          scope_label?: string
+          sent_at?: string
+          status?: string
         }
         Relationships: []
       }
