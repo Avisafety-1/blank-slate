@@ -63,6 +63,9 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [loading, setLoading] = useState(!!courseId);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const slideImageInputRef = useRef<HTMLInputElement>(null);
+  const [slideImageTargetIdx, setSlideImageTargetIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (courseId) loadCourse();
@@ -181,6 +184,92 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       setUploadingPdf(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    try {
+      const newSlides: Slide[] = [];
+      const startOrder = slides.length;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/")) continue;
+        const dataUrl: string = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        newSlides.push({
+          slide_type: "content",
+          question_text: `Slide ${startOrder + i + 1}`,
+          content_json: { heading: "", narration_text: "", narration_enabled: false },
+          image_url: null,
+          sort_order: startOrder + i,
+          options: [],
+          _localBlobUrl: dataUrl,
+        });
+      }
+      if (newSlides.length === 0) {
+        toast.error("Ingen gyldige bildefiler");
+        return;
+      }
+      setSlides((prev) => [...prev, ...newSlides]);
+      toast.success(`${newSlides.length} bilde${newSlides.length > 1 ? "r" : ""} lagt til`);
+    } catch (err) {
+      console.error("Image upload error", err);
+      toast.error("Kunne ikke laste opp bilde");
+    } finally {
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
+  const handleSlideImageReplace = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const idx = slideImageTargetIdx;
+    if (!file || idx == null) {
+      if (slideImageInputRef.current) slideImageInputRef.current.value = "";
+      return;
+    }
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setSlides((prev) => prev.map((s, i) => i === idx ? { ...s, _localBlobUrl: dataUrl, image_url: null } : s));
+    } catch (err) {
+      toast.error("Kunne ikke laste bilde");
+    } finally {
+      setSlideImageTargetIdx(null);
+      if (slideImageInputRef.current) slideImageInputRef.current.value = "";
+    }
+  };
+
+  const addContentSlide = (afterIdx?: number) => {
+    const newSlide: Slide = {
+      slide_type: "content",
+      question_text: "",
+      content_json: { heading: "", narration_text: "", narration_enabled: false },
+      image_url: null,
+      sort_order: (afterIdx ?? slides.length - 1) + 1,
+      options: [],
+    };
+    const newSlides = [...slides];
+    const insertAt = afterIdx != null ? afterIdx + 1 : slides.length;
+    newSlides.splice(insertAt, 0, newSlide);
+    setSlides(newSlides);
+  };
+
+  const updateContentField = (idx: number, field: string, value: any) => {
+    setSlides((prev) => prev.map((s, i) => {
+      if (i !== idx) return s;
+      const cj = { ...(s.content_json || {}) };
+      cj[field] = value;
+      return { ...s, content_json: cj };
+    }));
   };
 
   const addQuestionAfterSlide = (afterIdx: number) => {
@@ -490,21 +579,36 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         </CardContent>
       </Card>
 
-      {/* PDF Upload */}
+      {/* Upload presentation / images */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Last opp presentasjon</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Last opp en PDF-fil (eksporter fra PowerPoint/Keynote). Sidene blir lagt til som nye slides etter de eksisterende.
+            Last opp en PDF (eksportert fra PowerPoint/Keynote) eller bilder. Sidene legges til etter de eksisterende.
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <input
               ref={fileInputRef}
               type="file"
               accept=".pdf"
               onChange={handlePdfUpload}
+              className="hidden"
+            />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <input
+              ref={slideImageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleSlideImageReplace}
               className="hidden"
             />
             <Button
@@ -514,6 +618,20 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             >
               <Upload className="h-4 w-4 mr-2" />
               {uploadingPdf ? "Leser PDF..." : "Legg til sider fra PDF"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <ImageIcon className="h-4 w-4 mr-2" />
+              Legg til bilde(r)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => addContentSlide()}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Legg til tekst-slide
             </Button>
             {contentSlideCount > 0 && (
               <Badge variant="secondary">
@@ -559,45 +677,105 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                     <Button size="sm" variant="ghost" disabled={sIdx === 0} onClick={() => moveSlide(sIdx, sIdx - 1)} className="h-7 w-7 p-0">↑</Button>
                     <Button size="sm" variant="ghost" disabled={sIdx === slides.length - 1} onClick={() => moveSlide(sIdx, sIdx + 1)} className="h-7 w-7 p-0">↓</Button>
                   </div>
-                  {(s.slide_type === "question" || s.slide_type === "video") && (
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(sIdx)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(sIdx)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                {/* Content slide: show image preview */}
-                {s.slide_type === "content" && (
-                  <div className="space-y-2">
-                    {(s._localBlobUrl || s.image_url) && (
-                      <img
-                        src={s._localBlobUrl || s.image_url!}
-                        alt={`Slide ${sIdx + 1}`}
-                        className="w-full max-h-64 object-contain rounded border bg-muted/20"
-                      />
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => addQuestionAfterSlide(sIdx)}
-                        className="text-xs"
-                      >
-                        <HelpCircle className="h-3.5 w-3.5 mr-1" />
-                        Legg til spørsmål etter
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => addVideoSlide(sIdx)}
-                        className="text-xs"
-                      >
-                        <Youtube className="h-3.5 w-3.5 mr-1" />
-                        Legg til video etter
-                      </Button>
+                {/* Content slide: image + heading + text + narration toggle */}
+                {s.slide_type === "content" && (() => {
+                  const cj = (s.content_json as any) || {};
+                  const narrationEnabled = cj.narration_enabled !== false && !!(cj.narration_text || cj.narration_audio_url);
+                  const narrationToggle = cj.narration_enabled ?? !!(cj.narration_text || cj.narration_audio_url);
+                  return (
+                    <div className="space-y-3">
+                      {(s._localBlobUrl || s.image_url) ? (
+                        <img
+                          src={s._localBlobUrl || s.image_url!}
+                          alt={`Slide ${sIdx + 1}`}
+                          className="w-full max-h-64 object-contain rounded border bg-muted/20"
+                        />
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setSlideImageTargetIdx(sIdx); slideImageInputRef.current?.click(); }}
+                          className="text-xs"
+                        >
+                          <ImageIcon className="h-3.5 w-3.5 mr-1" />
+                          {(s._localBlobUrl || s.image_url) ? "Bytt bilde" : "Legg til bilde"}
+                        </Button>
+                        {(s._localBlobUrl || s.image_url) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSlides((prev) => prev.map((x, i) => i === sIdx ? { ...x, _localBlobUrl: undefined, image_url: null } : x))}
+                            className="text-xs text-destructive"
+                          >
+                            Fjern bilde
+                          </Button>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-sm">Overskrift</Label>
+                        <Input
+                          value={cj.heading || ""}
+                          onChange={(e) => updateContentField(sIdx, "heading", e.target.value)}
+                          placeholder="Valgfri overskrift"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Tekst</Label>
+                        <Textarea
+                          value={cj.narration_text || ""}
+                          onChange={(e) => updateContentField(sIdx, "narration_text", e.target.value)}
+                          placeholder="Tekst som vises på sliden (kan også leses opp)"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex items-center gap-3 pt-1 border-t">
+                        <Switch
+                          id={`narration-${sIdx}`}
+                          checked={narrationToggle}
+                          onCheckedChange={(v) => updateContentField(sIdx, "narration_enabled", v)}
+                        />
+                        <Label htmlFor={`narration-${sIdx}`} className="text-sm cursor-pointer">
+                          Les opp tekst (text-to-speech)
+                        </Label>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-2 border-t">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addQuestionAfterSlide(sIdx)}
+                          className="text-xs"
+                        >
+                          <HelpCircle className="h-3.5 w-3.5 mr-1" />
+                          Legg til spørsmål etter
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addVideoSlide(sIdx)}
+                          className="text-xs"
+                        >
+                          <Youtube className="h-3.5 w-3.5 mr-1" />
+                          Legg til video etter
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addContentSlide(sIdx)}
+                          className="text-xs"
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1" />
+                          Legg til slide etter
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Video slide */}
                 {s.slide_type === "video" && (() => {

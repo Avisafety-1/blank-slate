@@ -213,6 +213,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     const s = slides[idx];
     if (!s || s.slide_type !== "content") return;
     const cj = (s.content_json as any) || {};
+    if (cj.narration_enabled === false) return;
     if (cj.narration_audio_url) return; // <audio autoPlay> handles it
     const text: string | null = cj.narration_text || null;
     if (text) speakNarration(text);
@@ -375,7 +376,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           {narrationText && (
             <p className="text-sm text-foreground/90 text-center leading-relaxed">{narrationText}</p>
           )}
-          {narrationUrl ? (
+          {cj.narration_enabled === false ? null : narrationUrl ? (
             <audio
               key={s.id}
               src={narrationUrl}
