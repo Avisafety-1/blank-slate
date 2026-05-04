@@ -444,7 +444,8 @@ export const TrainingSection = () => {
               onClick={() => handleToggleVisibleToChildren(course)}
               title={course.visible_to_children ? "Slutt å dele med underavdelinger" : "Del med underavdelinger"}
             >
-              <ArrowDown className="h-3.5 w-3.5" />
+              <ArrowDown className="h-3.5 w-3.5 mr-1" />
+              {course.visible_to_children ? "Delt nedover" : "Del nedover"}
             </Button>
           )}
           {/* Share with parent (owner + has parent) */}
