@@ -105,13 +105,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     }
     setGeneratingAudioIdx(sIdx);
     try {
+      const voice = cj.narration_voice || "coral";
+      const speed = parseFloat(cj.narration_speed || "1") || 1;
       const { data, error } = await supabase.functions.invoke("generate-narration", {
-        body: { text, course_id: courseId, slide_key: s.id || `slide-${sIdx}` },
+        body: { text, course_id: courseId, slide_key: s.id || `slide-${sIdx}`, voice, speed },
       });
       if (error) throw error;
       const audioUrl = (data as any)?.audio_url;
       if (!audioUrl) throw new Error("Ingen lyd-URL returnert");
       setSlides((prev) => prev.map((x, i) => {
+        if (i !== sIdx) return x;
+        const cj2 = { ...(x.content_json || {}), narration_audio_url: audioUrl, narration_enabled: true, narration_voice: voice, narration_speed: String(speed) };
         if (i !== sIdx) return x;
         const cj2 = { ...(x.content_json || {}), narration_audio_url: audioUrl, narration_enabled: true };
         return { ...x, content_json: cj2 };
