@@ -116,8 +116,6 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       setSlides((prev) => prev.map((x, i) => {
         if (i !== sIdx) return x;
         const cj2 = { ...(x.content_json || {}), narration_audio_url: audioUrl, narration_enabled: true, narration_voice: voice, narration_speed: String(speed) };
-        if (i !== sIdx) return x;
-        const cj2 = { ...(x.content_json || {}), narration_audio_url: audioUrl, narration_enabled: true };
         return { ...x, content_json: cj2 };
       }));
       toast.success("Lyd generert med OpenAI");
