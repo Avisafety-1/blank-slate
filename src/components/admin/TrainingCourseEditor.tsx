@@ -579,21 +579,36 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         </CardContent>
       </Card>
 
-      {/* PDF Upload */}
+      {/* Upload presentation / images */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Last opp presentasjon</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Last opp en PDF-fil (eksporter fra PowerPoint/Keynote). Sidene blir lagt til som nye slides etter de eksisterende.
+            Last opp en PDF (eksportert fra PowerPoint/Keynote) eller bilder. Sidene legges til etter de eksisterende.
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <input
               ref={fileInputRef}
               type="file"
               accept=".pdf"
               onChange={handlePdfUpload}
+              className="hidden"
+            />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <input
+              ref={slideImageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleSlideImageReplace}
               className="hidden"
             />
             <Button
@@ -603,6 +618,20 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             >
               <Upload className="h-4 w-4 mr-2" />
               {uploadingPdf ? "Leser PDF..." : "Legg til sider fra PDF"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <ImageIcon className="h-4 w-4 mr-2" />
+              Legg til bilde(r)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => addContentSlide()}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Legg til tekst-slide
             </Button>
             {contentSlideCount > 0 && (
               <Badge variant="secondary">
