@@ -50,12 +50,16 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     const body = await req.json();
-    const { text, course_id, slide_key, voice: requestedVoice } = body as {
+    const { text, course_id, slide_key, voice: requestedVoice, speed: requestedSpeed } = body as {
       text: string;
       course_id: string;
       slide_key?: string;
       voice?: string;
+      speed?: number;
     };
+    const speed = typeof requestedSpeed === "number" && requestedSpeed >= 0.25 && requestedSpeed <= 4
+      ? requestedSpeed
+      : 1.0;
 
     if (!text || !text.trim()) {
       return new Response(JSON.stringify({ error: "Tekst mangler" }), {
