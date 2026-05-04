@@ -1,34 +1,48 @@
-## Problem
+Tre justeringer i opplæringsmodulen.
 
-Når et oppdrag har en lokasjon som er en lang sammenhengende streng (f.eks. en `https://maps.app.goo.gl/...`-lenke uten mellomrom), strekker `MissionDetailDialog` seg ut bredere enn mobilskjermen. Dette skjer fordi:
+## 1. «Pil ned»-knapp får tekst
 
-- Lokasjons-`<p>` ligger i en flex-container (`flex items-start gap-3`) der det indre `<div>`-et mangler `min-w-0`. Som default blir `min-width` på flex-barn `auto`, så barnet kan ikke krympe under innholdets intrinsiske bredde.
-- Teksten har ingen ord-bryting, så en lang URL behandles som ett "ord" som tvinger bredden.
+Fil: `src/components/admin/TrainingSection.tsx` (linje ~440-449).
 
-## Løsning
-
-I `src/components/dashboard/MissionDetailDialog.tsx`, rundt linje 265–271:
-
-1. Legg til `min-w-0 flex-1` på det indre `<div>`-et som inneholder Lokasjon-tittelen og verdien, slik at det kan krympe i flex-containeren.
-2. Legg til `break-all` (eller `break-words`) på `<p>` med `currentMission.lokasjon`, slik at lange URL-er brytes innenfor tilgjengelig bredde.
-
-Resultat: kortet holder seg innenfor mobilbredden, og lange lenker brytes pent over flere linjer.
-
-### Teknisk endring (kort)
+I dag vises kun et `ArrowDown`-ikon på kurskortet. Endres til ikon + tekst «Del med underavdelinger» (eller «Delt nedover» når aktiv), tilsvarende stilen som brukes på folder-kortene (linje 363). Gir mer tydelig tekst-kontekst.
 
 ```tsx
-<div className="flex items-start gap-3">
-  <MapPin className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
-  <div className="min-w-0 flex-1">
-    <p className="text-sm font-medium text-muted-foreground">Lokasjon</p>
-    <p className="text-base break-all">{currentMission.lokasjon}</p>
-  </div>
-</div>
+<Button ...>
+  <ArrowDown className="h-3.5 w-3.5 mr-1" />
+  {course.visible_to_children ? "Delt nedover" : "Del nedover"}
+</Button>
 ```
 
-`shrink-0` på ikonet sikrer at ikonet ikke blir presset sammen.
+## 2. PDF-opplasting legger til slides i stedet for å overskrive
 
-## Omfang
+Fil: `src/components/admin/TrainingCourseEditor.tsx` (`handlePdfUpload`, linje ~136-181).
 
-- Kun én fil endres: `src/components/dashboard/MissionDetailDialog.tsx`.
-- Ingen logikk-endring, kun layout-klasser.
+I dag erstatter `setSlides(newSlides)` alle eksisterende slides. Endres til å:
+- Lese eksisterende slides
+- Legge nye PDF-sider til som ekstra slides på slutten
+- Sette `sort_order` videre fra siste eksisterende slide
+
+```tsx
+const startOrder = slides.length;
+newSlides.push({ ..., sort_order: startOrder + (i - 1) });
+setSlides((prev) => [...prev, ...newSlides]);
+toast.success(`${pageCount} sider lagt til fra PDF`);
+```
+
+Knappetekst på opplastingsknappen oppdateres tilsvarende: «Legg til sider fra PDF».
+
+## 3. Tillat ny tildeling etter stryk
+
+Database: `training_assignments` har unique-constraint `(course_id, profile_id)`. Det gjør at samme person ikke kan få samme kurs på nytt — selv etter stryk.
+
+Løsning uten å miste historikk:
+- Behold tabellen som den er (én aktiv tildeling om gangen per person/kurs)
+- I `TrainingAssignmentDialog.tsx`: når en eksisterende tildeling finnes med `passed = false` og `completed_at IS NOT NULL` (altså strøket), regn personen som «ikke tildelt» og tillat re-tildeling
+- Ved insert: hvis en strøket tildeling finnes, slett den først, deretter insert ny ren tildeling (nullstiller `score`, `saved_answers`, `completed_at`, `passed`)
+
+Filer:
+- `src/components/admin/TrainingAssignmentDialog.tsx` — endre `fetchData` til å hente status og kun legge `course_id+profile_id` i `assignedIds` hvis ikke strøket. I `handleAssign`, kjør `delete` på strøkne rader før insert.
+
+Visuelt: strøkne personer blir søkbare igjen i listen; eventuelt en liten badge «Strøket — kan tildeles på nytt» for tydelighet.
+
+Ingen migrasjoner nødvendig.
