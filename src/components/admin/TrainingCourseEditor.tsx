@@ -15,6 +15,29 @@ import { YouTubeClipPlayer, parseYouTubeId, parseTimeInput, formatSeconds } from
 import { TrainingModulePicker } from "@/components/training/TrainingModulePicker";
 import { TRAINING_MODULE_KEYS, normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const TTS_VOICES: { value: string; label: string }[] = [
+  { value: "coral", label: "Coral (varm, kvinnelig)" },
+  { value: "sage", label: "Sage (rolig, kvinnelig)" },
+  { value: "nova", label: "Nova (lys, kvinnelig)" },
+  { value: "shimmer", label: "Shimmer (vennlig, kvinnelig)" },
+  { value: "alloy", label: "Alloy (nøytral)" },
+  { value: "ash", label: "Ash (mørk, mannlig)" },
+  { value: "onyx", label: "Onyx (dyp, mannlig)" },
+  { value: "echo", label: "Echo (klar, mannlig)" },
+  { value: "ballad", label: "Ballad (mannlig)" },
+  { value: "verse", label: "Verse (uttrykksfull)" },
+  { value: "fable", label: "Fable (fortellende)" },
+];
+const TTS_SPEEDS: { value: string; label: string }[] = [
+  { value: "0.75", label: "0.75x (langsom)" },
+  { value: "0.9", label: "0.9x" },
+  { value: "1", label: "1x (normal)" },
+  { value: "1.1", label: "1.1x" },
+  { value: "1.25", label: "1.25x (rask)" },
+  { value: "1.5", label: "1.5x (veldig rask)" },
+];
 
 // Set worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
