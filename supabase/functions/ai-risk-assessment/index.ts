@@ -1965,11 +1965,24 @@ Returner en JSON-respons med denne strukturen:
     let approvalReason: string | null = null;
     let approvalThreshold: number | null = null;
     try {
-      const { data: soraApprovalConfig } = await supabase
-        .from('company_sora_config')
-        .select('sora_based_approval, sora_approval_threshold, sora_hardstop_requires_approval')
-        .eq('company_id', companyId)
-        .maybeSingle();
+      // Use RPC that respects parent-company propagation (propagate_sora_approval)
+      const { data: effective, error: effErr } = await supabase
+        .rpc('get_effective_sora_approval_config', { _company_id: companyId });
+
+      if (effErr) {
+        console.error('get_effective_sora_approval_config error:', effErr);
+      }
+
+      const soraApprovalConfig: any = (effective as any)?.config ?? {};
+      const inheritedFrom = (effective as any)?.effective_company_id ?? companyId;
+      const inherited = (effective as any)?.inherited === true;
+      console.log('SORA auto-approval config resolved:', {
+        companyId,
+        inherited,
+        effectiveCompanyId: inheritedFrom,
+        sora_based_approval: soraApprovalConfig?.sora_based_approval,
+        threshold: soraApprovalConfig?.sora_approval_threshold,
+      });
 
       if (soraApprovalConfig?.sora_based_approval && missionId) {
         const overallScore = aiAnalysis.overall_score ?? 0;
