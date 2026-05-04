@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
         input: text.slice(0, 4000),
         instructions: TTS_INSTRUCTIONS,
         response_format: "mp3",
+        speed,
       }),
     });
 
