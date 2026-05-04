@@ -186,6 +186,92 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    try {
+      const newSlides: Slide[] = [];
+      const startOrder = slides.length;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/")) continue;
+        const dataUrl: string = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        newSlides.push({
+          slide_type: "content",
+          question_text: `Slide ${startOrder + i + 1}`,
+          content_json: { heading: "", narration_text: "", narration_enabled: false },
+          image_url: null,
+          sort_order: startOrder + i,
+          options: [],
+          _localBlobUrl: dataUrl,
+        });
+      }
+      if (newSlides.length === 0) {
+        toast.error("Ingen gyldige bildefiler");
+        return;
+      }
+      setSlides((prev) => [...prev, ...newSlides]);
+      toast.success(`${newSlides.length} bilde${newSlides.length > 1 ? "r" : ""} lagt til`);
+    } catch (err) {
+      console.error("Image upload error", err);
+      toast.error("Kunne ikke laste opp bilde");
+    } finally {
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
+  const handleSlideImageReplace = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const idx = slideImageTargetIdx;
+    if (!file || idx == null) {
+      if (slideImageInputRef.current) slideImageInputRef.current.value = "";
+      return;
+    }
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setSlides((prev) => prev.map((s, i) => i === idx ? { ...s, _localBlobUrl: dataUrl, image_url: null } : s));
+    } catch (err) {
+      toast.error("Kunne ikke laste bilde");
+    } finally {
+      setSlideImageTargetIdx(null);
+      if (slideImageInputRef.current) slideImageInputRef.current.value = "";
+    }
+  };
+
+  const addContentSlide = (afterIdx?: number) => {
+    const newSlide: Slide = {
+      slide_type: "content",
+      question_text: "",
+      content_json: { heading: "", narration_text: "", narration_enabled: false },
+      image_url: null,
+      sort_order: (afterIdx ?? slides.length - 1) + 1,
+      options: [],
+    };
+    const newSlides = [...slides];
+    const insertAt = afterIdx != null ? afterIdx + 1 : slides.length;
+    newSlides.splice(insertAt, 0, newSlide);
+    setSlides(newSlides);
+  };
+
+  const updateContentField = (idx: number, field: string, value: any) => {
+    setSlides((prev) => prev.map((s, i) => {
+      if (i !== idx) return s;
+      const cj = { ...(s.content_json || {}) };
+      cj[field] = value;
+      return { ...s, content_json: cj };
+    }));
+  };
+
   const addQuestionAfterSlide = (afterIdx: number) => {
     const newSlide: Slide = {
       slide_type: "question",
