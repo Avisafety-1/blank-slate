@@ -806,6 +806,36 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                       </div>
                       {narrationToggle && (
                         <div className="space-y-2 pl-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Stemme</Label>
+                              <Select
+                                value={cj.narration_voice || "coral"}
+                                onValueChange={(v) => updateContentField(sIdx, "narration_voice", v)}
+                              >
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {TTS_VOICES.map((v) => (
+                                    <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Hastighet</Label>
+                              <Select
+                                value={cj.narration_speed || "1"}
+                                onValueChange={(v) => updateContentField(sIdx, "narration_speed", v)}
+                              >
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {TTS_SPEEDS.map((v) => (
+                                    <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                           {cj.narration_audio_url ? (
                             <div className="space-y-2">
                               <p className="text-xs text-muted-foreground">OpenAI-lyd lagret:</p>
