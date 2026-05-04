@@ -425,8 +425,8 @@ export const TrainingSection = () => {
               value={course.folder_id || "__none__"}
               onValueChange={(v) => handleMoveCourse(course.id, v === "__none__" ? null : v)}
             >
-              <SelectTrigger className="h-8 w-8 p-0 [&>svg]:hidden border" title="Flytt til mappe">
-                <FolderOpen className="h-3.5 w-3.5 mx-auto" />
+              <SelectTrigger className="h-8 w-8 p-0 [&>svg.lucide-chevron-down]:hidden border flex items-center justify-center" title="Flytt til mappe">
+                <FolderOpen className="h-4 w-4" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">Ingen mappe</SelectItem>
