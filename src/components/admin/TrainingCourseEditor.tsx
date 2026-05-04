@@ -677,45 +677,105 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                     <Button size="sm" variant="ghost" disabled={sIdx === 0} onClick={() => moveSlide(sIdx, sIdx - 1)} className="h-7 w-7 p-0">↑</Button>
                     <Button size="sm" variant="ghost" disabled={sIdx === slides.length - 1} onClick={() => moveSlide(sIdx, sIdx + 1)} className="h-7 w-7 p-0">↓</Button>
                   </div>
-                  {(s.slide_type === "question" || s.slide_type === "video") && (
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(sIdx)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeSlide(sIdx)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                {/* Content slide: show image preview */}
-                {s.slide_type === "content" && (
-                  <div className="space-y-2">
-                    {(s._localBlobUrl || s.image_url) && (
-                      <img
-                        src={s._localBlobUrl || s.image_url!}
-                        alt={`Slide ${sIdx + 1}`}
-                        className="w-full max-h-64 object-contain rounded border bg-muted/20"
-                      />
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => addQuestionAfterSlide(sIdx)}
-                        className="text-xs"
-                      >
-                        <HelpCircle className="h-3.5 w-3.5 mr-1" />
-                        Legg til spørsmål etter
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => addVideoSlide(sIdx)}
-                        className="text-xs"
-                      >
-                        <Youtube className="h-3.5 w-3.5 mr-1" />
-                        Legg til video etter
-                      </Button>
+                {/* Content slide: image + heading + text + narration toggle */}
+                {s.slide_type === "content" && (() => {
+                  const cj = (s.content_json as any) || {};
+                  const narrationEnabled = cj.narration_enabled !== false && !!(cj.narration_text || cj.narration_audio_url);
+                  const narrationToggle = cj.narration_enabled ?? !!(cj.narration_text || cj.narration_audio_url);
+                  return (
+                    <div className="space-y-3">
+                      {(s._localBlobUrl || s.image_url) ? (
+                        <img
+                          src={s._localBlobUrl || s.image_url!}
+                          alt={`Slide ${sIdx + 1}`}
+                          className="w-full max-h-64 object-contain rounded border bg-muted/20"
+                        />
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setSlideImageTargetIdx(sIdx); slideImageInputRef.current?.click(); }}
+                          className="text-xs"
+                        >
+                          <ImageIcon className="h-3.5 w-3.5 mr-1" />
+                          {(s._localBlobUrl || s.image_url) ? "Bytt bilde" : "Legg til bilde"}
+                        </Button>
+                        {(s._localBlobUrl || s.image_url) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSlides((prev) => prev.map((x, i) => i === sIdx ? { ...x, _localBlobUrl: undefined, image_url: null } : x))}
+                            className="text-xs text-destructive"
+                          >
+                            Fjern bilde
+                          </Button>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-sm">Overskrift</Label>
+                        <Input
+                          value={cj.heading || ""}
+                          onChange={(e) => updateContentField(sIdx, "heading", e.target.value)}
+                          placeholder="Valgfri overskrift"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Tekst</Label>
+                        <Textarea
+                          value={cj.narration_text || ""}
+                          onChange={(e) => updateContentField(sIdx, "narration_text", e.target.value)}
+                          placeholder="Tekst som vises på sliden (kan også leses opp)"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex items-center gap-3 pt-1 border-t">
+                        <Switch
+                          id={`narration-${sIdx}`}
+                          checked={narrationToggle}
+                          onCheckedChange={(v) => updateContentField(sIdx, "narration_enabled", v)}
+                        />
+                        <Label htmlFor={`narration-${sIdx}`} className="text-sm cursor-pointer">
+                          Les opp tekst (text-to-speech)
+                        </Label>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-2 border-t">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addQuestionAfterSlide(sIdx)}
+                          className="text-xs"
+                        >
+                          <HelpCircle className="h-3.5 w-3.5 mr-1" />
+                          Legg til spørsmål etter
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addVideoSlide(sIdx)}
+                          className="text-xs"
+                        >
+                          <Youtube className="h-3.5 w-3.5 mr-1" />
+                          Legg til video etter
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addContentSlide(sIdx)}
+                          className="text-xs"
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1" />
+                          Legg til slide etter
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Video slide */}
                 {s.slide_type === "video" && (() => {
