@@ -274,16 +274,17 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       let correct = 0;
       questionSlides.forEach((q) => { if (scoreQuestion(q)) correct++; });
 
-      const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
-      const didPass = scorePercent >= course.passing_score;
+      const hasQuestions = questionSlides.length > 0;
+      const scorePercent = hasQuestions ? Math.round((correct / questionSlides.length) * 100) : 100;
+      const didPass = hasQuestions ? scorePercent >= course.passing_score : true;
 
-      setScore(scorePercent);
+      setScore(hasQuestions ? scorePercent : null);
       setPassed(didPass);
       setSubmitted(true);
 
       const updatePayload: any = {
         completed_at: new Date().toISOString(),
-        score: scorePercent,
+        score: hasQuestions ? scorePercent : null,
         passed: didPass,
         saved_answers: null,
       };
