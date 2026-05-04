@@ -63,6 +63,9 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [loading, setLoading] = useState(!!courseId);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const slideImageInputRef = useRef<HTMLInputElement>(null);
+  const [slideImageTargetIdx, setSlideImageTargetIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (courseId) loadCourse();
