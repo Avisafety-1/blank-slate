@@ -475,13 +475,22 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       ) : (
         <XCircle className="h-16 w-16 text-destructive mx-auto" />
       )}
-      <h3 className="text-2xl font-bold">{score}%</h3>
-      <p className="text-lg">
-        {passed ? "Gratulerer! Du har bestått kurset." : "Dessverre, du bestod ikke denne gangen."}
-      </p>
-      <p className="text-sm text-muted-foreground">
-        Krav: {course?.passing_score}% · Din score: {score}%
-      </p>
+      {questionSlides.length === 0 ? (
+        <>
+          <h3 className="text-2xl font-bold">Gjennomført</h3>
+          <p className="text-lg">Kurset er registrert som gjennomført.</p>
+        </>
+      ) : (
+        <>
+          <h3 className="text-2xl font-bold">{score}%</h3>
+          <p className="text-lg">
+            {passed ? "Gratulerer! Du har bestått kurset." : "Dessverre, du bestod ikke denne gangen."}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Krav: {course?.passing_score}% · Din score: {score}%
+          </p>
+        </>
+      )}
       {!previewMode && passed && course?.validity_months && (
         <Badge variant="default">
           Gyldig i {course.validity_months} måneder
