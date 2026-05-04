@@ -15,6 +15,29 @@ import { YouTubeClipPlayer, parseYouTubeId, parseTimeInput, formatSeconds } from
 import { TrainingModulePicker } from "@/components/training/TrainingModulePicker";
 import { TRAINING_MODULE_KEYS, normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const TTS_VOICES: { value: string; label: string }[] = [
+  { value: "coral", label: "Coral (varm, kvinnelig)" },
+  { value: "sage", label: "Sage (rolig, kvinnelig)" },
+  { value: "nova", label: "Nova (lys, kvinnelig)" },
+  { value: "shimmer", label: "Shimmer (vennlig, kvinnelig)" },
+  { value: "alloy", label: "Alloy (nøytral)" },
+  { value: "ash", label: "Ash (mørk, mannlig)" },
+  { value: "onyx", label: "Onyx (dyp, mannlig)" },
+  { value: "echo", label: "Echo (klar, mannlig)" },
+  { value: "ballad", label: "Ballad (mannlig)" },
+  { value: "verse", label: "Verse (uttrykksfull)" },
+  { value: "fable", label: "Fable (fortellende)" },
+];
+const TTS_SPEEDS: { value: string; label: string }[] = [
+  { value: "0.75", label: "0.75x (langsom)" },
+  { value: "0.9", label: "0.9x" },
+  { value: "1", label: "1x (normal)" },
+  { value: "1.1", label: "1.1x" },
+  { value: "1.25", label: "1.25x (rask)" },
+  { value: "1.5", label: "1.5x (veldig rask)" },
+];
 
 // Set worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -82,15 +105,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     }
     setGeneratingAudioIdx(sIdx);
     try {
+      const voice = cj.narration_voice || "coral";
+      const speed = parseFloat(cj.narration_speed || "1") || 1;
       const { data, error } = await supabase.functions.invoke("generate-narration", {
-        body: { text, course_id: courseId, slide_key: s.id || `slide-${sIdx}` },
+        body: { text, course_id: courseId, slide_key: s.id || `slide-${sIdx}`, voice, speed },
       });
       if (error) throw error;
       const audioUrl = (data as any)?.audio_url;
       if (!audioUrl) throw new Error("Ingen lyd-URL returnert");
       setSlides((prev) => prev.map((x, i) => {
         if (i !== sIdx) return x;
-        const cj2 = { ...(x.content_json || {}), narration_audio_url: audioUrl, narration_enabled: true };
+        const cj2 = { ...(x.content_json || {}), narration_audio_url: audioUrl, narration_enabled: true, narration_voice: voice, narration_speed: String(speed) };
         return { ...x, content_json: cj2 };
       }));
       toast.success("Lyd generert med OpenAI");
@@ -781,6 +806,36 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                       </div>
                       {narrationToggle && (
                         <div className="space-y-2 pl-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Stemme</Label>
+                              <Select
+                                value={cj.narration_voice || "coral"}
+                                onValueChange={(v) => updateContentField(sIdx, "narration_voice", v)}
+                              >
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {TTS_VOICES.map((v) => (
+                                    <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Hastighet</Label>
+                              <Select
+                                value={cj.narration_speed || "1"}
+                                onValueChange={(v) => updateContentField(sIdx, "narration_speed", v)}
+                              >
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {TTS_SPEEDS.map((v) => (
+                                    <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                           {cj.narration_audio_url ? (
                             <div className="space-y-2">
                               <p className="text-xs text-muted-foreground">OpenAI-lyd lagret:</p>
