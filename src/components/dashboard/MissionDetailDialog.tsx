@@ -263,10 +263,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
-              <div>
+              <MapPin className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-muted-foreground">Lokasjon</p>
-                <p className="text-base">{currentMission.lokasjon}</p>
+                <p className="text-base break-all">{currentMission.lokasjon}</p>
               </div>
             </div>
 

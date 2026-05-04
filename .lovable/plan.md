@@ -1,35 +1,34 @@
-# Fiks: Auto-godkjenning respekterer ikke propagering fra morselskap
-
 ## Problem
-Oppdraget i Norconsults underavdeling fikk score 8.0, men ble ikke auto-godkjent. Årsaken er at edge-funksjonen `ai-risk-assessment` leser SORA-konfig direkte fra underavdelingens egen rad i `company_sora_config`, og ignorerer `propagate_sora_approval`-flagget på morselskapet. Resten av UI-en bruker RPC-en `get_effective_sora_approval_config` som håndterer arv korrekt — auto-godkjenningskoden gjør det ikke.
+
+Når et oppdrag har en lokasjon som er en lang sammenhengende streng (f.eks. en `https://maps.app.goo.gl/...`-lenke uten mellomrom), strekker `MissionDetailDialog` seg ut bredere enn mobilskjermen. Dette skjer fordi:
+
+- Lokasjons-`<p>` ligger i en flex-container (`flex items-start gap-3`) der det indre `<div>`-et mangler `min-w-0`. Som default blir `min-width` på flex-barn `auto`, så barnet kan ikke krympe under innholdets intrinsiske bredde.
+- Teksten har ingen ord-bryting, så en lang URL behandles som ett "ord" som tvinger bredden.
 
 ## Løsning
-Endre auto-godkjenningsblokken i `supabase/functions/ai-risk-assessment/index.ts` (linje ~1962-2001) til å bruke RPC-en `get_effective_sora_approval_config` i stedet for direkte tabelloppslag.
 
-### Endring
-Erstatt:
-```ts
-const { data: soraApprovalConfig } = await supabase
-  .from('company_sora_config')
-  .select('sora_based_approval, sora_approval_threshold, sora_hardstop_requires_approval')
-  .eq('company_id', companyId)
-  .maybeSingle();
+I `src/components/dashboard/MissionDetailDialog.tsx`, rundt linje 265–271:
 
-if (soraApprovalConfig?.sora_based_approval && missionId) { ... }
+1. Legg til `min-w-0 flex-1` på det indre `<div>`-et som inneholder Lokasjon-tittelen og verdien, slik at det kan krympe i flex-containeren.
+2. Legg til `break-all` (eller `break-words`) på `<p>` med `currentMission.lokasjon`, slik at lange URL-er brytes innenfor tilgjengelig bredde.
+
+Resultat: kortet holder seg innenfor mobilbredden, og lange lenker brytes pent over flere linjer.
+
+### Teknisk endring (kort)
+
+```tsx
+<div className="flex items-start gap-3">
+  <MapPin className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+  <div className="min-w-0 flex-1">
+    <p className="text-sm font-medium text-muted-foreground">Lokasjon</p>
+    <p className="text-base break-all">{currentMission.lokasjon}</p>
+  </div>
+</div>
 ```
 
-Med:
-```ts
-const { data: effective } = await supabase
-  .rpc('get_effective_sora_approval_config', { _company_id: companyId });
+`shrink-0` på ikonet sikrer at ikonet ikke blir presset sammen.
 
-const cfg = effective?.config ?? {};
-if (cfg.sora_based_approval && missionId) { ... }
-```
+## Omfang
 
-Resten av logikken (terskel, hardstop, oppdatering av `missions.approval_status`) forblir uendret.
-
-## Verifisering
-- Re-kjør AI-risikovurdering på det aktuelle oppdraget i Norconsults underavdeling — det skal nå auto-godkjennes når score ≥ terskel.
-- Sjekk edge-funksjonsloggene for `SORA auto-approval: APPROVED ...`.
-- Bekreft at underavdelinger uten propagering fortsatt bruker egen konfig (RPC-en returnerer egen rad når `propagate_sora_approval = false`).
+- Kun én fil endres: `src/components/dashboard/MissionDetailDialog.tsx`.
+- Ingen logikk-endring, kun layout-klasser.
