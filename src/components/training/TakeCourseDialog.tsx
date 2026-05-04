@@ -582,7 +582,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               Lukk
             </Button>
           )}
-          {answeredCount === questionSlides.length && questionSlides.length > 0 && currentPage === slides.length - 1 && (
+          {((questionSlides.length === 0 && currentPage === slides.length - 1) || (answeredCount === questionSlides.length && questionSlides.length > 0 && currentPage === slides.length - 1)) && (
             <Button size="sm" onClick={handleSubmit} disabled={submitting}>
               {submitting ? "Fullfører..." : "Fullfør"}
             </Button>
