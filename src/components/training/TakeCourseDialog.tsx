@@ -376,7 +376,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           {narrationText && (
             <p className="text-sm text-foreground/90 text-center leading-relaxed">{narrationText}</p>
           )}
-          {narrationUrl ? (
+          {cj.narration_enabled === false ? null : narrationUrl ? (
             <audio
               key={s.id}
               src={narrationUrl}
