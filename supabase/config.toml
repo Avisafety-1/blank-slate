@@ -183,6 +183,9 @@ verify_jwt = true
 [functions.generate-course]
 verify_jwt = true
 
+[functions.generate-narration]
+verify_jwt = true
+
 [functions.suggest-course-topics]
 verify_jwt = true
 
