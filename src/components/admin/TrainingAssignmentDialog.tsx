@@ -28,6 +28,7 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
   const { companyId } = useAuth();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
+  const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("__all__");
@@ -50,11 +51,17 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
     // Fetch existing assignments
     const { data: assignments } = await supabase
       .from("training_assignments")
-      .select("profile_id")
+      .select("profile_id, passed, completed_at")
       .eq("course_id", courseId);
 
-    const ids = new Set((assignments || []).map((a: any) => a.profile_id));
-    setAssignedIds(ids);
+    const active = new Set<string>();
+    const failed = new Set<string>();
+    for (const a of (assignments || []) as any[]) {
+      if (a.completed_at && a.passed === false) failed.add(a.profile_id);
+      else active.add(a.profile_id);
+    }
+    setAssignedIds(active);
+    setFailedIds(failed);
     setSelectedIds(new Set());
   };
 
@@ -71,7 +78,20 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
     if (selectedIds.size === 0) return;
     setSaving(true);
     try {
-      const inserts = Array.from(selectedIds).map((profileId) => {
+      const idsToAssign = Array.from(selectedIds);
+
+      // Remove any prior failed assignments for these profiles so we can re-assign
+      const failedToReset = idsToAssign.filter((id) => failedIds.has(id));
+      if (failedToReset.length > 0) {
+        const { error: delErr } = await supabase
+          .from("training_assignments")
+          .delete()
+          .eq("course_id", courseId)
+          .in("profile_id", failedToReset);
+        if (delErr) throw delErr;
+      }
+
+      const inserts = idsToAssign.map((profileId) => {
         const profile = profiles.find((p) => p.id === profileId);
         return {
           course_id: courseId,
