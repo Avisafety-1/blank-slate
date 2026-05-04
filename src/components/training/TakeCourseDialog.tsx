@@ -274,16 +274,17 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       let correct = 0;
       questionSlides.forEach((q) => { if (scoreQuestion(q)) correct++; });
 
-      const scorePercent = questionSlides.length > 0 ? Math.round((correct / questionSlides.length) * 100) : 100;
-      const didPass = scorePercent >= course.passing_score;
+      const hasQuestions = questionSlides.length > 0;
+      const scorePercent = hasQuestions ? Math.round((correct / questionSlides.length) * 100) : 100;
+      const didPass = hasQuestions ? scorePercent >= course.passing_score : true;
 
-      setScore(scorePercent);
+      setScore(hasQuestions ? scorePercent : null);
       setPassed(didPass);
       setSubmitted(true);
 
       const updatePayload: any = {
         completed_at: new Date().toISOString(),
-        score: scorePercent,
+        score: hasQuestions ? scorePercent : null,
         passed: didPass,
         saved_answers: null,
       };
@@ -475,13 +476,22 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       ) : (
         <XCircle className="h-16 w-16 text-destructive mx-auto" />
       )}
-      <h3 className="text-2xl font-bold">{score}%</h3>
-      <p className="text-lg">
-        {passed ? "Gratulerer! Du har bestått kurset." : "Dessverre, du bestod ikke denne gangen."}
-      </p>
-      <p className="text-sm text-muted-foreground">
-        Krav: {course?.passing_score}% · Din score: {score}%
-      </p>
+      {questionSlides.length === 0 ? (
+        <>
+          <h3 className="text-2xl font-bold">Gjennomført</h3>
+          <p className="text-lg">Kurset er registrert som gjennomført.</p>
+        </>
+      ) : (
+        <>
+          <h3 className="text-2xl font-bold">{score}%</h3>
+          <p className="text-lg">
+            {passed ? "Gratulerer! Du har bestått kurset." : "Dessverre, du bestod ikke denne gangen."}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Krav: {course?.passing_score}% · Din score: {score}%
+          </p>
+        </>
+      )}
       {!previewMode && passed && course?.validity_months && (
         <Badge variant="default">
           Gyldig i {course.validity_months} måneder
@@ -573,7 +583,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               Lukk
             </Button>
           )}
-          {answeredCount === questionSlides.length && questionSlides.length > 0 && currentPage === slides.length - 1 && (
+          {((questionSlides.length === 0 && currentPage === slides.length - 1) || (answeredCount === questionSlides.length && questionSlides.length > 0 && currentPage === slides.length - 1)) && (
             <Button size="sm" onClick={handleSubmit} disabled={submitting}>
               {submitting ? "Fullfører..." : "Fullfør"}
             </Button>
