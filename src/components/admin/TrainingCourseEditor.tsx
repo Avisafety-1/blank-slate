@@ -148,6 +148,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       const pageCount = pdf.numPages;
 
       const newSlides: Slide[] = [];
+      const startOrder = slides.length;
 
       for (let i = 1; i <= pageCount; i++) {
         const page = await pdf.getPage(i);
@@ -162,17 +163,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
 
         newSlides.push({
           slide_type: "content",
-          question_text: `Slide ${i}`,
+          question_text: `Slide ${startOrder + i}`,
           content_json: null,
           image_url: null,
-          sort_order: i - 1,
+          sort_order: startOrder + (i - 1),
           options: [],
           _localBlobUrl: blobUrl,
         });
       }
 
-      setSlides(newSlides);
-      toast.success(`${pageCount} sider lastet inn fra PDF`);
+      setSlides((prev) => [...prev, ...newSlides]);
+      toast.success(`${pageCount} sider lagt til fra PDF`);
     } catch (err) {
       console.error("Error parsing PDF:", err);
       toast.error("Kunne ikke lese PDF-filen");
@@ -496,7 +497,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Last opp en PDF-fil (eksporter fra PowerPoint/Keynote). Hver side blir en slide i kurset.
+            Last opp en PDF-fil (eksporter fra PowerPoint/Keynote). Sidene blir lagt til som nye slides etter de eksisterende.
           </p>
           <div className="flex items-center gap-3">
             <input
@@ -512,7 +513,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               disabled={uploadingPdf}
             >
               <Upload className="h-4 w-4 mr-2" />
-              {uploadingPdf ? "Leser PDF..." : "Velg PDF-fil"}
+              {uploadingPdf ? "Leser PDF..." : "Legg til sider fra PDF"}
             </Button>
             {contentSlideCount > 0 && (
               <Badge variant="secondary">
