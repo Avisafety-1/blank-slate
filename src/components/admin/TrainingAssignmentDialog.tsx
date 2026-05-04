@@ -206,6 +206,11 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
                   <p className="text-sm font-medium truncate">{p.full_name || "Ukjent"}</p>
                   <p className="text-xs text-muted-foreground truncate">{p.email}</p>
                 </div>
+                {failedIds.has(p.id) && (
+                  <Badge variant="destructive" className="text-[10px] flex-shrink-0">
+                    Strøket – tildel på nytt
+                  </Badge>
+                )}
                 {(p.companies as any)?.navn && (
                   <Badge variant="secondary" className="text-[10px] flex-shrink-0">
                     {(p.companies as any).navn}
