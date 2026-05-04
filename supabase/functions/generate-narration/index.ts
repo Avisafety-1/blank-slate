@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
       .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
 
     return new Response(
-      JSON.stringify({ audio_url: signed?.signedUrl || null, voice }),
+      JSON.stringify({ audio_url: signed?.signedUrl || null, voice, speed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
