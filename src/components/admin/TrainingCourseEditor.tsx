@@ -66,6 +66,41 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const slideImageInputRef = useRef<HTMLInputElement>(null);
   const [slideImageTargetIdx, setSlideImageTargetIdx] = useState<number | null>(null);
+  const [generatingAudioIdx, setGeneratingAudioIdx] = useState<number | null>(null);
+
+  const generateNarrationAudio = async (sIdx: number) => {
+    const s = slides[sIdx];
+    const cj = (s?.content_json as any) || {};
+    const text: string = (cj.narration_text || "").trim();
+    if (!text) {
+      toast.error("Skriv inn tekst først");
+      return;
+    }
+    if (!courseId) {
+      toast.error("Lagre kurset før du genererer lyd");
+      return;
+    }
+    setGeneratingAudioIdx(sIdx);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-narration", {
+        body: { text, course_id: courseId, slide_key: s.id || `slide-${sIdx}` },
+      });
+      if (error) throw error;
+      const audioUrl = (data as any)?.audio_url;
+      if (!audioUrl) throw new Error("Ingen lyd-URL returnert");
+      setSlides((prev) => prev.map((x, i) => {
+        if (i !== sIdx) return x;
+        const cj2 = { ...(x.content_json || {}), narration_audio_url: audioUrl, narration_enabled: true };
+        return { ...x, content_json: cj2 };
+      }));
+      toast.success("Lyd generert med OpenAI");
+    } catch (err: any) {
+      console.error("generate-narration error", err);
+      toast.error(err?.message || "Kunne ikke generere lyd");
+    } finally {
+      setGeneratingAudioIdx(null);
+    }
+  };
 
   useEffect(() => {
     if (courseId) loadCourse();
@@ -744,6 +779,50 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           Les opp tekst (text-to-speech)
                         </Label>
                       </div>
+                      {narrationToggle && (
+                        <div className="space-y-2 pl-1">
+                          {cj.narration_audio_url ? (
+                            <div className="space-y-2">
+                              <p className="text-xs text-muted-foreground">OpenAI-lyd lagret:</p>
+                              <audio src={cj.narration_audio_url} controls className="w-full max-w-md" />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs"
+                                  disabled={generatingAudioIdx === sIdx || !(cj.narration_text || "").trim()}
+                                  onClick={() => generateNarrationAudio(sIdx)}
+                                >
+                                  {generatingAudioIdx === sIdx ? "Genererer..." : "Generer på nytt"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-xs text-destructive"
+                                  onClick={() => updateContentField(sIdx, "narration_audio_url", null)}
+                                >
+                                  Fjern lyd
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs"
+                                disabled={generatingAudioIdx === sIdx || !(cj.narration_text || "").trim()}
+                                onClick={() => generateNarrationAudio(sIdx)}
+                              >
+                                {generatingAudioIdx === sIdx ? "Genererer lyd..." : "🎙 Generer lyd (OpenAI)"}
+                              </Button>
+                              <span className="text-xs text-muted-foreground">
+                                Uten generert lyd brukes nettleserens innebygde stemme.
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-2 pt-2 border-t">
                         <Button
                           size="sm"
