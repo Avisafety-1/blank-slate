@@ -1,40 +1,28 @@
-# Aktiver RLS på 2 systemtabeller
+# Begrens superadmin til eget selskap i Hendelser
 
-## Mål
-Lukke de to "RLS Disabled in Public"-funnene fra Advisor uten å påvirke noen brukerfunksjonalitet.
-
-## Tabeller
-
-### 1. `public.spatial_ref_sys`
-PostGIS sin innebygde tabell med koordinatsystemer (~8500 rader, kun les). Brukes internt av PostGIS-funksjoner som `ST_Transform`. Inneholder ingen brukerdata.
-
-### 2. `eccairs.value_list_items`
-Statisk oppslagsdata (kodeverdier) for ECCAIRS-rapportering. Inneholder ingen brukerdata.
+## Problem
+SELECT-policyen `Users can view incidents from own company` på `public.incidents` har:
+```
+USING (company_id = ANY (get_user_incident_visible_company_ids(auth.uid()))
+       OR is_superadmin(auth.uid()))
+```
+`OR is_superadmin(...)` overstyrer selskapsfilteret, så Avisafe-superadmins ser hendelser fra alle kunder.
 
 ## Endring
-Aktiver RLS + legg til én policy på hver tabell:
+Fjern OR-delen. Superadmins faller tilbake til samme regel som vanlige brukere — kun selskaper returnert av `get_user_incident_visible_company_ids` (eget selskap + datterselskaper).
 
-- **SELECT**: tillatt for `authenticated` (alle innloggede brukere)
-- **INSERT/UPDATE/DELETE**: ingen policy → blokkert for vanlige brukere
-- Edge functions (service role) bypasser RLS som vanlig → uberørt
-
-## Migrasjons-SQL (oppsummert)
 ```sql
-alter table public.spatial_ref_sys enable row level security;
-create policy "Authenticated read spatial_ref_sys"
-  on public.spatial_ref_sys for select to authenticated using (true);
+drop policy if exists "Users can view incidents from own company" on public.incidents;
 
-alter table eccairs.value_list_items enable row level security;
-create policy "Authenticated read value_list_items"
-  on eccairs.value_list_items for select to authenticated using (true);
+create policy "Users can view incidents from own company"
+  on public.incidents
+  for select
+  to authenticated
+  using (company_id = ANY (get_user_incident_visible_company_ids(auth.uid())));
 ```
 
-## Hvorfor dette er trygt
-- Ingen anonyme bruksmønstre i appen leser disse tabellene direkte (alt går via innlogget bruker eller edge functions).
-- `spatial_ref_sys` kan i noen tilfeller være eid av `supabase_admin`/`postgres` — `alter table … enable rls` kjøres derfor i en `do $$ … exception` blokk som logger advarsel hvis vi ikke har eierskap, slik at migrasjonen ikke feiler.
-- Ingen INSERT/UPDATE/DELETE skjer mot disse fra brukerkode, så manglende write-policy bryter ingenting.
-
-## Verifisering etter migrasjon
-1. Åpne kart i `/oppdrag` (verifiserer at PostGIS-spørringer fortsatt fungerer).
-2. Åpne ECCAIRS-rapporteringsdialog (verifiserer at oppslagsdata fortsatt vises).
-3. Kjør Supabase linter på nytt — de to "RLS Disabled in Public" skal være borte.
+## Konsekvens
+- Avisafe-superadmin på `/hendelser` ser nå kun Avisafe sine hendelser (+ ev. datterselskaper).
+- UPDATE/DELETE-policyene for superadmin er allerede selskap-scopet (`company_id = ANY (get_user_visible_company_ids(...))` / `= get_user_company_id(...)`), så de er uberørt.
+- Andre roller (admin, saksbehandler, vanlig bruker) er uberørt.
+- Hvis Avisafe trenger global innsikt senere, gjøres det via en egen edge function med service role — ikke via RLS-bypass.
