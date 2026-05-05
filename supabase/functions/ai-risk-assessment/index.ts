@@ -2073,6 +2073,7 @@ Returner en JSON-respons med denne strukturen:
       console.error('SORA auto-approval error (non-blocking):', approvalErr);
     }
 
+    await finishJob('done');
     return new Response(JSON.stringify({
       success: true,
       assessment: savedAssessment || {
