@@ -194,3 +194,9 @@ verify_jwt = false
 
 [functions.unsubscribe-weekly-report]
 verify_jwt = false
+
+[functions.system-health-monitor]
+verify_jwt = false
+
+[functions.operations-digest]
+verify_jwt = false
