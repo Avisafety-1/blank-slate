@@ -45,12 +45,14 @@ interface PlatformStats {
     totalIncidents: number;
     totalDrones: number;
     totalMissions: number;
+    totalRiskAssessments: number;
   };
   trends: {
     flightsPerMonth: { month: string; count: number }[];
     flightHoursPerMonth: { month: string; hours: number }[];
     incidentsPerMonth: { month: string; count: number }[];
     usersPerMonth: { month: string; count: number }[];
+    riskAssessmentsPerMonth: { month: string; count: number }[];
   };
   distributions: {
     incidentsBySeverity: { name: string; value: number }[];
@@ -170,7 +172,7 @@ const Statistikk = () => {
               <PlatformActivityLog excludeAvisafe={excludeAvisafe} />
 
               {/* KPI Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
                 <KPICard icon={Building2} label="Selskaper" value={stats.kpis.activeCompanies} />
                 <KPICard icon={Users} label="Brukere" value={stats.kpis.approvedUsers} />
                 <KPICard icon={Plane} label="Flyturer" value={stats.kpis.totalFlights} />
@@ -178,6 +180,7 @@ const Statistikk = () => {
                 <KPICard icon={AlertTriangle} label="Hendelser" value={stats.kpis.totalIncidents} />
                 <KPICard icon={Package} label="Droner" value={stats.kpis.totalDrones} />
                 <KPICard icon={Target} label="Oppdrag" value={stats.kpis.totalMissions} />
+                <KPICard icon={Shield} label="Risikovurderinger" value={stats.kpis.totalRiskAssessments} />
               </div>
 
               {/* Extra metrics */}
@@ -248,6 +251,21 @@ const Statistikk = () => {
                   </ResponsiveContainer>
                 </GlassCard>
 
+                <GlassCard>
+                  <h3 className="font-semibold mb-4 text-foreground">Risikovurderinger per måned</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={stats.trends.riskAssessmentsPerMonth}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" tickFormatter={formatMonth} fontSize={11} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis fontSize={11} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="hsl(var(--primary))" name="Risikovurderinger" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </GlassCard>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard>
                   <h3 className="font-semibold mb-4 text-foreground">Nye brukere per måned</h3>
                   <ResponsiveContainer width="100%" height={250}>
