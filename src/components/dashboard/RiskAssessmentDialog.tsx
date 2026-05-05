@@ -796,6 +796,23 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       </>
                     )}
                   </Button>
+                  {loading && (
+                    <div className="space-y-1">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full bg-primary transition-all duration-300 ease-out"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{Math.round(progress)}%</span>
+                        <span>
+                          Estimert tid: ~{Math.ceil(etaMs / 1000)}s
+                          {progress >= 95 && ' (sluttfører…)'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </TabsContent>
