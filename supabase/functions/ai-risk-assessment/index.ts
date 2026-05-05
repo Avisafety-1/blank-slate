@@ -710,6 +710,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         }
       }
 
+      await finishJob('done');
       return new Response(JSON.stringify({
         success: true,
         assessment: savedAssessment,
