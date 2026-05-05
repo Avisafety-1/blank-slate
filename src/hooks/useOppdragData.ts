@@ -233,10 +233,14 @@ export const useOppdragData = () => {
   };
 
   const fetchMissions = () => {
-    const activeCount = Math.max(activeMissions.length, PAGE_SIZE);
-    const completedCount = Math.max(completedMissions.length, PAGE_SIZE);
-    fetchMissionsForTab('active', 0, activeCount, false);
-    fetchMissionsForTab('completed', 0, completedCount, false);
+    if (filterTab === 'active') {
+      const activeCount = Math.max(activeMissions.length, PAGE_SIZE);
+      fetchMissionsForTab('active', 0, activeCount, false);
+    } else {
+      const completedCount = Math.max(completedMissions.length, PAGE_SIZE);
+      completedLoadedRef.current = true;
+      fetchMissionsForTab('completed', 0, completedCount, false);
+    }
   };
 
   const loadMore = useCallback(() => {
