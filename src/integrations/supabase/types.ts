@@ -3820,6 +3820,66 @@ export type Database = {
           },
         ]
       }
+      monitoring_alerts: {
+        Row: {
+          alert_type: string
+          details: Json | null
+          id: string
+          sent_at: string
+          severity: string
+          subject: string
+        }
+        Insert: {
+          alert_type: string
+          details?: Json | null
+          id?: string
+          sent_at?: string
+          severity?: string
+          subject: string
+        }
+        Update: {
+          alert_type?: string
+          details?: Json | null
+          id?: string
+          sent_at?: string
+          severity?: string
+          subject?: string
+        }
+        Relationships: []
+      }
+      monitoring_config: {
+        Row: {
+          auth_failures_per_10m: number
+          db_errors_per_10m: number
+          edge_5xx_per_10m: number
+          edge_p95_ms: number
+          enabled: boolean
+          id: number
+          recipient_emails: string[]
+          updated_at: string
+        }
+        Insert: {
+          auth_failures_per_10m?: number
+          db_errors_per_10m?: number
+          edge_5xx_per_10m?: number
+          edge_p95_ms?: number
+          enabled?: boolean
+          id?: number
+          recipient_emails?: string[]
+          updated_at?: string
+        }
+        Update: {
+          auth_failures_per_10m?: number
+          db_errors_per_10m?: number
+          edge_5xx_per_10m?: number
+          edge_p95_ms?: number
+          enabled?: boolean
+          id?: number
+          recipient_emails?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       naturvern_zones: {
         Row: {
           description: string | null
