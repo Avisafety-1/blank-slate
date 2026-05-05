@@ -424,6 +424,24 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
 
     setLoading(true);
+    setProgress(0);
+
+    // Fetch ETA estimate from DB (p95 of last 100 jobs)
+    let etaForRun = 45000;
+    try {
+      const { data: etaData } = await supabase.rpc('get_ai_risk_eta_ms');
+      if (typeof etaData === 'number' && etaData > 0) etaForRun = etaData;
+    } catch (_) { /* ignore */ }
+    setEtaMs(etaForRun);
+
+    // Animate progress from 0 → 95% over etaForRun
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const pct = Math.min(95, (elapsed / etaForRun) * 95);
+      setProgress(pct);
+    }, 250);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -449,9 +467,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       );
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
         if (response.status === 429) {
-          toast.error(t('riskAssessment.rateLimitError', 'For mange forespørsler, prøv igjen senere'));
+          if (error?.status === 'queued') {
+            const waitSec = Math.ceil((error.retryAfterMs ?? 30000) / 1000);
+            toast.warning(`AI er opptatt (3 vurderinger kjører nå). Prøv igjen om ca. ${waitSec} sekunder.`);
+          } else {
+            toast.error(t('riskAssessment.rateLimitError', 'For mange forespørsler, prøv igjen senere'));
+          }
         } else if (response.status === 402) {
           toast.error(t('riskAssessment.creditsError', 'AI-kreditter oppbrukt'));
         } else {
@@ -461,6 +484,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       }
 
       const result = await response.json();
+      setProgress(100);
       setCurrentAssessment({
         ...result.aiAnalysis,
         _approvalStatus: result.approvalStatus || null,
@@ -479,6 +503,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       console.error('Risk assessment error:', error);
       toast.error(t('riskAssessment.error', 'Kunne ikke utføre risikovurdering'));
     } finally {
+      window.clearInterval(interval);
       setLoading(false);
     }
   };
