@@ -1,48 +1,40 @@
-Tre justeringer i opplæringsmodulen.
+# Aktiver RLS på 2 systemtabeller
 
-## 1. «Pil ned»-knapp får tekst
+## Mål
+Lukke de to "RLS Disabled in Public"-funnene fra Advisor uten å påvirke noen brukerfunksjonalitet.
 
-Fil: `src/components/admin/TrainingSection.tsx` (linje ~440-449).
+## Tabeller
 
-I dag vises kun et `ArrowDown`-ikon på kurskortet. Endres til ikon + tekst «Del med underavdelinger» (eller «Delt nedover» når aktiv), tilsvarende stilen som brukes på folder-kortene (linje 363). Gir mer tydelig tekst-kontekst.
+### 1. `public.spatial_ref_sys`
+PostGIS sin innebygde tabell med koordinatsystemer (~8500 rader, kun les). Brukes internt av PostGIS-funksjoner som `ST_Transform`. Inneholder ingen brukerdata.
 
-```tsx
-<Button ...>
-  <ArrowDown className="h-3.5 w-3.5 mr-1" />
-  {course.visible_to_children ? "Delt nedover" : "Del nedover"}
-</Button>
+### 2. `eccairs.value_list_items`
+Statisk oppslagsdata (kodeverdier) for ECCAIRS-rapportering. Inneholder ingen brukerdata.
+
+## Endring
+Aktiver RLS + legg til én policy på hver tabell:
+
+- **SELECT**: tillatt for `authenticated` (alle innloggede brukere)
+- **INSERT/UPDATE/DELETE**: ingen policy → blokkert for vanlige brukere
+- Edge functions (service role) bypasser RLS som vanlig → uberørt
+
+## Migrasjons-SQL (oppsummert)
+```sql
+alter table public.spatial_ref_sys enable row level security;
+create policy "Authenticated read spatial_ref_sys"
+  on public.spatial_ref_sys for select to authenticated using (true);
+
+alter table eccairs.value_list_items enable row level security;
+create policy "Authenticated read value_list_items"
+  on eccairs.value_list_items for select to authenticated using (true);
 ```
 
-## 2. PDF-opplasting legger til slides i stedet for å overskrive
+## Hvorfor dette er trygt
+- Ingen anonyme bruksmønstre i appen leser disse tabellene direkte (alt går via innlogget bruker eller edge functions).
+- `spatial_ref_sys` kan i noen tilfeller være eid av `supabase_admin`/`postgres` — `alter table … enable rls` kjøres derfor i en `do $$ … exception` blokk som logger advarsel hvis vi ikke har eierskap, slik at migrasjonen ikke feiler.
+- Ingen INSERT/UPDATE/DELETE skjer mot disse fra brukerkode, så manglende write-policy bryter ingenting.
 
-Fil: `src/components/admin/TrainingCourseEditor.tsx` (`handlePdfUpload`, linje ~136-181).
-
-I dag erstatter `setSlides(newSlides)` alle eksisterende slides. Endres til å:
-- Lese eksisterende slides
-- Legge nye PDF-sider til som ekstra slides på slutten
-- Sette `sort_order` videre fra siste eksisterende slide
-
-```tsx
-const startOrder = slides.length;
-newSlides.push({ ..., sort_order: startOrder + (i - 1) });
-setSlides((prev) => [...prev, ...newSlides]);
-toast.success(`${pageCount} sider lagt til fra PDF`);
-```
-
-Knappetekst på opplastingsknappen oppdateres tilsvarende: «Legg til sider fra PDF».
-
-## 3. Tillat ny tildeling etter stryk
-
-Database: `training_assignments` har unique-constraint `(course_id, profile_id)`. Det gjør at samme person ikke kan få samme kurs på nytt — selv etter stryk.
-
-Løsning uten å miste historikk:
-- Behold tabellen som den er (én aktiv tildeling om gangen per person/kurs)
-- I `TrainingAssignmentDialog.tsx`: når en eksisterende tildeling finnes med `passed = false` og `completed_at IS NOT NULL` (altså strøket), regn personen som «ikke tildelt» og tillat re-tildeling
-- Ved insert: hvis en strøket tildeling finnes, slett den først, deretter insert ny ren tildeling (nullstiller `score`, `saved_answers`, `completed_at`, `passed`)
-
-Filer:
-- `src/components/admin/TrainingAssignmentDialog.tsx` — endre `fetchData` til å hente status og kun legge `course_id+profile_id` i `assignedIds` hvis ikke strøket. I `handleAssign`, kjør `delete` på strøkne rader før insert.
-
-Visuelt: strøkne personer blir søkbare igjen i listen; eventuelt en liten badge «Strøket — kan tildeles på nytt» for tydelighet.
-
-Ingen migrasjoner nødvendig.
+## Verifisering etter migrasjon
+1. Åpne kart i `/oppdrag` (verifiserer at PostGIS-spørringer fortsatt fungerer).
+2. Åpne ECCAIRS-rapporteringsdialog (verifiserer at oppslagsdata fortsatt vises).
+3. Kjør Supabase linter på nytt — de to "RLS Disabled in Public" skal være borte.
