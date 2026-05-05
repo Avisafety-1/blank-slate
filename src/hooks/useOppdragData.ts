@@ -50,30 +50,38 @@ export const useOppdragData = () => {
     }
   }, [user, loading, navigate]);
 
-  // Initial load
+  // Initial load — kun aktiv-tab. Fullført lastes lazy ved tab-bytte.
+  const completedLoadedRef = useRef(false);
   useEffect(() => {
     if (companyId) {
-      const loadAll = async () => {
-        await fetchMissionsForTab('active', 0, PAGE_SIZE, false);
-        fetchMissionsForTab('completed', 0, PAGE_SIZE, false);
-      };
-      loadAll();
+      fetchMissionsForTab('active', 0, PAGE_SIZE, false);
     }
   }, [companyId]);
 
-  // Real-time subscription
+  // Lazy-load completed first time user opens that tab
+  useEffect(() => {
+    if (filterTab === 'completed' && companyId && !completedLoadedRef.current) {
+      completedLoadedRef.current = true;
+      fetchMissionsForTab('completed', 0, PAGE_SIZE, false);
+    }
+  }, [filterTab, companyId]);
+
+  // Real-time subscription — refresh KUN den synlige taben (debounce 5s)
   useEffect(() => {
     let debounceTimer: number | null = null;
     const handler = () => {
       if (!navigator.onLine) return;
+      if (document.hidden) return; // ikke refresh om bruker ikke ser siden
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = window.setTimeout(() => {
-        // Refresh currently loaded range
-        const activeCount = Math.max(activeMissions.length, PAGE_SIZE);
-        const completedCount = Math.max(completedMissions.length, PAGE_SIZE);
-        fetchMissionsForTab('active', 0, activeCount, false);
-        fetchMissionsForTab('completed', 0, completedCount, false);
-      }, 2000);
+        if (filterTab === 'active') {
+          const activeCount = Math.max(activeMissions.length, PAGE_SIZE);
+          fetchMissionsForTab('active', 0, activeCount, false);
+        } else if (completedLoadedRef.current) {
+          const completedCount = Math.max(completedMissions.length, PAGE_SIZE);
+          fetchMissionsForTab('completed', 0, completedCount, false);
+        }
+      }, 5000);
     };
 
     const channel = supabase
@@ -88,7 +96,7 @@ export const useOppdragData = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
-  }, [companyId, activeMissions.length, completedMissions.length]);
+  }, [companyId, filterTab, activeMissions.length, completedMissions.length]);
 
   const fetchMissionsForTab = async (tab: 'active' | 'completed', offset: number, limit: number, append: boolean) => {
     const setData = tab === 'active' ? setActiveMissions : setCompletedMissions;
@@ -225,10 +233,14 @@ export const useOppdragData = () => {
   };
 
   const fetchMissions = () => {
-    const activeCount = Math.max(activeMissions.length, PAGE_SIZE);
-    const completedCount = Math.max(completedMissions.length, PAGE_SIZE);
-    fetchMissionsForTab('active', 0, activeCount, false);
-    fetchMissionsForTab('completed', 0, completedCount, false);
+    if (filterTab === 'active') {
+      const activeCount = Math.max(activeMissions.length, PAGE_SIZE);
+      fetchMissionsForTab('active', 0, activeCount, false);
+    } else {
+      const completedCount = Math.max(completedMissions.length, PAGE_SIZE);
+      completedLoadedRef.current = true;
+      fetchMissionsForTab('completed', 0, completedCount, false);
+    }
   };
 
   const loadMore = useCallback(() => {
