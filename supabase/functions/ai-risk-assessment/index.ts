@@ -358,6 +358,65 @@ serve(async (req) => {
       });
     }
 
+    // ---- Concurrency gate + job tracking (Phase 2) ----
+    const { data: gateProfile } = await supabase
+      .from('profiles').select('company_id').eq('id', user.id).single();
+    const gateCompanyId = gateProfile?.company_id ?? null;
+
+    const MAX_CONCURRENT_PER_COMPANY = 3;
+    let estimatedEtaMs = 45000;
+    try {
+      const { data: etaData } = await supabase.rpc('get_ai_risk_eta_ms');
+      if (typeof etaData === 'number' && etaData > 0) estimatedEtaMs = etaData;
+    } catch (_) { /* ignore */ }
+
+    if (gateCompanyId) {
+      const { count: runningCount } = await supabase
+        .from('ai_risk_assessment_jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', gateCompanyId)
+        .eq('status', 'running')
+        .gte('started_at', new Date(Date.now() - 5 * 60 * 1000).toISOString());
+
+      if ((runningCount ?? 0) >= MAX_CONCURRENT_PER_COMPANY) {
+        return new Response(JSON.stringify({
+          error: 'Too many concurrent AI risk assessments for your company. Please wait a moment and try again.',
+          retryAfterMs: estimatedEtaMs,
+          estimatedEtaMs,
+          status: 'queued',
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(estimatedEtaMs / 1000)) },
+        });
+      }
+    }
+
+    const jobStart = Date.now();
+    const { data: jobRow } = await supabase
+      .from('ai_risk_assessment_jobs')
+      .insert({
+        mission_id: missionId,
+        company_id: gateCompanyId,
+        user_id: user.id,
+        status: 'running',
+      })
+      .select('id')
+      .single();
+    const jobId: string | null = jobRow?.id ?? null;
+
+    const finishJob = async (status: 'done' | 'failed', errorMessage?: string) => {
+      if (!jobId) return;
+      try {
+        await supabase.from('ai_risk_assessment_jobs').update({
+          status,
+          finished_at: new Date().toISOString(),
+          duration_ms: Date.now() - jobStart,
+          error_message: errorMessage ?? null,
+        }).eq('id', jobId);
+      } catch (e) { console.error('finishJob error', e); }
+    };
+    // ---- End Phase 2 gate ----
+
     console.log(`Starting risk assessment for mission ${missionId}${soraReassessment ? ' (SORA re-assessment)' : ''}`);
 
     // Handle SORA re-assessment mode
@@ -651,6 +710,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         }
       }
 
+      await finishJob('done');
       return new Response(JSON.stringify({
         success: true,
         assessment: savedAssessment,
@@ -2013,6 +2073,7 @@ Returner en JSON-respons med denne strukturen:
       console.error('SORA auto-approval error (non-blocking):', approvalErr);
     }
 
+    await finishJob('done');
     return new Response(JSON.stringify({
       success: true,
       assessment: savedAssessment || {
@@ -2031,6 +2092,12 @@ Returner en JSON-respons med denne strukturen:
 
   } catch (error) {
     console.error('Risk assessment error:', error);
+    try {
+      // Best-effort: mark any in-flight job for this user as failed
+      await supabase.from('ai_risk_assessment_jobs')
+        .update({ status: 'failed', finished_at: new Date().toISOString(), error_message: (error as Error)?.message ?? 'unknown' })
+        .eq('user_id', user.id).eq('status', 'running');
+    } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error' 
     }), {

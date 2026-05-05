@@ -104,6 +104,45 @@ export type Database = {
           },
         ]
       }
+      ai_risk_assessment_jobs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          mission_id: string | null
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          mission_id?: string | null
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          mission_id?: string | null
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       aip_restriction_zones: {
         Row: {
           external_id: string | null
@@ -5717,6 +5756,7 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      get_ai_risk_eta_ms: { Args: never; Returns: number }
       get_company_by_registration_code: {
         Args: { p_code: string }
         Returns: {
