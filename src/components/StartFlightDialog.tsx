@@ -31,6 +31,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
@@ -136,6 +137,24 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
   // DroneTag enabled flag for the company
   const [dronetagEnabled, setDronetagEnabled] = useState(false);
+
+  // Phone in remarks for advisory mode
+  const [profilePhone, setProfilePhone] = useState<string>('');
+  const [includePhoneInRemarks, setIncludePhoneInRemarks] = useState<boolean>(true);
+  const [manualPhone, setManualPhone] = useState<string>('');
+
+  // Fetch the pilot's phone number from their profile
+  useEffect(() => {
+    if (!user || !open) return;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('telefon')
+        .eq('id', user.id)
+        .maybeSingle();
+      setProfilePhone((data?.telefon || '').trim());
+    })();
+  }, [user, open]);
 
   // SORA requirement check
   const companySettings = useCompanySettings();
@@ -651,8 +670,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       
       // For advisory mode, check for large advisory warning first
       if (publishMode === 'advisory' && missionId && !forcePublish) {
+        const phoneToSend = includePhoneInRemarks ? (profilePhone || manualPhone).trim() : '';
         const { data, error } = await supabase.functions.invoke('safesky-advisory', {
-          body: { action: 'publish_advisory', missionId, forcePublish: false },
+          body: { action: 'publish_advisory', missionId, forcePublish: false, includePhoneInRemarks, phoneNumber: phoneToSend || null },
         });
         
         // Handle error responses
@@ -708,8 +728,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       
       // Force publish the advisory
       if (missionId) {
+        const phoneToSend = includePhoneInRemarks ? (profilePhone || manualPhone).trim() : '';
         const { error } = await supabase.functions.invoke('safesky-advisory', {
-          body: { action: 'publish_advisory', missionId, forcePublish: true },
+          body: { action: 'publish_advisory', missionId, forcePublish: true, includePhoneInRemarks, phoneNumber: phoneToSend || null },
         });
         
         if (error) {
@@ -1054,11 +1075,58 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </div>
 
             {publishMode === 'advisory' && hasRoute && (
-              <div className="flex items-start gap-2 rounded-lg bg-primary/10 p-3 text-sm">
-                <AlertCircle className="h-4 w-4 text-primary mt-0.5" />
-                <p className="text-muted-foreground">
-                  {t('flight.safeskyAdvisoryInfo')}
-                </p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 rounded-lg bg-primary/10 p-3 text-sm">
+                  <AlertCircle className="h-4 w-4 text-primary mt-0.5" />
+                  <p className="text-muted-foreground">
+                    {t('flight.safeskyAdvisoryInfo')}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-border p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="publish-phone-remarks"
+                      checked={includePhoneInRemarks}
+                      onCheckedChange={(v) => setIncludePhoneInRemarks(v === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="space-y-1 flex-1">
+                      <Label htmlFor="publish-phone-remarks" className="text-sm font-medium cursor-pointer">
+                        {t('flight.publishPhoneInRemarks', 'Publiser telefonnummer i remarks')}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t('flight.publishPhoneInRemarksHint', 'Andre operatører kan kontakte deg ved konflikt i luftrommet.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {includePhoneInRemarks && profilePhone && (
+                    <p className="text-xs text-muted-foreground pl-6">
+                      {t('flight.phoneFromProfile', 'Bruker telefonnummer fra profil')}: <span className="font-medium text-foreground">{profilePhone}</span>
+                    </p>
+                  )}
+
+                  {includePhoneInRemarks && !profilePhone && (
+                    <div className="pl-6 space-y-1">
+                      <Label htmlFor="manual-phone" className="text-xs">
+                        {t('flight.phoneManualEntry', 'Telefonnummer')}
+                      </Label>
+                      <Input
+                        id="manual-phone"
+                        type="tel"
+                        inputMode="tel"
+                        value={manualPhone}
+                        onChange={(e) => setManualPhone(e.target.value)}
+                        placeholder="+47 ..."
+                        className="h-8 text-sm"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        {t('flight.phoneManualEntryHint', 'Tips: lagre telefonnummeret på profil-siden for å slippe å fylle ut hver gang.')}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
