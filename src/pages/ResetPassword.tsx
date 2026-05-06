@@ -65,8 +65,9 @@ const ResetPassword = () => {
       toast.error("Passordene er ikke like");
       return;
     }
-    if (password.length < 6) {
-      toast.error("Passordet må være minst 6 tegn");
+    const pwErr = passwordErrorMessage(password);
+    if (pwErr) {
+      toast.error(pwErr);
       return;
     }
     setLoading(true);
