@@ -22,12 +22,27 @@ serve(async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ error: "E-post er påkrevd" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: { users } } = await supabase.auth.admin.listUsers();
-    const user = users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    const lowerEmail = email.toLowerCase();
+    let user: any = null;
+    let page = 1;
+    const perPage = 1000;
+    while (!user) {
+      const { data, error: listErr } = await supabase.auth.admin.listUsers({ page, perPage });
+      if (listErr) {
+        console.error("listUsers error:", listErr);
+        break;
+      }
+      const users = data?.users ?? [];
+      user = users.find((u: any) => u.email?.toLowerCase() === lowerEmail);
+      if (user || users.length < perPage) break;
+      page++;
+    }
 
     if (!user) {
+      console.log(`No user matched ${lowerEmail} after pagination`);
       return new Response(JSON.stringify({ message: "Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    console.log(`Found user ${user.id} for ${lowerEmail}, generating reset link...`);
 
     const { data: profile } = await supabase.from('profiles').select('company_id, full_name').eq('id', user.id).maybeSingle();
     if (!profile) throw new Error("Kunne ikke hente brukerinfo");

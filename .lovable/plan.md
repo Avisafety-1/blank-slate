@@ -1,18 +1,33 @@
-## Problem
+## Rotårsak (bekreftet)
 
-Etter at SMTP-kolonnene ble droppet fra `email_settings`, refererer `supabase/functions/_shared/email-config.ts` fortsatt til `smtp_user` i SELECT-spørringen. Når `send-password-reset` kalles med en bruker som har en `company_id`, feiler `getEmailConfig` fordi kolonnen ikke finnes lenger — feilen oppstår før `sendEmail` kjøres, så ingen mail går ut. Edge-loggene viser bare "booted" uten Resend-aktivitet, noe som bekrefter dette.
+`send-password-reset` returnerer 200 OK uten å sende mail. Edge-loggen viser kun "booted" — ingen Resend-kall, ingen feil. Forrige fix (smtp_user) gjorde at funksjonen ikke krasjer lenger, men problemet ligger et annet sted:
 
-Dette er den eneste gjenværende stale referansen i kodebasen (sjekket alle edge functions og frontend).
+```ts
+const { data: { users } } = await supabase.auth.admin.listUsers();
+const user = users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+if (!user) return 200; // stille
+```
+
+`listUsers()` uten paginering returnerer **default 50 brukere per side**. Databasen har **76 brukere** (verifisert via SQL). Brukere som ligger på side 2+ blir aldri funnet → funksjonen returnerer "Hvis e-posten finnes …" uten å sende mail. Det forklarer 100% av symptomene.
+
+## Resend-bruken og reset-lenken
+
+Begge er korrekte:
+- `_shared/resend-email.ts` POSTer riktig til `https://api.resend.com/emails` med `Authorization: Bearer RESEND_API_KEY` og `from/to/subject/html`. Standard Resend HTTP API.
+- Reset-lenken bygges fra `auth.admin.generateLink({ type: 'recovery', redirectTo: 'https://login.avisafe.no/reset-password' })`, deretter `?token_hash=…&type=recovery`. `ResetPassword.tsx` plukker opp `token_hash` og kaller `verifyOtp({ type: 'recovery' })` — riktig flyt.
+
+Når mailen først kommer frem, vil lenken fungere.
 
 ## Endring
 
-Fil: `supabase/functions/_shared/email-config.ts`
+Fil: `supabase/functions/send-password-reset/index.ts`
 
-1. Endre SELECT fra `'from_name, from_email, smtp_user, enabled'` til `'from_name, from_email, enabled'`.
-2. Fjern `|| emailSettings.smtp_user` fra fallback-uttrykket — bare bruk `from_email`.
+Bytt det enkle `listUsers()`-kallet med en paginert løkke (perPage 1000, opp til siden er tom eller bruker er funnet). Legg til en `console.log` ved funn / ikke-funn slik at edge-loggen viser hva som faktisk skjer.
 
-Ingen andre filer eller migrasjoner trengs. `send-password-reset` (og alle andre edge-funksjoner som bruker `getEmailConfig`, f.eks. `resend-confirmation-email`, notifikasjoner) vil da virke igjen.
+Ingen andre filer berøres. Ingen DB-endringer.
 
-## Verifisering
+## Verifisering etterpå
 
-Etter fix: trykk "Send ny link" i passord-tilbakestilling og sjekk at e-posten kommer frem, samt at edge-loggene viser at Resend-kallet faktisk kjører.
+1. Trykk "Send ny link" / "Glemt passord" igjen.
+2. Sjekk edge-loggen — skal nå vise `Found user … generating reset link` og deretter Resend-respons.
+3. Mottatt e-post → klikk lenken → kommer til `/reset-password?token_hash=…` → verifiserer og lar deg sette nytt passord.
