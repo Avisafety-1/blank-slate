@@ -670,8 +670,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       
       // For advisory mode, check for large advisory warning first
       if (publishMode === 'advisory' && missionId && !forcePublish) {
+        const phoneToSend = includePhoneInRemarks ? (profilePhone || manualPhone).trim() : '';
         const { data, error } = await supabase.functions.invoke('safesky-advisory', {
-          body: { action: 'publish_advisory', missionId, forcePublish: false },
+          body: { action: 'publish_advisory', missionId, forcePublish: false, includePhoneInRemarks, phoneNumber: phoneToSend || null },
         });
         
         // Handle error responses
