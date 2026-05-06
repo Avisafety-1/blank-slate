@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { ShieldCheck, Send, ArrowLeft } from "lucide-react";
 import droneBackground from "@/assets/drone-background.png";
+import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 
 const avisafeLogoText = "/avisafe-logo-text.png";
 
