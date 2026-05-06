@@ -543,6 +543,28 @@ Deno.serve(async (req) => {
         await persistError("download_failed", `Log not found (404): ${errText.slice(0, 200)}`);
         return errorResponse("download_failed", "Loggfilen ble ikke funnet hos DJI.");
       }
+      // Unsupported container format heuristic: no aircraft name from DJI Cloud
+      // listing AND parsing failed → mark as unsupported and remove from pending.
+      const noAircraft = !pendingLog.aircraft_name || !pendingLog.aircraft_name.trim();
+      if (noAircraft) {
+        try {
+          await serviceClient
+            .from("pending_dji_logs")
+            .update({
+              status: "unsupported",
+              error_code: "unsupported_format",
+              error_message: "Loggen kan ikke parses automatisk fra DJI Cloud. Last opp .txt manuelt fra dronen.",
+              last_error_at: new Date().toISOString(),
+            })
+            .eq("id", pending_log_id);
+        } catch (e) {
+          console.error("[dji-process-single] mark-unsupported failed:", e);
+        }
+        return errorResponse(
+          "unsupported_format",
+          "Filen støttes ikke for automatisk prosessering. Du må laste opp .txt-filen manuelt fra dronen.",
+        );
+      }
       await persistError("parse_error", `DroneLog ${status}: ${errText.slice(0, 300)}`);
       return errorResponse("parse_error", `DroneLog API kunne ikke prosessere loggen (${status}). Prøv igjen senere.`);
     }
