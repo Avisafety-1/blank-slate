@@ -287,6 +287,13 @@ const Auth = () => {
       toast.error('Skriv inn selskapsnavn');
       return;
     }
+    if (!isLogin) {
+      const pwErr = passwordErrorMessage(password);
+      if (pwErr) {
+        toast.error(pwErr);
+        return;
+      }
+    }
     setLoading(true);
     try {
       if (isLogin) {
