@@ -16,6 +16,7 @@ import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
 import { startAuthentication } from "@simplewebauthn/browser";
+import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 
 
 const Auth = () => {
@@ -285,6 +286,13 @@ const Auth = () => {
     if (!isLogin && regMode === 'new' && !newCompanyName.trim()) {
       toast.error('Skriv inn selskapsnavn');
       return;
+    }
+    if (!isLogin) {
+      const pwErr = passwordErrorMessage(password);
+      if (pwErr) {
+        toast.error(pwErr);
+        return;
+      }
     }
     setLoading(true);
     try {
@@ -791,7 +799,7 @@ const Auth = () => {
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
                   required 
-                  minLength={6} 
+                  minLength={isLogin ? 6 : 8} 
                 />
                 {isLogin && (
                   <button
@@ -802,8 +810,9 @@ const Auth = () => {
                     {t('auth.forgotPassword')}
                   </button>
                 )}
+                {!isLogin && <PasswordRequirements password={password} className="mt-2" />}
               </div>
-              <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && regMode === 'new' && !newCompanyName.trim())}>
+              <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && regMode === 'new' && !newCompanyName.trim()) || (!isLogin && !isPasswordValid(password))}>
                 {loading ? t('common.processing') : isLogin ? t('auth.signIn') : regMode === 'new' ? 'Opprett selskap og konto' : t('auth.signUp')}
               </Button>
             </form>
