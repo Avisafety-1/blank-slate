@@ -10,7 +10,7 @@ export const passwordChecks: PasswordCheck[] = [
   { label: "Minst 8 tegn", test: (pw) => pw.length >= 8 },
   { label: "Minst én stor bokstav (A–Z)", test: (pw) => /[A-Z]/.test(pw) },
   { label: "Minst én liten bokstav (a–z)", test: (pw) => /[a-z]/.test(pw) },
-  { label: "Minst ett spesialtegn (f.eks. !@#$%)", test: (pw) => /[^A-Za-z0-9]/.test(pw) },
+  { label: "Minst ett tall (0–9)", test: (pw) => /[0-9]/.test(pw) },
 ];
 
 export const isPasswordValid = (pw: string) => passwordChecks.every((c) => c.test(pw));
