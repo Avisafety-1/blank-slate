@@ -761,6 +761,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const bulkFileName = bulkFiles[i].name.toLowerCase();
         const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && (bulkFileName.endsWith('.bin') || bulkFileName.endsWith('.zip')));
         const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
+        if (showDebugPanel && !bulkIsArduPilot) {
+          formData.append('parser', parserOverride);
+        }
         const { data, error: invokeError } = await supabase.functions.invoke(bulkEndpoint, { body: formData });
         if (invokeError) throw invokeError;
 
