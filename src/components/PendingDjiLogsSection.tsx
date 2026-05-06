@@ -161,6 +161,9 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
         </div>
       </div>
+      <p className="text-[11px] text-muted-foreground -mt-1">
+        Finner du ikke riktig logg? Enkelte loggtyper støttes ikke av auto-sync og må lastes opp manuelt.
+      </p>
       {displayedLogs.length === 0 && (
         <p className="text-xs text-muted-foreground py-1">
           {onlyMine ? "Ingen ventende logger på deg. Skru av «Kun mine» for å se andres." : "Ingen logger til behandling"}
