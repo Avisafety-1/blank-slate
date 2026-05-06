@@ -554,10 +554,54 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // ── Auto-sync (cron): all companies, only users with auto_sync_enabled ──
+    // ── Per-company mode (no userId): process all auto-sync users in one company ──
+    if (manualCompanyId) {
+      const { data: company } = await serviceClient
+        .from("companies")
+        .select("id, navn, dronelog_api_key, dji_sync_from_date")
+        .eq("id", manualCompanyId)
+        .eq("dji_flightlog_enabled", true)
+        .single();
+
+      if (!company) {
+        return new Response(JSON.stringify({ error: "Company not found or DJI not enabled" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const dronelogKey = company.dronelog_api_key || Deno.env.get("DRONELOG_AVISAFE_KEY");
+      if (!dronelogKey) {
+        return new Response(JSON.stringify({ error: "No DroneLog API key" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: profiles } = await serviceClient
+        .from("profiles").select("id").eq("company_id", company.id);
+      const profileIds = (profiles || []).map((p: any) => p.id);
+
+      const { data: credentials } = await serviceClient
+        .from("dji_credentials")
+        .select("user_id, dji_email, dji_password_encrypted, dji_account_id, last_sync_at")
+        .in("user_id", profileIds.length ? profileIds : ["00000000-0000-0000-0000-000000000000"])
+        .eq("auto_sync_enabled", true);
+
+      console.log(`[dji-auto-sync] Per-company sync ${company.navn}: ${credentials?.length || 0} users`);
+
+      let synced = 0, errors = 0, rateLimited = false;
+      for (const cred of credentials || []) {
+        if (rateLimited) break;
+        const r = await syncSingleUser(serviceClient, dronelogKey, company, cred);
+        synced += r.synced; errors += r.errors;
+        if (r.rateLimited) rateLimited = true;
+      }
+
+      return new Response(JSON.stringify({
+        success: true, synced, errors, rate_limited: rateLimited, elapsed_ms: Date.now() - startMs,
+        companies: [{ company: company.navn, synced, errors }],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Auto-sync (cron): fan out per company in background ──
     const { data: companies, error: compErr } = await serviceClient
       .from("companies")
-      .select("id, navn, dronelog_api_key, dji_sync_from_date")
+      .select("id, navn")
       .eq("dji_auto_sync_enabled", true)
       .eq("aktiv", true)
       .eq("dji_flightlog_enabled", true);
@@ -567,78 +611,48 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ message: "No companies with auto-sync enabled", synced: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    console.log(`[dji-auto-sync] Found ${companies.length} companies with auto-sync enabled`);
+    console.log(`[dji-auto-sync] Fanning out to ${companies.length} companies`);
 
-    let totalSynced = 0;
-    let totalErrors = 0;
-    const results: Array<{ company: string; synced: number; errors: number; details?: string }> = [];
-    let rateLimited = false;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const fnUrl = `${supabaseUrl}/functions/v1/dji-auto-sync`;
 
-    for (const company of companies) {
-      const dronelogKey = company.dronelog_api_key || Deno.env.get("DRONELOG_AVISAFE_KEY");
-      if (!dronelogKey) {
-        console.log(`[dji-auto-sync] Skipping ${company.navn}: no DroneLog API key`);
-        results.push({ company: company.navn, synced: 0, errors: 0, details: "No API key" });
-        continue;
+    // Fire-and-forget per-company invocations. Each gets its own wall-clock budget.
+    // Stagger by 250ms to avoid hammering the DJI login endpoint simultaneously.
+    const fanOut = async () => {
+      for (let i = 0; i < companies.length; i++) {
+        const c = companies[i];
+        try {
+          // Don't await response — let each run independently
+          fetch(fnUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${serviceKey}`,
+              "apikey": serviceKey,
+            },
+            body: JSON.stringify({ companyId: c.id }),
+          }).catch((e) => console.error(`[dji-auto-sync] fan-out fetch error for ${c.navn}:`, e));
+        } catch (e) {
+          console.error(`[dji-auto-sync] fan-out error for ${c.navn}:`, e);
+        }
+        await new Promise((r) => setTimeout(r, 250));
       }
+    };
 
-      // Find users with DJI credentials AND auto_sync_enabled in this company
-      const { data: profiles } = await serviceClient
-        .from("profiles")
-        .select("id")
-        .eq("company_id", company.id);
-
-      if (!profiles || profiles.length === 0) {
-        results.push({ company: company.navn, synced: 0, errors: 0, details: "No users" });
-        continue;
-      }
-
-      const profileIds = profiles.map((p: any) => p.id);
-
-      const { data: credentials } = await serviceClient
-        .from("dji_credentials")
-        .select("user_id, dji_email, dji_password_encrypted, dji_account_id, last_sync_at")
-        .in("user_id", profileIds)
-        .eq("auto_sync_enabled", true);
-
-      if (!credentials || credentials.length === 0) {
-        results.push({ company: company.navn, synced: 0, errors: 0, details: "No users with auto-sync enabled" });
-        continue;
-      }
-
-      console.log(`[dji-auto-sync] ${company.navn}: ${credentials.length} users with auto-sync enabled`);
-
-      let companySynced = 0;
-      let companyErrors = 0;
-      let loginFailures = 0;
-
-      for (const cred of credentials) {
-        if (rateLimited) break;
-        const result = await syncSingleUser(serviceClient, dronelogKey, company, cred);
-        companySynced += result.synced;
-        companyErrors += result.errors;
-        if (result.loginFailed) loginFailures++;
-        if (result.rateLimited) rateLimited = true;
-      }
-
-      totalSynced += companySynced;
-      totalErrors += companyErrors;
-      const detail = rateLimited ? 'For mange påloggingsforsøk mot DJI API' 
-        : loginFailures > 0 ? `DJI-innlogging feilet for ${loginFailures} bruker(e)` 
-        : undefined;
-      results.push({ company: company.navn, synced: companySynced, errors: companyErrors, details: detail });
+    // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(fanOut());
+    } else {
+      fanOut();
     }
-
-    const elapsed = Date.now() - startMs;
-    console.log(`[dji-auto-sync] Done in ${elapsed}ms: ${totalSynced} synced, ${totalErrors} errors`);
 
     return new Response(JSON.stringify({
       success: true,
-      synced: totalSynced,
-      errors: totalErrors,
-      rate_limited: rateLimited,
-      elapsed_ms: elapsed,
-      companies: results,
+      mode: "fan_out",
+      dispatched: companies.length,
+      elapsed_ms: Date.now() - startMs,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error) {
