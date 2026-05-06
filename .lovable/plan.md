@@ -1,25 +1,33 @@
-# Filtrer bort "canceling statement"-støy i system-health-monitor
+## Mål
+Legg til en debug-bryter i opplastingsdialogen som lar superadmin i selskapet "Avisafe" velge:
+1. **Loggtype**: `auto | DJI | ArduPilot` (overstyrer auto-deteksjon basert på filnavn)
+2. **Parser**: `Standard (DroneLogAPI)` vs `Egen Rust (Fly.io)` — kun for DJI
 
-## Problem
-`system-health-monitor` kjører hvert 10. min og varsler ved ≥10 DB-feil. Den teller ALLE `ERROR/FATAL/PANIC` i `postgres_logs`, inkludert `canceling statement due to user request` — som er ufarlige avbrutte queries (React Query AbortController når komponenter unmountes eller bruker navigerer bort). Daglig digest 07:00 UTC er noe annet og uberørt.
+Bryteren skal kun vises for superadmin i Avisafe og er ment for integrasjonstesting.
 
-## Endring i `supabase/functions/system-health-monitor/index.ts`
+## Endringer
 
-Oppdater `dbErrSql` til å ekskludere kjente støy-meldinger:
+### 1. `src/components/UploadDroneLogDialog.tsx`
+- Hent `companyName` (allerede tilgjengelig via `useAuth` indirekte; ellers via en `companies`-select). Bruk `useRoleCheck().isSuperAdmin`.
+- Beregn `showDebugPanel = isSuperAdmin && companyName?.toLowerCase() === 'avisafe'`.
+- Legg til UI-panel (kollapsbar boks med `AlertTriangle` + tekst "Kun for testing") på `step === 'upload'`, over fil-velgeren, som inneholder:
+  - **RadioGroup loggtype**: Auto / DJI / ArduPilot (binder til eksisterende `logType`-state — utvid typen til `'auto' | 'dji' | 'ardupilot'`, allerede slik).
+  - **RadioGroup parser**: `dronelogapi` (default) / `flyio` — ny state `parserOverride`.
+- Send `parserOverride` via FormData (`form.append('parser', parserOverride)`) i `handleUpload` og `handleBulkUpload`.
+- Erstatt auto-detektering når `logType !== 'auto'` så endepunkt-valg respekterer manuell loggtype (allerede slik, men gjør det eksplisitt).
 
-```sql
-select count(*) as n from postgres_logs
-cross join unnest(metadata) as m
-cross join unnest(m.parsed) as parsed
-where parsed.error_severity in ('ERROR','FATAL','PANIC')
-  and postgres_logs.timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
-  and event_message not like '%canceling statement due to user request%'
-  and event_message not like '%canceling statement due to statement timeout%'
-```
+### 2. `supabase/functions/process-dronelog/index.ts`
+- Les `parser`-felt fra FormData. Når `parser === 'flyio'` skal `tryFlyParser` brukes ubetinget og **ikke** falle tilbake til DroneLogAPI ved feil — return en tydelig 422 med `reason` slik at UI viser feilen. Når `parser === 'dronelogapi'` hopp over `tryFlyParser` helt.
+- Default-oppførsel (ingen `parser`-felt) er uendret.
 
-Resten av funksjonen, terskler og config er uendret.
+### 3. `supabase/functions/process-ardupilot/index.ts` (kun les for å bekrefte at den allerede bruker `ardupilot-parser` på Fly.io — ingen endring nødvendig med mindre vi vil eksponere ArduPilot også, men spec sier "egen rust app" som er DJI-parseren, så vi lar denne være.)
 
-## Konsekvens
-- Brukeravbrutte queries teller ikke lenger som "DB-feil" → ingen falske 10-min varsler.
-- Reelle feil (constraint violations, RLS-avslag, syntax-feil osv.) varsles fortsatt.
-- Daglig 07:00-digest fortsetter som før (separat job).
+### 4. UI-feedback
+- Vis en liten badge i resultatpanelet ("Parsed via Fly.io" / "Parsed via DroneLogAPI") basert på et `parser_used`-felt vi returnerer fra edge function. (Allerede delvis støttet; legg til `parser_used` i responsen.)
+
+## Sikkerhet
+- Sjekken er kun UI-gating; edge function aksepterer `parser`-feltet uten autorisasjonssjekk siden det bare velger mellom to internt-konfigurerte parsere (ingen rettighetseskalering). Ok for testformål.
+
+## Ut av scope
+- Ingen endring i auto-sync-flyt (Tensio-feilene); kun manuell opplasting.
+- Ingen DB-migrasjon.
