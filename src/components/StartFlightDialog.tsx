@@ -1073,11 +1073,58 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </div>
 
             {publishMode === 'advisory' && hasRoute && (
-              <div className="flex items-start gap-2 rounded-lg bg-primary/10 p-3 text-sm">
-                <AlertCircle className="h-4 w-4 text-primary mt-0.5" />
-                <p className="text-muted-foreground">
-                  {t('flight.safeskyAdvisoryInfo')}
-                </p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 rounded-lg bg-primary/10 p-3 text-sm">
+                  <AlertCircle className="h-4 w-4 text-primary mt-0.5" />
+                  <p className="text-muted-foreground">
+                    {t('flight.safeskyAdvisoryInfo')}
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-border p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="publish-phone-remarks"
+                      checked={includePhoneInRemarks}
+                      onCheckedChange={(v) => setIncludePhoneInRemarks(v === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="space-y-1 flex-1">
+                      <Label htmlFor="publish-phone-remarks" className="text-sm font-medium cursor-pointer">
+                        {t('flight.publishPhoneInRemarks', 'Publiser telefonnummer i remarks')}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {t('flight.publishPhoneInRemarksHint', 'Andre operatører kan kontakte deg ved konflikt i luftrommet.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {includePhoneInRemarks && profilePhone && (
+                    <p className="text-xs text-muted-foreground pl-6">
+                      {t('flight.phoneFromProfile', 'Bruker telefonnummer fra profil')}: <span className="font-medium text-foreground">{profilePhone}</span>
+                    </p>
+                  )}
+
+                  {includePhoneInRemarks && !profilePhone && (
+                    <div className="pl-6 space-y-1">
+                      <Label htmlFor="manual-phone" className="text-xs">
+                        {t('flight.phoneManualEntry', 'Telefonnummer')}
+                      </Label>
+                      <Input
+                        id="manual-phone"
+                        type="tel"
+                        inputMode="tel"
+                        value={manualPhone}
+                        onChange={(e) => setManualPhone(e.target.value)}
+                        placeholder="+47 ..."
+                        className="h-8 text-sm"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        {t('flight.phoneManualEntryHint', 'Tips: lagre telefonnummeret på profil-siden for å slippe å fylle ut hver gang.')}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
