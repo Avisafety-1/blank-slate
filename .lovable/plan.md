@@ -1,33 +1,38 @@
 ## Mål
-Legg til en debug-bryter i opplastingsdialogen som lar superadmin i selskapet "Avisafe" velge:
-1. **Loggtype**: `auto | DJI | ArduPilot` (overstyrer auto-deteksjon basert på filnavn)
-2. **Parser**: `Standard (DroneLogAPI)` vs `Egen Rust (Fly.io)` — kun for DJI
-
-Bryteren skal kun vises for superadmin i Avisafe og er ment for integrasjonstesting.
+Publisere pilotens telefonnummer i `remarks`-feltet på SafeSky advisory-payload, med brukerkontroll og fallback for manuell entry.
 
 ## Endringer
 
-### 1. `src/components/UploadDroneLogDialog.tsx`
-- Hent `companyName` (allerede tilgjengelig via `useAuth` indirekte; ellers via en `companies`-select). Bruk `useRoleCheck().isSuperAdmin`.
-- Beregn `showDebugPanel = isSuperAdmin && companyName?.toLowerCase() === 'avisafe'`.
-- Legg til UI-panel (kollapsbar boks med `AlertTriangle` + tekst "Kun for testing") på `step === 'upload'`, over fil-velgeren, som inneholder:
-  - **RadioGroup loggtype**: Auto / DJI / ArduPilot (binder til eksisterende `logType`-state — utvid typen til `'auto' | 'dji' | 'ardupilot'`, allerede slik).
-  - **RadioGroup parser**: `dronelogapi` (default) / `flyio` — ny state `parserOverride`.
-- Send `parserOverride` via FormData (`form.append('parser', parserOverride)`) i `handleUpload` og `handleBulkUpload`.
-- Erstatt auto-detektering når `logType !== 'auto'` så endepunkt-valg respekterer manuell loggtype (allerede slik, men gjør det eksplisitt).
+### 1. `src/components/StartFlightDialog.tsx`
+- Hent pilotens `telefon` fra `profiles`-tabellen for innlogget bruker (i eksisterende effekt som henter pilotinfo).
+- Når `publishMode === 'advisory'`, vis en checkbox under advisory-info-boksen:
+  - Label: "Publiser telefonnummer i remarks (anbefalt)"
+  - Default: avkrysset (`true`).
+- Hvis profilen ikke har `telefon` satt og checkbox er på:
+  - Vis input-felt for manuell entry
+  - Hjelpetekst: "Tips: lagre telefonnummeret på profil-siden så slipper du å skrive det inn neste gang."
+- Ved publisering (`safesky-advisory` invoke med `publish_advisory`), send med:
+  - `includePhoneInRemarks: boolean`
+  - `phoneNumber: string | null` (fra profil eller manuell entry)
+- Gjelder både første publish-call (linje ~654) og forcePublish-call (linje ~711).
 
-### 2. `supabase/functions/process-dronelog/index.ts`
-- Les `parser`-felt fra FormData. Når `parser === 'flyio'` skal `tryFlyParser` brukes ubetinget og **ikke** falle tilbake til DroneLogAPI ved feil — return en tydelig 422 med `reason` slik at UI viser feilen. Når `parser === 'dronelogapi'` hopp over `tryFlyParser` helt.
-- Default-oppførsel (ingen `parser`-felt) er uendret.
+### 2. `supabase/functions/safesky-advisory/index.ts`
+- Les `includePhoneInRemarks` og `phoneNumber` fra request body.
+- Bygg `remarks`-streng:
+  - Hvis `includePhoneInRemarks && phoneNumber` → `"Drone operation - planned route. Pilot: <phone>"`
+  - Ellers → uendret default `"Drone operation - planned route"`
+- Sett i `payload.features[0].properties.remarks` (linje 504).
+- Lett sanitering av telefon (strip kontrolltegn, max 100 tegn for å holde under SafeSky sine grenser).
 
-### 3. `supabase/functions/process-ardupilot/index.ts` (kun les for å bekrefte at den allerede bruker `ardupilot-parser` på Fly.io — ingen endring nødvendig med mindre vi vil eksponere ArduPilot også, men spec sier "egen rust app" som er DJI-parseren, så vi lar denne være.)
+### 3. i18n (`src/i18n/locales/no.json` + `en.json`)
+Nye nøkler:
+- `flight.publishPhoneInRemarks` — "Publiser telefonnummer i remarks"
+- `flight.publishPhoneInRemarksHint` — "SafeSky og andre operatører kan kontakte deg ved konflikt."
+- `flight.phoneManualEntry` — "Telefonnummer"
+- `flight.phoneManualEntryHint` — "Tips: lagre telefonnummeret på profil-siden for å slippe å fylle ut hver gang."
 
-### 4. UI-feedback
-- Vis en liten badge i resultatpanelet ("Parsed via Fly.io" / "Parsed via DroneLogAPI") basert på et `parser_used`-felt vi returnerer fra edge function. (Allerede delvis støttet; legg til `parser_used` i responsen.)
-
-## Sikkerhet
-- Sjekken er kun UI-gating; edge function aksepterer `parser`-feltet uten autorisasjonssjekk siden det bare velger mellom to internt-konfigurerte parsere (ingen rettighetseskalering). Ok for testformål.
-
-## Ut av scope
-- Ingen endring i auto-sync-flyt (Tensio-feilene); kun manuell opplasting.
-- Ingen DB-migrasjon.
+## Tekniske detaljer
+- `profiles.telefon` finnes allerede (kolonne bekreftet i types.ts).
+- Ingen DB-migrasjon nødvendig.
+- Edge function deployes automatisk.
+- Bakoverkompatibel: hvis frontend ikke sender feltene → samme oppførsel som i dag.
