@@ -137,6 +137,24 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   // DroneTag enabled flag for the company
   const [dronetagEnabled, setDronetagEnabled] = useState(false);
 
+  // Phone in remarks for advisory mode
+  const [profilePhone, setProfilePhone] = useState<string>('');
+  const [includePhoneInRemarks, setIncludePhoneInRemarks] = useState<boolean>(true);
+  const [manualPhone, setManualPhone] = useState<string>('');
+
+  // Fetch the pilot's phone number from their profile
+  useEffect(() => {
+    if (!user || !open) return;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('telefon')
+        .eq('id', user.id)
+        .maybeSingle();
+      setProfilePhone((data?.telefon || '').trim());
+    })();
+  }, [user, open]);
+
   // SORA requirement check
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
