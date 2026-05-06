@@ -23,6 +23,7 @@ import { ManualMissionPicker } from "@/components/ManualMissionPicker";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { usePlanGating } from "@/hooks/usePlanGating";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
