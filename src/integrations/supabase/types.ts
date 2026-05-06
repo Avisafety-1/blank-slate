@@ -2063,11 +2063,6 @@ export type Database = {
           from_email: string | null
           from_name: string | null
           id: string
-          smtp_host: string | null
-          smtp_pass: string | null
-          smtp_port: number | null
-          smtp_secure: boolean | null
-          smtp_user: string | null
           updated_at: string
         }
         Insert: {
@@ -2077,11 +2072,6 @@ export type Database = {
           from_email?: string | null
           from_name?: string | null
           id?: string
-          smtp_host?: string | null
-          smtp_pass?: string | null
-          smtp_port?: number | null
-          smtp_secure?: boolean | null
-          smtp_user?: string | null
           updated_at?: string
         }
         Update: {
@@ -2091,11 +2081,6 @@ export type Database = {
           from_email?: string | null
           from_name?: string | null
           id?: string
-          smtp_host?: string | null
-          smtp_pass?: string | null
-          smtp_port?: number | null
-          smtp_secure?: boolean | null
-          smtp_user?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5366,11 +5351,6 @@ export type Database = {
           from_email: string | null
           from_name: string | null
           id: string | null
-          smtp_host: string | null
-          smtp_pass: string | null
-          smtp_port: number | null
-          smtp_secure: boolean | null
-          smtp_user: string | null
           updated_at: string | null
         }
         Insert: {
@@ -5380,11 +5360,6 @@ export type Database = {
           from_email?: string | null
           from_name?: string | null
           id?: string | null
-          smtp_host?: string | null
-          smtp_pass?: never
-          smtp_port?: number | null
-          smtp_secure?: boolean | null
-          smtp_user?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -5394,11 +5369,6 @@ export type Database = {
           from_email?: string | null
           from_name?: string | null
           id?: string | null
-          smtp_host?: string | null
-          smtp_pass?: never
-          smtp_port?: number | null
-          smtp_secure?: boolean | null
-          smtp_user?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -6560,11 +6530,6 @@ export type Database = {
           p_enabled: boolean
           p_from_email: string
           p_from_name: string
-          p_smtp_host: string
-          p_smtp_pass: string
-          p_smtp_port: number
-          p_smtp_secure: boolean
-          p_smtp_user: string
         }
         Returns: undefined
       }

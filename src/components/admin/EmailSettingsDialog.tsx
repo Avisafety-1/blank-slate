@@ -94,11 +94,6 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
     try {
       const { error } = await supabase.rpc('update_email_settings', {
         p_company_id: companyId,
-        p_smtp_host: "send.one.com",
-        p_smtp_port: 465,
-        p_smtp_user: "noreply@avisafe.no",
-        p_smtp_pass: null,
-        p_smtp_secure: true,
         p_from_name: settings.from_name || '',
         p_from_email: settings.from_email,
         p_enabled: settings.enabled,
