@@ -1131,13 +1131,23 @@ Deno.serve(async (req) => {
     if (!file) {
       return new Response(JSON.stringify({ error: "No file provided" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const parserOverride = String(formData.get("parser") || "").toLowerCase(); // "", "flyio", "dronelogapi"
 
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     const fileName = file.name || "flight.txt";
     const boundary = "----DronLogBoundary" + Date.now();
     const fieldList = FIELDS.split(",").map(f => f.trim());
 
-    // Fly-parseren er deaktivert — gå rett til DroneLog /logs/upload.
+    // Debug-override: tving Fly.io-parser hvis bedt om
+    if (parserOverride === "flyio") {
+      const csv = await tryFlyParser(fileBytes, fileName, fieldList);
+      if (!csv) {
+        return new Response(JSON.stringify({ error: "Fly.io parser failed", details: "Parser returned no result (unsupported format, missing config or upstream error)", parser_used: "flyio" }), { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const result = parseCsvToResult(csv);
+      (result as any).parser_used = "flyio";
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const parts: string[] = [];
     for (const field of fieldList) {
@@ -1181,6 +1191,7 @@ Deno.serve(async (req) => {
 
     const csvText = await dronelogResponse.text();
     const result = parseCsvToResult(csvText);
+    (result as any).parser_used = "dronelogapi";
 
     return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {

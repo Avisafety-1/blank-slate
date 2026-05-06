@@ -23,6 +23,7 @@ import { ManualMissionPicker } from "@/components/ManualMissionPicker";
 import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { usePlanGating } from "@/hooks/usePlanGating";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
@@ -222,8 +223,11 @@ const snMatchesDjiSn = (stored: string | null | undefined, parsedSn: string | nu
 
 export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
   const { t } = useTranslation();
-  const { user, companyId } = useAuth();
+  const { user, companyId, companyName } = useAuth();
   const { hasAddon } = usePlanGating();
+  const { isSuperAdmin } = useRoleCheck();
+  const showDebugPanel = isSuperAdmin && (companyName || '').toLowerCase() === 'avisafe';
+  const [parserOverride, setParserOverride] = useState<'dronelogapi' | 'flyio'>('dronelogapi');
 
   // Fetch company flight log capabilities
   const [djiEnabled, setDjiEnabled] = useState(true);
@@ -693,10 +697,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const formData = new FormData();
       formData.append('file', safeFile);
 
-      // Route to correct edge function based on file type
+      // Route to correct edge function based on file type or explicit override
       const fileName = file.name.toLowerCase();
       const isArduPilot = logType === 'ardupilot' || (logType === 'auto' && (fileName.endsWith('.bin') || fileName.endsWith('.zip')));
       const endpoint = isArduPilot ? 'process-ardupilot' : 'process-dronelog';
+      if (showDebugPanel && !isArduPilot) {
+        formData.append('parser', parserOverride);
+      }
 
       const { data, error } = await supabase.functions.invoke(endpoint, { body: formData });
       if (error) throw error;
@@ -754,6 +761,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const bulkFileName = bulkFiles[i].name.toLowerCase();
         const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && (bulkFileName.endsWith('.bin') || bulkFileName.endsWith('.zip')));
         const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
+        if (showDebugPanel && !bulkIsArduPilot) {
+          formData.append('parser', parserOverride);
+        }
         const { data, error: invokeError } = await supabase.functions.invoke(bulkEndpoint, { body: formData });
         if (invokeError) throw invokeError;
 
@@ -3199,6 +3209,36 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         {step === 'upload' && (
           <div className="space-y-4">
             {backButton('method')}
+            {showDebugPanel && (
+              <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/5 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                  <p className="text-xs font-semibold">Debug (kun Avisafe-superadmin) — kun for testing av integrasjon</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Loggtype</Label>
+                  <RadioGroup value={logType} onValueChange={(v) => setLogType(v as any)} className="flex gap-4">
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="auto" id="dbg-lt-auto" /><Label htmlFor="dbg-lt-auto" className="text-xs cursor-pointer">Auto</Label></div>
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="dji" id="dbg-lt-dji" /><Label htmlFor="dbg-lt-dji" className="text-xs cursor-pointer">DJI</Label></div>
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="ardupilot" id="dbg-lt-ardu" /><Label htmlFor="dbg-lt-ardu" className="text-xs cursor-pointer">ArduPilot</Label></div>
+                  </RadioGroup>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">DJI-parser</Label>
+                  <RadioGroup
+                    value={parserOverride}
+                    onValueChange={(v) => setParserOverride(v as 'dronelogapi' | 'flyio')}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="dronelogapi" id="dbg-p-dla" disabled={logType === 'ardupilot'} /><Label htmlFor="dbg-p-dla" className="text-xs cursor-pointer">DroneLogAPI (standard)</Label></div>
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="flyio" id="dbg-p-fly" disabled={logType === 'ardupilot'} /><Label htmlFor="dbg-p-fly" className="text-xs cursor-pointer">Egen Rust (Fly.io)</Label></div>
+                  </RadioGroup>
+                  {logType === 'ardupilot' && (
+                    <p className="text-[11px] text-muted-foreground">ArduPilot bruker alltid Fly.io-parser.</p>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>{bulkFiles.length > 1 ? `Velg flylogg-filer (maks 10)` : t('dronelog.selectFile', 'Velg flylogg-fil')}</Label>
               <div
