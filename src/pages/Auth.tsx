@@ -799,7 +799,7 @@ const Auth = () => {
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
                   required 
-                  minLength={6} 
+                  minLength={isLogin ? 6 : 8} 
                 />
                 {isLogin && (
                   <button
@@ -810,8 +810,9 @@ const Auth = () => {
                     {t('auth.forgotPassword')}
                   </button>
                 )}
+                {!isLogin && <PasswordRequirements password={password} className="mt-2" />}
               </div>
-              <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && regMode === 'new' && !newCompanyName.trim())}>
+              <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && regMode === 'new' && !newCompanyName.trim()) || (!isLogin && !isPasswordValid(password))}>
                 {loading ? t('common.processing') : isLogin ? t('auth.signIn') : regMode === 'new' ? 'Opprett selskap og konto' : t('auth.signUp')}
               </Button>
             </form>
