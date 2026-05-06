@@ -58,7 +58,7 @@ export async function getEmailConfig(companyId?: string): Promise<EmailConfig> {
   if (companyId) {
     const { data: emailSettings, error: settingsError } = await supabase
       .from('email_settings')
-      .select('from_name, from_email, smtp_user, enabled')
+      .select('from_name, from_email, enabled')
       .eq('company_id', companyId)
       .eq('enabled', true)
       .maybeSingle();
@@ -69,7 +69,7 @@ export async function getEmailConfig(companyId?: string): Promise<EmailConfig> {
 
     if (emailSettings) {
       fromName = emailSettings.from_name || undefined;
-      fromEmail = emailSettings.from_email || emailSettings.smtp_user || undefined;
+      fromEmail = emailSettings.from_email || undefined;
     }
   }
 
