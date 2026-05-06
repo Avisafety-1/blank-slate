@@ -791,20 +791,34 @@ async function syncSingleUser(
           break;
         }
         console.error(`[dji-auto-sync] Parse failed for log ${logId}:`, parseErr.message);
+
+        // If DJI Cloud returned no aircraft name AND parsing failed, this is
+        // almost certainly an unsupported container format (M4D/M30/M350 etc).
+        // Mark as 'unsupported' so it never appears in the "pending" list and
+        // won't be re-fetched on subsequent syncs.
+        const aircraftFromList = (log.aircraft || "").trim();
+        const isUnsupported = !aircraftFromList;
+        const targetStatus = isUnsupported ? "unsupported" : "pending";
+
         const { error: insertErr } = await serviceClient
           .from("pending_dji_logs")
           .insert({
             company_id: company.id,
             user_id: cred.user_id,
             dji_log_id: String(logId),
-            aircraft_name: log.aircraft || null,
+            aircraft_name: aircraftFromList || null,
             aircraft_sn: null,
             flight_date: logDateStr,
             duration_seconds: log.duration ? Math.round(log.duration) : null,
             parsed_result: null,
             matched_drone_id: null,
             matched_battery_id: null,
-            status: "pending",
+            status: targetStatus,
+            error_code: isUnsupported ? "unsupported_format" : null,
+            error_message: isUnsupported
+              ? "Loggen kan ikke parses automatisk fra DJI Cloud. Last opp .txt manuelt fra dronen."
+              : null,
+            last_error_at: isUnsupported ? new Date().toISOString() : null,
           });
 
         if (insertErr && insertErr.code !== "23505") {
