@@ -147,13 +147,17 @@ const ResetPassword = () => {
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="password">Nytt passord</Label>
-                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+                <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
               </div>
+              <PasswordRequirements password={password} />
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Bekreft nytt passord</Label>
-                <Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} />
+                <Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={8} />
+                {confirmPassword.length > 0 && confirmPassword !== password && (
+                  <p className="text-xs text-destructive">Passordene er ikke like</p>
+                )}
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || !isPasswordValid(password) || password !== confirmPassword}>
                 {loading ? "Oppdaterer..." : "Oppdater passord"}
               </Button>
             </form>
