@@ -94,6 +94,8 @@ Deno.serve(async (req) => {
       cross join unnest(m.parsed) as parsed
       where parsed.error_severity in ('ERROR','FATAL','PANIC')
         and postgres_logs.timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
+        and event_message not like '%canceling statement due to user request%'
+        and event_message not like '%canceling statement due to statement timeout%'
     `;
     const dbRows = await runAnalytics(dbErrSql);
     const dbErrors = Number(dbRows?.[0]?.n ?? 0);
