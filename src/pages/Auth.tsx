@@ -16,6 +16,7 @@ import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
 import { startAuthentication } from "@simplewebauthn/browser";
+import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 
 
 const Auth = () => {
