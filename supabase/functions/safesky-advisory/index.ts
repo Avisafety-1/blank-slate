@@ -492,6 +492,20 @@ Deno.serve(async (req) => {
         console.warn('Callsign generation failed, using fallback:', err);
       }
 
+      // Build remarks: optionally append pilot phone number
+      let remarks = "Drone operation - planned route";
+      const includePhone = body.includePhoneInRemarks === true;
+      const rawPhone = typeof body.phoneNumber === 'string' ? body.phoneNumber : '';
+      if (includePhone && rawPhone) {
+        // Sanitize: keep digits, +, spaces, dashes, parens. Cap length.
+        const cleanPhone = rawPhone.replace(/[^\d+\s()\-]/g, '').trim().slice(0, 32);
+        if (cleanPhone) {
+          remarks = `${remarks}. Pilot: ${cleanPhone}`;
+        }
+      }
+      // SafeSky-side remarks should also be capped to be safe
+      remarks = remarks.slice(0, 200);
+
       const payload: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [{
@@ -501,7 +515,7 @@ Deno.serve(async (req) => {
             call_sign: callSign,
             last_update: Math.floor(Date.now() / 1000),
             max_altitude: maxAltitudeAmsl,
-            remarks: "Drone operation - planned route"
+            remarks
           },
           geometry: {
             type: "Polygon",
