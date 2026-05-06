@@ -728,8 +728,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       
       // Force publish the advisory
       if (missionId) {
+        const phoneToSend = includePhoneInRemarks ? (profilePhone || manualPhone).trim() : '';
         const { error } = await supabase.functions.invoke('safesky-advisory', {
-          body: { action: 'publish_advisory', missionId, forcePublish: true },
+          body: { action: 'publish_advisory', missionId, forcePublish: true, includePhoneInRemarks, phoneNumber: phoneToSend || null },
         });
         
         if (error) {
