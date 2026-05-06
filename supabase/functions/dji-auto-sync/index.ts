@@ -584,17 +584,29 @@ Deno.serve(async (req) => {
 
       console.log(`[dji-auto-sync] Per-company sync ${company.navn}: ${credentials?.length || 0} users`);
 
-      let synced = 0, errors = 0, rateLimited = false;
-      for (const cred of credentials || []) {
-        if (rateLimited) break;
-        const r = await syncSingleUser(serviceClient, dronelogKey, company, cred);
-        synced += r.synced; errors += r.errors;
-        if (r.rateLimited) rateLimited = true;
+      const work = async () => {
+        let synced = 0, errors = 0, rateLimited = false;
+        for (const cred of credentials || []) {
+          if (rateLimited) break;
+          const r = await syncSingleUser(serviceClient, dronelogKey, company, cred);
+          synced += r.synced; errors += r.errors;
+          if (r.rateLimited) rateLimited = true;
+        }
+        console.log(`[dji-auto-sync] ${company.navn} done: ${synced} synced, ${errors} errors`);
+      };
+
+      // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(work());
+        return new Response(JSON.stringify({
+          success: true, mode: "background", company: company.navn, users: credentials?.length || 0,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      await work();
       return new Response(JSON.stringify({
-        success: true, synced, errors, rate_limited: rateLimited, elapsed_ms: Date.now() - startMs,
-        companies: [{ company: company.navn, synced, errors }],
+        success: true, company: company.navn, elapsed_ms: Date.now() - startMs,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
