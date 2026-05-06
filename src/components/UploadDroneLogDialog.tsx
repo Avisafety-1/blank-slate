@@ -3209,8 +3209,36 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         {step === 'upload' && (
           <div className="space-y-4">
             {backButton('method')}
-            <div className="space-y-2">
-              <Label>{bulkFiles.length > 1 ? `Velg flylogg-filer (maks 10)` : t('dronelog.selectFile', 'Velg flylogg-fil')}</Label>
+            {showDebugPanel && (
+              <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/5 p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                  <p className="text-xs font-semibold">Debug (kun Avisafe-superadmin) — kun for testing av integrasjon</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Loggtype</Label>
+                  <RadioGroup value={logType} onValueChange={(v) => setLogType(v as any)} className="flex gap-4">
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="auto" id="lt-auto" /><Label htmlFor="lt-auto" className="text-xs cursor-pointer">Auto</Label></div>
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="dji" id="lt-dji" /><Label htmlFor="lt-dji" className="text-xs cursor-pointer">DJI</Label></div>
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="ardupilot" id="lt-ardu" /><Label htmlFor="lt-ardu" className="text-xs cursor-pointer">ArduPilot</Label></div>
+                  </RadioGroup>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">DJI-parser</Label>
+                  <RadioGroup
+                    value={parserOverride}
+                    onValueChange={(v) => setParserOverride(v as 'dronelogapi' | 'flyio')}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="dronelogapi" id="p-dla" disabled={logType === 'ardupilot'} /><Label htmlFor="p-dla" className="text-xs cursor-pointer">DroneLogAPI (standard)</Label></div>
+                    <div className="flex items-center gap-1.5"><RadioGroupItem value="flyio" id="p-fly" disabled={logType === 'ardupilot'} /><Label htmlFor="p-fly" className="text-xs cursor-pointer">Egen Rust (Fly.io)</Label></div>
+                  </RadioGroup>
+                  {logType === 'ardupilot' && (
+                    <p className="text-[11px] text-muted-foreground">ArduPilot bruker alltid Fly.io-parser.</p>
+                  )}
+                </div>
+              </div>
+            )}
               <div
                 className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
