@@ -1,28 +1,25 @@
-# Begrens superadmin til eget selskap i Hendelser
+# Filtrer bort "canceling statement"-støy i system-health-monitor
 
 ## Problem
-SELECT-policyen `Users can view incidents from own company` på `public.incidents` har:
-```
-USING (company_id = ANY (get_user_incident_visible_company_ids(auth.uid()))
-       OR is_superadmin(auth.uid()))
-```
-`OR is_superadmin(...)` overstyrer selskapsfilteret, så Avisafe-superadmins ser hendelser fra alle kunder.
+`system-health-monitor` kjører hvert 10. min og varsler ved ≥10 DB-feil. Den teller ALLE `ERROR/FATAL/PANIC` i `postgres_logs`, inkludert `canceling statement due to user request` — som er ufarlige avbrutte queries (React Query AbortController når komponenter unmountes eller bruker navigerer bort). Daglig digest 07:00 UTC er noe annet og uberørt.
 
-## Endring
-Fjern OR-delen. Superadmins faller tilbake til samme regel som vanlige brukere — kun selskaper returnert av `get_user_incident_visible_company_ids` (eget selskap + datterselskaper).
+## Endring i `supabase/functions/system-health-monitor/index.ts`
+
+Oppdater `dbErrSql` til å ekskludere kjente støy-meldinger:
 
 ```sql
-drop policy if exists "Users can view incidents from own company" on public.incidents;
-
-create policy "Users can view incidents from own company"
-  on public.incidents
-  for select
-  to authenticated
-  using (company_id = ANY (get_user_incident_visible_company_ids(auth.uid())));
+select count(*) as n from postgres_logs
+cross join unnest(metadata) as m
+cross join unnest(m.parsed) as parsed
+where parsed.error_severity in ('ERROR','FATAL','PANIC')
+  and postgres_logs.timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
+  and event_message not like '%canceling statement due to user request%'
+  and event_message not like '%canceling statement due to statement timeout%'
 ```
 
+Resten av funksjonen, terskler og config er uendret.
+
 ## Konsekvens
-- Avisafe-superadmin på `/hendelser` ser nå kun Avisafe sine hendelser (+ ev. datterselskaper).
-- UPDATE/DELETE-policyene for superadmin er allerede selskap-scopet (`company_id = ANY (get_user_visible_company_ids(...))` / `= get_user_company_id(...)`), så de er uberørt.
-- Andre roller (admin, saksbehandler, vanlig bruker) er uberørt.
-- Hvis Avisafe trenger global innsikt senere, gjøres det via en egen edge function med service role — ikke via RLS-bypass.
+- Brukeravbrutte queries teller ikke lenger som "DB-feil" → ingen falske 10-min varsler.
+- Reelle feil (constraint violations, RLS-avslag, syntax-feil osv.) varsles fortsatt.
+- Daglig 07:00-digest fortsetter som før (separat job).
