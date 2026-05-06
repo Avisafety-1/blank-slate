@@ -223,8 +223,11 @@ const snMatchesDjiSn = (stored: string | null | undefined, parsedSn: string | nu
 
 export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
   const { t } = useTranslation();
-  const { user, companyId } = useAuth();
+  const { user, companyId, companyName } = useAuth();
   const { hasAddon } = usePlanGating();
+  const { isSuperAdmin } = useRoleCheck();
+  const showDebugPanel = isSuperAdmin && (companyName || '').toLowerCase() === 'avisafe';
+  const [parserOverride, setParserOverride] = useState<'dronelogapi' | 'flyio'>('dronelogapi');
 
   // Fetch company flight log capabilities
   const [djiEnabled, setDjiEnabled] = useState(true);
