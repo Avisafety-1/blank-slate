@@ -1,62 +1,78 @@
+# Runde 1 — Trygge sikkerhetsfikser uten funksjonell påvirkning
+
 ## Mål
-Redusere DB-belastning med to lav-risiko grep: legge til sammensatte indekser som matcher faktiske filter+sort-mønstre, og fjerne `map_viewer_heartbeats` fra Realtime-publication (skrives ofte, ingen lyttere).
+Fikse 8 av 138 lint-advarsler uten å endre noen brukers tilganger eller funksjonalitet.
 
-## Funn
+## Hva som inkluderes (og hvorfor det er trygt)
 
-### Realtime-publication
-Tabeller publisert til `supabase_realtime`:
-`companies, company_sora_config, customers, drone_accessories, drone_telemetry, dronetag_positions, incident_comments, incidents, map_viewer_heartbeats, missions, news, safesky_beacons`
+### Del A — Fjern 3 meningsløse "service role"-policies (3 lints)
 
-- **`map_viewer_heartbeats`** — INGEN frontend-subscription funnet via kodesøk. Skrives hvert 30s per innlogget bruker av `useAppHeartbeat`. Ren WAL-støy. → **Fjern fra publication.**
-- Resten har faktiske lyttere → behold.
+Service role bypasser **all** RLS uansett. Disse policiene gir derfor ingen ekstra tilgang — de er kun støy som lurer linteren til å tro at vanlige brukere har full skrivetilgang:
 
-Realtime står for ~78% av total DB-tid; å fjerne den hyppigst-skrevne tabellen uten lyttere bør kutte en betydelig del.
+| Tabell | Policy som droppes | Forblir uendret |
+|---|---|---|
+| `bulk_email_campaigns` | `Service role can insert campaigns` (INSERT, with_check=true) | `Admins can view own company campaigns` (SELECT, RLS-begrenset) |
+| `bulk_email_campaigns` | `Service role can update campaigns` (UPDATE, qual=true) | samme som over |
+| `safesky_beacons` | `Service role can manage beacons` (ALL, qual=true, with_check=true) | `Authenticated users can view beacons` (SELECT for innloggede) |
+| `terrain_elevation_cache` | `Service role can insert terrain cache` (INSERT, with_check=true) | `Authenticated users can read terrain cache` (SELECT) |
 
-### Spørringsmønstre vi indekserer for
+**Verifisert at dette er trygt:**
+- `bulk_email_campaigns` skrives kun av edge-funksjonen `send-notification-email` med `SUPABASE_SERVICE_ROLE_KEY` → bypasser RLS → uberørt. Frontend (`CampaignHistorySection.tsx`) gjør kun SELECT.
+- `safesky_beacons` skrives kun av edge-funksjonene `safesky-beacons-fetch` / `safesky-cron-refresh` med service role. Frontend (`mapSafeSky.ts`, `StartFlightDialog.tsx`) gjør kun SELECT + realtime-lytting.
+- `terrain_elevation_cache` skrives kun av edge-funksjonen `terrain-elevation` med service role.
 
-| Spørring (forenklet) | Indeks |
+**Resultat for brukere:** Ingen endring. Vanlige brukere hadde aldri reell INSERT/UPDATE-tilgang her — disse policiene var bare formelt definert. Edge-funksjoner fortsetter å fungere identisk fordi de bruker service-rollen.
+
+### Del B — Sett `search_path = public` på 5 funksjoner (5 lints)
+
+Funksjoner som flagges:
+- `update_drone_flight_hours` (SECURITY DEFINER)
+- `update_equipment_flight_hours` (SECURITY DEFINER)
+- `sync_user_companies_on_role_change` (SECURITY DEFINER)
+- `set_updated_at` (vanlig trigger-funksjon)
+- `set_dronetag_devices_updated_at` (vanlig trigger-funksjon)
+
+Endring: Legge til `SET search_path = public` på funksjonsdefinisjonen (kun en metadata-attributt — kropp, signatur og logikk er uendret).
+
+**Resultat for brukere:** Ingen endring. Funksjonene refererer kun til objekter i `public`-skjemaet, så å låse search_path til `public` gir identisk oppførsel — bare beskytter mot teoretisk schema-hijacking.
+
+## Hva som **IKKE** er med i runde 1
+
+| Lint | Hvorfor utsatt |
 |---|---|
-| `missions WHERE company_id=? AND approval_status=? ORDER BY submitted_for_approval_at DESC` | `(company_id, approval_status, submitted_for_approval_at DESC)` |
-| `equipment WHERE aktiv=? ORDER BY opprettet_dato DESC` | `(aktiv, opprettet_dato DESC)` |
-| `drones WHERE aktiv=? ORDER BY opprettet_dato DESC` | `(aktiv, opprettet_dato DESC)` |
-| `drone_personnel WHERE drone_id=?` (LATERAL join) | `(drone_id)` |
+| `companies` INSERT-policy `Authenticated users can create companies` (with_check=true) | Brukes aktivt av Auth.tsx (linje 455) når en ny bruker registrerer eget selskap via Google-reg. Å stramme denne uten omtanke kan **bryte registreringsflyten**. Krever egen runde med sjekk-logikk (f.eks. "bruker må ikke allerede ha company_id") og testing. |
+| `public_bucket_allows_listing` (5 buckets) | Krever endring fra public til private buckets + bytte til signed URLs i kode. Funksjonell endring → egen runde. |
+| `auth_leaked_password_protection` | Manuell toggle i Supabase Auth-innstillinger (ingen migrasjon). |
+| 118x `*_security_definer_function_executable` | Krever audit av 59 funksjoner. Egen runde. |
+| 3x `extension_in_public` | Anbefales ignorert (flytting er risikabelt, gevinst kosmetisk). |
 
-Sammensatte indekser dekker både filter og sort i samme indeksskan → ingen ekstra sort-steg.
+## Migrasjon (én SQL-fil)
 
-## Endringer
-
-### Migrasjon: indekser + drop fra realtime
 ```sql
--- Sammensatte indekser matchet til faktiske queries
-CREATE INDEX IF NOT EXISTS idx_missions_company_approval_submitted
-  ON public.missions (company_id, approval_status, submitted_for_approval_at DESC);
+-- Del A: Fjern redundante service-role policies (service role bypasser RLS)
+DROP POLICY IF EXISTS "Service role can insert campaigns"      ON public.bulk_email_campaigns;
+DROP POLICY IF EXISTS "Service role can update campaigns"      ON public.bulk_email_campaigns;
+DROP POLICY IF EXISTS "Service role can manage beacons"        ON public.safesky_beacons;
+DROP POLICY IF EXISTS "Service role can insert terrain cache"  ON public.terrain_elevation_cache;
 
-CREATE INDEX IF NOT EXISTS idx_equipment_active_created
-  ON public.equipment (aktiv, opprettet_dato DESC);
-
-CREATE INDEX IF NOT EXISTS idx_drones_active_created
-  ON public.drones (aktiv, opprettet_dato DESC);
-
-CREATE INDEX IF NOT EXISTS idx_drone_personnel_drone_id
-  ON public.drone_personnel (drone_id);
-
--- Fjern høy-skriv tabell uten lyttere fra realtime
-ALTER PUBLICATION supabase_realtime DROP TABLE public.map_viewer_heartbeats;
+-- Del B: Lås search_path på 5 funksjoner
+ALTER FUNCTION public.update_drone_flight_hours()        SET search_path = public;
+ALTER FUNCTION public.update_equipment_flight_hours()    SET search_path = public;
+ALTER FUNCTION public.sync_user_companies_on_role_change() SET search_path = public;
+ALTER FUNCTION public.set_updated_at()                   SET search_path = public;
+ALTER FUNCTION public.set_dronetag_devices_updated_at()  SET search_path = public;
 ```
 
-Ingen kodeendringer nødvendig.
-- Eksisterende `idx_missions_company_id` (single-column) blir overflødig av den nye sammensatte (Postgres kan bruke prefix), men vi lar den stå — å droppe gir ingen merkbar gevinst og øker risikoen.
-- Edge-funksjoner som leser `map_viewer_heartbeats` bruker SELECT, ikke realtime — fortsetter å fungere.
+(Ingen funksjoner tar argumenter — verifisert via `pg_proc`.)
 
-## Risiko
-Lav. Indekser er additive; realtime-drop er bekreftet trygt via kodesøk (ingen `.on('postgres_changes', ..., { table: 'map_viewer_heartbeats' })`).
+## Risikomatrise
 
-## Forventet effekt
-- Approval-queue spørring (1.8M kall/uke) blir betydelig raskere — indeksen serverer både filter og sort.
-- `drones`/`equipment` listing merkbart raskere ved mange rader.
-- Realtime-overhead synker når heartbeat-WAL-støyen forsvinner.
+| Endring | Funksjonell risiko | Rollback |
+|---|---|---|
+| DROP 4 service-role policies | **Null** — service role bypasser RLS | `CREATE POLICY ...` på nytt (trivielt) |
+| ALTER FUNCTION search_path | **Null** — kun metadata, ingen kropp-endring | `ALTER FUNCTION ... RESET search_path` |
 
-## Mulig oppfølging (ikke i denne runden)
-- FH2-sync skriver `companies.flighthub2_base_url` 152k ganger — bør kun skrive ved endring.
-- Cache `profiles.can_approve_missions` / `can_be_incident_responsible` i AuthContext.
-- Debounce + LRU-cache `check_mission_airspace` RPC.
+## Forventet resultat
+- 8 av 138 lints fjernet (5 search_path + 3 always_true; den 4. always_true på `safesky_beacons.ALL` er én policy → 1 lint, men den 5. always_true var `companies` som vi utsetter).
+- Faktisk: 4 always_true → 3 fikses i denne runden, 1 (`companies`) utsettes. Pluss 5 search_path = **8 lints fikset**.
+- Null endring i hva brukere kan se eller gjøre.
