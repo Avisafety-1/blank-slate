@@ -1191,6 +1191,7 @@ Deno.serve(async (req) => {
 
     const csvText = await dronelogResponse.text();
     const result = parseCsvToResult(csvText);
+    (result as any).parser_used = "dronelogapi";
 
     return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
