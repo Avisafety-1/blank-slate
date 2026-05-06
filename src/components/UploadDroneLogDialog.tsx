@@ -697,10 +697,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const formData = new FormData();
       formData.append('file', safeFile);
 
-      // Route to correct edge function based on file type
+      // Route to correct edge function based on file type or explicit override
       const fileName = file.name.toLowerCase();
       const isArduPilot = logType === 'ardupilot' || (logType === 'auto' && (fileName.endsWith('.bin') || fileName.endsWith('.zip')));
       const endpoint = isArduPilot ? 'process-ardupilot' : 'process-dronelog';
+      if (showDebugPanel && !isArduPilot) {
+        formData.append('parser', parserOverride);
+      }
 
       const { data, error } = await supabase.functions.invoke(endpoint, { body: formData });
       if (error) throw error;
