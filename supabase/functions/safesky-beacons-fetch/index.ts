@@ -75,26 +75,33 @@ Deno.serve(async (req) => {
     const hasActiveViewers = activeViewers && activeViewers.length > 0;
     const hasActiveDronetagFlights = activeDronetagFlights && activeDronetagFlights.length > 0;
 
-    // If no active viewers AND no active dronetag flights, skip API call to save quota
+    // If no active viewers AND no active dronetag flights, skip API call to save quota.
+    // Only run cleanup when there might be stale rows (check first via cheap indexed SELECT).
     if (!hasActiveViewers && !hasActiveDronetagFlights) {
-      console.log('No active map viewers and no active dronetag flights - skipping SafeSky API call');
-      
-      // Still clean up old beacons
       const beaconCutoff = new Date(Date.now() - BEACON_MAX_AGE_MS).toISOString();
-      const { data: deletedBeacons } = await supabase
+      let deletedCount = 0;
+
+      const { data: stale } = await supabase
         .from('safesky_beacons')
-        .delete()
+        .select('id')
         .lt('updated_at', beaconCutoff)
-        .select('id');
-      
-      const deletedCount = deletedBeacons?.length || 0;
-      if (deletedCount > 0) {
-        console.log(`Cleaned up ${deletedCount} old beacons`);
+        .limit(1);
+
+      if (stale && stale.length > 0) {
+        const { data: deletedBeacons } = await supabase
+          .from('safesky_beacons')
+          .delete()
+          .lt('updated_at', beaconCutoff)
+          .select('id');
+        deletedCount = deletedBeacons?.length || 0;
+        if (deletedCount > 0) {
+          console.log(`Cleaned up ${deletedCount} old beacons`);
+        }
       }
-      
+
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           skipped: true,
           reason: 'No active map viewers or dronetag flights',
           beaconsDeleted: deletedCount
