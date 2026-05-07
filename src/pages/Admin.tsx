@@ -231,6 +231,30 @@ const Admin = () => {
 
       setUserRoles(rolesData || []);
 
+      // Avisafe superadmin: fetch cross-company pending users invited by Avisafe
+      if (isAvisafeSuperadmin) {
+        try {
+          const { data: invites } = await supabase
+            .from('user_invitations' as any)
+            .select('accepted_user_id')
+            .not('accepted_user_id', 'is', null);
+          const inviteIds = (invites || []).map((i: any) => i.accepted_user_id).filter(Boolean);
+          if (inviteIds.length > 0) {
+            const { data: pendingCross } = await supabase
+              .from('profiles')
+              .select('*, companies(navn)')
+              .in('id', inviteIds)
+              .eq('approved', false);
+            const localIds = new Set((profilesData || []).map((p: any) => p.id));
+            setCrossCompanyPending(((pendingCross || []) as Profile[]).filter(p => !localIds.has(p.id)));
+          } else {
+            setCrossCompanyPending([]);
+          }
+        } catch (e) {
+          console.error('cross-company pending fetch failed', e);
+        }
+      }
+
       // Set up real-time subscriptions (debounced to reduce disk IO)
       let adminDebounce: number | null = null;
       const debouncedFetchData = () => {
