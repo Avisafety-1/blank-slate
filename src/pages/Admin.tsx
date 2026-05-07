@@ -122,6 +122,9 @@ const Admin = () => {
   const [pendingApproveUserId, setPendingApproveUserId] = useState<string | null>(null);
   const [childCompanies, setChildCompanies] = useState<ChildCompanyOption[]>([]);
   const [inviteDepartment, setInviteDepartment] = useState<string>("parent");
+  const [crossCompanyPending, setCrossCompanyPending] = useState<Profile[]>([]);
+
+  const isAvisafeSuperadmin = isSuperAdmin && (companyName || '').toLowerCase() === 'avisafe';
 
   useEffect(() => {
     if (!loading && !user) {
@@ -228,6 +231,30 @@ const Admin = () => {
 
       setUserRoles(rolesData || []);
 
+      // Avisafe superadmin: fetch cross-company pending users invited by Avisafe
+      if (isAvisafeSuperadmin) {
+        try {
+          const { data: invites } = await supabase
+            .from('user_invitations' as any)
+            .select('accepted_user_id')
+            .not('accepted_user_id', 'is', null);
+          const inviteIds = (invites || []).map((i: any) => i.accepted_user_id).filter(Boolean);
+          if (inviteIds.length > 0) {
+            const { data: pendingCross } = await supabase
+              .from('profiles')
+              .select('*, companies(navn)')
+              .in('id', inviteIds)
+              .eq('approved', false);
+            const localIds = new Set((profilesData || []).map((p: any) => p.id));
+            setCrossCompanyPending(((pendingCross || []) as Profile[]).filter(p => !localIds.has(p.id)));
+          } else {
+            setCrossCompanyPending([]);
+          }
+        } catch (e) {
+          console.error('cross-company pending fetch failed', e);
+        }
+      }
+
       // Set up real-time subscriptions (debounced to reduce disk IO)
       let adminDebounce: number | null = null;
       const debouncedFetchData = () => {
@@ -324,6 +351,22 @@ const Admin = () => {
         next.delete(userId);
         return next;
       });
+    }
+  };
+
+  const approveInvitedUser = async (userId: string) => {
+    if (approvingUsers.has(userId)) return;
+    setApprovingUsers(prev => new Set(prev).add(userId));
+    try {
+      const { error } = await supabase.functions.invoke('approve-invited-user', { body: { user_id: userId } });
+      if (error) throw error;
+      toast.success(t('admin.userApproved'));
+      fetchData();
+    } catch (e) {
+      console.error('approve-invited-user error', e);
+      toast.error(t('admin.errorApprovingUser'));
+    } finally {
+      setApprovingUsers(prev => { const n = new Set(prev); n.delete(userId); return n; });
     }
   };
 
@@ -997,6 +1040,48 @@ const Admin = () => {
               </Card>
 
               {/* Pending Users */}
+              {isAvisafeSuperadmin && crossCompanyPending.length > 0 && (
+                <Card className="border-primary/40">
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <UserCog className="w-4 h-4 sm:w-5 sm:h-5" />
+                      Inviterte ventende godkjenning ({crossCompanyPending.length})
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Brukere du har invitert til andre selskap som venter på godkjenning.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-2 sm:px-6">
+                    <div className="space-y-2">
+                      {crossCompanyPending.map((profile) => (
+                        <div key={profile.id} className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm sm:text-base truncate">{profile.full_name || t('common.notSpecified')}</p>
+                              {profile.companies && (
+                                <Badge variant="outline" className="text-xs flex-shrink-0">{(profile.companies as any).navn}</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span className="truncate">{profile.email || t('admin.noEmail')}</span>
+                              <span>•</span>
+                              <span>{new Date(profile.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" onClick={() => approveInvitedUser(profile.id)} disabled={approvingUsers.has(profile.id)} className="h-9 sm:h-10">
+                              <Check className="w-4 h-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">{approvingUsers.has(profile.id) ? t('admin.approving') : t('admin.approve')}</span>
+                              <span className="sm:hidden">{t('common.ok')}</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {pendingUsers.length > 0 && (
                 <Card>
                   <CardHeader className="pb-3 sm:pb-6">

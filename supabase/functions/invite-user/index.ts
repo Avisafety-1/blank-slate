@@ -74,6 +74,25 @@ serve(async (req) => {
 
     await sendEmail({ from: senderAddress, to: email, subject: sanitizeSubject(template.subject), html: template.content });
 
+    // Resolve target company from registration code
+    try {
+      const { data: targetCompany } = await supabase.rpc('get_company_by_registration_code', { p_code: registrationCode });
+      const targetCompanyId = Array.isArray(targetCompany) && targetCompany.length > 0 ? targetCompany[0].company_id : null;
+      if (targetCompanyId) {
+        await supabase.from('user_invitations').insert({
+          email: email.toLowerCase(),
+          target_company_id: targetCompanyId,
+          invited_by: user.id,
+          inviter_company_id: companyId || null,
+          registration_code: registrationCode,
+        });
+      } else {
+        console.warn(`Could not resolve target company for registration code ${registrationCode}`);
+      }
+    } catch (logErr) {
+      console.error('Failed to log invitation:', logErr);
+    }
+
     console.log(`✓ Invite email sent to ${email} from company ${companyName}`);
     return new Response(JSON.stringify({ success: true }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
