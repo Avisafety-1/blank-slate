@@ -239,6 +239,51 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Latency-varsel
+    if (slowFns.length > 0) {
+      const list = slowFns.map((r: any) => `<li>${r.function_id}: p95 = ${Math.round(Number(r.p95_ms))} ms (n=${r.n})</li>`).join("");
+      triggered.push({
+        type: "high_latency",
+        subject: `Høy latency: ${slowFns.length} edge-funksjon(er) over ${cfg.edge_p95_ms} ms p95`,
+        html: `<p>Følgende edge-funksjoner har p95 over terskel siste 10 min:</p><ul>${list}</ul>`,
+      });
+    }
+
+    // Rate-limit-varsel
+    if (total429 >= (cfg.rate_limit_per_10m ?? 20)) {
+      const list = rl429.map((r: any) => `<li>${r.function_id}: ${r.n}</li>`).join("");
+      triggered.push({
+        type: "rate_limits",
+        subject: `Rate-limits trigget: ${total429} HTTP 429 siste 10 min`,
+        html: `<p>Totalt ${total429} 429-svar (terskel ${cfg.rate_limit_per_10m}).</p><ul>${list}</ul>`,
+      });
+    }
+
+    // Volum-spike eller absolutt høyt volum
+    const volThreshold = Number(cfg.request_volume_per_10m ?? 5000);
+    const spikeThreshold = Number(cfg.request_volume_spike_factor ?? 3.0);
+    if (volNow >= volThreshold || (volPrev >= 100 && spikeFactor >= spikeThreshold)) {
+      triggered.push({
+        type: "request_volume",
+        subject: `Høyt requestvolum: ${volNow} siste 10 min (×${spikeFactor.toFixed(1)})`,
+        html: `<p>Forrige 10 min: ${volPrev} requests. Nå: <b>${volNow}</b> (faktor ${spikeFactor.toFixed(2)}, absolutt terskel ${volThreshold}, spike-faktor ${spikeThreshold}).</p>`,
+      });
+    }
+
+    // Feil konsentrert på IP / User-Agent
+    const ipThreshold = Number(cfg.errors_per_ip_per_10m ?? 50);
+    const topIpHits = errByIp.filter((r: any) => Number(r.n ?? 0) >= ipThreshold);
+    const topUaHits = errByUa.filter((r: any) => Number(r.n ?? 0) >= ipThreshold);
+    if (topIpHits.length > 0 || topUaHits.length > 0) {
+      const ipList = topIpHits.map((r: any) => `<li><code>${r.ip}</code>: ${r.n} feil</li>`).join("");
+      const uaList = topUaHits.map((r: any) => `<li><code>${String(r.ua).slice(0, 120)}</code>: ${r.n} feil</li>`).join("");
+      triggered.push({
+        type: "abusive_clients",
+        subject: `Konsentrert feil-trafikk: ${topIpHits.length} IP / ${topUaHits.length} UA over terskel`,
+        html: `<p>Klienter med ≥ ${ipThreshold} 4xx/5xx siste 10 min:</p>${ipList ? `<h4>Per IP</h4><ul>${ipList}</ul>` : ""}${uaList ? `<h4>Per User-Agent</h4><ul>${uaList}</ul>` : ""}`,
+      });
+    }
+
     const sent: string[] = [];
     for (const t of triggered) {
       if (await alreadyAlerted(t.type, 60)) continue;
