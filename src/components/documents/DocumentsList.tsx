@@ -63,6 +63,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   "kml-kmz": "KML/KMZ",
   dokumentstyring: "Dokumentstyring",
   risikovurderinger: "Risikovurderinger",
+  operasjonsmanual: "Operasjonsmanual",
   annet: "Annet"
 };
 

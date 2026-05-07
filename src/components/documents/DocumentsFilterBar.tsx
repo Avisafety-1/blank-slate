@@ -26,6 +26,7 @@ const CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "kml-kmz", label: "KML/KMZ" },
   { value: "dokumentstyring", label: "Dokumentstyring" },
   { value: "risikovurderinger", label: "Risikovurderinger" },
+  { value: "operasjonsmanual", label: "Operasjonsmanual" },
   { value: "annet", label: "Annet" },
 ];
 
