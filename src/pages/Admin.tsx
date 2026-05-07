@@ -354,6 +354,21 @@ const Admin = () => {
     }
   };
 
+  const approveInvitedUser = async (userId: string) => {
+    if (approvingUsers.has(userId)) return;
+    setApprovingUsers(prev => new Set(prev).add(userId));
+    try {
+      const { error } = await supabase.functions.invoke('approve-invited-user', { body: { user_id: userId } });
+      if (error) throw error;
+      toast.success(t('admin.userApproved'));
+      fetchData();
+    } catch (e) {
+      console.error('approve-invited-user error', e);
+      toast.error(t('admin.errorApprovingUser'));
+    } finally {
+      setApprovingUsers(prev => { const n = new Set(prev); n.delete(userId); return n; });
+    }
+
   const assignRole = async (userId: string, role: string) => {
     // Prevent non-superadmins from assigning superadmin role to themselves
     if (role === 'superadmin' && userId === user?.id && !isSuperAdmin) {
