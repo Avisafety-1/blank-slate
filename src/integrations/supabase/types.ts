@@ -3878,8 +3878,13 @@ export type Database = {
           edge_5xx_per_10m: number
           edge_p95_ms: number
           enabled: boolean
+          errors_per_ip_per_10m: number
           id: number
+          latency_p95_alert_enabled: boolean
+          rate_limit_per_10m: number
           recipient_emails: string[]
+          request_volume_per_10m: number
+          request_volume_spike_factor: number
           updated_at: string
         }
         Insert: {
@@ -3888,8 +3893,13 @@ export type Database = {
           edge_5xx_per_10m?: number
           edge_p95_ms?: number
           enabled?: boolean
+          errors_per_ip_per_10m?: number
           id?: number
+          latency_p95_alert_enabled?: boolean
+          rate_limit_per_10m?: number
           recipient_emails?: string[]
+          request_volume_per_10m?: number
+          request_volume_spike_factor?: number
           updated_at?: string
         }
         Update: {
@@ -3898,8 +3908,13 @@ export type Database = {
           edge_5xx_per_10m?: number
           edge_p95_ms?: number
           enabled?: boolean
+          errors_per_ip_per_10m?: number
           id?: number
+          latency_p95_alert_enabled?: boolean
+          rate_limit_per_10m?: number
           recipient_emails?: string[]
+          request_volume_per_10m?: number
+          request_volume_spike_factor?: number
           updated_at?: string
         }
         Relationships: []
