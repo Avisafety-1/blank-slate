@@ -127,6 +127,93 @@ Deno.serve(async (req) => {
     const authFails = Number(authRows?.[0]?.n ?? 0);
     findings.auth_failures_10m = authFails;
 
+    // 4) Latency p95 per edge function siste 10 min
+    const latencySql = `
+      select m.function_id,
+             approx_quantiles(m.execution_time_ms, 100)[offset(95)] as p95_ms,
+             count(*) as n
+      from function_edge_logs
+      cross join unnest(metadata) as m
+      where function_edge_logs.timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
+        and m.execution_time_ms is not null
+      group by m.function_id
+      having approx_quantiles(m.execution_time_ms, 100)[offset(95)] >= ${Number(cfg.edge_p95_ms ?? 10000)}
+      order by p95_ms desc
+      limit 10
+    `;
+    const slowFns = cfg.latency_p95_alert_enabled ? await runAnalytics(latencySql) : [];
+    findings.slow_functions_10m = slowFns;
+
+    // 5) Rate-limit triggers (HTTP 429) siste 10 min
+    const rl429Sql = `
+      select m.function_id, count(*) as n from function_edge_logs
+      cross join unnest(metadata) as m
+      cross join unnest(m.response) as response
+      where response.status_code = 429
+        and function_edge_logs.timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
+      group by m.function_id
+      order by n desc
+    `;
+    const rl429 = await runAnalytics(rl429Sql);
+    const total429 = rl429.reduce((s: number, r: any) => s + Number(r.n ?? 0), 0);
+    findings.rate_limit_429_10m = total429;
+    findings.rate_limit_by_function = rl429;
+
+    // 6) Request-volum siste 10 min vs forrige 10 min
+    const volNowSql = `
+      select count(*) as n from function_edge_logs
+      where timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
+    `;
+    const volPrevSql = `
+      select count(*) as n from function_edge_logs
+      where timestamp > timestamp_sub(current_timestamp(), interval 20 minute)
+        and timestamp <= timestamp_sub(current_timestamp(), interval 10 minute)
+    `;
+    const [volNowRows, volPrevRows] = await Promise.all([
+      runAnalytics(volNowSql),
+      runAnalytics(volPrevSql),
+    ]);
+    const volNow = Number(volNowRows?.[0]?.n ?? 0);
+    const volPrev = Number(volPrevRows?.[0]?.n ?? 0);
+    const spikeFactor = volPrev > 0 ? volNow / volPrev : 0;
+    findings.request_volume_now = volNow;
+    findings.request_volume_prev = volPrev;
+    findings.request_volume_spike_factor = Number(spikeFactor.toFixed(2));
+
+    // 7) Feil per IP og User-Agent siste 10 min
+    const errByIpSql = `
+      select request.cf_connecting_ip as ip, count(*) as n
+      from function_edge_logs
+      cross join unnest(metadata) as m
+      cross join unnest(m.request) as request
+      cross join unnest(m.response) as response
+      where response.status_code >= 400
+        and function_edge_logs.timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
+        and request.cf_connecting_ip is not null
+      group by ip
+      order by n desc
+      limit 10
+    `;
+    const errByUaSql = `
+      select request.headers.user_agent as ua, count(*) as n
+      from function_edge_logs
+      cross join unnest(metadata) as m
+      cross join unnest(m.request) as request
+      cross join unnest(m.response) as response
+      where response.status_code >= 400
+        and function_edge_logs.timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
+        and request.headers.user_agent is not null
+      group by ua
+      order by n desc
+      limit 10
+    `;
+    const [errByIp, errByUa] = await Promise.all([
+      runAnalytics(errByIpSql),
+      runAnalytics(errByUaSql),
+    ]);
+    findings.errors_by_ip_10m = errByIp;
+    findings.errors_by_ua_10m = errByUa;
+
     const triggered: { type: string; subject: string; html: string }[] = [];
 
     if (dbErrors >= cfg.db_errors_per_10m) {
@@ -149,6 +236,51 @@ Deno.serve(async (req) => {
         type: "auth_failures",
         subject: `Mange auth-feil: ${authFails} siste 10 min`,
         html: `<p>${authFails} auth-feil siste 10 minutter (terskel ${cfg.auth_failures_per_10m}).</p>`,
+      });
+    }
+
+    // Latency-varsel
+    if (slowFns.length > 0) {
+      const list = slowFns.map((r: any) => `<li>${r.function_id}: p95 = ${Math.round(Number(r.p95_ms))} ms (n=${r.n})</li>`).join("");
+      triggered.push({
+        type: "high_latency",
+        subject: `Høy latency: ${slowFns.length} edge-funksjon(er) over ${cfg.edge_p95_ms} ms p95`,
+        html: `<p>Følgende edge-funksjoner har p95 over terskel siste 10 min:</p><ul>${list}</ul>`,
+      });
+    }
+
+    // Rate-limit-varsel
+    if (total429 >= (cfg.rate_limit_per_10m ?? 20)) {
+      const list = rl429.map((r: any) => `<li>${r.function_id}: ${r.n}</li>`).join("");
+      triggered.push({
+        type: "rate_limits",
+        subject: `Rate-limits trigget: ${total429} HTTP 429 siste 10 min`,
+        html: `<p>Totalt ${total429} 429-svar (terskel ${cfg.rate_limit_per_10m}).</p><ul>${list}</ul>`,
+      });
+    }
+
+    // Volum-spike eller absolutt høyt volum
+    const volThreshold = Number(cfg.request_volume_per_10m ?? 5000);
+    const spikeThreshold = Number(cfg.request_volume_spike_factor ?? 3.0);
+    if (volNow >= volThreshold || (volPrev >= 100 && spikeFactor >= spikeThreshold)) {
+      triggered.push({
+        type: "request_volume",
+        subject: `Høyt requestvolum: ${volNow} siste 10 min (×${spikeFactor.toFixed(1)})`,
+        html: `<p>Forrige 10 min: ${volPrev} requests. Nå: <b>${volNow}</b> (faktor ${spikeFactor.toFixed(2)}, absolutt terskel ${volThreshold}, spike-faktor ${spikeThreshold}).</p>`,
+      });
+    }
+
+    // Feil konsentrert på IP / User-Agent
+    const ipThreshold = Number(cfg.errors_per_ip_per_10m ?? 50);
+    const topIpHits = errByIp.filter((r: any) => Number(r.n ?? 0) >= ipThreshold);
+    const topUaHits = errByUa.filter((r: any) => Number(r.n ?? 0) >= ipThreshold);
+    if (topIpHits.length > 0 || topUaHits.length > 0) {
+      const ipList = topIpHits.map((r: any) => `<li><code>${r.ip}</code>: ${r.n} feil</li>`).join("");
+      const uaList = topUaHits.map((r: any) => `<li><code>${String(r.ua).slice(0, 120)}</code>: ${r.n} feil</li>`).join("");
+      triggered.push({
+        type: "abusive_clients",
+        subject: `Konsentrert feil-trafikk: ${topIpHits.length} IP / ${topUaHits.length} UA over terskel`,
+        html: `<p>Klienter med ≥ ${ipThreshold} 4xx/5xx siste 10 min:</p>${ipList ? `<h4>Per IP</h4><ul>${ipList}</ul>` : ""}${uaList ? `<h4>Per User-Agent</h4><ul>${uaList}</ul>` : ""}`,
       });
     }
 
