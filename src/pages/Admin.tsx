@@ -368,6 +368,7 @@ const Admin = () => {
     } finally {
       setApprovingUsers(prev => { const n = new Set(prev); n.delete(userId); return n; });
     }
+  };
 
   const assignRole = async (userId: string, role: string) => {
     // Prevent non-superadmins from assigning superadmin role to themselves
