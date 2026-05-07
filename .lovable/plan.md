@@ -1,48 +1,35 @@
-## Revidert plan — behold frekvenser, fjern de unødvendige DB-kallene
+## Problem
 
-Du har rett: vi må beholde rytmen for å oppfylle SafeSky-kravene og holde live-kart oppdatert.
+Trigger `on_company_created_create_email_settings` på `companies`-tabellen kaller funksjonen `public.create_default_email_settings()`, som fortsatt prøver å sette inn `smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass`, `smtp_secure` i `email_settings`. Disse kolonnene ble fjernet da vi gikk over til Resend. Derfor feiler enhver `INSERT INTO companies` (= "legg til selskap") med "column smtp_host does not exist".
 
-- `safesky-cron-refresh` (50s): nødvendig for advisory-push til SafeSky → **uendret**
-- `safesky-beacons-norway` (10s): nødvendig for at fly skal bevege seg jevnt på kartet → **uendret**
+Gjenværende kolonner i `email_settings`: `id, company_id, from_name, from_email, enabled, created_at, updated_at`.
 
-Det reelle problemet er ikke frekvensen, men at hver kjøring gjør **dyre, unødvendige DB-operasjoner**, særlig DELETE uten indeks.
+## Endring (én migrasjon)
 
-## Endringer
+Erstatt funksjonsdefinisjonen slik at den kun setter de kolonnene som finnes nå:
 
-### 1. Indeks på `safesky_beacons.updated_at` (migration)
-DELETE `WHERE updated_at < cutoff` gjør i dag full table scan hvert 10s.
 ```sql
-CREATE INDEX IF NOT EXISTS idx_safesky_beacons_updated_at
-  ON public.safesky_beacons (updated_at);
+CREATE OR REPLACE FUNCTION public.create_default_email_settings()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  INSERT INTO public.email_settings (company_id, from_name, from_email, enabled)
+  VALUES (NEW.id, 'AviSafe', 'noreply@avisafe.no', true)
+  ON CONFLICT (company_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
 ```
-Dette alene bør fjerne mesteparten av CPU-trykket.
 
-### 2. Skip cleanup-DELETE når det ikke er noe å rydde
-I `safesky-beacons-fetch`: i dag kjøres `DELETE ... lt('updated_at', cutoff)` ubetinget hver 10s, selv når tabellen nettopp er tømt.
+Trigger beholdes som den er — den fyrer fortsatt `AFTER INSERT` på `companies` og oppretter en standardrad for det nye selskapet, bare uten de fjernede SMTP-feltene.
 
-Endring: kall DELETE kun når vi nettopp har upserted beacons (eller maks hvert 60s ved tom tabell). Reduserer write-load betydelig under stille perioder.
+## Hvorfor ikke fjerne triggeren helt
 
-### 3. Skip heartbeat/active_flights-sjekk når funksjonen ble kalt fra cron AND nylig hadde 0 viewers
-Mindre vinning, men cacher resultatet 30s i en liten `safesky_runtime_state`-rad så vi unngår 2 SELECT hvert 10. sek når ingen ser på kartet.
+`email_settings` brukes fortsatt av `_shared/email-config.ts` (`getEmailConfig`) for å hente `from_name` / `from_email` / `enabled` per selskap. Å beholde standardraden gjør at nye selskap automatisk får riktig avsender uten ekstra steg.
 
-### 4. Indeks-sjekk på `map_viewer_heartbeats.last_seen`
-Allerede finnes (`idx_map_viewer_heartbeats_last_seen`, 668k scans) — OK, ingen endring.
+## Ingen frontend-endringer trengs
 
-### 5. Behold `safesky-cron-refresh` (50s) urørt
-Den kjører `No active flights - skipping beacon fetch` raskt når ingen flyr, så den er allerede billig. Eneste forbedring: del indeks-fordel fra punkt 1.
-
-## Tekniske detaljer
-
-**Filer**
-- Ny migration: indeks på `safesky_beacons.updated_at`
-- `supabase/functions/safesky-beacons-fetch/index.ts`: betinget DELETE + tidlig retur uten DELETE når ingenting endret seg
-
-**Ingen endring i**
-- Cron-frekvens (10s / 50s beholdes)
-- Klient-side polling/realtime
-- SafeSky API-kall
-
-## Forventet effekt
-- DELETE går fra full scan på `safesky_beacons` → indeksoppslag (10–100× raskere)
-- Antall write-operasjoner per minutt mot `safesky_beacons` faller drastisk når ingen er aktive
-- CPU-spiker som den 13:48 bør forsvinne uten å påvirke live-kart eller SafeSky-compliance
+Søk i `src/` og `supabase/functions/` viser ingen referanser til `smtp_host` lenger — kun denne DB-funksjonen var igjen fra ryddingen.
