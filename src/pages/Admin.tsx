@@ -122,6 +122,9 @@ const Admin = () => {
   const [pendingApproveUserId, setPendingApproveUserId] = useState<string | null>(null);
   const [childCompanies, setChildCompanies] = useState<ChildCompanyOption[]>([]);
   const [inviteDepartment, setInviteDepartment] = useState<string>("parent");
+  const [crossCompanyPending, setCrossCompanyPending] = useState<Profile[]>([]);
+
+  const isAvisafeSuperadmin = isSuperAdmin && (companyName || '').toLowerCase() === 'avisafe';
 
   useEffect(() => {
     if (!loading && !user) {
