@@ -177,7 +177,48 @@ serve(async (req: Request): Promise<Response> => {
           ? supabase.from('notification_preferences').select('user_id').in('user_id', parentAdminIds).eq('email_child_new_user_pending', true)
           : Promise.resolve({ data: [] }),
       ]);
-      const notificationUserIds = [...new Set([...(sameCompanyPrefs || []).map((p: any) => p.user_id), ...(parentPrefs || []).map((p: any) => p.user_id)])];
+      const notificationUserIdsSet = new Set<string>([
+        ...(sameCompanyPrefs || []).map((p: any) => p.user_id),
+        ...(parentPrefs || []).map((p: any) => p.user_id),
+      ]);
+
+      // If this user was invited by an Avisafe superadmin, also notify all Avisafe superadmins
+      try {
+        const { data: invitation } = await supabase
+          .from('user_invitations')
+          .select('invited_by')
+          .eq('target_company_id', companyId)
+          .ilike('email', newUser.email)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (invitation?.invited_by) {
+          const { data: isAvisafe } = await supabase.rpc('is_avisafe_superadmin', { _user_id: invitation.invited_by });
+          if (isAvisafe === true) {
+            const { data: avisafeCompany } = await supabase
+              .from('companies').select('id').ilike('navn', 'avisafe').limit(1).maybeSingle();
+            if (avisafeCompany?.id) {
+              const { data: avisafeSuperadmins } = await supabase
+                .from('user_roles')
+                .select('user_id, profiles!inner(id, company_id, approved)')
+                .eq('role', 'superadmin')
+                .eq('profiles.company_id', avisafeCompany.id)
+                .eq('profiles.approved', true);
+              const ids = (avisafeSuperadmins || []).map((r: any) => r.user_id);
+              if (ids.length) {
+                const { data: avisafePrefs } = await supabase
+                  .from('notification_preferences').select('user_id').in('user_id', ids).eq('email_new_user_pending', true);
+                (avisafePrefs || []).forEach((p: any) => notificationUserIdsSet.add(p.user_id));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Avisafe-invited notification check failed:', e);
+      }
+
+      const notificationUserIds = [...notificationUserIdsSet];
       if (!notificationUserIds.length) return new Response(JSON.stringify({ message: 'No admins with notifications' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const templateResult = await getEmailTemplateWithFallback(companyId, 'admin_new_user', { new_user_name: newUser.fullName, new_user_email: newUser.email, company_name: newUser.companyName });
