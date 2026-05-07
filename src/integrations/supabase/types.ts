@@ -5201,6 +5201,64 @@ export type Database = {
           },
         ]
       }
+      user_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_user_id: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_by: string | null
+          inviter_company_id: string | null
+          registration_code: string | null
+          target_company_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_user_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_by?: string | null
+          inviter_company_id?: string | null
+          registration_code?: string | null
+          target_company_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_user_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_by?: string | null
+          inviter_company_id?: string | null
+          registration_code?: string | null
+          target_company_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_invitations_accepted_user_id_fkey"
+            columns: ["accepted_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_invitations_inviter_company_id_fkey"
+            columns: ["inviter_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_invitations_target_company_id_fkey"
+            columns: ["target_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -5886,6 +5944,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_avisafe_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
       match_manual_chunks: {
