@@ -199,17 +199,21 @@ serve(async (req: Request): Promise<Response> => {
             const { data: avisafeCompany } = await supabase
               .from('companies').select('id').ilike('navn', 'avisafe').limit(1).maybeSingle();
             if (avisafeCompany?.id) {
-              const { data: avisafeSuperadmins } = await supabase
-                .from('user_roles')
-                .select('user_id, profiles!inner(id, company_id, approved)')
-                .eq('role', 'superadmin')
-                .eq('profiles.company_id', avisafeCompany.id)
-                .eq('profiles.approved', true);
-              const ids = (avisafeSuperadmins || []).map((r: any) => r.user_id);
-              if (ids.length) {
-                const { data: avisafePrefs } = await supabase
-                  .from('notification_preferences').select('user_id').in('user_id', ids).eq('email_new_user_pending', true);
-                (avisafePrefs || []).forEach((p: any) => notificationUserIdsSet.add(p.user_id));
+              const { data: superadminRoles } = await supabase
+                .from('user_roles').select('user_id').eq('role', 'superadmin');
+              const superadminIds = (superadminRoles || []).map((r: any) => r.user_id);
+              if (superadminIds.length) {
+                const { data: avisafeProfiles } = await supabase
+                  .from('profiles').select('id')
+                  .in('id', superadminIds)
+                  .eq('company_id', avisafeCompany.id)
+                  .eq('approved', true);
+                const ids = (avisafeProfiles || []).map((p: any) => p.id);
+                if (ids.length) {
+                  const { data: avisafePrefs } = await supabase
+                    .from('notification_preferences').select('user_id').in('user_id', ids).eq('email_new_user_pending', true);
+                  (avisafePrefs || []).forEach((p: any) => notificationUserIdsSet.add(p.user_id));
+                }
               }
             }
           }
