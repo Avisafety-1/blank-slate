@@ -377,7 +377,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         {showPicker ? (
           <div className="flex-1 flex flex-col gap-3 min-h-0">
             <Input placeholder="Søk dokumenter..." value={searchPicker} onChange={(e) => setSearchPicker(e.target.value)} />
-            <ScrollArea className="flex-1 min-h-0 max-h-[50vh] border rounded-md p-2">
+            <div className="flex-1 min-h-[200px] overflow-y-auto border rounded-md p-2">
               {filteredPickerDocs.map((doc) => (
                 <label key={doc.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-accent/10 rounded cursor-pointer">
                   <Checkbox checked={selectedIds.has(doc.id)} onCheckedChange={() => toggleDoc(doc.id)} />
@@ -388,7 +388,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
               {filteredPickerDocs.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">Ingen dokumenter funnet</p>
               )}
-            </ScrollArea>
+            </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={() => setShowPicker(false)}>Avbryt</Button>
               <Button size="sm" onClick={savePicker}>Lagre endringer</Button>
@@ -396,7 +396,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 max-h-[40vh]">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               {visibleDocs.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">
                   {activeTab ? "Ingen dokumenter i denne fanen" : "Ingen dokumenter i denne mappen"}
@@ -416,7 +416,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                   ))}
                 </div>
               )}
-            </ScrollArea>
+            </div>
             {canManageFolder && (
               <div className="space-y-3 pt-2 border-t">
                 {hasChildren && (
