@@ -416,7 +416,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                   ))}
                 </div>
               )}
-            </ScrollArea>
+            </div>
             {canManageFolder && (
               <div className="space-y-3 pt-2 border-t">
                 {hasChildren && (
