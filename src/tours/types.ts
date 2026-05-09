@@ -1,4 +1,4 @@
-export type TourId = "system-overview" | "mission-creation";
+export type TourId = "system-overview" | "mission-creation" | "dashboard-widgets";
 
 export interface TourStep {
   /** Stable id for debugging */
