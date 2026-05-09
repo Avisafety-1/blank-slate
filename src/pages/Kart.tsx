@@ -915,20 +915,22 @@ export default function KartPage() {
               />
             </div>
 
-            {/* Adjacent Area content */}
-            {soraSettings.enabled && (
-              <AdjacentAreaPanel
-                coordinates={currentRoute.coordinates}
-                soraSettings={soraSettings}
-                maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
-                active={showAdjacentArea}
-                onShowAdjacentArea={setShowAdjacentArea}
-                onResultChange={setAdjacentResult}
-                open={adjacentOpen}
-                onOpenChange={setAdjacentOpen}
-                missionId={editingMissionId ?? routePlanningState?.missionId ?? null}
-              />
-            )}
+            {/* Adjacent Area content (mobile only — desktop renders as overlay over map) */}
+            <div className="sm:hidden">
+              {soraSettings.enabled && (
+                <AdjacentAreaPanel
+                  coordinates={currentRoute.coordinates}
+                  soraSettings={soraSettings}
+                  maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
+                  active={showAdjacentArea}
+                  onShowAdjacentArea={setShowAdjacentArea}
+                  onResultChange={setAdjacentResult}
+                  open={adjacentOpen}
+                  onOpenChange={setAdjacentOpen}
+                  missionId={editingMissionId ?? routePlanningState?.missionId ?? null}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
