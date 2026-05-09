@@ -149,6 +149,7 @@ export function OpenAIPMap({
   adjacentAreaRadiusM,
   populationDensityCells,
   populationDensityCoveragePolygons,
+  routeHintOffsetClass,
 }: OpenAIPMapProps) {
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
