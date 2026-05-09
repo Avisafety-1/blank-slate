@@ -420,7 +420,7 @@ const Index = () => {
             {hasFlightLogUpload ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="w-full gap-2 justify-center" variant="secondary">
+                  <Button className="w-full gap-2 justify-center" variant="secondary" data-tour="dashboard-log-flight">
                     <Clock className="w-4 h-4" />
                     {t('dronelog.logOrUpload', 'Logg flytid / Last opp flylogg')}
                     <ChevronDown className="w-4 h-4" />
@@ -442,6 +442,7 @@ const Index = () => {
                 onClick={() => setLogFlightDialogOpen(true)}
                 className="w-full gap-2"
                 variant="secondary"
+                data-tour="dashboard-log-flight"
               >
                 <Clock className="w-4 h-4" />
                 {t('actions.logFlightTime')}
@@ -487,7 +488,7 @@ const Index = () => {
               </div>
             )}
             
-            <div className="flex gap-2">
+            <div className="flex gap-2" data-tour="dashboard-flight-controls">
               <Button 
                 onClick={handleStartFlight}
                 disabled={isActive}
@@ -570,7 +571,7 @@ const Index = () => {
                       {hasFlightLogUpload ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button className="w-full gap-2 hidden lg:flex justify-center" variant="secondary">
+                            <Button className="w-full gap-2 hidden lg:flex justify-center" variant="secondary" data-tour="dashboard-log-flight">
                               <Clock className="w-4 h-4" />
                               {t('dronelog.logOrUpload', 'Logg flytid / Last opp flylogg')}
                               <ChevronDown className="w-4 h-4" />
@@ -592,6 +593,7 @@ const Index = () => {
                           onClick={() => setLogFlightDialogOpen(true)}
                           className="w-full gap-2 hidden lg:flex"
                           variant="secondary"
+                          data-tour="dashboard-log-flight"
                         >
                           <Clock className="w-4 h-4" />
                           {t('actions.logFlightTime')}
@@ -638,7 +640,7 @@ const Index = () => {
                       )}
                       
                       {/* Start/End flight buttons - Desktop */}
-                      <div className="hidden lg:flex gap-2">
+                      <div className="hidden lg:flex gap-2" data-tour="dashboard-flight-controls">
                         <Button 
                           onClick={handleStartFlight}
                           disabled={isActive}
