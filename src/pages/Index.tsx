@@ -420,7 +420,7 @@ const Index = () => {
             {hasFlightLogUpload ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="w-full gap-2 justify-center" variant="secondary">
+                  <Button className="w-full gap-2 justify-center" variant="secondary" data-tour="dashboard-log-flight">
                     <Clock className="w-4 h-4" />
                     {t('dronelog.logOrUpload', 'Logg flytid / Last opp flylogg')}
                     <ChevronDown className="w-4 h-4" />
@@ -442,6 +442,7 @@ const Index = () => {
                 onClick={() => setLogFlightDialogOpen(true)}
                 className="w-full gap-2"
                 variant="secondary"
+                data-tour="dashboard-log-flight"
               >
                 <Clock className="w-4 h-4" />
                 {t('actions.logFlightTime')}
