@@ -64,7 +64,7 @@ export default function KartPage() {
   const [companyFlightAltitude, setCompanyFlightAltitude] = useState(120);
   const [companyFlightGeography, setCompanyFlightGeography] = useState(0);
   const defaultSoraSettings = useMemo<SoraSettings>(() => ({
-    enabled: false,
+    enabled: true,
     flightAltitude: companyFlightAltitude,
     flightGeographyDistance: companyFlightGeography,
     contingencyDistance: 50,
@@ -82,7 +82,7 @@ export default function KartPage() {
   const [soraDensityResult, setSoraDensityResult] = useState<SoraPopulationDensityResult | null>(null);
   const [soraDensityLoading, setSoraDensityLoading] = useState(false);
   const soraDensityCacheRef = useRef<Map<string, SoraPopulationDensityResult>>(new Map());
-  const [soraOpen, setSoraOpen] = useState(false);
+  const [soraOpen, setSoraOpen] = useState(true);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
 
   // Fetch drone model name when soraDroneId changes
@@ -899,19 +899,21 @@ export default function KartPage() {
               </button>
             </div>
 
-            {/* SORA Settings content */}
-            <SoraSettingsPanel
-              settings={soraSettings}
-              onChange={setSoraSettings}
-              onDroneSelected={setSoraDroneId}
-              initialDroneId={soraSettings.droneId}
-              open={soraOpen}
-              onOpenChange={setSoraOpen}
-              showPopulationDensity={showPopulationDensity}
-              onShowPopulationDensityChange={setShowPopulationDensity}
-              populationDensityResult={soraDensityResult}
-              populationDensityLoading={soraDensityLoading}
-            />
+            {/* SORA Settings content (mobile only — desktop renders as overlay over map) */}
+            <div className="sm:hidden">
+              <SoraSettingsPanel
+                settings={soraSettings}
+                onChange={setSoraSettings}
+                onDroneSelected={setSoraDroneId}
+                initialDroneId={soraSettings.droneId}
+                open={soraOpen}
+                onOpenChange={setSoraOpen}
+                showPopulationDensity={showPopulationDensity}
+                onShowPopulationDensityChange={setShowPopulationDensity}
+                populationDensityResult={soraDensityResult}
+                populationDensityLoading={soraDensityLoading}
+              />
+            </div>
 
             {/* Adjacent Area content */}
             {soraSettings.enabled && (
@@ -933,6 +935,23 @@ export default function KartPage() {
 
       {/* Map Content */}
       <div className="flex-1 relative overflow-hidden">
+        {/* Desktop/Tablet SORA panel overlay (top-left, ~1/3 width) */}
+        {isRoutePlanning && soraOpen && (
+          <div className="hidden sm:block absolute top-3 left-3 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-12rem)] overflow-y-auto bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl">
+            <SoraSettingsPanel
+              settings={soraSettings}
+              onChange={setSoraSettings}
+              onDroneSelected={setSoraDroneId}
+              initialDroneId={soraSettings.droneId}
+              open={true}
+              onOpenChange={setSoraOpen}
+              showPopulationDensity={showPopulationDensity}
+              onShowPopulationDensityChange={setShowPopulationDensity}
+              populationDensityResult={soraDensityResult}
+              populationDensityLoading={soraDensityLoading}
+            />
+          </div>
+        )}
         {/* Back to mission button */}
         {/* SafeSky Attribution */}
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2">
