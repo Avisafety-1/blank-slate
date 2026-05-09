@@ -15,6 +15,7 @@ import { KeyboardDismissButton } from "@/components/KeyboardDismissButton";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { IdleTimeoutWarning } from "@/components/IdleTimeoutWarning";
 import { ForceReloadBanner } from "@/components/ForceReloadBanner";
+import { GuidedTourProvider } from "@/components/guided-tour/GuidedTourProvider";
 import { useForceReload } from "@/hooks/useForceReload";
 import { PlanRestricted } from "@/components/PlanRestricted";
 import { TrainingModuleRestricted } from "@/components/TrainingModuleRestricted";
