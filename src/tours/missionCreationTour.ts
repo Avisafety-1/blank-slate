@@ -28,12 +28,19 @@ export const missionCreationTour: TourDefinition = {
     },
     {
       id: "draw-route",
-      selector: '[data-tour="map-route-save"]',
+      selector: '[data-tour="map-container"]',
       title: "Tegn ruten i kartet",
       description:
         "Klikk i kartet for å legge til rutepunkter. Minst 3 punkter for et område, 2 for en korridor. Når du har minst 2 punkter blir «Lagre»-knappen aktiv. Klikk «Neste» når du er klar.",
-      side: "left",
+      side: "top",
       route: "/kart",
+      beforeStep: async () => {
+        if (!document.querySelector('[data-tour="map-route-save"]')) {
+          document.querySelector<HTMLElement>('[data-tour="map-route-planner-trigger"]')?.click();
+          await new Promise((resolve) => window.setTimeout(resolve, 250));
+        }
+      },
+      allowMapInteraction: true,
       optional: true,
     },
     {
@@ -44,6 +51,7 @@ export const missionCreationTour: TourDefinition = {
         "Aktiver «SORA volum» for å beregne flygeometri, contingency- og ground risk-buffer. Velg drone, hastighet og flyhøyde i panelet — verdiene fylles inn automatisk fra dronemodellen.",
       side: "bottom",
       route: "/kart",
+      allowMapInteraction: true,
       optional: true,
     },
     {

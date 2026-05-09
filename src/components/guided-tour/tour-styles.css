@@ -96,6 +96,16 @@
   opacity: 0.55 !important;
 }
 
+body.avisafe-tour-map-interaction .driver-overlay,
+body.avisafe-tour-map-interaction .driver-overlay path {
+  pointer-events: none !important;
+}
+
+body.avisafe-tour-map-interaction .leaflet-container,
+body.avisafe-tour-map-interaction .leaflet-container * {
+  pointer-events: auto !important;
+}
+
 /* Ensure highlighted element sits above sidebar dropdowns */
 .driver-active-element {
   z-index: 10000 !important;

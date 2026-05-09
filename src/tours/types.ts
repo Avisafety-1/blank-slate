@@ -21,6 +21,8 @@ export interface TourStep {
   requiresModule?: string;
   /** Run before showing — open dropdowns etc. */
   beforeStep?: () => Promise<void> | void;
+  /** Allow Leaflet map clicks while this step is active */
+  allowMapInteraction?: boolean;
   /** Skip silently if selector not found within timeout (default true) */
   optional?: boolean;
 }

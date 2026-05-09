@@ -31,6 +31,10 @@ function writeCompleted(list: TourId[]) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(new Set(list)))); } catch {}
 }
 
+function setMapInteraction(active: boolean) {
+  document.body.classList.toggle("avisafe-tour-map-interaction", active);
+}
+
 export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +60,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     for (const s of candidates) {
       driveSteps.push({
         element: s.selector,
+        disableActiveInteraction: false,
         popover: {
           title: s.title,
           description: s.description,
@@ -96,6 +101,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
         }
       },
       onDestroyed: () => {
+        setMapInteraction(false);
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
         force((x) => x + 1);
@@ -127,6 +133,8 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
         // skip silently
         return performStep(index + 1);
       }
+
+      setMapInteraction(Boolean(step.allowMapInteraction));
 
       // Drive to this step
       d.drive(index);
