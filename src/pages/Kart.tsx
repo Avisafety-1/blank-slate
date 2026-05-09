@@ -915,20 +915,22 @@ export default function KartPage() {
               />
             </div>
 
-            {/* Adjacent Area content */}
-            {soraSettings.enabled && (
-              <AdjacentAreaPanel
-                coordinates={currentRoute.coordinates}
-                soraSettings={soraSettings}
-                maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
-                active={showAdjacentArea}
-                onShowAdjacentArea={setShowAdjacentArea}
-                onResultChange={setAdjacentResult}
-                open={adjacentOpen}
-                onOpenChange={setAdjacentOpen}
-                missionId={editingMissionId ?? routePlanningState?.missionId ?? null}
-              />
-            )}
+            {/* Adjacent Area content (mobile only — desktop renders as overlay over map) */}
+            <div className="sm:hidden">
+              {soraSettings.enabled && (
+                <AdjacentAreaPanel
+                  coordinates={currentRoute.coordinates}
+                  soraSettings={soraSettings}
+                  maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
+                  active={showAdjacentArea}
+                  onShowAdjacentArea={setShowAdjacentArea}
+                  onResultChange={setAdjacentResult}
+                  open={adjacentOpen}
+                  onOpenChange={setAdjacentOpen}
+                  missionId={editingMissionId ?? routePlanningState?.missionId ?? null}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -949,6 +951,25 @@ export default function KartPage() {
               onShowPopulationDensityChange={setShowPopulationDensity}
               populationDensityResult={soraDensityResult}
               populationDensityLoading={soraDensityLoading}
+            />
+          </div>
+        )}
+        {/* Desktop/Tablet Adjacent area panel overlay */}
+        {isRoutePlanning && adjacentOpen && soraSettings.enabled && (
+          <div className={cn(
+            "hidden sm:block absolute top-24 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-14rem)] overflow-y-auto bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl",
+            soraOpen ? "left-[calc(0.75rem+33vw+0.5rem)]" : "left-3"
+          )}>
+            <AdjacentAreaPanel
+              coordinates={currentRoute.coordinates}
+              soraSettings={soraSettings}
+              maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
+              active={showAdjacentArea}
+              onShowAdjacentArea={setShowAdjacentArea}
+              onResultChange={setAdjacentResult}
+              open={true}
+              onOpenChange={setAdjacentOpen}
+              missionId={editingMissionId ?? routePlanningState?.missionId ?? null}
             />
           </div>
         )}
