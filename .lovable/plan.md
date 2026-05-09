@@ -1,89 +1,60 @@
-## Runde 2A — Kritisk hardening
+## Runde 2B: Hardening av cron- og test-funksjoner
 
-Rekkefølge etter risiko: misbruk av e-post/push (PT-8 #1+#2) → fail-open billing (PT-11/18) → SSRF (PT-10) → FH2 debug (PT-16).
+Mål: Lukke PT-8 #3 (`test-email`) og sikre 6 cron-/admin-funksjoner som i dag mangler autentisering eller skikkelig autorisasjon.
 
-### Risikovurdering før vi starter
+### Funksjoner som hardes
 
-| Endring | Risiko hvis vi gjør det | Risiko hvis vi IKKE gjør det |
-|---------|--------------------------|--------------------------------|
-| `customer-portal` fail-closed | Selskaper uten `billing_user_id` får 403 til vi backfiller | En vilkårlig admin kan åpne Stripe-portal for andres selskap |
-| `process-dronelog` SSRF allowlist | Ny dronelog-CDN-host må whitelistes manuelt | Angriper kan få funksjonen til å sende `Authorization: Bearer <DRONELOG_KEY>` til intern infra → token-lekkasje |
-| `flighthub2-proxy` debug allowlist | Hvis FH2 skifter base-URL må regex justeres | Auth'd bruker kan proxy mot vilkårlig URL m/ FH2-token |
-| `send-push-notification` krever auth | Eksisterende kallere må sende JWT | Anonym DoS/spam, sender push til alle brukere på tvers av selskap |
-| `resend-confirmation-email` krever auth | Admin-UI som re-sender bekreftelse må sende JWT | Anonym kan trigge Resend-spam → quota/blacklisting |
+| # | Funksjon | Risiko i dag | Tiltak |
+|---|----------|-------------|--------|
+| 1 | `test-email` | Hvem som helst kan sende e-post via Resend (kvota-/spam-misbruk) | Krev Bearer JWT + superadmin-sjekk |
+| 2 | `auto-complete-missions` | Åpen cron-endpoint, kan trigges av alle → masse-oppdatering av missions | Krev `x-cron-secret` ELLER service-role |
+| 3 | `check-document-expiry` | Åpen, sender varsler på vegne av selskaper | Krev `x-cron-secret` ELLER service-role |
+| 4 | `check-maintenance-expiry` | Samme som over | Krev `x-cron-secret` ELLER service-role |
+| 5 | `operations-digest` | Åpen, kan generere/sende rapporter | Krev `x-cron-secret` ELLER service-role |
+| 6 | `notam-sync` (hvis åpen) | Trigger ekstern API-fetch i loop | Krev `x-cron-secret` ELLER service-role |
+| 7 | `cleanup-*` / andre cron-jobs (verifiseres) | Samme mønster | Krev `x-cron-secret` ELLER service-role |
 
-**Total nedetid-risiko:** Lav. De fleste endringer er rene auth-tillegg (returnerer 401 i stedet for 200). Eneste reelle bruddrisiko er `customer-portal` — derfor backfill FØR deploy.
+### Auth-mønster (gjenbruk fra Runde 2A)
 
----
+```ts
+const cronSecret = req.headers.get('x-cron-secret');
+const expected = Deno.env.get('CRON_SECRET');
+const auth = req.headers.get('Authorization') ?? '';
 
-### Steg 1 — PT-8 #2: `send-push-notification` auth (HØYEST risiko)
+const isCron = cronSecret && expected && cronSecret === expected;
+const isServiceRole = auth.includes(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '___none___');
 
-Funksjonen tar i dag `userId/userIds/companyId` fra body uten å sjekke caller. Endre til:
-- Krev Bearer-JWT via `requireUser` ELLER `x-cron-secret` (for `check-long-flights` o.l. som fan-outer push)
-- For JWT-vei: `companyId` må matche `getUserCompanyId(user)` ELLER caller må være admin/superadmin
-- Behold `userId/userIds`-modus, men avvis hvis target-bruker ikke er i samme `visible_company_ids` (gjenbruk `assertUserInCompany` via target-brukerens `profiles.company_id`)
+if (!isCron && !isServiceRole) {
+  return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+}
+```
 
-Frontend-kall: ingen endring — `supabase.functions.invoke` legger på JWT automatisk.
+For `test-email`:
+```ts
+// Krev Bearer JWT, hent bruker, sjekk superadmin-rolle
+const { data: { user } } = await supabase.auth.getUser(token);
+const isSuper = await supabase.rpc('has_role', { _user_id: user.id, _role: 'superadmin' });
+if (!user || !isSuper) return 403;
+```
 
-### Steg 2 — PT-8 #1: `resend-confirmation-email` auth
+### Verifisering av cron-kallere
 
-- Krev Bearer-JWT
-- Krev admin-rolle i samme selskap som `userId` som re-sendes (oppslag mot `profiles.company_id`)
-- Superadmin bypass
+Sjekk `pg_cron`-jobber i databasen for å bekrefte at alle scheduled jobs allerede sender `x-cron-secret`-headeren. Hvis noen mangler, oppdater cron-jobben (via `supabase--read_query` for å inspisere, og migration for å fikse).
 
-### Steg 3 — PT-11 + PT-18: `customer-portal`
+### Steg
 
-**Først (data-migrasjon):** Backfill `companies.billing_user_id` der den er NULL → første admin (eldste `profiles.created_at`) i selskapet.
+1. Verifiser hvilke cron-funksjoner som er åpne og hvordan de blir kalt (les `pg_cron` schedules + funksjonskode).
+2. Hard `test-email` med JWT + superadmin-sjekk.
+3. Hard hver cron-funksjon med `x-cron-secret` ELLER service-role.
+4. Oppdater eventuelle `pg_cron`-jobs som ikke allerede sender riktig header (krever migration).
+5. Deploy alle endrede funksjoner.
+6. Smoke-test: `curl` uten auth → 401, med riktig secret → 200.
 
-**Så kode-endring:**
-- Hvis `company.billing_user_id IS NULL` etter backfill → 403 "Ingen betalingsansvarlig satt for selskapet. Kontakt administrator."
-- Hvis satt og `!== user.id` → 403 (ikke 500 som i dag)
-- Stripe-feil: fang `Stripe.errors.StripeError` separat, returner generisk "Billing-portal er midlertidig utilgjengelig. Prøv igjen senere." + correlation-id i log. Aldri returner `error.message` til klient.
+### Akseptert risiko (ikke i denne runden)
 
-### Steg 4 — PT-10: `process-dronelog` SSRF
+- Public proxies (NOTAM/Weather/OpenAIP-proxy) — lav impact, kun public data, beholdes åpne.
+- Webhooks som krever signatur-verifikasjon (Stripe, etc.) — bruker allerede signatur, ikke JWT.
 
-- Importer `safeFetch` fra `_shared/http.ts`
-- Allowlist: `['dronelogapi.com', 'cdn.dronelogapi.com', 'storage.googleapis.com', 'app.dronelogapi.com']` (verifiser faktiske CDN-hoster fra `docs/dronelog-api-reference.md` først)
-- Brukes KUN på linje 935 (`fetch(logUrl, ...)` med Authorization-header) — andre `fetch`-kall går til hardkodet `DRONELOG_BASE` og er trygge
-- Ved host-mismatch: 400 "Untrusted download host" + log host
+### Estimert omfang
 
-### Steg 5 — PT-16: `flighthub2-proxy` debug-aksjoner
-
-To debug-aksjoner: `debug-endpoint` (linje 850) og `test-device-api` (linje 1145). Begge bruker `flighthub2_base_url` fra DB som kan settes av admin (intern trust), men bør likevel valideres:
-- Allowlist-regex: `^https:\/\/[a-z0-9-]+\.flighthub\.dji\.com(\/|$)` ELLER eksakt match mot kjent sandbox-host
-- Match feiler → 400 "FlightHub2 base URL utenfor allowlist"
-- Gjelder kun debug-aksjonene, ikke prod-flow (som uansett snakker med samme URL — men prod-flow har ikke vilkårlig path-injection)
-
----
-
-### Tester etter deploy (`supabase--curl_edge_functions`)
-
-| Funksjon | Test | Forventet |
-|----------|------|-----------|
-| `send-push-notification` | POST uten JWT | 401 |
-| `send-push-notification` | POST med JWT, annet selskap | 403 |
-| `resend-confirmation-email` | POST uten JWT | 401 |
-| `customer-portal` | POST som ikke-billing-bruker | 403 m/ generisk feil |
-| `process-dronelog` action=download m/ `downloadUrl=https://evil.com/x` | 400 "Untrusted host" | |
-| `flighthub2-proxy` action=`debug-endpoint` m/ tuklet `flighthub2_base_url` | 400 | |
-
-### Filer som endres
-
-- `supabase/functions/send-push-notification/index.ts`
-- `supabase/functions/resend-confirmation-email/index.ts`
-- `supabase/functions/customer-portal/index.ts`
-- `supabase/functions/process-dronelog/index.ts`
-- `supabase/functions/flighthub2-proxy/index.ts`
-- 1 migrasjon (backfill `billing_user_id`)
-
-### Avbrytkriterier
-
-- Hvis backfill ikke finner admin i et selskap → log warning, ikke fail. Selskap må sette `billing_user_id` manuelt før Stripe-portal virker.
-- Hvis `send-push-notification` etter deploy ikke leverer push fra cron-jobber → verifiser at `check-long-flights`/`operations-digest` sender `x-cron-secret`. Hvis nei, deploy dem samtidig (allerede i scope for Runde 2B).
-
-### Hva vi IKKE gjør i denne runden
-
-- PT-8 #5–11 (6 cron-funksjoner) — Runde 2B
-- PT-8 #12–17 (offentlige proxies: NOTAM, OpenAIP, terrain, weather, safesky-beacons-fetch) — kategoriseres som **akseptert risiko** i Runde 3 fordi: kun offentlige data, ingen sensitive operasjoner, rate-limit-misbruk er begrenset av tredjepart
-- PT-19 (Supabase platform) — akseptert
-- PT-20 (CSP/HSTS) — Runde 3, lav verdi vs. risiko for å bryte Mapbox/Stripe
+~7 edge functions + 0–3 migrations for `pg_cron`-oppdatering. Ingen frontend-endringer.
