@@ -27,6 +27,28 @@ export const dashboardWidgetsTour: TourDefinition = {
       beforeStep: closeMobileNav,
     },
     {
+      id: "log-flight",
+      selector: '[data-tour="dashboard-log-flight"]',
+      title: "Logg flytid / Last opp flylogg",
+      description:
+        "Registrer flytid manuelt etter en operasjon, eller last opp flylogg fra DJI/ArduPilot for automatisk parsing av telemetri, batteri og flyspor.",
+      side: "bottom",
+      requiresModule: "missions",
+      optional: true,
+      beforeStep: scrollIntoView('[data-tour="dashboard-log-flight"]'),
+    },
+    {
+      id: "flight-controls",
+      selector: '[data-tour="dashboard-flight-controls"]',
+      title: "Start / avslutt flytur",
+      description:
+        "Start en flytur for å aktivere klokken, sjekklister og live-posisjon (DroneTag). Trykk «Avslutt» når du lander — da lagres varigheten og du kan fullføre etter-flyt-sjekklisten.",
+      side: "top",
+      requiresModule: "missions",
+      optional: true,
+      beforeStep: scrollIntoView('[data-tour="dashboard-flight-controls"]'),
+    },
+    {
       id: "active-flights",
       selector: '[data-tour="dashboard-active-flights"]',
       title: "Aktive flyvninger",
