@@ -1,121 +1,110 @@
-## Risikovurdering først
+## Endring fra forrige plan
 
-### Hvor alvorlig er dette samlet sett?
-
-**Realistisk utnyttelse i dag:** Middels-høy. Funnene er enkle å utnytte (curl-requests uten innlogging eller en forfalsket JWT) og krever ingen spesialkunnskap. Pentesteren har allerede dokumentert PoC-er. Anonkey er publik (det skal den være), så terskelen er bare å kopiere `curl`-kommandoer fra rapporten.
-
-**Hva kan faktisk skje hvis vi ikke fikser:**
-
-| Scenario | Sannsynlighet | Skade |
-|----------|--------------|-------|
-| Konkurrent eller "drone-Twitter" laster ned bruker-tellinger per selskap (PT-8) | Høy | Omdømme, kommersielt sensitivt — viser kundebase, vekst |
-| Ondsinnet bruker masse-avmelder reelle kunder fra ukesrapport (PT-14) | Høy | Compliance/GDPR-samtykkelogg blir feil; kunder mister varslinger om dokumentasjon, vedlikehold osv. |
-| Cron-funksjoner trigges i loop (PT-9, 12) | Høy | Stripe/Resend/SafeSky-kostnader, rate-limit hos tredjepart, "spam" til reelle brukere |
-| `update-seats` (PT-13) trigges med tilfeldige `company_id` | Høy | Reelle Stripe-fakturaendringer for andre kunder → økonomisk og kontraktuell skade |
-| `process-dronelog` SSRF (PT-10) lekker DroneLog-bearer | Middels | Tredjeparts API-nøkkel kompromitteres → må roteres + audit |
-| `customer-portal` fail-open (PT-11) | Middels | Vanlig bruker kan åpne Stripe billing-portal og endre/avbryte abonnement for selskapet |
-| `dji-auto-sync` (PT-15) | Middels | Enumerering av selskap + DJI-jobber kan trigges på vegne av andre → datakvalitet og kost |
-| `flighthub2-proxy debug` (PT-16) | Lav | Krever superadmin → mest brukt for intern reconnaissance |
-| Stripe key-prefiks lekker (PT-18) | Lav | Reduserer entropi, hjelper målrettet phishing |
-| Manglende sikkerhetsheaders (PT-20) | Lav | Klikkjacking, MIME-sniffing, CSP-bypass |
-
-**Forretningseffekt hvis utnyttet før vi fikser:**
-- Stripe: utilsiktede plan-endringer → må refundere/rydde
-- Resend/Mailjet: utgående mail-volum kan trigge anti-spam, skade `noreply@avisafe.no`-omdømme
-- DroneLog/SafeSky: nøkler må roteres, integrasjoner ned i timer
-- GDPR: `weekly_report_unsubscribed` er samtykke-felt → uautoriserte endringer er meldepliktige hvis vi ikke kan reversere
-- Avtaler: konkurranse-/konfidensialitetsklausuler i kunde-kontrakter brytes hvis selskapsdata enumereres
-
-**Kort svar:** Ingen av funnene er "kritisk" alene (ingen RCE, ingen rå PII-lekkasje), men summen av PT-9..PT-15 betyr at en hvilken som helst person på internett kan trigge cron-jobber, endre samtykke for navngitte brukere, og pirke i fakturering. Bør fikses denne uka.
+PT-14 (`unsubscribe-weekly-report`) løses nå med **per-bruker random token i DB** istedenfor HMAC-secret. Ingen `WEEKLY_UNSUB_SECRET` trengs. Resten av planen er uendret.
 
 ---
 
 ## Plan i 4 runder
 
-Runder kjøres i rekkefølge. Hver runde leveres som egen "PR" (én melding) med smoketest etter. Mellom rundene venter vi på din OK før neste.
-
-### Runde 1 — Auth-bypass og JWT (Kritisk-først, ~30 min implementering)
-
-Mål: stoppe de funnene en hvilken som helst anonym bruker kan utnytte uten triks.
+### Runde 1 — Auth-bypass og JWT (Kritisk-først)
 
 | Funn | Funksjon | Endring |
 |------|----------|---------|
-| PT-8 | `count-all-users` | Bytt `atob()`-parsing med `supabase.auth.getClaims(token)`. Reject `alg=none`. |
-| PT-12 | `check-mission-reminders` | Krev `x-cron-secret` (samme `CRON_SHARED_SECRET` som PT-3/5/6). Oppdater pg_cron job med header. |
-| PT-9 | `safesky-cron-refresh` | Samme: `requireCronSecret` + pg_cron-oppdatering. |
-| PT-15 | `dji-auto-sync` | Krev `Bearer` + `getUser()` + sjekk at `companyId` matcher brukers profil; ellers 403. |
-| PT-13 | `update-seats` | Krev `Bearer` + `assertUserInCompany(company_id)` + admin/billing_user_id-rolle. Saner Stripe-feilmelding (også PT-18 her). |
-| PT-14 | `unsubscribe-weekly-report` | Bytt base64-token til HMAC-SHA256(`userId:exp`, `WEEKLY_UNSUB_SECRET`). Oppdater `weekly-company-report` til å generere signerte lenker. |
+| PT-8 | `count-all-users` | Bytt manuell `atob()` med `supabase.auth.getClaims(token)`. Avviser `alg=none`. |
+| PT-12 | `check-mission-reminders` | `requireCronSecret`. Oppdater pg_cron-job med `x-cron-secret`-header. |
+| PT-9 | `safesky-cron-refresh` | `requireCronSecret`. Oppdater pg_cron-job. |
+| PT-15 | `dji-auto-sync` | Tre kall-veier: (a) cron-secret → tillatt (fan-out), (b) intern fan-out fra service-role → tillatt via `Authorization: Bearer <service-key>` matcher service-role, (c) bruker-trigget → krev Bearer + `companyId/userId` må matche brukerens egen profil + admin-rolle. |
+| PT-13 | `update-seats` | Krev Bearer + admin/superadmin i `company_id`, ELLER cron-secret (intern kall fra `approve-invited-user`). Saner Stripe-feilmelding (samtidig PT-18 her hvis du vil — men PT-18 er en annen funksjon). |
+| PT-14 | `unsubscribe-weekly-report` | **Migrasjon:** `profiles.unsubscribe_token UUID DEFAULT gen_random_uuid() UNIQUE NOT NULL` + backfill. Funksjonen slår opp `WHERE unsubscribe_token = $1`. Oppdater `weekly-company-report` til å bruke `?token=<uuid>`. Behold gammel base64-flow i 30 dager (dual-mode). |
 
-**Smoketest etter Runde 1** (curl uten auth → 401 for alle 6).
+**Cron-jobs som må oppdateres** (bruker `cron.alter_job`):
+- `check-mission-reminders-hourly`
+- `safesky-cron-refresh`
+- `dji-auto-sync-daily`
 
-### Runde 2 — Fail-open og SSRF (Medium, ~20 min)
+Jeg legger `x-cron-secret`-header på alle tre. CRON_SHARED_SECRET er allerede satt.
+
+**Smoketest:** `curl` uten Authorization mot alle 6 funksjoner → 401.
+
+### Runde 2 — Fail-open og SSRF
 
 | Funn | Funksjon | Endring |
 |------|----------|---------|
-| PT-11 | `customer-portal` | Endre `if (company?.billing_user_id && ...)` til `if (!company?.billing_user_id || company.billing_user_id !== user.id) → 403`. Sentral helper i `_shared/billing.ts`. |
-| PT-18 | `customer-portal` | Bytt `throw new Error(...)` mot Stripe til generisk "Billing portal er midlertidig utilgjengelig" + correlation-id i log. |
-| PT-10 | `process-dronelog` | Bruk `safeFetch(downloadUrl)` (samme helper som `dji-parse-proxy`). Strip Authorization-header når host er utenfor allowlist. |
-| PT-16 | `flighthub2-proxy debug-endpoint` | Allowlist-regex `^https://[a-z0-9-]+\.flighthub\.dji\.com/`. Avvis i prod hvis ikke superadmin (det er det allerede). |
+| PT-11 | `customer-portal` | Endre fail-open til fail-closed: `if (!company?.billing_user_id || company.billing_user_id !== user.id) → 403`. **Backfill først:** sett `billing_user_id` = første admin per selskap som har `null`. |
+| PT-18 | `customer-portal` | Generisk feilmelding "Billing portal er midlertidig utilgjengelig" + correlation-id i log. Ingen Stripe-feiltekst returneres. |
+| PT-10 | `process-dronelog` | `safeFetch(downloadUrl, …, ['dronelogapi.com', 'cdn.dronelogapi.com', 'storage.googleapis.com'])`. Strip Authorization-header når host er utenfor allowlist (defense-in-depth). |
+| PT-16 | `flighthub2-proxy` debug-aksjon | Allowlist-regex `^https://[a-z0-9-]+\.flighthub\.dji\.com/` på `flighthub2_base_url`. Avvis med 400 hvis ikke match. |
 
-**Smoketest:** PoC-curl fra rapporten (PT-10/11/16) → 400/403.
-
-### Runde 3 — Frontend security headers (Low, ~10 min)
+### Runde 3 — Frontend security headers (Low)
 
 | Funn | Endring |
 |------|---------|
-| PT-20 | Legg til `<meta>`-tags i `index.html`: `Content-Security-Policy` (nonce ikke mulig på Lovable CDN — bruk `default-src 'self' https: data:`), `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`. HSTS settes av Lovable-CDN, sjekk respons og dokumentér hvis allerede på. |
+| PT-20 | `index.html`: `<meta http-equiv="Content-Security-Policy" content="…">`, `<meta name="referrer" content="strict-origin-when-cross-origin">`. HSTS verifiseres mot Lovable-CDN (`curl -I`). Hvis CSP bryter Mapbox/Resend/Stripe-iframes, juster `connect-src`/`frame-src`. |
 
-**Verifiser** med `curl -I` mot `https://app.avisafe.no` → headers tilstede.
+### Runde 4 — Dokumentasjon og avslutning
 
-### Runde 4 — Dokumentasjon og avslutning (~15 min)
-
-1. Roter `DRONELOG_BEARER_TOKEN` (PT-10 krever det selv om SSRF er fikset — token kan ha lekket tidligere)
-2. Oppdater `docs/security/pentest-2026-05-08-summary.md` med ny statustabell (alle PT-1..PT-20)
-3. Oppdater `docs/security/pt8-jwt-inventory.md` med korrigert klassifisering for `count-all-users`, `safesky-cron-refresh`, `dji-auto-sync`
+1. Roter `DRONELOG_AVISAFE_KEY` (kan ha lekket via PT-10)
+2. Oppdater `docs/security/pentest-2026-05-08-summary.md` med ny statustabell PT-1..PT-20
+3. Korriger `docs/security/pt8-jwt-inventory.md`
 4. Marker PT-19 som **akseptert** (Supabase platform)
-5. Generer `Avisafe_Pentest_Respons_2026-05-08_v4.docx` til Aikido for re-test
-6. `manage_security_finding mark_as_fixed` på alle relevante funn i Lovable-scanneren
+5. Generer `Avisafe_Pentest_Respons_2026-05-08_v4.docx` til Aikido
+6. `manage_security_finding mark_as_fixed` på alle relevante funn
 
 ---
 
-## Database-migrasjoner som trengs
+## Database-migrasjoner
 
-Kun én:
-
-```text
--- For PT-12, 9 og evt. flere cron-jobs hvis ikke alle bruker x-cron-secret enda
--- Oppdater pg_cron-jobs til å sende { 'x-cron-secret': <CRON_SHARED_SECRET> }
--- (gjøres med supabase--read_query/insert, ikke migrasjon, fordi den inneholder URL+anon-key)
+**Én migrasjon (Runde 1 — PT-14):**
+```sql
+ALTER TABLE public.profiles
+  ADD COLUMN unsubscribe_token UUID DEFAULT gen_random_uuid();
+UPDATE public.profiles SET unsubscribe_token = gen_random_uuid()
+  WHERE unsubscribe_token IS NULL;
+ALTER TABLE public.profiles
+  ALTER COLUMN unsubscribe_token SET NOT NULL,
+  ADD CONSTRAINT profiles_unsubscribe_token_unique UNIQUE (unsubscribe_token);
+CREATE INDEX idx_profiles_unsubscribe_token ON public.profiles(unsubscribe_token);
 ```
 
-Ingen nye tabeller. PT-14 løses med HMAC, ikke server-side token-tabell (mindre kompleksitet, ingen GDPR-spor).
+**Én migrasjon (Runde 2 — PT-11):**
+```sql
+-- Backfill billing_user_id der det er null: bruk første admin i selskapet
+UPDATE public.companies c
+SET billing_user_id = sub.user_id
+FROM (
+  SELECT DISTINCT ON (p.company_id) p.company_id, ur.user_id
+  FROM public.user_roles ur
+  JOIN public.profiles p ON p.id = ur.user_id
+  WHERE ur.role = 'admin'
+  ORDER BY p.company_id, p.created_at ASC
+) sub
+WHERE c.id = sub.company_id AND c.billing_user_id IS NULL;
+```
+*(Dette er `UPDATE`, så det kjøres som data-operasjon — ikke schema-migrasjon.)*
 
 ---
 
-## Hemmeligheter som må legges til
+## Hemmeligheter
 
-- `WEEKLY_UNSUB_SECRET` (ny — random 32 byte) for HMAC-signering av unsubscribe-lenker
-- Verifiser at `CRON_SHARED_SECRET` allerede finnes (brukt av PT-3/5/6)
-
-Begge bes om via `add_secret` i Runde 1 før kode skrives.
+Ingen nye secrets nødvendig. `CRON_SHARED_SECRET` finnes allerede.
 
 ---
 
-## Risiko ved selve fiksingen
+## Risiko ved fiksing
 
 | Endring | Hva kan gå galt | Mitigering |
 |---------|----------------|-----------|
-| `count-all-users` bytte til `getClaims` | Superadmin-dashboard slutter å vise brukertall hvis claim-name endrer seg | Test som superadmin etter deploy |
-| Cron-secret på `check-mission-reminders` / `safesky-cron-refresh` | pg_cron-jobs feiler hvis vi glemmer å oppdatere `net.http_post` headers | Oppdater cron først, deretter funksjon, ikke omvendt |
-| `dji-auto-sync` krever auth | Hvis funksjonen kalles fra en cron eller webhook → bryter integrasjon | Sjekke kall-stedene i koden + pg_cron før deploy |
-| `customer-portal` fail-closed | Selskaper som aldri har satt `billing_user_id` får 403 | Backfill: sett `billing_user_id` = første admin per selskap som migrasjon |
-| `unsubscribe-weekly-report` HMAC | Eksisterende mail i innboksen til kunder slutter å fungere | Aksepter både gammel og ny token i 30 dager (dual-mode), så bare ny |
+| `count-all-users` → `getClaims` | Superadmin-dashboard slutter å vise tall | Test som superadmin etter deploy |
+| Cron-secret på 3 jobs | Cron-job feiler hvis vi glemmer `cron.alter_job` | Oppdater cron i samme runde som funksjonen |
+| `dji-auto-sync` krever auth | Fan-out (intern kall med service-key) må fortsatt fungere | Aksepter også cron-secret på fan-out, send `x-cron-secret` ved intern fetch |
+| `customer-portal` fail-closed | Selskaper uten `billing_user_id` får 403 | Backfill kjøres FØR fail-closed-koden deployes |
+| `unsubscribe-weekly-report` UUID-token | Gamle e-poster med base64-token | Dual-mode i 30 dager |
+| CSP i index.html | Kan bryte Mapbox/Stripe/Resend | Test alle integrasjoner i preview før publish |
 
 ---
 
 ## Avbrytkriterier
 
-- Hvis Runde 1-smoketest fortsatt returnerer 200 for anonyme curl → STOPP, undersøk
-- Hvis `customer-portal` fail-closed bryter for >10 selskaper → rull tilbake, kjør backfill først
-- Hvis HMAC-bytte for unsubscribe medfører at noen avmeldte brukere blir "remeldt" → ingen DB-endring, bare token-validering, så lav risiko
+- Hvis Runde 1-smoketest fortsatt returnerer 200 anonymt → STOPP
+- Hvis fan-out-mønsteret i `dji-auto-sync` bryter (ingen logs synces neste natt) → rull tilbake auth-sjekken
+- Hvis CSP bryter kart eller checkout → fjern CSP, behold de andre headers
