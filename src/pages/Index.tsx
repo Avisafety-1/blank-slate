@@ -640,7 +640,7 @@ const Index = () => {
                       )}
                       
                       {/* Start/End flight buttons - Desktop */}
-                      <div className="hidden lg:flex gap-2">
+                      <div className="hidden lg:flex gap-2" data-tour="dashboard-flight-controls">
                         <Button 
                           onClick={handleStartFlight}
                           disabled={isActive}
