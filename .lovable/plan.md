@@ -1,64 +1,71 @@
-## Status: Er alt kritisk lukket?
+# SORA volum – ny layout og oppførsel i ruteplanlegger
 
-**Ja.** Alle HØY- og MEDIUM-risiko-punkter fra pentesten er enten fikset eller verifisert som ikke-sårbare. Det som gjenstår er LAV-risiko og kan formelt aksepteres med dokumentasjon.
+## Mål
+1. SORA volum skal være **på som standard** når man starter ruteplanlegging.
+2. På PC/iPad skal SORA-volum-menyen vises som et **venstrestilt sidepanel (~1/3 av skjermbredden)**, ikke som en full-bredde dropdown over kartet.
+3. Innholdsrekkefølgen i panelet skal endres, og avanserte parametere skal være skjult bak en ekspanderbar seksjon.
+4. Når en drone velges skal SORA 2.5-beregningen **brukes automatisk** (ingen klikk på "Bruk SORA 2.5-beregning" lenger).
 
-### Lukket (kritisk + medium)
+Mobil beholder dagens oppførsel (panelet rendres under header), kun desktop/tablet får sidepanel-layouten.
 
-| Område | Status |
-|---|---|
-| PT-1..7 (originale highs) | Fikset i runde 1 |
-| PT-8 #1 `resend-confirmation-email` | Fikset (Bearer JWT + same-company/superadmin) |
-| PT-8 #2 `send-push-notification` | Fikset (JWT + scope, eller `x-cron-secret`) |
-| PT-8 #3 `test-email` | Fikset (JWT + admin/superadmin i samme selskap) |
-| PT-8 #5–11 cron (auto-complete, check-document, check-maintenance, check-competency, check-mission-reminders, check-long-flights, operations-digest) | Fikset (`requireCronOrSuperadmin`) |
-| PT-10 DroneLog SSRF | Fikset (`safeFetch` allowlist) |
-| PT-11 Customer-portal | Fikset (fail-closed + sanitiserte Stripe-feil) + `billing_user_id` backfill |
-| PT-16 FH2-proxy SSRF | Fikset (regex allowlist for djigate/dji.com) |
-| PT-18 Stripe-feil-lekkasje | Fikset (correlation-ID i stedet for raw error) |
+---
 
-### Foreslått som akseptert risiko
+## Endringer
 
-| # | Funksjon | Hvorfor akseptert |
-|---|----------|-------------------|
-| PT-8 #4 | `update-seats` | Allerede beskyttet via Stripe webhook + `companies.billing_user_id`-sjekk i koden. Verifiseres på nytt. |
-| PT-8 #12 | `fetch-notams` | Public NOTAM-data, kun cron-kall. Maks impact: kvota-misbruk hos kilde. |
-| PT-8 #13 | `sync-openaip-airspaces` | Public luftromsdata. Cron-drevet bulk-insert. |
-| PT-8 #14 | `sync-openaip-obstacles` | Samme — public hindringsdata. |
-| PT-8 #15 | `terrain-elevation` | Mapbox-proxy mot public DEM. Ingen sensitive data. Mapbox-token er rate-limit-beskyttet på leverandørsiden. |
-| PT-8 #16 | `drone-weather` | MET.no-proxy, public værdata, ingen autentisert API. |
-| PT-8 #17 | `safesky-beacons-fetch` | Bekreft først om i bruk; hvis ja, public AIS-lignende data. |
-| PT-9, PT-12..15, PT-17, PT-19..20 | Lave funn fra PDF | Triagért som lav-risiko (ikke datatap, ikke privilege escalation). Aksepteres til neste planlagte sikkerhetsrunde. |
+### 1. Default på (`src/pages/Kart.tsx`)
+- I `defaultSoraSettings`: sett `enabled: true` (i dag `false`).
+- `soraOpen`-initialverdi settes til `true` slik at panelet er åpent ved start av ruteplanlegging.
+- Eksisterende ruter som lastes inn bruker fortsatt sin lagrede `soraSettings.enabled` (ingen overstyring av eksisterende data).
 
-**Begrunnelse for å akseptere:** Ingen av disse eksponerer kundedata, ingen tillater handlinger på vegne av andre brukere, og ingen kan brukes til privilege-eskalering. Worst-case er kvota-misbruk hos tredjeparts API-er — som uansett er rate-limited.
+### 2. Sidepanel-layout (`src/pages/Kart.tsx`)
+- Dagens "SORA shared header row" beholdes som trigger/toggle (slik at man kan slå av eller skjule panelet), men selve `<SoraSettingsPanel>`-innholdet flyttes til et nytt overlay:
+  - På `sm:` og oppover (PC/iPad): et absolutt posisjonert panel **øverst til venstre over kartet**, bredde `w-[33vw] min-w-[320px] max-w-[460px]`, full høyde minus header (`max-h-[calc(100vh-...)]`), `overflow-y-auto`, glass-stil (`bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl`), `z-[1000]` slik at det legger seg over Leaflet.
+  - På mobil (`<sm`): behold dagens flyt (panel rendres under header som i dag) for å unngå å dekke kartet.
+- Tilstøtende-panelet beholder dagens plassering/oppførsel uendret.
 
-### Dokumentasjonsoppdatering
+```text
+┌─────────────────────────────────────────────┐
+│  Header (knapper) + SORA toggle-rad         │
+├──────────────┬──────────────────────────────┤
+│ SORA panel   │                              │
+│ (~1/3, kun   │   Kart                       │
+│  desktop/    │                              │
+│  tablet)     │                              │
+└──────────────┴──────────────────────────────┘
+```
 
-1. **`docs/security/pentest-2026-05-08-summary.md`**
-   - Oppdater statustabellen: PT-8, PT-10, PT-11, PT-16, PT-18 → **fixed**.
-   - Legg til ny seksjon **"Closed in round 2A/2B"** med alle hardede funksjoner og smoke-test-resultater.
-   - Legg til ny seksjon **"Accepted risks"** med tabellen over.
+### 3. Ny innholdsrekkefølge (`src/components/SoraSettingsPanel.tsx`)
+Dagens innhold omorganiseres til denne rekkefølgen øverst-ned:
 
-2. **`docs/security/pt8-jwt-inventory.md`**
-   - Flytt funksjon #1, 2, 3, 5–11 fra Kolonne C → Kolonne A.
-   - Flytt funksjon #4, 12–17 fra Kolonne C → ny **Kolonne D (akseptert risiko)** med begrunnelse.
-   - Sett øverst: **"PT-8 status: LUKKET. Kolonne C tom."**
+1. **Buffermetode** (Rute-korridor / Konveks område) – flyttes fra dagens "Manual controls"-seksjon til toppen.
+2. **Velg drone** (eksisterende selector + katalog-info-linje).
+3. **Flyhøyde (m AGL)** (eksisterende input).
+4. **Ekspanderbar seksjon "Andre oppdragsparametere"** (lukket som standard) – inneholder alt som i dag ligger i "Oppdragsparametere"-blokken bortsett fra Flyhøyde:
+   - CD, V0, tR, pitch/bank, HAM, SGNSS, SPos, SMap
+   - Contingency-metode (+ tP når parachute)
+   - GRB-metode (+ glide ratio / descent speed)
+   - Vind-overstyring
+   - Bruk eksisterende `Collapsible` med en chevron-trigger; tittel "Avanserte parametere".
+5. **SORA 2.5-beregning** – uendret kort (Flight geo / SCV / SGRB, detaljer, advarsler).
+6. **Manuelle slidere** – Flight Geography Area, Contingency area, Contingency volume høyde, Ground risk buffer, fargeforklaring, SSB befolkningstetthet (uendret, men "Buffermetode" fjernes herfra siden den er flyttet opp).
 
-3. **`mem://security/2024-audit-remediation-plan`** (memory)
-   - Oppdater til å reflektere at runde 1 + 2A + 2B er gjennomført.
-   - Lenke til de to oppdaterte dokumentene.
+### 4. Auto-apply ved dronevalg (`src/components/SoraSettingsPanel.tsx`)
+- Når `selectedDroneId` endres og det finnes et `suggestion`-resultat, kall en intern `applySuggestion()`-tilsvarende oppdatering automatisk via `useEffect`. Den eksisterende auto-CD/V0-effekten utvides til også å skrive `contingencyDistance`, `contingencyHeight`, `groundRiskDistance` fra `suggestion`, så lenge `manualOverride` er `false`.
+- `manualOverride` settes fortsatt til `true` hvis brukeren drar i sliderne, slik at de manuelle verdiene ikke blir overskrevet ved senere re-beregninger.
+- Knappen **"Bruk SORA 2.5-beregning"** fjernes (eller skjules), siden anvendelse skjer automatisk. Visningen av selve beregningskortet beholdes som før.
+- Ved bytte av drone nullstilles `manualOverride` (slik som i dag) slik at den nye dronens verdier brukes umiddelbart.
 
-4. **`mem://security/hardening-measures`** (memory)
-   - Legg til at alle cron-funksjoner krever `x-cron-secret`.
-   - Legg til at `test-email`, `resend-confirmation-email`, `send-push-notification` krever JWT med scope-sjekk.
-   - Legg til `safeFetch`-allowlist-mønster for nye SSRF-utsatte proxies.
+---
 
-5. **Security memory** (via `update_memory`)
-   - Oppsummer "Hva skal aldri skje" + listen over aksepterte risikoer.
+## Tekniske detaljer
 
-### Verifisering før dokumentasjon ferdigstilles
+- Filer som endres:
+  - `src/pages/Kart.tsx` – default `enabled: true`, `soraOpen: true`, ny sidepanel-container med responsiv klasse, flytte `<SoraSettingsPanel>` ut av dagens flyt på `sm+`.
+  - `src/components/SoraSettingsPanel.tsx` – omrokkere JSX, legge "Avanserte parametere" inn i `<Collapsible>`, fjerne "Bruk SORA 2.5-beregning"-knappen, utvide auto-apply-effekten.
+- Ingen DB- eller typeendringer; `SoraSettings`-type er uendret.
+- Tilgjengelighet: ekspander-seksjonen bruker eksisterende `Collapsible`-komponent og chevron-mønster fra resten av appen.
 
-Rask gjennomgang av `update-seats` for å bekrefte at den faktisk er trygg (eller flytt den til "fix-now" hvis ikke).
-
-### Leveranse
-
-Tre filer oppdateres + to memory-poster oppdateres + security-memory skrives. Ingen kodeendringer (med mindre `update-seats`-sjekken avslører hull).
+## Out of scope
+- Endringer i selve SORA-beregningen (`soraBufferCalculator.ts`).
+- Endringer i Tilstøtende-område-panelet.
+- Endringer på mobilvisningens layout for SORA-panelet utover dagens oppførsel.

@@ -64,7 +64,7 @@ export default function KartPage() {
   const [companyFlightAltitude, setCompanyFlightAltitude] = useState(120);
   const [companyFlightGeography, setCompanyFlightGeography] = useState(0);
   const defaultSoraSettings = useMemo<SoraSettings>(() => ({
-    enabled: false,
+    enabled: true,
     flightAltitude: companyFlightAltitude,
     flightGeographyDistance: companyFlightGeography,
     contingencyDistance: 50,
@@ -82,7 +82,7 @@ export default function KartPage() {
   const [soraDensityResult, setSoraDensityResult] = useState<SoraPopulationDensityResult | null>(null);
   const [soraDensityLoading, setSoraDensityLoading] = useState(false);
   const soraDensityCacheRef = useRef<Map<string, SoraPopulationDensityResult>>(new Map());
-  const [soraOpen, setSoraOpen] = useState(false);
+  const [soraOpen, setSoraOpen] = useState(true);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
 
   // Fetch drone model name when soraDroneId changes
