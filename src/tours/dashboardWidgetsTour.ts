@@ -62,7 +62,7 @@ export const dashboardWidgetsTour: TourDefinition = {
       selector: '[data-tour="dashboard-status"]',
       title: "Status",
       description:
-        "Operativ status for selskapet — kommende oppdrag, godkjenninger som venter, og varsler du må følge opp.",
+        "Statusoversikt over ressursene dine — droner, batterier og utstyr som nærmer seg vedlikehold eller har utgått vedlikehold, samt personell med kompetanse som snart utløper eller er utgått.",
       side: "left",
       requiresModule: "status",
       optional: true,
