@@ -899,19 +899,21 @@ export default function KartPage() {
               </button>
             </div>
 
-            {/* SORA Settings content */}
-            <SoraSettingsPanel
-              settings={soraSettings}
-              onChange={setSoraSettings}
-              onDroneSelected={setSoraDroneId}
-              initialDroneId={soraSettings.droneId}
-              open={soraOpen}
-              onOpenChange={setSoraOpen}
-              showPopulationDensity={showPopulationDensity}
-              onShowPopulationDensityChange={setShowPopulationDensity}
-              populationDensityResult={soraDensityResult}
-              populationDensityLoading={soraDensityLoading}
-            />
+            {/* SORA Settings content (mobile only — desktop renders as overlay over map) */}
+            <div className="sm:hidden">
+              <SoraSettingsPanel
+                settings={soraSettings}
+                onChange={setSoraSettings}
+                onDroneSelected={setSoraDroneId}
+                initialDroneId={soraSettings.droneId}
+                open={soraOpen}
+                onOpenChange={setSoraOpen}
+                showPopulationDensity={showPopulationDensity}
+                onShowPopulationDensityChange={setShowPopulationDensity}
+                populationDensityResult={soraDensityResult}
+                populationDensityLoading={soraDensityLoading}
+              />
+            </div>
 
             {/* Adjacent Area content */}
             {soraSettings.enabled && (
