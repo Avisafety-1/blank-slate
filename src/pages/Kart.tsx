@@ -939,38 +939,56 @@ export default function KartPage() {
       <div className="flex-1 relative overflow-hidden">
         {/* Desktop/Tablet SORA panel overlay (top-left, ~1/3 width) */}
         {isRoutePlanning && soraOpen && (
-          <div className="hidden sm:block absolute top-24 left-3 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-14rem)] overflow-y-auto bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl">
-            <SoraSettingsPanel
-              settings={soraSettings}
-              onChange={setSoraSettings}
-              onDroneSelected={setSoraDroneId}
-              initialDroneId={soraSettings.droneId}
-              open={true}
-              onOpenChange={setSoraOpen}
-              showPopulationDensity={showPopulationDensity}
-              onShowPopulationDensityChange={setShowPopulationDensity}
-              populationDensityResult={soraDensityResult}
-              populationDensityLoading={soraDensityLoading}
-            />
+          <div className="hidden sm:block absolute top-24 left-3 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-14rem)] bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl">
+            <button
+              onClick={() => setSoraOpen(false)}
+              className="absolute top-2 right-2 z-10 p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Lukk SORA volum"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="max-h-[calc(100vh-14rem)] overflow-y-auto rounded-lg">
+              <SoraSettingsPanel
+                settings={soraSettings}
+                onChange={setSoraSettings}
+                onDroneSelected={setSoraDroneId}
+                initialDroneId={soraSettings.droneId}
+                open={true}
+                onOpenChange={setSoraOpen}
+                showPopulationDensity={showPopulationDensity}
+                onShowPopulationDensityChange={setShowPopulationDensity}
+                populationDensityResult={soraDensityResult}
+                populationDensityLoading={soraDensityLoading}
+              />
+            </div>
           </div>
         )}
         {/* Desktop/Tablet Adjacent area panel overlay */}
         {isRoutePlanning && adjacentOpen && soraSettings.enabled && (
           <div className={cn(
-            "hidden sm:block absolute top-24 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-14rem)] overflow-y-auto bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl",
+            "hidden sm:block absolute top-24 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-14rem)] bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl",
             soraOpen ? "left-[calc(0.75rem+33vw+0.5rem)]" : "left-3"
           )}>
-            <AdjacentAreaPanel
-              coordinates={currentRoute.coordinates}
-              soraSettings={soraSettings}
-              maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
-              active={showAdjacentArea}
-              onShowAdjacentArea={setShowAdjacentArea}
-              onResultChange={setAdjacentResult}
-              open={true}
-              onOpenChange={setAdjacentOpen}
-              missionId={editingMissionId ?? routePlanningState?.missionId ?? null}
-            />
+            <button
+              onClick={() => setAdjacentOpen(false)}
+              className="absolute top-2 right-2 z-10 p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Lukk tilstøtende område"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="max-h-[calc(100vh-14rem)] overflow-y-auto rounded-lg">
+              <AdjacentAreaPanel
+                coordinates={currentRoute.coordinates}
+                soraSettings={soraSettings}
+                maxSpeedMps={soraSettings.groundSpeedMps ?? soraDroneMaxSpeed}
+                active={showAdjacentArea}
+                onShowAdjacentArea={setShowAdjacentArea}
+                onResultChange={setAdjacentResult}
+                open={true}
+                onOpenChange={setAdjacentOpen}
+                missionId={editingMissionId ?? routePlanningState?.missionId ?? null}
+              />
+            </div>
           </div>
         )}
         {/* Back to mission button */}
