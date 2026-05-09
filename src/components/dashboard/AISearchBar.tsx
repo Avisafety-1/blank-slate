@@ -96,7 +96,6 @@ export const AISearchBar = () => {
       const { data, error } = await supabase.functions.invoke("ai-search", {
         body: {
           query: query.trim(),
-          userId: user.id,
         },
       });
       if (error) throw error;

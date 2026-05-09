@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.0";
+import { requireUser, authErrorResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,15 +14,20 @@ serve(async (req) => {
   }
 
   try {
-    const { query, userId } = await req.json();
-    
-    if (!query || !userId) {
+    // PT-4 fix: derive userId from JWT, never trust client-supplied userId.
+    const user = await requireUser(req);
+
+    const { query } = await req.json();
+
+    if (!query || typeof query !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'Missing query or userId' }),
+        JSON.stringify({ error: 'Missing query' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Service-role client for the search itself (existing behaviour preserved),
+    // but the company scope is locked to the JWT user's profile.
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -29,7 +35,7 @@ serve(async (req) => {
     const { data: profile } = await supabase
       .from('profiles')
       .select('company_id')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single();
 
     if (!profile) {
@@ -322,6 +328,11 @@ Kalender (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map((c: a
     );
 
   } catch (error) {
+    // Handle 401/403 from requireUser cleanly
+    const anyErr = error as any;
+    if (anyErr && typeof anyErr.status === 'number' && (anyErr.status === 401 || anyErr.status === 403)) {
+      return authErrorResponse(error, corsHeaders);
+    }
     console.error('Error in ai-search:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
