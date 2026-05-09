@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendEmail } from "../_shared/resend-email.ts";
+import { requireCronOrSuperadmin, authErrorResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    try { await requireCronOrSuperadmin(req); } catch (e) { return authErrorResponse(e, corsHeaders); }
+
     const { data: cfg } = await admin
       .from("monitoring_config")
       .select("*")

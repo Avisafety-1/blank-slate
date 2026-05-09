@@ -155,6 +155,8 @@ serve(async (req) => {
   }
 
   try {
+    try { await requireCronOrSuperadmin(req); } catch (e) { return authErrorResponse(e, corsHeaders); }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
