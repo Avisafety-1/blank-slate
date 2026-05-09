@@ -303,19 +303,32 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         )}
       </div>
 
-      {/* ── Flyhøyde ── */}
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Flyhøyde (m AGL)</Label>
-        <Input
-          type="number"
-          min={0}
-          max={500}
-          value={settings.flightAltitude === 0 ? "" : settings.flightAltitude}
-          onChange={(e) => { update({ flightAltitude: e.target.value === "" ? 0 : Number(e.target.value) }); setManualOverride(true); }}
-          onBlur={(e) => { if (e.target.value === "") update({ flightAltitude: 0 }); }}
-          placeholder="0"
-          className="h-8 text-sm"
-        />
+      {/* ── Flyhøyde + Contingency volum høyde ── */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Flyhøyde (m AGL)</Label>
+          <Input
+            type="number"
+            min={0}
+            max={500}
+            value={settings.flightAltitude === 0 ? "" : settings.flightAltitude}
+            onChange={(e) => { update({ flightAltitude: e.target.value === "" ? 0 : Number(e.target.value) }); setManualOverride(true); }}
+            onBlur={(e) => { if (e.target.value === "") update({ flightAltitude: 0 }); }}
+            placeholder="0"
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Contingency volum høyde (m)</Label>
+          <Input
+            type="number"
+            min={0}
+            max={200}
+            value={settings.contingencyHeight}
+            onChange={(e) => { update({ contingencyHeight: Number(e.target.value) || 0 }); setManualOverride(true); }}
+            className="h-8 text-sm"
+          />
+        </div>
       </div>
 
       {/* ── Avanserte oppdragsparametere (collapsed) ── */}
