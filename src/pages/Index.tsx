@@ -593,6 +593,7 @@ const Index = () => {
                           onClick={() => setLogFlightDialogOpen(true)}
                           className="w-full gap-2 hidden lg:flex"
                           variant="secondary"
+                          data-tour="dashboard-log-flight"
                         >
                           <Clock className="w-4 h-4" />
                           {t('actions.logFlightTime')}
