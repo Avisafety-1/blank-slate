@@ -170,6 +170,7 @@ const App = () => {
         <ErrorBoundary>
           <AuthProvider>
             <BrowserRouter>
+              <GuidedTourProvider>
               <ForceReloadBanner />
               <Toaster />
               <Sonner />
