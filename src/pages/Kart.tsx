@@ -668,6 +668,7 @@ export default function KartPage() {
                     <X className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-save"
                     size="sm"
                     onClick={handleSaveRoute}
                     disabled={currentRoute.coordinates.length < 2}
