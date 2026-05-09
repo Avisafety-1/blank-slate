@@ -634,6 +634,7 @@ export default function KartPage() {
 
                 <div className="ml-auto flex shrink-0 items-center gap-1 self-center">
                   <Button
+                    data-tour="map-pilot-button"
                     variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                     size="sm"
                     onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
@@ -643,6 +644,7 @@ export default function KartPage() {
                     <MapPin className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-undo"
                     variant="outline"
                     size="sm"
                     onClick={handleUndoPoint}
@@ -653,6 +655,7 @@ export default function KartPage() {
                     <Undo className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-clear"
                     variant="outline"
                     size="sm"
                     onClick={handleClearRoute}
@@ -663,6 +666,7 @@ export default function KartPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-cancel"
                     variant="outline"
                     size="sm"
                     onClick={handleCancelRoute}
