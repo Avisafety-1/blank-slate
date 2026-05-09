@@ -222,20 +222,31 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     return calculateSoraBuffer(droneProfile, missionParams);
   }, [droneProfile, settings.flightAltitude, windOverride, characteristicDimension, groundSpeed, reactionTime, pitchBankAngle, altimetryError, gnssError, positionHoldError, mapError, contingencyMethod, deploymentTime, grbMethod, glideRatio, descentSpeed]);
 
-  const applySuggestion = () => {
-    if (!suggestion) return;
-    setManualOverride(false);
-    onChange({
-      ...settings,
+  // Auto-apply suggestion whenever it changes (unless user manually overrode)
+  useEffect(() => {
+    if (!suggestion || manualOverride) return;
+    const cdNum = Number(characteristicDimension) || undefined;
+    const gsNum = Number(groundSpeed) || undefined;
+    const next = {
       droneId: selectedDroneId || undefined,
       droneName: selectedDrone ? droneLabel(selectedDrone) : undefined,
-      characteristicDimensionM: Number(characteristicDimension) || undefined,
-      groundSpeedMps: Number(groundSpeed) || undefined,
+      characteristicDimensionM: cdNum,
+      groundSpeedMps: gsNum,
       contingencyDistance: suggestion.suggested_contingency_buffer_m,
       contingencyHeight: suggestion.suggested_contingency_height_m,
       groundRiskDistance: suggestion.suggested_ground_risk_buffer_m,
-    });
-  };
+    };
+    const changed =
+      settings.droneId !== next.droneId ||
+      settings.droneName !== next.droneName ||
+      settings.characteristicDimensionM !== next.characteristicDimensionM ||
+      settings.groundSpeedMps !== next.groundSpeedMps ||
+      settings.contingencyDistance !== next.contingencyDistance ||
+      settings.contingencyHeight !== next.contingencyHeight ||
+      settings.groundRiskDistance !== next.groundRiskDistance;
+    if (changed) onChange({ ...settings, ...next });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestion, manualOverride, selectedDroneId]);
 
   const contentJsx = (
     <div className="px-3 pb-3 sm:px-4 sm:pb-4 space-y-4">
