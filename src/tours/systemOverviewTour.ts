@@ -12,6 +12,7 @@ export const systemOverviewTour: TourDefinition = {
       title: "Velkommen til AviSafe",
       description: "Vi tar deg gjennom hovedmenyen så du vet hvor alt ligger. Bruk Neste, Tilbake eller Hopp over når som helst.",
       side: "bottom",
+      beforeStep: closeMobileNav,
     },
     {
       id: "nav-missions",
