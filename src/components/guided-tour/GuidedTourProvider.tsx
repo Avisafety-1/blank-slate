@@ -167,6 +167,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       },
     });
 
+    setTourActive(true);
     await performStep(0);
   }, [navigate, location.pathname, stepAllowed]);
 
