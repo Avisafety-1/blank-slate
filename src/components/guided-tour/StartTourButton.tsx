@@ -37,7 +37,19 @@ export const StartTourButton = ({ variant = "icon", className }: Props) => {
         <DropdownMenuLabel>Guidede tourer</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {tourList.map((t) => (
-          <DropdownMenuItem key={t.id} onClick={() => start(t.id)} className="flex items-start gap-2 py-2">
+          <DropdownMenuItem
+            key={t.id}
+            onClick={() => {
+              // Close any open Radix dialogs (e.g. ProfileDialog) before starting,
+              // otherwise the dialog overlay covers the elements being highlighted.
+              document.querySelectorAll<HTMLElement>('[role="dialog"][data-state="open"]').forEach((el) => {
+                el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+              });
+              document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+              setTimeout(() => start(t.id), 250);
+            }}
+            className="flex items-start gap-2 py-2"
+          >
             <PlayCircle className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium flex items-center gap-2">
