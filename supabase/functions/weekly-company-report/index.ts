@@ -363,7 +363,7 @@ serve(async (req) => {
 
         const { data: rs } = await supabase
           .from("profiles")
-          .select("id, full_name, email, weekly_report_unsubscribed")
+          .select("id, full_name, email, weekly_report_unsubscribed, unsubscribe_token")
           .in("id", adminUserIds)
           .eq("company_id", company.id)
           .eq("approved", true)
@@ -411,8 +411,11 @@ serve(async (req) => {
           if (existing) { summary.skipped++; continue; }
         }
 
-        // Personalised unsubscribe link (signed token = base64(user_id:hmac))
-        const token = btoa(`${r.id}:${isoYear}:${isoWeek}`);
+        // PT-14: per-user random UUID token (stored in profiles.unsubscribe_token).
+        // Falls back to legacy base64 token for any profile that pre-dates the migration.
+        const token = (r as any).unsubscribe_token
+          ? String((r as any).unsubscribe_token)
+          : btoa(`${r.id}:${isoYear}:${isoWeek}`);
         const unsubscribeUrl = `${APP_URL}/unsubscribe-weekly?token=${encodeURIComponent(token)}`;
         const personalHtml = html.replace(/href=""/g, `href="${unsubscribeUrl}"`);
 

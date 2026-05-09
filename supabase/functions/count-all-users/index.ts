@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,38 +12,36 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
+    // PT-8 fix: verify JWT signature via Supabase SDK (rejects alg=none and forged tokens)
+    const token = authHeader.replace("Bearer ", "");
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Get authorization header to verify user is superadmin
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
       );
     }
+    const userId = claimsData.claims.sub as string;
 
-    // Decode JWT locally to avoid session_not_found network errors
-    const token = authHeader.replace("Bearer ", "");
-    let userId: string;
-    try {
-      const parts = token.split(".");
-      if (parts.length !== 3) throw new Error("Invalid JWT");
-      const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-      const exp = payload.exp;
-      if (!payload.sub || !exp || Date.now() / 1000 > exp) throw new Error("Token expired or invalid");
-      userId = payload.sub;
-    } catch {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
-      );
-    }
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    // Check if user is superadmin
     const { data: roleData, error: roleError } = await supabase
       .from("user_roles")
       .select("role")
@@ -58,10 +56,8 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if breakdown by company is requested (via query param or body)
     const url = new URL(req.url);
     let breakdown = url.searchParams.get("breakdown") === "true";
-    
     if (!breakdown && req.method === "POST") {
       try {
         const body = await req.json();
@@ -70,36 +66,23 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     if (breakdown) {
-      // Get all companies
       const { data: companies, error: compError } = await supabase
-        .from("companies")
-        .select("id, navn")
-        .order("navn");
-
+        .from("companies").select("id, navn").order("navn");
       if (compError) throw compError;
 
-      // Get all profiles with company_id
       const { data: profiles, error: profError } = await supabase
-        .from("profiles")
-        .select("company_id")
-        .eq("approved", true)
-        .not("email", "is", null);
-
+        .from("profiles").select("company_id")
+        .eq("approved", true).not("email", "is", null);
       if (profError) throw profError;
 
       const countMap: Record<string, number> = {};
       (profiles || []).forEach((p: any) => {
-        if (p.company_id) {
-          countMap[p.company_id] = (countMap[p.company_id] || 0) + 1;
-        }
+        if (p.company_id) countMap[p.company_id] = (countMap[p.company_id] || 0) + 1;
       });
 
       const result = (companies || []).map((c: any) => ({
-        id: c.id,
-        navn: c.navn,
-        userCount: countMap[c.id] || 0,
+        id: c.id, navn: c.navn, userCount: countMap[c.id] || 0,
       }));
-
       const total = Object.values(countMap).reduce((a: number, b: number) => a + b, 0);
 
       return new Response(
@@ -108,17 +91,10 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Original: count all approved users with email
     const { count, error: countError } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("approved", true)
-      .not("email", "is", null);
-
-    if (countError) {
-      console.error("Error counting users:", countError);
-      throw countError;
-    }
+      .from("profiles").select("*", { count: "exact", head: true })
+      .eq("approved", true).not("email", "is", null);
+    if (countError) throw countError;
 
     return new Response(
       JSON.stringify({ count: count || 0 }),
@@ -126,9 +102,8 @@ serve(async (req: Request): Promise<Response> => {
     );
   } catch (error: unknown) {
     console.error("Error in count-all-users:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "Internal error" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }

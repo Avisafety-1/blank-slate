@@ -1,9 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
+import { requireCronSecret } from "../_shared/cron.ts";
+import { authErrorResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 };
 
 const SAFESKY_ADVISORY_URL = 'https://uav-api.safesky.app/v1/advisory';
@@ -194,6 +196,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // PT-9: only callable by pg_cron
+  try { requireCronSecret(req); } catch (e) { return authErrorResponse(e, corsHeaders); }
 
   console.log('SafeSky cron refresh started');
 
