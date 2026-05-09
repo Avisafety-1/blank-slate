@@ -507,7 +507,7 @@ const Index = () => {
           </div>}
 
             {/* Mobile: Active flights */}
-            {hasTrainingModuleAccess("missions") && <div className="lg:hidden mb-3 sm:mb-4">
+            {hasTrainingModuleAccess("missions") && <div className="lg:hidden mb-3 sm:mb-4" data-tour="dashboard-active-flights">
               <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
             </div>}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
