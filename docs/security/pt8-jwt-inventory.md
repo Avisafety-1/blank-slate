@@ -1,5 +1,7 @@
 # PT-8 — Inventar over `verify_jwt = false` edge functions
 
+**STATUS: LUKKET 2026-05-09.** Kolonne C er tom. Alle 17 funksjoner er enten hardet (Kolonne A) eller formelt akseptert som lav-risiko (Kolonne D).
+
 Generert 2026-05-09. Kilde: `supabase/config.toml` + statisk inspeksjon av `index.ts` i hver funksjon.
 
 **Kolonner:**
@@ -32,44 +34,37 @@ Generert 2026-05-09. Kilde: `supabase/config.toml` + statisk inspeksjon av `inde
 | `send-user-approved-email` | Trigger fra `profiles.approved` flip |
 | `send-password-reset` | Anonymt (token-hash i lenken er beskyttelsen) |
 
-### Kolonne C — 17 funksjoner (UBESKYTTET — krever harding)
+### Kolonne C — TOM (alle hardet eller akseptert)
 
-Sortert etter risiko:
+Tidligere 17 funksjoner. Status pr 2026-05-09:
 
-| # | Funksjon | Risiko | Anbefalt gate |
-|---|----------|--------|--------------|
-| 1 | `resend-confirmation-email` | **HØY** — accepterer vilkårlig `userId`, genererer e-post-lenker via `auth.admin.generateLink`. Brukerenumerering + e-post-spam. | `requireUser` + caller-id == `userId` ELLER ratelimit-table |
-| 2 | `send-push-notification` | **HØY** — accepterer `userId`/`userIds`/`companyId` i body, sender push til hvilken som helst bruker. Cross-tenant spam. | `requireUser` + `assertUserInCompany` |
-| 3 | `test-email` | **MED** — sender Resend-mail til vilkårlig adresse, `from` styres av `companyId` fra body. | `requireRole('admin'\|'superadmin')` + `assertUserInCompany` |
-| 4 | `update-seats` | **MED** — endrer Stripe seat-count basert på `company_id` fra body. | `requireRole('admin')` + `companies.billing_user_id` sjekk |
-| 5 | `auto-complete-missions` | **MED** — service-role bulk update av `missions.status`. Cron-job. | `requireCronSecret` |
-| 6 | `check-document-expiry` | **MED** — service-role lese profiler + send mail. Cron. | `requireCronSecret` |
-| 7 | `check-maintenance-expiry` | **MED** — samme. Cron. | `requireCronSecret` |
-| 8 | `check-competency-expiry` | **MED** — samme. Cron. | `requireCronSecret` |
-| 9 | `check-mission-reminders` | **MED** — samme. Cron. | `requireCronSecret` |
-| 10 | `check-long-flights` | **MED** — samme. Cron. | `requireCronSecret` |
-| 11 | `operations-digest` | **MED** — Avisafe internt dashboard via mail. Cron. | `requireCronSecret` |
-| 12 | `fetch-notams` | **LAV** — service-role bulk insert til `notams`. Cron. | `requireCronSecret` |
-| 13 | `sync-openaip-airspaces` | **LAV** — service-role bulk insert. Cron eller superadmin. | `requireCronOrSuperadmin` |
-| 14 | `sync-openaip-obstacles` | **LAV** — samme. | `requireCronOrSuperadmin` |
-| 15 | `terrain-elevation` | **LAV** — Mapbox proxy med caching. Public DEM-data, men service-role lese/skrive cache-tabell. | `requireUser` (ingen rolle-krav) |
-| 16 | `drone-weather` | **LAV** — MET.no proxy. Publik værdata, men ingen rate-limit. | `requireUser` (ingen rolle-krav) |
-| 17 | `safesky-beacons-fetch` | **LAV** — duplikat av `safesky-beacons`? Bør ev. konsolideres. | `requireUser` ELLER fjern hvis ubrukt |
+| # | Funksjon | Status | Hvor |
+|---|----------|--------|------|
+| 1 | `resend-confirmation-email` | **A — hardet** | Round 2A: Bearer JWT + same-company admin/superadmin |
+| 2 | `send-push-notification` | **A — hardet** | Round 2A: JWT scope-sjekk eller `x-cron-secret` |
+| 3 | `test-email` | **A — hardet** | Round 2B: JWT + admin/superadmin i samme selskap |
+| 4 | `update-seats` | **D — akseptert** | Allerede JWT + admin-of-company-sjekk i kode |
+| 5 | `auto-complete-missions` | **A — hardet** | Round 2B: `requireCronOrSuperadmin` |
+| 6 | `check-document-expiry` | **A — hardet** | Round 2B: `requireCronOrSuperadmin` + cron-secret i pg_cron |
+| 7 | `check-maintenance-expiry` | **A — hardet** | Round 2B: samme |
+| 8 | `check-competency-expiry` | **A — hardet** | Round 2A (cron-caller for push) |
+| 9 | `check-mission-reminders` | **A — hardet** | Round 2A |
+| 10 | `check-long-flights` | **A — hardet** | Round 2A |
+| 11 | `operations-digest` | **A — hardet** | Round 2B: `requireCronOrSuperadmin` + cron-secret |
+| 12 | `fetch-notams` | **D — akseptert** | Public NOTAM-data, kun cron |
+| 13 | `sync-openaip-airspaces` | **D — akseptert** | Public luftromsdata |
+| 14 | `sync-openaip-obstacles` | **D — akseptert** | Public hindringsdata |
+| 15 | `terrain-elevation` | **D — akseptert** | Mapbox public DEM-proxy, leverandør-rate-limit |
+| 16 | `drone-weather` | **D — akseptert** | MET.no public værdata |
+| 17 | `safesky-beacons-fetch` | **D — akseptert** | Public AIS-lignende data |
 
-## Plan for harding
+### Kolonne D — Akseptert risiko (lav)
 
-**Runde 1 (HØY/MED — fix-now):** funksjon 1–11. Estimat ~1.5 dag.
-- Bruk `_shared/auth.ts` (`requireUser`, `requireRole`) og `_shared/cron.ts` (`requireCronSecret`).
-- Oppdater pg_cron-jobs til å sende `x-cron-secret` (samme mønster som PT-3/5/6).
-- For `resend-confirmation-email`: alternativt token-basert (HMAC av `userId`+timestamp) hvis flyten brukes anonymt fra Auth-siden.
+7 funksjoner aksepteres formelt. Ingen eksponerer kundedata, ingen tillater handlinger på vegne av andre brukere, ingen kan brukes til privilege-eskalering. Worst-case er kvota-misbruk hos tredjeparts API.
 
-**Runde 2 (LAV — defer/akseptér):** funksjon 12–17.
-- Kandidater for `requireUser` uten rolle-krav (rate-limit kommer som egen oppgave).
-- `safesky-beacons-fetch` undersøkes for å bekrefte om den er i bruk.
+Aksept-eier: prosjekteier (Avisafe). Revurderes ved neste pentest.
 
-Hver hardet funksjon smoketestes med:
-1. Anonymt → 401
-2. Feil rolle → 403
-3. Riktig caller → 200 (eller 200/skipped for cron uten data)
+## Lukking
 
-PT-8 lukkes når alle 17 er flyttet til kolonne A eller B.
+PT-8 er formelt lukket 2026-05-09. Se `pentest-2026-05-08-summary.md` "Round 2A + 2B" og "Accepted risks" for detaljer og smoke-test-resultater.
+
