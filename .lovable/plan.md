@@ -1,154 +1,127 @@
-## Fortsettelse av pentest-remediation — PT-10, PT-7, PT-11, PT-3
+## Neste runde pentest-remediation — PT-5, PT-6, PT-10, PT-1
 
-PT-4 er lukket. Vi følger den prioriterte rekkefølgen fra `.lovable/plan.md` og lukker fire funn til i denne runden. Hver fix får én og samme rutine: **inventory → endring → test → regresjon → markering**.
+Vi tar fire funn til. Rekkefølgen er valgt etter **lavest regresjonsrisiko først**, slik at vi bygger opp tillit til mønsteret før vi rører `safesky-advisory` (som har både cron- og UI-callere) og før vi til slutt går løs på PT-2 (`send-notification-email`) i en egen runde.
 
-Vi deployer **én funksjon av gangen**, sjekker logs, og oppdaterer `Avisafe_Pentest_Respons_2026-05-08.docx` + `docs/security/pentest-2026-05-08-summary.md` etter hvert.
+PT-8 (JWT-bypass) og PT-9/12-20 utsettes — de krever egne runder (PT-8 er runtime-hardening, PT-9+ må først kartlegges fra PDF).
 
 ---
 
-### PT-10 — DroneLog SSRF / token-leak (`process-dronelog`, `dji-parse-proxy`, `manage-dronelog-key`)
+### 1. PT-5 — `weekly-company-report` uten auth
 
-**Problem**
-- Funksjonen kan kalles av enhver innlogget bruker uten company-scope-sjekk.
-- `DJI_PARSER_URL` / `DRONELOG_BASE` brukes uten allow-list — eventuell konfigurasjonsfeil eller bruker-styrt input kan gi SSRF.
-- Tokens (`DJI_PARSER_TOKEN`, DroneLog-nøkler) kan logges i feilmeldinger.
+**Caller-inventory**
+- Eneste legitime caller: `pg_cron`-jobb (ukentlig, mandag morgen).
+- Ingen UI-knapp, ingen DB-trigger.
 
 **Endringer**
-1. `process-dronelog/index.ts` + `dji-parse-proxy/index.ts` + `manage-dronelog-key/index.ts`:
-   - Bruk `requireUser()` fra `_shared/auth.ts`.
-   - Hent `companyId` fra `profiles` (server-side), aldri fra body.
-   - Bekreft at evt. `flightId`/`logId` i input tilhører brukerens company via `assertUserInCompany` eller direkte `select … where id = $1 and company_id = $2`.
-2. Allow-list for utgående `fetch`:
-   - Hardkode `dronelogapi.com` og `new URL(DJI_PARSER_URL).host` som eneste tillatte hosts.
-   - Hjelper `safeFetch(url, opts)` i `_shared/http.ts` som kaster hvis host ikke er i allow-list.
-3. Logging:
-   - Erstatt alle `console.log(token)` / full URL-logging med fingerprint (`token.slice(0,4)+"…"+token.slice(-4)`).
-   - Wrap fetch-feil i try/catch som ikke videresender ekstern body til klient (returner generisk 502).
+- `requireCronSecret(req)` som første sjekk.
+- Oppdater cron-jobben til å sende `x-cron-secret` via `pg_net.http_post` (samme mønster som `publish-scheduled-marketing`).
+- Behold `verify_jwt = false`.
 
-**Risiko**: Lav-medium. DJI-import-flyt brukes daglig — feil i company-sjekk kan blokkere legitime opplastninger.
+**Risiko**: Svært lav. Én caller, én header.
 
-**Testplan**
-- `curl_edge_functions` uten auth → 401.
-- Med bruker A, send `flightId` som tilhører bruker B sitt selskap → 403.
-- Med bruker A, legitim opplastning → 200, telemetry lagret riktig.
-- Manuell SSRF-test: sett `DJI_PARSER_URL=http://169.254.169.254` i staging → må refuses av allow-list.
-- `edge_function_logs` 1 time etter deploy: ingen 5xx-økning, ingen full-token i log.
+**Test**: curl uten header → 401. Curl med riktig secret → 200 og rapport sendt til testbruker. Edge-logs neste mandag → grønn.
 
-**Regresjonsplan**
-- Smoke: én DJI-zip + én ArduPilot-fil opplastet via UI på testbruker.
-- Bekreft at `dji-process-single` (kjører etter parse) fortsatt får data.
-- Rollback: revert kun de tre filene; ingen DB-endringer i dette steget.
+**Regresjon**: Manuell trigger fra superadmin-panel hvis det finnes; ellers vent på cron-tikk i staging.
 
 ---
 
-### PT-7 — FlightHub2 token-tampering (`flighthub2-proxy` action `save-token`)
+### 2. PT-6 — `sync-geo-layers` uten auth
 
-**Problem**
-- Enhver bruker i selskapet kan kalle `action: "save-token"` og overskrive selskapets FH2-token (sub-tenant takeover via tampering).
+**Caller-inventory**
+- `pg_cron` (daglig OpenAIP/NOTAM/nature-sync).
+- Manuell trigger fra superadmin "Sync nå"-knapp i admin-panel.
 
 **Endringer**
-1. I `save-token`-grenen: krev `requireRole(user, ['admin','superadmin'])` (admin for eget selskap).
-2. Audit-tabell `fh2_credential_audit`:
-   - Kolonner: `id`, `user_id`, `company_id`, `action` (`save`|`clear`|`rotate`), `ip`, `user_agent`, `created_at`.
-   - RLS: select kun for `has_role(auth.uid(),'admin')` i samme `company_id`; insert kun via service role (edge function).
-3. Skriv én rad ved hver `save-token`/`clear-token`.
-4. Token-fingerprint logges, aldri full token (allerede delvis på plass).
+- Aksepter **enten** gyldig `x-cron-secret` **eller** innlogget superadmin (`requireRole(['superadmin'])`).
+- Hjelper-funksjon `requireCronOrSuperadmin(req)` i `_shared/auth.ts` (kombinerer `hasValidCronSecret` + `requireRole`).
+- Oppdater cron-jobben til å sende secret.
+- Behold `verify_jwt = false` (siden cron ikke har JWT).
 
-**Risiko**: Lav. Endrer bare admin-UI-flow.
+**Risiko**: Lav. To kjente callere, begge dekkes.
 
-**Testplan**
-- Vanlig bruker kaller `save-token` → 403.
-- Admin kaller `save-token` med tom token → 400.
-- Admin kaller med gyldig token → 200, ny rad i `fh2_credential_audit`, `get_fh2_token` returnerer ny verdi.
-- Cross-tenant: admin i selskap A prøver å sette token for selskap B (ved å manipulere body) → 403 (vi tar `companyId` fra `profiles`, ikke body).
+**Test**: Curl uten noe → 401. Vanlig bruker → 403. Superadmin via UI → 200. Cron med secret → 200.
 
-**Regresjonsplan**
-- Manuell test i admin-panel: lagre, fjern, lagre på nytt.
-- Smoke FH2-import etter rotasjon.
-- Migration er additiv (ny tabell) — rollback uten data-tap.
+**Regresjon**: Sjekk at neste daglige sync faktisk kjører (rad i `geo_sync_log` eller tilsvarende).
 
 ---
 
-### PT-11 — Customer portal cross-tenant (`customer-portal`, `change-plan`, `manage-addon`)
+### 3. PT-10 — DroneLog SSRF / token-leak
 
-**Problem**
-- `customer-portal` returnerer Stripe billing-portal-URL basert på `companyId` i body — bruker fra selskap A kan be om portal for selskap B.
+**Caller-inventory**
+- `process-dronelog`: kalt fra UI etter DJI-zip-opplastning (innlogget bruker).
+- `dji-parse-proxy`: kalt fra `process-dronelog` (intern) og fra UI.
+- `manage-dronelog-key`: superadmin-UI i admin-panel.
 
 **Endringer**
-1. Fjern `companyId` fra body i alle tre funksjoner; les fra `profiles` server-side.
-2. Krev `requireRole(user, ['admin','superadmin'])` — kun admin kan endre fakturering.
-3. Log `user.id` + `company_id` + `action` til `platform-activity-log` (eksisterende mønster).
-4. Frontend: oppdater `BillingSettings` / `PlanSelector` til å droppe `companyId` fra invoke-body.
+1. **Auth**: alle tre bruker `requireUser()`. `manage-dronelog-key` krever i tillegg `requireRole(['superadmin'])`.
+2. **Company-scope**: hent `companyId` fra `profiles`. Hvis input inneholder `flightId`/`logId`/`droneId` → verifiser eierskap via `assertUserInCompany` før noe gjøres.
+3. **SSRF-allow-list**: bruk `safeFetch()` fra `_shared/http.ts` med hardkodet liste:
+   - `dronelogapi.com`
+   - host fra `DJI_PARSER_URL` (les én gang ved boot)
+4. **Token-fingerprint**: alle `console.log` av tokens går gjennom `fingerprintToken()`. Aldri logg full URL hvis den inneholder query-token.
+5. **Feilhåndtering**: ekstern body videresendes ikke til klient — returner generisk `502 upstream_error` med vår egen request-id.
 
-**Risiko**: Lav. Berører kun fakturerings-UI som bare admins ser.
+**Risiko**: Medium. DJI-import-flyt brukes daglig — feil i company-sjekk kan blokkere legitime opplastninger.
 
-**Testplan**
-- Vanlig bruker → 403 fra alle tre.
-- Admin uten Stripe-kunde → 400 med klar feilmelding.
-- Admin med gyldig kunde → 200, portal-URL gjelder eget company.
-- Forsøk å sende `companyId` for annet selskap i body → ignoreres (server bruker `profiles.company_id`).
+**Test**:
+- Uten auth → 401.
+- Bruker A sender `flightId` fra selskap B → 403.
+- Legitim DJI-zip via UI → 200, telemetry lagret.
+- SSRF-test: midlertidig sett `DJI_PARSER_URL=http://169.254.169.254` i staging → må refuses av allow-list før fetch.
+- Logs 1 time etter deploy: ingen full-token, ingen 5xx-spike.
 
-**Regresjonsplan**
-- E2E: åpne Innstillinger → Fakturering som admin, klikk "Administrer abonnement" → Stripe-portal lastes.
-- Bytt plan + legg til addon i staging mot Stripe test-mode.
-- Rollback: revert frontend + 3 funksjoner samtidig (frontend-body endringer er bakoverkompatible siden server ignorerer feltet).
+**Regresjon**: Smoke med én DJI-zip + én ArduPilot-fil. Bekreft at `dji-process-single` (downstream) får data. Rollback = revert tre filer, ingen DB-endring.
 
 ---
 
-### PT-3 — `publish-scheduled` uten auth
+### 4. PT-1 — `safesky-advisory` uten auth + cross-tenant mission-read
 
-**Problem**
-- Cron-only-funksjon, men callable av hvem som helst → angripere kan trigge tidlig publisering av kø.
+**Caller-inventory** (må kartlegges først)
+- UI: kart-laget som henter SafeSky-trafikk per mission/area.
+- Mulig cron for cache-warming?
+- Andre edge-funksjoner som proxy?
 
 **Endringer**
-1. `publish-scheduled/index.ts`: legg til `requireCronSecret(req)` som første sjekk.
-2. Oppdater `cron.schedule` (DB) til å sende `x-cron-secret`-header via `pg_net.http_post`. Hentes fra Vault.
-3. `verify_jwt = false` beholdes (cron sender ikke JWT).
+1. `requireUser()` + hent `companyId` fra `profiles`.
+2. Hvis input har `missionId` → `assertUserInCompany(missionId, companyId)` (via `get_user_visible_company_ids` for hierarki).
+3. Hvis cron-caller finnes → aksepter `x-cron-secret` som alternativ (sjelden — kun hvis vi finner én).
+4. SafeSky upstream-kall via `safeFetch()` med allow-list (`api.safesky.app` etc.).
+5. HMAC-protokoll og share-mode er allerede implementert (jf. memory) — ikke rør den biten.
 
-**Risiko**: Lav. Eneste caller er cron.
+**Risiko**: Medium-høy. Brukes på live kart-view, latency-sensitivt. Cross-company hierarchy må håndteres riktig (parent-customer kan se barn-selskap sine missions).
 
-**Testplan**
-- Curl uten header → 401.
-- Curl med feil secret → 401.
-- Curl med riktig `x-cron-secret` → 200, samme oppførsel som før.
-- Vent på neste cron-tikk (sjekk `edge_function_logs`) → må fortsatt kjøre OK.
+**Test**:
+- Uten auth → 401.
+- Bruker A med `missionId` fra ikke-synlig selskap → 403.
+- Parent-customer admin med barn-selskap mission → 200.
+- Smoke: åpne kart med aktiv mission → SafeSky-laget rendrer som før.
 
-**Regresjonsplan**
-- Sjekk at planlagte poster faktisk publiseres innen 15 min etter cron-tikk.
-- Rollback: én git-revert + én SQL-migration som fjerner header. Lavt blast radius.
-
----
-
-### Felles infrastruktur som må komme på plass først
-
-- `supabase/functions/_shared/http.ts` — `safeFetch(url, opts, allowedHosts[])` (ny, brukes av PT-10).
-- Vault-secret `cron_shared_secret` (kopi av eksisterende `CRON_SHARED_SECRET`) for å la `pg_net.http_post` lese den uten å ha env-tilgang. Migration:
-  ```sql
-  select vault.create_secret('<verdi>','cron_shared_secret');
-  ```
-- Helper-RPC `get_cron_secret()` som `security definer` returnerer dekryptert verdi (kun callable av postgres-roller, ikke `authenticated`).
+**Regresjon**: Sjekk kart-latency (P50/P95) før/etter i logs. Rollback = én git-revert.
 
 ---
 
-### Leveranseflyt denne runden
+### Felles infrastruktur som lages først
 
-1. Migrations (én call): `fh2_credential_audit` + Vault-secret + `get_cron_secret`.
-2. Ny fil `_shared/http.ts`.
-3. PT-10 — deploy `process-dronelog`, `dji-parse-proxy`, `manage-dronelog-key`. Test. Marker fixed.
-4. PT-7 — deploy `flighthub2-proxy`. Test. Marker fixed.
-5. PT-11 — deploy `customer-portal`, `change-plan`, `manage-addon` + frontend-edits. Test. Marker fixed.
-6. PT-3 — deploy `publish-scheduled` + oppdater cron-job. Test. Marker fixed.
-7. Oppdater `Avisafe_Pentest_Respons_2026-05-08.docx` (status + commit-ref per PT) og `summary.md`.
-8. Kjør `security--run_security_scan` til slutt.
-
-Etter denne runden gjenstår PT-1, PT-5, PT-6 (Highs, cron/live-UAV) og PT-2 (sist, egen runde med caller-inventory).
+- Utvid `_shared/auth.ts` med `requireCronOrSuperadmin(req, supabase)`.
+- `_shared/http.ts` finnes allerede — utvid `safeFetch()` med per-call allow-list-parameter (i stedet for hardkodet global liste), slik at hver funksjon deklarerer sine egne hosts.
+- `assertUserInCompany` finnes i `_shared/companyScope.ts` — verifiser at den støtter hierarki via `get_user_visible_company_ids`. Hvis ikke, legg til.
 
 ---
 
-### Tekniske detaljer
+### Leveranseflyt
 
-- All auth via `_shared/auth.ts` — ingen duplisering av `supabase.auth.getUser`.
-- All cron-auth via `_shared/cron.ts` — header `x-cron-secret` ELLER `x-internal-secret`.
-- Allow-list i `safeFetch` er hardkodet i koden (ikke env), så endring krever code review.
-- Audit-tabellen får `created_at` med `default now()` og GIN-index på `(company_id, created_at desc)`.
-- Frontend-endringer for PT-11 er rene fjerninger av `companyId` fra invoke-body — type-trygt fordi server ignorerer feltet.
+1. Felles helpers først (én commit).
+2. PT-5 — deploy `weekly-company-report` + cron-migration. Test. Marker fixed.
+3. PT-6 — deploy `sync-geo-layers` + cron-migration. Test. Marker fixed.
+4. PT-10 — deploy 3 funksjoner. Test grundig (tar mest tid). Marker fixed.
+5. PT-1 — caller-inventory først → deploy `safesky-advisory`. Test. Marker fixed.
+6. Oppdater `Avisafe_Pentest_Respons_2026-05-08.docx` + `docs/security/pentest-2026-05-08-summary.md`.
+7. Kjør `security--run_security_scan` til slutt.
+
+---
+
+### Etter denne runden gjenstår
+
+- **PT-2** — `send-notification-email` (egen runde, krever full caller-inventory: DB-triggere, cron, UI, andre edge-funksjoner).
+- **PT-8** — JWT-bypass (runtime-hardening, deferred).
+- **PT-9, PT-12-20** — må først leses ut fra Aikido-PDF og legges inn i tracker.
