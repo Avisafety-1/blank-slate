@@ -75,8 +75,11 @@ serve(async (req) => {
       console.error('Approval email failed:', e);
     }
 
-    // Sync seats (best-effort)
-    supabase.functions.invoke('update-seats', { body: { company_id: profile.company_id } }).catch(() => {});
+    // Sync seats (best-effort) — pass cron secret so update-seats accepts the call
+    supabase.functions.invoke('update-seats', {
+      body: { company_id: profile.company_id },
+      headers: { 'x-cron-secret': Deno.env.get('CRON_SHARED_SECRET') ?? '' },
+    }).catch(() => {});
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {

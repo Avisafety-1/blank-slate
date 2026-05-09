@@ -1,10 +1,11 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.0";
 import JSZip from "npm:jszip@3.10.1";
+import { hasValidCronSecret } from "../_shared/cron.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-cron-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const DRONELOG_BASE = "https://dronelogapi.com/api/v1";
@@ -489,6 +490,44 @@ Deno.serve(async (req) => {
       // No body (cron call) — that's fine
     }
 
+    // PT-15: require auth.
+    //   - cron secret  → trusted (used by pg_cron and internal fan-out)
+    //   - JWT          → user must own userId AND match companyId
+    //   - none         → 401
+    const cronOk = hasValidCronSecret(req);
+    if (!cronOk) {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (!authHeader.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const token = authHeader.replace("Bearer ", "");
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
+      if (claimsErr || !claims?.claims?.sub) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const callerId = claims.claims.sub as string;
+
+      // userId in body must equal caller; companyId must equal caller's company
+      const { data: callerProfile } = await serviceClient
+        .from("profiles").select("company_id").eq("id", callerId).maybeSingle();
+
+      if (manualUserId && manualUserId !== callerId) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (manualCompanyId && callerProfile?.company_id !== manualCompanyId) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      // No body at all → reject (only cron can do full fan-out)
+      if (!manualUserId && !manualCompanyId) {
+        return new Response(JSON.stringify({ error: "Forbidden — full sync requires cron" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     // ── Manual sync: single user ──
     if (manualUserId) {
       // Look up user's company
@@ -627,6 +666,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const cronSecret = Deno.env.get("CRON_SHARED_SECRET") ?? "";
     const fnUrl = `${supabaseUrl}/functions/v1/dji-auto-sync`;
 
     // Fire-and-forget per-company invocations. Each gets its own wall-clock budget.
@@ -642,6 +682,7 @@ Deno.serve(async (req) => {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${serviceKey}`,
               "apikey": serviceKey,
+              "x-cron-secret": cronSecret,
             },
             body: JSON.stringify({ companyId: c.id }),
           }).catch((e) => console.error(`[dji-auto-sync] fan-out fetch error for ${c.navn}:`, e));

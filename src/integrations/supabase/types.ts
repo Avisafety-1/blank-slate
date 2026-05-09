@@ -4631,6 +4631,7 @@ export type Database = {
           training_module_access: string[]
           uas_operator_number: string | null
           under_training: boolean
+          unsubscribe_token: string
           updated_at: string | null
           weekly_report_unsubscribed: boolean
         }
@@ -4660,6 +4661,7 @@ export type Database = {
           training_module_access?: string[]
           uas_operator_number?: string | null
           under_training?: boolean
+          unsubscribe_token?: string
           updated_at?: string | null
           weekly_report_unsubscribed?: boolean
         }
@@ -4689,6 +4691,7 @@ export type Database = {
           training_module_access?: string[]
           uas_operator_number?: string | null
           under_training?: boolean
+          unsubscribe_token?: string
           updated_at?: string | null
           weekly_report_unsubscribed?: boolean
         }
