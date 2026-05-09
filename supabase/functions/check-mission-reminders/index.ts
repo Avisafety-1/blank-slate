@@ -129,6 +129,7 @@ serve(async (req) => {
 
           // Send push notification
           const { error: pushError } = await supabase.functions.invoke('send-push-notification', {
+            headers: { 'x-cron-secret': Deno.env.get('CRON_SHARED_SECRET') ?? '' },
             body: {
               userId: personId,
               title: 'Oppdragspåminnelse',

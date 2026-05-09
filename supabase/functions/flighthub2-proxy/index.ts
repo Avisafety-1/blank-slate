@@ -325,13 +325,27 @@ Deno.serve(async (req: Request) => {
       : `[len=${fh2Token.length}]`;
     console.log(`Token fingerprint: ${tokenFingerprint}, length: ${fh2Token.length}, org_uuid: ${jwtOrgUuid || "none"}`);
 
-    // DNS error handling
+    // PT-16: SSRF allowlist — alle FH2-kall (inkl. debug) må gå mot kjente DJI-hoster
+    const FH2_ALLOWED_HOST_RE = /^[a-z0-9-]+\.(djigate\.com|flighthub\.dji\.com|dji\.com)$/i;
     const safeFetch = async (url: string, opts: RequestInit) => {
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        throw new Error(`Ugyldig URL: ${url}`);
+      }
+      if (parsed.protocol !== 'https:') {
+        throw new Error(`Kun https tillatt mot FlightHub 2 (fikk ${parsed.protocol})`);
+      }
+      if (!FH2_ALLOWED_HOST_RE.test(parsed.hostname)) {
+        console.warn(`[flighthub2-proxy] Blocked non-allowlisted host: ${parsed.hostname}`);
+        throw new Error(`FlightHub 2 base URL utenfor allowlist: ${parsed.hostname}`);
+      }
       try {
         return await fetch(url, opts);
       } catch (err) {
         if (err.message?.includes("dns error") || err.message?.includes("Name or service not known")) {
-          throw new Error(`DNS-oppslag feilet for ${new URL(url).hostname}. Sjekk at Base URL er korrekt.`);
+          throw new Error(`DNS-oppslag feilet for ${parsed.hostname}. Sjekk at Base URL er korrekt.`);
         }
         throw new Error(`Nettverksfeil mot ${url}: ${err.message}`);
       }
