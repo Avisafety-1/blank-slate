@@ -778,6 +778,13 @@ export const ProfileDialog = () => {
     return () => window.removeEventListener('open-profile-subscription', handler);
   }, []);
 
+  // Close profile dialog when a guided tour starts
+  useEffect(() => {
+    const close = () => setProfileDialogOpen(false);
+    window.addEventListener('avisafe:tour-starting', close);
+    return () => window.removeEventListener('avisafe:tour-starting', close);
+  }, []);
+
   useEffect(() => {
     if ((location.state as any)?.openSubscription) {
       setProfileDialogOpen(true);
