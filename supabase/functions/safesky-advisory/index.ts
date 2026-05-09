@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
+import { requireUser, authErrorResponse } from "../_shared/auth.ts";
+import { assertUserInCompany } from "../_shared/companyScope.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
