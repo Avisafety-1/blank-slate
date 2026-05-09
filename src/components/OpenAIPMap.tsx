@@ -570,7 +570,8 @@ export function OpenAIPMap({
     if (!mapRef.current || !profileLoaded) return;
 
     const startCenter = initialCenter || DEFAULT_POS;
-    const map = L.map(mapRef.current).setView(startCenter, initialCenter ? 13 : 8);
+    const map = L.map(mapRef.current, { zoomControl: false }).setView(startCenter, initialCenter ? 13 : 8);
+    L.control.zoom({ position: 'topright' }).addTo(map);
     leafletMapRef.current = map;
 
     // Create panes
