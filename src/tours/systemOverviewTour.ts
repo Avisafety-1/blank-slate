@@ -1,5 +1,5 @@
 import type { TourDefinition } from "./types";
-import { openMobileNavIfNeeded } from "./tourUtils";
+import { openMobileNavIfNeeded, closeMobileNav } from "./tourUtils";
 
 export const systemOverviewTour: TourDefinition = {
   id: "system-overview",
