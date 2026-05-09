@@ -172,29 +172,14 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     if (!selectedDrone || !catalogSpecs) return;
     const catalogCd = catalogSpecs.characteristic_dimension_m;
     const catalogSpeed = catalogSpecs.max_speed_mps ?? (catalogSpecs.max_wind_mps != null ? catalogSpecs.max_wind_mps * 2 : null);
-    const next: Partial<SoraSettings> = {
-      droneId: selectedDroneId || undefined,
-      droneName: selectedDrone ? droneLabel(selectedDrone) : undefined,
-    };
 
     if (catalogCd != null && !manualCdOverride) {
       setCharacteristicDimension(String(catalogCd));
-      next.characteristicDimensionM = catalogCd;
     }
     if (catalogSpeed != null && !manualSpeedOverride) {
       setGroundSpeed(String(catalogSpeed));
-      next.groundSpeedMps = catalogSpeed;
     }
-
-    const hasChanges = settings.droneId !== next.droneId
-      || settings.droneName !== next.droneName
-      || (next.characteristicDimensionM !== undefined && settings.characteristicDimensionM !== next.characteristicDimensionM)
-      || (next.groundSpeedMps !== undefined && settings.groundSpeedMps !== next.groundSpeedMps);
-
-    if (hasChanges) {
-      onChange({ ...settings, ...next });
-    }
-  }, [catalogSpecs, selectedDrone, selectedDroneId, manualCdOverride, manualSpeedOverride, settings, onChange]);
+  }, [catalogSpecs, selectedDrone, manualCdOverride, manualSpeedOverride]);
 
   // Build drone profile
   const droneProfile: DroneProfile | null = useMemo(() => {
