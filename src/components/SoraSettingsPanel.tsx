@@ -313,7 +313,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             min={0}
             max={500}
             value={settings.flightAltitude === 0 ? "" : settings.flightAltitude}
-            onChange={(e) => { update({ flightAltitude: e.target.value === "" ? 0 : Number(e.target.value) }); setManualOverride(true); }}
+            onChange={(e) => { update({ flightAltitude: e.target.value === "" ? 0 : Number(e.target.value) }); }}
             onBlur={(e) => { if (e.target.value === "") update({ flightAltitude: 0 }); }}
             placeholder="0"
             className="h-8 text-sm"
