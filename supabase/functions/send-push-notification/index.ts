@@ -183,7 +183,66 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // PT-8 #2: Authentication. Accept either:
+    //   (a) valid x-cron-secret (internal callers like check-long-flights)
+    //   (b) valid Bearer JWT — caller must be in same company as targets, or superadmin
+    const cronSecret = Deno.env.get('CRON_SHARED_SECRET');
+    const providedCronSecret = req.headers.get('x-cron-secret') ?? '';
+    const isInternal = !!cronSecret && providedCronSecret.length === cronSecret.length && providedCronSecret === cronSecret;
+
+    let callerUserId: string | null = null;
+    let callerCompanyId: string | null = null;
+    let callerIsSuperadmin = false;
+
+    if (!isInternal) {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      const token = authHeader.replace('Bearer ', '');
+      const { data: u, error: uErr } = await supabase.auth.getUser(token);
+      if (uErr || !u?.user) {
+        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      callerUserId = u.user.id;
+      const [{ data: roles }, { data: prof }] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', callerUserId),
+        supabase.from('profiles').select('company_id').eq('id', callerUserId).maybeSingle(),
+      ]);
+      callerIsSuperadmin = (roles ?? []).some((r: any) => r.role === 'superadmin');
+      callerCompanyId = prof?.company_id ?? null;
+    }
+
     const { userId, userIds, companyId, title, body, url, tag, data } = await req.json();
+
+    // Scope check (skipped for internal callers and superadmins)
+    if (!isInternal && !callerIsSuperadmin) {
+      const targetUserIds: string[] = userId ? [userId] : Array.isArray(userIds) ? userIds : [];
+      if (targetUserIds.length > 0) {
+        const { data: targets } = await supabase
+          .from('profiles').select('company_id').in('id', targetUserIds);
+        const sameCompany = (targets ?? []).every((t: any) => t.company_id === callerCompanyId);
+        if (!sameCompany) {
+          return new Response(JSON.stringify({ error: 'Cross-company push not allowed' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } else if (companyId) {
+        if (companyId !== callerCompanyId) {
+          return new Response(JSON.stringify({ error: 'Cross-company push not allowed' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } else {
+        return new Response(JSON.stringify({ error: 'Must specify userId, userIds, or companyId' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
     // Build payload
     const payload: PushPayload = {
