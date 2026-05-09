@@ -104,11 +104,10 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
           popover.footerButtons.prepend(skip);
         }
       },
-      onDestroyStarted: () => {
+      onDestroyStarted: (_element, _step, { driver }) => {
         // Fires for overlay click / ESC before driver removes its own overlay.
-        // Calling destroy() again here would cancel Driver's internal cleanup,
-        // so only remove our app-level locks/menus.
         cleanupTourUi();
+        try { driver.destroy(); } catch {}
         setTimeout(() => force((x) => x + 1), 0);
       },
       onDestroyed: cleanupTourUi,
