@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { driver, type Driver, type DriveStep } from "driver.js";
+import { driver, type Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import "./tour-styles.css";
 import { allTours } from "@/tours/tourDefinitions";
@@ -39,7 +39,10 @@ function setTourActive(active: boolean) {
   document.body.classList.toggle("avisafe-tour-active", active);
 }
 
-// closeMobileNav is imported from tourUtils and uses robust pointer dispatch.
+function setTourId(id: string | null) {
+  if (id) document.body.setAttribute("data-tour-id", id);
+  else document.body.removeAttribute("data-tour-id");
+}
 
 export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
@@ -59,35 +62,26 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     const tour = allTours[tourId];
     if (!tour) return;
 
-    // Build resolved steps (filter perms; navigate + wait happens during onHighlightStarted)
     const candidates = tour.steps.filter(stepAllowed);
+    if (!candidates.length) return;
 
-    const driveSteps: DriveStep[] = [];
-    for (const s of candidates) {
-      driveSteps.push({
-        element: s.selector,
-        disableActiveInteraction: false,
-        popover: {
-          title: s.title,
-          description: s.description,
-          side: (s.side === "over" ? undefined : s.side) ?? "bottom",
-          align: "start",
-          popoverClass: "avisafe-tour",
-        },
-        // attach metadata for our handlers
-        // @ts-expect-error custom
-        _meta: s,
-      });
-    }
+    // Destroy any previous tour cleanly first.
+    try { driverRef.current?.destroy(); } catch {}
 
-    if (!driveSteps.length) return;
+    const finish = (markComplete: boolean) => {
+      try { d.destroy(); } catch {}
+      setMapInteraction(false);
+      setTourActive(false);
+      setTourId(null);
+      closeMobileNav();
+      if (markComplete) {
+        const completed = readCompleted();
+        if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
+      }
+      force((x) => x + 1);
+    };
 
-    const d = driver({
-      showProgress: true,
-      progressText: "Steg {{current}} av {{total}}",
-      nextBtnText: "Neste →",
-      prevBtnText: "← Tilbake",
-      doneBtnText: "Fullfør",
+    const d: Driver = driver({
       allowClose: true,
       overlayOpacity: 0.55,
       stagePadding: 6,
@@ -95,83 +89,74 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       smoothScroll: true,
       animate: true,
       popoverClass: "avisafe-tour",
-      steps: driveSteps,
       onPopoverRender: (popover) => {
         // Inject a "Hopp over" button next to close
         if (popover.footerButtons && !popover.footerButtons.querySelector(".avisafe-skip-btn")) {
           const skip = document.createElement("button");
           skip.className = "avisafe-skip-btn";
           skip.textContent = "Hopp over";
-          skip.onclick = () => d.destroy();
+          skip.onclick = () => finish(true);
           popover.footerButtons.prepend(skip);
         }
-      },
-      onDestroyed: () => {
-        setMapInteraction(false);
-        setTourActive(false);
-        closeMobileNav();
-        const completed = readCompleted();
-        if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
-        force((x) => x + 1);
       },
     });
 
     driverRef.current = d;
+    setTourActive(true);
+    setTourId(tourId);
 
-    // Override moveNext to perform async navigate + wait per step
     const performStep = async (index: number) => {
       const step = candidates[index];
       if (!step) {
-        d.destroy();
+        finish(true);
         return;
       }
 
       // Navigate first if needed
       if (step.route && location.pathname !== step.route) {
         navigate(step.route);
-        await sleep(250);
+        await sleep(300);
       }
 
-      // beforeStep hook
+      // beforeStep hook (open/close menus, scroll widgets into view, etc.)
       try { await step.beforeStep?.(); } catch {}
 
-      // Wait for element (visible match preferred)
+      // Wait for visible element
       const el = await waitForElement(step.selector, step.optional === false ? 4000 : 1500);
       if (!el) {
-        // skip silently
         return performStep(index + 1);
       }
 
       setMapInteraction(Boolean(step.allowMapInteraction));
 
-      // Swap the step's element to the resolved DOM node so driver.js highlights
-      // the actually-visible match (selectors like `[data-tour="x"]` may match
-      // hidden mobile/desktop duplicates).
-      try {
-        (driveSteps[index] as unknown as { element: HTMLElement }).element = el;
-        d.setSteps(driveSteps);
-      } catch {}
+      const isLast = index === candidates.length - 1;
+      const isFirst = index === 0;
+      const progress = `Steg ${index + 1} av ${candidates.length}`;
 
-      // Drive to this step
-      d.drive(index);
+      d.highlight({
+        element: el,
+        popover: {
+          title: step.title,
+          description: `<div class="avisafe-tour-progress">${progress}</div>${step.description}`,
+          side: (step.side === "over" ? undefined : step.side) ?? "bottom",
+          align: "start",
+          popoverClass: "avisafe-tour",
+          showButtons: ["next", "previous", "close"],
+          disableButtons: isFirst ? ["previous"] : [],
+          nextBtnText: isLast ? "Fullfør" : "Neste →",
+          prevBtnText: "← Tilbake",
+          onNextClick: () => {
+            if (isLast) finish(true);
+            else performStep(index + 1);
+          },
+          onPrevClick: () => {
+            if (!isFirst) performStep(index - 1);
+          },
+          onCloseClick: () => finish(true),
+        },
+      });
     };
 
-    // Hijack default next/prev by listening to clicks on rendered buttons.
-    // driver.js fires onNextClick / onPrevClick we can override.
-    d.setConfig({
-      ...d.getConfig(),
-      onNextClick: () => {
-        const i = d.getActiveIndex();
-        if (typeof i === "number") performStep(i + 1);
-        else d.destroy();
-      },
-      onPrevClick: () => {
-        const i = d.getActiveIndex();
-        if (typeof i === "number" && i > 0) performStep(i - 1);
-      },
-    });
-
-    setTourActive(true);
     await performStep(0);
   }, [navigate, location.pathname, stepAllowed]);
 

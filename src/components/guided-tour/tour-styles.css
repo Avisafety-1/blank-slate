@@ -27,6 +27,15 @@
   margin-bottom: 0.9rem;
 }
 
+.driver-popover.avisafe-tour .avisafe-tour-progress {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: hsl(var(--primary));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
 .driver-popover.avisafe-tour .driver-popover-footer {
   display: flex;
   align-items: center;
