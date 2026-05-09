@@ -87,14 +87,19 @@ Deno.serve(async (req) => {
       if (body.dronelogKey) {
         headers.Authorization = `Bearer ${body.dronelogKey}`;
       }
-      const dl = await fetch(body.downloadUrl, { headers });
+      let dl: Response;
+      try {
+        dl = await safeFetch(body.downloadUrl, { headers }, ALLOWED_HOSTS);
+      } catch (e) {
+        if (e instanceof SSRFError) {
+          console.error(`[dji-parse-proxy] SSRF blocked host=${e.host}`);
+          return jsonResp({ error: "downloadUrl host not allowed" }, 400);
+        }
+        throw e;
+      }
       if (!dl.ok) {
-        const txt = await dl.text().catch(() => "");
-        console.error(
-          "[dji-parse-proxy] download failed:",
-          dl.status,
-          txt.slice(0, 200),
-        );
+        console.error(`[dji-parse-proxy] download failed: ${dl.status}`);
+        await dl.body?.cancel();
         return jsonResp(
           { fallback: true, reason: `download-failed-${dl.status}` },
           200,
