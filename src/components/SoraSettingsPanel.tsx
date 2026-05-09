@@ -115,6 +115,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
   const [manualOverride, setManualOverride] = useState(false);
   const [manualCdOverride, setManualCdOverride] = useState(false);
   const [manualSpeedOverride, setManualSpeedOverride] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const update = (partial: Partial<SoraSettings>) => {
     onChange({ ...settings, ...partial });
