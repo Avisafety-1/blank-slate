@@ -782,6 +782,7 @@ export default function KartPage() {
                 </Button>
               )}
               <Button
+                data-tour="map-pilot-button"
                 variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                 size="sm"
                 onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
