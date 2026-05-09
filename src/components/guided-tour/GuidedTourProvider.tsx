@@ -112,6 +112,8 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       },
       onDestroyed: () => {
         setMapInteraction(false);
+        setTourActive(false);
+        closeMobileNavIfOpen();
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
         force((x) => x + 1);
