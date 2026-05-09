@@ -73,14 +73,20 @@ export async function openMobileNavIfNeeded() {
   }
 }
 
-/** Close the mobile hamburger menu if open. */
+/** Close the mobile hamburger menu if open. Works even when the trigger is hidden
+ *  on the current breakpoint (e.g. menu left open after a viewport change). */
 export async function closeMobileNav() {
+  const open = document.querySelector<HTMLElement>('[role="menu"][data-state="open"]');
+  if (!open) return;
+  // Try clicking the trigger first (only works if trigger is actionable)
   const trigger = document.querySelector<HTMLElement>('[data-tour="mobile-nav-trigger"]');
-  const open = document.querySelector('[role="menu"][data-state="open"]');
-  if (trigger && open) {
+  if (trigger && trigger.offsetParent !== null) {
     fireRadixToggle(trigger);
-    await new Promise((r) => setTimeout(r, 150));
   }
+  // Always also dispatch Escape to handle hidden-trigger / stale-open cases
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  open.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  await new Promise((r) => setTimeout(r, 200));
 }
 
 export function sleep(ms: number) {
