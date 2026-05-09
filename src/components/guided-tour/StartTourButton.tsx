@@ -40,13 +40,13 @@ export const StartTourButton = ({ variant = "icon", className }: Props) => {
           <DropdownMenuItem
             key={t.id}
             onClick={() => {
-              // Close any open Radix dialogs (e.g. ProfileDialog) before starting,
-              // otherwise the dialog overlay covers the elements being highlighted.
+              // Notify any open dialogs (e.g. ProfileDialog) so they close themselves.
+              window.dispatchEvent(new CustomEvent('avisafe:tour-starting'));
+              // Fallback: dispatch Escape for non-listening dialogs.
               document.querySelectorAll<HTMLElement>('[role="dialog"][data-state="open"]').forEach((el) => {
                 el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
               });
-              document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-              setTimeout(() => start(t.id), 250);
+              setTimeout(() => start(t.id), 300);
             }}
             className="flex items-start gap-2 py-2"
           >
