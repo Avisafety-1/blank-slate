@@ -666,6 +666,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const cronSecret = Deno.env.get("CRON_SHARED_SECRET") ?? "";
     const fnUrl = `${supabaseUrl}/functions/v1/dji-auto-sync`;
 
     // Fire-and-forget per-company invocations. Each gets its own wall-clock budget.
@@ -681,6 +682,7 @@ Deno.serve(async (req) => {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${serviceKey}`,
               "apikey": serviceKey,
+              "x-cron-secret": cronSecret,
             },
             body: JSON.stringify({ companyId: c.id }),
           }).catch((e) => console.error(`[dji-auto-sync] fan-out fetch error for ${c.navn}:`, e));
