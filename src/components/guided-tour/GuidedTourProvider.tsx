@@ -5,7 +5,7 @@ import "driver.js/dist/driver.css";
 import "./tour-styles.css";
 import { allTours } from "@/tours/tourDefinitions";
 import type { TourId, TourStep } from "@/tours/types";
-import { waitForElement, sleep } from "@/tours/tourUtils";
+import { waitForElement, sleep, closeMobileNav } from "@/tours/tourUtils";
 import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "avisafe.tours.completed";
@@ -39,11 +39,7 @@ function setTourActive(active: boolean) {
   document.body.classList.toggle("avisafe-tour-active", active);
 }
 
-function closeMobileNavIfOpen() {
-  const trigger = document.querySelector<HTMLElement>('[data-tour="mobile-nav-trigger"]');
-  const open = document.querySelector('[role="menu"][data-state="open"]');
-  if (trigger && open) trigger.click();
-}
+// closeMobileNav is imported from tourUtils and uses robust pointer dispatch.
 
 export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
@@ -113,7 +109,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       onDestroyed: () => {
         setMapInteraction(false);
         setTourActive(false);
-        closeMobileNavIfOpen();
+        closeMobileNav();
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
         force((x) => x + 1);
