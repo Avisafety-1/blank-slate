@@ -474,34 +474,28 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               <p className="text-[10px] text-muted-foreground">SGRB</p>
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground">{suggestion.calculation_summary}</p>
-
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            <span title={SORA_HELP.sr}>SR reaction: {suggestion.details.reaction_distance_m} m</span>
-            <span title={SORA_HELP.scm}>SCM maneuver: {suggestion.details.maneuver_distance_m} m</span>
-            <span title={SORA_HELP.hr}>HR vert. reaction: {suggestion.details.vertical_reaction_m} m</span>
-            <span title={SORA_HELP.hcm}>HCM vert. maneuver: {suggestion.details.vertical_maneuver_m} m</span>
-            <span title="CV height margin over planned flight geography height.">CV høyde: {suggestion.details.cv_height_margin_m} m</span>
-            <span title={SORA_HELP.hcv}>HCV total ceiling: {suggestion.details.total_ceiling_m} m</span>
-          </div>
-
-          {suggestion.warnings.length > 0 && (
-            <div className="space-y-1">
-              {suggestion.warnings.map((w, i) => (
-                <div key={i} className="flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
-                  <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                  <span>{w}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!manualOverride && (
-            <p className="text-[10px] text-muted-foreground text-center italic">Beregning brukes automatisk</p>
-          )}
 
           {manualOverride && (
-            <p className="text-[10px] text-muted-foreground text-center italic">Manuelt overstyrt</p>
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <p className="text-[10px] text-muted-foreground italic">Manuelt overstyrt</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => {
+                  if (!suggestion) return;
+                  setManualOverride(false);
+                  onChange({
+                    ...settings,
+                    contingencyDistance: suggestion.suggested_contingency_buffer_m,
+                    contingencyHeight: suggestion.suggested_contingency_height_m,
+                    groundRiskDistance: suggestion.suggested_ground_risk_buffer_m,
+                  });
+                }}
+              >
+                Tilbakestill til system-beregning
+              </Button>
+            </div>
           )}
         </div>
       )}
