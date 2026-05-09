@@ -512,7 +512,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           max={200}
           step={1}
           value={[settings.flightGeographyDistance]}
-          onValueChange={([v]) => { update({ flightGeographyDistance: v }); setManualOverride(true); }}
+          onValueChange={([v]) => { update({ flightGeographyDistance: v }); }}
           className="[&_[role=slider]]:bg-green-600"
         />
       </div>
