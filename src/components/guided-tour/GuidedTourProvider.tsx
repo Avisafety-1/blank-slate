@@ -146,13 +146,16 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
           nextBtnText: isLast ? "Fullfør" : "Neste →",
           prevBtnText: "← Tilbake",
           onNextClick: () => {
-            if (isLast) finish(true);
-            else performStep(index + 1);
+            if (isLast) {
+              setTimeout(() => finish(true), 0);
+            } else {
+              setTimeout(() => performStep(index + 1), 0);
+            }
           },
           onPrevClick: () => {
-            if (!isFirst) performStep(index - 1);
+            if (!isFirst) setTimeout(() => performStep(index - 1), 0);
           },
-          onCloseClick: () => finish(true),
+          onCloseClick: () => setTimeout(() => finish(true), 0),
         },
       });
     };
