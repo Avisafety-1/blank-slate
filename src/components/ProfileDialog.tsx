@@ -1323,6 +1323,17 @@ export const ProfileDialog = () => {
 
               {/* Competencies Tab */}
               <TabsContent value="competencies" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+                {/* Guided tour launcher */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Opplæring og guider</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">Få en interaktiv gjennomgang av AviSafe direkte i appen.</p>
+                    <StartTourButton variant="default" />
+                  </CardContent>
+                </Card>
+
                 {/* Pending Training */}
                 {pendingTraining.length > 0 && (
                   <Card>
