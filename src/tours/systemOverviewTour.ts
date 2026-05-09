@@ -93,7 +93,7 @@ export const systemOverviewTour: TourDefinition = {
       description: "Selskapsinnstillinger, brukerstyring og integrasjoner. Kun synlig for administratorer.",
       side: "bottom",
       requiresAdmin: true,
-      beforeStep: openMobileNavIfNeeded,
+      beforeStep: closeMobileNav,
     },
     {
       id: "nav-profile",
@@ -101,6 +101,7 @@ export const systemOverviewTour: TourDefinition = {
       title: "Min profil",
       description: "Personlige opplysninger, sikkerhet, kompetanse og varslinger. Du kan starte denne guiden igjen herfra.",
       side: "bottom",
+      beforeStep: closeMobileNav,
     },
     {
       id: "finish",
