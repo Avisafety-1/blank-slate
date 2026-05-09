@@ -830,6 +830,7 @@ export default function KartPage() {
                 <span className="hidden sm:inline ml-1">Avbryt</span>
               </Button>
               <Button
+                data-tour="map-route-save"
                 size="sm"
                 onClick={handleSaveRoute}
                 disabled={currentRoute.coordinates.length < 2}
