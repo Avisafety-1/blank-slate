@@ -1019,6 +1019,13 @@ export default function KartPage() {
           adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
           populationDensityCells={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.cells : undefined}
           populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
+          routeHintOffsetClass={
+            isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
+              ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
+              : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
+                ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
+                : undefined
+          }
         />
       </div>
 

@@ -127,6 +127,7 @@ interface OpenAIPMapProps {
   adjacentAreaRadiusM?: number;
   populationDensityCells?: SsbPopulationCell[];
   populationDensityCoveragePolygons?: RouteMultiPolygon;
+  routeHintOffsetClass?: string;
 }
 
 export function OpenAIPMap({ 
@@ -148,6 +149,7 @@ export function OpenAIPMap({
   adjacentAreaRadiusM,
   populationDensityCells,
   populationDensityCoveragePolygons,
+  routeHintOffsetClass,
 }: OpenAIPMapProps) {
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
@@ -1213,7 +1215,7 @@ export function OpenAIPMap({
       )}
 
       {mode === "routePlanning" && routePointCount === 0 && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
+        <div className={`absolute top-4 z-[1000] bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border text-sm ${routeHintOffsetClass ?? "left-1/2 -translate-x-1/2"}`}>
           <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
         </div>
       )}
