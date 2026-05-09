@@ -947,7 +947,7 @@ export default function KartPage() {
             >
               <X className="h-4 w-4" />
             </button>
-            <div className="max-h-[calc(100vh-14rem)] overflow-y-auto rounded-lg">
+            <div className="max-h-[calc(100vh-10rem)] overflow-y-auto rounded-lg">
               <SoraSettingsPanel
                 settings={soraSettings}
                 onChange={setSoraSettings}
@@ -976,7 +976,7 @@ export default function KartPage() {
             >
               <X className="h-4 w-4" />
             </button>
-            <div className="max-h-[calc(100vh-14rem)] overflow-y-auto rounded-lg">
+            <div className="max-h-[calc(100vh-10rem)] overflow-y-auto rounded-lg">
               <AdjacentAreaPanel
                 coordinates={currentRoute.coordinates}
                 soraSettings={soraSettings}
