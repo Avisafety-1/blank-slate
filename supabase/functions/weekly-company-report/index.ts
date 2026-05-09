@@ -2,11 +2,12 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
+import { requireCronOrSuperadmin, authErrorResponse } from "../_shared/auth.ts";
 import { AVISAFE_LOGO_B64 } from "./logo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret, x-internal-secret",
 };
 
 const APP_URL = "https://app.avisafe.no";
@@ -193,6 +194,13 @@ function renderEmail(opts: {
 // ----- Main --------------------------------------------------------
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Auth: cron secret OR superadmin (manual re-trigger)
+  try {
+    await requireCronOrSuperadmin(req);
+  } catch (err) {
+    return authErrorResponse(err, corsHeaders);
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
