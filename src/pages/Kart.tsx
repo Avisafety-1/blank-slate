@@ -749,6 +749,7 @@ export default function KartPage() {
               )}
 
               <Button
+                data-tour="map-route-kml"
                 variant="outline"
                 size="sm"
                 onClick={() => kmlInputRef.current?.click()}
@@ -760,6 +761,7 @@ export default function KartPage() {
                 <span className="hidden sm:inline ml-1">{importingKml ? 'Importerer…' : 'KML'}</span>
               </Button>
               <Button
+                data-tour="map-route-ippc"
                 variant="outline"
                 size="sm"
                 onClick={handleOpenNotam}
@@ -769,6 +771,7 @@ export default function KartPage() {
                 IPPC
               </Button>
               <Button
+                data-tour="map-route-sensor"
                 variant="outline"
                 size="sm"
                 onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
@@ -779,6 +782,7 @@ export default function KartPage() {
               </Button>
               {hasFH2Token && currentRoute.coordinates.length >= 2 && (
                 <Button
+                  data-tour="map-route-fh2"
                   variant="outline"
                   size="sm"
                   onClick={() => setFh2DialogOpen(true)}
@@ -806,6 +810,7 @@ export default function KartPage() {
                 </span>
               </Button>
               <Button
+                data-tour="map-route-undo"
                 variant="outline"
                 size="sm"
                 onClick={handleUndoPoint}
@@ -817,6 +822,7 @@ export default function KartPage() {
                 <span className="hidden sm:inline ml-1">Angre</span>
               </Button>
               <Button
+                data-tour="map-route-clear"
                 variant="outline"
                 size="sm"
                 onClick={handleClearRoute}
@@ -828,6 +834,7 @@ export default function KartPage() {
                 <span className="hidden sm:inline ml-1">Nullstill</span>
               </Button>
               <Button
+                data-tour="map-route-cancel"
                 variant="outline"
                 size="sm"
                 onClick={handleCancelRoute}
