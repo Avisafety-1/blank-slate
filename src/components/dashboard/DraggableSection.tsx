@@ -37,6 +37,7 @@ export const DraggableSection = ({ id, children, className }: DraggableSectionPr
       ref={setNodeRef}
       style={style}
       className={className || ""}
+      data-tour={`dashboard-${id}`}
     >
       {childrenWithDragHandle}
     </div>

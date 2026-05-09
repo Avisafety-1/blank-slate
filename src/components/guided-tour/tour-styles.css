@@ -110,3 +110,23 @@ body.avisafe-tour-map-interaction .leaflet-container * {
 .driver-active-element {
   z-index: 10000 !important;
 }
+
+/* When tour is active, raise Radix Portals (dropdown menus, popovers) above driver overlay
+   so highlighted menu items aren't dimmed. Driver overlay sits at ~10000. */
+body.avisafe-tour-active [data-radix-popper-content-wrapper] {
+  z-index: 10002 !important;
+}
+body.avisafe-tour-active [role="menu"][data-state="open"],
+body.avisafe-tour-active [role="dialog"][data-state="open"] {
+  z-index: 10002 !important;
+}
+
+/* Visible ring around the highlighted element so the user sees what's being explained,
+   especially inside dropdown menus where driver.js's overlay cutout doesn't reach. */
+body.avisafe-tour-active .driver-active-element {
+  outline: 2px solid hsl(var(--primary)) !important;
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+  background: hsl(var(--primary) / 0.12) !important;
+  box-shadow: 0 0 0 9999px hsl(var(--background) / 0) inset;
+}

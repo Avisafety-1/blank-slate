@@ -507,7 +507,7 @@ const Index = () => {
           </div>}
 
             {/* Mobile: Active flights */}
-            {hasTrainingModuleAccess("missions") && <div className="lg:hidden mb-3 sm:mb-4">
+            {hasTrainingModuleAccess("missions") && <div className="lg:hidden mb-3 sm:mb-4" data-tour="dashboard-active-flights">
               <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
             </div>}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -524,7 +524,7 @@ const Index = () => {
                         </DraggableSection>
                       ))}
                     {/* Mobile: AI Search Bar between News and Status */}
-                    <div className="lg:hidden mt-3 sm:mt-4">
+                    <div className="lg:hidden mt-3 sm:mt-4" data-tour="dashboard-ai-search">
                       <AISearchBar />
                     </div>
                   </div>
@@ -658,12 +658,12 @@ const Index = () => {
                     </div>}
 
                     {/* Active flights - Desktop */}
-                    {hasTrainingModuleAccess("missions") && <div className="hidden lg:block">
+                    {hasTrainingModuleAccess("missions") && <div className="hidden lg:block" data-tour="dashboard-active-flights">
                       <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
                     </div>}
 
                     {/* AI Search Bar - Desktop */}
-                    <div className="hidden lg:block">
+                    <div className="hidden lg:block" data-tour="dashboard-ai-search">
                       <AISearchBar />
                     </div>
 
