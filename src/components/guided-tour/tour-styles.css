@@ -96,7 +96,8 @@
   opacity: 0.55 !important;
 }
 
-body.avisafe-tour-map-interaction .driver-overlay {
+body.avisafe-tour-map-interaction .driver-overlay,
+body.avisafe-tour-map-interaction .driver-overlay path {
   pointer-events: none !important;
 }
 
