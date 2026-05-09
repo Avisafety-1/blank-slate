@@ -62,6 +62,7 @@ serve(async (req) => {
         // 1. Send push notification
         try {
           await supabase.functions.invoke('send-push-notification', {
+            headers: { 'x-cron-secret': Deno.env.get('CRON_SHARED_SECRET') ?? '' },
             body: {
               userId: flight.profile_id,
               title: 'Aktiv flytur pågår',
