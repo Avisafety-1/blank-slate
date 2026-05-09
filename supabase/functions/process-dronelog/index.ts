@@ -930,6 +930,27 @@ Deno.serve(async (req) => {
         const fieldList = FIELDS.split(",").map(f => f.trim());
         const logUrl = downloadUrl || `${DRONELOG_BASE}/logs/${accountId}/${logId}/download`;
 
+        // PT-10: SSRF-beskyttelse — kun hvitelistede hoster kan motta Authorization-header
+        const ALLOWED_DOWNLOAD_HOSTS = new Set([
+          'app.dronelogapi.com',
+          'dronelogapi.com',
+          'cdn.dronelogapi.com',
+          'storage.googleapis.com',
+        ]);
+        let parsedLogUrl: URL;
+        try {
+          parsedLogUrl = new URL(logUrl);
+        } catch {
+          return new Response(JSON.stringify({ error: "Invalid downloadUrl" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        if (parsedLogUrl.protocol !== 'https:') {
+          return new Response(JSON.stringify({ error: "downloadUrl must be https" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        if (!ALLOWED_DOWNLOAD_HOSTS.has(parsedLogUrl.hostname.toLowerCase())) {
+          console.warn(`[process-dronelog] Blocked SSRF attempt to ${parsedLogUrl.hostname}`);
+          return new Response(JSON.stringify({ error: "Untrusted download host" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
         // Last ned filen og upload som multipart til /logs/upload (stabil flyt — Fly-parseren er deaktivert).
         console.log(`[process-dronelog] downloading log ${logId} for /logs/upload fallback`);
         const dl = await fetch(logUrl, { headers: { Authorization: `Bearer ${dronelogKey}` } });
