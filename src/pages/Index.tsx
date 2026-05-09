@@ -524,7 +524,7 @@ const Index = () => {
                         </DraggableSection>
                       ))}
                     {/* Mobile: AI Search Bar between News and Status */}
-                    <div className="lg:hidden mt-3 sm:mt-4">
+                    <div className="lg:hidden mt-3 sm:mt-4" data-tour="dashboard-ai-search">
                       <AISearchBar />
                     </div>
                   </div>
