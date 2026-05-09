@@ -939,7 +939,7 @@ export default function KartPage() {
       <div className="flex-1 relative overflow-hidden">
         {/* Desktop/Tablet SORA panel overlay (top-left, ~1/3 width) */}
         {isRoutePlanning && soraOpen && (
-          <div className="hidden sm:block absolute top-24 left-3 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-14rem)] bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl">
+          <div className="hidden sm:block absolute top-3 left-3 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-10rem)] bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl">
             <button
               onClick={() => setSoraOpen(false)}
               className="absolute top-2 right-2 z-10 p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
