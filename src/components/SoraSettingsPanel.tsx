@@ -508,24 +508,6 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Buffermetode</Label>
-        <RadioGroup
-          value={settings.bufferMode ?? "corridor"}
-          onValueChange={(v) => update({ bufferMode: v as "corridor" | "convexHull" })}
-          className="flex gap-4"
-        >
-          <div className="flex items-center gap-1.5">
-            <RadioGroupItem value="corridor" id="mode-corridor" />
-            <Label htmlFor="mode-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <RadioGroupItem value="convexHull" id="mode-hull" />
-            <Label htmlFor="mode-hull" className="text-xs cursor-pointer">Konveks område</Label>
-          </div>
-        </RadioGroup>
-      </div>
-
-      <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className="text-xs text-muted-foreground">Contingency area (m)</Label>
           <span className="text-xs font-mono text-amber-600 dark:text-amber-400">{settings.contingencyDistance}m</span>
