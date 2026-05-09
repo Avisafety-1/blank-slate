@@ -28,11 +28,11 @@ export const missionCreationTour: TourDefinition = {
     },
     {
       id: "draw-route",
-      selector: ".leaflet-container",
+      selector: '[data-tour="map-route-save"]',
       title: "Tegn ruten i kartet",
       description:
-        "Klikk i kartet for å legge inn rutepunkter. For et område trenger du minst 3 punkter — for en korridor minst 2. Du kan angre eller nullstille når som helst.",
-      side: "top",
+        "Klikk i kartet for å legge til rutepunkter. Minst 3 punkter for et område, 2 for en korridor. Når du har minst 2 punkter blir «Lagre»-knappen aktiv. Klikk «Neste» når du er klar.",
+      side: "left",
       route: "/kart",
       optional: true,
     },
