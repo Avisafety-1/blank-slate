@@ -252,6 +252,25 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
   const contentJsx = (
     <div className="px-3 pb-3 sm:px-4 sm:pb-4 space-y-4">
 
+      {/* ── Buffermetode (top) ── */}
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">Buffermetode</Label>
+        <RadioGroup
+          value={settings.bufferMode ?? "corridor"}
+          onValueChange={(v) => update({ bufferMode: v as "corridor" | "convexHull" })}
+          className="flex gap-4"
+        >
+          <div className="flex items-center gap-1.5">
+            <RadioGroupItem value="corridor" id="mode-corridor" />
+            <Label htmlFor="mode-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <RadioGroupItem value="convexHull" id="mode-hull" />
+            <Label htmlFor="mode-hull" className="text-xs cursor-pointer">Konveks område</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
       {/* ── Drone selector ── */}
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -284,135 +303,140 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         )}
       </div>
 
-      {/* ── Mission params ── */}
-      <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
-        <p className="text-xs font-medium text-foreground">Oppdragsparametere</p>
-
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Flyhøyde (m AGL)</Label>
-          <Input
-            type="number"
-            min={0}
-            max={500}
-            value={settings.flightAltitude === 0 ? "" : settings.flightAltitude}
-            onChange={(e) => { update({ flightAltitude: e.target.value === "" ? 0 : Number(e.target.value) }); setManualOverride(true); }}
-            onBlur={(e) => { if (e.target.value === "") update({ flightAltitude: 0 }); }}
-            placeholder="0"
-            className="h-8 text-sm"
-          />
-        </div>
-
-        {selectedDrone && (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">CD (m)</Label>
-                <FieldHint>{SORA_HELP.cd}</FieldHint>
-                <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setManualCdOverride(true); setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
-                <FieldHint>{SORA_HELP.v0}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setManualSpeedOverride(true); setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
-                <FieldHint>{SORA_HELP.tr}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={reactionTime} onChange={(e) => setReactionTime(e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Pitch/bank-vinkel (°)</Label>
-                <Input type="number" min={1} max={89} step={1} value={pitchBankAngle} onChange={(e) => setPitchBankAngle(e.target.value)} className="h-8 text-sm" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">HAM (m)</Label>
-                <FieldHint>{SORA_HELP.ham}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={altimetryError} onChange={(e) => setAltimetryError(e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">SGNSS (m)</Label>
-                <FieldHint>{SORA_HELP.sgnss}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={gnssError} onChange={(e) => setGnssError(e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">SPos (m)</Label>
-                <FieldHint>{SORA_HELP.spos}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={positionHoldError} onChange={(e) => setPositionHoldError(e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">SMap (m)</Label>
-                <FieldHint>{SORA_HELP.smap}</FieldHint>
-                <Input type="number" min={0} step={0.1} value={mapError} onChange={(e) => setMapError(e.target.value)} className="h-8 text-sm" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Contingency-metode</Label>
-                <Select value={contingencyMethod} onValueChange={(v) => setContingencyMethod(v as ContingencyMethod)}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">Standard</SelectItem>
-                    <SelectItem value="parachute">Parachute / FTS</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {contingencyMethod === "parachute" && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Deployment tP (s)</Label>
-                  <FieldHint>{SORA_HELP.tp}</FieldHint>
-                  <Input type="number" min={0} step={0.1} value={deploymentTime} onChange={(e) => setDeploymentTime(e.target.value)} className="h-8 text-sm" />
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">GRB-metode</Label>
-                <FieldHint>{SORA_HELP.grb}</FieldHint>
-                <Select value={grbMethod} onValueChange={(v) => setGrbMethod(v as GroundRiskBufferMethod)}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="off">Av</SelectItem>
-                    <SelectItem value="1to1">1:1 rule</SelectItem>
-                    <SelectItem value="ballistic">Ballistic</SelectItem>
-                    <SelectItem value="glide">Glide</SelectItem>
-                    <SelectItem value="drift">Drift / parachute</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {grbMethod === "glide" && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Glide ratio</Label>
-                  <Input type="number" min={1} step={0.5} value={glideRatio} onChange={(e) => setGlideRatio(e.target.value)} className="h-8 text-sm" />
-                </div>
-              )}
-              {grbMethod === "drift" && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Descent speed (m/s)</Label>
-                  <Input type="number" min={0.1} step={0.1} value={descentSpeed} onChange={(e) => setDescentSpeed(e.target.value)} className="h-8 text-sm" />
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Vind-overstyring (m/s, valgfritt)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={30}
-                placeholder={catalogSpecs?.max_wind_mps != null ? `Drone maks: ${catalogSpecs.max_wind_mps}` : "—"}
-                value={windOverride}
-                onChange={(e) => setWindOverride(e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-          </>
-        )}
+      {/* ── Flyhøyde ── */}
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">Flyhøyde (m AGL)</Label>
+        <Input
+          type="number"
+          min={0}
+          max={500}
+          value={settings.flightAltitude === 0 ? "" : settings.flightAltitude}
+          onChange={(e) => { update({ flightAltitude: e.target.value === "" ? 0 : Number(e.target.value) }); setManualOverride(true); }}
+          onBlur={(e) => { if (e.target.value === "") update({ flightAltitude: 0 }); }}
+          placeholder="0"
+          className="h-8 text-sm"
+        />
       </div>
+
+      {/* ── Avanserte oppdragsparametere (collapsed) ── */}
+      {selectedDrone && (
+        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="rounded-md border border-border bg-muted/30">
+          <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors">
+            <span className="text-xs font-medium text-foreground">Avanserte oppdragsparametere</span>
+            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", advancedOpen && "rotate-180")} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-3 p-3 pt-0">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">CD (m)</Label>
+                  <FieldHint>{SORA_HELP.cd}</FieldHint>
+                  <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setManualCdOverride(true); setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
+                  <FieldHint>{SORA_HELP.v0}</FieldHint>
+                  <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setManualSpeedOverride(true); setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
+                  <FieldHint>{SORA_HELP.tr}</FieldHint>
+                  <Input type="number" min={0} step={0.1} value={reactionTime} onChange={(e) => setReactionTime(e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Pitch/bank-vinkel (°)</Label>
+                  <Input type="number" min={1} max={89} step={1} value={pitchBankAngle} onChange={(e) => setPitchBankAngle(e.target.value)} className="h-8 text-sm" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">HAM (m)</Label>
+                  <FieldHint>{SORA_HELP.ham}</FieldHint>
+                  <Input type="number" min={0} step={0.1} value={altimetryError} onChange={(e) => setAltimetryError(e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">SGNSS (m)</Label>
+                  <FieldHint>{SORA_HELP.sgnss}</FieldHint>
+                  <Input type="number" min={0} step={0.1} value={gnssError} onChange={(e) => setGnssError(e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">SPos (m)</Label>
+                  <FieldHint>{SORA_HELP.spos}</FieldHint>
+                  <Input type="number" min={0} step={0.1} value={positionHoldError} onChange={(e) => setPositionHoldError(e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">SMap (m)</Label>
+                  <FieldHint>{SORA_HELP.smap}</FieldHint>
+                  <Input type="number" min={0} step={0.1} value={mapError} onChange={(e) => setMapError(e.target.value)} className="h-8 text-sm" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Contingency-metode</Label>
+                  <Select value={contingencyMethod} onValueChange={(v) => setContingencyMethod(v as ContingencyMethod)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard</SelectItem>
+                      <SelectItem value="parachute">Parachute / FTS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {contingencyMethod === "parachute" && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Deployment tP (s)</Label>
+                    <FieldHint>{SORA_HELP.tp}</FieldHint>
+                    <Input type="number" min={0} step={0.1} value={deploymentTime} onChange={(e) => setDeploymentTime(e.target.value)} className="h-8 text-sm" />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">GRB-metode</Label>
+                  <FieldHint>{SORA_HELP.grb}</FieldHint>
+                  <Select value={grbMethod} onValueChange={(v) => setGrbMethod(v as GroundRiskBufferMethod)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Av</SelectItem>
+                      <SelectItem value="1to1">1:1 rule</SelectItem>
+                      <SelectItem value="ballistic">Ballistic</SelectItem>
+                      <SelectItem value="glide">Glide</SelectItem>
+                      <SelectItem value="drift">Drift / parachute</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {grbMethod === "glide" && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Glide ratio</Label>
+                    <Input type="number" min={1} step={0.5} value={glideRatio} onChange={(e) => setGlideRatio(e.target.value)} className="h-8 text-sm" />
+                  </div>
+                )}
+                {grbMethod === "drift" && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Descent speed (m/s)</Label>
+                    <Input type="number" min={0.1} step={0.1} value={descentSpeed} onChange={(e) => setDescentSpeed(e.target.value)} className="h-8 text-sm" />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Vind-overstyring (m/s, valgfritt)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={30}
+                  placeholder={catalogSpecs?.max_wind_mps != null ? `Drone maks: ${catalogSpecs.max_wind_mps}` : "—"}
+                  value={windOverride}
+                  onChange={(e) => setWindOverride(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {/* ── Suggestion result ── */}
       {suggestion && (
