@@ -148,8 +148,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       // the actually-visible match (selectors like `[data-tour="x"]` may match
       // hidden mobile/desktop duplicates).
       try {
-        // @ts-expect-error driver.js accepts HTMLElement for element
-        driveSteps[index].element = el;
+        (driveSteps[index] as unknown as { element: HTMLElement }).element = el;
         d.setSteps(driveSteps);
       } catch {}
 
