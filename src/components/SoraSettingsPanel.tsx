@@ -324,8 +324,10 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             type="number"
             min={0}
             max={200}
-            value={settings.contingencyHeight}
-            onChange={(e) => { update({ contingencyHeight: Number(e.target.value) || 0 }); setManualOverride(true); }}
+            value={settings.contingencyHeight === 0 ? "" : settings.contingencyHeight}
+            onChange={(e) => { update({ contingencyHeight: e.target.value === "" ? 0 : Number(e.target.value) }); setManualOverride(true); }}
+            onBlur={(e) => { if (e.target.value === "") update({ contingencyHeight: 0 }); }}
+            placeholder="0"
             className="h-8 text-sm"
           />
         </div>
