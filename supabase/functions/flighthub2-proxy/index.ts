@@ -239,6 +239,18 @@ Deno.serve(async (req: Request) => {
 
     // ─── Action: save-token (before token check) ───
     if (action === "save-token") {
+      // PT-7: Only admins/superadmins of the company may rotate FH2 token
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      const userRoles = (roles ?? []).map((r: any) => r.role);
+      if (!userRoles.includes("admin") && !userRoles.includes("superadmin")) {
+        return new Response(JSON.stringify({ error: "Kun admin kan endre FlightHub 2-token" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const tokenToSave = (params.token || "").trim().replace(/^bearer\s+/i, "");
       if (!tokenToSave) {
         return new Response(JSON.stringify({ error: "Token mangler" }), {
@@ -261,10 +273,23 @@ Deno.serve(async (req: Request) => {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      // Audit log (best-effort, never fail the request on audit error)
+      try {
+        await supabase.from("fh2_credential_audit").insert({
+          user_id: user.id,
+          company_id: profile.company_id,
+          action: "save",
+          ip: req.headers.get("x-forwarded-for") ?? req.headers.get("cf-connecting-ip"),
+          user_agent: req.headers.get("user-agent"),
+        });
+      } catch (e) {
+        console.error("fh2_credential_audit insert failed:", e);
+      }
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     if (!fh2Token) {
       return new Response(JSON.stringify({ error: "FlightHub 2 er ikke konfigurert for dette selskapet." }), {
