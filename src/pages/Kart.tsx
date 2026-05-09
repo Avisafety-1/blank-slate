@@ -966,7 +966,7 @@ export default function KartPage() {
         {/* Desktop/Tablet Adjacent area panel overlay */}
         {isRoutePlanning && adjacentOpen && soraSettings.enabled && (
           <div className={cn(
-            "hidden sm:block absolute top-24 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-14rem)] bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl",
+            "hidden sm:block absolute top-3 z-[1000] w-[33vw] min-w-[320px] max-w-[460px] max-h-[calc(100vh-10rem)] bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl",
             soraOpen ? "left-[calc(0.75rem+33vw+0.5rem)]" : "left-3"
           )}>
             <button
