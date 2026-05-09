@@ -1,11 +1,18 @@
 /* Driver.js theme override — matches AviSafe shadcn dark/light tokens */
 .driver-popover.avisafe-tour {
-  background: hsl(var(--card));
-  color: hsl(var(--card-foreground));
-  border: 1px solid hsl(var(--border));
+  /* Distinct tour surface: richer tint so it pops against dashboard widgets */
+  background: linear-gradient(
+    145deg,
+    hsl(var(--popover)) 0%,
+    hsl(var(--card)) 100%
+  );
+  color: hsl(var(--popover-foreground));
+  border: 2px solid hsl(var(--primary) / 0.55);
   border-radius: 0.75rem;
-  box-shadow: 0 20px 50px -10px hsl(var(--background) / 0.5),
-    0 0 0 1px hsl(var(--border));
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.18),
+    0 8px 32px -6px hsl(var(--primary) / 0.25),
+    0 24px 60px -12px hsl(var(--background) / 0.6);
   max-width: min(92vw, 380px);
   font-family: inherit;
   padding: 1rem 1.1rem;
