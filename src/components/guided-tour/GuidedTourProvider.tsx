@@ -35,6 +35,16 @@ function setMapInteraction(active: boolean) {
   document.body.classList.toggle("avisafe-tour-map-interaction", active);
 }
 
+function setTourActive(active: boolean) {
+  document.body.classList.toggle("avisafe-tour-active", active);
+}
+
+function closeMobileNavIfOpen() {
+  const trigger = document.querySelector<HTMLElement>('[data-tour="mobile-nav-trigger"]');
+  const open = document.querySelector('[role="menu"][data-state="open"]');
+  if (trigger && open) trigger.click();
+}
+
 export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -102,6 +112,8 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       },
       onDestroyed: () => {
         setMapInteraction(false);
+        setTourActive(false);
+        closeMobileNavIfOpen();
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
         force((x) => x + 1);
@@ -155,6 +167,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       },
     });
 
+    setTourActive(true);
     await performStep(0);
   }, [navigate, location.pathname, stepAllowed]);
 

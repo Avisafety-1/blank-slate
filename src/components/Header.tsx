@@ -125,7 +125,16 @@ export const Header = () => {
                   <Menu className="w-3.5 h-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card/95 border-glass z-[1150]">
+              <DropdownMenuContent
+                align="end"
+                className="bg-card/95 border-glass z-[1150]"
+                onInteractOutside={(e) => {
+                  if (document.body.classList.contains('avisafe-tour-active')) e.preventDefault();
+                }}
+                onEscapeKeyDown={(e) => {
+                  if (document.body.classList.contains('avisafe-tour-active')) e.preventDefault();
+                }}
+              >
                 {canShowModule('missions') && <DropdownMenuItem data-tour="nav-missions" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>}
                 {canShowModule('map') && <DropdownMenuItem data-tour="nav-map" onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>}
                 {canShowModule('documents') && <DropdownMenuItem data-tour="nav-documents" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>}

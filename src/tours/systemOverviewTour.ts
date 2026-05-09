@@ -1,5 +1,5 @@
 import type { TourDefinition } from "./types";
-import { openMobileNavIfNeeded } from "./tourUtils";
+import { openMobileNavIfNeeded, closeMobileNav } from "./tourUtils";
 
 export const systemOverviewTour: TourDefinition = {
   id: "system-overview",
@@ -12,6 +12,7 @@ export const systemOverviewTour: TourDefinition = {
       title: "Velkommen til AviSafe",
       description: "Vi tar deg gjennom hovedmenyen så du vet hvor alt ligger. Bruk Neste, Tilbake eller Hopp over når som helst.",
       side: "bottom",
+      beforeStep: closeMobileNav,
     },
     {
       id: "nav-missions",
@@ -92,7 +93,7 @@ export const systemOverviewTour: TourDefinition = {
       description: "Selskapsinnstillinger, brukerstyring og integrasjoner. Kun synlig for administratorer.",
       side: "bottom",
       requiresAdmin: true,
-      beforeStep: openMobileNavIfNeeded,
+      beforeStep: closeMobileNav,
     },
     {
       id: "nav-profile",
@@ -100,6 +101,7 @@ export const systemOverviewTour: TourDefinition = {
       title: "Min profil",
       description: "Personlige opplysninger, sikkerhet, kompetanse og varslinger. Du kan starte denne guiden igjen herfra.",
       side: "bottom",
+      beforeStep: closeMobileNav,
     },
     {
       id: "finish",
@@ -107,6 +109,7 @@ export const systemOverviewTour: TourDefinition = {
       title: "Det var hovedmenyen!",
       description: "Du finner alle modulene fra toppen. Tips: Start guiden «Opprett oppdrag» når du er klar for å lære oppdragsflyten.",
       side: "bottom",
+      beforeStep: closeMobileNav,
     },
   ],
 };
