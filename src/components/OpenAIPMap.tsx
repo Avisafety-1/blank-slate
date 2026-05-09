@@ -127,6 +127,7 @@ interface OpenAIPMapProps {
   adjacentAreaRadiusM?: number;
   populationDensityCells?: SsbPopulationCell[];
   populationDensityCoveragePolygons?: RouteMultiPolygon;
+  routeHintOffsetClass?: string;
 }
 
 export function OpenAIPMap({ 
