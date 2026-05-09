@@ -1,71 +1,121 @@
-# SORA volum – ny layout og oppførsel i ruteplanlegger
-
 ## Mål
-1. SORA volum skal være **på som standard** når man starter ruteplanlegging.
-2. På PC/iPad skal SORA-volum-menyen vises som et **venstrestilt sidepanel (~1/3 av skjermbredden)**, ikke som en full-bredde dropdown over kartet.
-3. Innholdsrekkefølgen i panelet skal endres, og avanserte parametere skal være skjult bak en ekspanderbar seksjon.
-4. Når en drone velges skal SORA 2.5-beregningen **brukes automatisk** (ingen klikk på "Bruk SORA 2.5-beregning" lenger).
 
-Mobil beholder dagens oppførsel (panelet rendres under header), kun desktop/tablet får sidepanel-layouten.
+Bygge et gjenbrukbart, robust guided-tour-system for AviSafe med to tourer ferdig (full systemoversikt + opprett oppdrag), startbart fra Kompetanse-fanen i profil og fra et lite "?" i Header.
 
----
+## Bibliotek
 
-## Endringer
+Bruke **driver.js** (`driver.js` v1.x) — lettvekt (~5KB), framework-agnostisk, full kontroll over highlight/overlay, fungerer godt med Tailwind/shadcn og lar oss bygge custom popover-styling. React-joyride er tyngre og mer "låst" UI.
 
-### 1. Default på (`src/pages/Kart.tsx`)
-- I `defaultSoraSettings`: sett `enabled: true` (i dag `false`).
-- `soraOpen`-initialverdi settes til `true` slik at panelet er åpent ved start av ruteplanlegging.
-- Eksisterende ruter som lastes inn bruker fortsatt sin lagrede `soraSettings.enabled` (ingen overstyring av eksisterende data).
-
-### 2. Sidepanel-layout (`src/pages/Kart.tsx`)
-- Dagens "SORA shared header row" beholdes som trigger/toggle (slik at man kan slå av eller skjule panelet), men selve `<SoraSettingsPanel>`-innholdet flyttes til et nytt overlay:
-  - På `sm:` og oppover (PC/iPad): et absolutt posisjonert panel **øverst til venstre over kartet**, bredde `w-[33vw] min-w-[320px] max-w-[460px]`, full høyde minus header (`max-h-[calc(100vh-...)]`), `overflow-y-auto`, glass-stil (`bg-card/95 backdrop-blur border border-border rounded-lg shadow-xl`), `z-[1000]` slik at det legger seg over Leaflet.
-  - På mobil (`<sm`): behold dagens flyt (panel rendres under header som i dag) for å unngå å dekke kartet.
-- Tilstøtende-panelet beholder dagens plassering/oppførsel uendret.
+## Arkitektur
 
 ```text
-┌─────────────────────────────────────────────┐
-│  Header (knapper) + SORA toggle-rad         │
-├──────────────┬──────────────────────────────┤
-│ SORA panel   │                              │
-│ (~1/3, kun   │   Kart                       │
-│  desktop/    │                              │
-│  tablet)     │                              │
-└──────────────┴──────────────────────────────┘
+src/tours/
+  ├── types.ts                 // TourStep, TourDefinition typer
+  ├── tourDefinitions.ts       // Sentral registry: allTours[]
+  ├── systemOverviewTour.ts    // Full system-tour
+  ├── missionCreationTour.ts   // Oppdrag-tour
+  └── tourUtils.ts             // waitForElement, openMobileMenu, navigateAndWait
+
+src/hooks/
+  └── useGuidedTour.ts         // start(tourId), reset(tourId), isCompleted(tourId)
+
+src/components/guided-tour/
+  ├── GuidedTourProvider.tsx   // Context som omslutter app
+  ├── StartTourButton.tsx      // "?" / "Start opplæring" knapp
+  └── tour-styles.css          // shadcn-tilpasset popover-styling
 ```
 
-### 3. Ny innholdsrekkefølge (`src/components/SoraSettingsPanel.tsx`)
-Dagens innhold omorganiseres til denne rekkefølgen øverst-ned:
+## Tour-step-modell
 
-1. **Buffermetode** (Rute-korridor / Konveks område) – flyttes fra dagens "Manual controls"-seksjon til toppen.
-2. **Velg drone** (eksisterende selector + katalog-info-linje).
-3. **Flyhøyde (m AGL)** (eksisterende input).
-4. **Ekspanderbar seksjon "Andre oppdragsparametere"** (lukket som standard) – inneholder alt som i dag ligger i "Oppdragsparametere"-blokken bortsett fra Flyhøyde:
-   - CD, V0, tR, pitch/bank, HAM, SGNSS, SPos, SMap
-   - Contingency-metode (+ tP når parachute)
-   - GRB-metode (+ glide ratio / descent speed)
-   - Vind-overstyring
-   - Bruk eksisterende `Collapsible` med en chevron-trigger; tittel "Avanserte parametere".
-5. **SORA 2.5-beregning** – uendret kort (Flight geo / SCV / SGRB, detaljer, advarsler).
-6. **Manuelle slidere** – Flight Geography Area, Contingency area, Contingency volume høyde, Ground risk buffer, fargeforklaring, SSB befolkningstetthet (uendret, men "Buffermetode" fjernes herfra siden den er flyttet opp).
+```ts
+type TourStep = {
+  id: string;
+  selector: string;            // f.eks. '[data-tour="nav-missions"]'
+  title: string;               // norsk
+  description: string;         // norsk, kort
+  side?: 'top'|'bottom'|'left'|'right';
+  route?: string;              // hvis steget krever ny side, navigeres dit først
+  requiresAdmin?: boolean;
+  requiresModule?: string;     // bruker canShowModule()
+  beforeStep?: () => Promise<void>;  // f.eks. åpne dropdown
+  optional?: boolean;          // skip stille om selector ikke finnes
+};
+```
 
-### 4. Auto-apply ved dronevalg (`src/components/SoraSettingsPanel.tsx`)
-- Når `selectedDroneId` endres og det finnes et `suggestion`-resultat, kall en intern `applySuggestion()`-tilsvarende oppdatering automatisk via `useEffect`. Den eksisterende auto-CD/V0-effekten utvides til også å skrive `contingencyDistance`, `contingencyHeight`, `groundRiskDistance` fra `suggestion`, så lenge `manualOverride` er `false`.
-- `manualOverride` settes fortsatt til `true` hvis brukeren drar i sliderne, slik at de manuelle verdiene ikke blir overskrevet ved senere re-beregninger.
-- Knappen **"Bruk SORA 2.5-beregning"** fjernes (eller skjules), siden anvendelse skjer automatisk. Visningen av selve beregningskortet beholdes som før.
-- Ved bytte av drone nullstilles `manualOverride` (slik som i dag) slik at den nye dronens verdier brukes umiddelbart.
+## Robusthet
 
----
+- `waitForElement(selector, timeout=2000)` — MutationObserver-basert, skipper steget hvis ikke funnet innen timeout (ingen krasj).
+- Multi-side flyt: hvis `step.route` ≠ current → `navigate(route)`, vent på at selector dukker opp, så vis steg.
+- Tilgang: filtrer steg gjennom `canShowModule()` (eksisterer i Header) + `isAdmin`/`isSuperadmin` fra `useAuth`.
+- Mobil hamburger: `beforeStep` for nav-steg åpner DropdownMenu på mobil (sjekker `window.innerWidth < 1024`). Driver.js scroller selv inn i view.
+- Tooltip-bredde: bruk `popoverClass` med `max-w-[90vw] sm:max-w-sm`.
 
-## Tekniske detaljer
+## Tracking
 
-- Filer som endres:
-  - `src/pages/Kart.tsx` – default `enabled: true`, `soraOpen: true`, ny sidepanel-container med responsiv klasse, flytte `<SoraSettingsPanel>` ut av dagens flyt på `sm+`.
-  - `src/components/SoraSettingsPanel.tsx` – omrokkere JSX, legge "Avanserte parametere" inn i `<Collapsible>`, fjerne "Bruk SORA 2.5-beregning"-knappen, utvide auto-apply-effekten.
-- Ingen DB- eller typeendringer; `SoraSettings`-type er uendret.
-- Tilgjengelighet: ekspander-seksjonen bruker eksisterende `Collapsible`-komponent og chevron-mønster fra resten av appen.
+- `localStorage["avisafe.tours.completed"] = ["system-overview", "mission-creation"]`
+- `localStorage["avisafe.tours.skipped"] = [...]`
+- Reset-knapp i Kompetanse-fanen tømmer disse.
 
-## Out of scope
-- Endringer i selve SORA-beregningen (`soraBufferCalculator.ts`).
-- Endringer i Tilstøtende-område-panelet.
-- Endringer på mobilvisningens layout for SORA-panelet utover dagens oppførsel.
+## data-tour-attributter som legges til
+
+**Navigasjon (Header.tsx, både desktop-knapper og dropdown-items):**
+`nav-home, nav-missions, nav-map, nav-documents, nav-calendar, nav-incidents, nav-status, nav-resources, nav-statistics, nav-changelog, nav-installer, nav-admin, nav-profile, nav-notifications`
+
+**Oppdrag-listen (Oppdrag.tsx):**
+`mission-create-button`
+
+**Oppdragsskjema (komponent under src/components/oppdrag/):**
+`mission-title, mission-customer, mission-date, mission-location, mission-route-planner, mission-drone-select, mission-personnel, mission-equipment, mission-risk-assessment, mission-checklist, mission-save, mission-publish, mission-safesky, mission-flight-logs, mission-incident-report`
+
+**Kart (Kart.tsx):**
+`mission-map, mission-draw-area, mission-buffer-settings, mission-weather-airspace`
+
+Alle attributtene legges til ikke-invasivt (kun `data-tour=` på eksisterende elementer, ingen logikk-endringer).
+
+## Tour 1: Systemoversikt
+
+~14 steg, ett per hovedmenypunkt. Hvert steg: navigerer ikke, bare highlighter menyknappen og forklarer modulen + når en droneoperatør bruker den. Steg filtreres dynamisk på `canShowModule` + admin-rolle.
+
+## Tour 2: Opprett oppdrag (hovedprioritet)
+
+~18 steg som spenner over flere sider:
+1–2: Oppdrag-listen → "Nytt oppdrag"
+3–14: Inne i oppdragsskjemaet (tittel, kunde, dato, sted, ruteplanlegger, dronevalg, personell, utstyr, risikovurdering, sjekkliste, lagre, publiser)
+15: Kart-siden (ruteplanlegger, buffer/SORA-volum, vær/luftrom)
+16–18: SafeSky live, etterlogging av flylogg, hendelsesrapportering
+
+Steg som krever sideskifte bruker `route`-feltet og venter på element. Steg for funksjoner som ikke er aktive (f.eks. SafeSky disabled) skipper stille.
+
+## UI-integrasjon
+
+1. **Kompetanse-tab i ProfileDialog** (linje ~1325): nytt kort øverst "Opplæring & guider" med:
+   - Knapp "Start systemguide" (badge "Fullført" hvis i localStorage)
+   - Knapp "Start oppdrag-guide"
+   - Lenke "Tilbakestill alle guider"
+2. **Header**: lite ikon-knapp `<HelpCircle>` ved siden av notifications som åpner en liten dropdown med samme to valg. `data-tour="header-help"`.
+3. **GuidedTourProvider** mountes i `App.tsx` rett innenfor `BrowserRouter` så den har tilgang til `useNavigate`.
+
+## Norsk tekst & knapper
+
+Driver.js støtter custom labels: `nextBtnText: "Neste"`, `prevBtnText: "Tilbake"`, `doneBtnText: "Fullfør"`, og custom "Hopp over"-knapp injiseres i `onPopoverRender`.
+
+## Styling
+
+Custom CSS i `tour-styles.css` overstyrer driver.js-popover med:
+- `bg-card`, `border-border`, `text-foreground`, `rounded-lg`, `shadow-xl`
+- Highlight-stage: `outline: 2px solid hsl(var(--primary))`, blød overlay
+- `z-index: 10000` for å ligge over alle dialoger
+
+## Implementeringsrekkefølge
+
+1. Installere `driver.js`, opprette infrastruktur (types, provider, hook, utils, styles).
+2. Legge til alle `data-tour`-attributter i Header, Oppdrag, oppdragsskjema, Kart.
+3. Implementere `systemOverviewTour`.
+4. Implementere `missionCreationTour` med multi-side-støtte.
+5. Legge til StartTourButton i Header + Kompetanse-fanen i ProfileDialog.
+6. Test på desktop (1280), tablet (768), mobil (390).
+
+## Ikke-mål
+
+- Ingen endringer i forretningslogikk, RLS, navigasjon eller skjemaer.
+- Ingen automatisk visning ved første innlogging (kan legges til senere — bruker må starte selv).
