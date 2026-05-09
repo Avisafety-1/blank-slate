@@ -871,6 +871,7 @@ export default function KartPage() {
 
               {/* Right: Adjacent area trigger (visible but greyed out when SORA disabled) */}
               <button
+                data-tour="map-adjacent-toggle"
                 onClick={() => soraSettings.enabled && setAdjacentOpen((o) => !o)}
                 className={cn(
                   "flex items-center gap-1.5 transition-opacity",
