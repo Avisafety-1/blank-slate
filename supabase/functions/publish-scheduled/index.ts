@@ -1,9 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCronSecret } from "../_shared/cron.ts";
+import { authErrorResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-cron-secret, x-internal-secret",
 };
 
 const GRAPH_API = "https://graph.facebook.com/v22.0";
@@ -11,6 +13,13 @@ const GRAPH_API = "https://graph.facebook.com/v22.0";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // PT-3: Cron-only function — require shared secret
+  try {
+    requireCronSecret(req);
+  } catch (err) {
+    return authErrorResponse(err, corsHeaders);
   }
 
   try {
