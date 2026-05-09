@@ -129,10 +129,10 @@ export const Header = () => {
                 align="end"
                 className="bg-card/95 border-glass z-[1150]"
                 onInteractOutside={(e) => {
-                  if (document.body.classList.contains('avisafe-tour-active')) e.preventDefault();
+                  if (document.body.getAttribute('data-tour-id') === 'system-overview') e.preventDefault();
                 }}
                 onEscapeKeyDown={(e) => {
-                  if (document.body.classList.contains('avisafe-tour-active')) e.preventDefault();
+                  if (document.body.getAttribute('data-tour-id') === 'system-overview') e.preventDefault();
                 }}
               >
                 {canShowModule('missions') && <DropdownMenuItem data-tour="nav-missions" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>}
