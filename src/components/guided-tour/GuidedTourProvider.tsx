@@ -99,6 +99,11 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
           popover.footerButtons.prepend(skip);
         }
       },
+      onDestroyStarted: () => {
+        // Fires for any close path (overlay click, ESC, X-button). Ensures we
+        // always run finish() so body classes / overlays are cleaned up.
+        setTimeout(() => finish(true), 0);
+      },
     });
 
     driverRef.current = d;
