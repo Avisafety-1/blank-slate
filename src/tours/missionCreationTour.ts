@@ -1,5 +1,12 @@
 import type { TourDefinition } from "./types";
 
+const ensureRoutePlannerOpen = async () => {
+  if (!document.querySelector('[data-tour="map-route-save"]')) {
+    document.querySelector<HTMLElement>('[data-tour="map-route-planner-trigger"]')?.click();
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+  }
+};
+
 export const missionCreationTour: TourDefinition = {
   id: "mission-creation",
   title: "Opprett oppdrag (kart-flyt)",
