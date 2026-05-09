@@ -5,7 +5,7 @@ import "driver.js/dist/driver.css";
 import "./tour-styles.css";
 import { allTours } from "@/tours/tourDefinitions";
 import type { TourId, TourStep } from "@/tours/types";
-import { waitForElement, sleep } from "@/tours/tourUtils";
+import { waitForElement, sleep, closeMobileNav } from "@/tours/tourUtils";
 import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "avisafe.tours.completed";
