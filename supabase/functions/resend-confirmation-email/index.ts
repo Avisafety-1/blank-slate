@@ -16,9 +16,29 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     });
+
+    // PT-8 #1: require auth (admin/superadmin in same company as target user)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    const callerToken = authHeader.replace('Bearer ', '');
+    const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: callerData, error: callerErr } = await callerClient.auth.getUser(callerToken);
+    if (callerErr || !callerData?.user) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    const callerId = callerData.user.id;
 
     const { userId } = await req.json();
     if (!userId) {
@@ -27,9 +47,34 @@ serve(async (req) => {
       });
     }
 
+    // Authorization: caller must be superadmin OR admin in target user's company
+    const { data: callerRoles } = await supabaseAdmin
+      .from('user_roles').select('role').eq('user_id', callerId);
+    const callerRoleSet = new Set((callerRoles ?? []).map((r: any) => r.role));
+    const isSuperadmin = callerRoleSet.has('superadmin');
+    const isAdmin = callerRoleSet.has('admin');
+
+    if (!isSuperadmin) {
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: 'Insufficient role' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      // admin: must be same company as target user
+      const [{ data: callerProfile }, { data: targetProfile }] = await Promise.all([
+        supabaseAdmin.from('profiles').select('company_id').eq('id', callerId).maybeSingle(),
+        supabaseAdmin.from('profiles').select('company_id').eq('id', userId).maybeSingle(),
+      ]);
+      if (!callerProfile?.company_id || callerProfile.company_id !== targetProfile?.company_id) {
+        return new Response(JSON.stringify({ error: 'Cross-company action not allowed' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'User not found', details: userError?.message }), {
+      return new Response(JSON.stringify({ error: 'User not found' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -57,13 +102,13 @@ serve(async (req) => {
     });
 
     if (linkError || !linkData?.properties?.action_link) {
-      return new Response(JSON.stringify({ error: 'Failed to generate confirmation link', details: linkError?.message }), {
+      return new Response(JSON.stringify({ error: 'Failed to generate confirmation link' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     const confirmationLink = linkData.properties.action_link;
-    console.log(`Generated confirmation link for ${email}: ${confirmationLink}`);
+    console.log(`Generated confirmation link for ${email}`);
 
     const confirmationSubject = `Bekreft e-postadressen din – ${companyName}`;
     const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
@@ -122,7 +167,7 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 
   } catch (error) {
     console.error('Error:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
