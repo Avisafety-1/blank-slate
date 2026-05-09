@@ -1,92 +1,132 @@
-## Mål
+## Revidert pentest-remediation plan
 
-1. Når en **Avisafe-superadmin** inviterer en bruker til selskap X, skal vi (Avisafe) kunne **godkjenne** brukeren direkte fra Avisafe-selskapet (uten å bytte til X via CompanySwitcher).
-2. Avisafe-superadmins skal **få e-postvarsel** når en slik bruker registrerer seg.
-3. Hvis brukeren er invitert av selskap X sin egen admin (ikke Avisafe), skal Avisafe **ikke** få varsel og **ikke** se godkjenningen — kun X sin egen admin (og ev. parent-admin) som i dag.
-
-I dag lagres ikke "hvem inviterte" noe sted — invite-user sender bare en e-post med selskapets `registration_code`. Vi må derfor spore invitasjonene.
+ChatGPT har rett på flere punkter. Vi tar inn forslagene og justerer rekkefølge etter **faktisk datarisiko**, ikke bare severity-merkelapp.
 
 ---
 
-## Endringer
+### Steg 0 — Lagre rapport som referanse (engangs)
 
-### 1. Ny tabell `public.user_invitations` (migrasjon)
-
-```
-id uuid pk
-email text not null
-target_company_id uuid → companies(id)
-invited_by uuid → auth.users(id)            -- hvem som klikket "Inviter"
-inviter_company_id uuid → companies(id)     -- selskapet inviteren tilhørte
-registration_code text                      -- koden som ble sendt
-created_at timestamptz default now()
-accepted_at timestamptz                     -- settes når brukeren registreres
-accepted_user_id uuid → profiles(id)
-```
-
-RLS:
-- SELECT: superadmin i Avisafe (alltid) + admins i `target_company_id` eller dens parent.
-- INSERT: kun via edge function (service role) — ingen direkte policy.
-
-Indekser: `(email, target_company_id)`, `(target_company_id, accepted_at)`.
-
-### 2. `invite-user` edge function
-
-Etter at e-posten er sendt, `INSERT INTO user_invitations` med:
-- `email`, `target_company_id` (= selskapet `registrationCode` peker til), `invited_by = user.id`, `inviter_company_id = profile.company_id`, `registration_code`.
-
-### 3. Trigger ved registrering
-
-`AFTER INSERT ON profiles`-trigger `link_invitation_on_signup()`:
-- Finn nyeste matchende rad i `user_invitations` (`email = NEW.email`, `target_company_id = NEW.company_id`, `accepted_at is null`).
-- Oppdater `accepted_at = now()`, `accepted_user_id = NEW.id`.
-
-### 4. `send-notification-email` — `notify_admins_new_user`-grenen
-
-Etter eksisterende admin-utvelgelse, sjekk:
-```
-SELECT i.* FROM user_invitations i
-JOIN profiles p ON p.id = i.invited_by
-JOIN companies c ON c.id = p.company_id
-JOIN user_roles r ON r.user_id = i.invited_by
-WHERE i.target_company_id = <new user company>
-  AND i.email = <new user email>
-  AND r.role = 'superadmin'
-  AND c.navn ILIKE 'avisafe'
-ORDER BY i.created_at DESC LIMIT 1;
-```
-
-Hvis treff → legg til alle Avisafe-superadmins (godkjente, med `email_new_user_pending = true`) i `notificationUserIds`.
-
-Hvis ikke treff → uendret oppførsel (kun selskapets/parents admins varsles, Avisafe får **ingenting**).
-
-### 5. Frontend — Admin.tsx
-
-For Avisafe-superadmins, legg til en ny seksjon **"Inviterte ventende godkjenning (på tvers av selskap)"** over eksisterende "Ventende godkjenning":
-- Hent profiler `approved=false` der det finnes en `user_invitations`-rad med `invited_by = current Avisafe superadmin user` (eller bredere: `inviter_company_id = avisafe_company_id`).
-- Vis: navn, e-post, **målselskap** (badge), invitert dato.
-- Knapp **"Godkjenn"** kaller `approveUser(profile.id)` — men siden RLS på `profiles UPDATE` krever admin i målselskapet, må godkjenningen gå via en ny edge function `approve-invited-user` (service role) som verifiserer at innloggede er Avisafe-superadmin OG at det finnes en matchende `user_invitations`-rad. Den setter `approved=true`, `approved_at`, `approved_by`, og kaller `send-user-approved-email` som i dag.
-
-Vanlige selskapsadmins ser **ikke** denne seksjonen — de ser bare sine egne ventende som før.
-
-### 6. PendingApprovalsBadge
-
-Ingen endring for vanlige admins. For Avisafe-superadmins: badge teller også Avisafe-inviterte ventende på tvers av selskap (samme spørring som seksjonen over).
+- Kopier `pentest-report-2060.pdf` → `docs/security/pentest-2026-05-08-aikido.pdf`
+- Lag `docs/security/pentest-2026-05-08-summary.md` med alle 20 funn (PT-1..PT-20), status (open/fixed/accepted), og hvilken commit som lukket dem
+- Lag `mem://security/pentest-2026-05-08` med kort sammendrag + lenke til summary
 
 ---
 
-## Hva som IKKE endres
+### Steg 1 — Felles infrastruktur (brukes av alle fixer)
 
-- Eksisterende invitasjoner fra selskapets egen admin → samme flyt, samme varsler, ingen Avisafe-involvering.
-- `notify_admins_new_user`-malen og parent-admin-varslingen for vanlige selskap.
-- CompanySwitcher-flyten (Avisafe kan fortsatt bytte og godkjenne manuelt der).
+**Filer:**
+- `supabase/functions/_shared/auth.ts` — `requireUser(req)`, `requireRole(req, roles[])`, `getUserCompanyId(req)`
+- `supabase/functions/_shared/cron.ts` — `requireCronSecret(req)` som sjekker `x-cron-secret` mot `CRON_SHARED_SECRET`
+- `supabase/functions/_shared/companyScope.ts` — `assertUserInCompany(userId, companyId)` (hierarki-aware via `get_user_visible_company_ids`)
+
+**Secret:**
+- Legg til `CRON_SHARED_SECRET` (random 64-char hex)
+
+**Test-mønster (gjelder ALLE fixer under):**
+1. Skriv ned forventet legitim caller (UI / cron / trigger / admin)
+2. `curl_edge_functions` uten auth → må gi 401
+3. `curl_edge_functions` med vanlig bruker mot admin-endepunkt → må gi 403
+4. `curl_edge_functions` med riktig rolle / cron-secret → må gi 200
+5. Sjekk `edge_function_logs` 10 min etter deploy
 
 ---
 
-## Teknisk oppsummering
+### Steg 2 — Ny prioritert rekkefølge (etter datarisiko)
 
-- 1 migrasjon: `user_invitations` + RLS + trigger `link_invitation_on_signup`.
-- `invite-user` edge function: legg til INSERT etter sending.
-- `send-notification-email` edge function: utvid `notify_admins_new_user` med Avisafe-superadmin-sjekk.
-- Ny edge function `approve-invited-user` (service role).
-- `Admin.tsx` + `PendingApprovalsBadge.tsx`: ny seksjon/teller for Avisafe-superadmins.
+| # | Funn | Severity | Hvorfor først | Risiko ved fix |
+|---|------|----------|---------------|----------------|
+| 1 | **PT-4 ai-search** | High | Største reelle datalekkasje — `userId` i body lar hvem som helst søke i andres selskap | Lav — kun frontend må droppe `userId` |
+| 2 | **PT-10 DroneLog SSRF / token leak** | Medium | Tokens kan lekke / SSRF mot intern infra. Faktisk hemmelighet på spill | Lav-medium |
+| 3 | **PT-7 FlightHub2 save-token** | High | Token-tampering = sub-tenant kompromittering | Lav, kun admin-UI |
+| 4 | **PT-11 billing portal** | Medium | Cross-tenant billing access | Lav |
+| 5 | **PT-3 publish-scheduled** | High | Kun cron — enkel `verify_jwt=true` eller cron-secret | Lav |
+| 6 | **PT-5 weekly-company-report** | High | Cron + evt UI-trigger, splitt sti | Lav-medium |
+| 7 | **PT-6 sync-geo-layers** | High | Kun cron | Lav |
+| 8 | **PT-1 safesky-advisory** | High | Frontend-callere må ha gyldig JWT, sjekk live-UAV bakgrunnsjobb | Medium (live UAV) |
+| 9 | **PT-2 send-notification-email** | High | **Sist + størst forsiktighet** — bruker fra DB-triggere, pg_net, cron, frontend | **Høy regresjonsrisiko** |
+
+---
+
+### Steg 3 — PT-2 spesialhåndtering (caller-inventory FØR fix)
+
+Før vi rører `send-notification-email`, lager vi en oversikt over **alle callere**:
+
+```
+docs/security/send-notification-email-callers.md
+```
+
+Kartlegg:
+- **DB triggers** — `notify_admins_new_user`, dokument-utløp, mission reminders, follow-up assigned
+- **pg_net / http_post** — alle `cron.schedule(...)` som POSTer til funksjonen
+- **Edge functions** — interne kall fra andre funksjoner
+- **Frontend** — alle `supabase.functions.invoke('send-notification-email', ...)` (rg-søk i `src/`)
+- **Admin UI** — bulk email sender
+
+Funksjonen får så **to trygge innganger**:
+
+```ts
+// Vanlig bruker/admin (frontend, admin UI)
+if (hasAuthHeader) {
+  const user = await requireUser(req);
+  if (notificationType === 'bulk') await requireRole(user, ['admin','superadmin']);
+  await assertUserInCompany(user.id, body.companyId);
+}
+// Intern systemjobb (DB triggers, cron, andre edge functions)
+else if (req.headers.get('x-internal-secret') === Deno.env.get('CRON_SHARED_SECRET')) {
+  // OK, full tillit
+}
+else {
+  return 401;
+}
+```
+
+**Migration som trengs:** Oppdater alle `cron.schedule` og `pg_net.http_post` kall til å sende `x-internal-secret`-header. DB-triggere som bruker `pg_net` må også oppdateres. Dette er mest arbeid og kan ikke rulles tilbake delvis — derfor sist.
+
+**Toggle for trygghet:** `STRICT_AUTH_ENABLED` env var (default `false` første 24t etter deploy). Når vi har sett 0 regresjoner i logs, sett `true`.
+
+---
+
+### Steg 4 — Per-fix rutine (gjentas for hver av de 9 punktene)
+
+1. Skriv inventory: hvem kaller funksjonen?
+2. Implementer auth-sjekk i `index.ts`
+3. Oppdater `verify_jwt` i `config.toml` hvis nødvendig
+4. Oppdater frontend-kall (fjern `userId` fra body, etc.)
+5. Oppdater cron-jobs til å sende `x-cron-secret`
+6. Deploy én funksjon
+7. Kjør 4-trinns test (no auth / wrong role / right role / cron-secret)
+8. Sjekk logs 1 time etter deploy
+9. Marker funn som fixed i `summary.md` + `manage_security_finding(mark_as_fixed)`
+10. Gå til neste
+
+**Ingen batch-deploy.** Én funksjon av gangen.
+
+---
+
+### Steg 5 — Etter alle Highs er lukket
+
+- Kjør `security--run_security_scan` for å bekrefte
+- Oppdater `mem://security/pentest-2026-05-08` med status
+- Planlegg runde 2 for resterende Mediums (PT-9, PT-12..PT-15) og Lows (PT-16..PT-20)
+
+---
+
+### Avvik fra ChatGPTs forslag
+
+ChatGPT foreslo PT-3/5/6 før PT-4. Jeg har flyttet **PT-4 først** fordi:
+- PT-4 lekker faktisk forretningsdata på tvers av selskaper *nå*
+- PT-3/5/6 er cron-only — angripere kan trigge jobber, men ikke lese data direkte
+- PT-4-fixen er minst risikabel (bare frontend dropper én parameter)
+
+Resten av rekkefølgen følger ChatGPTs prioritering.
+
+---
+
+### Tekniske detaljer
+
+- `_shared/*.ts` deles via Deno relativ-import: `import { requireUser } from "../_shared/auth.ts"`
+- `CRON_SHARED_SECRET` lagres som Edge Function secret, hentes med `Deno.env.get`
+- For DB-triggere som POSTer via `pg_net`: lagre samme secret i Vault og les via `vault.decrypted_secrets`
+- Tabell `fh2_credential_audit` (PT-7) opprettes via migration: `id, user_id, company_id, action, ip, created_at`, RLS read kun for admin
+
+Si fra om denne rekkefølgen ser riktig ut, så starter jeg med Steg 0+1 (referanse + shared helpers) og deretter PT-4.
