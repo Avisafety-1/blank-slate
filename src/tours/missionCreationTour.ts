@@ -80,6 +80,7 @@ export const missionCreationTour: TourDefinition = {
       side: "bottom",
       route: "/kart",
       optional: true,
+      beforeStep: ensureRoutePlannerOpen,
     },
     {
       id: "kml-import",
@@ -90,6 +91,7 @@ export const missionCreationTour: TourDefinition = {
       side: "bottom",
       route: "/kart",
       optional: true,
+      beforeStep: ensureRoutePlannerOpen,
     },
     {
       id: "ippc-link",
@@ -100,6 +102,7 @@ export const missionCreationTour: TourDefinition = {
       side: "bottom",
       route: "/kart",
       optional: true,
+      beforeStep: ensureRoutePlannerOpen,
     },
     {
       id: "sensor-link",
@@ -110,6 +113,7 @@ export const missionCreationTour: TourDefinition = {
       side: "bottom",
       route: "/kart",
       optional: true,
+      beforeStep: ensureRoutePlannerOpen,
     },
     {
       id: "fh2-send",
@@ -121,6 +125,7 @@ export const missionCreationTour: TourDefinition = {
       route: "/kart",
       requiresModule: "missions",
       optional: true,
+      beforeStep: ensureRoutePlannerOpen,
     },
     {
       id: "undo-point",
@@ -131,6 +136,7 @@ export const missionCreationTour: TourDefinition = {
       side: "top",
       route: "/kart",
       optional: true,
+      beforeStep: ensureRoutePlannerOpen,
     },
     {
       id: "clear-route",
@@ -141,6 +147,7 @@ export const missionCreationTour: TourDefinition = {
       side: "top",
       route: "/kart",
       optional: true,
+      beforeStep: ensureRoutePlannerOpen,
     },
     {
       id: "cancel-route",
@@ -151,6 +158,7 @@ export const missionCreationTour: TourDefinition = {
       side: "top",
       route: "/kart",
       optional: true,
+      beforeStep: ensureRoutePlannerOpen,
     },
     {
       id: "save-route",
