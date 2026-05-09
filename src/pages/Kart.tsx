@@ -848,6 +848,7 @@ export default function KartPage() {
             <div className="flex items-center justify-end gap-2 sm:gap-4 px-3 py-0.5 sm:py-2 sm:px-4">
               {/* Left: SORA volum trigger */}
               <button
+                data-tour="map-sora-toggle"
                 onClick={() => setSoraOpen((o) => !o)}
                 className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity"
               >
