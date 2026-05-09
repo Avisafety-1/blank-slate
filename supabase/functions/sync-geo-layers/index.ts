@@ -154,6 +154,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    await requireCronOrSuperadmin(req);
+  } catch (err) {
+    return authErrorResponse(err, corsHeaders);
+  }
+
+  try {
     // Support partial sync via query params:
     // ?layer=naturvern_zones  - sync only naturvern
     // ?offset=1750            - start from ID index (for resuming)
