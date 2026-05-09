@@ -135,7 +135,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       // beforeStep hook
       try { await step.beforeStep?.(); } catch {}
 
-      // Wait for element
+      // Wait for element (visible match preferred)
       const el = await waitForElement(step.selector, step.optional === false ? 4000 : 1500);
       if (!el) {
         // skip silently
@@ -143,6 +143,14 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setMapInteraction(Boolean(step.allowMapInteraction));
+
+      // Swap the step's element to the resolved DOM node so driver.js highlights
+      // the actually-visible match (selectors like `[data-tour="x"]` may match
+      // hidden mobile/desktop duplicates).
+      try {
+        (driveSteps[index] as unknown as { element: HTMLElement }).element = el;
+        d.setSteps(driveSteps);
+      } catch {}
 
       // Drive to this step
       d.drive(index);

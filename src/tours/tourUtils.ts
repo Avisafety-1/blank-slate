@@ -1,24 +1,38 @@
-/** Wait until selector exists in DOM (or timeout). */
+/** Returns true if the element is laid out (visible) — display:none / hidden parents → false. */
+function isVisible(el: HTMLElement | null): boolean {
+  if (!el) return false;
+  if (el.offsetParent === null && getComputedStyle(el).position !== "fixed") return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+/** Find the first VISIBLE element matching selector, or any match if none visible. */
+function findVisible(selector: string): HTMLElement | null {
+  const all = Array.from(document.querySelectorAll<HTMLElement>(selector));
+  return all.find(isVisible) || all[0] || null;
+}
+
+/** Wait until a visible selector match exists in DOM (or timeout). */
 export function waitForElement(selector: string, timeout = 2000): Promise<HTMLElement | null> {
   return new Promise((resolve) => {
-    const existing = document.querySelector<HTMLElement>(selector);
-    if (existing) return resolve(existing);
+    const existing = findVisible(selector);
+    if (existing && isVisible(existing)) return resolve(existing);
 
     let resolved = false;
     const observer = new MutationObserver(() => {
-      const el = document.querySelector<HTMLElement>(selector);
-      if (el && !resolved) {
+      const el = findVisible(selector);
+      if (el && isVisible(el) && !resolved) {
         resolved = true;
         observer.disconnect();
         resolve(el);
       }
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
 
     window.setTimeout(() => {
       if (!resolved) {
         observer.disconnect();
-        resolve(document.querySelector<HTMLElement>(selector));
+        resolve(findVisible(selector));
       }
     }, timeout);
   });
