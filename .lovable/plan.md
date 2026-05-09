@@ -1,60 +1,64 @@
-## Runde 2B: Hardening av cron- og test-funksjoner
+## Status: Er alt kritisk lukket?
 
-Mål: Lukke PT-8 #3 (`test-email`) og sikre 6 cron-/admin-funksjoner som i dag mangler autentisering eller skikkelig autorisasjon.
+**Ja.** Alle HØY- og MEDIUM-risiko-punkter fra pentesten er enten fikset eller verifisert som ikke-sårbare. Det som gjenstår er LAV-risiko og kan formelt aksepteres med dokumentasjon.
 
-### Funksjoner som hardes
+### Lukket (kritisk + medium)
 
-| # | Funksjon | Risiko i dag | Tiltak |
-|---|----------|-------------|--------|
-| 1 | `test-email` | Hvem som helst kan sende e-post via Resend (kvota-/spam-misbruk) | Krev Bearer JWT + superadmin-sjekk |
-| 2 | `auto-complete-missions` | Åpen cron-endpoint, kan trigges av alle → masse-oppdatering av missions | Krev `x-cron-secret` ELLER service-role |
-| 3 | `check-document-expiry` | Åpen, sender varsler på vegne av selskaper | Krev `x-cron-secret` ELLER service-role |
-| 4 | `check-maintenance-expiry` | Samme som over | Krev `x-cron-secret` ELLER service-role |
-| 5 | `operations-digest` | Åpen, kan generere/sende rapporter | Krev `x-cron-secret` ELLER service-role |
-| 6 | `notam-sync` (hvis åpen) | Trigger ekstern API-fetch i loop | Krev `x-cron-secret` ELLER service-role |
-| 7 | `cleanup-*` / andre cron-jobs (verifiseres) | Samme mønster | Krev `x-cron-secret` ELLER service-role |
+| Område | Status |
+|---|---|
+| PT-1..7 (originale highs) | Fikset i runde 1 |
+| PT-8 #1 `resend-confirmation-email` | Fikset (Bearer JWT + same-company/superadmin) |
+| PT-8 #2 `send-push-notification` | Fikset (JWT + scope, eller `x-cron-secret`) |
+| PT-8 #3 `test-email` | Fikset (JWT + admin/superadmin i samme selskap) |
+| PT-8 #5–11 cron (auto-complete, check-document, check-maintenance, check-competency, check-mission-reminders, check-long-flights, operations-digest) | Fikset (`requireCronOrSuperadmin`) |
+| PT-10 DroneLog SSRF | Fikset (`safeFetch` allowlist) |
+| PT-11 Customer-portal | Fikset (fail-closed + sanitiserte Stripe-feil) + `billing_user_id` backfill |
+| PT-16 FH2-proxy SSRF | Fikset (regex allowlist for djigate/dji.com) |
+| PT-18 Stripe-feil-lekkasje | Fikset (correlation-ID i stedet for raw error) |
 
-### Auth-mønster (gjenbruk fra Runde 2A)
+### Foreslått som akseptert risiko
 
-```ts
-const cronSecret = req.headers.get('x-cron-secret');
-const expected = Deno.env.get('CRON_SECRET');
-const auth = req.headers.get('Authorization') ?? '';
+| # | Funksjon | Hvorfor akseptert |
+|---|----------|-------------------|
+| PT-8 #4 | `update-seats` | Allerede beskyttet via Stripe webhook + `companies.billing_user_id`-sjekk i koden. Verifiseres på nytt. |
+| PT-8 #12 | `fetch-notams` | Public NOTAM-data, kun cron-kall. Maks impact: kvota-misbruk hos kilde. |
+| PT-8 #13 | `sync-openaip-airspaces` | Public luftromsdata. Cron-drevet bulk-insert. |
+| PT-8 #14 | `sync-openaip-obstacles` | Samme — public hindringsdata. |
+| PT-8 #15 | `terrain-elevation` | Mapbox-proxy mot public DEM. Ingen sensitive data. Mapbox-token er rate-limit-beskyttet på leverandørsiden. |
+| PT-8 #16 | `drone-weather` | MET.no-proxy, public værdata, ingen autentisert API. |
+| PT-8 #17 | `safesky-beacons-fetch` | Bekreft først om i bruk; hvis ja, public AIS-lignende data. |
+| PT-9, PT-12..15, PT-17, PT-19..20 | Lave funn fra PDF | Triagért som lav-risiko (ikke datatap, ikke privilege escalation). Aksepteres til neste planlagte sikkerhetsrunde. |
 
-const isCron = cronSecret && expected && cronSecret === expected;
-const isServiceRole = auth.includes(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '___none___');
+**Begrunnelse for å akseptere:** Ingen av disse eksponerer kundedata, ingen tillater handlinger på vegne av andre brukere, og ingen kan brukes til privilege-eskalering. Worst-case er kvota-misbruk hos tredjeparts API-er — som uansett er rate-limited.
 
-if (!isCron && !isServiceRole) {
-  return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-}
-```
+### Dokumentasjonsoppdatering
 
-For `test-email`:
-```ts
-// Krev Bearer JWT, hent bruker, sjekk superadmin-rolle
-const { data: { user } } = await supabase.auth.getUser(token);
-const isSuper = await supabase.rpc('has_role', { _user_id: user.id, _role: 'superadmin' });
-if (!user || !isSuper) return 403;
-```
+1. **`docs/security/pentest-2026-05-08-summary.md`**
+   - Oppdater statustabellen: PT-8, PT-10, PT-11, PT-16, PT-18 → **fixed**.
+   - Legg til ny seksjon **"Closed in round 2A/2B"** med alle hardede funksjoner og smoke-test-resultater.
+   - Legg til ny seksjon **"Accepted risks"** med tabellen over.
 
-### Verifisering av cron-kallere
+2. **`docs/security/pt8-jwt-inventory.md`**
+   - Flytt funksjon #1, 2, 3, 5–11 fra Kolonne C → Kolonne A.
+   - Flytt funksjon #4, 12–17 fra Kolonne C → ny **Kolonne D (akseptert risiko)** med begrunnelse.
+   - Sett øverst: **"PT-8 status: LUKKET. Kolonne C tom."**
 
-Sjekk `pg_cron`-jobber i databasen for å bekrefte at alle scheduled jobs allerede sender `x-cron-secret`-headeren. Hvis noen mangler, oppdater cron-jobben (via `supabase--read_query` for å inspisere, og migration for å fikse).
+3. **`mem://security/2024-audit-remediation-plan`** (memory)
+   - Oppdater til å reflektere at runde 1 + 2A + 2B er gjennomført.
+   - Lenke til de to oppdaterte dokumentene.
 
-### Steg
+4. **`mem://security/hardening-measures`** (memory)
+   - Legg til at alle cron-funksjoner krever `x-cron-secret`.
+   - Legg til at `test-email`, `resend-confirmation-email`, `send-push-notification` krever JWT med scope-sjekk.
+   - Legg til `safeFetch`-allowlist-mønster for nye SSRF-utsatte proxies.
 
-1. Verifiser hvilke cron-funksjoner som er åpne og hvordan de blir kalt (les `pg_cron` schedules + funksjonskode).
-2. Hard `test-email` med JWT + superadmin-sjekk.
-3. Hard hver cron-funksjon med `x-cron-secret` ELLER service-role.
-4. Oppdater eventuelle `pg_cron`-jobs som ikke allerede sender riktig header (krever migration).
-5. Deploy alle endrede funksjoner.
-6. Smoke-test: `curl` uten auth → 401, med riktig secret → 200.
+5. **Security memory** (via `update_memory`)
+   - Oppsummer "Hva skal aldri skje" + listen over aksepterte risikoer.
 
-### Akseptert risiko (ikke i denne runden)
+### Verifisering før dokumentasjon ferdigstilles
 
-- Public proxies (NOTAM/Weather/OpenAIP-proxy) — lav impact, kun public data, beholdes åpne.
-- Webhooks som krever signatur-verifikasjon (Stripe, etc.) — bruker allerede signatur, ikke JWT.
+Rask gjennomgang av `update-seats` for å bekrefte at den faktisk er trygg (eller flytt den til "fix-now" hvis ikke).
 
-### Estimert omfang
+### Leveranse
 
-~7 edge functions + 0–3 migrations for `pg_cron`-oppdatering. Ingen frontend-endringer.
+Tre filer oppdateres + to memory-poster oppdateres + security-memory skrives. Ingen kodeendringer (med mindre `update-seats`-sjekken avslører hull).
