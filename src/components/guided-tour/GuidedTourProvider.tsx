@@ -39,11 +39,7 @@ function setTourActive(active: boolean) {
   document.body.classList.toggle("avisafe-tour-active", active);
 }
 
-function closeMobileNavIfOpen() {
-  const trigger = document.querySelector<HTMLElement>('[data-tour="mobile-nav-trigger"]');
-  const open = document.querySelector('[role="menu"][data-state="open"]');
-  if (trigger && open) trigger.click();
-}
+// closeMobileNav is imported from tourUtils and uses robust pointer dispatch.
 
 export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
