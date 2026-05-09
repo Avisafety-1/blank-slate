@@ -65,15 +65,20 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     const candidates = tour.steps.filter(stepAllowed);
     if (!candidates.length) return;
 
-    // Destroy any previous tour cleanly first.
-    try { driverRef.current?.destroy(); } catch {}
-
-    const finish = (markComplete: boolean) => {
-      try { d.destroy(); } catch {}
+    const cleanupTourUi = () => {
       setMapInteraction(false);
       setTourActive(false);
       setTourId(null);
-      closeMobileNav();
+      void closeMobileNav();
+    };
+
+    // Destroy any previous tour cleanly first.
+    try { driverRef.current?.destroy(); } catch {}
+    cleanupTourUi();
+
+    const finish = (markComplete: boolean) => {
+      try { d.destroy(); } catch {}
+      cleanupTourUi();
       if (markComplete) {
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
@@ -100,10 +105,13 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
         }
       },
       onDestroyStarted: () => {
-        // Fires for any close path (overlay click, ESC, X-button). Ensures we
-        // always run finish() so body classes / overlays are cleaned up.
-        setTimeout(() => finish(true), 0);
+        // Fires for overlay click / ESC before driver removes its own overlay.
+        // Calling destroy() again here would cancel Driver's internal cleanup,
+        // so only remove our app-level locks/menus.
+        cleanupTourUi();
+        setTimeout(() => force((x) => x + 1), 0);
       },
+      onDestroyed: cleanupTourUi,
     });
 
     driverRef.current = d;
