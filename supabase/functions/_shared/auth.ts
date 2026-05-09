@@ -86,6 +86,30 @@ export async function getUserCompanyId(user: AuthedUser): Promise<string | null>
   return data?.company_id ?? null;
 }
 
+/**
+ * Allow either a valid cron secret OR a logged-in superadmin.
+ * Returns null when authorized via cron secret, or AuthedUser when via JWT.
+ * Throws AuthError otherwise.
+ */
+export async function requireCronOrSuperadmin(
+  req: Request,
+): Promise<AuthedUser | null> {
+  // Try cron secret first (no DB hit)
+  const expected = Deno.env.get("CRON_SHARED_SECRET");
+  const provided =
+    req.headers.get("x-cron-secret") ??
+    req.headers.get("x-internal-secret") ??
+    "";
+  if (expected && provided && provided.length === expected.length && provided === expected) {
+    return null;
+  }
+
+  // Fall back to JWT + superadmin role
+  const user = await requireUser(req);
+  await requireRole(user, ["superadmin"]);
+  return user;
+}
+
 /** Wrap a thrown AuthError into a Response with CORS headers. */
 export function authErrorResponse(
   err: unknown,
