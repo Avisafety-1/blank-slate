@@ -4,11 +4,44 @@ import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback, fixEmailImages } from "../_shared/template-utils.ts";
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
+import { requireUser, requireRole, AuthError, authErrorResponse, type AuthedUser } from "../_shared/auth.ts";
+import { assertUserInCompany } from "../_shared/companyScope.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// Types that require an authenticated, company-scoped caller (companyId in body).
+const COMPANY_SCOPED_TYPES = new Set([
+  'notify_new_incident',
+  'notify_new_mission',
+  'notify_followup_assigned',
+  'notify_mission_approval',
+  'notify_pilot_comment',
+  'notify_mission_mention',
+  'notify_training_assigned',
+  'notify_mission_approved',
+]);
+
+// Types that require admin/superadmin (and operate within a company).
+const ADMIN_SCOPED_TYPES = new Set([
+  'bulk_email_users',
+  'bulk_email_customers',
+  'send_to_missed',
+  'preview_missed_count',
+]);
+
+// Types that require Avisafe superadmin only (cross-tenant).
+const SUPERADMIN_ONLY_TYPES = new Set([
+  'bulk_email_all_users',
+]);
+
+async function userHasAnyRole(user: AuthedUser, roles: string[]): Promise<boolean> {
+  const { data } = await user.service.from('user_roles').select('role').eq('user_id', user.id);
+  const userRoles = (data ?? []).map((r: any) => r.role as string);
+  return userRoles.some((r) => roles.includes(r));
+}
 
 interface EmailRequest {
   recipientId?: string;
