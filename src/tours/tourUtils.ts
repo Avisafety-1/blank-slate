@@ -24,14 +24,32 @@ export function waitForElement(selector: string, timeout = 2000): Promise<HTMLEl
   });
 }
 
-/** Open the mobile hamburger menu by clicking it (only on small screens). */
+/** Open the mobile hamburger menu by clicking it (only when the desktop nav is hidden). */
 export async function openMobileNavIfNeeded() {
-  if (window.innerWidth >= 1024) return;
+  // The desktop nav is hidden below lg (1024px). Use the actual visibility of
+  // the trigger to decide rather than just window width — covers tablets too.
   const trigger = document.querySelector<HTMLElement>('[data-tour="mobile-nav-trigger"]');
-  if (trigger && !document.querySelector('[role="menu"][data-state="open"]')) {
+  if (!trigger) return;
+  const visible = trigger.offsetParent !== null;
+  if (!visible) return;
+  const isOpen = () => !!document.querySelector('[role="menu"][data-state="open"]');
+  if (!isOpen()) {
     trigger.click();
-    // Wait briefly for menu to render
-    await new Promise((r) => setTimeout(r, 200));
+    // Wait for Radix to mount the menu
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      if (isOpen()) break;
+    }
+  }
+}
+
+/** Close the mobile hamburger menu if open. */
+export async function closeMobileNav() {
+  const trigger = document.querySelector<HTMLElement>('[data-tour="mobile-nav-trigger"]');
+  const open = document.querySelector('[role="menu"][data-state="open"]');
+  if (trigger && open) {
+    trigger.click();
+    await new Promise((r) => setTimeout(r, 150));
   }
 }
 
