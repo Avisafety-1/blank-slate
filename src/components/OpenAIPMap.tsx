@@ -1172,7 +1172,7 @@ export function OpenAIPMap({
 
   return (
     <div className="relative w-full h-full overflow-hidden touch-manipulation select-none">
-      <div ref={mapRef} className="w-full h-full touch-manipulation" />
+      <div ref={mapRef} data-tour="map-container" className="w-full h-full touch-manipulation" />
       
       <div className="absolute top-4 right-4 z-[1050] flex flex-col gap-2">
         <Button
