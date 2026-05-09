@@ -537,6 +537,7 @@ export default function KartPage() {
 
                 <div className="ml-auto flex shrink-0 items-center gap-1 self-start">
                   <Button
+                    data-tour="map-route-kml"
                     variant="outline"
                     size="sm"
                     onClick={() => kmlInputRef.current?.click()}
@@ -547,6 +548,7 @@ export default function KartPage() {
                     <Upload className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-ippc"
                     variant="outline"
                     size="sm"
                     onClick={handleOpenNotam}
@@ -556,6 +558,7 @@ export default function KartPage() {
                     IPPC
                   </Button>
                   <Button
+                    data-tour="map-route-sensor"
                     variant="outline"
                     size="sm"
                     onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
@@ -566,6 +569,7 @@ export default function KartPage() {
                   </Button>
                   {hasFH2Token && currentRoute.coordinates.length >= 2 && (
                     <Button
+                      data-tour="map-route-fh2"
                       variant="outline"
                       size="sm"
                       onClick={() => setFh2DialogOpen(true)}
@@ -630,6 +634,7 @@ export default function KartPage() {
 
                 <div className="ml-auto flex shrink-0 items-center gap-1 self-center">
                   <Button
+                    data-tour="map-pilot-button"
                     variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                     size="sm"
                     onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
@@ -639,6 +644,7 @@ export default function KartPage() {
                     <MapPin className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-undo"
                     variant="outline"
                     size="sm"
                     onClick={handleUndoPoint}
@@ -649,6 +655,7 @@ export default function KartPage() {
                     <Undo className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-clear"
                     variant="outline"
                     size="sm"
                     onClick={handleClearRoute}
@@ -659,6 +666,7 @@ export default function KartPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-cancel"
                     variant="outline"
                     size="sm"
                     onClick={handleCancelRoute}

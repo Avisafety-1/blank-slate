@@ -75,6 +75,77 @@ export const missionCreationTour: TourDefinition = {
       optional: true,
     },
     {
+      id: "kml-import",
+      selector: '[data-tour="map-route-kml"]',
+      title: "Importer KML/KMZ",
+      description:
+        "Last opp en KML- eller KMZ-fil (f.eks. eksportert fra DJI Pilot, Google Earth eller andre verktøy) for å fylle inn ruten automatisk i stedet for å tegne manuelt.",
+      side: "bottom",
+      route: "/kart",
+      optional: true,
+    },
+    {
+      id: "ippc-link",
+      selector: '[data-tour="map-route-ippc"]',
+      title: "IPPC – sjekk NOTAM",
+      description:
+        "Åpner ippc.no i ny fane slik at du kan sjekke aktive NOTAM for området før du flyr. Husk å vurdere relevante NOTAM som en del av risikovurderingen.",
+      side: "bottom",
+      route: "/kart",
+      optional: true,
+    },
+    {
+      id: "sensor-link",
+      selector: '[data-tour="map-route-sensor"]',
+      title: "Sensor – NSM-søknad",
+      description:
+        "Åpner NSM sin portal for søknad om flyging med sensor i sensorforbudssoner. Bruk denne hvis ruten din berører en slik sone.",
+      side: "bottom",
+      route: "/kart",
+      optional: true,
+    },
+    {
+      id: "fh2-send",
+      selector: '[data-tour="map-route-fh2"]',
+      title: "Send til DJI FlightHub 2",
+      description:
+        "Synlig hvis selskapet har koblet til FlightHub 2-token og ruten har minst 2 punkter. Sender ruten og SORA-korridoren rett til FH2 som en oppgave for piloten.",
+      side: "bottom",
+      route: "/kart",
+      requiresModule: "missions",
+      optional: true,
+    },
+    {
+      id: "undo-point",
+      selector: '[data-tour="map-route-undo"]',
+      title: "Angre siste punkt",
+      description:
+        "Fjerner det sist plasserte rutepunktet. Bruk hvis du klikket feil – ruten oppdateres umiddelbart.",
+      side: "top",
+      route: "/kart",
+      optional: true,
+    },
+    {
+      id: "clear-route",
+      selector: '[data-tour="map-route-clear"]',
+      title: "Nullstill rute",
+      description:
+        "Sletter alle rutepunkter, men beholder ruteplanleggeren åpen så du kan starte på nytt uten å lukke panelet.",
+      side: "top",
+      route: "/kart",
+      optional: true,
+    },
+    {
+      id: "cancel-route",
+      selector: '[data-tour="map-route-cancel"]',
+      title: "Avbryt ruteplanlegging",
+      description:
+        "Lukker ruteplanleggeren og forkaster gjeldende rute uten å lagre. Bruk hvis du ikke ønsker å opprette et oppdrag likevel.",
+      side: "top",
+      route: "/kart",
+      optional: true,
+    },
+    {
       id: "save-route",
       selector: '[data-tour="map-route-save"]',
       title: "Lagre ruten",
