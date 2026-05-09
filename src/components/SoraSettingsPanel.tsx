@@ -456,9 +456,9 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
             </div>
           )}
 
-          <Button size="sm" className="w-full h-7 text-xs" onClick={applySuggestion}>
-            Bruk SORA 2.5-beregning
-          </Button>
+          {!manualOverride && (
+            <p className="text-[10px] text-muted-foreground text-center italic">Beregning brukes automatisk</p>
+          )}
 
           {manualOverride && (
             <p className="text-[10px] text-muted-foreground text-center italic">Manuelt overstyrt</p>
