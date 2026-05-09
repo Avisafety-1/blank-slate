@@ -2374,6 +2374,44 @@ export type Database = {
           },
         ]
       }
+      fh2_credential_audit: {
+        Row: {
+          action: string
+          company_id: string
+          created_at: string
+          id: string
+          ip: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          company_id: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fh2_credential_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flight_events: {
         Row: {
           company_id: string
