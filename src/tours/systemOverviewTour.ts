@@ -108,6 +108,7 @@ export const systemOverviewTour: TourDefinition = {
       title: "Det var hovedmenyen!",
       description: "Du finner alle modulene fra toppen. Tips: Start guiden «Opprett oppdrag» når du er klar for å lære oppdragsflyten.",
       side: "bottom",
+      beforeStep: closeMobileNav,
     },
   ],
 };
