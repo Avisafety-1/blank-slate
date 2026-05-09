@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
+import { requireUser, authErrorResponse } from "../_shared/auth.ts";
+import { assertUserInCompany } from "../_shared/companyScope.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -193,11 +195,38 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // PT-1: require authenticated user
+  let authedUser;
+  try {
+    authedUser = await requireUser(req);
+  } catch (err) {
+    return authErrorResponse(err, corsHeaders);
+  }
+
   try {
     const body = await req.json();
     const { action, missionId, lat, lon, lng, alt, speed, heading, altitudeDelta, verticalSpeed, pilotName } = body;
-    
-    console.log(`SafeSky: action=${action}, missionId=${missionId}, lat=${lat}, lng=${lng || lon}, pilotName=${pilotName}`);
+
+    console.log(`SafeSky: user=${authedUser.id}, action=${action}, missionId=${missionId}, lat=${lat}, lng=${lng || lon}, pilotName=${pilotName}`);
+
+    // PT-1: if missionId is provided, verify it belongs to a company the user can see
+    if (missionId) {
+      try {
+        const { data: mission } = await authedUser.service
+          .from("missions")
+          .select("company_id")
+          .eq("id", missionId)
+          .maybeSingle();
+        if (!mission?.company_id) {
+          return new Response(JSON.stringify({ error: "Mission not found" }), {
+            status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        await assertUserInCompany(authedUser, mission.company_id);
+      } catch (err) {
+        return authErrorResponse(err, corsHeaders);
+      }
+    }
 
     const SAFESKY_API_KEY = Deno.env.get('SAFESKY_API_KEY');
     const SAFESKY_PROD_API_KEY = Deno.env.get('SAFESKY_PROD_API_KEY');

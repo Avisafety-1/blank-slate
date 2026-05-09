@@ -15,6 +15,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { safeFetch, SSRFError, fingerprintToken } from "../_shared/http.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,13 @@ const corsHeaders = {
 
 const PARSER_URL = (Deno.env.get("DJI_PARSER_URL") ?? "").replace(/\/+$/, "");
 const PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
+
+// Allow-list of upstream hosts (PT-10 SSRF guard).
+const ALLOWED_HOSTS: string[] = (() => {
+  const hosts = ["dronelogapi.com", "www.dronelogapi.com"];
+  try { if (PARSER_URL) hosts.push(new URL(PARSER_URL).hostname); } catch { /* ignore */ }
+  return hosts;
+})();
 
 interface ProxyRequest {
   downloadUrl?: string; // DJI/DroneLog signed URL
@@ -79,14 +87,19 @@ Deno.serve(async (req) => {
       if (body.dronelogKey) {
         headers.Authorization = `Bearer ${body.dronelogKey}`;
       }
-      const dl = await fetch(body.downloadUrl, { headers });
+      let dl: Response;
+      try {
+        dl = await safeFetch(body.downloadUrl, { headers }, ALLOWED_HOSTS);
+      } catch (e) {
+        if (e instanceof SSRFError) {
+          console.error(`[dji-parse-proxy] SSRF blocked host=${e.host}`);
+          return jsonResp({ error: "downloadUrl host not allowed" }, 400);
+        }
+        throw e;
+      }
       if (!dl.ok) {
-        const txt = await dl.text().catch(() => "");
-        console.error(
-          "[dji-parse-proxy] download failed:",
-          dl.status,
-          txt.slice(0, 200),
-        );
+        console.error(`[dji-parse-proxy] download failed: ${dl.status}`);
+        await dl.body?.cancel();
         return jsonResp(
           { fallback: true, reason: `download-failed-${dl.status}` },
           200,
@@ -117,11 +130,20 @@ Deno.serve(async (req) => {
     // Ny app ignorerer `fields` og returnerer alle frames; vi filtrerer på vår side.
     form.append("format", "json");
 
-    const parseRes = await fetch(`${PARSER_URL}/parse`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${PARSER_TOKEN}` },
-      body: form,
-    });
+    let parseRes: Response;
+    try {
+      parseRes = await safeFetch(`${PARSER_URL}/parse`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${PARSER_TOKEN}` },
+        body: form,
+      }, ALLOWED_HOSTS);
+    } catch (e) {
+      if (e instanceof SSRFError) {
+        console.error(`[dji-parse-proxy] parser host blocked: ${e.host}`);
+        return jsonResp({ fallback: true, reason: "parser-host-blocked" }, 200);
+      }
+      throw e;
+    }
 
     if (parseRes.status === 422) {
       const err = await parseRes.json().catch(() => ({}));
@@ -132,8 +154,8 @@ Deno.serve(async (req) => {
       );
     }
     if (!parseRes.ok) {
-      const txt = await parseRes.text().catch(() => "");
-      console.error("[dji-parse-proxy] parser error:", parseRes.status, txt);
+      console.error(`[dji-parse-proxy] parser error: ${parseRes.status} token=${fingerprintToken(PARSER_TOKEN)}`);
+      await parseRes.body?.cancel();
       return jsonResp(
         { fallback: true, reason: `parser-${parseRes.status}` },
         200,
