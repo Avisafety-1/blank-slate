@@ -328,6 +328,11 @@ Kalender (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map((c: a
     );
 
   } catch (error) {
+    // Handle 401/403 from requireUser cleanly
+    const anyErr = error as any;
+    if (anyErr && typeof anyErr.status === 'number' && (anyErr.status === 401 || anyErr.status === 403)) {
+      return authErrorResponse(error, corsHeaders);
+    }
     console.error('Error in ai-search:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
