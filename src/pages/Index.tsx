@@ -658,12 +658,12 @@ const Index = () => {
                     </div>}
 
                     {/* Active flights - Desktop */}
-                    {hasTrainingModuleAccess("missions") && <div className="hidden lg:block">
+                    {hasTrainingModuleAccess("missions") && <div className="hidden lg:block" data-tour="dashboard-active-flights">
                       <ActiveFlightsSection onHasFlightsChange={setHasActiveFlights} />
                     </div>}
 
                     {/* AI Search Bar - Desktop */}
-                    <div className="hidden lg:block">
+                    <div className="hidden lg:block" data-tour="dashboard-ai-search">
                       <AISearchBar />
                     </div>
 
