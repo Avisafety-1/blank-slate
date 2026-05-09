@@ -9,7 +9,7 @@
   max-width: min(92vw, 380px);
   font-family: inherit;
   padding: 1rem 1.1rem;
-  z-index: 10001;
+  z-index: 10005;
 }
 
 .driver-popover.avisafe-tour .driver-popover-title {
@@ -120,8 +120,8 @@ body.avisafe-tour-map-interaction .leaflet-container * {
   z-index: 10000 !important;
 }
 
-/* When tour is active, raise Radix Portals (dropdown menus, popovers) above driver overlay
-   so highlighted menu items aren't dimmed. Driver overlay sits at ~10000. */
+/* When tour is active, keep Radix Portals (dropdown menus, popovers) above driver overlay
+   so highlighted menu items aren't dimmed — but below the tour box/buttons. */
 body.avisafe-tour-active [data-radix-popper-content-wrapper] {
   z-index: 10002 !important;
 }
