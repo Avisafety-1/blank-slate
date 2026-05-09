@@ -161,8 +161,13 @@ serve(async (req: Request): Promise<Response> => {
             throw new AuthError(400, 'Missing companyId');
           }
         } else if (COMPANY_SCOPED_TYPES.has(type ?? '')) {
-          if (!companyId) throw new AuthError(400, 'Missing companyId');
-          await assertUserInCompany(caller, companyId);
+          let scopeCompanyId: string | undefined = companyId;
+          if (!scopeCompanyId && type === 'notify_mission_approved' && missionId) {
+            const { data: m } = await supabase.from('missions').select('company_id').eq('id', missionId).maybeSingle();
+            scopeCompanyId = m?.company_id ?? undefined;
+          }
+          if (!scopeCompanyId) throw new AuthError(400, 'Missing companyId');
+          await assertUserInCompany(caller, scopeCompanyId);
         } else if (type) {
           // Unknown type — reject
           throw new AuthError(400, `Unsupported type: ${type}`);
