@@ -1,121 +1,51 @@
-## Mål
+## Bakgrunn
 
-Bygge et gjenbrukbart, robust guided-tour-system for AviSafe med to tourer ferdig (full systemoversikt + opprett oppdrag), startbart fra Kompetanse-fanen i profil og fra et lite "?" i Header.
+Dagens «Opprett oppdrag»-guide prøver å gå gjennom oppdrags-popupen (`MissionDialog`). Driver.js får ikke tak i elementene fordi dialogen ikke er åpen, og selv om den åpnes så er trinnene knyttet til en lang skjema-popup som ikke reflekterer hvordan AviSafe anbefaler å jobbe.
 
-## Bibliotek
+Best practice i AviSafe er:
+1. Gå til **Kart** → klikk **«Planlegg ny rute»**
+2. Tegn ruten i kartet
+3. Skru på **SORA volum** og juster buffer/drone i SORA-panelet
+4. (Valgfritt) Skru på **Tilstøtende** for befolkningstetthet
+5. Klikk **Lagre rute** — dette åpner oppdragsdialogen forhåndsutfylt med rute, buffer og SORA-data
 
-Bruke **driver.js** (`driver.js` v1.x) — lettvekt (~5KB), framework-agnostisk, full kontroll over highlight/overlay, fungerer godt med Tailwind/shadcn og lar oss bygge custom popover-styling. React-joyride er tyngre og mer "låst" UI.
+## Endring
 
-## Arkitektur
+Skriv om `missionCreationTour` slik at den følger kart-flyten i stedet for popup-flyten. Behold tour-infrastrukturen (driver.js, GuidedTourProvider, StartTourButton) uendret.
 
-```text
-src/tours/
-  ├── types.ts                 // TourStep, TourDefinition typer
-  ├── tourDefinitions.ts       // Sentral registry: allTours[]
-  ├── systemOverviewTour.ts    // Full system-tour
-  ├── missionCreationTour.ts   // Oppdrag-tour
-  └── tourUtils.ts             // waitForElement, openMobileMenu, navigateAndWait
+### Ny stegrekkefølge (alle på `/kart`)
 
-src/hooks/
-  └── useGuidedTour.ts         // start(tourId), reset(tourId), isCompleted(tourId)
+1. **Start på kartet** — beskrivelse av hvorfor kart + ruteplanlegger er anbefalt arbeidsflyt. Highlight: kart-container.
+2. **Planlegg ny rute** — highlight «Route»-knappen i kartkontrollene (`map-route-planner-trigger`).
+3. **Tegn ruten** — instruks om å klikke i kartet for å legge punkter. Highlight: kartet (informativ; ingen klikkavhengighet).
+4. **SORA volum** — highlight bryteren i ruteplanleggerens header (`map-sora-toggle`). Forklarer buffer-volum og at drone/hastighet/høyde fylles inn her.
+5. **SORA-innstillinger** — highlight SORA-panelet (`map-sora-panel`) når det er åpent. `optional: true` for å hoppes over hvis lukket.
+6. **Tilstøtende områder** — highlight Tilstøtende-bryteren (`map-adjacent-toggle`). Forklarer befolkningstetthet/SAIL.
+7. **Pilotposisjon (valgfritt)** — highlight pilot-knappen (`map-pilot-button`).
+8. **Lagre rute** — highlight Lagre-knappen (`map-route-save`). Forklarer at lagring åpner oppdragsdialogen med all data forhåndsutfylt.
+9. **Oppdragsdialog** — kort tekstlig steg som forklarer at brukeren nå fyller inn navn, kunde, dato, personell, sjekklister osv. Ingen highlight (target = body, `optional: true`) — vi prøver ikke lenger å drive gjennom selve dialog-skjemaet.
+10. **Avslutt** — guide ferdig, peker på hjelp-knappen og Min profil → Kompetanse for å starte på nytt.
 
-src/components/guided-tour/
-  ├── GuidedTourProvider.tsx   // Context som omslutter app
-  ├── StartTourButton.tsx      // "?" / "Start opplæring" knapp
-  └── tour-styles.css          // shadcn-tilpasset popover-styling
-```
+### Filer som skal endres
 
-## Tour-step-modell
+- `src/tours/missionCreationTour.ts` — full omskriving til ny stegrekkefølge.
+- `src/components/OpenAIPMap.tsx` — legg `data-tour="map-route-planner-trigger"` på «Planlegg ny rute»-knappen (linje ~1205).
+- `src/pages/Kart.tsx` — legg til:
+  - `data-tour="map-sora-toggle"` på SORA-volum-knappen (~linje 847)
+  - `data-tour="map-adjacent-toggle"` på Tilstøtende-knappen (~linje 869)
+  - `data-tour="map-route-save"` på begge Lagre-knappene (mobil ~672, desktop ~830)
+  - `data-tour="map-pilot-button"` på pilot-knappen (~linje 783)
+  - `data-tour="map-container"` på den ytre wrapperen til kartet (eller bruk `.leaflet-container` som selector — vi velger en stabil eksisterende klasse).
 
-```ts
-type TourStep = {
-  id: string;
-  selector: string;            // f.eks. '[data-tour="nav-missions"]'
-  title: string;               // norsk
-  description: string;         // norsk, kort
-  side?: 'top'|'bottom'|'left'|'right';
-  route?: string;              // hvis steget krever ny side, navigeres dit først
-  requiresAdmin?: boolean;
-  requiresModule?: string;     // bruker canShowModule()
-  beforeStep?: () => Promise<void>;  // f.eks. åpne dropdown
-  optional?: boolean;          // skip stille om selector ikke finnes
-};
-```
+### Det vi ikke endrer
 
-## Robusthet
+- Tour-infrastruktur (`GuidedTourProvider`, `useGuidedTour`, `tourUtils`, `tourDefinitions`, `StartTourButton`).
+- Systemoversikt-guiden.
+- `mission-create-button` data-attributtet i `OppdragFilterBar` beholdes (brukes ikke lenger i mission-creation-touren, men er ufarlig og kan brukes senere).
+- Ingen forretningslogikk endres — kun data-tour-attributter og ny stegtekst.
 
-- `waitForElement(selector, timeout=2000)` — MutationObserver-basert, skipper steget hvis ikke funnet innen timeout (ingen krasj).
-- Multi-side flyt: hvis `step.route` ≠ current → `navigate(route)`, vent på at selector dukker opp, så vis steg.
-- Tilgang: filtrer steg gjennom `canShowModule()` (eksisterer i Header) + `isAdmin`/`isSuperadmin` fra `useAuth`.
-- Mobil hamburger: `beforeStep` for nav-steg åpner DropdownMenu på mobil (sjekker `window.innerWidth < 1024`). Driver.js scroller selv inn i view.
-- Tooltip-bredde: bruk `popoverClass` med `max-w-[90vw] sm:max-w-sm`.
+### Robusthet
 
-## Tracking
-
-- `localStorage["avisafe.tours.completed"] = ["system-overview", "mission-creation"]`
-- `localStorage["avisafe.tours.skipped"] = [...]`
-- Reset-knapp i Kompetanse-fanen tømmer disse.
-
-## data-tour-attributter som legges til
-
-**Navigasjon (Header.tsx, både desktop-knapper og dropdown-items):**
-`nav-home, nav-missions, nav-map, nav-documents, nav-calendar, nav-incidents, nav-status, nav-resources, nav-statistics, nav-changelog, nav-installer, nav-admin, nav-profile, nav-notifications`
-
-**Oppdrag-listen (Oppdrag.tsx):**
-`mission-create-button`
-
-**Oppdragsskjema (komponent under src/components/oppdrag/):**
-`mission-title, mission-customer, mission-date, mission-location, mission-route-planner, mission-drone-select, mission-personnel, mission-equipment, mission-risk-assessment, mission-checklist, mission-save, mission-publish, mission-safesky, mission-flight-logs, mission-incident-report`
-
-**Kart (Kart.tsx):**
-`mission-map, mission-draw-area, mission-buffer-settings, mission-weather-airspace`
-
-Alle attributtene legges til ikke-invasivt (kun `data-tour=` på eksisterende elementer, ingen logikk-endringer).
-
-## Tour 1: Systemoversikt
-
-~14 steg, ett per hovedmenypunkt. Hvert steg: navigerer ikke, bare highlighter menyknappen og forklarer modulen + når en droneoperatør bruker den. Steg filtreres dynamisk på `canShowModule` + admin-rolle.
-
-## Tour 2: Opprett oppdrag (hovedprioritet)
-
-~18 steg som spenner over flere sider:
-1–2: Oppdrag-listen → "Nytt oppdrag"
-3–14: Inne i oppdragsskjemaet (tittel, kunde, dato, sted, ruteplanlegger, dronevalg, personell, utstyr, risikovurdering, sjekkliste, lagre, publiser)
-15: Kart-siden (ruteplanlegger, buffer/SORA-volum, vær/luftrom)
-16–18: SafeSky live, etterlogging av flylogg, hendelsesrapportering
-
-Steg som krever sideskifte bruker `route`-feltet og venter på element. Steg for funksjoner som ikke er aktive (f.eks. SafeSky disabled) skipper stille.
-
-## UI-integrasjon
-
-1. **Kompetanse-tab i ProfileDialog** (linje ~1325): nytt kort øverst "Opplæring & guider" med:
-   - Knapp "Start systemguide" (badge "Fullført" hvis i localStorage)
-   - Knapp "Start oppdrag-guide"
-   - Lenke "Tilbakestill alle guider"
-2. **Header**: lite ikon-knapp `<HelpCircle>` ved siden av notifications som åpner en liten dropdown med samme to valg. `data-tour="header-help"`.
-3. **GuidedTourProvider** mountes i `App.tsx` rett innenfor `BrowserRouter` så den har tilgang til `useNavigate`.
-
-## Norsk tekst & knapper
-
-Driver.js støtter custom labels: `nextBtnText: "Neste"`, `prevBtnText: "Tilbake"`, `doneBtnText: "Fullfør"`, og custom "Hopp over"-knapp injiseres i `onPopoverRender`.
-
-## Styling
-
-Custom CSS i `tour-styles.css` overstyrer driver.js-popover med:
-- `bg-card`, `border-border`, `text-foreground`, `rounded-lg`, `shadow-xl`
-- Highlight-stage: `outline: 2px solid hsl(var(--primary))`, blød overlay
-- `z-index: 10000` for å ligge over alle dialoger
-
-## Implementeringsrekkefølge
-
-1. Installere `driver.js`, opprette infrastruktur (types, provider, hook, utils, styles).
-2. Legge til alle `data-tour`-attributter i Header, Oppdrag, oppdragsskjema, Kart.
-3. Implementere `systemOverviewTour`.
-4. Implementere `missionCreationTour` med multi-side-støtte.
-5. Legge til StartTourButton i Header + Kompetanse-fanen i ProfileDialog.
-6. Test på desktop (1280), tablet (768), mobil (390).
-
-## Ikke-mål
-
-- Ingen endringer i forretningslogikk, RLS, navigasjon eller skjemaer.
-- Ingen automatisk visning ved første innlogging (kan legges til senere — bruker må starte selv).
+- Alle steg får `optional: true` slik at de hoppes over hvis brukeren f.eks. ikke har åpnet ruteplanleggeren ennå.
+- Steg 4–7 forutsetter at ruteplanleggeren er aktiv; hvis ikke, hoppes de gracefully over (eksisterende `waitForElement` med kort timeout).
+- Vi vurderer å legge til en `beforeStep` på SORA-stegene som auto-åpner SORA-panelet ved å klikke `[data-tour="map-sora-toggle"]` hvis det er lukket — kun hvis det ikke skaper sideeffekter. Beslutning tas i implementasjon ut fra hvordan toggle-state oppfører seg.

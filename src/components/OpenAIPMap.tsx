@@ -1202,7 +1202,7 @@ export function OpenAIPMap({
         <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
 
         {mode === "view" && onStartRoutePlanning && (
-          <Button onClick={onStartRoutePlanning} variant="default" size="icon" className="shadow-lg" title="Planlegg ny rute">
+          <Button data-tour="map-route-planner-trigger" onClick={onStartRoutePlanning} variant="default" size="icon" className="shadow-lg" title="Planlegg ny rute">
             <Route className="h-5 w-5" />
           </Button>
         )}

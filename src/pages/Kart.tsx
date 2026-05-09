@@ -668,6 +668,7 @@ export default function KartPage() {
                     <X className="h-4 w-4" />
                   </Button>
                   <Button
+                    data-tour="map-route-save"
                     size="sm"
                     onClick={handleSaveRoute}
                     disabled={currentRoute.coordinates.length < 2}
@@ -781,6 +782,7 @@ export default function KartPage() {
                 </Button>
               )}
               <Button
+                data-tour="map-pilot-button"
                 variant={isPlacingPilot ? "default" : pilotPosition ? "secondary" : "outline"}
                 size="sm"
                 onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
@@ -828,6 +830,7 @@ export default function KartPage() {
                 <span className="hidden sm:inline ml-1">Avbryt</span>
               </Button>
               <Button
+                data-tour="map-route-save"
                 size="sm"
                 onClick={handleSaveRoute}
                 disabled={currentRoute.coordinates.length < 2}
@@ -845,6 +848,7 @@ export default function KartPage() {
             <div className="flex items-center justify-end gap-2 sm:gap-4 px-3 py-0.5 sm:py-2 sm:px-4">
               {/* Left: SORA volum trigger */}
               <button
+                data-tour="map-sora-toggle"
                 onClick={() => setSoraOpen((o) => !o)}
                 className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity"
               >
@@ -867,6 +871,7 @@ export default function KartPage() {
 
               {/* Right: Adjacent area trigger (visible but greyed out when SORA disabled) */}
               <button
+                data-tour="map-adjacent-toggle"
                 onClick={() => soraSettings.enabled && setAdjacentOpen((o) => !o)}
                 className={cn(
                   "flex items-center gap-1.5 transition-opacity",
