@@ -121,11 +121,12 @@ body.avisafe-tour-active [role="dialog"][data-state="open"] {
   z-index: 10002 !important;
 }
 
-/* Visible ring around the highlighted menu item so the user sees what's being explained */
-body.avisafe-tour-active [role="menuitem"][data-tour].avisafe-tour-target,
-body.avisafe-tour-active [data-tour].avisafe-tour-target {
-  outline: 2px solid hsl(var(--primary));
+/* Visible ring around the highlighted element so the user sees what's being explained,
+   especially inside dropdown menus where driver.js's overlay cutout doesn't reach. */
+body.avisafe-tour-active .driver-active-element {
+  outline: 2px solid hsl(var(--primary)) !important;
   outline-offset: 2px;
   border-radius: 0.375rem;
-  background: hsl(var(--primary) / 0.12);
+  background: hsl(var(--primary) / 0.12) !important;
+  box-shadow: 0 0 0 9999px hsl(var(--background) / 0) inset;
 }
