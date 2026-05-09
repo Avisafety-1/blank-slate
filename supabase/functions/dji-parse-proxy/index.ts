@@ -15,6 +15,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { safeFetch, SSRFError, fingerprintToken } from "../_shared/http.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,13 @@ const corsHeaders = {
 
 const PARSER_URL = (Deno.env.get("DJI_PARSER_URL") ?? "").replace(/\/+$/, "");
 const PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
+
+// Allow-list of upstream hosts (PT-10 SSRF guard).
+const ALLOWED_HOSTS: string[] = (() => {
+  const hosts = ["dronelogapi.com", "www.dronelogapi.com"];
+  try { if (PARSER_URL) hosts.push(new URL(PARSER_URL).hostname); } catch { /* ignore */ }
+  return hosts;
+})();
 
 interface ProxyRequest {
   downloadUrl?: string; // DJI/DroneLog signed URL
