@@ -912,6 +912,16 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         return new Response(JSON.stringify({ error: 'Campaign not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      // PT-2: same scope check as send_to_missed
+      if (campaign.recipient_type === 'all_users') {
+        if (!caller || !(await userHasAnyRole(caller, ['superadmin']))) {
+          return new Response(JSON.stringify({ error: 'Superadmin required for all_users campaigns' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      } else if (campaign.company_id && caller) {
+        try { await assertUserInCompany(caller, campaign.company_id); }
+        catch (err) { return authErrorResponse(err, corsHeaders); }
+      }
+
       const alreadySentEmails = new Set<string>((campaign.sent_to_emails || []).map((e: string) => e.toLowerCase()));
 
       let eligibleEmails: string[] = [];
