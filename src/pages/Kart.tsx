@@ -993,7 +993,7 @@ export default function KartPage() {
         )}
         {/* Back to mission button */}
         {/* SafeSky Attribution */}
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2">
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Traffic data provided by</span>
           <a href="https://www.safesky.app" target="_blank" rel="noopener noreferrer">
             <img src={safeskyLogo} alt="SafeSky" className="h-5 dark:invert" />
