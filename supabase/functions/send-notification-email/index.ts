@@ -4,11 +4,44 @@ import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback, fixEmailImages } from "../_shared/template-utils.ts";
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
+import { requireUser, requireRole, AuthError, authErrorResponse, type AuthedUser } from "../_shared/auth.ts";
+import { assertUserInCompany } from "../_shared/companyScope.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// Types that require an authenticated, company-scoped caller (companyId in body).
+const COMPANY_SCOPED_TYPES = new Set([
+  'notify_new_incident',
+  'notify_new_mission',
+  'notify_followup_assigned',
+  'notify_mission_approval',
+  'notify_pilot_comment',
+  'notify_mission_mention',
+  'notify_training_assigned',
+  'notify_mission_approved',
+]);
+
+// Types that require admin/superadmin (and operate within a company).
+const ADMIN_SCOPED_TYPES = new Set([
+  'bulk_email_users',
+  'bulk_email_customers',
+  'send_to_missed',
+  'preview_missed_count',
+]);
+
+// Types that require Avisafe superadmin only (cross-tenant).
+const SUPERADMIN_ONLY_TYPES = new Set([
+  'bulk_email_all_users',
+]);
+
+async function userHasAnyRole(user: AuthedUser, roles: string[]): Promise<boolean> {
+  const { data } = await user.service.from('user_roles').select('role').eq('user_id', user.id);
+  const userRoles = (data ?? []).map((r: any) => r.role as string);
+  return userRoles.some((r) => roles.includes(r));
+}
 
 interface EmailRequest {
   recipientId?: string;
@@ -70,7 +103,90 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, sentBy, campaignId, excludeUserIds = [], newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, dry_run: dryRun }: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
+    const body: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
+    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, campaignId, excludeUserIds = [], newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, dry_run: dryRun } = body;
+    // sentBy is server-set from authenticated caller below — body value is ignored.
+    let sentBy: string | undefined;
+
+    // ============================================================
+    // AUTH GATE — PT-2 hardening (pentest 2026-05-08)
+    // ============================================================
+    let caller: AuthedUser | null = null;
+    try {
+      // Bootstrap exception: signup self-trigger may not have a session if
+      // email confirmation is enabled. Validate via just-created profile instead.
+      if (type === 'notify_admins_new_user') {
+        if (!companyId || !newUser?.email) {
+          return new Response(JSON.stringify({ error: 'Missing companyId or newUser.email' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('id, created_at, approved')
+          .eq('company_id', companyId)
+          .ilike('email', newUser.email)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!prof) {
+          return new Response(JSON.stringify({ error: 'No matching pending registration' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        const ageMs = Date.now() - new Date(prof.created_at).getTime();
+        if (ageMs > 10 * 60 * 1000) {
+          return new Response(JSON.stringify({ error: 'Registration too old to trigger admin notice' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        // Also try to attach JWT if present (purely for audit; not required)
+        try { caller = await requireUser(req); } catch { /* unauth allowed for this type */ }
+      } else {
+        caller = await requireUser(req);
+        sentBy = caller.id;
+
+        // htmlContent is only allowed from admin/superadmin (prevents arbitrary
+        // HTML being sent under the company brand by regular users).
+        if (htmlContent && !ADMIN_SCOPED_TYPES.has(type ?? '') && !SUPERADMIN_ONLY_TYPES.has(type ?? '')) {
+          if (!(await userHasAnyRole(caller, ['admin', 'superadmin']))) {
+            return new Response(JSON.stringify({ error: 'htmlContent requires admin role' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        }
+
+        if (SUPERADMIN_ONLY_TYPES.has(type ?? '')) {
+          await requireRole(caller, ['superadmin']);
+        } else if (ADMIN_SCOPED_TYPES.has(type ?? '')) {
+          if (!(await userHasAnyRole(caller, ['admin', 'superadmin']))) {
+            throw new AuthError(403, 'Admin role required');
+          }
+          // For company-bound bulk types, scope to caller's accessible companies
+          if (companyId) {
+            await assertUserInCompany(caller, companyId);
+          } else if (type !== 'send_to_missed' && type !== 'preview_missed_count') {
+            throw new AuthError(400, 'Missing companyId');
+          }
+        } else if (COMPANY_SCOPED_TYPES.has(type ?? '')) {
+          let scopeCompanyId: string | undefined = companyId;
+          if (!scopeCompanyId && type === 'notify_mission_approved' && missionId) {
+            const { data: m } = await supabase.from('missions').select('company_id').eq('id', missionId).maybeSingle();
+            scopeCompanyId = m?.company_id ?? undefined;
+          }
+          if (!scopeCompanyId) throw new AuthError(400, 'Missing companyId');
+          await assertUserInCompany(caller, scopeCompanyId);
+        } else if (type) {
+          // Unknown type — reject
+          throw new AuthError(400, `Unsupported type: ${type}`);
+        } else {
+          // Legacy single-recipient path (recipientId/recipientEmail). Require
+          // admin/superadmin — these flows can target arbitrary recipients.
+          if (!(await userHasAnyRole(caller, ['admin', 'superadmin']))) {
+            throw new AuthError(403, 'Admin role required for direct send');
+          }
+          if (companyId) {
+            await assertUserInCompany(caller, companyId);
+          }
+        }
+      }
+    } catch (err) {
+      return authErrorResponse(err, corsHeaders);
+    }
+
+
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
@@ -708,6 +824,17 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         return new Response(JSON.stringify({ error: 'Campaign not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
+      // PT-2: scope check — campaign must belong to caller's company,
+      // unless it's an all_users campaign (superadmin-only).
+      if (campaign.recipient_type === 'all_users') {
+        if (!caller || !(await userHasAnyRole(caller, ['superadmin']))) {
+          return new Response(JSON.stringify({ error: 'Superadmin required for all_users campaigns' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      } else if (campaign.company_id && caller) {
+        try { await assertUserInCompany(caller, campaign.company_id); }
+        catch (err) { return authErrorResponse(err, corsHeaders); }
+      }
+
       const alreadySentEmails = new Set<string>((campaign.sent_to_emails || []).map((e: string) => e.toLowerCase()));
       const fixedHtmlContent = fixEmailImages(campaign.html_content);
 
@@ -788,6 +915,16 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 
       if (campaignError || !campaign) {
         return new Response(JSON.stringify({ error: 'Campaign not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // PT-2: same scope check as send_to_missed
+      if (campaign.recipient_type === 'all_users') {
+        if (!caller || !(await userHasAnyRole(caller, ['superadmin']))) {
+          return new Response(JSON.stringify({ error: 'Superadmin required for all_users campaigns' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      } else if (campaign.company_id && caller) {
+        try { await assertUserInCompany(caller, campaign.company_id); }
+        catch (err) { return authErrorResponse(err, corsHeaders); }
       }
 
       const alreadySentEmails = new Set<string>((campaign.sent_to_emails || []).map((e: string) => e.toLowerCase()));
