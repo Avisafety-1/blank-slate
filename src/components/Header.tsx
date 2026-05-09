@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ProfileDialog } from "@/components/ProfileDialog";
+import { StartTourButton } from "@/components/guided-tour/StartTourButton";
 import { PendingApprovalsBadge } from "@/components/PendingApprovalsBadge";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
 import { useAuth } from "@/contexts/AuthContext";
@@ -120,18 +121,18 @@ export const Header = () => {
             {/* Mobile Navigation - Hamburger Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0">
+                <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0" data-tour="mobile-nav-trigger">
                   <Menu className="w-3.5 h-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card/95 border-glass z-[1150]">
-                {canShowModule('missions') && <DropdownMenuItem onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>}
-                {canShowModule('map') && <DropdownMenuItem onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>}
-                {canShowModule('documents') && <DropdownMenuItem onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>}
-                {canShowModule('calendar') && <DropdownMenuItem onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>}
-                {canShowModule('incidents') && <DropdownMenuItem onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>}
-                {canShowModule('status') && <DropdownMenuItem onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>}
-                {canShowModule('resources') && <DropdownMenuItem onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>}
+                {canShowModule('missions') && <DropdownMenuItem data-tour="nav-missions" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>}
+                {canShowModule('map') && <DropdownMenuItem data-tour="nav-map" onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>}
+                {canShowModule('documents') && <DropdownMenuItem data-tour="nav-documents" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>}
+                {canShowModule('calendar') && <DropdownMenuItem data-tour="nav-calendar" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>}
+                {canShowModule('incidents') && <DropdownMenuItem data-tour="nav-incidents" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>}
+                {canShowModule('status') && <DropdownMenuItem data-tour="nav-status" onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>}
+                {canShowModule('resources') && <DropdownMenuItem data-tour="nav-resources" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>}
                 {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
                   <DropdownMenuItem onClick={() => navigate("/statistikk")}>
                     <BarChart3 className="w-4 h-4 mr-2" />
@@ -144,7 +145,7 @@ export const Header = () => {
                     Marketing
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => navigate("/changelog")}>
+                <DropdownMenuItem data-tour="nav-changelog" onClick={() => navigate("/changelog")}>
                   <Activity className="w-4 h-4 mr-2" />
                   Driftstatus
                 </DropdownMenuItem>
@@ -173,12 +174,14 @@ export const Header = () => {
                 onClick={() => navigate("/admin")}
                 className="gap-1 relative h-7 w-7 min-w-7 p-0 md:h-8 md:w-8"
                 title={t('nav.admin')}
+                data-tour="nav-admin"
               >
                 <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <PendingApprovalsBadge isAdmin={isAdmin} />
               </Button>
             )}
-            <ProfileDialog />
+            <StartTourButton variant="icon" className="h-7 w-7 min-w-7 p-0" />
+            <span data-tour="nav-profile"><ProfileDialog /></span>
             <Button
               variant="ghost"
               size="sm"
@@ -192,14 +195,14 @@ export const Header = () => {
           
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1 flex-shrink">
-            {canShowModule('missions') && <Button variant="ghost" size="sm" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</Button>}
-            {canShowModule('map') && <Button variant="ghost" size="sm" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>}
-            {canShowModule('documents') && <Button variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>}
-            {canShowModule('calendar') && <Button variant="ghost" size="sm" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</Button>}
-            {canShowModule('incidents') && <Button variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>}
-            {canShowModule('status') && <Button variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>}
-            {canShowModule('resources') && <Button variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>}
-            <Button variant="ghost" size="sm" onClick={() => navigate("/changelog")} title="Driftstatus">
+            {canShowModule('missions') && <Button data-tour="nav-missions" variant="ghost" size="sm" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</Button>}
+            {canShowModule('map') && <Button data-tour="nav-map" variant="ghost" size="sm" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>}
+            {canShowModule('documents') && <Button data-tour="nav-documents" variant="ghost" size="sm" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>}
+            {canShowModule('calendar') && <Button data-tour="nav-calendar" variant="ghost" size="sm" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</Button>}
+            {canShowModule('incidents') && <Button data-tour="nav-incidents" variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>}
+            {canShowModule('status') && <Button data-tour="nav-status" variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>}
+            {canShowModule('resources') && <Button data-tour="nav-resources" variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>}
+            <Button data-tour="nav-changelog" variant="ghost" size="sm" onClick={() => navigate("/changelog")} title="Driftstatus">
               <Activity className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/installer")} title={t('nav.installApp', 'Installer app')}>
@@ -245,12 +248,14 @@ export const Header = () => {
                 onClick={() => navigate("/admin")}
                 className="relative h-8 w-8 p-0"
                 title={t('nav.admin')}
+                data-tour="nav-admin"
               >
                 <Settings className="w-4 h-4" />
                 <PendingApprovalsBadge isAdmin={isAdmin} />
               </Button>
             )}
-            <ProfileDialog />
+            <StartTourButton variant="icon" className="h-8 w-8 p-0" />
+            <span data-tour="nav-profile"><ProfileDialog /></span>
             <Button
               variant="ghost"
               size="sm"

@@ -47,7 +47,7 @@ export const OppdragFilterBar = ({
             <TabsTrigger value="completed" className="text-xs sm:text-sm">Fullførte</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button onClick={onAddMission} className="w-full sm:w-auto" size="lg">
+        <Button data-tour="mission-create-button" onClick={onAddMission} className="w-full sm:w-auto" size="lg">
           <Plus className="h-4 w-4 mr-2" />
           <span className="hidden sm:inline">Legg til oppdrag</span>
           <span className="sm:hidden">Nytt oppdrag</span>
