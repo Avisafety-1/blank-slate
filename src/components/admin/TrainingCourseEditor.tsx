@@ -709,7 +709,8 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Upload presentation / images */}
+      {/* Upload presentation / images — kun for vanlige kurs */}
+      {courseType === "normal" && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Last opp presentasjon</CardTitle>
