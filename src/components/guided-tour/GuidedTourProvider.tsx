@@ -10,8 +10,13 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "avisafe.tours.completed";
 
+export interface StartTourOptions {
+  /** Kjøres bare når brukeren faktisk fullfører touren via «Fullfør»-knappen (ikke ved Hopp over / lukk) */
+  onComplete?: () => void | Promise<void>;
+}
+
 interface GuidedTourContextValue {
-  start: (tourId: TourId) => Promise<void>;
+  start: (tourId: TourId, opts?: StartTourOptions) => Promise<void>;
   isCompleted: (tourId: TourId) => boolean;
   resetAll: () => void;
   reset: (tourId: TourId) => void;
