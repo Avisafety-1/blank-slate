@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play, FolderOpen, FolderPlus, Building2, ArrowLeft, ArrowDown, ArrowUp, Sparkles } from "lucide-react";
+import { Plus, Edit, Eye, Users, Trash2, BookOpen, Globe, UserCheck, Play, FolderOpen, FolderPlus, Building2, ArrowLeft, ArrowDown, ArrowUp, Sparkles, Compass } from "lucide-react";
 import { toast } from "sonner";
 import { TrainingCourseEditor } from "./TrainingCourseEditor";
 import { TrainingAssignmentDialog } from "./TrainingAssignmentDialog";
@@ -369,6 +369,12 @@ export const TrainingSection = () => {
             <Badge variant="outline" className="border-primary/30 text-primary">
               <ArrowUp className="h-3 w-3 mr-1" />
               Delt med mor
+            </Badge>
+          )}
+          {((course as any).display_mode === "guided_tour" || (course as any).tour_id) && (
+            <Badge variant="outline" className="border-primary/40 text-primary bg-primary/5">
+              <Compass className="h-3 w-3 mr-1" />
+              Guidet tour
             </Badge>
           )}
           <Badge variant={course.status === "published" ? "default" : "secondary"}>
