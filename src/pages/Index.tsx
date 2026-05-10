@@ -38,6 +38,8 @@ import { StartFlightDialog } from "@/components/StartFlightDialog";
 import { PasskeyPromptDialog } from "@/components/PasskeyPromptDialog";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { dashboardComponentToModule } from "@/config/trainingModules";
+import { useGuidedTour } from "@/components/guided-tour/GuidedTourProvider";
+import type { TourId } from "@/tours/types";
 
 const STORAGE_KEY = "dashboard-layout";
 
