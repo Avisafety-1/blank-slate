@@ -979,6 +979,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               onClick={handleSubmit}
               disabled={submitting || !formData.tittel || !formData.hendelsestidspunkt}
               className="flex-1"
+              data-tour="incident-submit"
             >
               {submitting 
                 ? (isEditing ? "Lagrer..." : "Rapporterer...") 
