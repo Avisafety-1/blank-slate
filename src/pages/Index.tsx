@@ -257,17 +257,84 @@ const Index = () => {
     // If flight is still active (user cancelled dialog), keep pending data for next attempt
   };
 
-  // Tour bridge: lar guidede tour-er åpne dialogene direkte uten å klikke seg gjennom Radix-dropdowns
+  const { start: startGuidedTour } = useGuidedTour();
+
+  // Tour bridge: lar guidede tour-er åpne dialogene direkte uten å klikke seg gjennom Radix-dropdowns,
+  // og lar opplæringsmodulen starte en tour som et kurs (med kompetanse-registrering ved fullføring).
   useEffect(() => {
     (window as any).__avisafeTour = {
       openStartFlight: () => setStartFlightConfirmOpen(true),
       openLogFlight: () => setLogFlightDialogOpen(true),
       openUploadLog: () => setUploadDroneLogOpen(true),
+      startTour: async (tourId: TourId, opts?: { assignmentId?: string }) => {
+        const assignmentId = opts?.assignmentId;
+        await startGuidedTour(tourId, {
+          onComplete: assignmentId
+            ? async () => {
+                if (!user) return;
+                try {
+                  // Hent kurs-info for tittel + utløp
+                  const { data: assignment } = await supabase
+                    .from("training_assignments")
+                    .select("course_id")
+                    .eq("id", assignmentId)
+                    .maybeSingle();
+                  if (!assignment) return;
+                  const { data: course } = await supabase
+                    .from("training_courses")
+                    .select("title, validity_months, unlocks_modules")
+                    .eq("id", assignment.course_id)
+                    .maybeSingle();
+                  if (!course) return;
+
+                  const now = new Date();
+                  const expiresAt = course.validity_months
+                    ? new Date(now.getFullYear(), now.getMonth() + course.validity_months, now.getDate())
+                    : null;
+
+                  const updatePayload: any = {
+                    completed_at: now.toISOString(),
+                    score: 100,
+                    passed: true,
+                    saved_answers: null,
+                  };
+
+                  const { data: compData } = await supabase
+                    .from("personnel_competencies")
+                    .insert({
+                      profile_id: user.id,
+                      type: "Kurs",
+                      navn: course.title,
+                      utstedt_dato: now.toISOString().split("T")[0],
+                      utloper_dato: expiresAt ? expiresAt.toISOString().split("T")[0] : null,
+                      påvirker_status: true,
+                    })
+                    .select("id")
+                    .single();
+                  if (compData) updatePayload.competency_id = compData.id;
+
+                  await supabase
+                    .from("training_assignments")
+                    .update(updatePayload)
+                    .eq("id", assignmentId);
+
+                  if ((course as any)?.unlocks_modules?.length) {
+                    await refetchUserInfo();
+                  }
+                  toast.success("Kurs fullført — kompetanse registrert");
+                } catch (e) {
+                  console.error("Failed to register tour course completion:", e);
+                  toast.error("Kunne ikke registrere kursfullføring");
+                }
+              }
+            : undefined,
+        });
+      },
     };
     return () => {
       delete (window as any).__avisafeTour;
     };
-  }, []);
+  }, [startGuidedTour, user, refetchUserInfo]);
 
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
