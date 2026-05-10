@@ -800,7 +800,7 @@ const Admin = () => {
               <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{t('admin.users')}</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+            <TabsTrigger value="customers" data-tour="admin-tab-customers" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <UserCog className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{t('admin.customers')}</span>
             </TabsTrigger>
