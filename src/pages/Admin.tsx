@@ -809,7 +809,7 @@ const Admin = () => {
               <span>{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
             </TabsTrigger>
             {hasAddon('sora_admin') && (
-              <TabsTrigger value="company-config" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+              <TabsTrigger value="company-config" data-tour="admin-tab-sora" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
                 <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="max-w-[80px] sm:max-w-none truncate">SORA</span>
               </TabsTrigger>
