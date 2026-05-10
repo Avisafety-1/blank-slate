@@ -1155,7 +1155,7 @@ const Admin = () => {
                         {t('admin.manageRoles')}
                       </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" data-tour="admin-approved-actions">
                       <Button
                         variant="outline"
                         size="sm"
