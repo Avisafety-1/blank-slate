@@ -838,7 +838,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
             {/* Linked Checklists Section */}
             {checklists.length > 0 && (
-              <div className="space-y-3">
+              <div data-tour="start-flight-checklists" className="space-y-3">
                 <Label className="flex items-center gap-2">
                   <ClipboardCheck className="h-4 w-4" />
                   {t('flight.linkedChecklists')} ({t('common.optional')})
