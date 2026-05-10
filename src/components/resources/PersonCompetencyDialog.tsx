@@ -512,38 +512,38 @@ export function PersonCompetencyDialog({
 
 
             {/* Existing Competencies */}
-            <div className="space-y-3 mb-6 min-w-0">
-              <h3 data-tour="person-competencies" className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>
-              
-              {(person.personnel_competencies || []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
-              ) : (
-                (person.personnel_competencies || []).map((competency) => (
-                  <div key={competency.id} className="border rounded-lg p-2.5 sm:p-4 space-y-2 bg-card min-w-0">
-                    {editingId === competency.id ? (
-                      // Edit mode
-                      <div className="space-y-3">
-                        <div>
-                          <Label>Type</Label>
-                          <Select value={editType} onValueChange={setEditType}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Kurs">Kurs</SelectItem>
-                              <SelectItem value="Sertifikat">Sertifikat</SelectItem>
-                              <SelectItem value="Lisens">Lisens</SelectItem>
-                              <SelectItem value="Utdanning">Utdanning</SelectItem>
-                              <SelectItem value="Godkjenning">Godkjenning</SelectItem>
-                              <SelectItem value="Kompetanse">Kompetanse</SelectItem>
-                              <SelectItem value="Annet">Annet</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Navn</Label>
-                          <Input
-                            value={editName}
+            {(() => {
+              const allComps = person.personnel_competencies || [];
+              const tourComps = allComps.filter(c => c.type === "Veiledet tour");
+              const regularComps = allComps.filter(c => c.type !== "Veiledet tour");
+
+              const renderCompetencyCard = (competency: Competency) => (
+                <div key={competency.id} className="border rounded-lg p-2.5 sm:p-4 space-y-2 bg-card min-w-0">
+                  {editingId === competency.id ? (
+                    // Edit mode
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Type</Label>
+                        <Select value={editType} onValueChange={setEditType}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Kurs">Kurs</SelectItem>
+                            <SelectItem value="Sertifikat">Sertifikat</SelectItem>
+                            <SelectItem value="Lisens">Lisens</SelectItem>
+                            <SelectItem value="Utdanning">Utdanning</SelectItem>
+                            <SelectItem value="Godkjenning">Godkjenning</SelectItem>
+                            <SelectItem value="Kompetanse">Kompetanse</SelectItem>
+                            <SelectItem value="Annet">Annet</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Navn</Label>
+                        <Input
+                          value={editName}
+
                             onChange={(e) => setEditName(e.target.value)}
                           />
                         </div>
