@@ -371,6 +371,12 @@ export const TrainingSection = () => {
               Delt med mor
             </Badge>
           )}
+          {((course as any).display_mode === "guided_tour" || (course as any).tour_id) && (
+            <Badge variant="outline" className="border-primary/40 text-primary bg-primary/5">
+              <Compass className="h-3 w-3 mr-1" />
+              Guidet tour
+            </Badge>
+          )}
           <Badge variant={course.status === "published" ? "default" : "secondary"}>
             {course.status === "published" ? "Publisert" : "Kladd"}
           </Badge>
