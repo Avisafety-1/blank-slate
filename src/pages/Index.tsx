@@ -303,11 +303,11 @@ const Index = () => {
                     .from("personnel_competencies")
                     .insert({
                       profile_id: user.id,
-                      type: "Kurs",
+                      type: "Veiledet tour",
                       navn: course.title,
                       utstedt_dato: now.toISOString().split("T")[0],
                       utloper_dato: expiresAt ? expiresAt.toISOString().split("T")[0] : null,
-                      påvirker_status: true,
+                      påvirker_status: false,
                     })
                     .select("id")
                     .single();
