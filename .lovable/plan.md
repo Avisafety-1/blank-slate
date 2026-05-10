@@ -1,81 +1,75 @@
-## Problem
+## Mål
 
-I touren `log-flight` (Logg flytid / avslutt flygning) og `start-flight` åpner ikke dialogene som forventet:
+Alle guidede tourer skal kunne tildeles brukere via **Admin → Opplæring**, akkurat som vanlige kurs. De skal gi varsel, vises i «Min profil → Kompetanse», kunne tas derfra, sette utløpsdato, og automatisk loggføres som kompetanse med samme grønn/gul/rød-status.
 
-1. **Logg flytid manuelt** — touren prøver å åpne dropdown-menyen (`<DropdownMenuTrigger asChild>` rundt en Button) ved å kalle `.click()`. Radix DropdownMenu lytter på `onPointerDown`, ikke `onClick`, så et programmatisk `HTMLElement.click()` åpner ikke menyen. Dermed finner helper aldri `[data-tour="dashboard-log-manual"]` og dialogen åpnes aldri.
-2. **Avslutt flygning** — `handleEndFlight` returnerer tidlig med toast-feilen «Ingen aktiv flygning» når `!isActive`. Touren har ingen mulighet til å demonstrere dialogen uten å faktisk starte en flygning.
-3. **Start flygning** — samme dialog (`StartFlightDialog`) åpnes via `setStartFlightConfirmOpen(true)`. Knappen er en vanlig Button, så `.click()` virker når `!isActive`. Problemet kan likevel oppstå når flighten allerede er aktiv (knappen er disabled). I tillegg er det skjørt å lete via `button:not([disabled])` siden rekkefølgen avhenger av layout.
+## Brukerflyt
 
-## Løsning
+**Admin:**
+1. Går til Admin → Opplæring → «Nytt kurs».
+2. Velger **Kurstype: Guidet tour**.
+3. Velger tour fra nedtrekksliste (Systemoversikt, Dashboard-widgets, Opprett oppdrag, Start flygning, Logg flytid, Last opp DJI-logg, Rapporter hendelser).
+4. Setter tittel, beskrivelse, gyldighetstid (måneder).
+5. Tildeler kurset til én eller flere brukere via eksisterende «Tildel kurs»-dialog → utløser samme varsel som vanlige kurs.
 
-Eksponer tour-trygge åpne-funksjoner globalt fra dashbordet og kall dem direkte fra touren. Da slipper vi å late som om vi klikker på UI, og vi kan «overstyre» kravet om aktiv flygning kun for tour-formål.
+**Bruker:**
+1. Får varsel om tildelt kurs.
+2. Åpner Min profil → Kompetanse → Tildelte kurs.
+3. Klikker kurset → ser et enkelt panel «Start veiledet gjennomgang».
+4. Klikk starter touren via eksisterende `GuidedTourProvider`.
+5. Når touren fullføres («Ferdig»-steget) markeres tildelingen som bestått, og en `personnel_competencies`-rad opprettes automatisk (`type='Kurs'`, navn = kurstittel, utstedt = i dag, utløp = i dag + `validity_months`).
+6. Kurset vises nå i kompetanselisten med grønn/gul/rød-status drevet av eksisterende logikk.
+7. Avbryter brukeren touren midtveis er kurset «ikke fullført» og kan tas på nytt.
 
-### 1. Tour-bridge på dashbordet (`src/pages/Index.tsx`)
+## Tekniske endringer
 
-Legg til en `useEffect` som registrerer hjelpere på `window.__avisafeTour`:
+### 1. Database (én migrering)
+- `training_courses`: legg til `tour_id text NULL`.
+- `display_mode`-feltet brukes med ny verdi `'guided_tour'` (kolonnen er `text`, ingen constraint-endring).
+- Ingen RLS-endringer: eksisterende policies på `training_courses`, `training_assignments` og `personnel_competencies` dekker dette.
 
-```ts
-useEffect(() => {
-  (window as any).__avisafeTour = {
-    openStartFlight: () => setStartFlightConfirmOpen(true),
-    openLogFlight: () => setLogFlightDialogOpen(true),
-    openUploadLog: () => setUploadDroneLogOpen(true),
-  };
-  return () => { delete (window as any).__avisafeTour; };
-}, []);
-```
+### 2. Tour-registeret
+- `src/tours/tourDefinitions.ts`: eksporter `assignableTours` (id + tittel + kort beskrivelse) som kurseditoren kan vise i en `<Select>`.
 
-Ingen forretningslogikk endres — dette er bare en alternativ inngang som setter samme `open`-state som de eksisterende knappene.
+### 3. Kurseditor (`src/components/admin/TrainingCourseEditor.tsx`)
+- Ny radio-knapp øverst: **Kurstype** = `Vanlig` | `Guidet tour`.
+- Ved «Guidet tour»:
+  - Skjul slide-/spørsmål-/PDF-/PPTX-/YouTube-seksjonene.
+  - Vis `<Select>` med tour-listen → lagres til `tour_id`, og `display_mode = 'guided_tour'`.
+  - `passing_score` settes implisitt til 100 og feltet skjules.
+  - Ingen rader i `training_questions` for tour-kurs.
+- Tittel / beskrivelse / `validity_months` brukes som vanlig.
 
-### 2. Oppdater tour-hjelpere
+### 4. Tildeling og varsel
+- `src/components/admin/TrainingAssignmentDialog.tsx`: ingen endring. Tour-kurs er bare en vanlig rad i `training_courses` og bruker eksisterende tildelings- og varselflyt.
 
-**`src/tours/logFlightTour.ts`** — `openLogFlightDialog`:
+### 5. Ta kurset (`src/components/training/TakeCourseDialog.tsx`)
+- Last `tour_id` sammen med kurset.
+- Hvis `display_mode === 'guided_tour'`:
+  - Render et eget panel med tittel, beskrivelse og knapp **«Start veiledet gjennomgang»**.
+  - Klikk lukker dialogen og kaller ny window-bro `window.__avisafeTour?.startTour?.(tour_id, { assignmentId })`.
+- Hopp over hele spørsmål-/scoring-/lagringsløypen for tour-kurs.
 
-```ts
-const openLogFlightDialog = async () => {
-  if (document.querySelector('[data-tour="log-flight-dialog"]')) return;
-  (window as any).__avisafeTour?.openLogFlight?.();
-  await sleep(450);
-};
-```
+### 6. Tour-fullføring → kursfullføring
+- `src/components/guided-tour/GuidedTourProvider.tsx`: når en tour avsluttes via «Ferdig» og ble startet med `assignmentId`, kall ny hjelper `completeTourAssignment(assignmentId)`:
+  1. Opprett `personnel_competencies`-rad (samme insert som dagens fullført-kode i `TakeCourseDialog`).
+  2. Oppdater `training_assignments`: `completed_at = now()`, `passed = true`, `score = 100`, `competency_id = <ny rad>`.
+  3. Toast: «Kurs fullført — kompetanse registrert».
+- `src/pages/Index.tsx`: utvid `window.__avisafeTour`-broen med `startTour(tourId, opts)` som starter touren via eksisterende provider-API.
 
-**`src/tours/startFlightTour.ts`** — `openStartFlightDialog`:
+### 7. Min profil → Kompetanse
+- Ingen endring nødvendig. Tildelte tour-kurs vises automatisk i samme liste, og fullførte tour-kurs gir en kompetanse-rad som dukker opp med riktig status.
 
-```ts
-const openStartFlightDialog = async () => {
-  if (document.querySelector('[data-tour="start-flight-dialog"]')) return;
-  (window as any).__avisafeTour?.openStartFlight?.();
-  await sleep(450);
-};
-```
+## Filer som røres
 
-**`src/tours/uploadDroneLogTour.ts`** — `openUploadDialog`:
+- migrering: `training_courses.tour_id`
+- `src/tours/tourDefinitions.ts` (+ ev. `src/tours/types.ts`)
+- `src/components/admin/TrainingCourseEditor.tsx`
+- `src/components/training/TakeCourseDialog.tsx`
+- `src/components/guided-tour/GuidedTourProvider.tsx`
+- `src/pages/Index.tsx` (window-bro `startTour`)
 
-```ts
-const openUploadDialog = async () => {
-  if (document.querySelector('[data-tour="upload-log-dialog"]')) return;
-  (window as any).__avisafeTour?.openUploadLog?.();
-  await sleep(450);
-};
-```
+## Avgrensninger
 
-Dette løser også upload-touren som har samme Radix-dropdown-problem på mobil.
-
-### 3. Overstyring for «Avslutt flygning» i tour-modus
-
-Når `LogFlightTimeDialog` åpnes via touren uten aktiv flygning er det greit — den fungerer som manuell logging og demonstrerer alle felter. Vi trenger ikke endre `handleEndFlight`. Tour-teksten i steg `intro` justeres så den ikke gir inntrykk av at man må ha en aktiv flygning:
-
-> «Når du stopper en aktiv flygning åpnes denne dialogen automatisk og fyller ut tid, drone og pilot. Du kan også åpne den manuelt for å logge en flygning i etterkant — vi viser sistnevnte nå.»
-
-### 4. Det vi ikke endrer
-
-- Ingen endringer i `StartFlightDialog`, `LogFlightTimeDialog` eller `UploadDroneLogDialog`.
-- Ingen endringer i `useFlightTimer` eller `handleEndFlight`-logikk.
-- Ingen endring av `data-tour`-attributter — bare hjelpefunksjonene i tour-filene.
-- `incident-report`, `mission-creation` etc. berøres ikke (de bruker ikke Radix-dropdowns på samme måte).
-
-### Tekniske detaljer
-
-- `window.__avisafeTour` er bare montert mens `Index.tsx` lever (cleanup i useEffect). Andre sider trenger ikke disse — alle tre touren har `route: "/"` på dialog-stegene.
-- TypeScript: vi caster til `any` i tour-filene for å unngå global type-augmentering. Alternativt kan vi legge en global.d.ts-deklarasjon hvis vi vil ha typer — ikke nødvendig her.
-- Eksisterende `closeAnyOpenDialog` brukes uendret før `intro`-steg.
+- Ingen endring i selve tour-stegene eller hvordan de kjører visuelt.
+- Ingen endring i `TrainingStatusView` — tour-kurs vises som vanlige kurs-rader i statistikk.
+- Forhåndsvisning i editoren for tour-kurs starter touren midlertidig uten å markere som fullført.
