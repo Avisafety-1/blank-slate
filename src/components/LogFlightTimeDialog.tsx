@@ -1115,7 +1115,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </div>
 
           {/* Pilot selection */}
-          <div>
+          <div data-tour="log-flight-pilot">
             <Label htmlFor="pilot" className="flex items-center gap-1">
               <User className="w-3 h-3" />
               Pilot
