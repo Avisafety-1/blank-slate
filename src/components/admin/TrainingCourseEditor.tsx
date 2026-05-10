@@ -16,6 +16,8 @@ import { TrainingModulePicker } from "@/components/training/TrainingModulePicker
 import { TRAINING_MODULE_KEYS, normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { assignableTours } from "@/tours/tourDefinitions";
 
 const TTS_VOICES: { value: string; label: string }[] = [
   { value: "coral", label: "Coral (varm, kvinnelig)" },
