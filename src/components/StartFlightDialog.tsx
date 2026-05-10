@@ -790,7 +790,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <div className="space-y-6 py-4 pb-6">
             {/* Nearest air traffic info - shown above checklists */}
             {(trafficLoading || nearestTraffic !== null) && (
-              <div className={`flex items-start gap-2 rounded-lg p-3 text-sm ${
+              <div data-tour="start-flight-traffic" className={`flex items-start gap-2 rounded-lg p-3 text-sm ${
                 nearestTraffic && nearestTraffic.distanceKm < 5 
                   ? 'bg-destructive/10' 
                   : nearestTraffic && nearestTraffic.distanceKm < 15 
