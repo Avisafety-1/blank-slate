@@ -888,7 +888,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </Collapsible>
 
           {/* Bildeopplasting */}
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="incident-image">
             <Label>Bilde (valgfritt)</Label>
             <input
               ref={fileInputRef}
