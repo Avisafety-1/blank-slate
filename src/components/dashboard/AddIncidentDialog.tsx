@@ -599,50 +599,52 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="hendelsestidspunkt">Hendelsestidspunkt *</Label>
-            <Input
-              id="hendelsestidspunkt"
-              type="datetime-local"
-              value={formData.hendelsestidspunkt}
-              onChange={(e) => setFormData({ ...formData, hendelsestidspunkt: e.target.value })}
-            />
-          </div>
+          <div className="space-y-4" data-tour="incident-meta">
+            <div className="space-y-2">
+              <Label htmlFor="hendelsestidspunkt">Hendelsestidspunkt *</Label>
+              <Input
+                id="hendelsestidspunkt"
+                type="datetime-local"
+                value={formData.hendelsestidspunkt}
+                onChange={(e) => setFormData({ ...formData, hendelsestidspunkt: e.target.value })}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="alvorlighetsgrad">Alvorlighetsgrad</Label>
-            <Select
-              value={formData.alvorlighetsgrad}
-              onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
-            >
-              <SelectTrigger id="alvorlighetsgrad">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Lav">Lav</SelectItem>
-                <SelectItem value="Middels">Middels</SelectItem>
-                <SelectItem value="Høy">Høy</SelectItem>
-                <SelectItem value="Kritisk">Kritisk</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="alvorlighetsgrad">Alvorlighetsgrad</Label>
+              <Select
+                value={formData.alvorlighetsgrad}
+                onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
+              >
+                <SelectTrigger id="alvorlighetsgrad">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lav">Lav</SelectItem>
+                  <SelectItem value="Middels">Middels</SelectItem>
+                  <SelectItem value="Høy">Høy</SelectItem>
+                  <SelectItem value="Kritisk">Kritisk</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => setFormData({ ...formData, status: value })}
-            >
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Åpen">Åpen</SelectItem>
-                <SelectItem value="Under behandling">Under behandling</SelectItem>
-                <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
-                <SelectItem value="Lukket">Lukket</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger id="status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Åpen">Åpen</SelectItem>
+                  <SelectItem value="Under behandling">Under behandling</SelectItem>
+                  <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
+                  <SelectItem value="Lukket">Lukket</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
