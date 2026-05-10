@@ -154,6 +154,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         setDisplayMode((course as any).display_mode === "list" ? "list" : "paginated");
         setFullscreen((course as any).fullscreen || false);
         setUnlocksModules(normalizeTrainingModules((course as any).unlocks_modules));
+        if ((course as any).display_mode === "guided_tour" && (course as any).tour_id) {
+          setCourseType("guided_tour");
+          setTourId((course as any).tour_id);
+        } else {
+          setCourseType("normal");
+        }
       }
 
       const { data: questionsData } = await supabase
