@@ -69,6 +69,7 @@
 .driver-popover.avisafe-tour button.driver-popover-next-btn,
 .driver-popover.avisafe-tour button.driver-popover-close-btn,
 .driver-popover.avisafe-tour button.avisafe-skip-btn {
+  pointer-events: auto !important;
   background: hsl(var(--secondary));
   color: hsl(var(--secondary-foreground));
   border: 1px solid hsl(var(--border));
