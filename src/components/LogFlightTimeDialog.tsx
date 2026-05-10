@@ -1020,7 +1020,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent data-tour="log-flight-dialog" className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
