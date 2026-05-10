@@ -443,12 +443,56 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   };
 
   const handleSave = async () => {
-    if (!companyId || !title.trim()) {
-      toast.error("Tittel er påkrevd");
+    if (!companyId) {
+      toast.error("Mangler selskap");
       return;
     }
 
     const isGuidedTour = courseType === "guided_tour";
+
+    // Multi-tour bulk-create when creating a new guided-tour course
+    if (isGuidedTour && isNewCourse) {
+      if (tourIds.length === 0) {
+        toast.error("Velg minst én veiledet gjennomgang");
+        return;
+      }
+      setSaving(true);
+      try {
+        for (const tId of tourIds) {
+          const tour = assignableTours.find((t) => t.id === tId);
+          if (!tour) continue;
+          const payload: any = {
+            title: tour.title,
+            description: tour.description || null,
+            passing_score: 100,
+            validity_months: hasPermanentValidity ? null : validityMonths,
+            display_mode: "guided_tour",
+            fullscreen: false,
+            unlocks_modules: unlocksModules,
+            tour_id: tId,
+            company_id: companyId,
+            created_by: user?.id,
+            status: "draft",
+            updated_at: new Date().toISOString(),
+          };
+          const { error } = await supabase.from("training_courses").insert(payload);
+          if (error) throw error;
+        }
+        toast.success(`${tourIds.length} kurs opprettet`);
+        onClose();
+      } catch (err) {
+        console.error("Error bulk-creating tour courses:", err);
+        toast.error("Kunne ikke opprette kurs");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (!title.trim()) {
+      toast.error("Tittel er påkrevd");
+      return;
+    }
 
     if (isGuidedTour) {
       if (!tourId) {
