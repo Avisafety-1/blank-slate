@@ -44,6 +44,7 @@ interface CourseData {
   display_mode: string;
   fullscreen: boolean;
   unlocks_modules?: string[] | null;
+  tour_id?: string | null;
 }
 
 export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted }: Props) => {
@@ -628,6 +629,30 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           <div className={isFullscreen ? "flex-1 overflow-y-auto" : ""}>
             {loading ? (
               <p className="text-sm text-muted-foreground">Laster kurs...</p>
+            ) : course?.display_mode === "guided_tour" && course?.tour_id ? (
+              <div className="space-y-4 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Dette kurset er en veiledet gjennomgang. Klikk på knappen under for å starte. Når du fullfører gjennomgangen til siste steg, registreres kurset som bestått og en kompetanse opprettes automatisk på profilen din.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={handleClose}>Avbryt</Button>
+                  <Button
+                    onClick={() => {
+                      const bridge = (window as any).__avisafeTour;
+                      if (!bridge?.startTour) {
+                        toast.error("Veiledningen er ikke tilgjengelig her. Gå til hovedskjermen og prøv igjen.");
+                        return;
+                      }
+                      onOpenChange(false);
+                      setTimeout(() => {
+                        bridge.startTour(course.tour_id, previewMode ? {} : { assignmentId });
+                      }, 250);
+                    }}
+                  >
+                    Start veiledet gjennomgang
+                  </Button>
+                </div>
+              </div>
             ) : submitted ? (
               renderResultView()
             ) : (

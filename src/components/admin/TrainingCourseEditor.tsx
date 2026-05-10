@@ -16,6 +16,8 @@ import { TrainingModulePicker } from "@/components/training/TrainingModulePicker
 import { TRAINING_MODULE_KEYS, normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { assignableTours } from "@/tours/tourDefinitions";
 
 const TTS_VOICES: { value: string; label: string }[] = [
   { value: "coral", label: "Coral (varm, kvinnelig)" },
@@ -80,6 +82,8 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [displayMode, setDisplayMode] = useState<"list" | "paginated">("paginated");
   const [fullscreen, setFullscreen] = useState(false);
   const [unlocksModules, setUnlocksModules] = useState<TrainingModuleKey[]>([]);
+  const [courseType, setCourseType] = useState<"normal" | "guided_tour">("normal");
+  const [tourId, setTourId] = useState<string>("");
   const [unlocksModulesOpen, setUnlocksModulesOpen] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [saving, setSaving] = useState(false);
@@ -150,6 +154,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         setDisplayMode((course as any).display_mode === "list" ? "list" : "paginated");
         setFullscreen((course as any).fullscreen || false);
         setUnlocksModules(normalizeTrainingModules((course as any).unlocks_modules));
+        if ((course as any).display_mode === "guided_tour" && (course as any).tour_id) {
+          setCourseType("guided_tour");
+          setTourId((course as any).tour_id);
+        } else {
+          setCourseType("normal");
+        }
       }
 
       const { data: questionsData } = await supabase
@@ -435,41 +445,50 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       return;
     }
 
-    const questionSlides = slides.filter(s => s.slide_type === "question");
-    for (const q of questionSlides) {
-      if (!q.question_text.trim()) {
-        toast.error("Spørsmålsside mangler tekst");
+    const isGuidedTour = courseType === "guided_tour";
+
+    if (isGuidedTour) {
+      if (!tourId) {
+        toast.error("Velg en veiledet gjennomgang");
         return;
       }
-      if (q.options.length < 2) {
-        toast.error("Spørsmålet må ha minst 2 alternativer");
-        return;
-      }
-      if (!q.options.some(o => o.is_correct)) {
-        toast.error("Spørsmålet må ha minst ett riktig svar");
-        return;
-      }
-      for (const o of q.options) {
-        if (!o.option_text.trim()) {
-          toast.error("Alle alternativer må ha tekst");
+    } else {
+      const questionSlides = slides.filter(s => s.slide_type === "question");
+      for (const q of questionSlides) {
+        if (!q.question_text.trim()) {
+          toast.error("Spørsmålsside mangler tekst");
           return;
         }
+        if (q.options.length < 2) {
+          toast.error("Spørsmålet må ha minst 2 alternativer");
+          return;
+        }
+        if (!q.options.some(o => o.is_correct)) {
+          toast.error("Spørsmålet må ha minst ett riktig svar");
+          return;
+        }
+        for (const o of q.options) {
+          if (!o.option_text.trim()) {
+            toast.error("Alle alternativer må ha tekst");
+            return;
+          }
+        }
       }
-    }
 
-    const videoSlides = slides.filter(s => s.slide_type === "video");
-    for (const v of videoSlides) {
-      if (!v.video_url || !parseYouTubeId(v.video_url)) {
-        toast.error("Ugyldig YouTube-URL på video-slide");
-        return;
-      }
-      if (
-        v.video_start_seconds != null &&
-        v.video_end_seconds != null &&
-        v.video_end_seconds <= v.video_start_seconds
-      ) {
-        toast.error("Sluttidspunkt må være etter starttidspunkt");
-        return;
+      const videoSlides = slides.filter(s => s.slide_type === "video");
+      for (const v of videoSlides) {
+        if (!v.video_url || !parseYouTubeId(v.video_url)) {
+          toast.error("Ugyldig YouTube-URL på video-slide");
+          return;
+        }
+        if (
+          v.video_start_seconds != null &&
+          v.video_end_seconds != null &&
+          v.video_end_seconds <= v.video_start_seconds
+        ) {
+          toast.error("Sluttidspunkt må være etter starttidspunkt");
+          return;
+        }
       }
     }
 
@@ -477,14 +496,15 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     try {
       let cId = courseId;
 
-      const coursePayload = {
+      const coursePayload: any = {
         title: title.trim(),
         description: description.trim() || null,
-        passing_score: passingScore,
+        passing_score: isGuidedTour ? 100 : passingScore,
         validity_months: hasPermanentValidity ? null : validityMonths,
-        display_mode: displayMode,
-        fullscreen,
+        display_mode: isGuidedTour ? "guided_tour" : displayMode,
+        fullscreen: isGuidedTour ? false : fullscreen,
         unlocks_modules: unlocksModules,
+        tour_id: isGuidedTour ? tourId : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -501,51 +521,58 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         cId = data.id;
       }
 
-      // Upload slide images that have local blob URLs
-      const updatedSlides = [...slides];
-      for (let i = 0; i < updatedSlides.length; i++) {
-        const s = updatedSlides[i];
-        if (s._localBlobUrl && s.slide_type === "content") {
-          const imageUrl = await uploadSlideImage(s._localBlobUrl, cId!, i);
-          updatedSlides[i] = { ...s, image_url: imageUrl, _localBlobUrl: undefined };
+      if (isGuidedTour) {
+        // Tour-kurs har ingen slides — slett ev. eksisterende spørsmål
+        if (courseId) {
+          await supabase.from("training_questions").delete().eq("course_id", courseId);
         }
-      }
+      } else {
+        // Upload slide images that have local blob URLs
+        const updatedSlides = [...slides];
+        for (let i = 0; i < updatedSlides.length; i++) {
+          const s = updatedSlides[i];
+          if (s._localBlobUrl && s.slide_type === "content") {
+            const imageUrl = await uploadSlideImage(s._localBlobUrl, cId!, i);
+            updatedSlides[i] = { ...s, image_url: imageUrl, _localBlobUrl: undefined };
+          }
+        }
 
-      // Delete existing questions (cascade deletes options)
-      if (courseId) {
-        await supabase.from("training_questions").delete().eq("course_id", courseId);
-      }
+        // Delete existing questions (cascade deletes options)
+        if (courseId) {
+          await supabase.from("training_questions").delete().eq("course_id", courseId);
+        }
 
-      // Insert slides
-      for (let i = 0; i < updatedSlides.length; i++) {
-        const s = updatedSlides[i];
-        const { data: qData, error: qErr } = await supabase
-          .from("training_questions")
-          .insert({
-            course_id: cId!,
-            question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : s.slide_type === "video" ? `Video ${i + 1}` : ""),
-            image_url: s.image_url,
-            sort_order: i,
-            slide_type: s.slide_type,
-            content_json: s.content_json ?? null,
-            video_url: s.slide_type === "video" ? (s.video_url || null) : null,
-            video_start_seconds: s.slide_type === "video" ? (s.video_start_seconds ?? null) : null,
-            video_end_seconds: s.slide_type === "video" ? (s.video_end_seconds ?? null) : null,
-            video_required_complete: s.slide_type === "video" ? !!s.video_required_complete : false,
-          } as any)
-          .select("id")
-          .single();
-        if (qErr) throw qErr;
+        // Insert slides
+        for (let i = 0; i < updatedSlides.length; i++) {
+          const s = updatedSlides[i];
+          const { data: qData, error: qErr } = await supabase
+            .from("training_questions")
+            .insert({
+              course_id: cId!,
+              question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : s.slide_type === "video" ? `Video ${i + 1}` : ""),
+              image_url: s.image_url,
+              sort_order: i,
+              slide_type: s.slide_type,
+              content_json: s.content_json ?? null,
+              video_url: s.slide_type === "video" ? (s.video_url || null) : null,
+              video_start_seconds: s.slide_type === "video" ? (s.video_start_seconds ?? null) : null,
+              video_end_seconds: s.slide_type === "video" ? (s.video_end_seconds ?? null) : null,
+              video_required_complete: s.slide_type === "video" ? !!s.video_required_complete : false,
+            } as any)
+            .select("id")
+            .single();
+          if (qErr) throw qErr;
 
-        if (s.slide_type === "question" && s.options.length > 0) {
-          const optionsToInsert = s.options.map((o, j) => ({
-            question_id: qData.id,
-            option_text: o.option_text.trim(),
-            is_correct: o.is_correct,
-            sort_order: j,
-          }));
-          const { error: oErr } = await supabase.from("training_question_options").insert(optionsToInsert);
-          if (oErr) throw oErr;
+          if (s.slide_type === "question" && s.options.length > 0) {
+            const optionsToInsert = s.options.map((o, j) => ({
+              question_id: qData.id,
+              option_text: o.option_text.trim(),
+              is_correct: o.is_correct,
+              sort_order: j,
+            }));
+            const { error: oErr } = await supabase.from("training_question_options").insert(optionsToInsert);
+            if (oErr) throw oErr;
+          }
         }
       }
 
@@ -581,6 +608,45 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
+            <Label>Kurstype</Label>
+            <RadioGroup
+              value={courseType}
+              onValueChange={(v) => setCourseType(v as "normal" | "guided_tour")}
+              className="flex flex-wrap gap-4 mt-2"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem id="course-type-normal" value="normal" />
+                <Label htmlFor="course-type-normal" className="cursor-pointer">Vanlig kurs (slides / spørsmål / video)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem id="course-type-tour" value="guided_tour" />
+                <Label htmlFor="course-type-tour" className="cursor-pointer">Guidet tour</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {courseType === "guided_tour" && (
+            <div>
+              <Label>Velg veiledet gjennomgang *</Label>
+              <Select value={tourId} onValueChange={setTourId}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Velg en tour…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableTours.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {tourId && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {assignableTours.find((t) => t.id === tourId)?.description}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div>
             <Label>Tittel *</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Navn på kurset" />
           </div>
@@ -589,10 +655,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Valgfri beskrivelse" rows={3} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Bestått-grense (%)</Label>
-              <Input type="number" min={1} max={100} value={passingScore} onChange={(e) => setPassingScore(Number(e.target.value))} />
-            </div>
+            {courseType === "normal" && (
+              <div>
+                <Label>Bestått-grense (%)</Label>
+                <Input type="number" min={1} max={100} value={passingScore} onChange={(e) => setPassingScore(Number(e.target.value))} />
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Switch checked={hasPermanentValidity} onCheckedChange={(v) => { setHasPermanentValidity(v); if (v) setValidityMonths(null); else setValidityMonths(12); }} />
@@ -606,10 +674,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3 mt-3">
-            <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
-            <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
-          </div>
+          {courseType === "normal" && (
+            <div className="flex items-center gap-3 mt-3">
+              <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
+              <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
+            </div>
+          )}
           <Collapsible open={unlocksModulesOpen} onOpenChange={setUnlocksModulesOpen} className="pt-3 border-t">
             <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left hover:bg-muted/50 transition-colors">
               <div>
@@ -639,7 +709,8 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Upload presentation / images */}
+      {/* Upload presentation / images — kun for vanlige kurs */}
+      {courseType === "normal" && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Last opp presentasjon</CardTitle>
@@ -714,9 +785,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Slides preview + question management */}
-      {slides.length > 0 && (
+      {/* Slides preview + question management — kun for vanlige kurs */}
+      {courseType === "normal" && slides.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">

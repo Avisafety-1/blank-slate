@@ -1,0 +1,1 @@
+ALTER TABLE public.training_courses ADD COLUMN IF NOT EXISTS tour_id text NULL;

@@ -5052,6 +5052,7 @@ export type Database = {
           source_manual_id: string | null
           status: string
           title: string
+          tour_id: string | null
           unlocks_modules: string[]
           updated_at: string
           validity_months: number | null
@@ -5074,6 +5075,7 @@ export type Database = {
           source_manual_id?: string | null
           status?: string
           title: string
+          tour_id?: string | null
           unlocks_modules?: string[]
           updated_at?: string
           validity_months?: number | null
@@ -5096,6 +5098,7 @@ export type Database = {
           source_manual_id?: string | null
           status?: string
           title?: string
+          tour_id?: string | null
           unlocks_modules?: string[]
           updated_at?: string
           validity_months?: number | null

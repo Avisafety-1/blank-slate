@@ -10,8 +10,13 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "avisafe.tours.completed";
 
+export interface StartTourOptions {
+  /** Kjøres bare når brukeren faktisk fullfører touren via «Fullfør»-knappen (ikke ved Hopp over / lukk) */
+  onComplete?: () => void | Promise<void>;
+}
+
 interface GuidedTourContextValue {
-  start: (tourId: TourId) => Promise<void>;
+  start: (tourId: TourId, opts?: StartTourOptions) => Promise<void>;
   isCompleted: (tourId: TourId) => boolean;
   resetAll: () => void;
   reset: (tourId: TourId) => void;
@@ -58,7 +63,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     return true;
   }, [isAdmin, isSuperAdmin, hasTrainingModuleAccess]);
 
-  const start = useCallback(async (tourId: TourId) => {
+  const start = useCallback(async (tourId: TourId, opts?: StartTourOptions) => {
     const tour = allTours[tourId];
     if (!tour) return;
 
@@ -76,12 +81,15 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     try { driverRef.current?.destroy(); } catch {}
     cleanupTourUi();
 
-    const finish = (markComplete: boolean) => {
+    const finish = (markComplete: boolean, fullyCompleted: boolean = false) => {
       try { d.destroy(); } catch {}
       cleanupTourUi();
       if (markComplete) {
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
+      }
+      if (fullyCompleted && opts?.onComplete) {
+        try { void opts.onComplete(); } catch (e) { console.error("Tour onComplete error", e); }
       }
       force((x) => x + 1);
     };
@@ -120,7 +128,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     const performStep = async (index: number) => {
       const step = candidates[index];
       if (!step) {
-        finish(true);
+        finish(true, true);
         return;
       }
 
@@ -159,7 +167,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
           prevBtnText: "← Tilbake",
           onNextClick: () => {
             if (isLast) {
-              setTimeout(() => finish(true), 0);
+              setTimeout(() => finish(true, true), 0);
             } else {
               setTimeout(() => performStep(index + 1), 0);
             }

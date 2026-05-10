@@ -26,3 +26,7 @@ export const tourList: TourDefinition[] = [
   uploadDroneLogTour,
   incidentReportTour,
 ];
+
+/** Tourer som kan tildeles brukere som kurs via opplæringsmodulen */
+export const assignableTours: { id: TourId; title: string; description: string }[] =
+  tourList.map((t) => ({ id: t.id, title: t.title, description: t.description }));
