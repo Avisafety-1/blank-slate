@@ -1040,7 +1040,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             </div>
           )}
           {/* Mission selection - NOW AT TOP */}
-          <div>
+          <div data-tour="log-flight-mission">
             <Label htmlFor="mission">Tilknytt oppdrag</Label>
             <Select 
               value={formData.missionId || "none"} 
