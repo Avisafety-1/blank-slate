@@ -10,29 +10,14 @@ const closeAnyOpenDialog = async () => {
 };
 
 /**
- * Open "Logg flytid manuelt" via the dropdown on dashboard.
- * Falls back to the direct "Logg flytid" button when no DJI/upload dropdown exists.
+ * Open Logg flytid-dialogen via tour-bridge på dashbordet.
+ * Bruker window.__avisafeTour i stedet for å klikke Radix-dropdown
+ * (som ikke responderer på programmatisk .click()).
  */
 const openLogFlightDialog = async () => {
   if (document.querySelector('[data-tour="log-flight-dialog"]')) return;
-
-  // Try direct button first (no dropdown variant)
-  const direct = document.querySelector<HTMLButtonElement>('button[data-tour="dashboard-log-flight"]');
-  if (direct && direct.tagName === "BUTTON" && !direct.getAttribute("aria-haspopup")) {
-    direct.click();
-    await sleep(450);
-    return;
-  }
-
-  // Dropdown trigger variant
-  const trigger = document.querySelector<HTMLElement>('[data-tour="dashboard-log-flight"]');
-  if (trigger) {
-    trigger.click();
-    await sleep(250);
-    const item = document.querySelector<HTMLElement>('[data-tour="dashboard-log-manual"]');
-    item?.click();
-    await sleep(450);
-  }
+  (window as any).__avisafeTour?.openLogFlight?.();
+  await sleep(450);
 };
 
 export const logFlightTour: TourDefinition = {
