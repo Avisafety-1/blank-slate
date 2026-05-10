@@ -785,9 +785,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           </div>
         </CardContent>
       </Card>
+      )}
 
-      {/* Slides preview + question management */}
-      {slides.length > 0 && (
+      {/* Slides preview + question management — kun for vanlige kurs */}
+      {courseType === "normal" && slides.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">
