@@ -846,7 +846,7 @@ const Admin = () => {
             <div className="space-y-4 sm:space-y-6">
               {/* Registration Code Card */}
               {registrationCode && (
-                <Card className="border-primary/20 bg-primary/5">
+                <Card data-tour="admin-registration-code" className="border-primary/20 bg-primary/5">
                   <CardHeader className="pb-3 sm:pb-4">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <Key className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
