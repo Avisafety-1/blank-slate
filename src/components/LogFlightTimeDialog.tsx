@@ -1020,7 +1020,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent data-tour="log-flight-dialog" className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
@@ -1040,7 +1040,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             </div>
           )}
           {/* Mission selection - NOW AT TOP */}
-          <div>
+          <div data-tour="log-flight-mission">
             <Label htmlFor="mission">Tilknytt oppdrag</Label>
             <Select 
               value={formData.missionId || "none"} 
@@ -1092,7 +1092,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </div>
 
           {/* Drone/Fly selection */}
-          <div>
+          <div data-tour="log-flight-drone">
             <Label htmlFor="drone">{terminology.vehicle} *</Label>
             <Select 
               value={formData.droneId} 
@@ -1115,7 +1115,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </div>
 
           {/* Pilot selection */}
-          <div>
+          <div data-tour="log-flight-pilot">
             <Label htmlFor="pilot" className="flex items-center gap-1">
               <User className="w-3 h-3" />
               Pilot
@@ -1260,7 +1260,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </div>
 
           {/* Flight duration toggle and inputs */}
-          <div className="space-y-3">
+          <div data-tour="log-flight-times" className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1">
                 <Timer className="w-3 h-3" />
@@ -1329,7 +1329,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </div>
 
           {/* Movements */}
-          <div>
+          <div data-tour="log-flight-movements">
             <Label htmlFor="movements">Antall bevegelser</Label>
             <Input
               id="movements"
@@ -1389,7 +1389,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             <Button type="button" variant="outline" onClick={handleCancel}>
               Avbryt
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button data-tour="log-flight-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Logger..." : "Logg flytid"}
             </Button>
           </DialogFooter>

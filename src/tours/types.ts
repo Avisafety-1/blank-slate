@@ -1,4 +1,10 @@
-export type TourId = "system-overview" | "mission-creation" | "dashboard-widgets";
+export type TourId =
+  | "system-overview"
+  | "mission-creation"
+  | "dashboard-widgets"
+  | "start-flight"
+  | "log-flight"
+  | "upload-drone-log";
 
 export interface TourStep {
   /** Stable id for debugging */

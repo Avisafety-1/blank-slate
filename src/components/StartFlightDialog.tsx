@@ -778,7 +778,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] flex flex-col">
+        <DialogContent data-tour="start-flight-dialog" className="w-[95vw] max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{t('flight.startFlightTitle')}</DialogTitle>
             <DialogDescription>
@@ -790,7 +790,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <div className="space-y-6 py-4 pb-6">
             {/* Nearest air traffic info - shown above checklists */}
             {(trafficLoading || nearestTraffic !== null) && (
-              <div className={`flex items-start gap-2 rounded-lg p-3 text-sm ${
+              <div data-tour="start-flight-traffic" className={`flex items-start gap-2 rounded-lg p-3 text-sm ${
                 nearestTraffic && nearestTraffic.distanceKm < 5 
                   ? 'bg-destructive/10' 
                   : nearestTraffic && nearestTraffic.distanceKm < 15 
@@ -838,7 +838,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
             {/* Linked Checklists Section */}
             {checklists.length > 0 && (
-              <div className="space-y-3">
+              <div data-tour="start-flight-checklists" className="space-y-3">
                 <Label className="flex items-center gap-2">
                   <ClipboardCheck className="h-4 w-4" />
                   {t('flight.linkedChecklists')} ({t('common.optional')})
@@ -960,7 +960,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               </div>
             )}
 
-            <div className="space-y-2">
+            <div data-tour="start-flight-mission" className="space-y-2">
               <Label htmlFor="mission-select">{t('flight.selectMission')}</Label>
               <Select value={selectedMissionId} onValueChange={setSelectedMissionId}>
                 <SelectTrigger id="mission-select">
@@ -1020,7 +1020,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             )}
             </div>
 
-            <div className="space-y-3">
+            <div data-tour="start-flight-publish-mode" className="space-y-3">
               <Label>{t('flight.safeskyPublishing')}</Label>
               <RadioGroup value={publishMode} onValueChange={(val) => setPublishMode(val as PublishMode)}>
                 <label 
@@ -1153,7 +1153,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </div>
                 
                 {/* DroneTag device selector */}
-                <div className="space-y-2 pl-1">
+                <div data-tour="start-flight-dronetag" className="space-y-2 pl-1">
                     <Label className="text-sm">{t('flight.dronetagDevice')} *</Label>
                     {dronetagDevices.length > 0 ? (
                       <>
@@ -1249,6 +1249,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               {t('actions.cancel')}
             </Button>
             <Button 
+              data-tour="start-flight-submit"
               onClick={handleStartFlightClick} 
               disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition)) || (publishMode === 'live_uav' && (!selectedDronetagId || selectedDronetagId === 'none'))}
               className="bg-green-600 hover:bg-green-700"

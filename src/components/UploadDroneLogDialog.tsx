@@ -3038,7 +3038,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent className={`${step === 'method' && selectedPendingLogId && result ? 'max-w-5xl max-h-[95vh] h-[95vh] flex flex-col' : 'max-w-lg max-h-[90vh] overflow-y-auto'} transition-all`}>
+      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && selectedPendingLogId && result ? 'max-w-5xl max-h-[95vh] h-[95vh] flex flex-col' : 'max-w-lg max-h-[90vh] overflow-y-auto'} transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
@@ -3056,6 +3056,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
             </p>
             <div className={`grid ${djiEnabled ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
               <button
+                data-tour="upload-log-file"
                 onClick={() => setStep('upload')}
                 className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center"
               >
@@ -3067,6 +3068,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
               </button>
               {djiEnabled && (
               <div
+                data-tour="upload-log-dji"
                 role="button"
                 tabIndex={0}
                 onKeyDown={handleDjiCardKeyDown}
@@ -3185,7 +3187,9 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
             )}
 
             {/* Pending auto-synced logs */}
-            <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} expanded={!!(selectedPendingLogId && result)} />
+            <div data-tour="upload-log-pending">
+              <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} expanded={!!(selectedPendingLogId && result)} />
+            </div>
             </div>
 
             {/* Right panel: result details (split view) */}
