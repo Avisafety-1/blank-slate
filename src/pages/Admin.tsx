@@ -116,6 +116,18 @@ const Admin = () => {
   const [eccairsEnabled, setEccairsEnabled] = useState(false);
   const [isChildCompany, setIsChildCompany] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<string>("users");
+
+  // Allow guided tour (and other modules) to switch admin tab via custom event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { value?: string } | undefined;
+      if (detail?.value) setActiveTab(detail.value);
+    };
+    window.addEventListener("avisafe:set-admin-tab", handler as EventListener);
+    return () => window.removeEventListener("avisafe:set-admin-tab", handler as EventListener);
+  }, []);
+
   const [inviteEmail, setInviteEmail] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
@@ -794,7 +806,7 @@ const Admin = () => {
       </header>
 
       <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
-        <Tabs defaultValue="users" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList data-tour="admin-tabs" className="grid grid-cols-2 sm:inline-flex h-auto sm:h-10 w-full sm:w-auto max-w-md sm:max-w-none mx-auto relative z-10 gap-1 p-1.5 bg-secondary rounded-xl flex-wrap">
             <TabsTrigger value="users" data-tour="admin-tab-users" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
