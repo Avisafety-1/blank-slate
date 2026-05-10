@@ -925,7 +925,7 @@ const Hendelser = () => {
 
           <GlassCard className="mb-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1">
+              <div className="relative flex-1" data-tour="hendelser-search">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input 
                   placeholder="Søk i hendelser..." 
@@ -935,13 +935,13 @@ const Hendelser = () => {
                 />
               </div>
               
-              <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+              <Button onClick={() => setAddDialogOpen(true)} className="gap-2" data-tour="hendelser-add">
                 <Plus className="w-4 h-4" />
                 Legg til hendelse
               </Button>
             </div>
 
-            <div className="flex gap-2 mt-4 flex-wrap">
+            <div className="flex gap-2 mt-4 flex-wrap" data-tour="hendelser-status-filter">
               {statusOptions.map(status => (
                 <Button 
                   key={status} 
