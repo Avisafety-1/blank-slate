@@ -1,5 +1,9 @@
 /* Driver.js theme override — matches AviSafe shadcn dark/light tokens */
 .driver-popover.avisafe-tour {
+  /* Ensure popover stays interactive even when a Radix Dialog has locked
+     pointer-events on the body (Radix sets body pointer-events:none while a
+     modal dialog is open, which would otherwise swallow clicks on the X). */
+  pointer-events: auto !important;
   /* Distinct tour surface: richer tint so it pops against dashboard widgets */
   background: linear-gradient(
     145deg,
