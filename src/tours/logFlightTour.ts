@@ -31,7 +31,7 @@ export const logFlightTour: TourDefinition = {
       selector: '[data-tour="dashboard-flight-controls"]',
       title: "Avslutt flygning eller logg manuelt",
       description:
-        "Når du stopper en aktiv flygning åpnes denne dialogen automatisk. Du kan også åpne den manuelt via «Logg flytid manuelt» fra dashbordet.",
+        "Når du stopper en aktiv flygning åpnes denne dialogen automatisk og fyller ut tid, drone og pilot. Du kan også åpne den manuelt for å logge en flygning i etterkant — vi viser sistnevnte nå.",
       side: "top",
       route: "/",
       beforeStep: closeAnyOpenDialog,
