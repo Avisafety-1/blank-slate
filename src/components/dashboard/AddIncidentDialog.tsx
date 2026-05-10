@@ -529,7 +529,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6" data-tour="incident-dialog">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Rediger hendelse" : "Rapporter hendelse"}</DialogTitle>
           <DialogDescription>
