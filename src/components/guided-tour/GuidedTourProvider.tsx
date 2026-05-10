@@ -96,6 +96,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
 
     const d: Driver = driver({
       allowClose: true,
+      allowKeyboardControl: false,
       overlayOpacity: 0.55,
       stagePadding: 6,
       stageRadius: 8,
