@@ -255,6 +255,18 @@ const Index = () => {
     // If flight is still active (user cancelled dialog), keep pending data for next attempt
   };
 
+  // Tour bridge: lar guidede tour-er åpne dialogene direkte uten å klikke seg gjennom Radix-dropdowns
+  useEffect(() => {
+    (window as any).__avisafeTour = {
+      openStartFlight: () => setStartFlightConfirmOpen(true),
+      openLogFlight: () => setLogFlightDialogOpen(true),
+      openUploadLog: () => setUploadDroneLogOpen(true),
+    };
+    return () => {
+      delete (window as any).__avisafeTour;
+    };
+  }, []);
+
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
       navigate("/auth", { replace: true });
