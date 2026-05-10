@@ -167,7 +167,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
           prevBtnText: "← Tilbake",
           onNextClick: () => {
             if (isLast) {
-              setTimeout(() => finish(true), 0);
+              setTimeout(() => finish(true, true), 0);
             } else {
               setTimeout(() => performStep(index + 1), 0);
             }
