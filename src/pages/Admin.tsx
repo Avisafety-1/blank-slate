@@ -969,7 +969,7 @@ const Admin = () => {
                 </Card>
               )}
 
-              <Card>
+              <Card data-tour="admin-invite">
                 <CardHeader className="pb-3 sm:pb-6">
                   <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <Send className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -1083,7 +1083,7 @@ const Admin = () => {
               )}
 
               {pendingUsers.length > 0 && (
-                <Card>
+                <Card data-tour="admin-pending">
                   <CardHeader className="pb-3 sm:pb-6">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <UserCog className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1146,7 +1146,7 @@ const Admin = () => {
               )}
 
               {/* Approved Users */}
-              <Card>
+              <Card data-tour="admin-approved">
                 <CardHeader className="pb-3 sm:pb-6">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
@@ -1581,17 +1581,17 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="customers" className="mt-4 sm:mt-8">
+          <TabsContent value="customers" data-tour="admin-content-customers" className="mt-4 sm:mt-8">
             <CustomerManagementSection />
           </TabsContent>
 
-          <TabsContent value="email-templates" className="mt-4 sm:mt-8">
+          <TabsContent value="email-templates" data-tour="admin-content-email" className="mt-4 sm:mt-8">
             <EmailTemplateEditor onOpenEmailSettings={() => setEmailSettingsOpen(true)} />
             <BulkEmailSenderWithHistory />
           </TabsContent>
 
           {hasAddon('sora_admin') && (
-            <TabsContent value="company-config" className="mt-4 sm:mt-8">
+            <TabsContent value="company-config" data-tour="admin-content-sora" className="mt-4 sm:mt-8">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold">{companyName || "Selskapet"} — SORA-innstillinger</h2>
                 <p className="text-sm text-muted-foreground">Konfigurer selskapsspesifikke grenser og krav for AI-risikovurdering</p>
@@ -1606,7 +1606,7 @@ const Admin = () => {
             </TabsContent>
           )}
 
-          <TabsContent value="child-companies" className="mt-4 sm:mt-8">
+          <TabsContent value="child-companies" data-tour="admin-content-child" className="mt-4 sm:mt-8">
             <ChildCompaniesSection departmentsEnabled={departmentsEnabled} />
           </TabsContent>
 
@@ -1623,7 +1623,7 @@ const Admin = () => {
           )}
 
 
-          <TabsContent value="training" className="mt-4 sm:mt-8">
+          <TabsContent value="training" data-tour="admin-content-training" className="mt-4 sm:mt-8">
             <TrainingSection />
           </TabsContent>
         </Tabs>
