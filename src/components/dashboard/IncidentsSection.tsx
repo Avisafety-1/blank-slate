@@ -278,7 +278,7 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
       </div>
 
       <Tabs defaultValue="incidents" className="w-full flex-1 flex flex-col">
-        <TabsList className="w-full h-8 sm:h-9">
+        <TabsList className="w-full h-8 sm:h-9" data-tour="incident-widget-tabs">
           <TabsTrigger value="incidents" className="flex-1 text-xs sm:text-sm">
             {t('dashboard.incidents.title')} ({incidents.length})
           </TabsTrigger>
@@ -290,7 +290,7 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
         </TabsList>
 
         <TabsContent value="incidents" className="mt-2 sm:mt-3 flex-1">
-          <div className="space-y-1.5 sm:space-y-2 overflow-y-auto h-[400px] pr-2 sm:pr-4">
+          <div className="space-y-1.5 sm:space-y-2 overflow-y-auto h-[400px] pr-2 sm:pr-4" data-tour="incident-widget-list">
             {loading ? (
               <div className="text-center py-4 text-xs sm:text-sm text-muted-foreground">
                 {t('dashboard.incidents.loading')}
