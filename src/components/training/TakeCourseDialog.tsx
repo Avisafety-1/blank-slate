@@ -645,6 +645,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
                         return;
                       }
                       onOpenChange(false);
+                      onTourStart?.();
                       setTimeout(() => {
                         bridge.startTour(course.tour_id, previewMode ? {} : { assignmentId });
                       }, 250);
