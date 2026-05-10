@@ -521,51 +521,58 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         cId = data.id;
       }
 
-      // Upload slide images that have local blob URLs
-      const updatedSlides = [...slides];
-      for (let i = 0; i < updatedSlides.length; i++) {
-        const s = updatedSlides[i];
-        if (s._localBlobUrl && s.slide_type === "content") {
-          const imageUrl = await uploadSlideImage(s._localBlobUrl, cId!, i);
-          updatedSlides[i] = { ...s, image_url: imageUrl, _localBlobUrl: undefined };
+      if (isGuidedTour) {
+        // Tour-kurs har ingen slides — slett ev. eksisterende spørsmål
+        if (courseId) {
+          await supabase.from("training_questions").delete().eq("course_id", courseId);
         }
-      }
+      } else {
+        // Upload slide images that have local blob URLs
+        const updatedSlides = [...slides];
+        for (let i = 0; i < updatedSlides.length; i++) {
+          const s = updatedSlides[i];
+          if (s._localBlobUrl && s.slide_type === "content") {
+            const imageUrl = await uploadSlideImage(s._localBlobUrl, cId!, i);
+            updatedSlides[i] = { ...s, image_url: imageUrl, _localBlobUrl: undefined };
+          }
+        }
 
-      // Delete existing questions (cascade deletes options)
-      if (courseId) {
-        await supabase.from("training_questions").delete().eq("course_id", courseId);
-      }
+        // Delete existing questions (cascade deletes options)
+        if (courseId) {
+          await supabase.from("training_questions").delete().eq("course_id", courseId);
+        }
 
-      // Insert slides
-      for (let i = 0; i < updatedSlides.length; i++) {
-        const s = updatedSlides[i];
-        const { data: qData, error: qErr } = await supabase
-          .from("training_questions")
-          .insert({
-            course_id: cId!,
-            question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : s.slide_type === "video" ? `Video ${i + 1}` : ""),
-            image_url: s.image_url,
-            sort_order: i,
-            slide_type: s.slide_type,
-            content_json: s.content_json ?? null,
-            video_url: s.slide_type === "video" ? (s.video_url || null) : null,
-            video_start_seconds: s.slide_type === "video" ? (s.video_start_seconds ?? null) : null,
-            video_end_seconds: s.slide_type === "video" ? (s.video_end_seconds ?? null) : null,
-            video_required_complete: s.slide_type === "video" ? !!s.video_required_complete : false,
-          } as any)
-          .select("id")
-          .single();
-        if (qErr) throw qErr;
+        // Insert slides
+        for (let i = 0; i < updatedSlides.length; i++) {
+          const s = updatedSlides[i];
+          const { data: qData, error: qErr } = await supabase
+            .from("training_questions")
+            .insert({
+              course_id: cId!,
+              question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : s.slide_type === "video" ? `Video ${i + 1}` : ""),
+              image_url: s.image_url,
+              sort_order: i,
+              slide_type: s.slide_type,
+              content_json: s.content_json ?? null,
+              video_url: s.slide_type === "video" ? (s.video_url || null) : null,
+              video_start_seconds: s.slide_type === "video" ? (s.video_start_seconds ?? null) : null,
+              video_end_seconds: s.slide_type === "video" ? (s.video_end_seconds ?? null) : null,
+              video_required_complete: s.slide_type === "video" ? !!s.video_required_complete : false,
+            } as any)
+            .select("id")
+            .single();
+          if (qErr) throw qErr;
 
-        if (s.slide_type === "question" && s.options.length > 0) {
-          const optionsToInsert = s.options.map((o, j) => ({
-            question_id: qData.id,
-            option_text: o.option_text.trim(),
-            is_correct: o.is_correct,
-            sort_order: j,
-          }));
-          const { error: oErr } = await supabase.from("training_question_options").insert(optionsToInsert);
-          if (oErr) throw oErr;
+          if (s.slide_type === "question" && s.options.length > 0) {
+            const optionsToInsert = s.options.map((o, j) => ({
+              question_id: qData.id,
+              option_text: o.option_text.trim(),
+              is_correct: o.is_correct,
+              sort_order: j,
+            }));
+            const { error: oErr } = await supabase.from("training_question_options").insert(optionsToInsert);
+            if (oErr) throw oErr;
+          }
         }
       }
 
