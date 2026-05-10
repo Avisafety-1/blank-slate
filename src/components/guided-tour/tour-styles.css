@@ -143,6 +143,14 @@ body.avisafe-tour-active .driver-active-element {
   outline: 3px solid hsl(var(--primary)) !important;
   outline-offset: 3px;
   border-radius: 0.5rem;
-  background: hsl(var(--primary) / 0.15) !important;
-  box-shadow: 0 0 0 9999px hsl(var(--background) / 0) inset;
+  background-color: hsl(var(--primary) / 0.15);
+}
+
+/* Large surfaces (dialogs/cards): keep their own opaque background so the
+   underlying page does NOT bleed through the blue tint. Tighter outline too. */
+body.avisafe-tour-active [role="dialog"].driver-active-element,
+body.avisafe-tour-active [role="alertdialog"].driver-active-element {
+  background-color: hsl(var(--background)) !important;
+  outline-width: 2px !important;
+  outline-offset: 0 !important;
 }
