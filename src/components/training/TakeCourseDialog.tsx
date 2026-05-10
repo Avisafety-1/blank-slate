@@ -19,6 +19,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCompleted?: () => void;
+  onTourStart?: () => void;
 }
 
 interface SlideData {
