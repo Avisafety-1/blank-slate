@@ -85,6 +85,8 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [unlocksModules, setUnlocksModules] = useState<TrainingModuleKey[]>([]);
   const [courseType, setCourseType] = useState<"normal" | "guided_tour">("normal");
   const [tourId, setTourId] = useState<string>("");
+  const [tourIds, setTourIds] = useState<string[]>([]);
+  const isNewCourse = !courseId;
   const [unlocksModulesOpen, setUnlocksModulesOpen] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [saving, setSaving] = useState(false);
