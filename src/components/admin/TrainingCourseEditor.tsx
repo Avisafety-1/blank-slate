@@ -17,6 +17,7 @@ import { TRAINING_MODULE_KEYS, normalizeTrainingModules, type TrainingModuleKey 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { assignableTours } from "@/tours/tourDefinitions";
 
 const TTS_VOICES: { value: string; label: string }[] = [
@@ -84,6 +85,8 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [unlocksModules, setUnlocksModules] = useState<TrainingModuleKey[]>([]);
   const [courseType, setCourseType] = useState<"normal" | "guided_tour">("normal");
   const [tourId, setTourId] = useState<string>("");
+  const [tourIds, setTourIds] = useState<string[]>([]);
+  const isNewCourse = !courseId;
   const [unlocksModulesOpen, setUnlocksModulesOpen] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [saving, setSaving] = useState(false);
@@ -440,12 +443,56 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   };
 
   const handleSave = async () => {
-    if (!companyId || !title.trim()) {
-      toast.error("Tittel er påkrevd");
+    if (!companyId) {
+      toast.error("Mangler selskap");
       return;
     }
 
     const isGuidedTour = courseType === "guided_tour";
+
+    // Multi-tour bulk-create when creating a new guided-tour course
+    if (isGuidedTour && isNewCourse) {
+      if (tourIds.length === 0) {
+        toast.error("Velg minst én veiledet gjennomgang");
+        return;
+      }
+      setSaving(true);
+      try {
+        for (const tId of tourIds) {
+          const tour = assignableTours.find((t) => t.id === tId);
+          if (!tour) continue;
+          const payload: any = {
+            title: tour.title,
+            description: tour.description || null,
+            passing_score: 100,
+            validity_months: hasPermanentValidity ? null : validityMonths,
+            display_mode: "guided_tour",
+            fullscreen: false,
+            unlocks_modules: unlocksModules,
+            tour_id: tId,
+            company_id: companyId,
+            created_by: user?.id,
+            status: "draft",
+            updated_at: new Date().toISOString(),
+          };
+          const { error } = await supabase.from("training_courses").insert(payload);
+          if (error) throw error;
+        }
+        toast.success(`${tourIds.length} kurs opprettet`);
+        onClose();
+      } catch (err) {
+        console.error("Error bulk-creating tour courses:", err);
+        toast.error("Kunne ikke opprette kurs");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    if (!title.trim()) {
+      toast.error("Tittel er påkrevd");
+      return;
+    }
 
     if (isGuidedTour) {
       if (!tourId) {
@@ -625,9 +672,62 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             </RadioGroup>
           </div>
 
-          {courseType === "guided_tour" && (
+          {courseType === "guided_tour" && isNewCourse && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Velg veiledede gjennomganger *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setTourIds(
+                      tourIds.length === assignableTours.length
+                        ? []
+                        : assignableTours.map((t) => t.id)
+                    )
+                  }
+                >
+                  {tourIds.length === assignableTours.length ? "Fjern alle" : "Velg alle"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Velg én eller flere. Det opprettes ett kurs per tour, og tittel/beskrivelse fylles ut automatisk.
+              </p>
+              <div className="rounded-md border divide-y">
+                {assignableTours.map((t) => {
+                  const checked = tourIds.includes(t.id);
+                  return (
+                    <label
+                      key={t.id}
+                      className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) =>
+                          setTourIds((prev) =>
+                            v ? [...prev, t.id] : prev.filter((x) => x !== t.id)
+                          )
+                        }
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">{t.title}</div>
+                        <div className="text-xs text-muted-foreground">{t.description}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              {tourIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">{tourIds.length} valgt</p>
+              )}
+            </div>
+          )}
+
+          {courseType === "guided_tour" && !isNewCourse && (
             <div>
-              <Label>Velg veiledet gjennomgang *</Label>
+              <Label>Veiledet gjennomgang *</Label>
               <Select value={tourId} onValueChange={setTourId}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Velg en tour…" />
@@ -646,14 +746,18 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             </div>
           )}
 
-          <div>
-            <Label>Tittel *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Navn på kurset" />
-          </div>
-          <div>
-            <Label>Beskrivelse</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Valgfri beskrivelse" rows={3} />
-          </div>
+          {!(courseType === "guided_tour" && isNewCourse) && (
+            <>
+              <div>
+                <Label>Tittel *</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Navn på kurset" />
+              </div>
+              <div>
+                <Label>Beskrivelse</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Valgfri beskrivelse" rows={3} />
+              </div>
+            </>
+          )}
           <div className="grid grid-cols-2 gap-4">
             {courseType === "normal" && (
               <div>
