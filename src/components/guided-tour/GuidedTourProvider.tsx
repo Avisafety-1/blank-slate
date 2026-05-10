@@ -75,15 +75,39 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       setTourActive(false);
       setTourId(null);
       void closeMobileNav();
+      // Sikkerhetsnett: fjern eventuelle gjenværende driver.js-noder og klasser
+      // som kan etterlate siden i "låst" tilstand.
+      try {
+        document.querySelectorAll(
+          ".driver-overlay, .driver-popover, .driver-stage, .driver-active-element"
+        ).forEach((n) => {
+          if (n.classList.contains("driver-active-element")) {
+            n.classList.remove("driver-active-element");
+          } else {
+            n.remove();
+          }
+        });
+      } catch {}
+      // Hvis Radix Dialog/Portal har låst body — slipp pointer-events fri
+      if (document.body.style.pointerEvents === "none") {
+        document.body.style.pointerEvents = "";
+      }
+      document.documentElement.style.pointerEvents = "";
     };
 
     // Destroy any previous tour cleanly first.
     try { driverRef.current?.destroy(); } catch {}
     cleanupTourUi();
 
+    let finishing = false;
     const finish = (markComplete: boolean, fullyCompleted: boolean = false) => {
+      if (finishing) return;
+      finishing = true;
       try { d.destroy(); } catch {}
+      driverRef.current = null;
       cleanupTourUi();
+      // Andre runde – noen noder kan dukke opp igjen rett etter destroy
+      setTimeout(cleanupTourUi, 50);
       if (markComplete) {
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
@@ -115,13 +139,13 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
         }
       },
       onDestroyStarted: (_element, _step, { driver }) => {
-        // Fires for overlay click / ESC before driver removes its own overlay.
-        cleanupTourUi();
+        // ESC / overlay-klikk / X — sørg for å rydde og avslutte helt
         try { driver.destroy(); } catch {}
-        setTimeout(() => force((x) => x + 1), 0);
+        finish(true);
       },
       onDestroyed: cleanupTourUi,
     });
+
 
     driverRef.current = d;
     setTourActive(true);
