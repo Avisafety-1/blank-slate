@@ -1,36 +1,32 @@
 ## Problem
 
-I `resourcesTour` brukes `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))` til å lukke åpne dialoger mellom steg. Driver.js (tour-biblioteket) lytter også på Escape og kaller `onDestroyStarted` → tour-instansen ødelegges, men body kan henge igjen i en tilstand der ny dialog er åpnet uten tour-popover. Det er derfor «Legg til kompetanse»-steget får touren til å forsvinne — på det steget kalles `closeAnyOpenDialog` for å lukke person-dialogen, og Escape dreper hele touren.
+I `tour-styles.css` har `.driver-active-element`-regelen `background: hsl(var(--primary) / 0.15) !important`. Når det «highlightede» elementet er en hel Radix-dialog (f.eks. dronedetaljer, loggbok, registrer-utstyr), overstyrer dette dialogens `bg-background` og gjør hele dialogen 15 % gjennomsiktig blå. Resultatet er at underliggende ressurslister synes gjennom dialogen — det er den «rare visuelle effekten» brukeren ser. Den blå tinten er ment for små targets (knapper, kort, menyelementer) hvor en svak markering hjelper, men den ødelegger store overflater som dialoger.
 
-Samme bug treffer i prinsippet alle steg som kaller `closeAnyOpenDialog` mens en dialog er åpen, men den slår tydeligst ut her fordi det er det første steget hvor en stor dialog faktisk var åpen rett før neste-steget.
+I tillegg kan `outline-offset: 3px` skyve markeringen forbi dialog-rammen og lage en flytende kant utenfor dialogen som ser «av».
 
 ## Løsning
 
-Slutte å bruke Escape i tour-flyten. I stedet styre dialog-lukking via React-state gjennom `__avisafeResourcesTour`-broen.
+Skreddersy highlight-stilen avhengig av om target er en stor overflate (dialog/card) eller et lite element.
 
-### Endringer
+### Endringer i `src/components/guided-tour/tour-styles.css`
 
-1. **`src/pages/Resources.tsx` — utvid broen**
-   - Behold `closeAll` (lukker alt via state-settere).
-   - Erstatt Escape-baserte `closeDroneLogbook` og `closeEquipmentLogbook` med tilsvarende state-settere. Loggbok-dialogene er sub-dialoger eid av henholdsvis `DroneDetailDialog` / `EquipmentDetailDialog`. To alternativer:
-     - a) Løft logbok-open-state opp til `Resources.tsx` og send som prop, slik at vi kan kalle setter direkte fra broen.
-     - b) Eksponer en imperativ ref/callback fra detalj-dialogene som broen kaller.
-   - Velger (a): minst invasiv, gir broen full kontroll, og samsvarer med hvordan `openDroneLogbook` allerede kalles via DOM-knapp.
+1. **Fjern bakgrunns-tint på dialoger og kort**:
+   - Ny regel som overstyrer for `[role="dialog"].driver-active-element`, `[role="alertdialog"].driver-active-element`: nullstill `background` til `transparent` (slik at dialogens egen `bg-background` vinner).
+   - Behold tinten kun på små elementer (knapper, kort, listeitem). I praksis: gjør dagens regel mindre aggressiv ved å droppe `!important` på `background`, og legg eksplisitt regel for dialog som gjenoppretter opaque bakgrunn.
 
-2. **`src/tours/resourcesTour.ts` — fjern alle Escape-dispatch**
-   - `closeAnyOpenDialog` skal kun kalle `bridge().closeAll()` og vente kort.
-   - `closeDroneLogbook` / `closeEquipmentLogbook` skal kalle de nye state-baserte broen-funksjonene i stedet for Escape.
+2. **Justér outline for dialoger**:
+   - `outline-offset: 0` på dialoger, så ringen ligger akkurat på dialog-kanten i stedet for å flyte 3 px utenfor.
+   - Tynnere outline (2 px) på store overflater for et roligere uttrykk.
 
-3. **Robusthet i `GuidedTourProvider.tsx` (defensiv ekstra-fix)**
-   - I `onDestroyStarted`: sjekk om nedstegningen kommer fra Escape ved å ignorere destroy-kallet hvis `document.body.classList.contains("avisafe-tour-active")` og siste keydown var Escape innen kort tid. Dette beskytter mot framtidige tour-utviklere som ved et uhell igjen sender Escape.
-   - Konkret: legg til `keydown`-listener (capture, mens touren kjører) som kaller `event.stopPropagation()` på Escape — slik at user fortsatt kan lukke touren via «X»-knappen, men ikke uforvarende via Escape. Brukeren kan fortsatt avbryte via «Hopp over» / overlay-klikk.
+3. **Generell opprydding**:
+   - Fjern den ubrukte `box-shadow: 0 0 0 9999px ... inset` (har 0 alpha → no-op men forvirrende).
 
 ### Resultat
 
-- «Legg til kompetanse»-steget åpner riktig dialog uten å rive ned touren.
-- Alle andre steg som måtte lukke en åpen dialog gjør det via state, ikke Escape.
-- Tilbakefall i framtidige tourer blokkeres av provider-defensiven.
+- Dialoger forblir helt opake under tour — ingen bleed-through.
+- Små elementer (knapper, kort, menyer) får fortsatt tydelig blå markering.
+- Outline ligger pent inntil dialog-rammen.
 
-## Spørsmål før implementering
+## Spørsmål
 
-Ingen — fortsetter rett på fiks når du godkjenner.
+Ingen — fortsetter rett på fiks når godkjent.
