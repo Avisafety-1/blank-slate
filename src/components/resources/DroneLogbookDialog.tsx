@@ -530,6 +530,7 @@ export const DroneLogbookDialog = ({
             <Button 
               variant="outline" 
               size="sm" 
+              data-tour="drone-logbook-add"
               onClick={() => setShowAddEntry(!showAddEntry)}
               className="w-full sm:w-auto"
             >
@@ -539,6 +540,7 @@ export const DroneLogbookDialog = ({
             <Button 
               variant="outline" 
               size="sm" 
+              data-tour="drone-logbook-export"
               onClick={handleExportPDF}
               className="w-full sm:w-auto"
             >

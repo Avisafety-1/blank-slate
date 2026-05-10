@@ -177,7 +177,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <span data-tour="add-equipment-marker" className="hidden" /><DialogHeader>
           <DialogTitle>Legg til nytt utstyr</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleAddEquipment} className="space-y-4">

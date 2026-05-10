@@ -77,7 +77,7 @@ export function AddDronetagDialog({ open, onOpenChange, onDronetagCreated }: Add
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogHeader>
+        <span data-tour="add-dronetag-marker" className="hidden" /><DialogHeader>
           <DialogTitle>{t('dronetag.addTitle')}</DialogTitle>
         </DialogHeader>
         

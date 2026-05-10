@@ -353,6 +353,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <Button 
               variant="outline" 
               size="sm" 
+              data-tour="equipment-detail-logbok"
               onClick={() => setShowLogbook(true)}
               className="w-full mt-2"
             >

@@ -394,6 +394,51 @@ const Resources = () => {
     return worst;
   };
 
+
+  // Bro for guidet tour: lar resources-touren åpne dialoger programmatisk
+  useEffect(() => {
+    (window as any).__avisafeResourcesTour = {
+      closeAll: () => {
+        setDroneDetailOpen(false);
+        setDroneDialogOpen(false);
+        setEquipmentDetailOpen(false);
+        setEquipmentDialogOpen(false);
+        setDronetagDialogOpen(false);
+        setDronetagDetailOpen(false);
+        setPersonCompetencyDialogOpen(false);
+        setPersonnelDialogOpen(false);
+      },
+      openFirstDrone: () => {
+        if (drones[0]) { setSelectedDrone(drones[0]); setDroneDetailOpen(true); }
+      },
+      openDroneLogbook: () => {
+        const btn = document.querySelector('[data-tour="drone-detail-logbok"]') as HTMLElement | null;
+        btn?.click();
+      },
+      closeDroneLogbook: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      },
+      openAddDrone: () => setDroneDialogOpen(true),
+      openFirstEquipment: () => {
+        if (equipment[0]) { setSelectedEquipment(equipment[0]); setEquipmentDetailOpen(true); }
+      },
+      openEquipmentLogbook: () => {
+        const btn = document.querySelector('[data-tour="equipment-detail-logbok"]') as HTMLElement | null;
+        btn?.click();
+      },
+      closeEquipmentLogbook: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      },
+      openAddEquipment: () => setEquipmentDialogOpen(true),
+      openAddDronetag: () => setDronetagDialogOpen(true),
+      openFirstPerson: () => {
+        if (personnel[0]) { setSelectedPerson(personnel[0]); setPersonCompetencyDialogOpen(true); }
+      },
+      openAddCompetency: () => setPersonnelDialogOpen(true),
+    };
+    return () => { delete (window as any).__avisafeResourcesTour; };
+  }, [drones, equipment, personnel]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

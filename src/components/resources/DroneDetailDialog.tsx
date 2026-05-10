@@ -893,6 +893,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             <Button 
               variant="outline" 
               size="sm" 
+              data-tour="drone-detail-logbok"
               onClick={() => setLogbookOpen(true)}
               className="w-full mt-2"
             >
@@ -2030,7 +2031,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           
           <div className="flex gap-2 ml-auto">
             {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>Rediger</Button>
+              <Button data-tour="drone-detail-edit" onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>Rediger</Button>
             ) : (
               <>
                 <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
