@@ -11,9 +11,7 @@ const closeAnyOpenDialog = async () => {
 
 const openStartFlightDialog = async () => {
   if (document.querySelector('[data-tour="start-flight-dialog"]')) return;
-  const btn = document.querySelector<HTMLElement>('[data-tour="dashboard-flight-controls"] button:not([disabled])');
-  // First button is "Start flygning"
-  btn?.click();
+  (window as any).__avisafeTour?.openStartFlight?.();
   await sleep(450);
 };
 

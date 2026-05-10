@@ -11,17 +11,8 @@ const closeAnyOpenDialog = async () => {
 
 const openUploadDialog = async () => {
   if (document.querySelector('[data-tour="upload-log-dialog"]')) return;
-  // Open the dropdown first
-  const trigger = document.querySelector<HTMLElement>('[data-tour="dashboard-log-flight"]');
-  if (!trigger) return;
-  const isDropdown = trigger.getAttribute("aria-haspopup");
-  if (isDropdown) {
-    trigger.click();
-    await sleep(250);
-    const item = document.querySelector<HTMLElement>('[data-tour="dashboard-upload-log"]');
-    item?.click();
-    await sleep(450);
-  }
+  (window as any).__avisafeTour?.openUploadLog?.();
+  await sleep(450);
 };
 
 export const uploadDroneLogTour: TourDefinition = {
