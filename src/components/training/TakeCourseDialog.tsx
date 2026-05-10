@@ -19,6 +19,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCompleted?: () => void;
+  onTourStart?: () => void;
 }
 
 interface SlideData {
@@ -47,7 +48,7 @@ interface CourseData {
   tour_id?: string | null;
 }
 
-export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted }: Props) => {
+export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted, onTourStart }: Props) => {
   const { user, refetchUserInfo } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
   const [slides, setSlides] = useState<SlideData[]>([]);
@@ -644,6 +645,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
                         return;
                       }
                       onOpenChange(false);
+                      onTourStart?.();
                       setTimeout(() => {
                         bridge.startTour(course.tour_id, previewMode ? {} : { assignmentId });
                       }, 250);
