@@ -547,7 +547,7 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <div class="content">
 <h2 style="margin-top:0;">${trainingAssigned.courseName}</h2>
 <p>Du har blitt tildelt et nytt kurs/test som må gjennomføres.</p>
-<p>Logg inn i AviSafe for å starte kurset. Du finner det under din profil → Oppfølging.</p>
+<p>Logg inn i AviSafe for å starte kurset. Du finner det under din profil → Kompetanse.</p>
 <p style="color:#666;font-size:12px;margin-top:20px;">— ${company?.navn || 'AviSafe'}</p>
 </div></div></body></html>`;
 
