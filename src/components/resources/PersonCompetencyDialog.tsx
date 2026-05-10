@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink, GraduationCap, Bell } from "lucide-react";
+import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink, GraduationCap, Bell, Compass, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
@@ -511,233 +512,232 @@ export function PersonCompetencyDialog({
 
 
             {/* Existing Competencies */}
-            <div className="space-y-3 mb-6 min-w-0">
-              <h3 data-tour="person-competencies" className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>
-              
-              {(person.personnel_competencies || []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
-              ) : (
-                (person.personnel_competencies || []).map((competency) => (
-                  <div key={competency.id} className="border rounded-lg p-2.5 sm:p-4 space-y-2 bg-card min-w-0">
-                    {editingId === competency.id ? (
-                      // Edit mode
-                      <div className="space-y-3">
+            {(() => {
+              const allComps = person.personnel_competencies || [];
+              const tourComps = allComps.filter((c) => c.type === "Veiledet tour");
+              const regularComps = allComps.filter((c) => c.type !== "Veiledet tour");
+
+              const renderCompetencyCard = (competency: Competency) => (
+                <div key={competency.id} className="border rounded-lg p-2.5 sm:p-4 space-y-2 bg-card min-w-0">
+                  {editingId === competency.id ? (
+                    // Edit mode
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Type</Label>
+                        <Select value={editType} onValueChange={setEditType}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Kurs">Kurs</SelectItem>
+                            <SelectItem value="Sertifikat">Sertifikat</SelectItem>
+                            <SelectItem value="Lisens">Lisens</SelectItem>
+                            <SelectItem value="Utdanning">Utdanning</SelectItem>
+                            <SelectItem value="Godkjenning">Godkjenning</SelectItem>
+                            <SelectItem value="Kompetanse">Kompetanse</SelectItem>
+                            <SelectItem value="Annet">Annet</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Navn</Label>
+                        <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>Beskrivelse</Label>
+                        <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <Label>Type</Label>
-                          <Select value={editType} onValueChange={setEditType}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Kurs">Kurs</SelectItem>
-                              <SelectItem value="Sertifikat">Sertifikat</SelectItem>
-                              <SelectItem value="Lisens">Lisens</SelectItem>
-                              <SelectItem value="Utdanning">Utdanning</SelectItem>
-                              <SelectItem value="Godkjenning">Godkjenning</SelectItem>
-                              <SelectItem value="Kompetanse">Kompetanse</SelectItem>
-                              <SelectItem value="Annet">Annet</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Navn</Label>
-                          <Input
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label>Beskrivelse</Label>
-                          <Textarea
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <Label className="text-xs">Utstedt</Label>
-                            <Input
-                              type="date"
-                              value={editIssueDate}
-                              onChange={(e) => setEditIssueDate(e.target.value)}
-                              className="h-9"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Utløper</Label>
-                            <Input
-                              type="date"
-                              value={editExpiryDate}
-                              onChange={(e) => setEditExpiryDate(e.target.value)}
-                              className="h-9"
-                            />
-                          </div>
+                          <Label className="text-xs">Utstedt</Label>
+                          <Input type="date" value={editIssueDate} onChange={(e) => setEditIssueDate(e.target.value)} className="h-9" />
                         </div>
                         <div>
-                          <Label className="text-xs flex items-center gap-1">
-                            <Bell className="h-3 w-3" />
-                            Varsle (dager før utløp)
-                          </Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={365}
-                            value={editWarningDays}
-                            onChange={(e) => setEditWarningDays(Number(e.target.value) || 30)}
-                            placeholder="30"
-                            className="h-9"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Gul status og e-postvarsel utløses {editWarningDays} dager før utløp.
-                          </p>
+                          <Label className="text-xs">Utløper</Label>
+                          <Input type="date" value={editExpiryDate} onChange={(e) => setEditExpiryDate(e.target.value)} className="h-9" />
                         </div>
-                        {renderFileInput(
-                          editFile,
-                          editDocumentUrl,
-                          editExistingFilUrl,
-                          setEditFile,
-                          setEditDocumentUrl,
-                          () => setEditExistingFilUrl(null),
-                          editFileInputRef,
-                          () => setEditDocPickerOpen(true),
-                        )}
-                        <div className="flex items-center gap-2 pt-2">
-                          <Switch
-                            id={`edit-affects-status-${competency.id}`}
-                            checked={editAffectsStatus}
-                            onCheckedChange={setEditAffectsStatus}
-                          />
-                          <Label htmlFor={`edit-affects-status-${competency.id}`} className="text-xs">
-                            Påvirker status
-                          </Label>
+                      </div>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1">
+                          <Bell className="h-3 w-3" />
+                          Varsle (dager før utløp)
+                        </Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={editWarningDays}
+                          onChange={(e) => setEditWarningDays(Number(e.target.value) || 30)}
+                          placeholder="30"
+                          className="h-9"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Gul status og e-postvarsel utløses {editWarningDays} dager før utløp.
+                        </p>
+                      </div>
+                      {renderFileInput(
+                        editFile,
+                        editDocumentUrl,
+                        editExistingFilUrl,
+                        setEditFile,
+                        setEditDocumentUrl,
+                        () => setEditExistingFilUrl(null),
+                        editFileInputRef,
+                        () => setEditDocPickerOpen(true),
+                      )}
+                      <div className="flex items-center gap-2 pt-2">
+                        <Switch
+                          id={`edit-affects-status-${competency.id}`}
+                          checked={editAffectsStatus}
+                          onCheckedChange={setEditAffectsStatus}
+                        />
+                        <Label htmlFor={`edit-affects-status-${competency.id}`} className="text-xs">
+                          Påvirker status
+                        </Label>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button onClick={() => handleUpdateCompetency(competency.id)} size="sm">
+                          Lagre
+                        </Button>
+                        <Button onClick={handleCancelEdit} variant="outline" size="sm">
+                          Avbryt
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    // View mode
+                    <>
+                      <div className="flex items-start justify-between gap-1 min-w-0">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-semibold text-sm sm:text-base break-words">{competency.navn}</h4>
+                          <span className="text-xs text-muted-foreground">{competency.type}</span>
                         </div>
-                        <div className="flex gap-2 pt-2">
-                          <Button
-                            onClick={() => handleUpdateCompetency(competency.id)}
-                            size="sm"
-                          >
-                            Lagre
+                        <div className="flex gap-0.5 shrink-0">
+                          <Button onClick={() => handleStartEdit(competency)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            onClick={handleCancelEdit}
-                            variant="outline"
-                            size="sm"
-                          >
-                            Avbryt
+                          <Button onClick={() => handleDeleteClick(competency.id)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
-                    ) : (
-                      // View mode
-                      <>
-                        <div className="flex items-start justify-between gap-1 min-w-0">
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-semibold text-sm sm:text-base break-words">{competency.navn}</h4>
-                            <span className="text-xs text-muted-foreground">{competency.type}</span>
-                          </div>
-                          <div className="flex gap-0.5 shrink-0">
-                            <Button
-                              onClick={() => handleStartEdit(competency)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 sm:h-8 sm:w-8"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              onClick={() => handleDeleteClick(competency.id)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 sm:h-8 sm:w-8"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                        {competency.beskrivelse && (
-                          <p className="text-xs sm:text-sm text-muted-foreground break-words">{competency.beskrivelse}</p>
+                      {competency.beskrivelse && (
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">{competency.beskrivelse}</p>
+                      )}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {competency.utstedt_dato && (
+                          <span>Utstedt: {format(new Date(competency.utstedt_dato), "dd.MM.yy", { locale: nb })}</span>
                         )}
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          {competency.utstedt_dato && (
-                            <span>Utstedt: {format(new Date(competency.utstedt_dato), "dd.MM.yy", { locale: nb })}</span>
-                          )}
-                          {competency.utloper_dato && (
-                            <span className={new Date(competency.utloper_dato) < new Date() ? "text-destructive" : ""}>
-                              Utløper: {format(new Date(competency.utloper_dato), "dd.MM.yy", { locale: nb })}
-                            </span>
-                          )}
-                        </div>
                         {competency.utloper_dato && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Bell className="h-3 w-3" />
-                            Gul varsling sendes {competency.varsel_dager ?? 30} dager før utløp
-                          </p>
+                          <span className={new Date(competency.utloper_dato) < new Date() ? "text-destructive" : ""}>
+                            Utløper: {format(new Date(competency.utloper_dato), "dd.MM.yy", { locale: nb })}
+                          </span>
                         )}
-                        {competency.fil_url && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="gap-1.5 mt-2 text-xs"
-                            onClick={async () => {
-                              const url = await getFileDisplayUrl(competency.fil_url!);
-                              if (url) window.open(url, '_blank');
-                            }}
-                          >
-                            <Paperclip className="h-3.5 w-3.5" />
-                            Vis vedlegg
-                            <ExternalLink className="h-3 w-3" />
-                          </Button>
-                        )}
-                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
-                          <Switch
-                            id={`affects-status-${competency.id}`}
-                            checked={competency.påvirker_status !== false}
-                            onCheckedChange={async (checked) => {
-                              setPerson(prev => {
+                      </div>
+                      {competency.utloper_dato && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Bell className="h-3 w-3" />
+                          Gul varsling sendes {competency.varsel_dager ?? 30} dager før utløp
+                        </p>
+                      )}
+                      {competency.fil_url && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 mt-2 text-xs"
+                          onClick={async () => {
+                            const url = await getFileDisplayUrl(competency.fil_url!);
+                            if (url) window.open(url, "_blank");
+                          }}
+                        >
+                          <Paperclip className="h-3.5 w-3.5" />
+                          Vis vedlegg
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
+                      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                        <Switch
+                          id={`affects-status-${competency.id}`}
+                          checked={competency.påvirker_status !== false}
+                          onCheckedChange={async (checked) => {
+                            setPerson((prev) => {
+                              if (!prev) return prev;
+                              return {
+                                ...prev,
+                                personnel_competencies: (prev.personnel_competencies || []).map((c) =>
+                                  c.id === competency.id ? { ...c, påvirker_status: checked } : c,
+                                ),
+                              };
+                            });
+
+                            const { error } = await supabase
+                              .from("personnel_competencies")
+                              .update({ påvirker_status: checked })
+                              .eq("id", competency.id);
+                            if (error) {
+                              setPerson((prev) => {
                                 if (!prev) return prev;
                                 return {
                                   ...prev,
-                                  personnel_competencies: (prev.personnel_competencies || []).map(c =>
-                                    c.id === competency.id ? { ...c, påvirker_status: checked } : c
+                                  personnel_competencies: (prev.personnel_competencies || []).map((c) =>
+                                    c.id === competency.id ? { ...c, påvirker_status: !checked } : c,
                                   ),
                                 };
                               });
+                              toast({
+                                title: "Feil",
+                                description: "Kunne ikke oppdatere innstilling",
+                                variant: "destructive",
+                              });
+                            } else {
+                              onCompetencyUpdated();
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`affects-status-${competency.id}`} className="text-xs text-muted-foreground">
+                          Påvirker status
+                        </Label>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
 
-                              const { error } = await supabase
-                                .from("personnel_competencies")
-                                .update({ påvirker_status: checked })
-                                .eq("id", competency.id);
-                              if (error) {
-                                setPerson(prev => {
-                                  if (!prev) return prev;
-                                  return {
-                                    ...prev,
-                                    personnel_competencies: (prev.personnel_competencies || []).map(c =>
-                                      c.id === competency.id ? { ...c, påvirker_status: !checked } : c
-                                    ),
-                                  };
-                                });
-                                toast({
-                                  title: "Feil",
-                                  description: "Kunne ikke oppdatere innstilling",
-                                  variant: "destructive",
-                                });
-                              } else {
-                                onCompetencyUpdated();
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`affects-status-${competency.id}`} className="text-xs text-muted-foreground">
-                            Påvirker status
-                          </Label>
-                        </div>
-                      </>
+              return (
+                <>
+                  <div className="space-y-3 mb-6 min-w-0">
+                    <h3 data-tour="person-competencies" className="text-sm font-semibold text-muted-foreground">
+                      Kompetanser
+                    </h3>
+                    {regularComps.length === 0 && tourComps.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
+                    ) : regularComps.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Ingen ordinære kompetanser registrert</p>
+                    ) : (
+                      regularComps.map(renderCompetencyCard)
                     )}
                   </div>
-                ))
-              )}
-            </div>
+
+                  {tourComps.length > 0 && (
+                    <Collapsible className="mb-6">
+                      <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/50 px-3 py-2 text-sm font-medium transition-colors group">
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <Compass className="h-4 w-4 text-primary" />
+                          Fullførte veiledede tour-er
+                          <span className="text-xs text-muted-foreground/80">({tourComps.length})</span>
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-3 space-y-3">
+                        {tourComps.map(renderCompetencyCard)}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </>
+              );
+            })()}
+
 
             {/* Available Courses */}
             {availableCourses.length > 0 && (
