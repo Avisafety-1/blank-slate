@@ -824,7 +824,7 @@ const Admin = () => {
               <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>Mitt selskap</span>
             </TabsTrigger>
-            <TabsTrigger value="training" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+            <TabsTrigger value="training" data-tour="admin-tab-training" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>Opplæring</span>
             </TabsTrigger>
