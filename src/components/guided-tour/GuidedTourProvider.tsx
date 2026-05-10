@@ -128,7 +128,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     const performStep = async (index: number) => {
       const step = candidates[index];
       if (!step) {
-        finish(true);
+        finish(true, true);
         return;
       }
 
