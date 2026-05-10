@@ -33,7 +33,7 @@ export const StartTourButton = ({ variant = "icon", className }: Props) => {
           </Button>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 z-[1300]">
+      <DropdownMenuContent align="end" className="w-64 z-[1300] max-h-[70vh] overflow-y-auto">
         <DropdownMenuLabel>Guidede tourer</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {tourList.map((t) => (
