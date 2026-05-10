@@ -1,32 +1,52 @@
-## Problem
+## Mål
 
-I `tour-styles.css` har `.driver-active-element`-regelen `background: hsl(var(--primary) / 0.15) !important`. Når det «highlightede» elementet er en hel Radix-dialog (f.eks. dronedetaljer, loggbok, registrer-utstyr), overstyrer dette dialogens `bg-background` og gjør hele dialogen 15 % gjennomsiktig blå. Resultatet er at underliggende ressurslister synes gjennom dialogen — det er den «rare visuelle effekten» brukeren ser. Den blå tinten er ment for små targets (knapper, kort, menyelementer) hvor en svak markering hjelper, men den ødelegger store overflater som dialoger.
+Utvide admin-touren slik at hver fane (1) faktisk åpnes via klikk, (2) får 3–6 dyptgående steg som dekker alle hovedfunksjonene, og (3) ingen superadmin-spesifikke ting tas med. «Mitt selskap» beholdes (admin-tilgjengelig). «Selskaper»-fanen, NOTAM RSS, Kalkulator og Tving oppdatering forblir utelatt.
 
-I tillegg kan `outline-offset: 3px` skyve markeringen forbi dialog-rammen og lage en flytende kant utenfor dialogen som ser «av».
+## Endringer
 
-## Løsning
+### 1. `src/pages/Admin.tsx` — flere `data-tour`-ankere
 
-Skreddersy highlight-stilen avhengig av om target er en stor overflate (dialog/card) eller et lite element.
+Legge til ankere på underseksjoner som touren skal peke på (uten å røre superadmin-blokker):
 
-### Endringer i `src/components/guided-tour/tour-styles.css`
+- Brukere-fanen: `admin-approved-search` (søkefelt), `admin-approved-mailcopy` (kopier-mailliste-knapp), `admin-user-card` (første kort), og inne i åpnet kort: `admin-user-role`, `admin-user-department`, `admin-user-approver`, `admin-user-technical`, `admin-user-incident`, `admin-user-eccairs`, `admin-user-training-modules`, `admin-user-under-training`, `admin-user-delete`
+- E-post: `admin-email-templates`, `admin-email-settings-btn`, `admin-email-bulk`
+- SORA: `admin-sora-flightgeo`, `admin-sora-altitude`, `admin-sora-mitigations` (ankere inne i `CompanySoraConfigSection`)
+- Mitt selskap: `admin-child-info`, `admin-child-departments`, `admin-child-checklists`, `admin-child-integrations`, `admin-child-propagation` (ankere inne i `ChildCompaniesSection`)
+- Opplæring: `admin-training-courses`, `admin-training-assign`, `admin-training-status`, `admin-training-ai` (ankere inne i `TrainingSection`)
+- Kunder: `admin-customers-add`, `admin-customers-list` (i `CustomerManagementSection`)
 
-1. **Fjern bakgrunns-tint på dialoger og kort**:
-   - Ny regel som overstyrer for `[role="dialog"].driver-active-element`, `[role="alertdialog"].driver-active-element`: nullstill `background` til `transparent` (slik at dialogens egen `bg-background` vinner).
-   - Behold tinten kun på små elementer (knapper, kort, listeitem). I praksis: gjør dagens regel mindre aggressiv ved å droppe `!important` på `background`, og legg eksplisitt regel for dialog som gjenoppretter opaque bakgrunn.
+Ingen ankere legges på superadmin-only `TabsTrigger value="companies"`, `notam-feeds`, `calculator` eller `ForceReloadBanner`.
 
-2. **Justér outline for dialoger**:
-   - `outline-offset: 0` på dialoger, så ringen ligger akkurat på dialog-kanten i stedet for å flyte 3 px utenfor.
-   - Tynnere outline (2 px) på store overflater for et roligere uttrykk.
+### 2. `src/tours/adminTour.ts` — utvide til ~38 steg
 
-3. **Generell opprydding**:
-   - Fjern den ubrukte `box-shadow: 0 0 0 9999px ... inset` (har 0 alpha → no-op men forvirrende).
+For hver fane brukes mønsteret:
+1. `clickTab` i `beforeStep` for å åpne fanen
+2. Et oversiktssteg på selve `TabsContent`
+3. 3–5 detaljsteg på enkelt-elementer i fanen (alle med `requiresAdmin: true`)
+4. Bruk `optional: true` på elementer som kan være skjult (registreringskode, ventende, SORA-felt, kunde-elementer i tomme lister)
 
-### Resultat
+Konkret oppdeling:
 
-- Dialoger forblir helt opake under tour — ingen bleed-through.
-- Små elementer (knapper, kort, menyer) får fortsatt tydelig blå markering.
-- Outline ligger pent inntil dialog-rammen.
+- **Intro + Tabs** (2 steg)
+- **Brukere** (8 steg): registreringskode (optional) → inviter ny → ventende godkjenninger (optional) → godkjente-toppen (søk/mailkopi) → åpne første brukerkort (`beforeStep` klikker `admin-user-card`) → rolle/avdeling → bryterne (godkjenner/teknisk/hendelsesansv./ECCAIRS) → opplæringsmoduler + under opplæring + slett
+- **Kunder** (3 steg): tab-overskrift → legg til ny kunde → kundelisten (delte fra morselskap nevnes)
+- **E-post** (4 steg): tab → maler → e-postinnstillinger (avsender/SMTP) → bulk-utsending + historikk
+- **SORA** (4 steg, hele blokken `optional` via `hasAddon`-gate): tab → standard flygeområde → høydegrenser → avbøtende tiltak/standarder
+- **Mitt selskap** (5 steg): tab → selskapsinfo & terminologi → avdelinger/datterselskap → standard sjekklister → integrasjoner (FH2/ECCAIRS/DroneTag) → granulær propagering
+- **Opplæring** (5 steg): tab → kursbygger (manuell) → AI-kursgenerator → tildeling → status/score
+- **Avslutning** (1 steg): oppsummering, RLS/sletting-advarsel, `clickTab` tilbake til Brukere
 
-## Spørsmål
+`beforeStep` for kort som må åpnes (f.eks. brukerkort) klikker elementet og venter ~400ms før neste selector søkes opp. Alle `selector`s peker på eksisterende `data-tour`-ankere; ingen tekstmatching.
 
-Ingen — fortsetter rett på fiks når godkjent.
+### 3. Ingen endringer i
+
+- `GuidedTourProvider.tsx` (allerede filtrerer `requiresAdmin`)
+- `StartTourButton.tsx` (filtrerer allerede admin-touren bort fra ikke-admins)
+- `tourDefinitions.ts` / `types.ts` (admin-tour er allerede registrert)
+
+### Tekniske detaljer
+
+- Alle nye steg får `requiresAdmin: true` så ikke-admins ser dem ikke i det hele tatt
+- Steg som peker på elementer som kan være skjult avhengig av tilstand (f.eks. ingen ventende brukere, tom kundeliste, SORA-tillegg ikke aktivt, ingen avdelinger) får `optional: true` slik at de hoppes over stille
+- `clickTab`-helper beholdes; nytt `clickAndWait(selector, ms=400)`-helper for å åpne brukerkort før neste steg
+- Ingen DB- eller backendendringer
