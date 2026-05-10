@@ -1260,7 +1260,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </div>
 
           {/* Flight duration toggle and inputs */}
-          <div className="space-y-3">
+          <div data-tour="log-flight-times" className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1">
                 <Timer className="w-3 h-3" />
