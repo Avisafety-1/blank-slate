@@ -7,6 +7,7 @@ import { logFlightTour } from "./logFlightTour";
 import { uploadDroneLogTour } from "./uploadDroneLogTour";
 import { incidentReportTour } from "./incidentReportTour";
 import { resourcesTour } from "./resourcesTour";
+import { adminTour } from "./adminTour";
 
 export const allTours: Record<TourId, TourDefinition> = {
   "system-overview": systemOverviewTour,
@@ -17,6 +18,7 @@ export const allTours: Record<TourId, TourDefinition> = {
   "upload-drone-log": uploadDroneLogTour,
   "incident-report": incidentReportTour,
   "resources": resourcesTour,
+  "admin": adminTour,
 };
 
 export const tourList: TourDefinition[] = [
@@ -28,6 +30,7 @@ export const tourList: TourDefinition[] = [
   uploadDroneLogTour,
   incidentReportTour,
   resourcesTour,
+  adminTour,
 ];
 
 /** Tourer som kan tildeles brukere som kurs via opplæringsmodulen */
