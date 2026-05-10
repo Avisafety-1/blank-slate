@@ -427,11 +427,11 @@ const Index = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)] p-1.5">
-                  <DropdownMenuItem onClick={() => setLogFlightDialogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
+                  <DropdownMenuItem data-tour="dashboard-log-manual" onClick={() => setLogFlightDialogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
                     <Clock className="w-4 h-4" />
                     {t('dronelog.logManually', 'Logg flytid manuelt')}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setUploadDroneLogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
+                  <DropdownMenuItem data-tour="dashboard-upload-log" onClick={() => setUploadDroneLogOpen(true)} className="py-2.5 px-3 text-sm gap-2.5">
                     <Upload className="w-4 h-4" />
                     {t('dronelog.uploadDjiLog', 'Last opp flylogg')}
                   </DropdownMenuItem>
