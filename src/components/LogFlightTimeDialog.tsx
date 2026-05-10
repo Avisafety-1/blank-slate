@@ -1389,7 +1389,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             <Button type="button" variant="outline" onClick={handleCancel}>
               Avbryt
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button data-tour="log-flight-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Logger..." : "Logg flytid"}
             </Button>
           </DialogFooter>
