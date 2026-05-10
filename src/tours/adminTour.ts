@@ -3,8 +3,23 @@ import { sleep } from "./tourUtils";
 
 const clickTab = async (selector: string) => {
   const el = document.querySelector(selector) as HTMLElement | null;
-  el?.click();
-  await sleep(400);
+  if (!el) return;
+  // Radix Tabs aktiveres på pointerdown — vanlig .click() er ikke alltid nok
+  const opts: PointerEventInit = { bubbles: true, cancelable: true, composed: true, pointerType: "mouse", button: 0 };
+  try {
+    el.dispatchEvent(new PointerEvent("pointerdown", opts));
+    el.dispatchEvent(new PointerEvent("pointerup", opts));
+  } catch {
+    el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, button: 0 }));
+    el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, button: 0 }));
+  }
+  el.click();
+  // Vent til Radix faktisk har satt fanen til aktiv
+  for (let i = 0; i < 20; i++) {
+    if (el.getAttribute("data-state") === "active") break;
+    await sleep(25);
+  }
+  await sleep(250);
 };
 
 export const adminTour: TourDefinition = {
