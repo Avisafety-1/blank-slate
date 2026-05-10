@@ -1329,7 +1329,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </div>
 
           {/* Movements */}
-          <div>
+          <div data-tour="log-flight-movements">
             <Label htmlFor="movements">Antall bevegelser</Label>
             <Input
               id="movements"
