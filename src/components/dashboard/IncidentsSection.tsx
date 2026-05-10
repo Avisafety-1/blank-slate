@@ -270,6 +270,7 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
           variant="destructive" 
           className="gap-1 h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3 flex-shrink-0"
           onClick={() => setAddDialogOpen(true)}
+          data-tour="incident-widget-report"
         >
           <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
           <span>{t('dashboard.incidents.report')}</span>
