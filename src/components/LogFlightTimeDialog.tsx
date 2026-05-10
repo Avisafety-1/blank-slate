@@ -1092,7 +1092,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           </div>
 
           {/* Drone/Fly selection */}
-          <div>
+          <div data-tour="log-flight-drone">
             <Label htmlFor="drone">{terminology.vehicle} *</Label>
             <Select 
               value={formData.droneId} 
