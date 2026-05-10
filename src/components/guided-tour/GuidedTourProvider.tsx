@@ -63,7 +63,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     return true;
   }, [isAdmin, isSuperAdmin, hasTrainingModuleAccess]);
 
-  const start = useCallback(async (tourId: TourId) => {
+  const start = useCallback(async (tourId: TourId, opts?: StartTourOptions) => {
     const tour = allTours[tourId];
     if (!tour) return;
 
@@ -81,12 +81,15 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     try { driverRef.current?.destroy(); } catch {}
     cleanupTourUi();
 
-    const finish = (markComplete: boolean) => {
+    const finish = (markComplete: boolean, fullyCompleted: boolean = false) => {
       try { d.destroy(); } catch {}
       cleanupTourUi();
       if (markComplete) {
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
+      }
+      if (fullyCompleted && opts?.onComplete) {
+        try { void opts.onComplete(); } catch (e) { console.error("Tour onComplete error", e); }
       }
       force((x) => x + 1);
     };
