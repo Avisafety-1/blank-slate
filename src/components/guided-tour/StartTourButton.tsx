@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useGuidedTour } from "./GuidedTourProvider";
 import { tourList } from "@/tours/tourDefinitions";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   variant?: "icon" | "default";
@@ -18,6 +19,8 @@ interface Props {
 
 export const StartTourButton = ({ variant = "icon", className }: Props) => {
   const { start, isCompleted, resetAll } = useGuidedTour();
+  const { isAdmin, isSuperAdmin } = useAuth();
+  const visibleTours = tourList.filter((t) => t.id !== "admin" || isAdmin || isSuperAdmin);
 
   return (
     <DropdownMenu>
