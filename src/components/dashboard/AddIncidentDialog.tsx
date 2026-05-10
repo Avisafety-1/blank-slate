@@ -941,6 +941,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           {/* Anonymitet */}
+          <div data-tour="incident-anonymous">
           {globalAnonymous ? (
             <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
               <EyeOff className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -963,6 +964,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               </div>
             </label>
           )}
+          </div>
 
           <div className="flex gap-2">
             <Button
