@@ -538,7 +538,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="incident-mission">
             <Label>Knytt til oppdrag (valgfritt)</Label>
             <Popover>
               <PopoverTrigger asChild>
