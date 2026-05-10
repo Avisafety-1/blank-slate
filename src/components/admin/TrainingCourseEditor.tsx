@@ -17,6 +17,7 @@ import { TRAINING_MODULE_KEYS, normalizeTrainingModules, type TrainingModuleKey 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { assignableTours } from "@/tours/tourDefinitions";
 
 const TTS_VOICES: { value: string; label: string }[] = [
