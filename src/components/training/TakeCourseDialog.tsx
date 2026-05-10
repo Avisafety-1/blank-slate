@@ -44,6 +44,7 @@ interface CourseData {
   display_mode: string;
   fullscreen: boolean;
   unlocks_modules?: string[] | null;
+  tour_id?: string | null;
 }
 
 export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted }: Props) => {
