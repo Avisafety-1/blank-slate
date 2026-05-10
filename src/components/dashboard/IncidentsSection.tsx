@@ -270,6 +270,7 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
           variant="destructive" 
           className="gap-1 h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3 flex-shrink-0"
           onClick={() => setAddDialogOpen(true)}
+          data-tour="incident-widget-report"
         >
           <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
           <span>{t('dashboard.incidents.report')}</span>
@@ -277,7 +278,7 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
       </div>
 
       <Tabs defaultValue="incidents" className="w-full flex-1 flex flex-col">
-        <TabsList className="w-full h-8 sm:h-9">
+        <TabsList className="w-full h-8 sm:h-9" data-tour="incident-widget-tabs">
           <TabsTrigger value="incidents" className="flex-1 text-xs sm:text-sm">
             {t('dashboard.incidents.title')} ({incidents.length})
           </TabsTrigger>
@@ -289,7 +290,7 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
         </TabsList>
 
         <TabsContent value="incidents" className="mt-2 sm:mt-3 flex-1">
-          <div className="space-y-1.5 sm:space-y-2 overflow-y-auto h-[400px] pr-2 sm:pr-4">
+          <div className="space-y-1.5 sm:space-y-2 overflow-y-auto h-[400px] pr-2 sm:pr-4" data-tour="incident-widget-list">
             {loading ? (
               <div className="text-center py-4 text-xs sm:text-sm text-muted-foreground">
                 {t('dashboard.incidents.loading')}

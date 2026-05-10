@@ -1,123 +1,118 @@
 ## Bakgrunn
 
-Vi har allerede tour-infrastruktur (`GuidedTourProvider`, `driver.js`, `StartTourButton`, `tourDefinitions`) og tre eksisterende guider: system-overview, dashboard-widgets og mission-creation. Brukeren vil ha guidede tour-er for de tre mest brukte daglig-flyt-dialogene:
+Brukeren vil ha én sammenhengende guidet tour for hendelsesrapportering, som først viser hvordan man rapporterer fra hendelses-widgeten på dashbordet, og deretter navigerer til `/hendelser` og viser samme/utvidede flyt der.
 
-1. **Start flygning** (`StartFlightDialog`) — åpnes fra «Start flygning»-knappen på dashbordet.
-2. **Avslutt flygning / Logg flytid** (`LogFlightTimeDialog`) — åpnes når en aktiv flygning stoppes, eller fra «Logg flytid manuelt» / «Avslutt flygning».
-3. **Last opp DJI-logg** (`UploadDroneLogDialog`) — åpnes fra «Last opp flylogg» og inneholder også ventende auto-sync-logger.
+Vi gjenbruker eksisterende infrastruktur (`GuidedTourProvider`, `driver.js`, `StartTourButton`). Begge inngangene åpner samme `AddIncidentDialog` (`src/components/dashboard/AddIncidentDialog.tsx`), så feltsteg-beskrivelsene gjelder uansett opprinnelse.
 
-Alle tre er popup-dialoger som ligger over dashbordet. Vi gjenbruker mønsteret fra forrige fix: starte tour fra dashbordet, åpne dialogen i `beforeStep`, høyne dialogens z-index ift. tour-overlay (allerede gjort i `tour-styles.css`), og bruke `optional: true` på alle steg.
+Eksisterende `data-tour`-anker:
+- `dashboard-incidents` ligger automatisk på `DraggableSection` med id `incidents` (dashbord-widget-wrapper).
+- `nav-incidents` på navigasjons-knappen til `/hendelser`.
 
 ## Endring
 
-### 1. Tre nye tour-definisjoner
+### 1. Ny tour-fil
 
-Legg til i `src/tours/`:
+Opprett `src/tours/incidentReportTour.ts` (id: `"incident-report"`). Registrer i `tourDefinitions.ts` (allTours + tourList) og i `TourId`-unionen.
 
-- `startFlightTour.ts` (id: `"start-flight"`)
-- `logFlightTour.ts` (id: `"log-flight"`)
-- `uploadDroneLogTour.ts` (id: `"upload-drone-log"`)
+### 2. Stegrekkefølge (én sammenhengende tour)
 
-Registrer dem i `src/tours/tourDefinitions.ts` og legg de tre nye id-ene i `TourId`-unionen i `src/tours/types.ts`. Inkluder dem i `tourList` slik at `StartTourButton` automatisk lister dem under «Min profil → Kompetanse».
+**Del A — Dashbord-widget (route `/`):**
 
-### 2. Steg per tour
+1. **Intro / widget-plassering** — highlight `[data-tour="dashboard-incidents"]`. Forklarer at hendelses-widgeten gir kjapp oversikt og rask rapportering. `beforeStep`: lukk åpne dialoger, scroll widget i view.
+2. **Rapporter-knappen i widgeten** — highlight `[data-tour="incident-widget-report"]` (ny). Forklarer at dette er hurtigveien til ny rapport.
+3. **Faner: Hendelser / Oppfølging** — highlight `[data-tour="incident-widget-tabs"]` (ny). Forklarer at oppfølgingsansvarlige ser sin egen fane med saker de er tildelt.
+4. **Hendelseskort i listen** — highlight `[data-tour="incident-widget-list"]` (ny på listen-wrapperen). Forklarer at klikk åpner detaljdialog med kommentarer, ECCAIRS-status, vedlegg.
 
-**Start flygning (8 steg, alle på `/`):**
+**Overgang — åpne `AddIncidentDialog`:**
 
-1. Intro — highlight «Start flygning»-knappen (`dashboard-flight-controls`). `beforeStep` lukker dialogen hvis åpen.
-2. Åpne dialogen — `beforeStep` klikker «Start flygning», highlight DialogTitle.
-3. Lufttrafikk-banner — forklarer at AviSafe sjekker nærmeste trafikk automatisk (skips hvis ingen banner vises).
-4. Sjekklister — highlight sjekkliste-seksjonen, forklarer påkrevde sjekklister før start.
-5. Velg oppdrag — highlight `mission-select`.
-6. Publiseringsmodus — highlight RadioGroup (none / advisory / live UAV) og forklarer SafeSky/Live UAV.
-7. DroneTag-enhet — highlight DroneTag-velgeren (vises kun ved live UAV; `optional: true`).
-8. Start-knapp — highlight footer-knappen «Start flygning».
+5. **Åpne ny rapport-dialog** — highlight DialogTitle via `[data-tour="incident-dialog"]` (ny på `DialogContent`). `beforeStep` klikker `[data-tour="incident-widget-report"]` og venter til dialogen er montert. Forklarer at dette skjemaet brukes både fra widget og fra `/hendelser`.
 
-**Avslutt / logg flytid (9 steg, alle på `/`):**
+**Felt-steg i dialogen (alle med `optional: true`):**
 
-1. Intro — highlight «Avslutt flygning»- eller «Logg flytid»-knappen. Forklar at samme dialog brukes for stopp av aktiv flygning og manuell logging.
-2. Åpne dialogen — `beforeStep` klikker «Logg flytid manuelt» (sikrere enn å stoppe en faktisk flygning).
-3. Tilknytt oppdrag + «Marker som fullført»-checkbox.
-4. Drone (vehicle) select.
-5. Pilot select.
-6. Personell / passasjerer (hvis seksjonen finnes; `optional`).
-7. Dato + avgang/landing/varighet — forklar at varighet auto-beregnes.
-8. Bevegelser + operasjonstype (VLOS/BVLOS).
-9. Lagre-knappen i footer.
+6. **Knytt til oppdrag** — `[data-tour="incident-mission"]` (ny). Forklarer at å koble oppdrag forhåndsutfyller pilot/drone og gir sporbarhet.
+7. **Tittel + beskrivelse** — `[data-tour="incident-title-desc"]` (ny wrapper rundt tittel/beskrivelse-blokken). Forklarer at en kort tittel + utfyllende beskrivelse er minimumskravet.
+8. **Tidspunkt + alvorlighet + status** — `[data-tour="incident-meta"]` (ny wrapper rundt tidspunkt/alvorlighet/status). Forklarer alvorlighetsgrader (Lav/Middels/Høy/Kritisk) og at "Kritisk" trigger varsling.
+9. **Kategori, hovedårsak, medvirkende** — `[data-tour="incident-classification"]` (ny wrapper rundt kategori/hovedårsak/medvirkende-årsak). Forklarer at klassifisering brukes i statistikk og ECCAIRS-mapping.
+10. **Ressurser (drone, pilot, utstyr)** — `[data-tour="incident-resources"]` (på `Collapsible`-wrapperen). Nevner at å koble ressurser auto-oppretter logg-entry på hver ressurs (jf. memory: Incident Logging Link).
+11. **Bilde / vedlegg** — `[data-tour="incident-image"]` (ny). Forklarer kort at vedlegg legges til i detaljdialogen etter opprettelse.
+12. **Oppfølgingsansvarlig** — `[data-tour="incident-followup"]` (ny). Forklarer at vedkommende får varsel og dukker opp i Oppfølging-fanen i widgeten.
+13. **Anonymitet** — `[data-tour="incident-anonymous"]` (ny). Forklarer både den per-rapport-bryteren og at admin kan tvinge anonym rapportering globalt (`hide_reporter_identity`).
+14. **Lagre / Rapporter** — `[data-tour="incident-submit"]` (ny på Rapporter-knappen). Forklarer at man kan stenge dialogen her — tour-en fortsetter på `/hendelser`.
 
-**Last opp DJI-logg (8 steg, alle på `/`):**
+**Del B — `/hendelser`-siden (route `/hendelser`):**
 
-1. Intro — highlight «Last opp flylogg»-knappen. `beforeStep` lukker andre dialoger.
-2. Åpne dialogen — `beforeStep` klikker knappen, highlight DialogTitle.
-3. Manuell filopplasting — highlight upload-zonen («Last opp fil»-kortet).
-4. Bulk-opplasting (flere filer samtidig).
-5. DJI auto-sync-knappen («Logg inn med DJI»), forklarer at logger hentes automatisk.
-6. Ventende logger-listen (`PendingDjiLogsSection`) — forklar «Kun mine»-bryteren og fargene (gul = rate-limit, rød = feil, grønn check = matchet drone).
-7. Match-/oppdrag-tilknytning — informativt steg uten target (`optional`, target = body), forklarer at man velger oppdrag og kobler ny drone/batteri ved behov.
-8. Avslutt — peker på «Avbryt/Lukk»-knappen, forklarer at behandlede logger flyttes til Statistikk → Flylogg.
+`beforeStep` på første /hendelser-steg lukker dialogen før navigering.
 
-### 3. Nye `data-tour`-attributter som må legges til
+15. **Naviger til Hendelser** — highlight `[data-tour="nav-incidents"]`. Forklarer at full oversikt, søk, filtrering, ECCAIRS-rapportering og PDF-eksport ligger på egen side.
+16. **Søkefelt** — `[data-tour="hendelser-search"]` (ny). Søker i tittel/beskrivelse/oppdrag/lokasjon.
+17. **Statusfilter** — `[data-tour="hendelser-status-filter"]` (ny på filter-rad). Forklar Alle / Åpen / Under behandling / Ferdigbehandlet / Lukket.
+18. **«Legg til hendelse»-knapp** — `[data-tour="hendelser-add"]` (ny). Forklar at samme dialog brukes som fra widgeten.
+19. **Hendelseskort + handlinger** — informativt steg, target = body, `optional: true`. Forklarer at kortet viser ECCAIRS-status, kommentarer, koblinger til oppdrag/ressurser og at admin kan eksportere/markere/slette.
+20. **Avslutning** — peker på `[data-tour="nav-incidents"]` igjen og henviser til Min profil → Kompetanse for å starte touren på nytt.
 
-I `src/pages/Index.tsx`:
+### 3. Nye `data-tour`-attributter
 
-- `data-tour="dashboard-start-flight"` på «Start flygning»-knappen (mobil + desktop).
-- `data-tour="dashboard-end-flight"` på «Avslutt flygning»-knappen.
-- `data-tour="dashboard-upload-log"` på «Last opp flylogg»-menyvalget i dropdown.
-- `data-tour="dashboard-log-manual"` på «Logg flytid manuelt»-menyvalget.
+I `src/components/dashboard/IncidentsSection.tsx`:
 
-I `src/components/StartFlightDialog.tsx`:
+- `data-tour="incident-widget-report"` på Rapporter-knappen (~linje 268).
+- `data-tour="incident-widget-tabs"` på `TabsList` (~linje 280).
+- `data-tour="incident-widget-list"` på listen-wrapperen i `TabsContent value="incidents"` (~linje 292).
 
-- `data-tour="start-flight-dialog"` på `DialogContent`.
-- `data-tour="start-flight-traffic"` på lufttrafikk-banneret.
-- `data-tour="start-flight-checklists"` på sjekkliste-wrapperen.
-- `data-tour="start-flight-mission"` på mission-select-wrapperen.
-- `data-tour="start-flight-publish-mode"` på RadioGroup-wrapperen.
-- `data-tour="start-flight-dronetag"` på DroneTag-velgeren.
-- `data-tour="start-flight-submit"` på «Start»-knappen i footer.
+I `src/components/dashboard/AddIncidentDialog.tsx`:
 
-I `src/components/LogFlightTimeDialog.tsx`:
+- `data-tour="incident-dialog"` på `DialogContent` (~linje 532).
+- `data-tour="incident-mission"` på "Knytt til oppdrag"-wrapperen (~linje 542).
+- `data-tour="incident-title-desc"` på en ny felles wrapper rundt tittel + beskrivelse (~linje 580–598).
+- `data-tour="incident-meta"` på felles wrapper rundt tidspunkt/alvorlighet/status (~linje 600–644).
+- `data-tour="incident-classification"` på felles wrapper rundt kategori/hovedårsak/medvirkende (~linje 646–755).
+- `data-tour="incident-resources"` på `Collapsible`-wrapperen (~linje 768).
+- `data-tour="incident-image"` på "Bilde (valgfritt)"-wrapperen (~linje 884).
+- `data-tour="incident-followup"` på "Oppfølgingsansvarlig"-wrapperen (~linje 924).
+- `data-tour="incident-anonymous"` på anonymitet-blokken (~linje 938 / 946).
+- `data-tour="incident-submit"` på Rapporter-knappen (~linje 970).
 
-- `data-tour="log-flight-dialog"` på `DialogContent`.
-- `data-tour="log-flight-mission"`, `log-flight-drone"`, `log-flight-pilot"`, `log-flight-personnel"`, `log-flight-times"`, `log-flight-movements"`, `log-flight-submit"` på respektive seksjoner.
+I `src/pages/Hendelser.tsx`:
 
-I `src/components/UploadDroneLogDialog.tsx`:
+- `data-tour="hendelser-search"` på Input-wrapperen (~linje 928).
+- `data-tour="hendelser-add"` på "Legg til hendelse"-knappen (~linje 938).
+- `data-tour="hendelser-status-filter"` på filter-raden (~linje 944).
 
-- `data-tour="upload-log-dialog"` på `DialogContent`.
-- `data-tour="upload-log-file"` på «Last opp fil»-kortet.
-- `data-tour="upload-log-bulk"` på bulk-knappen/seksjonen.
-- `data-tour="upload-log-dji"` på DJI-auto-sync-knappen.
-- `data-tour="upload-log-pending"` på `PendingDjiLogsSection`-wrapperen.
-- `data-tour="upload-log-close"` på Avbryt-knappen i footer.
+### 4. Hjelpere
 
-### 4. `beforeStep`-hjelpere
-
-For alle tre tour-er trenger vi en pålitelig måte å åpne riktig dialog uten å klikke et menypunkt som krever to klikk. Vi legger inn en liten hjelper i `tourUtils.ts`:
+I `incidentReportTour.ts`:
 
 ```ts
-export const openByTour = async (selector: string, waitMs = 350) => {
-  document.querySelector<HTMLElement>(selector)?.click();
-  await sleep(waitMs);
+const closeAnyOpenDialog = async () => {
+  if (document.querySelector('[role="dialog"][data-state="open"]')) {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await sleep(200);
+  }
+};
+
+const openIncidentDialog = async () => {
+  if (document.querySelector('[data-tour="incident-dialog"]')) return;
+  document.querySelector<HTMLElement>('[data-tour="incident-widget-report"], [data-tour="hendelser-add"]')?.click();
+  await sleep(450);
 };
 ```
 
-For `dashboard-log-flight`-dropdownen må vi først åpne dropdownen (klikk trigger, vente, klikk menypunkt). Hjelperen håndterer to-klikks-tilfellet ved å akseptere en array av selektorer.
+Felt-stegene i dialogen får `beforeStep: openIncidentDialog` slik at de virker uansett om brukeren har lukket dialogen mellom steg. Naviger til `/hendelser` håndteres automatisk av `route` på stegene i Del B; `closeAnyOpenDialog` settes som `beforeStep` på første `/hendelser`-steg for å unngå at dialogen henger igjen.
 
 ### 5. Det vi ikke endrer
 
 - Tour-infrastruktur (`GuidedTourProvider`, `tour-styles.css`, `StartTourButton`).
-- Eksisterende tour-er (system-overview, dashboard-widgets, mission-creation).
-- Forretningslogikk i de tre dialogene — kun nye `data-tour`-attributter.
-- Ingen API-endringer.
+- Eksisterende tour-er (system-overview, dashboard-widgets, mission-creation, start-flight, log-flight, upload-drone-log).
+- Ingen forretningslogikk i widget, dialog eller side — kun nye `data-tour`-attributter og tour-fil.
+- ECCAIRS-flyten dekkes ikke i denne touren (eget tema).
 
 ### 6. Robusthet
 
-- Alle steg får `optional: true` slik at de hoppes gracefully over (f.eks. lufttrafikk-banner uten data, DroneTag-velger når Live UAV ikke er valgt, personell-seksjon hvis ikke aktivert).
-- `beforeStep` lukker forrige dialog før neste tour-steg åpner sin egen, slik at vi ikke får stablede dialoger.
-- Vi bruker `waitForElement` (allerede i `tourUtils`) for å håndtere lazy-rendering i dialogene.
+- Alle steg får `optional: true` og `beforeStep` der det trengs — hopper gracefully over manglende elementer (f.eks. Oppfølging-fane vises kun for ansvarlige; anonym-checkbox skjules når `hide_reporter_identity` er på).
+- Vi gjenbruker `closeMobileNav` indirekte via `GuidedTourProvider`s rydde-logikk.
+- Mobiltilpasset: hendelses-widgeten ligger forskjellig på mobil vs desktop, men `data-tour="dashboard-incidents"` finnes i én visning av gangen — eksisterende `findVisible` i `tourUtils` velger den synlige.
 
 ### Tekniske detaljer (for utviklere)
 
-- `StartTourButton` itererer `tourList` automatisk — ingen UI-endring nødvendig der.
-- `TourId`-typen må utvides; alle tre id-ene må legges til i `allTours`-mappet i `tourDefinitions.ts`.
-- driver.js-popoveren kan vise seg utenfor dialogen fordi `tour-styles.css` allerede setter z-index 10005 på `.avisafe-tour`.
-- For dialoger med `max-h-[90vh]` og intern scroll må vi sette `smoothScroll: true` (allerede på) — `driver.js` håndterer scroll-into-view innenfor scroll-containere.
+- `TourId`-typen i `src/tours/types.ts` utvides med `"incident-report"`.
+- Touren legges sist i `tourList` slik at den vises nederst i kompetanse-listen.
+- Dialogene har z-index 10002 (allerede satt i `tour-styles.css`); driver.js-popoveren ligger på 10005, så høydekonflikten er allerede løst.

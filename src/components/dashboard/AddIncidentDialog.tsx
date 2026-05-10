@@ -529,7 +529,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6" data-tour="incident-dialog">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Rediger hendelse" : "Rapporter hendelse"}</DialogTitle>
           <DialogDescription>
@@ -538,7 +538,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="incident-mission">
             <Label>Knytt til oppdrag (valgfritt)</Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -576,73 +576,78 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </Popover>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tittel">Tittel *</Label>
-            <Input
-              id="tittel"
-              value={formData.tittel}
-              onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
-              placeholder="Kort beskrivelse av hendelsen"
-            />
+          <div className="space-y-4" data-tour="incident-title-desc">
+            <div className="space-y-2">
+              <Label htmlFor="tittel">Tittel *</Label>
+              <Input
+                id="tittel"
+                value={formData.tittel}
+                onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
+                placeholder="Kort beskrivelse av hendelsen"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="beskrivelse">Beskrivelse</Label>
+              <Textarea
+                id="beskrivelse"
+                value={formData.beskrivelse}
+                onChange={(e) => setFormData({ ...formData, beskrivelse: e.target.value })}
+                placeholder="Detaljert beskrivelse av hendelsen..."
+                rows={4}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="beskrivelse">Beskrivelse</Label>
-            <Textarea
-              id="beskrivelse"
-              value={formData.beskrivelse}
-              onChange={(e) => setFormData({ ...formData, beskrivelse: e.target.value })}
-              placeholder="Detaljert beskrivelse av hendelsen..."
-              rows={4}
-            />
+          <div className="space-y-4" data-tour="incident-meta">
+            <div className="space-y-2">
+              <Label htmlFor="hendelsestidspunkt">Hendelsestidspunkt *</Label>
+              <Input
+                id="hendelsestidspunkt"
+                type="datetime-local"
+                value={formData.hendelsestidspunkt}
+                onChange={(e) => setFormData({ ...formData, hendelsestidspunkt: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="alvorlighetsgrad">Alvorlighetsgrad</Label>
+              <Select
+                value={formData.alvorlighetsgrad}
+                onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
+              >
+                <SelectTrigger id="alvorlighetsgrad">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lav">Lav</SelectItem>
+                  <SelectItem value="Middels">Middels</SelectItem>
+                  <SelectItem value="Høy">Høy</SelectItem>
+                  <SelectItem value="Kritisk">Kritisk</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger id="status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Åpen">Åpen</SelectItem>
+                  <SelectItem value="Under behandling">Under behandling</SelectItem>
+                  <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
+                  <SelectItem value="Lukket">Lukket</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="hendelsestidspunkt">Hendelsestidspunkt *</Label>
-            <Input
-              id="hendelsestidspunkt"
-              type="datetime-local"
-              value={formData.hendelsestidspunkt}
-              onChange={(e) => setFormData({ ...formData, hendelsestidspunkt: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="alvorlighetsgrad">Alvorlighetsgrad</Label>
-            <Select
-              value={formData.alvorlighetsgrad}
-              onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
-            >
-              <SelectTrigger id="alvorlighetsgrad">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Lav">Lav</SelectItem>
-                <SelectItem value="Middels">Middels</SelectItem>
-                <SelectItem value="Høy">Høy</SelectItem>
-                <SelectItem value="Kritisk">Kritisk</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => setFormData({ ...formData, status: value })}
-            >
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Åpen">Åpen</SelectItem>
-                <SelectItem value="Under behandling">Under behandling</SelectItem>
-                <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
-                <SelectItem value="Lukket">Lukket</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
+          <div className="space-y-4" data-tour="incident-classification">
           <div className="space-y-2">
             <Label htmlFor="kategori">Kategori (valgfritt)</Label>
             <Select
@@ -753,6 +758,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               </div>
             )}
           </div>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="lokasjon">Lokasjon (valgfritt)</Label>
@@ -765,7 +771,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           {/* Ressurser – sammenleggbar seksjon */}
-          <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen}>
+          <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen} data-tour="incident-resources">
             <CollapsibleTrigger asChild>
               <Button variant="ghost" className="w-full justify-between px-2 py-1.5 h-auto text-sm font-medium text-muted-foreground hover:text-foreground">
                 Ressurser (valgfritt)
@@ -882,7 +888,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </Collapsible>
 
           {/* Bildeopplasting */}
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="incident-image">
             <Label>Bilde (valgfritt)</Label>
             <input
               ref={fileInputRef}
@@ -921,7 +927,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="incident-followup">
             <Label htmlFor="oppfolgingsansvarlig">Oppfølgingsansvarlig (valgfritt)</Label>
             <SearchablePersonSelect
               persons={users}
@@ -935,6 +941,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           {/* Anonymitet */}
+          <div data-tour="incident-anonymous">
           {globalAnonymous ? (
             <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
               <EyeOff className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -957,6 +964,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               </div>
             </label>
           )}
+          </div>
 
           <div className="flex gap-2">
             <Button
@@ -971,6 +979,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               onClick={handleSubmit}
               disabled={submitting || !formData.tittel || !formData.hendelsestidspunkt}
               className="flex-1"
+              data-tour="incident-submit"
             >
               {submitting 
                 ? (isEditing ? "Lagrer..." : "Rapporterer...") 
