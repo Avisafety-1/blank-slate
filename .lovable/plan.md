@@ -1,75 +1,36 @@
-## Mål
+## Problem
 
-Alle guidede tourer skal kunne tildeles brukere via **Admin → Opplæring**, akkurat som vanlige kurs. De skal gi varsel, vises i «Min profil → Kompetanse», kunne tas derfra, sette utløpsdato, og automatisk loggføres som kompetanse med samme grønn/gul/rød-status.
+I `resourcesTour` brukes `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))` til å lukke åpne dialoger mellom steg. Driver.js (tour-biblioteket) lytter også på Escape og kaller `onDestroyStarted` → tour-instansen ødelegges, men body kan henge igjen i en tilstand der ny dialog er åpnet uten tour-popover. Det er derfor «Legg til kompetanse»-steget får touren til å forsvinne — på det steget kalles `closeAnyOpenDialog` for å lukke person-dialogen, og Escape dreper hele touren.
 
-## Brukerflyt
+Samme bug treffer i prinsippet alle steg som kaller `closeAnyOpenDialog` mens en dialog er åpen, men den slår tydeligst ut her fordi det er det første steget hvor en stor dialog faktisk var åpen rett før neste-steget.
 
-**Admin:**
-1. Går til Admin → Opplæring → «Nytt kurs».
-2. Velger **Kurstype: Guidet tour**.
-3. Velger tour fra nedtrekksliste (Systemoversikt, Dashboard-widgets, Opprett oppdrag, Start flygning, Logg flytid, Last opp DJI-logg, Rapporter hendelser).
-4. Setter tittel, beskrivelse, gyldighetstid (måneder).
-5. Tildeler kurset til én eller flere brukere via eksisterende «Tildel kurs»-dialog → utløser samme varsel som vanlige kurs.
+## Løsning
 
-**Bruker:**
-1. Får varsel om tildelt kurs.
-2. Åpner Min profil → Kompetanse → Tildelte kurs.
-3. Klikker kurset → ser et enkelt panel «Start veiledet gjennomgang».
-4. Klikk starter touren via eksisterende `GuidedTourProvider`.
-5. Når touren fullføres («Ferdig»-steget) markeres tildelingen som bestått, og en `personnel_competencies`-rad opprettes automatisk (`type='Kurs'`, navn = kurstittel, utstedt = i dag, utløp = i dag + `validity_months`).
-6. Kurset vises nå i kompetanselisten med grønn/gul/rød-status drevet av eksisterende logikk.
-7. Avbryter brukeren touren midtveis er kurset «ikke fullført» og kan tas på nytt.
+Slutte å bruke Escape i tour-flyten. I stedet styre dialog-lukking via React-state gjennom `__avisafeResourcesTour`-broen.
 
-## Tekniske endringer
+### Endringer
 
-### 1. Database (én migrering)
-- `training_courses`: legg til `tour_id text NULL`.
-- `display_mode`-feltet brukes med ny verdi `'guided_tour'` (kolonnen er `text`, ingen constraint-endring).
-- Ingen RLS-endringer: eksisterende policies på `training_courses`, `training_assignments` og `personnel_competencies` dekker dette.
+1. **`src/pages/Resources.tsx` — utvid broen**
+   - Behold `closeAll` (lukker alt via state-settere).
+   - Erstatt Escape-baserte `closeDroneLogbook` og `closeEquipmentLogbook` med tilsvarende state-settere. Loggbok-dialogene er sub-dialoger eid av henholdsvis `DroneDetailDialog` / `EquipmentDetailDialog`. To alternativer:
+     - a) Løft logbok-open-state opp til `Resources.tsx` og send som prop, slik at vi kan kalle setter direkte fra broen.
+     - b) Eksponer en imperativ ref/callback fra detalj-dialogene som broen kaller.
+   - Velger (a): minst invasiv, gir broen full kontroll, og samsvarer med hvordan `openDroneLogbook` allerede kalles via DOM-knapp.
 
-### 2. Tour-registeret
-- `src/tours/tourDefinitions.ts`: eksporter `assignableTours` (id + tittel + kort beskrivelse) som kurseditoren kan vise i en `<Select>`.
+2. **`src/tours/resourcesTour.ts` — fjern alle Escape-dispatch**
+   - `closeAnyOpenDialog` skal kun kalle `bridge().closeAll()` og vente kort.
+   - `closeDroneLogbook` / `closeEquipmentLogbook` skal kalle de nye state-baserte broen-funksjonene i stedet for Escape.
 
-### 3. Kurseditor (`src/components/admin/TrainingCourseEditor.tsx`)
-- Ny radio-knapp øverst: **Kurstype** = `Vanlig` | `Guidet tour`.
-- Ved «Guidet tour»:
-  - Skjul slide-/spørsmål-/PDF-/PPTX-/YouTube-seksjonene.
-  - Vis `<Select>` med tour-listen → lagres til `tour_id`, og `display_mode = 'guided_tour'`.
-  - `passing_score` settes implisitt til 100 og feltet skjules.
-  - Ingen rader i `training_questions` for tour-kurs.
-- Tittel / beskrivelse / `validity_months` brukes som vanlig.
+3. **Robusthet i `GuidedTourProvider.tsx` (defensiv ekstra-fix)**
+   - I `onDestroyStarted`: sjekk om nedstegningen kommer fra Escape ved å ignorere destroy-kallet hvis `document.body.classList.contains("avisafe-tour-active")` og siste keydown var Escape innen kort tid. Dette beskytter mot framtidige tour-utviklere som ved et uhell igjen sender Escape.
+   - Konkret: legg til `keydown`-listener (capture, mens touren kjører) som kaller `event.stopPropagation()` på Escape — slik at user fortsatt kan lukke touren via «X»-knappen, men ikke uforvarende via Escape. Brukeren kan fortsatt avbryte via «Hopp over» / overlay-klikk.
 
-### 4. Tildeling og varsel
-- `src/components/admin/TrainingAssignmentDialog.tsx`: ingen endring. Tour-kurs er bare en vanlig rad i `training_courses` og bruker eksisterende tildelings- og varselflyt.
+### Resultat
 
-### 5. Ta kurset (`src/components/training/TakeCourseDialog.tsx`)
-- Last `tour_id` sammen med kurset.
-- Hvis `display_mode === 'guided_tour'`:
-  - Render et eget panel med tittel, beskrivelse og knapp **«Start veiledet gjennomgang»**.
-  - Klikk lukker dialogen og kaller ny window-bro `window.__avisafeTour?.startTour?.(tour_id, { assignmentId })`.
-- Hopp over hele spørsmål-/scoring-/lagringsløypen for tour-kurs.
+- «Legg til kompetanse»-steget åpner riktig dialog uten å rive ned touren.
+- Alle andre steg som måtte lukke en åpen dialog gjør det via state, ikke Escape.
+- Tilbakefall i framtidige tourer blokkeres av provider-defensiven.
 
-### 6. Tour-fullføring → kursfullføring
-- `src/components/guided-tour/GuidedTourProvider.tsx`: når en tour avsluttes via «Ferdig» og ble startet med `assignmentId`, kall ny hjelper `completeTourAssignment(assignmentId)`:
-  1. Opprett `personnel_competencies`-rad (samme insert som dagens fullført-kode i `TakeCourseDialog`).
-  2. Oppdater `training_assignments`: `completed_at = now()`, `passed = true`, `score = 100`, `competency_id = <ny rad>`.
-  3. Toast: «Kurs fullført — kompetanse registrert».
-- `src/pages/Index.tsx`: utvid `window.__avisafeTour`-broen med `startTour(tourId, opts)` som starter touren via eksisterende provider-API.
+## Spørsmål før implementering
 
-### 7. Min profil → Kompetanse
-- Ingen endring nødvendig. Tildelte tour-kurs vises automatisk i samme liste, og fullførte tour-kurs gir en kompetanse-rad som dukker opp med riktig status.
-
-## Filer som røres
-
-- migrering: `training_courses.tour_id`
-- `src/tours/tourDefinitions.ts` (+ ev. `src/tours/types.ts`)
-- `src/components/admin/TrainingCourseEditor.tsx`
-- `src/components/training/TakeCourseDialog.tsx`
-- `src/components/guided-tour/GuidedTourProvider.tsx`
-- `src/pages/Index.tsx` (window-bro `startTour`)
-
-## Avgrensninger
-
-- Ingen endring i selve tour-stegene eller hvordan de kjører visuelt.
-- Ingen endring i `TrainingStatusView` — tour-kurs vises som vanlige kurs-rader i statistikk.
-- Forhåndsvisning i editoren for tour-kurs starter touren midlertidig uten å markere som fullført.
+Ingen — fortsetter rett på fiks når du godkjenner.
