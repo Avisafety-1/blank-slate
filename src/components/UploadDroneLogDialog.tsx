@@ -3068,6 +3068,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
               </button>
               {djiEnabled && (
               <div
+                data-tour="upload-log-dji"
                 role="button"
                 tabIndex={0}
                 onKeyDown={handleDjiCardKeyDown}
