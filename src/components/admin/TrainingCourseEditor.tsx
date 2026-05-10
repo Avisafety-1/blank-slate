@@ -608,6 +608,45 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
+            <Label>Kurstype</Label>
+            <RadioGroup
+              value={courseType}
+              onValueChange={(v) => setCourseType(v as "normal" | "guided_tour")}
+              className="flex flex-wrap gap-4 mt-2"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem id="course-type-normal" value="normal" />
+                <Label htmlFor="course-type-normal" className="cursor-pointer">Vanlig kurs (slides / spørsmål / video)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem id="course-type-tour" value="guided_tour" />
+                <Label htmlFor="course-type-tour" className="cursor-pointer">Guidet tour</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {courseType === "guided_tour" && (
+            <div>
+              <Label>Velg veiledet gjennomgang *</Label>
+              <Select value={tourId} onValueChange={setTourId}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Velg en tour…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableTours.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {tourId && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {assignableTours.find((t) => t.id === tourId)?.description}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div>
             <Label>Tittel *</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Navn på kurset" />
           </div>
@@ -616,10 +655,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Valgfri beskrivelse" rows={3} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Bestått-grense (%)</Label>
-              <Input type="number" min={1} max={100} value={passingScore} onChange={(e) => setPassingScore(Number(e.target.value))} />
-            </div>
+            {courseType === "normal" && (
+              <div>
+                <Label>Bestått-grense (%)</Label>
+                <Input type="number" min={1} max={100} value={passingScore} onChange={(e) => setPassingScore(Number(e.target.value))} />
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Switch checked={hasPermanentValidity} onCheckedChange={(v) => { setHasPermanentValidity(v); if (v) setValidityMonths(null); else setValidityMonths(12); }} />
@@ -633,10 +674,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3 mt-3">
-            <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
-            <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
-          </div>
+          {courseType === "normal" && (
+            <div className="flex items-center gap-3 mt-3">
+              <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
+              <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
+            </div>
+          )}
           <Collapsible open={unlocksModulesOpen} onOpenChange={setUnlocksModulesOpen} className="pt-3 border-t">
             <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left hover:bg-muted/50 transition-colors">
               <div>
