@@ -130,7 +130,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- DRONE DETAIL ----------
     {
       id: "drone-detail",
-      selector: '[data-tour="drone-detail-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="drone-detail-logbok"])',
       title: "Dronedetaljer",
       description: "Klikk på et kort for å åpne detaljvisningen. Her ser du all teknisk info: modell, serienummer, klasse, vekt, payload, kjøpsdato, neste inspeksjon, tilkoblet utstyr og personell.",
       side: "over",
@@ -148,7 +148,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- DRONE LOGBOK ----------
     {
       id: "drone-logbook",
-      selector: '[data-tour="drone-logbook-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="drone-logbook-add"])',
       title: "Loggboken",
       description: "Loggboken samler alle hendelser kronologisk: oppdrag (autogenerert fra fullførte missions), manuell flytid, vedlikeholdsoppføringer, hendelser og merknader.",
       side: "over",
@@ -173,7 +173,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- BACK TO DRONE DETAIL ----------
     {
       id: "drone-detail-back",
-      selector: '[data-tour="drone-detail-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="drone-detail-logbok"])',
       title: "Tilbake til drone",
       description: "Vi lukker loggboken og er tilbake i dronedetaljene. Her kan du også registrere vedlikehold/inspeksjon utført, koble på utstyr, knytte personell og endre tilhørende sjekklister.",
       side: "over",
@@ -190,7 +190,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- ADD DRONE DIALOG ----------
     {
       id: "add-drone",
-      selector: '[data-tour="add-drone-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="add-drone-marker"])',
       title: "Registrer ny drone",
       description: "Velg en modell fra dronekatalogen så fylles vekt, payload, klasse og merknader inn automatisk — eller velg «Angi manuelt». Sett serienummer, internt serienummer og kjøpsdato.",
       side: "over",
@@ -199,7 +199,7 @@ export const resourcesTour: TourDefinition = {
     },
     {
       id: "add-drone-inspection",
-      selector: '[data-tour="add-drone-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="add-drone-marker"])',
       title: "Inspeksjonsplan",
       description: "Sett inspeksjons-startdato og -intervall (dager) for å automatisk regne ut neste inspeksjonsdato. Velg sjekkliste som må fullføres før inspeksjonen kan kvitteres ut.",
       side: "over",
@@ -246,7 +246,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- EQUIPMENT DETAIL ----------
     {
       id: "equipment-detail",
-      selector: '[data-tour="equipment-detail-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="equipment-detail-logbok"])',
       title: "Utstyrsdetaljer",
       description: "Detaljvisningen for utstyr viser navn, type, serienumre, vekt, totale flyvetimer, status, advarsler og hvilke droner det er montert på.",
       side: "over",
@@ -262,7 +262,7 @@ export const resourcesTour: TourDefinition = {
     },
     {
       id: "equipment-logbook",
-      selector: '[data-tour="equipment-logbook-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="equipment-logbook-add"])',
       title: "Loggbok for utstyr",
       description: "Samme oppsett som dronelogboken: legg til oppføringer, last ved bilde, eksporter PDF. Flyvetimer akkumuleres automatisk hver gang utstyret er med på et fullført oppdrag.",
       side: "over",
@@ -273,7 +273,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- ADD EQUIPMENT ----------
     {
       id: "add-equipment",
-      selector: '[data-tour="add-equipment-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="add-equipment-marker"])',
       title: "Registrer nytt utstyr",
       description: "Sett navn, type/kategori, serienummer og vekt. Vedlikehold kan styres på dager, flyvetimer eller antall oppdrag — sett varsel-grenser så får du gult lys før det forfaller.",
       side: "over",
@@ -288,7 +288,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- DRONETAG ----------
     {
       id: "add-dronetag",
-      selector: '[data-tour="add-dronetag-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="add-dronetag-marker"])',
       title: "Legg til DroneTag",
       description: "DroneTag-enheter krever at du oppgir device-ID. Etter registrering kan enheten kobles til en drone og brukes til live posisjonering under flyging.",
       side: "over",
@@ -330,7 +330,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- PERSON DIALOG ----------
     {
       id: "person-dialog",
-      selector: '[data-tour="person-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="person-logbok"])',
       title: "Persondetaljer",
       description: "Detaljvisningen for en person viser alle kompetanser, tilgjengelige kurs, og lar deg legge til nye kompetanser direkte.",
       side: "over",
@@ -370,7 +370,7 @@ export const resourcesTour: TourDefinition = {
     // ---------- ADD COMPETENCY ----------
     {
       id: "add-competency",
-      selector: '[data-tour="add-competency-dialog"]',
+      selector: '[role="dialog"]:has([data-tour="add-competency-marker"])',
       title: "Tildel kompetanse til flere",
       description: "Denne dialogen brukes når du vil tildele samme kompetanse til mange personer samtidig. Velg type, navn, datoer og personene — så opprettes én rad per person.",
       side: "over",
