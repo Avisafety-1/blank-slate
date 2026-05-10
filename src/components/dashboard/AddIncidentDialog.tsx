@@ -758,9 +758,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               </div>
             )}
           </div>
+          </div>
 
           <div className="space-y-2">
-            <Label htmlFor="lokasjon">Lokasjon (valgfritt)</Label>
             <Input
               id="lokasjon"
               value={formData.lokasjon}
