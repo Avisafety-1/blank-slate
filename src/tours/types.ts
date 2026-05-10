@@ -6,7 +6,8 @@ export type TourId =
   | "log-flight"
   | "upload-drone-log"
   | "incident-report"
-  | "resources";
+  | "resources"
+  | "admin";
 
 export interface TourStep {
   /** Stable id for debugging */

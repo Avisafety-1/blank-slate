@@ -795,21 +795,21 @@ const Admin = () => {
 
       <main className="w-full px-2 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid grid-cols-2 sm:inline-flex h-auto sm:h-10 w-full sm:w-auto max-w-md sm:max-w-none mx-auto relative z-10 gap-1 p-1.5 bg-secondary rounded-xl flex-wrap">
-            <TabsTrigger value="users" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+          <TabsList data-tour="admin-tabs" className="grid grid-cols-2 sm:inline-flex h-auto sm:h-10 w-full sm:w-auto max-w-md sm:max-w-none mx-auto relative z-10 gap-1 p-1.5 bg-secondary rounded-xl flex-wrap">
+            <TabsTrigger value="users" data-tour="admin-tab-users" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{t('admin.users')}</span>
             </TabsTrigger>
-            <TabsTrigger value="customers" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+            <TabsTrigger value="customers" data-tour="admin-tab-customers" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <UserCog className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{t('admin.customers')}</span>
             </TabsTrigger>
-            <TabsTrigger value="email-templates" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+            <TabsTrigger value="email-templates" data-tour="admin-tab-email" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{isMobile ? 'E-post' : t('admin.emailTemplates')}</span>
             </TabsTrigger>
             {hasAddon('sora_admin') && (
-              <TabsTrigger value="company-config" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+              <TabsTrigger value="company-config" data-tour="admin-tab-sora" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
                 <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span className="max-w-[80px] sm:max-w-none truncate">SORA</span>
               </TabsTrigger>
@@ -820,11 +820,11 @@ const Admin = () => {
                 <span>{t('admin.companies')}</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="child-companies" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+            <TabsTrigger value="child-companies" data-tour="admin-tab-child" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>Mitt selskap</span>
             </TabsTrigger>
-            <TabsTrigger value="training" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+            <TabsTrigger value="training" data-tour="admin-tab-training" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
               <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>Opplæring</span>
             </TabsTrigger>
@@ -846,7 +846,7 @@ const Admin = () => {
             <div className="space-y-4 sm:space-y-6">
               {/* Registration Code Card */}
               {registrationCode && (
-                <Card className="border-primary/20 bg-primary/5">
+                <Card data-tour="admin-registration-code" className="border-primary/20 bg-primary/5">
                   <CardHeader className="pb-3 sm:pb-4">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <Key className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -969,7 +969,7 @@ const Admin = () => {
                 </Card>
               )}
 
-              <Card>
+              <Card data-tour="admin-invite">
                 <CardHeader className="pb-3 sm:pb-6">
                   <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <Send className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -1083,7 +1083,7 @@ const Admin = () => {
               )}
 
               {pendingUsers.length > 0 && (
-                <Card>
+                <Card data-tour="admin-pending">
                   <CardHeader className="pb-3 sm:pb-6">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <UserCog className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1146,7 +1146,7 @@ const Admin = () => {
               )}
 
               {/* Approved Users */}
-              <Card>
+              <Card data-tour="admin-approved">
                 <CardHeader className="pb-3 sm:pb-6">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
@@ -1581,17 +1581,17 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="customers" className="mt-4 sm:mt-8">
+          <TabsContent value="customers" data-tour="admin-content-customers" className="mt-4 sm:mt-8">
             <CustomerManagementSection />
           </TabsContent>
 
-          <TabsContent value="email-templates" className="mt-4 sm:mt-8">
+          <TabsContent value="email-templates" data-tour="admin-content-email" className="mt-4 sm:mt-8">
             <EmailTemplateEditor onOpenEmailSettings={() => setEmailSettingsOpen(true)} />
             <BulkEmailSenderWithHistory />
           </TabsContent>
 
           {hasAddon('sora_admin') && (
-            <TabsContent value="company-config" className="mt-4 sm:mt-8">
+            <TabsContent value="company-config" data-tour="admin-content-sora" className="mt-4 sm:mt-8">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold">{companyName || "Selskapet"} — SORA-innstillinger</h2>
                 <p className="text-sm text-muted-foreground">Konfigurer selskapsspesifikke grenser og krav for AI-risikovurdering</p>
@@ -1606,7 +1606,7 @@ const Admin = () => {
             </TabsContent>
           )}
 
-          <TabsContent value="child-companies" className="mt-4 sm:mt-8">
+          <TabsContent value="child-companies" data-tour="admin-content-child" className="mt-4 sm:mt-8">
             <ChildCompaniesSection departmentsEnabled={departmentsEnabled} />
           </TabsContent>
 
@@ -1623,7 +1623,7 @@ const Admin = () => {
           )}
 
 
-          <TabsContent value="training" className="mt-4 sm:mt-8">
+          <TabsContent value="training" data-tour="admin-content-training" className="mt-4 sm:mt-8">
             <TrainingSection />
           </TabsContent>
         </Tabs>
