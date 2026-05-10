@@ -647,6 +647,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </div>
           </div>
 
+          <div className="space-y-4" data-tour="incident-classification">
           <div className="space-y-2">
             <Label htmlFor="kategori">Kategori (valgfritt)</Label>
             <Select
