@@ -3056,6 +3056,7 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
             </p>
             <div className={`grid ${djiEnabled ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
               <button
+                data-tour="upload-log-file"
                 onClick={() => setStep('upload')}
                 className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-muted/50 transition-all text-center"
               >
