@@ -82,6 +82,8 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const [displayMode, setDisplayMode] = useState<"list" | "paginated">("paginated");
   const [fullscreen, setFullscreen] = useState(false);
   const [unlocksModules, setUnlocksModules] = useState<TrainingModuleKey[]>([]);
+  const [courseType, setCourseType] = useState<"normal" | "guided_tour">("normal");
+  const [tourId, setTourId] = useState<string>("");
   const [unlocksModulesOpen, setUnlocksModulesOpen] = useState(false);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [saving, setSaving] = useState(false);
