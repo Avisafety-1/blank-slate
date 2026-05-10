@@ -771,7 +771,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           {/* Ressurser – sammenleggbar seksjon */}
-          <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen}>
+          <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen} data-tour="incident-resources">
             <CollapsibleTrigger asChild>
               <Button variant="ghost" className="w-full justify-between px-2 py-1.5 h-auto text-sm font-medium text-muted-foreground hover:text-foreground">
                 Ressurser (valgfritt)
