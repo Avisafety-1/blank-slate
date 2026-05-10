@@ -2439,6 +2439,10 @@ export const ProfileDialog = () => {
           assignmentId={takeCourseAssignmentId}
           open={!!takeCourseAssignmentId}
           onOpenChange={(open) => { if (!open) setTakeCourseAssignmentId(null); }}
+          onTourStart={() => {
+            setTakeCourseAssignmentId(null);
+            setProfileDialogOpen(false);
+          }}
           onCompleted={() => {
             setTakeCourseAssignmentId(null);
             setPendingTraining((prev) => prev.filter((t: any) => t.id !== takeCourseAssignmentId));
