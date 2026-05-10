@@ -48,7 +48,7 @@ interface CourseData {
   tour_id?: string | null;
 }
 
-export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted }: Props) => {
+export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted, onTourStart }: Props) => {
   const { user, refetchUserInfo } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
   const [slides, setSlides] = useState<SlideData[]>([]);
