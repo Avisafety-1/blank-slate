@@ -112,7 +112,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-md">
-          <DialogHeader>
+          <span data-tour="add-competency-marker" className="hidden" /><DialogHeader>
             <DialogTitle>Legg til kompetanse/kurs</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddCompetency} className="space-y-4 px-2">

@@ -258,7 +258,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <span data-tour="add-drone-marker" className="hidden" /><DialogHeader>
           <DialogTitle>{terminology.addVehicle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleAddDrone} className="space-y-4">

@@ -497,6 +497,7 @@ export function PersonCompetencyDialog({
             <Button
               variant="outline"
               size="sm"
+              data-tour="person-logbok"
               onClick={() => setLogbookDialogOpen(true)}
               className="gap-2 w-full sm:w-auto"
             >
@@ -511,7 +512,7 @@ export function PersonCompetencyDialog({
 
             {/* Existing Competencies */}
             <div className="space-y-3 mb-6 min-w-0">
-              <h3 className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>
+              <h3 data-tour="person-competencies" className="text-sm font-semibold text-muted-foreground">Kompetanser</h3>
               
               {(person.personnel_competencies || []).length === 0 ? (
                 <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
@@ -741,7 +742,7 @@ export function PersonCompetencyDialog({
             {/* Available Courses */}
             {availableCourses.length > 0 && (
               <div className="space-y-3 mb-6 min-w-0">
-                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                <h3 data-tour="person-courses" className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
                   <GraduationCap className="h-4 w-4" />
                   Tilgjengelige kurs
                 </h3>
@@ -766,7 +767,7 @@ export function PersonCompetencyDialog({
 
 
             <div className="border-t pt-4 mt-4 min-w-0 overflow-hidden">
-              <h3 className="text-sm font-semibold mb-3">Legg til kompetanse</h3>
+              <h3 data-tour="person-add-competency" className="text-sm font-semibold mb-3">Legg til kompetanse</h3>
               <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>

@@ -394,6 +394,51 @@ const Resources = () => {
     return worst;
   };
 
+
+  // Bro for guidet tour: lar resources-touren åpne dialoger programmatisk
+  useEffect(() => {
+    (window as any).__avisafeResourcesTour = {
+      closeAll: () => {
+        setDroneDetailOpen(false);
+        setDroneDialogOpen(false);
+        setEquipmentDetailOpen(false);
+        setEquipmentDialogOpen(false);
+        setDronetagDialogOpen(false);
+        setDronetagDetailOpen(false);
+        setPersonCompetencyDialogOpen(false);
+        setPersonnelDialogOpen(false);
+      },
+      openFirstDrone: () => {
+        if (drones[0]) { setSelectedDrone(drones[0]); setDroneDetailOpen(true); }
+      },
+      openDroneLogbook: () => {
+        const btn = document.querySelector('[data-tour="drone-detail-logbok"]') as HTMLElement | null;
+        btn?.click();
+      },
+      closeDroneLogbook: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      },
+      openAddDrone: () => setDroneDialogOpen(true),
+      openFirstEquipment: () => {
+        if (equipment[0]) { setSelectedEquipment(equipment[0]); setEquipmentDetailOpen(true); }
+      },
+      openEquipmentLogbook: () => {
+        const btn = document.querySelector('[data-tour="equipment-detail-logbok"]') as HTMLElement | null;
+        btn?.click();
+      },
+      closeEquipmentLogbook: () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      },
+      openAddEquipment: () => setEquipmentDialogOpen(true),
+      openAddDronetag: () => setDronetagDialogOpen(true),
+      openFirstPerson: () => {
+        if (personnel[0]) { setSelectedPerson(personnel[0]); setPersonCompetencyDialogOpen(true); }
+      },
+      openAddCompetency: () => setPersonnelDialogOpen(true),
+    };
+    return () => { delete (window as any).__avisafeResourcesTour; };
+  }, [drones, equipment, personnel]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -421,20 +466,20 @@ const Resources = () => {
         <main className="w-full px-3 sm:px-4 py-4 sm:py-6 flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0 lg:flex-1 lg:items-stretch lg:overflow-hidden">
             {/* Droner/Fly Section */}
-            <GlassCard className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
+            <GlassCard data-tour="resources-drone-section" className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Plane className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-semibold">{terminology.vehicles}</h2>
                 </div>
-                <Button onClick={() => setDroneDialogOpen(true)} size="sm" className="gap-2">
+                <Button data-tour="resources-drone-add" onClick={() => setDroneDialogOpen(true)} size="sm" className="gap-2">
                   <Plus className="w-4 h-4" />
                   {t('actions.add')}
                 </Button>
               </div>
               
               {/* Search field */}
-              <div className="relative mb-4">
+              <div data-tour="resources-drone-search" className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder={`Søk etter ${terminology.vehicleLower}modell eller registrering...`}
@@ -445,7 +490,7 @@ const Resources = () => {
               </div>
 
               {/* Filters */}
-              <div className="flex gap-2 mb-4">
+              <div data-tour="resources-drone-filters" className="flex gap-2 mb-4">
                 <Select value={droneModelFilter} onValueChange={setDroneModelFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
                     <SelectValue placeholder="Modell" />
@@ -502,9 +547,10 @@ const Resources = () => {
                     }
                     return 0;
                   })
-                  .map((drone) => (
+                  .map((drone, _droneIdx) => (
                   <div 
                     key={drone.id} 
+                    data-tour={_droneIdx === 0 ? "resources-drone-card" : undefined}
                     className="p-3 bg-background/50 rounded-lg border border-border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 hover:bg-background/70"
                     onClick={() => {
                       setSelectedDrone(drone);
@@ -560,18 +606,18 @@ const Resources = () => {
             </GlassCard>
 
             {/* Utstyr Section */}
-            <GlassCard className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
+            <GlassCard data-tour="resources-equipment-section" className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Gauge className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-semibold">{t('resources.equipment')}</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={() => setEquipmentDialogOpen(true)} size="sm" className="gap-2">
+                  <Button data-tour="resources-equipment-add" onClick={() => setEquipmentDialogOpen(true)} size="sm" className="gap-2">
                     <Plus className="w-4 h-4" />
                     {t('actions.add')}
                   </Button>
-                  <Button onClick={() => setDronetagDialogOpen(true)} size="sm" variant="outline" className="gap-1">
+                  <Button data-tour="resources-equipment-dronetag" onClick={() => setDronetagDialogOpen(true)} size="sm" variant="outline" className="gap-1">
                     <Radio className="w-4 h-4" />
                     DroneTag
                   </Button>
@@ -590,7 +636,7 @@ const Resources = () => {
               </div>
 
               {/* Filters */}
-              <div className="flex gap-2 mb-4">
+              <div data-tour="resources-equipment-filters" className="flex gap-2 mb-4">
                 <Select value={equipmentTypeFilter} onValueChange={setEquipmentTypeFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
                     <SelectValue placeholder="Kategori" />
@@ -646,9 +692,10 @@ const Resources = () => {
                     }
                     return true;
                   })
-                  .map((item) => (
+                  .map((item, _eqIdx) => (
                   <div 
                     key={item.id} 
+                    data-tour={_eqIdx === 0 ? "resources-equipment-card" : undefined}
                     className="p-3 bg-background/50 rounded-lg border border-border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 hover:bg-background/70"
                     onClick={() => {
                       setSelectedEquipment(item);
@@ -755,13 +802,14 @@ const Resources = () => {
             </GlassCard>
 
             {/* Personell Section */}
-            <GlassCard className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
+            <GlassCard data-tour="resources-personnel-section" className="lg:flex lg:flex-col lg:h-full lg:overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-semibold">{t('resources.personnel')}</h2>
                 </div>
                 <Button
+                  data-tour="resources-personnel-add"
                   onClick={() => setPersonnelDialogOpen(true)}
                   size="sm"
                   className="gap-2"
@@ -783,7 +831,7 @@ const Resources = () => {
               </div>
 
               {/* Filters */}
-              <div className="flex gap-2 mb-4">
+              <div data-tour="resources-personnel-filters" className="flex gap-2 mb-4">
                 <Select value={personnelRoleFilter} onValueChange={setPersonnelRoleFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
                     <SelectValue placeholder="Rolle" />
@@ -824,9 +872,10 @@ const Resources = () => {
                     if (personnelStatusFilter !== "alle" && getPersonStatus(person) !== personnelStatusFilter) return false;
                     return true;
                   })
-                  .map((person) => (
+                  .map((person, _pIdx) => (
                   <div 
                     key={person.id} 
+                    data-tour={_pIdx === 0 ? "resources-personnel-card" : undefined}
                     className="p-3 bg-background/50 rounded-lg border border-border cursor-pointer hover:bg-accent/20 hover:border-accent transition-all duration-200 min-w-0 overflow-hidden"
                     onClick={() => {
                       setSelectedPerson(person);
