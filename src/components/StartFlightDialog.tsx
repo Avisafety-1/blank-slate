@@ -960,7 +960,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               </div>
             )}
 
-            <div className="space-y-2">
+            <div data-tour="start-flight-mission" className="space-y-2">
               <Label htmlFor="mission-select">{t('flight.selectMission')}</Label>
               <Select value={selectedMissionId} onValueChange={setSelectedMissionId}>
                 <SelectTrigger id="mission-select">
