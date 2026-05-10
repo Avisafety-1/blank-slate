@@ -672,9 +672,62 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             </RadioGroup>
           </div>
 
-          {courseType === "guided_tour" && (
+          {courseType === "guided_tour" && isNewCourse && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Velg veiledede gjennomganger *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setTourIds(
+                      tourIds.length === assignableTours.length
+                        ? []
+                        : assignableTours.map((t) => t.id)
+                    )
+                  }
+                >
+                  {tourIds.length === assignableTours.length ? "Fjern alle" : "Velg alle"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Velg én eller flere. Det opprettes ett kurs per tour, og tittel/beskrivelse fylles ut automatisk.
+              </p>
+              <div className="rounded-md border divide-y">
+                {assignableTours.map((t) => {
+                  const checked = tourIds.includes(t.id);
+                  return (
+                    <label
+                      key={t.id}
+                      className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) =>
+                          setTourIds((prev) =>
+                            v ? [...prev, t.id] : prev.filter((x) => x !== t.id)
+                          )
+                        }
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">{t.title}</div>
+                        <div className="text-xs text-muted-foreground">{t.description}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              {tourIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">{tourIds.length} valgt</p>
+              )}
+            </div>
+          )}
+
+          {courseType === "guided_tour" && !isNewCourse && (
             <div>
-              <Label>Velg veiledet gjennomgang *</Label>
+              <Label>Veiledet gjennomgang *</Label>
               <Select value={tourId} onValueChange={setTourId}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Velg en tour…" />
@@ -693,14 +746,18 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             </div>
           )}
 
-          <div>
-            <Label>Tittel *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Navn på kurset" />
-          </div>
-          <div>
-            <Label>Beskrivelse</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Valgfri beskrivelse" rows={3} />
-          </div>
+          {!(courseType === "guided_tour" && isNewCourse) && (
+            <>
+              <div>
+                <Label>Tittel *</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Navn på kurset" />
+              </div>
+              <div>
+                <Label>Beskrivelse</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Valgfri beskrivelse" rows={3} />
+              </div>
+            </>
+          )}
           <div className="grid grid-cols-2 gap-4">
             {courseType === "normal" && (
               <div>
