@@ -1020,7 +1020,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             )}
             </div>
 
-            <div className="space-y-3">
+            <div data-tour="start-flight-publish-mode" className="space-y-3">
               <Label>{t('flight.safeskyPublishing')}</Label>
               <RadioGroup value={publishMode} onValueChange={(val) => setPublishMode(val as PublishMode)}>
                 <label 
