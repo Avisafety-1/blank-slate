@@ -576,25 +576,27 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </Popover>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tittel">Tittel *</Label>
-            <Input
-              id="tittel"
-              value={formData.tittel}
-              onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
-              placeholder="Kort beskrivelse av hendelsen"
-            />
-          </div>
+          <div className="space-y-4" data-tour="incident-title-desc">
+            <div className="space-y-2">
+              <Label htmlFor="tittel">Tittel *</Label>
+              <Input
+                id="tittel"
+                value={formData.tittel}
+                onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
+                placeholder="Kort beskrivelse av hendelsen"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="beskrivelse">Beskrivelse</Label>
-            <Textarea
-              id="beskrivelse"
-              value={formData.beskrivelse}
-              onChange={(e) => setFormData({ ...formData, beskrivelse: e.target.value })}
-              placeholder="Detaljert beskrivelse av hendelsen..."
-              rows={4}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="beskrivelse">Beskrivelse</Label>
+              <Textarea
+                id="beskrivelse"
+                value={formData.beskrivelse}
+                onChange={(e) => setFormData({ ...formData, beskrivelse: e.target.value })}
+                placeholder="Detaljert beskrivelse av hendelsen..."
+                rows={4}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
