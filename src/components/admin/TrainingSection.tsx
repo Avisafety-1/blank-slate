@@ -175,7 +175,8 @@ export const TrainingSection = () => {
       }
       return;
     }
-    if ((course.question_count || 0) === 0) {
+    const isGuidedTour = (course as any).display_mode === "guided_tour" || !!(course as any).tour_id;
+    if (!isGuidedTour && (course.question_count || 0) === 0) {
       toast.error("Kurset må ha minst ett spørsmål for å publiseres");
       return;
     }
