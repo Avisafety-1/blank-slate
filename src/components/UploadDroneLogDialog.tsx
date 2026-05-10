@@ -3187,7 +3187,9 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
             )}
 
             {/* Pending auto-synced logs */}
-            <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} expanded={!!(selectedPendingLogId && result)} />
+            <div data-tour="upload-log-pending">
+              <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} expanded={!!(selectedPendingLogId && result)} />
+            </div>
             </div>
 
             {/* Right panel: result details (split view) */}
