@@ -298,15 +298,16 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           : null;
 
         try {
+          const isGuidedTour = (course as any)?.display_mode === "guided_tour";
           const { data: compData, error: compErr } = await supabase
             .from("personnel_competencies")
             .insert({
               profile_id: user.id,
-              type: "Kurs",
+              type: isGuidedTour ? "Veiledet tour" : "Kurs",
               navn: course.title,
               utstedt_dato: now.toISOString().split("T")[0],
               utloper_dato: expiresAt ? expiresAt.toISOString().split("T")[0] : null,
-              påvirker_status: true,
+              påvirker_status: !isGuidedTour,
             })
             .select("id")
             .single();
