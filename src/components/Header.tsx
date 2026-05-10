@@ -263,7 +263,7 @@ export const Header = () => {
                 <PendingApprovalsBadge isAdmin={isAdmin} />
               </Button>
             )}
-            <StartTourButton variant="icon" className="h-8 w-8 p-0" />
+            
             <span data-tour="nav-profile"><ProfileDialog /></span>
             <Button
               variant="ghost"
