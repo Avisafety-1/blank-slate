@@ -78,21 +78,42 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       // Sikkerhetsnett: fjern eventuelle gjenværende driver.js-noder og klasser
       // som kan etterlate siden i "låst" tilstand.
       try {
-        document.querySelectorAll(
-          ".driver-overlay, .driver-popover, .driver-stage, .driver-active-element"
+        // Fjern alle driver.js-noder (overlay, stage, popover, page-overlay,
+        // høydepunkt-wrapper m.m.) — bruk bred matcher.
+        document.querySelectorAll<HTMLElement>(
+          '[class*="driver-"], #driver-page-overlay, #driver-popover-item, .driver-overlay, .driver-popover, .driver-stage'
         ).forEach((n) => {
-          if (n.classList.contains("driver-active-element")) {
-            n.classList.remove("driver-active-element");
-          } else {
+          // Klasse-rester på "ekte" innholdselementer skal kun ryddes — ikke fjernes.
+          const isOwnNode =
+            n.classList.contains("driver-overlay") ||
+            n.classList.contains("driver-popover") ||
+            n.classList.contains("driver-stage") ||
+            n.id === "driver-page-overlay" ||
+            n.id === "driver-popover-item";
+          if (isOwnNode) {
             n.remove();
+          } else {
+            n.classList.remove(
+              "driver-active-element",
+              "driver-highlighted-element",
+              "driver-fade",
+              "driver-active"
+            );
           }
         });
       } catch {}
-      // Hvis Radix Dialog/Portal har låst body — slipp pointer-events fri
-      if (document.body.style.pointerEvents === "none") {
-        document.body.style.pointerEvents = "";
+      // Fjern globale klasser/attributter som driver.js setter på html/body.
+      for (const root of [document.documentElement, document.body]) {
+        root.classList.remove("driver-active", "driver-fade", "driver-active-element", "driver-highlighted-element");
+        // Nullstill inline-stiler driver.js kan ha satt.
+        if (root.style.pointerEvents) root.style.pointerEvents = "";
+        if (root.style.overflow === "hidden") root.style.overflow = "";
+        if (root.style.position === "fixed") root.style.position = "";
+        // Fjern eventuelle data-driver-* attributter.
+        Array.from(root.attributes)
+          .filter((a) => a.name.startsWith("data-driver"))
+          .forEach((a) => root.removeAttribute(a.name));
       }
-      document.documentElement.style.pointerEvents = "";
     };
 
     // Destroy any previous tour cleanly first.
@@ -106,8 +127,11 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       try { d.destroy(); } catch {}
       driverRef.current = null;
       cleanupTourUi();
-      // Andre runde – noen noder kan dukke opp igjen rett etter destroy
-      setTimeout(cleanupTourUi, 50);
+      // Driver.js kjører noe opprydding asynkront — kjør flere passeringer
+      // så vi sikkert fanger overlay/klasser som dukker opp etter destroy.
+      requestAnimationFrame(cleanupTourUi);
+      setTimeout(cleanupTourUi, 100);
+      setTimeout(cleanupTourUi, 300);
       if (markComplete) {
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
