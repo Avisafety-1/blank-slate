@@ -127,8 +127,11 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       try { d.destroy(); } catch {}
       driverRef.current = null;
       cleanupTourUi();
-      // Andre runde – noen noder kan dukke opp igjen rett etter destroy
-      setTimeout(cleanupTourUi, 50);
+      // Driver.js kjører noe opprydding asynkront — kjør flere passeringer
+      // så vi sikkert fanger overlay/klasser som dukker opp etter destroy.
+      requestAnimationFrame(cleanupTourUi);
+      setTimeout(cleanupTourUi, 100);
+      setTimeout(cleanupTourUi, 300);
       if (markComplete) {
         const completed = readCompleted();
         if (!completed.includes(tourId)) writeCompleted([...completed, tourId]);
