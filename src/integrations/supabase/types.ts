@@ -1025,6 +1025,68 @@ export type Database = {
         }
         Relationships: []
       }
+      dji_sync_jobs: {
+        Row: {
+          attempts: number
+          company_id: string
+          created_at: string
+          dji_log_id: string
+          download_url: string | null
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          locked_until: string | null
+          payload: Json
+          scheduled_at: string
+          status: string
+          step_durations: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          company_id: string
+          created_at?: string
+          dji_log_id: string
+          download_url?: string | null
+          id?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          locked_until?: string | null
+          payload?: Json
+          scheduled_at?: string
+          status?: string
+          step_durations?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string
+          created_at?: string
+          dji_log_id?: string
+          download_url?: string | null
+          id?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          locked_until?: string | null
+          payload?: Json
+          scheduled_at?: string
+          status?: string
+          step_durations?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dji_sync_jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_folder_items: {
         Row: {
           added_at: string | null
@@ -5712,6 +5774,32 @@ export type Database = {
           zone_type: string
         }[]
       }
+      claim_dji_sync_jobs: {
+        Args: { _limit: number }
+        Returns: {
+          attempts: number
+          company_id: string
+          created_at: string
+          dji_log_id: string
+          download_url: string | null
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          locked_until: string | null
+          payload: Json
+          scheduled_at: string
+          status: string
+          step_durations: Json | null
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "dji_sync_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -6045,6 +6133,32 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      retry_dji_sync_job: {
+        Args: { _job_id: string }
+        Returns: {
+          attempts: number
+          company_id: string
+          created_at: string
+          dji_log_id: string
+          download_url: string | null
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          locked_until: string | null
+          payload: Json
+          scheduled_at: string
+          status: string
+          step_durations: Json | null
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "dji_sync_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_fh2_token: {
         Args: { p_company_id: string; p_key: string; p_token: string }
         Returns: undefined
