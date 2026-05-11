@@ -108,6 +108,12 @@ verify_jwt = false
 [functions.dji-auto-sync]
 verify_jwt = false
 
+[functions.dji-sync-enqueue]
+verify_jwt = false
+
+[functions.dji-sync-worker]
+verify_jwt = false
+
 [functions.send-calendar-link]
 verify_jwt = false
 
