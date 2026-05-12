@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RouteData, SoraSettings } from "@/types/map";
 import { generateDJIKMZ, type DJIExportOptions, DJI_DRONE_MODELS, matchDjiDroneModel } from "@/lib/kmzExport";
-import { bufferPolyline, bufferPolygon, computeConvexHull } from "@/lib/soraGeometry";
+import { bufferPolygon, computeConvexHull, mergeBufferedCorridorPolygons, normalizePolygon } from "@/lib/soraGeometry";
 
 interface FlightHub2SendDialogProps {
   open: boolean;
