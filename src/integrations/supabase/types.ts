@@ -992,6 +992,7 @@ export type Database = {
       dji_credentials: {
         Row: {
           auto_sync_enabled: boolean | null
+          company_id: string | null
           created_at: string | null
           dji_account_id: string | null
           dji_email: string
@@ -1003,6 +1004,7 @@ export type Database = {
         }
         Insert: {
           auto_sync_enabled?: boolean | null
+          company_id?: string | null
           created_at?: string | null
           dji_account_id?: string | null
           dji_email: string
@@ -1014,6 +1016,7 @@ export type Database = {
         }
         Update: {
           auto_sync_enabled?: boolean | null
+          company_id?: string | null
           created_at?: string | null
           dji_account_id?: string | null
           dji_email?: string
@@ -1023,7 +1026,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dji_credentials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dji_sync_jobs: {
         Row: {

@@ -40,21 +40,35 @@ interface CredRow {
   dji_password_encrypted: string;
   dji_account_id: string | null;
   last_sync_at: string | null;
+  company_id: string | null;
 }
 
 async function enqueueForUser(
   serviceClient: any,
   cred: CredRow,
 ): Promise<{ user_id: string; jobs_added: number; skipped: number; error?: string }> {
-  // Resolve company + dronelog key
-  const { data: profile } = await serviceClient
-    .from("profiles").select("company_id").eq("id", cred.user_id).maybeSingle();
-  if (!profile?.company_id) return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "no profile" };
+  // Resolve company: prefer the company pinned on the credential (set when the user
+  // saved their DJI login). Fall back to profile.company_id only if not yet pinned.
+  // This prevents superadmins who have switched active company from causing logs
+  // to be assigned to the wrong company during a cron run.
+  let resolvedCompanyId = cred.company_id;
+  if (!resolvedCompanyId) {
+    const { data: profile } = await serviceClient
+      .from("profiles").select("company_id").eq("id", cred.user_id).maybeSingle();
+    resolvedCompanyId = profile?.company_id || null;
+    if (resolvedCompanyId) {
+      // Backfill so future runs are stable
+      await serviceClient.from("dji_credentials")
+        .update({ company_id: resolvedCompanyId })
+        .eq("user_id", cred.user_id);
+    }
+  }
+  if (!resolvedCompanyId) return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "no company pinned" };
 
   const { data: company } = await serviceClient
     .from("companies")
     .select("id, navn, dronelog_api_key, dji_sync_from_date, dji_flightlog_enabled")
-    .eq("id", profile.company_id).maybeSingle();
+    .eq("id", resolvedCompanyId).maybeSingle();
   if (!company || !company.dji_flightlog_enabled) {
     return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "dji not enabled" };
   }
@@ -197,7 +211,7 @@ Deno.serve(async (req) => {
     // Resolve credentials list
     let credsQuery = serviceClient
       .from("dji_credentials")
-      .select("user_id, dji_email, dji_password_encrypted, dji_account_id, last_sync_at");
+      .select("user_id, dji_email, dji_password_encrypted, dji_account_id, last_sync_at, company_id");
     if (userId) credsQuery = credsQuery.eq("user_id", userId);
     else credsQuery = credsQuery.eq("auto_sync_enabled", true)
       .order("last_sync_at", { ascending: true, nullsFirst: true })
