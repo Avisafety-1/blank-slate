@@ -87,13 +87,14 @@ export const FlightHub2SendDialog = ({
       coords[0].lat === coords[coords.length - 1].lat &&
       coords[0].lng === coords[coords.length - 1].lng;
 
-    const makeBuffer = (dist: number) => {
-      if (dist <= 0) return null;
+    const makeBuffer = (dist: number): Array<Array<{ lat: number; lng: number }>> => {
+      if (dist <= 0) return [];
       if (mode === "convexHull" || isClosedRoute) {
         const hull = computeConvexHull(coords);
-        return bufferPolygon(hull, dist, refPoint, avgLat);
+        const ring = bufferPolygon(hull, dist, refPoint, avgLat);
+        return normalizePolygon(ring);
       }
-      return bufferPolyline(coords, dist, 16, refPoint, avgLat);
+      return mergeBufferedCorridorPolygons(coords, dist, 16, refPoint, avgLat);
     };
 
     const fgDist = soraSettings.flightGeographyDistance;
@@ -104,10 +105,10 @@ export const FlightHub2SendDialog = ({
     const contingency = makeBuffer(contDist);
     const groundRisk = makeBuffer(grDist);
 
-    const zones: Array<{ key: string; label: string; color: string; coords: Array<{ lat: number; lng: number }> }> = [];
-    if (flightGeo && flightGeo.length >= 3) zones.push({ ...SORA_ZONES[0], coords: flightGeo });
-    if (contingency && contingency.length >= 3) zones.push({ ...SORA_ZONES[1], coords: contingency });
-    if (groundRisk && groundRisk.length >= 3) zones.push({ ...SORA_ZONES[2], coords: groundRisk });
+    const zones: Array<{ key: string; label: string; color: string; polygons: Array<Array<{ lat: number; lng: number }>> }> = [];
+    if (flightGeo.length > 0) zones.push({ ...SORA_ZONES[0], polygons: flightGeo });
+    if (contingency.length > 0) zones.push({ ...SORA_ZONES[1], polygons: contingency });
+    if (groundRisk.length > 0) zones.push({ ...SORA_ZONES[2], polygons: groundRisk });
 
     return zones.length > 0 ? zones : null;
   }, [route.coordinates, soraSettings]);
