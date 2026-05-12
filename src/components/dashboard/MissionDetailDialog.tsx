@@ -379,33 +379,39 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             </div>
           )}
 
-          {currentMission.latitude && currentMission.longitude && (
-            <div className="border-t border-border pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-muted-foreground">Kartvisning</p>
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setExpandedMapOpen(true)}>
-                  <Maximize2 className="w-3.5 h-3.5 mr-1" />
-                  Utvid
-                </Button>
+          {(() => {
+            const routeCoords = (currentMission.route as any)?.coordinates;
+            const effectiveLat = currentMission.latitude ?? routeCoords?.[0]?.lat;
+            const effectiveLng = currentMission.longitude ?? routeCoords?.[0]?.lng;
+            if (!effectiveLat || !effectiveLng) return null;
+            return (
+              <div className="border-t border-border pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-muted-foreground">Kartvisning</p>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setExpandedMapOpen(true)}>
+                    <Maximize2 className="w-3.5 h-3.5 mr-1" />
+                    Utvid
+                  </Button>
+                </div>
+                <div
+                  className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                  onClick={() => setExpandedMapOpen(true)}
+                >
+                  <MissionMapPreview
+                    latitude={effectiveLat}
+                    longitude={effectiveLng}
+                    route={currentMission.route as any}
+                    notam={currentMission.notam_text ? {
+                      lat: currentMission.notam_center_lat_wgs84 ?? effectiveLat,
+                      lng: currentMission.notam_center_lon_wgs84 ?? effectiveLng,
+                      radiusNm: currentMission.notam_radius_nm ?? 0.5,
+                      text: currentMission.notam_text,
+                    } : null}
+                  />
+                </div>
               </div>
-              <div 
-                className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                onClick={() => setExpandedMapOpen(true)}
-              >
-                <MissionMapPreview
-                  latitude={currentMission.latitude}
-                  longitude={currentMission.longitude}
-                  route={currentMission.route as any}
-                  notam={currentMission.notam_text ? {
-                    lat: currentMission.notam_center_lat_wgs84 ?? currentMission.latitude,
-                    lng: currentMission.notam_center_lon_wgs84 ?? currentMission.longitude,
-                    radiusNm: currentMission.notam_radius_nm ?? 0.5,
-                    text: currentMission.notam_text,
-                  } : null}
-                />
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {currentMission.beskrivelse && (
             <div className="border-t border-border pt-4">
