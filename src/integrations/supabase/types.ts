@@ -3980,6 +3980,7 @@ export type Database = {
           enabled: boolean
           errors_per_ip_per_10m: number
           id: number
+          latency_excluded_function_ids: string[]
           latency_p95_alert_enabled: boolean
           rate_limit_per_10m: number
           recipient_emails: string[]
@@ -3995,6 +3996,7 @@ export type Database = {
           enabled?: boolean
           errors_per_ip_per_10m?: number
           id?: number
+          latency_excluded_function_ids?: string[]
           latency_p95_alert_enabled?: boolean
           rate_limit_per_10m?: number
           recipient_emails?: string[]
@@ -4010,6 +4012,7 @@ export type Database = {
           enabled?: boolean
           errors_per_ip_per_10m?: number
           id?: number
+          latency_excluded_function_ids?: string[]
           latency_p95_alert_enabled?: boolean
           rate_limit_per_10m?: number
           recipient_emails?: string[]

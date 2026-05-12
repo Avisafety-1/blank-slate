@@ -128,6 +128,10 @@ Deno.serve(async (req) => {
     findings.auth_failures_10m = authFails;
 
     // 4) Latency p95 per edge function siste 10 min
+    const excludedIds: string[] = Array.isArray(cfg.latency_excluded_function_ids) ? cfg.latency_excluded_function_ids : [];
+    const excludeClause = excludedIds.length > 0
+      ? `and m.function_id not in (${excludedIds.map((id) => `'${String(id).replace(/'/g, "''")}'`).join(",")})`
+      : "";
     const latencySql = `
       select m.function_id,
              approx_quantiles(m.execution_time_ms, 100)[offset(95)] as p95_ms,
@@ -136,6 +140,7 @@ Deno.serve(async (req) => {
       cross join unnest(metadata) as m
       where function_edge_logs.timestamp > timestamp_sub(current_timestamp(), interval 10 minute)
         and m.execution_time_ms is not null
+        ${excludeClause}
       group by m.function_id
       having approx_quantiles(m.execution_time_ms, 100)[offset(95)] >= ${Number(cfg.edge_p95_ms ?? 10000)}
       order by p95_ms desc
