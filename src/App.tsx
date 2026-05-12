@@ -109,7 +109,7 @@ const AuthenticatedLayout = () => {
   if (!profileLoaded && !everLoaded) {
     return <Outlet />;
   }
-  if (!isApproved && !isOfflineWithSession && !everLoaded) {
+  if (!isApproved && !isOfflineWithSession) {
     return <Outlet />;
   }
   
