@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
     // Resolve credentials list
     let credsQuery = serviceClient
       .from("dji_credentials")
-      .select("user_id, dji_email, dji_password_encrypted, dji_account_id, last_sync_at");
+      .select("user_id, dji_email, dji_password_encrypted, dji_account_id, last_sync_at, company_id");
     if (userId) credsQuery = credsQuery.eq("user_id", userId);
     else credsQuery = credsQuery.eq("auto_sync_enabled", true)
       .order("last_sync_at", { ascending: true, nullsFirst: true })
