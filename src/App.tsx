@@ -77,7 +77,13 @@ const AuthenticatedLayout = () => {
   const { user, loading, isApproved, profileLoaded, authRefreshing } = useAuth();
   const location = useLocation();
   useForceReload();
-  
+
+  // Track whether profile has EVER been loaded in this session.
+  // Once true, we never demount Header/SubscriptionGate just because a
+  // background refresh momentarily flips state.
+  const hasLoadedOnceRef = React.useRef(false);
+  if (profileLoaded) hasLoadedOnceRef.current = true;
+  const everLoaded = hasLoadedOnceRef.current;
 
   // Prefetch common lazy-loaded pages after initial render
   useEffect(() => {
@@ -93,17 +99,17 @@ const AuthenticatedLayout = () => {
     }, 2000);
     return () => clearTimeout(timer);
   }, []);
-  
+
   // Keep showing header during auth refresh — don't flash to blank screen.
   // A transient null user during token refresh should NOT hide the UI.
   const isOfflineWithSession = !navigator.onLine && user && !isApproved;
   if (loading || (!user && !authRefreshing)) {
     return <Outlet />;
   }
-  if (!profileLoaded) {
+  if (!profileLoaded && !everLoaded) {
     return <Outlet />;
   }
-  if (!isApproved && !isOfflineWithSession) {
+  if (!isApproved && !isOfflineWithSession && !everLoaded) {
     return <Outlet />;
   }
   
