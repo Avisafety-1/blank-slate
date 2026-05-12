@@ -215,6 +215,77 @@ serve(async (req) => {
     }
     totalEmails += sent;
 
+    // Tier 3 (T-4t): also notify mission personnel that approval is still pending
+    let personnelSent = 0;
+    if (tier === 3) {
+      const { data: personnel } = await supabase
+        .from('mission_personnel')
+        .select('profile_id')
+        .eq('mission_id', mission.id);
+      const personnelIds = [...new Set((personnel || []).map((p: any) => p.profile_id).filter(Boolean))];
+
+      if (personnelIds.length > 0) {
+        // Build approvers list (name + email) from eligible approvers
+        const approverIds = eligible.map((a: any) => a.id);
+        const { data: approverProfileNames } = approverIds.length
+          ? await supabase.from('profiles').select('id, navn').in('id', approverIds)
+          : { data: [] as any[] };
+        const nameById = new Map((approverProfileNames || []).map((p: any) => [p.id, p.navn || '']));
+        const approverEntries: string[] = [];
+        for (const aid of approverIds) {
+          const { data: { user } } = await supabase.auth.admin.getUserById(aid);
+          const name = nameById.get(aid) || user?.email || 'Godkjenner';
+          const email = user?.email;
+          approverEntries.push(email ? `${escapeHtml(name)} (<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>)` : escapeHtml(name));
+        }
+        const approversList = approverEntries.length
+          ? approverEntries.join('<br>')
+          : 'selskapets administrator';
+
+        const personnelTpl = await getEmailTemplateWithFallback(mission.company_id, 'mission_pending_approval_personnel', {
+          mission_title: mission.tittel,
+          mission_location: mission.lokasjon || 'Ikke oppgitt',
+          mission_date: missionDate,
+          company_name: company?.navn || '',
+          approvers_list: approversList,
+          hours_until: formatHours(hoursUntil),
+        });
+
+        let pSubject = personnelTpl.subject;
+        let pHtml = personnelTpl.content;
+        if (!pHtml) {
+          pSubject = `Ditt oppdrag «${mission.tittel}» er ikke godkjent ennå`;
+          pHtml = `<html><head><meta charset="utf-8"></head><body>
+            <h2>Oppdraget ditt mangler godkjenning</h2>
+            <p>Hei! Vi ser at ditt oppdrag <strong>${escapeHtml(mission.tittel)}</strong> (${escapeHtml(missionDate)}, ${escapeHtml(mission.lokasjon || 'Ikke oppgitt')}) ennå ikke er godkjent — det starter ${formatHours(hoursUntil)}.</p>
+            <p>Vi har sendt påminnelse til:</p>
+            <p>${approversList}</p>
+            <p>Ta eventuelt direkte kontakt for å få oppdraget godkjent før start.</p>
+          </body></html>`;
+        }
+
+        // Filter on email_mission_approval preference
+        const { data: pPrefs } = await supabase
+          .from('notification_preferences')
+          .select('user_id')
+          .in('user_id', personnelIds)
+          .eq('email_mission_approval', true);
+        const pNotifyIds = (pPrefs || []).map((p: any) => p.user_id);
+
+        for (const userId of pNotifyIds) {
+          const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+          if (!user?.email) continue;
+          try {
+            await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(pSubject), html: pHtml });
+            personnelSent++;
+          } catch (e) {
+            console.error('[approval-reminders] personnel send failed', user.email, e);
+          }
+        }
+        totalEmails += personnelSent;
+      }
+    }
+
     await supabase.from('mission_approval_reminders').insert(
       [...tiersToMark, tier].map((t) => ({
         mission_id: mission.id,
@@ -223,7 +294,7 @@ serve(async (req) => {
       }))
     );
 
-    tiersHandled.push({ mission_id: mission.id, tier, recipients: sent });
+    tiersHandled.push({ mission_id: mission.id, tier, recipients: sent, personnel: personnelSent });
   }
 
   return new Response(JSON.stringify({ checked: missions.length, sent: totalEmails, tiersHandled }), {
