@@ -1047,6 +1047,10 @@ Deno.serve(async (req) => {
         const encryptedB64 = btoa(String.fromCharCode(...iv, ...new Uint8Array(encrypted)));
 
         const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        // Pin credential to the user's current company so cron sync is not affected
+        // by superadmins switching active company later.
+        const { data: profileForPin } = await serviceClient
+          .from("profiles").select("company_id").eq("id", authUser.id).maybeSingle();
         const { error: upsertErr } = await serviceClient
           .from("dji_credentials")
           .upsert({
@@ -1055,6 +1059,7 @@ Deno.serve(async (req) => {
             dji_password_encrypted: encryptedB64,
             dji_account_id: djiAccId || null,
             auto_sync_enabled: autoSyncEnabled === true,
+            company_id: profileForPin?.company_id || null,
             updated_at: new Date().toISOString(),
           }, { onConflict: "user_id" });
 
