@@ -236,24 +236,29 @@ export const FlightHub2SendDialog = ({
 
       if (sendAnnotation && soraZones) {
         for (const zone of soraZones) {
-          const geoJson = buildZoneGeoJson(zone.coords, zone.color);
-          const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
-            body: {
-              action: "create-annotation",
-              projectUuid: selectedProject,
-              name: `${routeName} – ${zone.label}`,
-              desc: `${zone.label} generert av Avisafe. Høyde: ${soraSettings?.flightAltitude || 120}m`,
-              geoJson,
-              annotationType: 2,
-            },
-          });
-          if (error) {
-            console.error(`[FH2] annotation error (${zone.label}):`, error);
-            toast.error(`Annotasjon (${zone.label}): ${error.message}`);
-          } else if (data?.code === 0) {
-            annotationCount++;
-          } else {
-            toast.error(`Annotasjon (${zone.label}): ${data?.message || "Feil"}`);
+          const total = zone.polygons.length;
+          for (let idx = 0; idx < total; idx++) {
+            const polyCoords = zone.polygons[idx];
+            const geoJson = buildZoneGeoJson(polyCoords, zone.color);
+            const partLabel = total > 1 ? ` (${idx + 1}/${total})` : "";
+            const { data, error } = await supabase.functions.invoke("flighthub2-proxy", {
+              body: {
+                action: "create-annotation",
+                projectUuid: selectedProject,
+                name: `${routeName} – ${zone.label}${partLabel}`,
+                desc: `${zone.label} generert av Avisafe. Høyde: ${soraSettings?.flightAltitude || 120}m`,
+                geoJson,
+                annotationType: 2,
+              },
+            });
+            if (error) {
+              console.error(`[FH2] annotation error (${zone.label}${partLabel}):`, error);
+              toast.error(`Annotasjon (${zone.label}${partLabel}): ${error.message}`);
+            } else if (data?.code === 0) {
+              annotationCount++;
+            } else {
+              toast.error(`Annotasjon (${zone.label}${partLabel}): ${data?.message || "Feil"}`);
+            }
           }
         }
       }
