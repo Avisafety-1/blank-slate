@@ -401,8 +401,12 @@ Deno.serve(async (req) => {
       
       if (!route || !route.coordinates || route.coordinates.length < 3) {
         return new Response(
-          JSON.stringify({ error: 'Advisory requires a route with at least 3 points' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            error: 'route_too_few_points',
+            message: 'Advisory requires a route with at least 3 points',
+            pointCount: route?.coordinates?.length ?? 0,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
