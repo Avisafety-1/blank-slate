@@ -683,6 +683,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           return;
         }
         
+        // Check for too few route points - clearer message
+        if (data?.error === 'route_too_few_points') {
+          toast.error('Ruten har for få punkter til å publisere advisory', {
+            description: `Et advisory krever en rute med minst 3 punkter (denne ruten har ${data.pointCount ?? 0}). Legg til flere veipunkter på oppdraget, eller velg "Ingen" / "Live UAV" for å starte flyturen uten advisory.`,
+            duration: 10000,
+          });
+          setLoading(false);
+          return;
+        }
+
         // Check for advisory_too_large (>150 km²) - show info dialog
         if (data?.error === 'advisory_too_large') {
           setAdvisoryAreaKm2(data.areaKm2);
