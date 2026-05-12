@@ -964,12 +964,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!user?.id || !navigator.onLine) return;
 
+    // Columns whose change actually affects auth state. Other column changes
+    // (last_seen, resend_id, signature_url, ...) should NOT trigger a full refresh
+    // since that flips authRefreshing/profileLoaded and causes UI flicker.
+    const RELEVANT_COLUMNS = [
+      'company_id',
+      'approved',
+      'under_training',
+      'training_module_access',
+    ] as const;
+
     const channel = supabase
       .channel(`current-profile-access-${user.id}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
-        () => {
+        (payload: any) => {
+          const oldRow = payload?.old ?? {};
+          const newRow = payload?.new ?? {};
+          // Only refresh if at least one relevant column actually changed.
+          const changed = RELEVANT_COLUMNS.some((col) => {
+            const a = oldRow?.[col];
+            const b = newRow?.[col];
+            return JSON.stringify(a) !== JSON.stringify(b);
+          });
+          if (!changed) {
+            console.log('AuthContext: profile UPDATE on irrelevant columns — skipping refresh');
+            return;
+          }
           refreshAuthState(user.id, 'profile-access-change');
         }
       )
