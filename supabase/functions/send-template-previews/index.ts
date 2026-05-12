@@ -81,12 +81,26 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const user = await requireUser(req);
-    await requireRole(user, ['superadmin']);
+    let cid: string;
+    if (hasValidCronSecret(req)) {
+      const { recipient: r2, company_id: c2 } = await req.json().catch(() => ({}));
+      if (!c2) {
+        // pick any company id
+        const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+        const { data } = await supa.from('companies').select('id').limit(1).maybeSingle();
+        cid = c2 || data?.id;
+      } else {
+        cid = c2;
+      }
+      var recipient = r2 || 'hauggard@gmail.com';
+    } else {
+      const user = await requireUser(req);
+      await requireRole(user, ['superadmin']);
+      const body = await req.json().catch(() => ({}));
+      var recipient = body.recipient || 'hauggard@gmail.com';
+      cid = body.company_id || (await getUserCompanyId(user));
+    }
 
-    const { recipient = 'hauggard@gmail.com', company_id } = await req.json().catch(() => ({}));
-
-    const cid = company_id || (await getUserCompanyId(user));
     const cfg = await getEmailConfig(cid);
     const from = formatSenderAddress(cfg.fromName || 'AviSafe', cfg.fromEmail);
 
