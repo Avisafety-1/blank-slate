@@ -321,6 +321,23 @@ export function mergeBufferedCorridorPolygons(
   return fromClipMultiPolygon(merged);
 }
 
+/**
+ * Normalize an arbitrary polygon ring by running it through polygon-clipping
+ * (union with itself). Removes self-intersections and enforces canonical
+ * orientation. Returns one or more clean polygons.
+ */
+export function normalizePolygon(ring: RoutePoint[]): RoutePoint[][] {
+  if (ring.length < 3) return [];
+  if (ring.some(p => !isFinite(p.lat) || !isFinite(p.lng))) return [];
+  const closed = closeClipRing(ring);
+  try {
+    const merged = polygonClipping.union([[closed]]);
+    return fromClipMultiPolygon(merged);
+  } catch {
+    return [];
+  }
+}
+
 export function renderSoraZones(
   coordinates: RoutePoint[],
   sora: SoraSettings,
