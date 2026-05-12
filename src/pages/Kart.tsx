@@ -82,7 +82,7 @@ export default function KartPage() {
   const [soraDensityResult, setSoraDensityResult] = useState<SoraPopulationDensityResult | null>(null);
   const [soraDensityLoading, setSoraDensityLoading] = useState(false);
   const soraDensityCacheRef = useRef<Map<string, SoraPopulationDensityResult>>(new Map());
-  const [soraOpen, setSoraOpen] = useState(true);
+  const [soraOpen, setSoraOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 640 : true);
   const [adjacentOpen, setAdjacentOpen] = useState(false);
 
   // Fetch drone model name when soraDroneId changes
