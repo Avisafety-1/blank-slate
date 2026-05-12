@@ -63,6 +63,20 @@ async function enqueueForUser(
         .eq("user_id", cred.user_id);
     }
   }
+
+  // Superadmins (Avisafe-ansatte) kan bytte selskap – tving alltid deres DJI-logger til Avisafe
+  // for å hindre at logger havner i feil kundeselskap når de står aktivt der.
+  const AVISAFE_COMPANY_ID = "a6698b2d-8464-4f88-9bc4-ebcc072f629d";
+  const { data: superRow } = await serviceClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", cred.user_id)
+    .eq("role", "superadmin")
+    .maybeSingle();
+  if (superRow) {
+    resolvedCompanyId = AVISAFE_COMPANY_ID;
+  }
+
   if (!resolvedCompanyId) return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "no company pinned" };
 
   const { data: company } = await serviceClient
