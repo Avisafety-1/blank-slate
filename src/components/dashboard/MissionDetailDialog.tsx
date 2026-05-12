@@ -491,25 +491,31 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       onSoraSaved={onMissionUpdated}
     />
 
-    {currentMission.latitude && currentMission.longitude && (
-      <ExpandedMapDialog
-        open={expandedMapOpen}
-        onOpenChange={setExpandedMapOpen}
-        latitude={currentMission.latitude}
-        longitude={currentMission.longitude}
-        route={currentMission.route as any}
-        flightTracks={memoizedFlightTracks}
-        missionTitle={currentMission.tittel}
-        missionId={currentMission.id}
-        onSoraUpdated={onMissionUpdated}
-        notam={currentMission.notam_text ? {
-          lat: currentMission.notam_center_lat_wgs84 ?? currentMission.latitude,
-          lng: currentMission.notam_center_lon_wgs84 ?? currentMission.longitude,
-          radiusNm: currentMission.notam_radius_nm ?? 0.5,
-          text: currentMission.notam_text,
-        } : null}
-      />
-    )}
+    {(() => {
+      const routeCoords = (currentMission.route as any)?.coordinates;
+      const effectiveLat = currentMission.latitude ?? routeCoords?.[0]?.lat;
+      const effectiveLng = currentMission.longitude ?? routeCoords?.[0]?.lng;
+      if (!effectiveLat || !effectiveLng) return null;
+      return (
+        <ExpandedMapDialog
+          open={expandedMapOpen}
+          onOpenChange={setExpandedMapOpen}
+          latitude={effectiveLat}
+          longitude={effectiveLng}
+          route={currentMission.route as any}
+          flightTracks={memoizedFlightTracks}
+          missionTitle={currentMission.tittel}
+          missionId={currentMission.id}
+          onSoraUpdated={onMissionUpdated}
+          notam={currentMission.notam_text ? {
+            lat: currentMission.notam_center_lat_wgs84 ?? effectiveLat,
+            lng: currentMission.notam_center_lon_wgs84 ?? effectiveLng,
+            radiusNm: currentMission.notam_radius_nm ?? 0.5,
+            text: currentMission.notam_text,
+          } : null}
+        />
+      );
+    })()}
 
     {/* Approval Confirmation */}
     <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
