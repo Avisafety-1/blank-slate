@@ -68,7 +68,7 @@ async function enqueueForUser(
   const { data: company } = await serviceClient
     .from("companies")
     .select("id, navn, dronelog_api_key, dji_sync_from_date, dji_flightlog_enabled")
-    .eq("id", profile.company_id).maybeSingle();
+    .eq("id", resolvedCompanyId).maybeSingle();
   if (!company || !company.dji_flightlog_enabled) {
     return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "dji not enabled" };
   }
