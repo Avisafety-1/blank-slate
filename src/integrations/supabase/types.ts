@@ -3401,6 +3401,38 @@ export type Database = {
           },
         ]
       }
+      mission_approval_reminders: {
+        Row: {
+          id: string
+          mission_id: string
+          recipients_count: number
+          sent_at: string
+          tier: number
+        }
+        Insert: {
+          id?: string
+          mission_id: string
+          recipients_count?: number
+          sent_at?: string
+          tier: number
+        }
+        Update: {
+          id?: string
+          mission_id?: string
+          recipients_count?: number
+          sent_at?: string
+          tier?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_approval_reminders_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_deviation_reports: {
         Row: {
           category_ids: string[]
