@@ -3,6 +3,8 @@ import { defaultTemplates, replaceTemplateVariables } from "../_shared/template-
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { requireUser, requireRole, getUserCompanyId, authErrorResponse } from "../_shared/auth.ts";
+import { hasValidCronSecret } from "../_shared/cron.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
