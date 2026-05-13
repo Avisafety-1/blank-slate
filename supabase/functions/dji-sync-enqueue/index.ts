@@ -25,7 +25,7 @@ const corsHeaders = {
 };
 
 const MAX_USERS_PER_RUN = 20;
-const STAGGER_MS = 500;
+const USER_CONCURRENCY = 4;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
