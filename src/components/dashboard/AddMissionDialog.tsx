@@ -31,6 +31,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
+import { MissionPublicationSection, PublicationFields } from "@/components/dashboard/MissionPublicationSection";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
