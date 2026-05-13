@@ -32,6 +32,8 @@ import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
 import { MissionPublicationSection, PublicationFields } from "@/components/dashboard/MissionPublicationSection";
+import { MissionConflictWarning } from "@/components/dashboard/MissionConflictWarning";
+import { useMissionMapConflicts } from "@/hooks/useMissionMapConflicts";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
@@ -149,6 +151,15 @@ export const AddMissionDialog = ({
     selectedEquipment,
     selectedPersonnel
   );
+
+  const { conflicts: mapConflicts } = useMissionMapConflicts({
+    enabled: publication.publish_to_map,
+    tidspunkt: formData.tidspunkt,
+    routeData,
+    latitude: formData.latitude,
+    longitude: formData.longitude,
+    excludeMissionId: mission?.id,
+  });
 
   const mentionSuggestions = useMemo(() => {
     if (mentionQuery === null) return [];
@@ -1244,6 +1255,8 @@ export const AddMissionDialog = ({
             </div>
 
           </div>
+
+          <MissionConflictWarning conflicts={mapConflicts} />
 
           <MissionPublicationSection
             values={publication}
