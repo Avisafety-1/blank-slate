@@ -448,27 +448,27 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
       const share = !!row.share_contact_info;
       const showContact = share && !anon;
 
-      const title = escapePopupHtml(
+      const title = escapePlannedHtml(
         row.public_title || (anon ? "Planlagt droneoppdrag" : "Planlagt oppdrag")
       );
-      const desc = row.public_description ? escapePopupHtml(row.public_description) : "";
-      const period = `${formatDateNo(row.starts_at)} – ${formatDateNo(row.ends_at)}`;
+      const desc = row.public_description ? escapePlannedHtml(row.public_description) : "";
+      const period = `${formatPlannedDateNo(row.starts_at)} – ${formatPlannedDateNo(row.ends_at)}`;
 
       const contactRows: string[] = [];
       if (showContact) {
         if (row.public_contact_name) {
           contactRows.push(
-            `<div style="font-size:12px;"><strong>Kontakt:</strong> ${escapePopupHtml(row.public_contact_name)}</div>`
+            `<div style="font-size:12px;"><strong>Kontakt:</strong> ${escapePlannedHtml(row.public_contact_name)}</div>`
           );
         }
         if (row.public_contact_phone) {
           contactRows.push(
-            `<a href="tel:${escapePopupHtml(row.public_contact_phone)}" style="display:inline-block;margin-right:8px;font-size:12px;color:#2563eb;text-decoration:underline;">📞 ${escapePopupHtml(row.public_contact_phone)}</a>`
+            `<a href="tel:${escapePlannedHtml(row.public_contact_phone)}" style="display:inline-block;margin-right:8px;font-size:12px;color:#2563eb;text-decoration:underline;">📞 ${escapePlannedHtml(row.public_contact_phone)}</a>`
           );
         }
         if (row.public_contact_email) {
           contactRows.push(
-            `<a href="mailto:${escapePopupHtml(row.public_contact_email)}" style="display:inline-block;font-size:12px;color:#2563eb;text-decoration:underline;">✉️ ${escapePopupHtml(row.public_contact_email)}</a>`
+            `<a href="mailto:${escapePlannedHtml(row.public_contact_email)}" style="display:inline-block;font-size:12px;color:#2563eb;text-decoration:underline;">✉️ ${escapePlannedHtml(row.public_contact_email)}</a>`
           );
         }
       } else {
@@ -478,7 +478,7 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
       const popupHtml = `
         <div style="min-width:220px;max-width:280px;font-family:inherit;">
           <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${title}</div>
-          <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${escapePopupHtml(period)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${escapePlannedHtml(period)}</div>
           ${desc ? `<div style="font-size:12px;margin-bottom:8px;white-space:pre-wrap;">${desc}</div>` : ""}
           <div style="margin-top:6px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;flex-direction:column;gap:4px;">
             ${contactRows.join("")}
@@ -1021,9 +1021,9 @@ export async function fetchKraftledningerInBounds(params: {
             ].filter(([, value]) => value !== "");
             const rows = details.map(([label, value]) => {
               const suffix = label === "Spenning" && !String(value).toLowerCase().includes("kv") ? " kV" : "";
-              return `<div style="display:grid;grid-template-columns:72px 1fr;gap:8px;font-size:12px;line-height:1.35;padding:2px 0;"><span style="color:#64748b;">${escapePopupHtml(label)}</span><strong style="font-weight:600;overflow-wrap:anywhere;">${escapePopupHtml(value)}${suffix}</strong></div>`;
+              return `<div style="display:grid;grid-template-columns:72px 1fr;gap:8px;font-size:12px;line-height:1.35;padding:2px 0;"><span style="color:#64748b;">${escapePlannedHtml(label)}</span><strong style="font-weight:600;overflow-wrap:anywhere;">${escapePlannedHtml(value)}${suffix}</strong></div>`;
             }).join("");
-            const popup = `<div style="min-width:180px;max-width:280px;"><strong>${escapePopupHtml(def.label)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
+            const popup = `<div style="min-width:180px;max-width:280px;"><strong>${escapePlannedHtml(def.label)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
             l.bindPopup(popup);
           } : undefined,
         });
