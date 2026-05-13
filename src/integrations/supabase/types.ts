@@ -4960,38 +4960,59 @@ export type Database = {
       }
       safesky_beacons: {
         Row: {
+          accuracy_m: number | null
+          aircraft_model: string | null
           altitude: number | null
           beacon_type: string | null
           callsign: string | null
           course: number | null
           ground_speed: number | null
           id: string
+          last_update: string | null
           latitude: number
           longitude: number
+          on_ground: boolean | null
+          registration: string | null
+          source: string | null
+          squawk: string | null
           updated_at: string | null
           vertical_speed: number | null
         }
         Insert: {
+          accuracy_m?: number | null
+          aircraft_model?: string | null
           altitude?: number | null
           beacon_type?: string | null
           callsign?: string | null
           course?: number | null
           ground_speed?: number | null
           id: string
+          last_update?: string | null
           latitude: number
           longitude: number
+          on_ground?: boolean | null
+          registration?: string | null
+          source?: string | null
+          squawk?: string | null
           updated_at?: string | null
           vertical_speed?: number | null
         }
         Update: {
+          accuracy_m?: number | null
+          aircraft_model?: string | null
           altitude?: number | null
           beacon_type?: string | null
           callsign?: string | null
           course?: number | null
           ground_speed?: number | null
           id?: string
+          last_update?: string | null
           latitude?: number
           longitude?: number
+          on_ground?: boolean | null
+          registration?: string | null
+          source?: string | null
+          squawk?: string | null
           updated_at?: string | null
           vertical_speed?: number | null
         }

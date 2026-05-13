@@ -23,12 +23,19 @@ interface SafeSkyBeacon {
   id: string;
   latitude: number;
   longitude: number;
-  altitude?: number;
-  course?: number;
-  ground_speed?: number;
-  vertical_speed?: number;
-  beacon_type?: string;
-  callsign?: string;
+  altitude?: number | null;
+  course?: number | null;
+  ground_speed?: number | null;
+  vertical_speed?: number | null;
+  beacon_type?: string | null;
+  callsign?: string | null;
+  source?: string | null;
+  aircraft_model?: string | null;
+  registration?: string | null;
+  squawk?: string | null;
+  on_ground?: boolean | null;
+  accuracy_m?: number | null;
+  last_update?: string | null;
 }
 
 Deno.serve(async (req) => {
@@ -155,12 +162,19 @@ Deno.serve(async (req) => {
           id: beaconId,
           latitude: beacon.latitude,
           longitude: beacon.longitude,
-          altitude: beacon.altitude || null,
-          course: beacon.course || null,
-          ground_speed: beacon.ground_speed || null,
-          vertical_speed: beacon.vertical_speed || null,
+          altitude: beacon.altitude ?? null,
+          course: beacon.course ?? null,
+          ground_speed: beacon.ground_speed ?? null,
+          vertical_speed: beacon.vertical_speed ?? null,
           beacon_type: beacon.beacon_type || beacon.type || null,
           callsign: beacon.callsign || beacon.call_sign || null,
+          source: beacon.source || null,
+          aircraft_model: beacon.aircraft_model || beacon.aircraft_type || null,
+          registration: beacon.registration || beacon.reg || null,
+          squawk: beacon.squawk != null ? String(beacon.squawk) : null,
+          on_ground: typeof beacon.on_ground === 'boolean' ? beacon.on_ground : null,
+          accuracy_m: beacon.accuracy ?? beacon.altitude_accuracy ?? null,
+          last_update: beacon.last_update || beacon.timestamp || null,
         });
       }
     }
