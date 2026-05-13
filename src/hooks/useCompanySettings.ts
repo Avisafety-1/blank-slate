@@ -11,6 +11,10 @@ interface CompanySettings {
   require_sora_on_missions: boolean;
   require_sora_steps: number;
   deviation_report_enabled: boolean;
+  default_publish_planned_missions: boolean;
+  default_share_contact_info: boolean;
+  default_anonymous_publish: boolean;
+  allow_pilot_override_publish_settings: boolean;
 }
 
 const defaultSettings: CompanySettings = {
@@ -22,6 +26,10 @@ const defaultSettings: CompanySettings = {
   require_sora_on_missions: false,
   require_sora_steps: 1,
   deviation_report_enabled: false,
+  default_publish_planned_missions: true,
+  default_share_contact_info: true,
+  default_anonymous_publish: false,
+  allow_pilot_override_publish_settings: true,
 };
 
 // Simple in-memory cache keyed by companyId
@@ -40,7 +48,7 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 
   const promise = (supabase
     .from("companies")
-    .select("show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled")
+    .select("show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, default_publish_planned_missions, default_share_contact_info, default_anonymous_publish, allow_pilot_override_publish_settings")
     .eq("id", companyId)
     .single() as any)
     .then(({ data }: any) => {
@@ -53,6 +61,10 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
         require_sora_on_missions: data?.require_sora_on_missions ?? false,
         require_sora_steps: data?.require_sora_steps ?? 1,
         deviation_report_enabled: data?.deviation_report_enabled ?? false,
+        default_publish_planned_missions: data?.default_publish_planned_missions ?? true,
+        default_share_contact_info: data?.default_share_contact_info ?? true,
+        default_anonymous_publish: data?.default_anonymous_publish ?? false,
+        allow_pilot_override_publish_settings: data?.allow_pilot_override_publish_settings ?? true,
       };
       cache[companyId] = { settings: s, ts: Date.now() };
       return s;
