@@ -404,9 +404,7 @@ export async function fetchAndDisplayMissions(params: {
   }
 }
 
-function escapePopupHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
+function escapePlannedHtml(s: string): string {
 
 function formatDateNo(d?: string | null): string {
   if (!d) return "";
