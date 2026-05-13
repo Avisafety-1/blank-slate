@@ -31,6 +31,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
+import { MissionPublicationSection, PublicationFields } from "@/components/dashboard/MissionPublicationSection";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
@@ -133,6 +134,12 @@ export const AddMissionDialog = ({
     longitude: initialFormData?.longitude || null as number | null,
   });
 
+  const [publication, setPublication] = useState<PublicationFields>({
+    publish_to_map: companySettings.default_publish_planned_missions,
+    share_contact_info: companySettings.default_share_contact_info,
+    anonymous_publish: companySettings.default_anonymous_publish,
+  });
+
   // Resource conflict detection
   const { conflicts: resourceConflicts } = useResourceConflicts(
     mission?.id,
@@ -175,6 +182,11 @@ export const AddMissionDialog = ({
           risk_nivå: mission.risk_nivå || "Lav",
           latitude: mission.latitude || null,
           longitude: mission.longitude || null,
+        });
+        setPublication({
+          publish_to_map: mission.publish_to_map ?? companySettings.default_publish_planned_missions,
+          share_contact_info: mission.share_contact_info ?? companySettings.default_share_contact_info,
+          anonymous_publish: mission.anonymous_publish ?? companySettings.default_anonymous_publish,
         });
         setSelectedCustomer(mission.customer_id || "");
         // Prioritize initialRouteData (from route planner) over mission.route (from DB)
@@ -591,6 +603,11 @@ export const AddMissionDialog = ({
           longitude: formData.longitude,
           route: routeForStorage,
           oppdatert_dato: new Date().toISOString(),
+          ...(companySettings.allow_pilot_override_publish_settings ? {
+            publish_to_map: publication.publish_to_map,
+            share_contact_info: publication.share_contact_info,
+            anonymous_publish: publication.anonymous_publish,
+          } : {}),
         };
 
         // Legg til værdata-snapshot hvis vi nettopp fullførte oppdraget
@@ -746,6 +763,15 @@ export const AddMissionDialog = ({
             latitude: formData.latitude,
             longitude: formData.longitude,
             route: routeForStorage,
+            publish_to_map: companySettings.allow_pilot_override_publish_settings
+              ? publication.publish_to_map
+              : companySettings.default_publish_planned_missions,
+            share_contact_info: companySettings.allow_pilot_override_publish_settings
+              ? publication.share_contact_info
+              : companySettings.default_share_contact_info,
+            anonymous_publish: companySettings.allow_pilot_override_publish_settings
+              ? publication.anonymous_publish
+              : companySettings.default_anonymous_publish,
           })
           .select()
           .single();
@@ -1218,6 +1244,12 @@ export const AddMissionDialog = ({
             </div>
 
           </div>
+
+          <MissionPublicationSection
+            values={publication}
+            onChange={setPublication}
+            allowOverride={companySettings.allow_pilot_override_publish_settings}
+          />
 
           <div>
             <Label htmlFor="kunde">{t('missions.customer')}</Label>
