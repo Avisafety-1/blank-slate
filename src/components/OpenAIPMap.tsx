@@ -295,6 +295,16 @@ export function OpenAIPMap({
   useEffect(() => { onRouteChangeRef.current = onRouteChange; }, [onRouteChange]);
   useEffect(() => { isPlacingPilotRef.current = isPlacingPilot; }, [isPlacingPilot]);
   useEffect(() => { onPilotPositionChangeRef.current = onPilotPositionChange; }, [onPilotPositionChange]);
+  useEffect(() => {
+    plannedWindowHoursRef.current = plannedMissionsWindowHours;
+    if (plannedPublishedLayerRef.current) {
+      fetchAndDisplayPlannedMissionPublications({
+        layer: plannedPublishedLayerRef.current,
+        modeRef,
+        windowHours: plannedMissionsWindowHours,
+      });
+    }
+  }, [plannedMissionsWindowHours]);
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
