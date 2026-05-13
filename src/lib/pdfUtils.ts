@@ -103,7 +103,13 @@ export const sanitizeForPdf = (text: string | null | undefined): string => {
     .replace(/'/g, "'").replace(/'/g, "'")
     .replace(/"/g, '"').replace(/"/g, '"')
     .replace(/…/g, '...')
-    .replace(/•/g, '-');
+    .replace(/•/g, '-')
+    // Math/comparison glyphs that cause jsPDF to fall back to wide letter-spacing
+    .replace(/≤/g, '<=').replace(/≥/g, '>=')
+    .replace(/≠/g, '!=').replace(/≈/g, '~')
+    .replace(/²/g, '2').replace(/³/g, '3')
+    .replace(/×/g, 'x').replace(/·/g, '-')
+    .replace(/±/g, '+/-');
 };
 
 /**
