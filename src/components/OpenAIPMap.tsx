@@ -919,6 +919,7 @@ export function OpenAIPMap({
     // NOTAM: refetch on moveend if layer is enabled
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
+    const plannedInterval = setInterval(() => fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current }), 5 * 60 * 1000);
 
     // Real-time subscriptions
     const mapChannel = supabase
