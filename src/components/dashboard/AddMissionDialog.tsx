@@ -183,6 +183,11 @@ export const AddMissionDialog = ({
           latitude: mission.latitude || null,
           longitude: mission.longitude || null,
         });
+        setPublication({
+          publish_to_map: mission.publish_to_map ?? companySettings.default_publish_planned_missions,
+          share_contact_info: mission.share_contact_info ?? companySettings.default_share_contact_info,
+          anonymous_publish: mission.anonymous_publish ?? companySettings.default_anonymous_publish,
+        });
         setSelectedCustomer(mission.customer_id || "");
         // Prioritize initialRouteData (from route planner) over mission.route (from DB)
         if (initialRouteData) {
