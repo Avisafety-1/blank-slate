@@ -32,6 +32,8 @@ import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useTranslation } from "react-i18next";
 import { MissionPublicationSection, PublicationFields } from "@/components/dashboard/MissionPublicationSection";
+import { MissionConflictWarning } from "@/components/dashboard/MissionConflictWarning";
+import { useMissionMapConflicts } from "@/hooks/useMissionMapConflicts";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
