@@ -26,6 +26,7 @@ import {
   fetchObstacles,
   fetchAirportsData,
   fetchAndDisplayMissions,
+  fetchAndDisplayPlannedMissionPublications,
   fetchDroneTelemetry,
   fetchActiveAdvisories,
   fetchPilotPositions,
