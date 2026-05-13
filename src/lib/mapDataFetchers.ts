@@ -405,8 +405,9 @@ export async function fetchAndDisplayMissions(params: {
 }
 
 function escapePlannedHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 
-function formatDateNo(d?: string | null): string {
   if (!d) return "";
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return "";
