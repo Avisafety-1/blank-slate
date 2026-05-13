@@ -23,12 +23,19 @@ interface SafeSkyBeacon {
   id: string;
   latitude: number;
   longitude: number;
-  altitude?: number;
-  course?: number;
-  ground_speed?: number;
-  vertical_speed?: number;
-  beacon_type?: string;
-  callsign?: string;
+  altitude?: number | null;
+  course?: number | null;
+  ground_speed?: number | null;
+  vertical_speed?: number | null;
+  beacon_type?: string | null;
+  callsign?: string | null;
+  source?: string | null;
+  aircraft_model?: string | null;
+  registration?: string | null;
+  squawk?: string | null;
+  on_ground?: boolean | null;
+  accuracy_m?: number | null;
+  last_update?: string | null;
 }
 
 Deno.serve(async (req) => {
