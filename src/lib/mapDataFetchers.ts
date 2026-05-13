@@ -540,7 +540,7 @@ export async function fetchActiveAdvisories(params: {
         beaconType: 'UAV',
         aircraftModel: drone?.modell,
         registration: drone?.registration_number,
-        updatedAt: flight.started_at,
+        updatedAt: flight.start_time,
         source: { kind: 'avisafe-advisory' },
       });
 
