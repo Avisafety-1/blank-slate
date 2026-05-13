@@ -140,6 +140,9 @@ async function enqueueForUser(
   let jobs_added = 0;
   let skipped = 0;
 
+  // Pre-filter logs and collect candidate IDs
+  type Candidate = { dji_log_id: string; log: any };
+  const candidates: Candidate[] = [];
   for (const log of logs) {
     const logId = log.id || log.logId;
     if (!logId) { skipped++; continue; }
@@ -147,39 +150,74 @@ async function enqueueForUser(
       const d = new Date(log.date);
       if (d < syncFromDate) { skipped++; continue; }
     }
-    const dji_log_id = String(logId);
+    candidates.push({ dji_log_id: String(logId), log });
+  }
 
-    // Skip if already in pending_dji_logs (legacy) or dji_sync_jobs (new)
-    const { data: existingPending } = await serviceClient
-      .from("pending_dji_logs").select("id")
-      .eq("company_id", company.id).eq("dji_log_id", dji_log_id).maybeSingle();
-    if (existingPending) { skipped++; continue; }
+  if (candidates.length > 0) {
+    const allIds = candidates.map((c) => c.dji_log_id);
 
-    const { data: existingJob } = await serviceClient
-      .from("dji_sync_jobs").select("id")
-      .eq("company_id", company.id)
-      .eq("user_id", cred.user_id)
-      .eq("dji_log_id", dji_log_id).maybeSingle();
-    if (existingJob) { skipped++; continue; }
+    // Batch dedupe: 2 queries instead of 2*N
+    const [pendRes, jobRes] = await Promise.all([
+      serviceClient
+        .from("pending_dji_logs")
+        .select("dji_log_id")
+        .eq("company_id", company.id)
+        .in("dji_log_id", allIds),
+      serviceClient
+        .from("dji_sync_jobs")
+        .select("dji_log_id")
+        .eq("company_id", company.id)
+        .eq("user_id", cred.user_id)
+        .in("dji_log_id", allIds),
+    ]);
+    const seen = new Set<string>([
+      ...((pendRes.data || []) as any[]).map((r) => r.dji_log_id),
+      ...((jobRes.data || []) as any[]).map((r) => r.dji_log_id),
+    ]);
 
-    const { error: insErr } = await serviceClient.from("dji_sync_jobs").insert({
-      company_id: company.id,
-      user_id: cred.user_id,
-      dji_log_id,
-      download_url: log.downloadUrl || null,
-      payload: {
-        dronelog_account_id: accountId,
-        aircraft_name_hint: log.aircraft || null,
-        log_date: normalizeDateToISO(log.date),
-        list_duration: log.duration ?? null,
-      },
-    });
-    if (insErr) {
-      if ((insErr as any).code === "23505") { skipped++; continue; }
-      console.error(`[enqueue] insert failed for ${dji_log_id}:`, insErr.message);
-      skipped++;
-    } else {
-      jobs_added++;
+    const rows = candidates
+      .filter((c) => !seen.has(c.dji_log_id))
+      .map((c) => ({
+        company_id: company.id,
+        user_id: cred.user_id,
+        dji_log_id: c.dji_log_id,
+        download_url: c.log.downloadUrl || null,
+        payload: {
+          dronelog_account_id: accountId,
+          aircraft_name_hint: c.log.aircraft || null,
+          log_date: normalizeDateToISO(c.log.date),
+          list_duration: c.log.duration ?? null,
+        },
+      }));
+
+    skipped += candidates.length - rows.length;
+
+    if (rows.length > 0) {
+      // Single batch insert; tolerate unique-conflict races
+      const { data: inserted, error: insErr } = await serviceClient
+        .from("dji_sync_jobs")
+        .insert(rows)
+        .select("id");
+      if (insErr) {
+        // Race or other error — fall back to per-row insert so partial progress survives
+        if ((insErr as any).code === "23505") {
+          for (const row of rows) {
+            const { error: e } = await serviceClient.from("dji_sync_jobs").insert(row);
+            if (e) {
+              if ((e as any).code === "23505") { skipped++; continue; }
+              console.error(`[enqueue] insert failed for ${row.dji_log_id}:`, e.message);
+              skipped++;
+            } else {
+              jobs_added++;
+            }
+          }
+        } else {
+          console.error(`[enqueue] batch insert failed:`, insErr.message);
+          skipped += rows.length;
+        }
+      } else {
+        jobs_added += inserted?.length ?? rows.length;
+      }
     }
   }
 
