@@ -742,6 +742,10 @@ export function OpenAIPMap({
     const completedMissionsLayer = L.layerGroup();
     layerConfigs.push({ id: "completed_missions", name: "Utførte oppdrag", layer: completedMissionsLayer, enabled: false, icon: "mapPin" });
 
+    const plannedPublishedLayer = L.layerGroup();
+    if (modeRef.current === "view") plannedPublishedLayer.addTo(map);
+    layerConfigs.push({ id: "planned_published", name: "Planlagte oppdrag (delt)", layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin" });
+
     const safeskyLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "safesky", name: "Lufttrafikk (live)", layer: safeskyLayer, enabled: true, icon: "radar" });
 
