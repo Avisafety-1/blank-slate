@@ -134,6 +134,12 @@ export const AddMissionDialog = ({
     longitude: initialFormData?.longitude || null as number | null,
   });
 
+  const [publication, setPublication] = useState<PublicationFields>({
+    publish_to_map: companySettings.default_publish_planned_missions,
+    share_contact_info: companySettings.default_share_contact_info,
+    anonymous_publish: companySettings.default_anonymous_publish,
+  });
+
   // Resource conflict detection
   const { conflicts: resourceConflicts } = useResourceConflicts(
     mission?.id,
