@@ -129,6 +129,8 @@ interface OpenAIPMapProps {
   populationDensityCells?: SsbPopulationCell[];
   populationDensityCoveragePolygons?: RouteMultiPolygon;
   routeHintOffsetClass?: string;
+  /** Hours from now to include planned mission publications. Default 24. */
+  plannedMissionsWindowHours?: number;
 }
 
 export function OpenAIPMap({ 
