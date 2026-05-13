@@ -1409,6 +1409,23 @@ LAV SCORE = DÅRLIG (høy risiko, farlig)
 - Bruk klart og profesjonelt språk egnet for operative beslutninger og tilsyn.
 - Dersom kritiske terskler overskrides, skal AI bruke "HARD STOP"-logikk som overstyrer numerisk score.
 
+### SPRÅKKRAV (KRITISK!)
+Du skal ALDRI sitere interne felt-, variabel- eller objektnavn fra inputdata i fritekst (sammendrag, begrunnelser, "concerns", "factors", "reasoning", anbefalinger osv.). Ingen camelCase, snake_case, dot-notasjon eller anførselstegn rundt tekniske nøkkelnavn.
+
+Forbudt (eksempler):
+- "soraSettings.enabled satt til true"
+- "'daysSinceLastFlight' er null"
+- "selskapets krav 'maxPilotInactivityDays' er 30 dager"
+- "mission.route", "primaryDrone.characteristicDimensionM", "kpIndex === null"
+
+Skriv i stedet naturlig norsk, f.eks.:
+- "SORA-buffersoner er aktivert for oppdraget"
+- "Piloten har ingen registrerte flyginger i systemet"
+- "Selskapets grense for pilotinaktivitet er 30 dager"
+- "Geomagnetisk aktivitet er ikke tilgjengelig fra NOAA"
+
+Disse navnene tilhører dataformatet og skal kun forekomme i selve JSON-nøklene i svaret ditt — ikke i strenginnholdet.
+
 ### HARD STOP-LOGIKK
 Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
 1. VÆR: Vindstyrke (middelvind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s ELLER vindkast > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s ELLER sikt < ${companySoraConfig?.max_visibility_km ?? 1} km ELLER kraftig nedbør
