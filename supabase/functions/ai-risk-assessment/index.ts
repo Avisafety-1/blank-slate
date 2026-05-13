@@ -1925,7 +1925,49 @@ Returner en JSON-respons med denne strukturen:
       throw new Error('Invalid AI response format');
     }
 
-    // Normalize all category scores
+    // Safety net: strip leaked internal field/variable names from any narrative text
+    // (the model occasionally quotes camelCase/dot-notation tokens from the prompt).
+    const JARGON_REPLACEMENTS: Array<[RegExp, string]> = [
+      [/`?'?soraSettings\.enabled'?`?\s*(?:satt til|===|er|=)?\s*'?true'?/gi, 'SORA-buffersoner er aktivert'],
+      [/`?'?soraSettings\.enabled'?`?\s*(?:satt til|===|er|=|!==)\s*'?(?:false|null|undefined)'?/gi, 'SORA-buffersoner er ikke aktivert'],
+      [/`?'?mission\.route\.soraSettings(?:\.enabled)?'?`?/gi, 'SORA-buffersoner'],
+      [/`?'?soraSettings'?`?/g, 'SORA-buffersoner'],
+      [/`?'?daysSinceLastFlight'?`?/g, 'antall dager siden siste flyging'],
+      [/`?'?maxPilotInactivityDays'?`?/g, 'selskapets grense for pilotinaktivitet'],
+      [/`?'?primaryDrone\.characteristicDimensionM'?`?/g, 'dronens karakteristiske dimensjon'],
+      [/`?'?primaryDrone\.alos(?:\.[a-zA-Z]+)?'?`?/g, 'dronens ALOS-verdi'],
+      [/`?'?primaryDrone(?:\.[a-zA-Z]+)*'?`?/g, 'primærdronen'],
+      [/`?'?company_requires_sora_on_missions'?`?/g, 'selskapets SORA-krav'],
+      [/`?'?solarActivity\.[a-zA-Z]+'?`?/g, 'geomagnetisk aktivitet'],
+      [/`?'?kpIndex'?`?/g, 'Kp-indeks'],
+      [/`?'?aggregatedFlightStats(?:\.[a-zA-Z]+)*'?`?/g, 'pilotens flystatistikk'],
+      [/`?'?lastFlightDate'?`?/g, 'siste registrerte flyging'],
+    ];
+
+    const scrubJargon = (input: unknown): unknown => {
+      if (typeof input === 'string') {
+        let out = input;
+        for (const [pattern, replacement] of JARGON_REPLACEMENTS) {
+          out = out.replace(pattern, replacement);
+        }
+        // Generic fallback: bare quoted camelCase tokens like 'someThing' or `dot.path`
+        out = out.replace(/['`]([a-z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9]+)+)['`]/g, (_m, p1) => p1.split('.').pop());
+        out = out.replace(/['`]([a-z]+[A-Z][a-zA-Z0-9]*)['`]/g, (_m, p1) => p1);
+        return out;
+      }
+      if (Array.isArray(input)) return input.map(scrubJargon);
+      if (input && typeof input === 'object') {
+        const result: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+          result[k] = scrubJargon(v);
+        }
+        return result;
+      }
+      return input;
+    };
+    aiAnalysis = scrubJargon(aiAnalysis) as typeof aiAnalysis;
+
+
     if (aiAnalysis.categories) {
       for (const key of Object.keys(aiAnalysis.categories)) {
         if (aiAnalysis.categories[key]?.score !== undefined) {
