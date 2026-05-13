@@ -490,7 +490,7 @@ export async function fetchActiveAdvisories(params: {
   try {
     const { data: activeFlights, error } = await supabase
       .from('active_flights')
-      .select('id, mission_id, drone_id, publish_mode, route_data, started_at')
+      .select('id, mission_id, drone_id, publish_mode, route_data, start_time')
       .eq('publish_mode', 'advisory');
 
     if (error) {
