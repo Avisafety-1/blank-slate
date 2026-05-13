@@ -1,58 +1,50 @@
-## Hva som skjer
+## Problem
 
-Når du logger inn ser den fullstendige render-flyten slik ut:
+To distinkte feil i den eksporterte risikovurderings-PDF-en:
 
-1. `SIGNED_IN` event fyrer → `applyCachedProfile` setter UI med cached data (umiddelbart).
-2. `refreshAuthState('signed-in')` starter → henter profile/role/companies (≈1–2s) → setter `setProfileLoaded(true)`, `setAuthRefreshing(false)`, `setAuthInitialized(true)`.
-3. **Phase 2** `fireSubscriptionCheck` kjøres → kaller `check-subscription` edge function (Stripe API, **5–10 sekunder**).
-4. Når edge-funksjonen returnerer kalles `applySubscriptionData()` som setter `subscribed`, `subscriptionLoading=false`, `subscriptionPlan`, `seatCount` osv.
+**1. Unaturlig store mellomrom mellom bokstaver**
+Verdier som inneholder tegnene `≤`, `≥`, `²`, `³` rendres med spalting mellom hver bokstav (f.eks. `0 , 3 0  m  ( " d 1  m )` for "0,30 m (≤1 m)"). Dette skjer fordi jsPDF ikke får mappet `≤`/`≥` korrekt mot Roboto-fonten, og faller tilbake til en encoding-modus som setter mellomrom mellom alle tegn i hele strengen.
 
-I tillegg lytter en realtime-kanal på `profiles`-tabellen (`current-profile-access-*`) og kjører `refreshAuthState('profile-access-change')` ved ENHVER UPDATE på profilraden din — også når en bakgrunnsprosess (f.eks. Resend-audience-trigger, dronelog-key-provisjon, sist innlogget-felt e.l.) oppdaterer profilen kort etter login.
+Tegnene kommer fra `ai-risk-assessment/index.ts` (linje 177–178: `dimensionClass = ≤Xm`, `speedClass = ≤Y m/s`) og fra modellens egne svar.
 
-## Hvorfor det "blinker"/lukker profilsiden
+**2. Kode-språk lekker inn i rapporten**
+AI-modellen siterer interne felt-/variabel-navn ordrett i begrunnelsene, f.eks.:
+- ``soraSettings.enabled`` satt til true
+- `'daysSinceLastFlight'` er null
+- `'maxPilotInactivityDays'` er 30 dager
 
-`AuthenticatedLayout` (`src/App.tsx` linje 100–108) bytter mellom `<Outlet />` direkte og `<Header><SubscriptionGate><Outlet /></SubscriptionGate>` basert på `loading`, `profileLoaded`, `isApproved`. Når `refreshAuthState` kjører på nytt setter den `setAuthRefreshing(true)` og deretter en rekke `setX(...)`-kall (linje 559–576). React batcher disse, men:
+Dette skjer fordi prompten i `ai-risk-assessment/index.ts` (linjer 1668–1670, 1819 m.fl.) bruker `mission.route.soraSettings.enabled`-stil i instruksjonene, og modellen kopierer notasjonen rett inn i den genererte teksten.
 
-- `SubscriptionGate` re-evaluerer betingelsen sin når `subscriptionLoading` flipper fra `true` → `false`. Hvis `subscribed` ikke ble satt i samme batch (f.eks. ved feil i edge-funksjonen, eller en cache miss der `subscribed` står på initialverdien `false`), vises betalingsmuren et øyeblikk og siden under (Profile) **demonteres**. Det er det du opplever som blinking + at åpen modal/dialog forsvinner.
-- I tillegg kan realtime-trigger (UPDATE på din egen profilrad) føre til en ekstra full re-render/refresh ~10s etter innlogging.
+## Løsning
 
-## Plan for fikser
+### A) Fiks tegn-mellomrom (frontend, src/lib/pdfUtils.ts)
+Utvid `sanitizeForPdf` med erstatninger for tegn som ikke renderes trygt av jsPDF/Roboto-embeddingen:
 
-### 1. Stabiliser `SubscriptionGate` så den aldri "flasher" paywall
+- `≤` → `<=`
+- `≥` → `>=`
+- `²` → `2`
+- `³` → `3`
+- `×` → `x`
+- `·` → `-`
+- ev. `°` beholdes (denne fungerer i dag, brukes for temperatur)
 
-Kun vurder gating når abonnementsstatus faktisk er kjent OG ikke er midt i en refresh. Endre vilkåret slik at siden ikke demonteres mens vi venter:
+Effekt: alle eksisterende PDF-eksport-løp (risikovurdering, oppdrag, hendelse osv.) renderes uten "letter-spacing"-bug.
 
-```ts
-// SubscriptionGate.tsx
-const { ..., authRefreshing } = useAuth();
-if (!user || !profileLoaded || subscriptionLoading || authRefreshing
-    || !isApproved || isSuperAdmin || subscribed || stripeExempt) {
-  return <>{children}</>;
-}
-```
+### B) Fjern kode-språk fra AI-output (supabase/functions/ai-risk-assessment/index.ts)
+1. Legg til en eksplisitt regel i system-prompten:  
+   *"Du skal ALDRI sitere interne felt-/variabel-navn (f.eks. `soraSettings.enabled`, `daysSinceLastFlight`, `maxPilotInactivityDays`, camelCase- eller dot-notasjon) i begrunnelser, sammendrag eller kommentarer. Bruk naturlig norsk: «SORA-buffersoner er aktivert», «piloten har ikke loggført flyging», «selskapets grense for pilotinaktivitet er X dager»."*
+2. Skriv om de stedene i prompten der vi i dag formidler regler ved å vise feltnavn (linjer 1668–1670, 1819 og lignende) til menneskelig språk – beskriv betydningen i stedet for variabel-navnet. Felt-navnene beholdes kun i JSON-skjema-spesifikasjonen, som modellen ikke skal gjenbruke i fritekst.
+3. Som siste sikkerhetsnett, post-processer fritekst-felter (`reasoning`, `summary`, kategori-`reasoning`, `concerns`, `positive_factors`, `recommended_actions.*`) i edge-funksjonen før retur: erstatt typiske camelCase-/dot-tokens (regex som `\b[a-z]+(?:[A-Z][a-zA-Z]+)+\b` og kjente nøkkelord) – men kun innenfor en hvitliste vi vet skal bort, slik at vi ikke ødelegger legitim tekst.
 
-Dette forhindrer at en kortvarig flip i `subscribed` (f.eks. mens edge-funksjon kjører på nytt) demonterer barnetreet.
+### C) Verifisering
+- Trigge en ny risikovurdering på samme oppdrag og laste ned PDF.
+- Konvertere PDF til bilder og sjekke at:
+  - "≤1 m" / "≤25 m/s" vises som "<=1 m" / "<=25 m/s" uten letter-spacing.
+  - Tabellgrunnlag- og iGRC-begrunnelse-tekstene ikke har spalting.
+  - Begrunnelser ikke inneholder camelCase- eller dot-notasjon.
 
-### 2. Ikke "demonter" layout under refresh
+## Filer som endres
+- `src/lib/pdfUtils.ts` – utvide `sanitizeForPdf`.
+- `supabase/functions/ai-risk-assessment/index.ts` – prompt-skriv + post-processing.
 
-I `AuthenticatedLayout` returnerer vi `<Outlet />` uten Header når `!profileLoaded`. Det er greit ved første innlogging, men hvis `profileLoaded` noen gang midlertidig blir falsk vil hele Header/Suspense-treet remountes. Lås den slik at den kun gjelder før første gang `profileLoaded` ble satt (bruk en `useRef` "har vært loaded en gang" eller fjern sjekken når `authInitialized=true`).
-
-### 3. Begrens realtime-triggeren på profilen
-
-`current-profile-access-*` kanalen kjører `refreshAuthState` ved ENHVER UPDATE — også irrelevante kolonner (last_seen, resend_id osv.). Filtrer på relevante endringer i payload (f.eks. `approved`, `company_id`, `under_training`, `training_module_access`) før `refreshAuthState` kalles. Da unngås en uvedkommende refresh ~10s etter login.
-
-### 4. Optimistisk subscription-cache
-
-I `fireSubscriptionEdgeFunction`-feilsti settes `setSubscriptionLoading(false)` uten at `subscribed` justeres. Hvis vi har en `company_subscriptions`-cache, bruk den verdien som fallback når Stripe-kallet feiler, slik at `subscribed` aldri faller til initialverdien `false`.
-
-## Tekniske detaljer (filer som endres)
-
-- `src/components/SubscriptionGate.tsx` — legg til `authRefreshing`-sjekk i guard.
-- `src/App.tsx` (`AuthenticatedLayout`) — bruk en "har vært ferdig lastet"-ref slik at Header ikke demonteres ved senere refresh.
-- `src/contexts/AuthContext.tsx` — filtrer realtime-handler på relevante kolonner i payload, og la subscription-fallback beholde forrige `subscribed`-verdi når edge-funksjonen feiler.
-
-## Verifikasjon
-
-1. Logg inn, åpne profilsiden, vent 15 sekunder. Skal ikke blinke eller demontere modal.
-2. Sjekk console: `AuthContext: refreshAuthState v...` skal kun fyres for relevante endringer.
-3. Network: `check-subscription` skal kjøre én gang etter login og deretter kun ved manuell trigger eller 15-min periodisk refresh.
+Ingen DB-endringer.
