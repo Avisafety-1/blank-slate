@@ -414,11 +414,11 @@ export async function fetchDroneTelemetry(params: {
       .from('drone_telemetry')
       .select('*')
       .order('created_at', { ascending: false });
-    
+
     if (error || !telemetry) return;
-    
+
     droneLayer.clearLayers();
-    
+
     const latestByDrone = new Map<string, typeof telemetry[0]>();
     telemetry.forEach(t => {
       const droneId = t.drone_id || 'unknown';
@@ -426,10 +426,25 @@ export async function fetchDroneTelemetry(params: {
         latestByDrone.set(droneId, t);
       }
     });
-    
+
+    // Hent dronemetadata + aktive flights for kilde-merking
+    const droneIds = Array.from(latestByDrone.keys()).filter(id => id !== 'unknown');
+    const droneInfoById = new Map<string, { modell?: string | null; registration_number?: string | null }>();
+    const dronetagDroneIds = new Set<string>();
+    if (droneIds.length > 0) {
+      const [{ data: drones }, { data: activeFlights }] = await Promise.all([
+        supabase.from('drones').select('id, modell, registration_number').in('id', droneIds),
+        supabase.from('active_flights').select('drone_id, dronetag_device_id').in('drone_id', droneIds),
+      ]);
+      (drones || []).forEach(d => droneInfoById.set(d.id, d));
+      (activeFlights || []).forEach(f => {
+        if (f.drone_id && f.dronetag_device_id) dronetagDroneIds.add(f.drone_id);
+      });
+    }
+
     latestByDrone.forEach((t, droneId) => {
       if (!t.lat || !t.lon) return;
-      
+
       const icon = L.divIcon({
         className: '',
         html: `<img src="${droneAnimatedIcon}" style="width:70px;height:70px;" />`,
@@ -437,19 +452,27 @@ export async function fetchDroneTelemetry(params: {
         iconAnchor: [35, 35],
         popupAnchor: [0, -35],
       });
-      
+
       const marker = L.marker([t.lat, t.lon], {
         icon,
         interactive: modeRef.current !== 'routePlanning',
         pane: 'liveFlightPane'
       });
-      const updatedTime = t.created_at ? new Date(t.created_at).toLocaleTimeString('no-NO') : 'Ukjent';
+
+      const droneInfo = droneInfoById.get(droneId);
+      const isDronetag = dronetagDroneIds.has(droneId);
+      const callsign = droneInfo?.registration_number || droneInfo?.modell || droneId;
+
       marker.bindPopup(
-        `<div>
-          <strong>🛸 ${droneId}</strong><br/>
-          Høyde: ${t.alt ?? '?'} m<br/>
-          Oppdatert: ${updatedTime}
-        </div>`,
+        renderTrafficPopup({
+          callsign,
+          beaconType: 'UAV',
+          aircraftModel: droneInfo?.modell,
+          registration: droneInfo?.registration_number,
+          altitudeM: t.alt,
+          updatedAt: t.created_at,
+          source: { kind: isDronetag ? 'avisafe-dronetag' : 'avisafe' },
+        }),
         { autoPan: false, keepInView: false }
       );
       marker.addTo(droneLayer);
@@ -467,25 +490,39 @@ export async function fetchActiveAdvisories(params: {
   try {
     const { data: activeFlights, error } = await supabase
       .from('active_flights')
-      .select('id, mission_id, publish_mode, route_data')
+      .select('id, mission_id, drone_id, publish_mode, route_data, started_at')
       .eq('publish_mode', 'advisory');
-    
+
     if (error) {
       console.error('Error fetching active advisories:', error);
       return;
     }
-    
+
     activeAdvisoryLayer.clearLayers();
     for (const [key] of flightMarkersRef.current) {
       if (key.startsWith('advisory_')) flightMarkersRef.current.delete(key);
     }
-    
+
+    // Hent oppdrag- og dronemetadata
+    const missionIds = Array.from(new Set((activeFlights || []).map(f => f.mission_id).filter(Boolean))) as string[];
+    const droneIds = Array.from(new Set((activeFlights || []).map(f => f.drone_id).filter(Boolean))) as string[];
+    const missionById = new Map<string, { tittel?: string | null }>();
+    const droneById = new Map<string, { modell?: string | null; registration_number?: string | null }>();
+    if (missionIds.length > 0) {
+      const { data } = await supabase.from('missions').select('id, tittel').in('id', missionIds);
+      (data || []).forEach(m => missionById.set(m.id, m));
+    }
+    if (droneIds.length > 0) {
+      const { data } = await supabase.from('drones').select('id, modell, registration_number').in('id', droneIds);
+      (data || []).forEach(d => droneById.set(d.id, d));
+    }
+
     for (const flight of activeFlights || []) {
       const route = flight.route_data as any;
       if (!route?.coordinates || route.coordinates.length < 3) continue;
-      
+
       const polygonCoords = route.coordinates.map((p: any) => [p.lat, p.lng] as [number, number]);
-      
+
       const polygon = L.polygon(polygonCoords, {
         color: '#10b981',
         weight: 2,
@@ -493,14 +530,21 @@ export async function fetchActiveAdvisories(params: {
         fillOpacity: 0.25,
         interactive: true,
       });
-      
-      polygon.bindPopup(`
-        <div>
-          <strong>🛸 Aktiv flytur</strong><br/>
-          <span style="color: #10b981; font-size: 11px;">Advisory publisert til SafeSky</span>
-        </div>
-      `);
-      
+
+      const mission = flight.mission_id ? missionById.get(flight.mission_id) : undefined;
+      const drone = flight.drone_id ? droneById.get(flight.drone_id) : undefined;
+      const callsign = drone?.registration_number || mission?.tittel || 'Aktiv flytur';
+
+      const popupHtml = renderTrafficPopup({
+        callsign,
+        beaconType: 'UAV',
+        aircraftModel: drone?.modell,
+        registration: drone?.registration_number,
+        updatedAt: flight.started_at,
+        source: { kind: 'avisafe-advisory' },
+      });
+
+      polygon.bindPopup(popupHtml);
       polygon.addTo(activeAdvisoryLayer);
 
       const centLat = polygonCoords.reduce((s: number, c: [number, number]) => s + c[0], 0) / polygonCoords.length;
@@ -517,12 +561,7 @@ export async function fetchActiveAdvisories(params: {
         interactive: true,
         pane: 'liveFlightPane'
       });
-      centroidMarker.bindPopup(`
-        <div>
-          <strong>🛸 Aktiv flytur</strong><br/>
-          <span style="color: #10b981; font-size: 11px;">Advisory publisert til SafeSky</span>
-        </div>
-      `);
+      centroidMarker.bindPopup(popupHtml);
       centroidMarker.addTo(activeAdvisoryLayer);
       flightMarkersRef.current.set(flight.id, centroidMarker as any);
     }
