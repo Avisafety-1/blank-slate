@@ -62,19 +62,20 @@ export function createSafeSkyManager(params: {
       
       const iconUrl = getBeaconSvgUrl(beaconType);
       
-      const callsign = beacon.callsign || 'Ukjent';
-      const altitudeFt = beacon.altitude != null ? Math.round(beacon.altitude * 3.28084) : '?';
-      const speedKt = beacon.ground_speed != null ? Math.round(beacon.ground_speed * 1.94384) : '?';
-      const typeLabel = beaconType || 'Ukjent';
-      const popupHtml = `
-        <div>
-          <strong>Callsign: ${callsign}</strong><br/>
-          Type: ${typeLabel}<br/>
-          Høyde: ${altitudeFt} ft<br/>
-          Fart: ${speedKt} kt<br/>
-          <span style="font-size: 10px; color: #888;">Via SafeSky</span>
-        </div>
-      `;
+      const popupHtml = renderTrafficPopup({
+        callsign: beacon.callsign,
+        beaconType: beaconType,
+        aircraftModel: beacon.aircraft_model,
+        registration: beacon.registration,
+        altitudeM: beacon.altitude,
+        groundSpeedMs: beacon.ground_speed,
+        verticalSpeedMs: beacon.vertical_speed,
+        courseDeg: beacon.course,
+        squawk: beacon.squawk,
+        onGround: beacon.on_ground,
+        updatedAt: beacon.last_update || beacon.updated_at,
+        source: { kind: "safesky", subSource: beacon.source },
+      });
       
       const existingMarker = safeskyMarkersCache.get(beaconId);
       
