@@ -976,6 +976,8 @@ export function OpenAIPMap({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(droneInterval);
+      clearInterval(plannedInterval);
+      plannedPublishedLayerRef.current = null;
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
       if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
       if (naisDebounceTimer) clearTimeout(naisDebounceTimer);
