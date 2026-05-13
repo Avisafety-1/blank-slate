@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
+import { MapPublicationDefaultsCard } from "@/components/admin/MapPublicationDefaultsCard";
 
 interface ChildCompany {
   id: string;
@@ -1793,6 +1794,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 )}
               </div>
+
+              <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
             </div>
           </CollapsibleContent>
         </GlassCard>
