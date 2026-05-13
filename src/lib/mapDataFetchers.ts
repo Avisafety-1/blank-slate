@@ -408,11 +408,13 @@ function escapePlannedHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+function formatPlannedDateNo(d?: string | null): string {
   if (!d) return "";
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return "";
   return dt.toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" });
 }
+
 
 export async function fetchAndDisplayPlannedMissionPublications(params: {
   layer: L.LayerGroup;
