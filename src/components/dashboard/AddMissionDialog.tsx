@@ -152,6 +152,15 @@ export const AddMissionDialog = ({
     selectedPersonnel
   );
 
+  const { conflicts: mapConflicts } = useMissionMapConflicts({
+    enabled: publication.publish_to_map,
+    tidspunkt: formData.tidspunkt,
+    routeData,
+    latitude: formData.latitude,
+    longitude: formData.longitude,
+    excludeMissionId: mission?.id,
+  });
+
   const mentionSuggestions = useMemo(() => {
     if (mentionQuery === null) return [];
     const query = mentionQuery.trim().toLowerCase();
