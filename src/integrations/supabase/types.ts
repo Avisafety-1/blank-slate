@@ -429,11 +429,15 @@ export type Database = {
           adresse_lon: number | null
           aktiv: boolean
           all_users_can_acknowledge_maintenance: boolean
+          allow_pilot_override_publish_settings: boolean
           ardupilot_enabled: boolean
           before_takeoff_checklist_id: string | null
           before_takeoff_checklist_ids: string[] | null
           billing_user_id: string | null
           created_at: string
+          default_anonymous_publish: boolean
+          default_publish_planned_missions: boolean
+          default_share_contact_info: boolean
           departments_enabled: boolean
           deviation_report_enabled: boolean
           dji_auto_sync_enabled: boolean
@@ -484,11 +488,15 @@ export type Database = {
           adresse_lon?: number | null
           aktiv?: boolean
           all_users_can_acknowledge_maintenance?: boolean
+          allow_pilot_override_publish_settings?: boolean
           ardupilot_enabled?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
           created_at?: string
+          default_anonymous_publish?: boolean
+          default_publish_planned_missions?: boolean
+          default_share_contact_info?: boolean
           departments_enabled?: boolean
           deviation_report_enabled?: boolean
           dji_auto_sync_enabled?: boolean
@@ -539,11 +547,15 @@ export type Database = {
           adresse_lon?: number | null
           aktiv?: boolean
           all_users_can_acknowledge_maintenance?: boolean
+          allow_pilot_override_publish_settings?: boolean
           ardupilot_enabled?: boolean
           before_takeoff_checklist_id?: string | null
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
           created_at?: string
+          default_anonymous_publish?: boolean
+          default_publish_planned_missions?: boolean
+          default_share_contact_info?: boolean
           departments_enabled?: boolean
           deviation_report_enabled?: boolean
           dji_auto_sync_enabled?: boolean
@@ -3599,6 +3611,93 @@ export type Database = {
           },
         ]
       }
+      mission_map_publications: {
+        Row: {
+          anonymous_publish: boolean
+          center: unknown
+          company_id: string
+          created_at: string
+          ends_at: string | null
+          geometry: unknown
+          id: string
+          mission_id: string
+          public_contact_email: string | null
+          public_contact_name: string | null
+          public_contact_phone: string | null
+          public_description: string | null
+          public_title: string | null
+          publish_to_map: boolean
+          share_contact_info: boolean
+          starts_at: string | null
+          status: string | null
+          updated_at: string
+          visibility: string
+          visible_from: string | null
+          visible_until: string | null
+        }
+        Insert: {
+          anonymous_publish?: boolean
+          center?: unknown
+          company_id: string
+          created_at?: string
+          ends_at?: string | null
+          geometry?: unknown
+          id?: string
+          mission_id: string
+          public_contact_email?: string | null
+          public_contact_name?: string | null
+          public_contact_phone?: string | null
+          public_description?: string | null
+          public_title?: string | null
+          publish_to_map?: boolean
+          share_contact_info?: boolean
+          starts_at?: string | null
+          status?: string | null
+          updated_at?: string
+          visibility?: string
+          visible_from?: string | null
+          visible_until?: string | null
+        }
+        Update: {
+          anonymous_publish?: boolean
+          center?: unknown
+          company_id?: string
+          created_at?: string
+          ends_at?: string | null
+          geometry?: unknown
+          id?: string
+          mission_id?: string
+          public_contact_email?: string | null
+          public_contact_name?: string | null
+          public_contact_phone?: string | null
+          public_description?: string | null
+          public_title?: string | null
+          publish_to_map?: boolean
+          share_contact_info?: boolean
+          starts_at?: string | null
+          status?: string | null
+          updated_at?: string
+          visibility?: string
+          visible_from?: string | null
+          visible_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_map_publications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_map_publications_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: true
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_personnel: {
         Row: {
           id: string
@@ -3833,6 +3932,7 @@ export type Database = {
       }
       missions: {
         Row: {
+          anonymous_publish: boolean | null
           approval_comment: string | null
           approval_status: string
           approved_at: string | null
@@ -3868,8 +3968,11 @@ export type Database = {
           notam_text: string | null
           oppdatert_dato: string
           opprettet_dato: string
+          pilot_contact_phone_snapshot: string | null
+          publish_to_map: boolean | null
           risk_nivå: string
           route: Json | null
+          share_contact_info: boolean | null
           slutt_tidspunkt: string | null
           status: string
           submitted_for_approval_at: string | null
@@ -3879,6 +3982,7 @@ export type Database = {
           weather_data_snapshot: Json | null
         }
         Insert: {
+          anonymous_publish?: boolean | null
           approval_comment?: string | null
           approval_status?: string
           approved_at?: string | null
@@ -3914,8 +4018,11 @@ export type Database = {
           notam_text?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
+          pilot_contact_phone_snapshot?: string | null
+          publish_to_map?: boolean | null
           risk_nivå?: string
           route?: Json | null
+          share_contact_info?: boolean | null
           slutt_tidspunkt?: string | null
           status?: string
           submitted_for_approval_at?: string | null
@@ -3925,6 +4032,7 @@ export type Database = {
           weather_data_snapshot?: Json | null
         }
         Update: {
+          anonymous_publish?: boolean | null
           approval_comment?: string | null
           approval_status?: string
           approved_at?: string | null
@@ -3960,8 +4068,11 @@ export type Database = {
           notam_text?: string | null
           oppdatert_dato?: string
           opprettet_dato?: string
+          pilot_contact_phone_snapshot?: string | null
+          publish_to_map?: boolean | null
           risk_nivå?: string
           route?: Json | null
+          share_contact_info?: boolean | null
           slutt_tidspunkt?: string | null
           status?: string
           submitted_for_approval_at?: string | null
@@ -5839,6 +5950,26 @@ export type Database = {
           zone_id: string
           zone_name: string
           zone_type: string
+        }[]
+      }
+      check_planned_mission_conflicts: {
+        Args: {
+          p_ends_at: string
+          p_exclude_mission_id?: string
+          p_geom_geojson: Json
+          p_starts_at: string
+          p_window_hours?: number
+        }
+        Returns: {
+          anonymous_publish: boolean
+          company_id: string
+          ends_at: string
+          mission_id: string
+          public_contact_email: string
+          public_contact_name: string
+          public_contact_phone: string
+          public_title: string
+          starts_at: string
         }[]
       }
       claim_dji_sync_jobs: {
