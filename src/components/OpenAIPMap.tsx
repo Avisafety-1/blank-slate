@@ -195,6 +195,8 @@ export function OpenAIPMap({
   const modeRef = useRef(mode);
 
   const onMissionClickRef = useRef<typeof onMissionClick>(onMissionClick);
+  const plannedWindowHoursRef = useRef<number>(plannedMissionsWindowHours);
+  const plannedPublishedLayerRef = useRef<L.LayerGroup | null>(null);
   const onRouteChangeRef = useRef<typeof onRouteChange>(onRouteChange);
 
   const ensurePopulationDensityPane = useCallback((map: L.Map): HTMLElement | null => {
