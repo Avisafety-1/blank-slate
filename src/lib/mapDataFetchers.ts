@@ -404,6 +404,137 @@ export async function fetchAndDisplayMissions(params: {
   }
 }
 
+function escapePlannedHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function formatPlannedDateNo(d?: string | null): string {
+  if (!d) return "";
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return "";
+  return dt.toLocaleString("no-NO", { dateStyle: "short", timeStyle: "short" });
+}
+
+
+export async function fetchAndDisplayPlannedMissionPublications(params: {
+  layer: L.LayerGroup;
+  modeRef: React.MutableRefObject<string>;
+  /** Window in hours from now. Default 24. */
+  windowHours?: number;
+}) {
+  const { layer, modeRef, windowHours = 24 } = params;
+  if (modeRef.current !== "view") return;
+
+  const now = new Date();
+  const until = new Date(now.getTime() + windowHours * 3600 * 1000);
+
+  try {
+    const { data, error } = await (supabase as any)
+      .from("v_planned_mission_map")
+      .select("*")
+      // Show items whose visibility window overlaps the [now, now+window] range
+      .lte("starts_at", until.toISOString())
+      .gte("ends_at", now.toISOString());
+
+    if (error) {
+      console.warn("Planned missions fetch error:", error.message);
+      return;
+    }
+
+    layer.clearLayers();
+
+    (data || []).forEach((row: any) => {
+      const anon = !!row.anonymous_publish;
+      const share = !!row.share_contact_info;
+      const showContact = share && !anon;
+
+      const title = escapePlannedHtml(
+        row.public_title || (anon ? "Planlagt droneoppdrag" : "Planlagt oppdrag")
+      );
+      const desc = row.public_description ? escapePlannedHtml(row.public_description) : "";
+      const period = `${formatPlannedDateNo(row.starts_at)} – ${formatPlannedDateNo(row.ends_at)}`;
+
+      const contactRows: string[] = [];
+      if (showContact) {
+        if (row.public_contact_name) {
+          contactRows.push(
+            `<div style="font-size:12px;"><strong>Kontakt:</strong> ${escapePlannedHtml(row.public_contact_name)}</div>`
+          );
+        }
+        if (row.public_contact_phone) {
+          contactRows.push(
+            `<a href="tel:${escapePlannedHtml(row.public_contact_phone)}" style="display:inline-block;margin-right:8px;font-size:12px;color:#2563eb;text-decoration:underline;">📞 ${escapePlannedHtml(row.public_contact_phone)}</a>`
+          );
+        }
+        if (row.public_contact_email) {
+          contactRows.push(
+            `<a href="mailto:${escapePlannedHtml(row.public_contact_email)}" style="display:inline-block;font-size:12px;color:#2563eb;text-decoration:underline;">✉️ ${escapePlannedHtml(row.public_contact_email)}</a>`
+          );
+        }
+      } else {
+        contactRows.push(`<div style="font-size:11px;color:#6b7280;font-style:italic;">Operatør har valgt anonym publisering.</div>`);
+      }
+
+      const popupHtml = `
+        <div style="min-width:220px;max-width:280px;font-family:inherit;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${title}</div>
+          <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${escapePlannedHtml(period)}</div>
+          ${desc ? `<div style="font-size:12px;margin-bottom:8px;white-space:pre-wrap;">${desc}</div>` : ""}
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;flex-direction:column;gap:4px;">
+            ${contactRows.join("")}
+          </div>
+        </div>
+      `;
+
+      const color = "#2563eb";
+
+      // Polygon
+      try {
+        const geom = row.geometry_geojson;
+        if (geom && (geom.type === "Polygon" || geom.type === "MultiPolygon")) {
+          const gj = L.geoJSON(geom as any, {
+            style: {
+              color,
+              weight: 2,
+              opacity: 0.9,
+              fillColor: color,
+              fillOpacity: 0.15,
+              dashArray: "4 4",
+            },
+            pane: "missionPane",
+          });
+          gj.bindPopup(popupHtml, { maxWidth: 320 });
+          gj.addTo(layer);
+        }
+      } catch (e) {
+        console.warn("Planned mission polygon render failed:", e);
+      }
+
+      // Center marker
+      const center = row.center_geojson;
+      if (center?.type === "Point" && Array.isArray(center.coordinates)) {
+        const [lng, lat] = center.coordinates as [number, number];
+        const icon = L.divIcon({
+          className: "",
+          html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" fill="${color}" fill-opacity="0.25"/>
+              <circle cx="12" cy="10" r="3" fill="${color}"/>
+            </svg>
+          </div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+        });
+        L.marker([lat, lng], { icon, pane: "missionPane" })
+          .bindPopup(popupHtml, { maxWidth: 320 })
+          .addTo(layer);
+      }
+    });
+  } catch (err) {
+    console.error("Feil ved henting av planlagte publiserte oppdrag:", err);
+  }
+}
+
 export async function fetchDroneTelemetry(params: {
   droneLayer: L.LayerGroup;
   modeRef: React.MutableRefObject<string>;

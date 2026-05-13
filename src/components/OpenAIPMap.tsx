@@ -26,6 +26,7 @@ import {
   fetchObstacles,
   fetchAirportsData,
   fetchAndDisplayMissions,
+  fetchAndDisplayPlannedMissionPublications,
   fetchDroneTelemetry,
   fetchActiveAdvisories,
   fetchPilotPositions,
@@ -128,6 +129,8 @@ interface OpenAIPMapProps {
   populationDensityCells?: SsbPopulationCell[];
   populationDensityCoveragePolygons?: RouteMultiPolygon;
   routeHintOffsetClass?: string;
+  /** Hours from now to include planned mission publications. Default 24. */
+  plannedMissionsWindowHours?: number;
 }
 
 export function OpenAIPMap({ 
@@ -150,6 +153,7 @@ export function OpenAIPMap({
   populationDensityCells,
   populationDensityCoveragePolygons,
   routeHintOffsetClass,
+  plannedMissionsWindowHours = 24,
 }: OpenAIPMapProps) {
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
@@ -191,6 +195,8 @@ export function OpenAIPMap({
   const modeRef = useRef(mode);
 
   const onMissionClickRef = useRef<typeof onMissionClick>(onMissionClick);
+  const plannedWindowHoursRef = useRef<number>(plannedMissionsWindowHours);
+  const plannedPublishedLayerRef = useRef<L.LayerGroup | null>(null);
   const onRouteChangeRef = useRef<typeof onRouteChange>(onRouteChange);
 
   const ensurePopulationDensityPane = useCallback((map: L.Map): HTMLElement | null => {
@@ -289,6 +295,16 @@ export function OpenAIPMap({
   useEffect(() => { onRouteChangeRef.current = onRouteChange; }, [onRouteChange]);
   useEffect(() => { isPlacingPilotRef.current = isPlacingPilot; }, [isPlacingPilot]);
   useEffect(() => { onPilotPositionChangeRef.current = onPilotPositionChange; }, [onPilotPositionChange]);
+  useEffect(() => {
+    plannedWindowHoursRef.current = plannedMissionsWindowHours;
+    if (plannedPublishedLayerRef.current) {
+      fetchAndDisplayPlannedMissionPublications({
+        layer: plannedPublishedLayerRef.current,
+        modeRef,
+        windowHours: plannedMissionsWindowHours,
+      });
+    }
+  }, [plannedMissionsWindowHours]);
 
   // Update route display
   const updateRouteDisplay = useCallback(() => {
@@ -738,6 +754,11 @@ export function OpenAIPMap({
     const completedMissionsLayer = L.layerGroup();
     layerConfigs.push({ id: "completed_missions", name: "Utførte oppdrag", layer: completedMissionsLayer, enabled: false, icon: "mapPin" });
 
+    const plannedPublishedLayer = L.layerGroup();
+    if (modeRef.current === "view") plannedPublishedLayer.addTo(map);
+    plannedPublishedLayerRef.current = plannedPublishedLayer;
+    layerConfigs.push({ id: "planned_published", name: "Planlagte oppdrag (delt)", layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin" });
+
     const safeskyLayer = L.layerGroup().addTo(map);
     layerConfigs.push({ id: "safesky", name: "Lufttrafikk (live)", layer: safeskyLayer, enabled: true, icon: "radar" });
 
@@ -824,6 +845,7 @@ export function OpenAIPMap({
     fetchAirportsData({ layer: airportsLayer, mode });
     fetchDroneTelemetry({ droneLayer, modeRef });
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
+    fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
     fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode });
@@ -897,11 +919,13 @@ export function OpenAIPMap({
     // NOTAM: refetch on moveend if layer is enabled
 
     const droneInterval = setInterval(() => fetchDroneTelemetry({ droneLayer, modeRef }), 15000);
+    const plannedInterval = setInterval(() => fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current }), 5 * 60 * 1000);
 
     // Real-time subscriptions
     const mapChannel = supabase
       .channel('kart-main')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mission_map_publications' }, () => fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_telemetry' }, () => fetchDroneTelemetry({ droneLayer, modeRef }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'active_flights' }, () => {
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
@@ -934,6 +958,7 @@ export function OpenAIPMap({
         fetchObstacles({ layer: obstaclesLayer, mode });
         fetchAirportsData({ layer: airportsLayer, mode });
         fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
+        fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
         fetchDroneTelemetry({ droneLayer, modeRef });
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
         fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
@@ -951,6 +976,8 @@ export function OpenAIPMap({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(droneInterval);
+      clearInterval(plannedInterval);
+      plannedPublishedLayerRef.current = null;
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
       if (kraftDebounceTimer) clearTimeout(kraftDebounceTimer);
       if (naisDebounceTimer) clearTimeout(naisDebounceTimer);
