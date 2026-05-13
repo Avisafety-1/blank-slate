@@ -763,6 +763,15 @@ export const AddMissionDialog = ({
             latitude: formData.latitude,
             longitude: formData.longitude,
             route: routeForStorage,
+            publish_to_map: companySettings.allow_pilot_override_publish_settings
+              ? publication.publish_to_map
+              : companySettings.default_publish_planned_missions,
+            share_contact_info: companySettings.allow_pilot_override_publish_settings
+              ? publication.share_contact_info
+              : companySettings.default_share_contact_info,
+            anonymous_publish: companySettings.allow_pilot_override_publish_settings
+              ? publication.anonymous_publish
+              : companySettings.default_anonymous_publish,
           })
           .select()
           .single();
