@@ -1021,9 +1021,9 @@ export async function fetchKraftledningerInBounds(params: {
             ].filter(([, value]) => value !== "");
             const rows = details.map(([label, value]) => {
               const suffix = label === "Spenning" && !String(value).toLowerCase().includes("kv") ? " kV" : "";
-              return `<div style="display:grid;grid-template-columns:72px 1fr;gap:8px;font-size:12px;line-height:1.35;padding:2px 0;"><span style="color:#64748b;">${escapePlannedHtml(label)}</span><strong style="font-weight:600;overflow-wrap:anywhere;">${escapePlannedHtml(value)}${suffix}</strong></div>`;
+              return `<div style="display:grid;grid-template-columns:72px 1fr;gap:8px;font-size:12px;line-height:1.35;padding:2px 0;"><span style="color:#64748b;">${escapePopupHtml(label)}</span><strong style="font-weight:600;overflow-wrap:anywhere;">${escapePopupHtml(value)}${suffix}</strong></div>`;
             }).join("");
-            const popup = `<div style="min-width:180px;max-width:280px;"><strong>${escapePlannedHtml(def.label)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
+            const popup = `<div style="min-width:180px;max-width:280px;"><strong>${escapePopupHtml(def.label)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
             l.bindPopup(popup);
           } : undefined,
         });
