@@ -1247,6 +1247,18 @@ export const AddMissionDialog = ({
 
           </div>
 
+          {(() => {
+            const { conflicts: mapConflicts } = useMissionMapConflicts({
+              enabled: publication.publish_to_map,
+              tidspunkt: formData.tidspunkt,
+              routeData,
+              latitude: formData.latitude,
+              longitude: formData.longitude,
+              excludeMissionId: mission?.id,
+            });
+            return <MissionConflictWarning conflicts={mapConflicts} />;
+          })()}
+
           <MissionPublicationSection
             values={publication}
             onChange={setPublication}
