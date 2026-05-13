@@ -756,6 +756,7 @@ export function OpenAIPMap({
 
     const plannedPublishedLayer = L.layerGroup();
     if (modeRef.current === "view") plannedPublishedLayer.addTo(map);
+    plannedPublishedLayerRef.current = plannedPublishedLayer;
     layerConfigs.push({ id: "planned_published", name: "Planlagte oppdrag (delt)", layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin" });
 
     const safeskyLayer = L.layerGroup().addTo(map);
