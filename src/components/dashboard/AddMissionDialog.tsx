@@ -603,6 +603,11 @@ export const AddMissionDialog = ({
           longitude: formData.longitude,
           route: routeForStorage,
           oppdatert_dato: new Date().toISOString(),
+          ...(companySettings.allow_pilot_override_publish_settings ? {
+            publish_to_map: publication.publish_to_map,
+            share_contact_info: publication.share_contact_info,
+            anonymous_publish: publication.anonymous_publish,
+          } : {}),
         };
 
         // Legg til værdata-snapshot hvis vi nettopp fullførte oppdraget
