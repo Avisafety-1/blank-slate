@@ -924,6 +924,7 @@ export function OpenAIPMap({
     const mapChannel = supabase
       .channel('kart-main')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, () => fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mission_map_publications' }, () => fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_telemetry' }, () => fetchDroneTelemetry({ droneLayer, modeRef }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'active_flights' }, () => {
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
