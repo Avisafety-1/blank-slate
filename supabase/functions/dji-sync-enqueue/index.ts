@@ -278,12 +278,14 @@ Deno.serve(async (req) => {
 
     const results: Array<Awaited<ReturnType<typeof enqueueForUser>>> = [];
     let totalAdded = 0, totalSkipped = 0;
-    for (let i = 0; i < credList.length; i++) {
-      const r = await enqueueForUser(serviceClient, credList[i]);
-      results.push(r);
-      totalAdded += r.jobs_added;
-      totalSkipped += r.skipped;
-      if (i + 1 < credList.length) await new Promise((res) => setTimeout(res, STAGGER_MS));
+    for (let i = 0; i < credList.length; i += USER_CONCURRENCY) {
+      const chunk = credList.slice(i, i + USER_CONCURRENCY);
+      const part = await Promise.all(chunk.map((c) => enqueueForUser(serviceClient, c)));
+      for (const r of part) {
+        results.push(r);
+        totalAdded += r.jobs_added;
+        totalSkipped += r.skipped;
+      }
     }
 
     return json({
