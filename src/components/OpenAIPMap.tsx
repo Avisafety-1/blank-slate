@@ -957,6 +957,7 @@ export function OpenAIPMap({
         fetchObstacles({ layer: obstaclesLayer, mode });
         fetchAirportsData({ layer: airportsLayer, mode });
         fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
+        fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
         fetchDroneTelemetry({ droneLayer, modeRef });
         fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
         fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
