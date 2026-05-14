@@ -1,4 +1,6 @@
 import L from "leaflet";
+import polygonClipping from "polygon-clipping";
+import type { MultiPolygon as ClipMultiPolygon, Polygon as ClipPolygon } from "polygon-clipping";
 import { supabase } from "@/integrations/supabase/client";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
 import droneStaticIcon from "@/assets/drone-static.png";
