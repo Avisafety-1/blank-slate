@@ -11,6 +11,9 @@ import { invalidateCompanySettingsCache } from "@/hooks/useCompanySettings";
 interface Defaults {
   default_publish_planned_missions: boolean;
   default_share_contact_info: boolean;
+  default_share_contact_name: boolean;
+  default_share_contact_phone: boolean;
+  default_share_contact_email: boolean;
   default_anonymous_publish: boolean;
   allow_pilot_override_publish_settings: boolean;
   public_company_name: string;
@@ -19,6 +22,9 @@ interface Defaults {
 const DEFAULTS: Defaults = {
   default_publish_planned_missions: true,
   default_share_contact_info: true,
+  default_share_contact_name: true,
+  default_share_contact_phone: true,
+  default_share_contact_email: true,
   default_anonymous_publish: false,
   allow_pilot_override_publish_settings: true,
   public_company_name: "",
