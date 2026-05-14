@@ -69,9 +69,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
   useEffect(() => {
-    if (navigator.onLine) {
-      supabase.functions.invoke('auto-complete-missions').catch(console.error);
-    }
     fetchMissions();
   }, [companyId]);
 
