@@ -1315,12 +1315,6 @@ export const AddMissionDialog = ({
 
           <MissionConflictWarning conflicts={mapConflicts} />
 
-          <MissionPublicationSection
-            values={publication}
-            onChange={setPublication}
-            allowOverride={companySettings.allow_pilot_override_publish_settings}
-          />
-
           <div>
             <Label htmlFor="kunde">{t('missions.customer')}</Label>
             <Popover open={openCustomerPopover} onOpenChange={setOpenCustomerPopover}>
