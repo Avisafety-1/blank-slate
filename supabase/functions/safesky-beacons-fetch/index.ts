@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
           squawk: beacon.squawk != null ? String(beacon.squawk) : null,
           on_ground: typeof beacon.on_ground === 'boolean' ? beacon.on_ground : null,
           accuracy_m: beacon.accuracy ?? beacon.altitude_accuracy ?? null,
-          last_update: beacon.last_update || beacon.timestamp || null,
+          last_update: toIsoTimestamp(beacon.last_update ?? beacon.timestamp),
         });
       }
     }
