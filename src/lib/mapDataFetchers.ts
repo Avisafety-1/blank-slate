@@ -454,6 +454,8 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
       );
       const desc = row.public_description ? escapePlannedHtml(row.public_description) : "";
       const period = `${formatPlannedDateNo(row.starts_at)} – (ukjent sluttid)`;
+      const companyName = !anon && row.public_company_name ? escapePlannedHtml(row.public_company_name) : "";
+      const missionType = !anon && row.public_mission_type ? escapePlannedHtml(row.public_mission_type) : "";
 
       const contactRows: string[] = [];
       if (showContact) {
@@ -479,6 +481,8 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
       const popupHtml = `
         <div style="min-width:220px;max-width:280px;font-family:inherit;">
           <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${title}</div>
+          ${companyName ? `<div style="font-size:12px;color:#374151;margin-bottom:2px;"><strong>${companyName}</strong></div>` : ""}
+          ${missionType ? `<div style="display:inline-block;font-size:11px;color:#1e40af;background:#dbeafe;padding:2px 8px;border-radius:9999px;margin-bottom:6px;">${missionType}</div>` : ""}
           <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${escapePlannedHtml(period)}</div>
           ${desc ? `<div style="font-size:12px;margin-bottom:8px;white-space:pre-wrap;">${desc}</div>` : ""}
           <div style="margin-top:6px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;flex-direction:column;gap:4px;">
