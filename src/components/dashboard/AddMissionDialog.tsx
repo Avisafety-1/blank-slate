@@ -1697,6 +1697,27 @@ export const AddMissionDialog = ({
             )}
           </div>
 
+          <Collapsible defaultOpen={false}>
+            <div className="rounded-lg border-2 border-primary/30 bg-muted/20 overflow-hidden">
+              <CollapsibleTrigger className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors group">
+                <div className="flex items-center gap-2 font-medium text-sm">
+                  <Map className="h-4 w-4 text-muted-foreground" />
+                  <span>Kartpublisering</span>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="px-3 pb-3 pt-1 border-t border-primary/20">
+                  <MissionPublicationSection
+                    values={publication}
+                    onChange={setPublication}
+                    allowOverride={companySettings.allow_pilot_override_publish_settings}
+                  />
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+
           <div className="flex gap-2 justify-end pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('actions.cancel')}
