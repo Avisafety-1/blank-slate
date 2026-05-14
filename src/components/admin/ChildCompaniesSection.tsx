@@ -1708,7 +1708,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     />
                   </div>
                 )}
-              </div>
+              </SubSection>
               <SubSection title="Flylogg-varsler" icon={Bell}>
                 {/* Locked banner for child departments */}
                 {isChildDept && !!inherited?.propagate_flight_alerts && (
