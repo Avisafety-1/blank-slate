@@ -4980,6 +4980,41 @@ export type Database = {
           },
         ]
       }
+      resend_company_audiences: {
+        Row: {
+          audience_id: string | null
+          audience_name: string
+          company_id: string
+          created_at: string
+          enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          audience_id?: string | null
+          audience_name: string
+          company_id: string
+          created_at?: string
+          enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          audience_id?: string | null
+          audience_name?: string
+          company_id?: string
+          created_at?: string
+          enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resend_company_audiences_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       revenue_calculator_scenarios: {
         Row: {
           company_id: string | null
@@ -6324,6 +6359,7 @@ export type Database = {
         Args: { p_exclude_company_id?: string }
         Returns: Json
       }
+      get_root_company_id: { Args: { _company_id: string }; Returns: string }
       get_root_public_company_name: {
         Args: { _company_id: string }
         Returns: string

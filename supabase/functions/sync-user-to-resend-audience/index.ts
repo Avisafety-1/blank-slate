@@ -1,6 +1,7 @@
-// Auto-sync user email to Resend Audience.
+// Auto-sync user email to Resend Audience(s).
 // Called by DB triggers on public.profiles (insert/update/delete).
-// No JWT required — protected by SYNC_WEBHOOK_SECRET shared with the trigger function.
+// Syncs to a global audience and (optionally) to a per-company audience.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,76 @@ async function resendFetch(path: string, opts: RequestInit = {}) {
   return { ok: res.ok, status: res.status, body: json, raw: text };
 }
 
+function getAdminClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+}
+
+type SyncOp = { audienceId: string; audienceName: string; status: number; action: string };
+
+async function upsertContact(audienceId: string, email: string, first_name: string, last_name: string, prevEmail?: string): Promise<{ status: number; action: string }> {
+  if (prevEmail && prevEmail !== email) {
+    await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(prevEmail)}`, { method: "DELETE" });
+  }
+  const create = await resendFetch(`/audiences/${audienceId}/contacts`, {
+    method: "POST",
+    body: JSON.stringify({ email, first_name: first_name || "", last_name: last_name || "", unsubscribed: false }),
+  });
+  if (create.ok) return { status: create.status, action: "created" };
+  if (create.status === 409) {
+    const patch = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(email)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ first_name: first_name || "", last_name: last_name || "" }),
+    });
+    return { status: patch.status, action: "updated" };
+  }
+  return { status: create.status, action: "failed" };
+}
+
+async function deleteContact(audienceId: string, email: string): Promise<{ status: number; action: string }> {
+  const r = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(email)}`, { method: "DELETE" });
+  return { status: r.status, action: "deleted" };
+}
+
+/** Look up the per-company audience for a user. Lazily creates the Resend audience. */
+async function resolveCompanyAudience(userId: string | undefined): Promise<{ audienceId: string; audienceName: string } | null> {
+  if (!userId) return null;
+  const admin = getAdminClient();
+
+  const { data: profile } = await admin.from("profiles").select("company_id").eq("id", userId).maybeSingle();
+  if (!profile?.company_id) return null;
+
+  const { data: rootRes } = await admin.rpc("get_root_company_id", { _company_id: profile.company_id });
+  const rootId: string | null = (rootRes as string | null) ?? profile.company_id;
+  if (!rootId) return null;
+
+  const { data: row } = await admin
+    .from("resend_company_audiences")
+    .select("audience_id, audience_name, enabled")
+    .eq("company_id", rootId)
+    .maybeSingle();
+
+  if (!row || !row.enabled) return null;
+
+  let audienceId = row.audience_id as string | null;
+  if (!audienceId) {
+    const created = await resendFetch("/audiences", {
+      method: "POST",
+      body: JSON.stringify({ name: row.audience_name }),
+    });
+    if (!created.ok || !(created.body as { id?: string })?.id) {
+      console.error("Failed to create Resend audience", row.audience_name, created.status, created.raw);
+      return null;
+    }
+    audienceId = (created.body as { id: string }).id;
+    await admin.from("resend_company_audiences").update({ audience_id: audienceId }).eq("company_id", rootId);
+  }
+
+  return { audienceId, audienceName: row.audience_name };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -33,11 +104,10 @@ Deno.serve(async (req) => {
     const audienceId = Deno.env.get("RESEND_AUDIENCE_ID");
     if (!audienceId) throw new Error("RESEND_AUDIENCE_ID not configured");
 
-    // Optional shared-secret check (used by DB triggers)
+    // Auth: shared secret OR service-role bearer
     const expectedSecret = Deno.env.get("SYNC_WEBHOOK_SECRET");
     const providedSecret = req.headers.get("x-sync-secret");
     if (expectedSecret && providedSecret !== expectedSecret) {
-      // Allow service-role auth as fallback for backfill etc.
       const auth = req.headers.get("authorization") ?? "";
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
       if (!serviceKey || !auth.includes(serviceKey)) {
@@ -48,69 +118,53 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { action, email, first_name, last_name, old_email } = body as {
+    const { action, email, first_name, last_name, old_email, user_id } = body as {
       action: "upsert" | "delete";
       email?: string;
       first_name?: string;
       last_name?: string;
       old_email?: string;
+      user_id?: string;
     };
 
     const norm = (e?: string) => (e || "").trim().toLowerCase();
     const newEmail = norm(email);
     const prevEmail = norm(old_email);
 
+    const ops: SyncOp[] = [];
+    const companyAudience = await resolveCompanyAudience(user_id);
+
     if (action === "delete") {
       if (!newEmail) return new Response(JSON.stringify({ skipped: "no email" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-      const r = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(newEmail)}`, { method: "DELETE" });
-      return new Response(JSON.stringify({ action, email: newEmail, status: r.status, body: r.body }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "upsert") {
+      const g = await deleteContact(audienceId, newEmail);
+      ops.push({ audienceId, audienceName: "global", ...g });
+      if (companyAudience) {
+        const c = await deleteContact(companyAudience.audienceId, newEmail);
+        ops.push({ audienceId: companyAudience.audienceId, audienceName: companyAudience.audienceName, ...c });
+      }
+    } else if (action === "upsert") {
       if (!newEmail || !newEmail.includes("@")) {
         return new Response(JSON.stringify({ skipped: "invalid email" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      // If email changed, remove the old contact (best-effort)
-      if (prevEmail && prevEmail !== newEmail) {
-        await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(prevEmail)}`, { method: "DELETE" });
+      const g = await upsertContact(audienceId, newEmail, first_name || "", last_name || "", prevEmail || undefined);
+      ops.push({ audienceId, audienceName: "global", ...g });
+      if (companyAudience) {
+        const c = await upsertContact(companyAudience.audienceId, newEmail, first_name || "", last_name || "", prevEmail || undefined);
+        ops.push({ audienceId: companyAudience.audienceId, audienceName: companyAudience.audienceName, ...c });
       }
-
-      // Try create
-      const create = await resendFetch(`/audiences/${audienceId}/contacts`, {
-        method: "POST",
-        body: JSON.stringify({
-          email: newEmail,
-          first_name: first_name || "",
-          last_name: last_name || "",
-          unsubscribed: false,
-        }),
-      });
-
-      // If already exists, patch name (do NOT flip unsubscribed back to false — respect user opt-out)
-      if (!create.ok && create.status === 409) {
-        const patch = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(newEmail)}`, {
-          method: "PATCH",
-          body: JSON.stringify({ first_name: first_name || "", last_name: last_name || "" }),
-        });
-        return new Response(JSON.stringify({ action: "updated", email: newEmail, status: patch.status, body: patch.body }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      return new Response(JSON.stringify({ action: "created", email: newEmail, status: create.status, body: create.body }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    } else {
+      return new Response(JSON.stringify({ error: "unknown action" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ error: "unknown action" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    console.log("sync result", { email: newEmail, user_id, ops });
+    return new Response(JSON.stringify({ email: newEmail, ops }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("sync-user-to-resend-audience error:", e);
