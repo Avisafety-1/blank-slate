@@ -33,6 +33,8 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
   const [values, setValues] = useState<Defaults>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isRoot, setIsRoot] = useState(true);
+  const [nameDraft, setNameDraft] = useState("");
 
   useEffect(() => {
     if (!companyId) return;
