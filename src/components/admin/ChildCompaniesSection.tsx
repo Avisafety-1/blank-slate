@@ -50,6 +50,32 @@ interface ChildCompaniesSectionProps {
   departmentsEnabled: boolean;
 }
 
+interface SubSectionProps {
+  title: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+const SubSection = ({ title, icon: Icon, defaultOpen, children }: SubSectionProps) => (
+  <Collapsible defaultOpen={defaultOpen}>
+    <div className="rounded-lg border-2 border-primary/30 bg-muted/20 overflow-hidden">
+      <CollapsibleTrigger className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors group">
+        <div className="flex items-center gap-2 font-medium text-sm">
+          {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+          <span>{title}</span>
+        </div>
+        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-primary/20">
+          {children}
+        </div>
+      </CollapsibleContent>
+    </div>
+  </Collapsible>
+);
+
 export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSectionProps) => {
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
