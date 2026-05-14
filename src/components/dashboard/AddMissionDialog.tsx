@@ -134,6 +134,8 @@ export const AddMissionDialog = ({
     risk_nivå: initialFormData?.risk_nivå || "Lav",
     latitude: initialFormData?.latitude || null as number | null,
     longitude: initialFormData?.longitude || null as number | null,
+    oppdragstype: (initialFormData as any)?.oppdragstype || "",
+    oppdragstype_annet: (initialFormData as any)?.oppdragstype_annet || "",
   });
 
   const [publication, setPublication] = useState<PublicationFields>({
@@ -193,6 +195,8 @@ export const AddMissionDialog = ({
           risk_nivå: mission.risk_nivå || "Lav",
           latitude: mission.latitude || null,
           longitude: mission.longitude || null,
+          oppdragstype: (mission as any).oppdragstype || "",
+          oppdragstype_annet: (mission as any).oppdragstype_annet || "",
         });
         setPublication({
           publish_to_map: mission.publish_to_map ?? companySettings.default_publish_planned_missions,
@@ -229,6 +233,8 @@ export const AddMissionDialog = ({
           risk_nivå: initialFormData?.risk_nivå || "Lav",
           latitude: autoLat,
           longitude: autoLng,
+          oppdragstype: (initialFormData as any)?.oppdragstype || "",
+          oppdragstype_annet: (initialFormData as any)?.oppdragstype_annet || "",
         });
         setRouteData(initialRouteData || null);
         if (initialSelectedPersonnel) setSelectedPersonnel(initialSelectedPersonnel);
@@ -266,6 +272,8 @@ export const AddMissionDialog = ({
           risk_nivå: "Lav",
           latitude: null,
           longitude: null,
+          oppdragstype: "",
+          oppdragstype_annet: "",
         });
         setSelectedPersonnel([]);
         setSelectedEquipment([]);
@@ -613,6 +621,8 @@ export const AddMissionDialog = ({
           latitude: formData.latitude,
           longitude: formData.longitude,
           route: routeForStorage,
+          oppdragstype: formData.oppdragstype || null,
+          oppdragstype_annet: formData.oppdragstype === "Annet" ? (formData.oppdragstype_annet || null) : null,
           oppdatert_dato: new Date().toISOString(),
           ...(companySettings.allow_pilot_override_publish_settings ? {
             publish_to_map: publication.publish_to_map,
@@ -774,6 +784,8 @@ export const AddMissionDialog = ({
             latitude: formData.latitude,
             longitude: formData.longitude,
             route: routeForStorage,
+            oppdragstype: formData.oppdragstype || null,
+            oppdragstype_annet: formData.oppdragstype === "Annet" ? (formData.oppdragstype_annet || null) : null,
             publish_to_map: companySettings.allow_pilot_override_publish_settings
               ? publication.publish_to_map
               : companySettings.default_publish_planned_missions,
@@ -952,6 +964,8 @@ export const AddMissionDialog = ({
         risk_nivå: "Lav",
         latitude: null,
         longitude: null,
+        oppdragstype: "",
+        oppdragstype_annet: "",
       });
       setSelectedPersonnel([]);
       setSelectedEquipment([]);
@@ -1204,6 +1218,48 @@ export const AddMissionDialog = ({
               onChange={(e) => setFormData({ ...formData, beskrivelse: e.target.value })}
               rows={3}
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="oppdragstype">Oppdragstype</Label>
+              <Select
+                value={formData.oppdragstype || "__none__"}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    oppdragstype: value === "__none__" ? "" : value,
+                    oppdragstype_annet: value === "Annet" ? formData.oppdragstype_annet : "",
+                  })
+                }
+              >
+                <SelectTrigger id="oppdragstype">
+                  <SelectValue placeholder="Velg type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Ikke spesifisert</SelectItem>
+                  <SelectItem value="Inspeksjon">Inspeksjon</SelectItem>
+                  <SelectItem value="Kartlegging">Kartlegging</SelectItem>
+                  <SelectItem value="Foto/film">Foto/film</SelectItem>
+                  <SelectItem value="Søk og redning">Søk og redning</SelectItem>
+                  <SelectItem value="Landbruk">Landbruk</SelectItem>
+                  <SelectItem value="Bygg/anlegg">Bygg/anlegg</SelectItem>
+                  <SelectItem value="Forskning">Forskning</SelectItem>
+                  <SelectItem value="Annet">Annet</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {formData.oppdragstype === "Annet" && (
+              <div>
+                <Label htmlFor="oppdragstype_annet">Spesifiser oppdragstype</Label>
+                <Input
+                  id="oppdragstype_annet"
+                  value={formData.oppdragstype_annet}
+                  onChange={(e) => setFormData({ ...formData, oppdragstype_annet: e.target.value })}
+                  placeholder="F.eks. Termografering"
+                />
+              </div>
+            )}
           </div>
 
           <div>
