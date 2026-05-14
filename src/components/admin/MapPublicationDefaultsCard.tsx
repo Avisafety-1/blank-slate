@@ -48,7 +48,7 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
     (supabase
       .from("companies")
       .select(
-        "default_publish_planned_missions, default_share_contact_info, default_anonymous_publish, allow_pilot_override_publish_settings, public_company_name, parent_company_id"
+        "default_publish_planned_missions, default_share_contact_info, default_share_contact_name, default_share_contact_phone, default_share_contact_email, default_anonymous_publish, allow_pilot_override_publish_settings, public_company_name, parent_company_id"
       )
       .eq("id", companyId)
       .maybeSingle() as any).then(({ data }: any) => {
@@ -56,6 +56,9 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
         setValues({
           default_publish_planned_missions: data.default_publish_planned_missions ?? true,
           default_share_contact_info: data.default_share_contact_info ?? true,
+          default_share_contact_name: data.default_share_contact_name ?? true,
+          default_share_contact_phone: data.default_share_contact_phone ?? true,
+          default_share_contact_email: data.default_share_contact_email ?? true,
           default_anonymous_publish: data.default_anonymous_publish ?? false,
           allow_pilot_override_publish_settings:
             data.allow_pilot_override_publish_settings ?? true,
