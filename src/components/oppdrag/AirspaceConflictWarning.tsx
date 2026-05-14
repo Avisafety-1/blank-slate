@@ -70,6 +70,21 @@ export const AirspaceConflictWarning = ({
   const visible = conflicts.slice(0, 5);
   const extra = conflicts.length - visible.length;
 
+  if (compact) {
+    return (
+      <Alert
+        variant="destructive"
+        className="border-destructive/60 bg-destructive/10 py-2"
+      >
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle className="font-semibold text-xs sm:text-sm mb-0">
+          Luftromsadvarsel – overlappende planlagt oppdrag
+          {conflicts.length > 1 ? ` (${conflicts.length})` : ""}
+        </AlertTitle>
+      </Alert>
+    );
+  }
+
   return (
     <Alert
       variant="destructive"
