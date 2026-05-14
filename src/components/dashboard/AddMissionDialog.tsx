@@ -233,6 +233,8 @@ export const AddMissionDialog = ({
           risk_nivå: initialFormData?.risk_nivå || "Lav",
           latitude: autoLat,
           longitude: autoLng,
+          oppdragstype: (initialFormData as any)?.oppdragstype || "",
+          oppdragstype_annet: (initialFormData as any)?.oppdragstype_annet || "",
         });
         setRouteData(initialRouteData || null);
         if (initialSelectedPersonnel) setSelectedPersonnel(initialSelectedPersonnel);
