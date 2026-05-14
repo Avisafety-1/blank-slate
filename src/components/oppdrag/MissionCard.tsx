@@ -394,6 +394,17 @@ export const MissionCard = ({
         </div>
       )}
 
+      {/* Airspace conflict (red warning) — overlapping planned mission of another operator */}
+      <AirspaceConflictWarning
+        missionId={mission.id}
+        tidspunkt={mission.tidspunkt}
+        sluttTidspunkt={mission.slutt_tidspunkt}
+        route={mission.route}
+        latitude={mission.latitude}
+        longitude={mission.longitude}
+        status={mission.status}
+      />
+
       {/* Resources Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-border/50">
         {/* Personnel */}
