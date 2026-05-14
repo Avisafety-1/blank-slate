@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Map } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { invalidateCompanySettingsCache } from "@/hooks/useCompanySettings";
@@ -11,6 +13,7 @@ interface Defaults {
   default_share_contact_info: boolean;
   default_anonymous_publish: boolean;
   allow_pilot_override_publish_settings: boolean;
+  public_company_name: string;
 }
 
 const DEFAULTS: Defaults = {
@@ -18,6 +21,7 @@ const DEFAULTS: Defaults = {
   default_share_contact_info: true,
   default_anonymous_publish: false,
   allow_pilot_override_publish_settings: true,
+  public_company_name: "",
 };
 
 interface Props {

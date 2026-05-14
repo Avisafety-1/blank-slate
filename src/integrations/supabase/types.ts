@@ -470,6 +470,7 @@ export type Database = {
           propagate_sora_buffer_mode: boolean
           propagate_sora_config: boolean
           propagate_sora_required: boolean
+          public_company_name: string | null
           registration_code: string
           require_mission_approval: boolean
           require_sora_on_missions: boolean
@@ -529,6 +530,7 @@ export type Database = {
           propagate_sora_buffer_mode?: boolean
           propagate_sora_config?: boolean
           propagate_sora_required?: boolean
+          public_company_name?: string | null
           registration_code: string
           require_mission_approval?: boolean
           require_sora_on_missions?: boolean
@@ -588,6 +590,7 @@ export type Database = {
           propagate_sora_buffer_mode?: boolean
           propagate_sora_config?: boolean
           propagate_sora_required?: boolean
+          public_company_name?: string | null
           registration_code?: string
           require_mission_approval?: boolean
           require_sora_on_missions?: boolean
@@ -3621,10 +3624,12 @@ export type Database = {
           geometry: unknown
           id: string
           mission_id: string
+          public_company_name: string | null
           public_contact_email: string | null
           public_contact_name: string | null
           public_contact_phone: string | null
           public_description: string | null
+          public_mission_type: string | null
           public_title: string | null
           publish_to_map: boolean
           share_contact_info: boolean
@@ -3644,10 +3649,12 @@ export type Database = {
           geometry?: unknown
           id?: string
           mission_id: string
+          public_company_name?: string | null
           public_contact_email?: string | null
           public_contact_name?: string | null
           public_contact_phone?: string | null
           public_description?: string | null
+          public_mission_type?: string | null
           public_title?: string | null
           publish_to_map?: boolean
           share_contact_info?: boolean
@@ -3667,10 +3674,12 @@ export type Database = {
           geometry?: unknown
           id?: string
           mission_id?: string
+          public_company_name?: string | null
           public_contact_email?: string | null
           public_contact_name?: string | null
           public_contact_phone?: string | null
           public_description?: string | null
+          public_mission_type?: string | null
           public_title?: string | null
           publish_to_map?: boolean
           share_contact_info?: boolean
@@ -3967,6 +3976,8 @@ export type Database = {
           notam_submitter_name: string | null
           notam_text: string | null
           oppdatert_dato: string
+          oppdragstype: string | null
+          oppdragstype_annet: string | null
           opprettet_dato: string
           pilot_contact_phone_snapshot: string | null
           publish_to_map: boolean | null
@@ -4017,6 +4028,8 @@ export type Database = {
           notam_submitter_name?: string | null
           notam_text?: string | null
           oppdatert_dato?: string
+          oppdragstype?: string | null
+          oppdragstype_annet?: string | null
           opprettet_dato?: string
           pilot_contact_phone_snapshot?: string | null
           publish_to_map?: boolean | null
@@ -4067,6 +4080,8 @@ export type Database = {
           notam_submitter_name?: string | null
           notam_text?: string | null
           oppdatert_dato?: string
+          oppdragstype?: string | null
+          oppdragstype_annet?: string | null
           opprettet_dato?: string
           pilot_contact_phone_snapshot?: string | null
           publish_to_map?: boolean | null
@@ -5789,10 +5804,12 @@ export type Database = {
           geometry_geojson: Json | null
           id: string | null
           mission_id: string | null
+          public_company_name: string | null
           public_contact_email: string | null
           public_contact_name: string | null
           public_contact_phone: string | null
           public_description: string | null
+          public_mission_type: string | null
           public_title: string | null
           publish_to_map: boolean | null
           share_contact_info: boolean | null
@@ -5810,10 +5827,12 @@ export type Database = {
           geometry_geojson?: never
           id?: string | null
           mission_id?: string | null
+          public_company_name?: string | null
           public_contact_email?: string | null
           public_contact_name?: string | null
           public_contact_phone?: string | null
           public_description?: string | null
+          public_mission_type?: string | null
           public_title?: string | null
           publish_to_map?: boolean | null
           share_contact_info?: boolean | null
@@ -5831,10 +5850,12 @@ export type Database = {
           geometry_geojson?: never
           id?: string | null
           mission_id?: string | null
+          public_company_name?: string | null
           public_contact_email?: string | null
           public_contact_name?: string | null
           public_contact_phone?: string | null
           public_description?: string | null
+          public_mission_type?: string | null
           public_title?: string | null
           publish_to_map?: boolean | null
           share_contact_info?: boolean | null
@@ -6302,6 +6323,10 @@ export type Database = {
       get_platform_statistics: {
         Args: { p_exclude_company_id?: string }
         Returns: Json
+      }
+      get_root_public_company_name: {
+        Args: { _company_id: string }
+        Returns: string
       }
       get_user_accessible_companies: {
         Args: { _user_id: string }
