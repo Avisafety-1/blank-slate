@@ -1,6 +1,7 @@
 import L from "leaflet";
 import { supabase } from "@/integrations/supabase/client";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
+import droneStaticIcon from "@/assets/drone-icon.png";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
 
