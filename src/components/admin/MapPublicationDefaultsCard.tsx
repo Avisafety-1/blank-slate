@@ -142,11 +142,39 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
       <Row
         id="mp-share"
         title="Del kontaktinformasjon"
-        desc="Navn, telefon og e-post fra oppdragseier vises i kart-popup for koordinering."
+        desc="Vis kontaktdetaljer fra oppdragseier i kart-popup for koordinering."
         checked={values.default_share_contact_info}
         disabled={isDisabled}
         onChange={(v) => update({ default_share_contact_info: v })}
       />
+      {values.default_share_contact_info && (
+        <div className="ml-4 pl-3 border-l-2 border-primary/30 space-y-1">
+          <Row
+            id="mp-share-name"
+            title="Del navn"
+            desc="Navn på oppdragseier vises i popup."
+            checked={values.default_share_contact_name}
+            disabled={isDisabled}
+            onChange={(v) => update({ default_share_contact_name: v })}
+          />
+          <Row
+            id="mp-share-phone"
+            title="Del telefon"
+            desc="Telefonnummer vises i popup."
+            checked={values.default_share_contact_phone}
+            disabled={isDisabled}
+            onChange={(v) => update({ default_share_contact_phone: v })}
+          />
+          <Row
+            id="mp-share-email"
+            title="Del e-post"
+            desc="E-postadresse vises i popup."
+            checked={values.default_share_contact_email}
+            disabled={isDisabled}
+            onChange={(v) => update({ default_share_contact_email: v })}
+          />
+        </div>
+      )}
       <Row
         id="mp-anon"
         title="Anonymisert visning"
