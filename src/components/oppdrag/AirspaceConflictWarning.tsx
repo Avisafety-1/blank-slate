@@ -39,6 +39,7 @@ export const AirspaceConflictWarning = ({
   latitude,
   longitude,
   status,
+  compact = false,
 }: Props) => {
   // Only check active/upcoming missions
   const enabled =
