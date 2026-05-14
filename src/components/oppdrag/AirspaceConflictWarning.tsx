@@ -121,8 +121,7 @@ export const AirspaceConflictWarning = ({
                       : c.public_title || "Planlagt oppdrag"}
                   </span>
                   <span className="text-muted-foreground tabular-nums">
-                    {fmt(c.starts_at)}
-                    {c.ends_at ? ` – ${fmt(c.ends_at)}` : ""}
+                    {fmt(c.starts_at)} (ukjent sluttid)
                   </span>
                 </div>
                 {c.anonymous_publish ? (
