@@ -1220,6 +1220,48 @@ export const AddMissionDialog = ({
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="oppdragstype">Oppdragstype</Label>
+              <Select
+                value={formData.oppdragstype || "__none__"}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    oppdragstype: value === "__none__" ? "" : value,
+                    oppdragstype_annet: value === "Annet" ? formData.oppdragstype_annet : "",
+                  })
+                }
+              >
+                <SelectTrigger id="oppdragstype">
+                  <SelectValue placeholder="Velg type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Ikke spesifisert</SelectItem>
+                  <SelectItem value="Inspeksjon">Inspeksjon</SelectItem>
+                  <SelectItem value="Kartlegging">Kartlegging</SelectItem>
+                  <SelectItem value="Foto/film">Foto/film</SelectItem>
+                  <SelectItem value="Søk og redning">Søk og redning</SelectItem>
+                  <SelectItem value="Landbruk">Landbruk</SelectItem>
+                  <SelectItem value="Bygg/anlegg">Bygg/anlegg</SelectItem>
+                  <SelectItem value="Forskning">Forskning</SelectItem>
+                  <SelectItem value="Annet">Annet</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {formData.oppdragstype === "Annet" && (
+              <div>
+                <Label htmlFor="oppdragstype_annet">Spesifiser oppdragstype</Label>
+                <Input
+                  id="oppdragstype_annet"
+                  value={formData.oppdragstype_annet}
+                  onChange={(e) => setFormData({ ...formData, oppdragstype_annet: e.target.value })}
+                  placeholder="F.eks. Termografering"
+                />
+              </div>
+            )}
+          </div>
+
           <div>
             <Label htmlFor="merknader">{t('missions.notes')}</Label>
             <div className="relative">
