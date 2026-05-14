@@ -1,6 +1,7 @@
 import L from "leaflet";
 import { supabase } from "@/integrations/supabase/client";
 import { droneAnimatedIcon } from "@/lib/mapIcons";
+import droneStaticIcon from "@/assets/drone-icon.png";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
 
@@ -510,20 +511,18 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
         console.warn("Planned mission polygon render failed:", e);
       }
 
-      // Center marker
+      // Center marker — stationary drone icon for planned missions
       const center = row.center_geojson;
       if (center?.type === "Point" && Array.isArray(center.coordinates)) {
         const [lng, lat] = center.coordinates as [number, number];
         const icon = L.divIcon({
           className: "",
-          html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" fill="${color}" fill-opacity="0.25"/>
-              <circle cx="12" cy="10" r="3" fill="${color}"/>
-            </svg>
+          html: `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
+            <img src="${droneStaticIcon}" style="width:40px;height:40px;object-fit:contain;" alt="Planlagt drone" />
           </div>`,
-          iconSize: [28, 28],
-          iconAnchor: [14, 28],
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+          popupAnchor: [0, -20],
         });
         L.marker([lat, lng], { icon, pane: "missionPane" })
           .bindPopup(popupHtml, { maxWidth: 320 })
