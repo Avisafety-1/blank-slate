@@ -444,6 +444,39 @@ export const MarketingSettings = () => {
             {syncingAudience ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             Synkroniser alle eksisterende brukere nå
           </Button>
+
+          <div className="pt-3 border-t border-border space-y-2">
+            <p className="text-xs font-medium text-foreground">Selskaps-audiences</p>
+            <p className="text-xs text-muted-foreground">
+              Brukere fra disse selskapene speiles til en egen audience i Resend (i tillegg til hoved-audiencen).
+            </p>
+            <div className="space-y-1.5">
+              {(companyAudiences ?? []).length === 0 && (
+                <p className="text-xs text-muted-foreground italic">Ingen selskaps-audiences konfigurert.</p>
+              )}
+              {companyAudiences?.map((ca) => (
+                <div key={ca.company_id} className="flex items-center justify-between py-1.5 px-2 rounded bg-muted/30 border border-border">
+                  <div className="text-xs">
+                    <p className="font-medium text-foreground">{ca.audience_name}</p>
+                    <p className="text-muted-foreground">{ca.companies?.navn ?? "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={`text-[10px] ${ca.audience_id ? "border-green-500 text-green-600" : "border-amber-500 text-amber-600"}`}>
+                      {ca.audience_id ? "Opprettet" : "Venter på første synk"}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant={ca.enabled ? "default" : "outline"}
+                      className="h-6 text-[10px] px-2"
+                      onClick={() => toggleCompanyAudience(ca.company_id, !ca.enabled)}
+                    >
+                      {ca.enabled ? "Aktiv" : "Av"}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
