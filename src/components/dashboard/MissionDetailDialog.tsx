@@ -192,6 +192,15 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           </DialogHeader>
         
         <div className="space-y-4">
+          <AirspaceConflictWarning
+            missionId={currentMission.id}
+            tidspunkt={currentMission.tidspunkt}
+            sluttTidspunkt={currentMission.slutt_tidspunkt}
+            route={currentMission.route as any}
+            latitude={currentMission.latitude}
+            longitude={currentMission.longitude}
+            status={currentMission.status}
+          />
           <div className="flex flex-wrap gap-2">
             <MissionStatusDropdown
               missionId={currentMission.id}
