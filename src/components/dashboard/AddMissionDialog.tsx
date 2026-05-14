@@ -784,6 +784,8 @@ export const AddMissionDialog = ({
             latitude: formData.latitude,
             longitude: formData.longitude,
             route: routeForStorage,
+            oppdragstype: formData.oppdragstype || null,
+            oppdragstype_annet: formData.oppdragstype === "Annet" ? (formData.oppdragstype_annet || null) : null,
             publish_to_map: companySettings.allow_pilot_override_publish_settings
               ? publication.publish_to_map
               : companySettings.default_publish_planned_missions,
