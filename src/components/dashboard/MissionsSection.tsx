@@ -421,6 +421,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     latitude={mission.latitude}
                     longitude={mission.longitude}
                     status={mission.status}
+                    compact
                   />
                 </div>
               </div>
