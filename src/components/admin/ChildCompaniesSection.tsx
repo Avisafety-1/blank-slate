@@ -1632,21 +1632,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 );
               })()}
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center gap-2">
-                  <UserCog className="h-4 w-4 text-muted-foreground" />
-                  <div className="font-medium text-sm">Roller</div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs max-w-[200px]">Roller kan tildeles personell ved planlegging av oppdrag</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+              <SubSection title="Roller" icon={UserCog}>
                 {/* Locked banner for child departments */}
                 {isChildDept && !!inherited?.propagate_mission_roles && (
                   <div className="flex items-center gap-2 p-2 rounded-md border border-primary/40 bg-primary/5">
