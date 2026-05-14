@@ -11,6 +11,9 @@ import { invalidateCompanySettingsCache } from "@/hooks/useCompanySettings";
 interface Defaults {
   default_publish_planned_missions: boolean;
   default_share_contact_info: boolean;
+  default_share_contact_name: boolean;
+  default_share_contact_phone: boolean;
+  default_share_contact_email: boolean;
   default_anonymous_publish: boolean;
   allow_pilot_override_publish_settings: boolean;
   public_company_name: string;
@@ -19,6 +22,9 @@ interface Defaults {
 const DEFAULTS: Defaults = {
   default_publish_planned_missions: true,
   default_share_contact_info: true,
+  default_share_contact_name: true,
+  default_share_contact_phone: true,
+  default_share_contact_email: true,
   default_anonymous_publish: false,
   allow_pilot_override_publish_settings: true,
   public_company_name: "",
@@ -42,7 +48,7 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
     (supabase
       .from("companies")
       .select(
-        "default_publish_planned_missions, default_share_contact_info, default_anonymous_publish, allow_pilot_override_publish_settings, public_company_name, parent_company_id"
+        "default_publish_planned_missions, default_share_contact_info, default_share_contact_name, default_share_contact_phone, default_share_contact_email, default_anonymous_publish, allow_pilot_override_publish_settings, public_company_name, parent_company_id"
       )
       .eq("id", companyId)
       .maybeSingle() as any).then(({ data }: any) => {
@@ -50,6 +56,9 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
         setValues({
           default_publish_planned_missions: data.default_publish_planned_missions ?? true,
           default_share_contact_info: data.default_share_contact_info ?? true,
+          default_share_contact_name: data.default_share_contact_name ?? true,
+          default_share_contact_phone: data.default_share_contact_phone ?? true,
+          default_share_contact_email: data.default_share_contact_email ?? true,
           default_anonymous_publish: data.default_anonymous_publish ?? false,
           allow_pilot_override_publish_settings:
             data.allow_pilot_override_publish_settings ?? true,
@@ -133,11 +142,39 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
       <Row
         id="mp-share"
         title="Del kontaktinformasjon"
-        desc="Navn, telefon og e-post fra oppdragseier vises i kart-popup for koordinering."
+        desc="Vis kontaktdetaljer fra oppdragseier i kart-popup for koordinering."
         checked={values.default_share_contact_info}
         disabled={isDisabled}
         onChange={(v) => update({ default_share_contact_info: v })}
       />
+      {values.default_share_contact_info && (
+        <div className="ml-4 pl-3 border-l-2 border-primary/30 space-y-1">
+          <Row
+            id="mp-share-name"
+            title="Del navn"
+            desc="Navn på oppdragseier vises i popup."
+            checked={values.default_share_contact_name}
+            disabled={isDisabled}
+            onChange={(v) => update({ default_share_contact_name: v })}
+          />
+          <Row
+            id="mp-share-phone"
+            title="Del telefon"
+            desc="Telefonnummer vises i popup."
+            checked={values.default_share_contact_phone}
+            disabled={isDisabled}
+            onChange={(v) => update({ default_share_contact_phone: v })}
+          />
+          <Row
+            id="mp-share-email"
+            title="Del e-post"
+            desc="E-postadresse vises i popup."
+            checked={values.default_share_contact_email}
+            disabled={isDisabled}
+            onChange={(v) => update({ default_share_contact_email: v })}
+          />
+        </div>
+      )}
       <Row
         id="mp-anon"
         title="Anonymisert visning"

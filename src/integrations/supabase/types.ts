@@ -437,7 +437,10 @@ export type Database = {
           created_at: string
           default_anonymous_publish: boolean
           default_publish_planned_missions: boolean
+          default_share_contact_email: boolean
           default_share_contact_info: boolean
+          default_share_contact_name: boolean
+          default_share_contact_phone: boolean
           departments_enabled: boolean
           deviation_report_enabled: boolean
           dji_auto_sync_enabled: boolean
@@ -497,7 +500,10 @@ export type Database = {
           created_at?: string
           default_anonymous_publish?: boolean
           default_publish_planned_missions?: boolean
+          default_share_contact_email?: boolean
           default_share_contact_info?: boolean
+          default_share_contact_name?: boolean
+          default_share_contact_phone?: boolean
           departments_enabled?: boolean
           deviation_report_enabled?: boolean
           dji_auto_sync_enabled?: boolean
@@ -557,7 +563,10 @@ export type Database = {
           created_at?: string
           default_anonymous_publish?: boolean
           default_publish_planned_missions?: boolean
+          default_share_contact_email?: boolean
           default_share_contact_info?: boolean
+          default_share_contact_name?: boolean
+          default_share_contact_phone?: boolean
           departments_enabled?: boolean
           deviation_report_enabled?: boolean
           dji_auto_sync_enabled?: boolean
@@ -3979,6 +3988,8 @@ export type Database = {
           oppdragstype: string | null
           oppdragstype_annet: string | null
           opprettet_dato: string
+          pilot_contact_email_snapshot: string | null
+          pilot_contact_name_snapshot: string | null
           pilot_contact_phone_snapshot: string | null
           publish_to_map: boolean | null
           risk_nivå: string
@@ -4031,6 +4042,8 @@ export type Database = {
           oppdragstype?: string | null
           oppdragstype_annet?: string | null
           opprettet_dato?: string
+          pilot_contact_email_snapshot?: string | null
+          pilot_contact_name_snapshot?: string | null
           pilot_contact_phone_snapshot?: string | null
           publish_to_map?: boolean | null
           risk_nivå?: string
@@ -4083,6 +4096,8 @@ export type Database = {
           oppdragstype?: string | null
           oppdragstype_annet?: string | null
           opprettet_dato?: string
+          pilot_contact_email_snapshot?: string | null
+          pilot_contact_name_snapshot?: string | null
           pilot_contact_phone_snapshot?: string | null
           publish_to_map?: boolean | null
           risk_nivå?: string
