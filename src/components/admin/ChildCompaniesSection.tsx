@@ -1709,21 +1709,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 )}
               </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Bell className="h-4 w-4 text-muted-foreground" />
-                  <div className="font-medium text-sm">Flylogg-varsler</div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs max-w-[220px]">Motta e-postvarsler når kritiske terskelverdier nås under flyging (DJI/ArduPilot)</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+              <SubSection title="Flylogg-varsler" icon={Bell}>
                 {/* Locked banner for child departments */}
                 {isChildDept && !!inherited?.propagate_flight_alerts && (
                   <div className="flex items-center gap-2 p-2 rounded-md border border-primary/40 bg-primary/5">
