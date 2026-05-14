@@ -1,60 +1,31 @@
-## Mål
+## Årsak
 
-Popup for planlagte oppdrag på kartet skal også vise:
-- **Selskapsnavn** (offentlig navn fra rot-selskapet, deles av alle avdelinger)
-- **Oppdragstype** (valgt fra liste, eller fritekst hvis "Annet")
+`support@avisafe.no` har rollen **administrator**, ikke **superadmin**.
 
-Skjules ved anonym publisering.
+Når dashboardet laster, kjører `MissionsSection.tsx` (linje 73):
 
-## Endringer
+```ts
+supabase.functions.invoke('auto-complete-missions').catch(console.error);
+```
 
-### 1. Database
+Denne edge-funksjonen er beskyttet med `requireCronOrSuperadmin` — den aksepterer kun cron-secret eller superadmin-JWT. For alle andre innloggede brukere returnerer den **403 "Insufficient role"**, som dukker opp i konsollen ved hver innlogging / dashboard-besøk.
 
-**`companies`** – nytt felt:
-- `public_company_name TEXT` (valgfritt). Vises offentlig på kartet. Hvis tomt, faller tilbake til `navn`.
+Bekreftet i edge-loggen: `POST | 403 | /functions/v1/auto-complete-missions` rett etter login som support@avisafe.no.
 
-**`missions`** – nye felt:
-- `oppdragstype TEXT` (en av: Inspeksjon, Kartlegging, Foto/film, Søk og redning, Landbruk, Bygg/anlegg, Forskning, Annet)
-- `oppdragstype_annet TEXT` (fritekst, kun brukt når `oppdragstype = 'Annet'`)
+## Løsning
 
-**`mission_map_publications`** – nye snapshot-felt:
-- `public_company_name TEXT`
-- `public_mission_type TEXT` (ferdig sammensatt streng – enten valg, eller fritekst hvis "Annet")
+Fjern klient-invokasjonen i `src/components/dashboard/MissionsSection.tsx`. Funksjonen er en vedlikeholdsjobb og skal kun kalles av pg_cron (eller manuelt av superadmin) — ikke ved hver dashboard-lasting.
 
-**Trigger `sync_mission_map_publication`** oppdateres til å:
-- Slå opp **rot-selskapets** `public_company_name` via eksisterende `get_parent_company_id` (rekursivt til toppen). Faller tilbake til `navn`.
-- Snapshotte `oppdragstype` (med `oppdragstype_annet` hvis "Annet").
-- Sette begge til `NULL` når `v_anon = true`.
+```text
+src/components/dashboard/MissionsSection.tsx
+  - Fjern useEffect-blokken som kaller supabase.functions.invoke('auto-complete-missions')
+  - Behold fetchMissions()
+```
 
-### 2. Frontend
+## Hvorfor ikke endre rollesjekken?
 
-**Mitt selskap (admin)**
-- Nytt input i selskapsinnstillinger: "Offentlig selskapsnavn" med hjelpetekst om at det vises på offentlig kart og deles av alle avdelinger.
-- Kun synlig/redigerbart for rot-selskap (eller readonly med visning av arvet verdi for avdelinger).
+Auto-fullføring av oppdrag eldre enn 24t er en bakgrunnsjobb som ikke skal trigges av tilfeldige innlogginger — det belaster databasen unødvendig og er allerede dekket av cron. Å åpne den for alle brukere ville skjult bugs og økt last.
 
-**Oppdrag-skjema (opprett/rediger)**
-- Ny dropdown "Oppdragstype" med ovennevnte alternativer.
-- Hvis "Annet" velges → vises fritekstfelt "Spesifiser oppdragstype".
+## Verifisering
 
-**Kart-popup (`src/lib/mapDataFetchers.ts`)**
-- Bruk nye felt fra `v_planned_mission_map`:
-  - Vis `public_company_name` som egen linje øverst (under tittel) når satt.
-  - Vis `public_mission_type` som chip/badge under tittel.
-- Tidsperiode vises fortsatt som "start – (ukjent sluttid)".
-
-### 3. View
-
-`v_planned_mission_map` utvides med `public_company_name` og `public_mission_type`.
-
-## Tekniske detaljer
-
-- Rekursiv parent-lookup gjøres i trigger via `WITH RECURSIVE` (eller løkke) som klatrer `parent_company_id` til toppen og henter dennes `public_company_name`.
-- Eksisterende rader i `mission_map_publications` får verdiene fylt inn ved at vi kjører en engangs-UPDATE etter migrasjonen som re-syncer fra missions/companies.
-- Ingen RLS-endringer (popup-data er allerede offentlig via publisering).
-- Ingen endring i anonym-logikk utover at de to nye feltene også settes til NULL.
-
-## Verifikasjon
-
-1. Sett "Offentlig selskapsnavn" på rot-selskap, opprett oppdrag i underavdeling med oppdragstype "Inspeksjon" → popup viser rot-selskapets navn + "Inspeksjon".
-2. Velg "Annet" + skriv "Termografering" → popup viser "Termografering".
-3. Aktiver anonym publisering → selskapsnavn og oppdragstype skjules.
+Etter fix: logg inn som support@avisafe.no → ingen 403 i edge-loggen, ingen "Insufficient role" i konsollen.
