@@ -272,6 +272,8 @@ export const AddMissionDialog = ({
           risk_nivå: "Lav",
           latitude: null,
           longitude: null,
+          oppdragstype: "",
+          oppdragstype_annet: "",
         });
         setSelectedPersonnel([]);
         setSelectedEquipment([]);
