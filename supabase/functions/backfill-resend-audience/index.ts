@@ -1,4 +1,4 @@
-// Backfill all profile emails to Resend Audience. Superadmin only.
+// Backfill all profile emails to Resend Audiences (global + per-company). Superadmin only.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -27,12 +27,28 @@ async function resendFetch(path: string, opts: RequestInit = {}) {
   return { ok: res.ok, status: res.status, body: json };
 }
 
+async function syncOne(audienceId: string, email: string, first_name: string, last_name: string) {
+  const r = await resendFetch(`/audiences/${audienceId}/contacts`, {
+    method: "POST",
+    body: JSON.stringify({ email, first_name, last_name, unsubscribed: false }),
+  });
+  if (r.ok) return "added";
+  if (r.status === 409) {
+    const patch = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(email)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ first_name, last_name }),
+    });
+    return patch.ok ? "updated" : "failed";
+  }
+  return "failed";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const audienceId = Deno.env.get("RESEND_AUDIENCE_ID");
-    if (!audienceId) throw new Error("RESEND_AUDIENCE_ID not configured");
+    const globalAudienceId = Deno.env.get("RESEND_AUDIENCE_ID");
+    if (!globalAudienceId) throw new Error("RESEND_AUDIENCE_ID not configured");
 
     // Auth: superadmin only
     const authHeader = req.headers.get("authorization") ?? "";
@@ -53,59 +69,79 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!roleRow) throw new Error("Forbidden: superadmin required");
 
-    // Fetch all profiles with email
+    // Load all profiles with email + company_id
     const { data: profiles, error } = await admin
       .from("profiles")
-      .select("email, full_name")
+      .select("id, email, full_name, company_id")
       .not("email", "is", null);
     if (error) throw error;
 
-    let added = 0, updated = 0, failed = 0, skipped = 0;
-    const errors: Array<{ email: string; error: string }> = [];
+    // Pre-resolve root company for each profile
+    const rootByProfile = new Map<string, string>();
+    for (const p of profiles ?? []) {
+      if (!p.company_id) continue;
+      const { data: rootRes } = await admin.rpc("get_root_company_id", { _company_id: p.company_id });
+      if (rootRes) rootByProfile.set(p.id, rootRes as string);
+    }
+
+    // Load company audiences and lazily create on Resend if missing
+    const { data: companyAudiences } = await admin
+      .from("resend_company_audiences")
+      .select("company_id, audience_id, audience_name, enabled")
+      .eq("enabled", true);
+
+    const audienceByCompany = new Map<string, { audienceId: string; audienceName: string }>();
+    for (const ca of companyAudiences ?? []) {
+      let aid = ca.audience_id as string | null;
+      if (!aid) {
+        const created = await resendFetch("/audiences", { method: "POST", body: JSON.stringify({ name: ca.audience_name }) });
+        if (created.ok && (created.body as { id?: string })?.id) {
+          aid = (created.body as { id: string }).id;
+          await admin.from("resend_company_audiences").update({ audience_id: aid }).eq("company_id", ca.company_id);
+        } else {
+          continue;
+        }
+      }
+      audienceByCompany.set(ca.company_id as string, { audienceId: aid!, audienceName: ca.audience_name as string });
+    }
+
+    const stats: Record<string, { added: number; updated: number; failed: number }> = {
+      global: { added: 0, updated: 0, failed: 0 },
+    };
+    for (const a of audienceByCompany.values()) stats[a.audienceName] = { added: 0, updated: 0, failed: 0 };
+
+    let total = 0, skipped = 0;
 
     for (const p of profiles ?? []) {
+      total++;
       const email = (p.email || "").trim().toLowerCase();
       if (!email || !email.includes("@")) { skipped++; continue; }
-
       const fullName = (p.full_name || "").trim();
       const [first_name, ...rest] = fullName.split(" ");
       const last_name = rest.join(" ");
 
+      // Global audience
       try {
-        const r = await resendFetch(`/audiences/${audienceId}/contacts`, {
-          method: "POST",
-          body: JSON.stringify({
-            email,
-            first_name: first_name || "",
-            last_name: last_name || "",
-            unsubscribed: false,
-          }),
-        });
-        if (r.ok) {
-          added++;
-        } else if (r.status === 409) {
-          // Already exists — patch names only
-          const patch = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(email)}`, {
-            method: "PATCH",
-            body: JSON.stringify({ first_name: first_name || "", last_name: last_name || "" }),
-          });
-          if (patch.ok) updated++; else { failed++; errors.push({ email, error: `patch ${patch.status}` }); }
-        } else {
-          failed++;
-          errors.push({ email, error: `create ${r.status}` });
-        }
-      } catch (e) {
-        failed++;
-        errors.push({ email, error: (e as Error).message });
+        const r = await syncOne(globalAudienceId, email, first_name || "", last_name || "");
+        const k = r as "added" | "updated" | "failed";
+        stats.global[k]++;
+      } catch { stats.global.failed++; }
+
+      // Company audience
+      const root = rootByProfile.get(p.id);
+      const ca = root ? audienceByCompany.get(root) : null;
+      if (ca) {
+        try {
+          const r = await syncOne(ca.audienceId, email, first_name || "", last_name || "");
+          const k = r as "added" | "updated" | "failed";
+          stats[ca.audienceName][k]++;
+        } catch { stats[ca.audienceName].failed++; }
       }
 
-      // Smooth rate-limit
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 150));
     }
 
-    return new Response(JSON.stringify({
-      total: profiles?.length ?? 0, added, updated, failed, skipped, errors: errors.slice(0, 20),
-    }), {
+    return new Response(JSON.stringify({ total, skipped, audiences: stats }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
