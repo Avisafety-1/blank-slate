@@ -1386,55 +1386,55 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 </div>
               )}
 
-              {/* Avviksrapport */}
-              {(() => {
-                const locked = isChildDept && !!inherited?.propagate_deviation_report;
-                const value = locked ? inherited!.deviation_report_enabled : deviationReportEnabled;
-                return (
-                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
-                        <div className="font-medium text-sm flex items-center gap-1.5">
-                          <AlertTriangle className="w-4 h-4" />
-                          Avviksrapport ved flytur
-                          {locked && (
-                            <Badge variant="secondary" className="text-[10px] gap-1">
-                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
-                            </Badge>
-                          )}
+              <SubSection title="Avviksrapport ved flytur" icon={AlertTriangle}>
+                {(() => {
+                  const locked = isChildDept && !!inherited?.propagate_deviation_report;
+                  const value = locked ? inherited!.deviation_report_enabled : deviationReportEnabled;
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
+                          <div className="font-medium text-sm flex items-center gap-1.5">
+                            Aktiver avviksrapport
+                            {locked && (
+                              <Badge variant="secondary" className="text-[10px] gap-1">
+                                <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {locked
+                              ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
+                              : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                          </div>
+                        </Label>
+                        <Switch
+                          id="deviation-report"
+                          checked={value}
+                          onCheckedChange={handleToggleDeviationReport}
+                          disabled={savingSettings || locked}
+                        />
+                      </div>
+                      {value && companyId && !locked && (
+                        <div className="pt-2 border-t border-border/50">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            Kategorier (ubegrenset antall nivåer):
+                          </p>
+                          <DeviationCategoryTreeEditor companyId={companyId} />
                         </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {locked
-                            ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
-                            : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                      )}
+                      {value && locked && parentDeviationCompanyId && (
+                        <div className="pt-2 border-t border-border/50">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            Kategorier (arvet — kun lesetilgang):
+                          </p>
+                          <DeviationCategoryTreeEditor companyId={companyId} readOnly />
                         </div>
-                      </Label>
-                      <Switch
-                        id="deviation-report"
-                        checked={value}
-                        onCheckedChange={handleToggleDeviationReport}
-                        disabled={savingSettings || locked}
-                      />
+                      )}
                     </div>
-                    {value && companyId && !locked && (
-                      <div className="pt-2 border-t border-border/50">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">
-                          Kategorier (ubegrenset antall nivåer):
-                        </p>
-                        <DeviationCategoryTreeEditor companyId={companyId} />
-                      </div>
-                    )}
-                    {value && locked && parentDeviationCompanyId && (
-                      <div className="pt-2 border-t border-border/50">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">
-                          Kategorier (arvet — kun lesetilgang):
-                        </p>
-                        <DeviationCategoryTreeEditor companyId={companyId} readOnly />
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+                  );
+                })()}
+              </SubSection>
               <SubSection title="Standard SORA-buffersone" icon={Shield}>
                 {(() => {
                   const soraLocked = isChildDept && !!inherited?.propagate_sora_buffer_mode;
