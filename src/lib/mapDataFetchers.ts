@@ -521,12 +521,12 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
         const [lng, lat] = center.coordinates as [number, number];
         const icon = L.divIcon({
           className: "",
-          html: `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
-            <img src="${droneStaticIcon}" style="width:40px;height:40px;object-fit:contain;" alt="Planlagt drone" />
+          html: `<div style="width:70px;height:70px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
+            <img src="${droneStaticIcon}" style="width:70px;height:70px;object-fit:contain;" alt="Planlagt drone" />
           </div>`,
-          iconSize: [40, 40],
-          iconAnchor: [20, 20],
-          popupAnchor: [0, -20],
+          iconSize: [70, 70],
+          iconAnchor: [35, 35],
+          popupAnchor: [0, -35],
         });
         L.marker([lat, lng], { icon, pane: "missionPane" })
           .bindPopup(popupHtml, { maxWidth: 320 })
