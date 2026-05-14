@@ -81,6 +81,30 @@ export const MarketingSettings = () => {
     enabled: !!companyId,
   });
 
+  const { data: companyAudiences, refetch: refetchCompanyAudiences } = useQuery({
+    queryKey: ["resend-company-audiences"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resend_company_audiences")
+        .select("company_id, audience_id, audience_name, enabled, companies:company_id(navn)")
+        .order("audience_name");
+      if (error) throw error;
+      return data as Array<{ company_id: string; audience_id: string | null; audience_name: string; enabled: boolean; companies: { navn: string } | null }>;
+    },
+  });
+
+  const toggleCompanyAudience = async (companyId: string, enabled: boolean) => {
+    const { error } = await supabase
+      .from("resend_company_audiences")
+      .update({ enabled })
+      .eq("company_id", companyId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(enabled ? "Audience aktivert" : "Audience deaktivert");
+      refetchCompanyAudiences();
+    }
+  };
+
   const handleConnectLinkedin = async () => {
     setConnectingLinkedin(true);
     try {
