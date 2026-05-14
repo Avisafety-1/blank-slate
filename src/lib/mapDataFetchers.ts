@@ -453,7 +453,7 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
         row.public_title || (anon ? "Planlagt droneoppdrag" : "Planlagt oppdrag")
       );
       const desc = row.public_description ? escapePlannedHtml(row.public_description) : "";
-      const period = `${formatPlannedDateNo(row.starts_at)} – ${formatPlannedDateNo(row.ends_at)}`;
+      const period = `${formatPlannedDateNo(row.starts_at)} – (ukjent sluttid)`;
 
       const contactRows: string[] = [];
       if (showContact) {
