@@ -1821,7 +1821,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 )}
               </div>
 
-              <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
+              <SubSection title="Kartpublisering" icon={MapIcon}>
+                <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
+              </SubSection>
             </div>
           </CollapsibleContent>
         </GlassCard>
