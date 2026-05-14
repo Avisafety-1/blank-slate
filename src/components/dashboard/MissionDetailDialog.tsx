@@ -26,6 +26,7 @@ import { NotamDialog } from "./NotamDialog";
 import { DeviationReportsSection } from "./DeviationReportsSection";
 import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
 import { MissionNotesDialog } from "./MissionNotesDialog";
+import { AirspaceConflictWarning } from "@/components/oppdrag/AirspaceConflictWarning";
 import {
   statusColors,
   getAIRiskBadgeColor,
