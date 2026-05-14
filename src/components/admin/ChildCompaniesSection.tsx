@@ -1162,7 +1162,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 </div>
               )}
 
-              <SubSection title="Generelle innstillinger" icon={Settings} defaultOpen>
+              <SubSection title="Generelle innstillinger" icon={Settings}>
               {/* Vis alle luftromsadvarsler */}
               {(() => {
                 const locked = isChildDept && !!inherited?.propagate_airspace_warnings;
