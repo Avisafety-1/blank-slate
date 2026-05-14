@@ -38,6 +38,27 @@ interface SafeSkyBeacon {
   last_update?: string | null;
 }
 
+function toIsoTimestamp(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'number') {
+    const ms = v < 1e12 ? v * 1000 : v;
+    const d = new Date(ms);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  if (typeof v === 'string') {
+    if (/^\d+$/.test(v)) {
+      const n = Number(v);
+      const ms = n < 1e12 ? n * 1000 : n;
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  return null;
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -174,7 +195,7 @@ Deno.serve(async (req) => {
           squawk: beacon.squawk != null ? String(beacon.squawk) : null,
           on_ground: typeof beacon.on_ground === 'boolean' ? beacon.on_ground : null,
           accuracy_m: beacon.accuracy ?? beacon.altitude_accuracy ?? null,
-          last_update: beacon.last_update || beacon.timestamp || null,
+          last_update: toIsoTimestamp(beacon.last_update ?? beacon.timestamp),
         });
       }
     }

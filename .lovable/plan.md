@@ -1,17 +1,38 @@
-## Plan
+## Hva som er galt
 
-1. Lag én ny database-migrasjon som erstatter `public.sync_mission_map_publication()` med samme logikk som nå, men korrigerer profiloppslaget til kun eksisterende kolonner:
-   - `telefon`
-   - `email`
-   - `full_name`
+Edge-funksjonen `safesky-beacons-fetch` henter trafikken fra SafeSky Sandbox riktig (~115 beacons hvert 10. sekund), men hver upsert feiler:
 
-2. Fjern referansen til `display_name`, fordi `profiles.display_name` ikke finnes og nå blokkerer `INSERT/UPDATE` på `missions` med `column "display_name" does not exist`.
+```
+ERROR Error upserting beacons: code 22008
+date/time field value out of range: "1778740735"
+```
 
-3. Behold eksisterende personvernlogikk uendret:
-   - kontaktinfo vises bare når `share_contact_info=true` og `anonymous_publish=false`
-   - ellers lagres publiserte kontaktfelter som `NULL`
-   - ingen offentlig/anon-visning aktiveres
-   - ingen RLS-endringer
-   - ingen nye tabeller eller kolonner
+Resultat: `safesky_beacons`-tabellen er tom (`select count(*) → 0`), så kartet har ingenting å vise.
 
-4. Etter migrasjonen: verifiser at selve triggerdefinisjonen ikke lenger inneholder `display_name` eller `phone`, og at den bruker `telefon`, `email`, `full_name`.
+Årsaken: SafeSky returnerer `last_update` som Unix epoch i sekunder (heltall), mens kolonnen `safesky_beacons.last_update` er `timestamptz`. Funksjonen sender tallet rett inn uten konvertering:
+
+```ts
+last_update: beacon.last_update || beacon.timestamp || null,
+```
+
+Postgres tolker "1778740735" som år 1778740735 → out of range, og hele upserten ruller tilbake.
+
+## Fix
+
+I `supabase/functions/safesky-beacons-fetch/index.ts`, normaliser `last_update` før upsert:
+
+- Hvis tall og < 1e12 → epoch sekunder → `new Date(n * 1000).toISOString()`
+- Hvis tall og ≥ 1e12 → epoch ms → `new Date(n).toISOString()`
+- Hvis string som allerede er ISO → behold
+- Ellers → `null`
+
+Liten hjelpefunksjon `toIsoTimestamp(v)` brukt på `beacon.last_update || beacon.timestamp`.
+
+Ingen DB-endringer, ingen RLS-endringer, ingen frontend-endringer.
+
+## Verifisering
+
+1. Vente på neste cron-tick (kjører hvert 10. sek når kartet er åpent).
+2. Sjekke logger: `Upserted N beacons` i stedet for 22008-feil.
+3. `select count(*) from safesky_beacons` → > 0.
+4. Trafikkmarkører dukker opp på kartet i Norge-bbox.
