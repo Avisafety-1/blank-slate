@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
 import { FH2DevicesSection } from "./FH2DevicesSection";
-import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle, Lock } from "lucide-react";
+import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle, Lock, Radio, Shield, Map as MapIcon } from "lucide-react";
 import { DeviationCategoryTreeEditor } from "./DeviationCategoryTreeEditor";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -49,6 +49,32 @@ interface ChildCompany {
 interface ChildCompaniesSectionProps {
   departmentsEnabled: boolean;
 }
+
+interface SubSectionProps {
+  title: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+const SubSection = ({ title, icon: Icon, defaultOpen, children }: SubSectionProps) => (
+  <Collapsible defaultOpen={defaultOpen}>
+    <div className="rounded-lg border-2 border-primary/30 bg-muted/20 overflow-hidden">
+      <CollapsibleTrigger className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors group">
+        <div className="flex items-center gap-2 font-medium text-sm">
+          {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+          <span>{title}</span>
+        </div>
+        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-primary/20">
+          {children}
+        </div>
+      </CollapsibleContent>
+    </div>
+  </Collapsible>
+);
 
 export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSectionProps) => {
   const { companyId } = useAuth();
@@ -1136,6 +1162,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 </div>
               )}
 
+              <SubSection title="Generelle innstillinger" icon={Settings} defaultOpen>
               {/* Vis alle luftromsadvarsler */}
               {(() => {
                 const locked = isChildDept && !!inherited?.propagate_airspace_warnings;
@@ -1359,268 +1386,247 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   />
                 </div>
               )}
+              </SubSection>
 
-              {/* Avviksrapport */}
-              {(() => {
-                const locked = isChildDept && !!inherited?.propagate_deviation_report;
-                const value = locked ? inherited!.deviation_report_enabled : deviationReportEnabled;
-                return (
-                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
+              <SubSection title="Avviksrapport ved flytur" icon={AlertTriangle}>
+                {(() => {
+                  const locked = isChildDept && !!inherited?.propagate_deviation_report;
+                  const value = locked ? inherited!.deviation_report_enabled : deviationReportEnabled;
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
+                          <div className="font-medium text-sm flex items-center gap-1.5">
+                            Aktiver avviksrapport
+                            {locked && (
+                              <Badge variant="secondary" className="text-[10px] gap-1">
+                                <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {locked
+                              ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
+                              : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                          </div>
+                        </Label>
+                        <Switch
+                          id="deviation-report"
+                          checked={value}
+                          onCheckedChange={handleToggleDeviationReport}
+                          disabled={savingSettings || locked}
+                        />
+                      </div>
+                      {value && companyId && !locked && (
+                        <div className="pt-2 border-t border-border/50">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            Kategorier (ubegrenset antall nivåer):
+                          </p>
+                          <DeviationCategoryTreeEditor companyId={companyId} />
+                        </div>
+                      )}
+                      {value && locked && parentDeviationCompanyId && (
+                        <div className="pt-2 border-t border-border/50">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            Kategorier (arvet — kun lesetilgang):
+                          </p>
+                          <DeviationCategoryTreeEditor companyId={companyId} readOnly />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </SubSection>
+              <SubSection title="Standard SORA-buffersone" icon={Shield}>
+                {(() => {
+                  const soraLocked = isChildDept && !!inherited?.propagate_sora_buffer_mode;
+                  const bufMode = soraLocked ? inherited!.default_buffer_mode : defaultBufferMode;
+                  const fgVal = soraLocked ? inherited!.default_flight_geography_m : defaultFlightGeographyM;
+                  const altVal = soraLocked ? inherited!.default_flight_altitude_m : defaultFlightAltitudeM;
+                  return (
+                    <div className="space-y-3">
+                      <Label className="flex-1">
                         <div className="font-medium text-sm flex items-center gap-1.5">
-                          <AlertTriangle className="w-4 h-4" />
-                          Avviksrapport ved flytur
-                          {locked && (
+                          Velg buffermodus
+                          {soraLocked && (
                             <Badge variant="secondary" className="text-[10px] gap-1">
                               <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
                             </Badge>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {locked
-                            ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
-                            : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                          Velg standard buffermodus for nye oppdrag og ruteplanlegger
                         </div>
                       </Label>
-                      <Switch
-                        id="deviation-report"
-                        checked={value}
-                        onCheckedChange={handleToggleDeviationReport}
-                        disabled={savingSettings || locked}
-                      />
-                    </div>
-                    {value && companyId && !locked && (
-                      <div className="pt-2 border-t border-border/50">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">
-                          Kategorier (ubegrenset antall nivåer):
-                        </p>
-                        <DeviationCategoryTreeEditor companyId={companyId} />
-                      </div>
-                    )}
-                    {value && locked && parentDeviationCompanyId && (
-                      <div className="pt-2 border-t border-border/50">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">
-                          Kategorier (arvet — kun lesetilgang):
-                        </p>
-                        <DeviationCategoryTreeEditor companyId={companyId} readOnly />
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-              {(() => {
-                const soraLocked = isChildDept && !!inherited?.propagate_sora_buffer_mode;
-                const bufMode = soraLocked ? inherited!.default_buffer_mode : defaultBufferMode;
-                const fgVal = soraLocked ? inherited!.default_flight_geography_m : defaultFlightGeographyM;
-                const altVal = soraLocked ? inherited!.default_flight_altitude_m : defaultFlightAltitudeM;
-                const ownPropagateSora = applySettingsToChildren; // fallback - not used; use separate state via fetch instead
-                return (
-                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                    <Label className="flex-1">
-                      <div className="font-medium text-sm flex items-center gap-1.5">
-                        Standard SORA-buffersone
-                        {soraLocked && (
-                          <Badge variant="secondary" className="text-[10px] gap-1">
-                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Velg standard buffermodus for nye oppdrag og ruteplanlegger
-                      </div>
-                    </Label>
-                    <RadioGroup
-                      value={bufMode}
-                      onValueChange={(v) => handleChangeBufferMode(v as "corridor" | "convexHull")}
-                      className="flex gap-4"
-                      disabled={savingSettings || soraLocked}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <RadioGroupItem value="corridor" id="buffer-corridor" disabled={soraLocked} />
-                        <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <RadioGroupItem value="convexHull" id="buffer-convex" disabled={soraLocked} />
-                        <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
-                      </div>
-                    </RadioGroup>
-                    <div className="space-y-1.5 pt-2 border-t border-border/50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button type="button" className="inline-flex">
-                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                              Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <span className="text-xs font-mono text-green-600 dark:text-green-400">{fgVal}m</span>
-                      </div>
-                      <Slider
-                        min={0}
-                        max={200}
-                        step={1}
-                        value={[fgVal]}
-                        onValueChange={([v]) => handleChangeDefaultFlightGeography(v)}
+                      <RadioGroup
+                        value={bufMode}
+                        onValueChange={(v) => handleChangeBufferMode(v as "corridor" | "convexHull")}
+                        className="flex gap-4"
                         disabled={savingSettings || soraLocked}
-                        className="[&_[role=slider]]:bg-green-600"
-                      />
-                    </div>
-                    <div className="space-y-1.5 pt-2 border-t border-border/50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button type="button" className="inline-flex">
-                                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                              Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.
-                            </PopoverContent>
-                          </Popover>
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <RadioGroupItem value="corridor" id="buffer-corridor" disabled={soraLocked} />
+                          <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
                         </div>
-                        <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{altVal}m</span>
-                      </div>
-                      <Slider
-                        min={0}
-                        max={120}
-                        step={1}
-                        value={[altVal]}
-                        onValueChange={([v]) => handleChangeDefaultFlightAltitude(v)}
-                        disabled={savingSettings || soraLocked}
-                        className="[&_[role=slider]]:bg-blue-600"
-                      />
-                    </div>
-                    {!isChildDept && (
-                      <div className="border-t pt-2 flex items-center justify-between">
-                        <Label htmlFor="apply-sora-defaults-children" className="flex-1 cursor-pointer pr-4">
-                          <div className="font-medium text-sm">SORA-standardverdier gjelder for alle underavdelinger</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            Når aktivert kopieres SORA-standardverdier til alle avdelinger og låses
+                        <div className="flex items-center gap-1.5">
+                          <RadioGroupItem value="convexHull" id="buffer-convex" disabled={soraLocked} />
+                          <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
+                        </div>
+                      </RadioGroup>
+                      <div className="space-y-1.5 pt-2 border-t border-border/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1">
+                            <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="inline-flex">
+                                  <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
+                                Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
+                              </PopoverContent>
+                            </Popover>
                           </div>
-                        </Label>
-                        <Switch
-                          id="apply-sora-defaults-children"
-                          checked={applySoraDefaultsToChildren}
-                          onCheckedChange={handleToggleApplySoraDefaultsToChildren}
-                          disabled={savingSettings}
+                          <span className="text-xs font-mono text-green-600 dark:text-green-400">{fgVal}m</span>
+                        </div>
+                        <Slider
+                          min={0}
+                          max={200}
+                          step={1}
+                          value={[fgVal]}
+                          onValueChange={([v]) => handleChangeDefaultFlightGeography(v)}
+                          disabled={savingSettings || soraLocked}
+                          className="[&_[role=slider]]:bg-green-600"
                         />
                       </div>
-                    )}
-                  </div>
-                );
-              })()}
-              {/* SafeSky callsign */}
-              {(() => {
-                const callsignLocked = isChildDept && !!inherited?.safesky_callsign_propagate;
-                const csPrefix = callsignLocked ? (inherited!.safesky_callsign_prefix ?? "") : callsignPrefix;
-                const csVariable = callsignLocked ? inherited!.safesky_callsign_variable : callsignVariable;
-                return (
-                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-medium text-sm">SafeSky callsign</div>
-                        {callsignLocked && (
-                          <Badge variant="secondary" className="gap-1 text-[10px]">
-                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
-                          </Badge>
-                        )}
+                      <div className="space-y-1.5 pt-2 border-t border-border/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1">
+                            <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button type="button" className="inline-flex">
+                                  <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
+                                Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{altVal}m</span>
+                        </div>
+                        <Slider
+                          min={0}
+                          max={120}
+                          step={1}
+                          value={[altVal]}
+                          onValueChange={([v]) => handleChangeDefaultFlightAltitude(v)}
+                          disabled={savingSettings || soraLocked}
+                          className="[&_[role=slider]]:bg-blue-600"
+                        />
                       </div>
+                      {!isChildDept && (
+                        <div className="border-t pt-2 flex items-center justify-between">
+                          <Label htmlFor="apply-sora-defaults-children" className="flex-1 cursor-pointer pr-4">
+                            <div className="font-medium text-sm">SORA-standardverdier gjelder for alle underavdelinger</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              Når aktivert kopieres SORA-standardverdier til alle avdelinger og låses
+                            </div>
+                          </Label>
+                          <Switch
+                            id="apply-sora-defaults-children"
+                            checked={applySoraDefaultsToChildren}
+                            onCheckedChange={handleToggleApplySoraDefaultsToChildren}
+                            disabled={savingSettings}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </SubSection>
+              <SubSection title="SafeSky callsign" icon={Radio}>
+                {(() => {
+                  const callsignLocked = isChildDept && !!inherited?.safesky_callsign_propagate;
+                  const csPrefix = callsignLocked ? (inherited!.safesky_callsign_prefix ?? "") : callsignPrefix;
+                  const csVariable = callsignLocked ? inherited!.safesky_callsign_variable : callsignVariable;
+                  return (
+                    <div className="space-y-3">
+                      {callsignLocked && (
+                        <div className="rounded-md border border-primary/40 bg-primary/5 p-2 flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5 text-primary" />
+                          <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
+                        </div>
+                      )}
                       <div className="text-xs text-muted-foreground">
                         Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.
                       </div>
-                    </div>
-                    {callsignLocked && (
-                      <div className="rounded-md border border-primary/40 bg-primary/5 p-2 flex items-center gap-2">
-                        <Lock className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
-                      </div>
-                    )}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">Callsign-prefix</Label>
-                      <Input
-                        id="callsign-prefix"
-                        value={csPrefix}
-                        onChange={(e) => { callsignEditing.current = true; setCallsignPrefix(e.target.value); }}
-                        placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
-                        maxLength={50}
-                        className="h-8 text-sm"
-                        disabled={callsignLocked}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
-                      <RadioGroup
-                        value={csVariable}
-                        onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration'); }}
-                        className="flex flex-col sm:flex-row gap-2"
-                        disabled={callsignLocked}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <RadioGroupItem value="counter" id="cs-counter" disabled={callsignLocked} />
-                          <Label htmlFor="cs-counter" className="text-xs cursor-pointer">Teller (01, 02, …)</Label>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <RadioGroupItem value="drone_registration" id="cs-drone" disabled={callsignLocked} />
-                          <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Forhåndsvisning: <span className="font-mono text-foreground">
-                        {((csPrefix.trim() || parentCompanyName || 'avisafe').toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
-                          + (csVariable === 'drone_registration' ? 'LNABCD' : '01')}
-                      </span>
-                    </div>
-                    {!isChildDept && (
-                      <div className="border-t pt-2 flex items-center justify-between">
-                        <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
-                          <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            Propager prefix og variabel til alle avdelinger
-                          </div>
-                        </Label>
-                        <Switch
-                          id="callsign-propagate"
-                          checked={callsignPropagate}
-                          onCheckedChange={(c) => { callsignEditing.current = true; setCallsignPropagate(c); }}
-                          disabled={savingCallsign}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">Callsign-prefix</Label>
+                        <Input
+                          id="callsign-prefix"
+                          value={csPrefix}
+                          onChange={(e) => { callsignEditing.current = true; setCallsignPrefix(e.target.value); }}
+                          placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
+                          maxLength={50}
+                          className="h-8 text-sm"
+                          disabled={callsignLocked}
                         />
                       </div>
-                    )}
-                    {!callsignLocked && (
-                      <div className="flex justify-end">
-                        <Button size="sm" onClick={handleSaveCallsign} disabled={savingCallsign}>
-                          {savingCallsign ? "Lagrer…" : "Lagre callsign-innstillinger"}
-                        </Button>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
+                        <RadioGroup
+                          value={csVariable}
+                          onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration'); }}
+                          className="flex flex-col sm:flex-row gap-2"
+                          disabled={callsignLocked}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="counter" id="cs-counter" disabled={callsignLocked} />
+                            <Label htmlFor="cs-counter" className="text-xs cursor-pointer">Teller (01, 02, …)</Label>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="drone_registration" id="cs-drone" disabled={callsignLocked} />
+                            <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
-                    )}
-                  </div>
-                );
-              })()}
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center gap-2">
-                  <UserCog className="h-4 w-4 text-muted-foreground" />
-                  <div className="font-medium text-sm">Roller</div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs max-w-[200px]">Roller kan tildeles personell ved planlegging av oppdrag</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                      <div className="text-xs text-muted-foreground">
+                        Forhåndsvisning: <span className="font-mono text-foreground">
+                          {((csPrefix.trim() || parentCompanyName || 'avisafe').toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
+                            + (csVariable === 'drone_registration' ? 'LNABCD' : '01')}
+                        </span>
+                      </div>
+                      {!isChildDept && (
+                        <div className="border-t pt-2 flex items-center justify-between">
+                          <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
+                            <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              Propager prefix og variabel til alle avdelinger
+                            </div>
+                          </Label>
+                          <Switch
+                            id="callsign-propagate"
+                            checked={callsignPropagate}
+                            onCheckedChange={(c) => { callsignEditing.current = true; setCallsignPropagate(c); }}
+                            disabled={savingCallsign}
+                          />
+                        </div>
+                      )}
+                      {!callsignLocked && (
+                        <div className="flex justify-end">
+                          <Button size="sm" onClick={handleSaveCallsign} disabled={savingCallsign}>
+                            {savingCallsign ? "Lagrer…" : "Lagre callsign-innstillinger"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </SubSection>
+              <SubSection title="Roller" icon={UserCog}>
                 {/* Locked banner for child departments */}
                 {isChildDept && !!inherited?.propagate_mission_roles && (
                   <div className="flex items-center gap-2 p-2 rounded-md border border-primary/40 bg-primary/5">
@@ -1682,22 +1688,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     />
                   </div>
                 )}
-              </div>
-              <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Bell className="h-4 w-4 text-muted-foreground" />
-                  <div className="font-medium text-sm">Flylogg-varsler</div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs max-w-[220px]">Motta e-postvarsler når kritiske terskelverdier nås under flyging (DJI/ArduPilot)</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+              </SubSection>
+              <SubSection title="Flylogg-varsler" icon={Bell}>
                 {/* Locked banner for child departments */}
                 {isChildDept && !!inherited?.propagate_flight_alerts && (
                   <div className="flex items-center gap-2 p-2 rounded-md border border-primary/40 bg-primary/5">
@@ -1793,9 +1785,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     />
                   </div>
                 )}
-              </div>
+              </SubSection>
 
-              <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
+              <SubSection title="Kartpublisering" icon={MapIcon}>
+                <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
+              </SubSection>
             </div>
           </CollapsibleContent>
         </GlassCard>
