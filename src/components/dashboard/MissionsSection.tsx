@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { MissionDetailDialog } from "./MissionDetailDialog";
+import { AirspaceConflictWarning } from "@/components/oppdrag/AirspaceConflictWarning";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
