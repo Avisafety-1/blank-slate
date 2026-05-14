@@ -195,6 +195,8 @@ export const AddMissionDialog = ({
           risk_nivå: mission.risk_nivå || "Lav",
           latitude: mission.latitude || null,
           longitude: mission.longitude || null,
+          oppdragstype: (mission as any).oppdragstype || "",
+          oppdragstype_annet: (mission as any).oppdragstype_annet || "",
         });
         setPublication({
           publish_to_map: mission.publish_to_map ?? companySettings.default_publish_planned_missions,
