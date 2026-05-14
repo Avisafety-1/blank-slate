@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect } from "react";
 import { MissionDetailDialog } from "./MissionDetailDialog";
+import { AirspaceConflictWarning } from "@/components/oppdrag/AirspaceConflictWarning";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
@@ -409,6 +410,18 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       {missionDocumentCounts[mission.id]}
                     </Badge>
                   )}
+                </div>
+
+                <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                  <AirspaceConflictWarning
+                    missionId={mission.id}
+                    tidspunkt={mission.tidspunkt}
+                    sluttTidspunkt={mission.slutt_tidspunkt}
+                    route={mission.route}
+                    latitude={mission.latitude}
+                    longitude={mission.longitude}
+                    status={mission.status}
+                  />
                 </div>
               </div>
             ))

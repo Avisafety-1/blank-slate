@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
 import { ResourceConflictWarning } from "@/components/dashboard/ResourceConflictWarning";
+import { AirspaceConflictWarning } from "@/components/oppdrag/AirspaceConflictWarning";
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
@@ -393,6 +394,17 @@ export const MissionCard = ({
           </div>
         </div>
       )}
+
+      {/* Airspace conflict (red warning) — overlapping planned mission of another operator */}
+      <AirspaceConflictWarning
+        missionId={mission.id}
+        tidspunkt={mission.tidspunkt}
+        sluttTidspunkt={mission.slutt_tidspunkt}
+        route={mission.route}
+        latitude={mission.latitude}
+        longitude={mission.longitude}
+        status={mission.status}
+      />
 
       {/* Resources Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-border/50">
