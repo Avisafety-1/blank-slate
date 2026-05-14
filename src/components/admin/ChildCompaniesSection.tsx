@@ -1544,94 +1544,85 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 );
               })()}
-              {/* SafeSky callsign */}
-              {(() => {
-                const callsignLocked = isChildDept && !!inherited?.safesky_callsign_propagate;
-                const csPrefix = callsignLocked ? (inherited!.safesky_callsign_prefix ?? "") : callsignPrefix;
-                const csVariable = callsignLocked ? inherited!.safesky_callsign_variable : callsignVariable;
-                return (
-                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-medium text-sm">SafeSky callsign</div>
-                        {callsignLocked && (
-                          <Badge variant="secondary" className="gap-1 text-[10px]">
-                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
-                          </Badge>
-                        )}
-                      </div>
+              <SubSection title="SafeSky callsign" icon={Radio}>
+                {(() => {
+                  const callsignLocked = isChildDept && !!inherited?.safesky_callsign_propagate;
+                  const csPrefix = callsignLocked ? (inherited!.safesky_callsign_prefix ?? "") : callsignPrefix;
+                  const csVariable = callsignLocked ? inherited!.safesky_callsign_variable : callsignVariable;
+                  return (
+                    <div className="space-y-3">
+                      {callsignLocked && (
+                        <div className="rounded-md border border-primary/40 bg-primary/5 p-2 flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5 text-primary" />
+                          <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
+                        </div>
+                      )}
                       <div className="text-xs text-muted-foreground">
                         Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.
                       </div>
-                    </div>
-                    {callsignLocked && (
-                      <div className="rounded-md border border-primary/40 bg-primary/5 p-2 flex items-center gap-2">
-                        <Lock className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
-                      </div>
-                    )}
-                    <div className="space-y-1.5">
-                      <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">Callsign-prefix</Label>
-                      <Input
-                        id="callsign-prefix"
-                        value={csPrefix}
-                        onChange={(e) => { callsignEditing.current = true; setCallsignPrefix(e.target.value); }}
-                        placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
-                        maxLength={50}
-                        className="h-8 text-sm"
-                        disabled={callsignLocked}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
-                      <RadioGroup
-                        value={csVariable}
-                        onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration'); }}
-                        className="flex flex-col sm:flex-row gap-2"
-                        disabled={callsignLocked}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <RadioGroupItem value="counter" id="cs-counter" disabled={callsignLocked} />
-                          <Label htmlFor="cs-counter" className="text-xs cursor-pointer">Teller (01, 02, …)</Label>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <RadioGroupItem value="drone_registration" id="cs-drone" disabled={callsignLocked} />
-                          <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Forhåndsvisning: <span className="font-mono text-foreground">
-                        {((csPrefix.trim() || parentCompanyName || 'avisafe').toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
-                          + (csVariable === 'drone_registration' ? 'LNABCD' : '01')}
-                      </span>
-                    </div>
-                    {!isChildDept && (
-                      <div className="border-t pt-2 flex items-center justify-between">
-                        <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
-                          <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            Propager prefix og variabel til alle avdelinger
-                          </div>
-                        </Label>
-                        <Switch
-                          id="callsign-propagate"
-                          checked={callsignPropagate}
-                          onCheckedChange={(c) => { callsignEditing.current = true; setCallsignPropagate(c); }}
-                          disabled={savingCallsign}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">Callsign-prefix</Label>
+                        <Input
+                          id="callsign-prefix"
+                          value={csPrefix}
+                          onChange={(e) => { callsignEditing.current = true; setCallsignPrefix(e.target.value); }}
+                          placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
+                          maxLength={50}
+                          className="h-8 text-sm"
+                          disabled={callsignLocked}
                         />
                       </div>
-                    )}
-                    {!callsignLocked && (
-                      <div className="flex justify-end">
-                        <Button size="sm" onClick={handleSaveCallsign} disabled={savingCallsign}>
-                          {savingCallsign ? "Lagrer…" : "Lagre callsign-innstillinger"}
-                        </Button>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
+                        <RadioGroup
+                          value={csVariable}
+                          onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration'); }}
+                          className="flex flex-col sm:flex-row gap-2"
+                          disabled={callsignLocked}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="counter" id="cs-counter" disabled={callsignLocked} />
+                            <Label htmlFor="cs-counter" className="text-xs cursor-pointer">Teller (01, 02, …)</Label>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="drone_registration" id="cs-drone" disabled={callsignLocked} />
+                            <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
-                    )}
-                  </div>
-                );
-              })()}
+                      <div className="text-xs text-muted-foreground">
+                        Forhåndsvisning: <span className="font-mono text-foreground">
+                          {((csPrefix.trim() || parentCompanyName || 'avisafe').toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
+                            + (csVariable === 'drone_registration' ? 'LNABCD' : '01')}
+                        </span>
+                      </div>
+                      {!isChildDept && (
+                        <div className="border-t pt-2 flex items-center justify-between">
+                          <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
+                            <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              Propager prefix og variabel til alle avdelinger
+                            </div>
+                          </Label>
+                          <Switch
+                            id="callsign-propagate"
+                            checked={callsignPropagate}
+                            onCheckedChange={(c) => { callsignEditing.current = true; setCallsignPropagate(c); }}
+                            disabled={savingCallsign}
+                          />
+                        </div>
+                      )}
+                      {!callsignLocked && (
+                        <div className="flex justify-end">
+                          <Button size="sm" onClick={handleSaveCallsign} disabled={savingCallsign}>
+                            {savingCallsign ? "Lagrer…" : "Lagre callsign-innstillinger"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </SubSection>
               <SubSection title="Roller" icon={UserCog}>
                 {/* Locked banner for child departments */}
                 {isChildDept && !!inherited?.propagate_mission_roles && (
