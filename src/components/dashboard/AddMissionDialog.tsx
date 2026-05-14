@@ -134,6 +134,8 @@ export const AddMissionDialog = ({
     risk_nivå: initialFormData?.risk_nivå || "Lav",
     latitude: initialFormData?.latitude || null as number | null,
     longitude: initialFormData?.longitude || null as number | null,
+    oppdragstype: (initialFormData as any)?.oppdragstype || "",
+    oppdragstype_annet: (initialFormData as any)?.oppdragstype_annet || "",
   });
 
   const [publication, setPublication] = useState<PublicationFields>({
