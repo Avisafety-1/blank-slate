@@ -1,38 +1,60 @@
-## Hva som er galt
+## Mål
 
-Edge-funksjonen `safesky-beacons-fetch` henter trafikken fra SafeSky Sandbox riktig (~115 beacons hvert 10. sekund), men hver upsert feiler:
+Popup for planlagte oppdrag på kartet skal også vise:
+- **Selskapsnavn** (offentlig navn fra rot-selskapet, deles av alle avdelinger)
+- **Oppdragstype** (valgt fra liste, eller fritekst hvis "Annet")
 
-```
-ERROR Error upserting beacons: code 22008
-date/time field value out of range: "1778740735"
-```
+Skjules ved anonym publisering.
 
-Resultat: `safesky_beacons`-tabellen er tom (`select count(*) → 0`), så kartet har ingenting å vise.
+## Endringer
 
-Årsaken: SafeSky returnerer `last_update` som Unix epoch i sekunder (heltall), mens kolonnen `safesky_beacons.last_update` er `timestamptz`. Funksjonen sender tallet rett inn uten konvertering:
+### 1. Database
 
-```ts
-last_update: beacon.last_update || beacon.timestamp || null,
-```
+**`companies`** – nytt felt:
+- `public_company_name TEXT` (valgfritt). Vises offentlig på kartet. Hvis tomt, faller tilbake til `navn`.
 
-Postgres tolker "1778740735" som år 1778740735 → out of range, og hele upserten ruller tilbake.
+**`missions`** – nye felt:
+- `oppdragstype TEXT` (en av: Inspeksjon, Kartlegging, Foto/film, Søk og redning, Landbruk, Bygg/anlegg, Forskning, Annet)
+- `oppdragstype_annet TEXT` (fritekst, kun brukt når `oppdragstype = 'Annet'`)
 
-## Fix
+**`mission_map_publications`** – nye snapshot-felt:
+- `public_company_name TEXT`
+- `public_mission_type TEXT` (ferdig sammensatt streng – enten valg, eller fritekst hvis "Annet")
 
-I `supabase/functions/safesky-beacons-fetch/index.ts`, normaliser `last_update` før upsert:
+**Trigger `sync_mission_map_publication`** oppdateres til å:
+- Slå opp **rot-selskapets** `public_company_name` via eksisterende `get_parent_company_id` (rekursivt til toppen). Faller tilbake til `navn`.
+- Snapshotte `oppdragstype` (med `oppdragstype_annet` hvis "Annet").
+- Sette begge til `NULL` når `v_anon = true`.
 
-- Hvis tall og < 1e12 → epoch sekunder → `new Date(n * 1000).toISOString()`
-- Hvis tall og ≥ 1e12 → epoch ms → `new Date(n).toISOString()`
-- Hvis string som allerede er ISO → behold
-- Ellers → `null`
+### 2. Frontend
 
-Liten hjelpefunksjon `toIsoTimestamp(v)` brukt på `beacon.last_update || beacon.timestamp`.
+**Mitt selskap (admin)**
+- Nytt input i selskapsinnstillinger: "Offentlig selskapsnavn" med hjelpetekst om at det vises på offentlig kart og deles av alle avdelinger.
+- Kun synlig/redigerbart for rot-selskap (eller readonly med visning av arvet verdi for avdelinger).
 
-Ingen DB-endringer, ingen RLS-endringer, ingen frontend-endringer.
+**Oppdrag-skjema (opprett/rediger)**
+- Ny dropdown "Oppdragstype" med ovennevnte alternativer.
+- Hvis "Annet" velges → vises fritekstfelt "Spesifiser oppdragstype".
 
-## Verifisering
+**Kart-popup (`src/lib/mapDataFetchers.ts`)**
+- Bruk nye felt fra `v_planned_mission_map`:
+  - Vis `public_company_name` som egen linje øverst (under tittel) når satt.
+  - Vis `public_mission_type` som chip/badge under tittel.
+- Tidsperiode vises fortsatt som "start – (ukjent sluttid)".
 
-1. Vente på neste cron-tick (kjører hvert 10. sek når kartet er åpent).
-2. Sjekke logger: `Upserted N beacons` i stedet for 22008-feil.
-3. `select count(*) from safesky_beacons` → > 0.
-4. Trafikkmarkører dukker opp på kartet i Norge-bbox.
+### 3. View
+
+`v_planned_mission_map` utvides med `public_company_name` og `public_mission_type`.
+
+## Tekniske detaljer
+
+- Rekursiv parent-lookup gjøres i trigger via `WITH RECURSIVE` (eller løkke) som klatrer `parent_company_id` til toppen og henter dennes `public_company_name`.
+- Eksisterende rader i `mission_map_publications` får verdiene fylt inn ved at vi kjører en engangs-UPDATE etter migrasjonen som re-syncer fra missions/companies.
+- Ingen RLS-endringer (popup-data er allerede offentlig via publisering).
+- Ingen endring i anonym-logikk utover at de to nye feltene også settes til NULL.
+
+## Verifikasjon
+
+1. Sett "Offentlig selskapsnavn" på rot-selskap, opprett oppdrag i underavdeling med oppdragstype "Inspeksjon" → popup viser rot-selskapets navn + "Inspeksjon".
+2. Velg "Annet" + skriv "Termografering" → popup viser "Termografering".
+3. Aktiver anonym publisering → selskapsnavn og oppdragstype skjules.
