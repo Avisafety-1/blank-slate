@@ -40,7 +40,7 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
     (supabase
       .from("companies")
       .select(
-        "default_publish_planned_missions, default_share_contact_info, default_anonymous_publish, allow_pilot_override_publish_settings"
+        "default_publish_planned_missions, default_share_contact_info, default_anonymous_publish, allow_pilot_override_publish_settings, public_company_name, parent_company_id"
       )
       .eq("id", companyId)
       .maybeSingle() as any).then(({ data }: any) => {
@@ -51,7 +51,10 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
           default_anonymous_publish: data.default_anonymous_publish ?? false,
           allow_pilot_override_publish_settings:
             data.allow_pilot_override_publish_settings ?? true,
+          public_company_name: data.public_company_name ?? "",
         });
+        setIsRoot(!data.parent_company_id);
+        setNameDraft(data.public_company_name ?? "");
       }
       setLoading(false);
     });
@@ -90,6 +93,33 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
         </div>
       </div>
 
+      <div className="pt-2 border-t border-border/50 space-y-2">
+        <Label htmlFor="public-company-name" className="text-sm font-medium">
+          Offentlig selskapsnavn
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          Vises i kart-popup for planlagte oppdrag. Brukes også av alle avdelinger under hovedselskapet.
+          {!isRoot && " Settes på hovedselskapet — endring her påvirker bare denne avdelingen hvis den er rot."}
+        </p>
+        <div className="flex gap-2">
+          <Input
+            id="public-company-name"
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            placeholder="F.eks. Andøya Drone AS"
+            disabled={isDisabled}
+          />
+          <Button
+            type="button"
+            size="sm"
+            disabled={isDisabled || nameDraft === values.public_company_name}
+            onClick={() => update({ public_company_name: nameDraft.trim() })}
+          >
+            Lagre
+          </Button>
+        </div>
+      </div>
+
       <Row
         id="mp-publish"
         title="Publiser planlagt oppdrag på AviSafe-kart"
@@ -109,7 +139,7 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
       <Row
         id="mp-anon"
         title="Anonymisert visning"
-        desc="Skjul oppdragstittel, beskrivelse og kontaktinfo. Kun geometri og tid vises."
+        desc="Skjul oppdragstittel, beskrivelse, selskapsnavn og kontaktinfo. Kun geometri og tid vises."
         checked={values.default_anonymous_publish}
         disabled={isDisabled}
         onChange={(v) => update({ default_anonymous_publish: v })}
