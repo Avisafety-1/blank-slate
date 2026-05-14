@@ -410,6 +410,18 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     </Badge>
                   )}
                 </div>
+
+                <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                  <AirspaceConflictWarning
+                    missionId={mission.id}
+                    tidspunkt={mission.tidspunkt}
+                    sluttTidspunkt={mission.slutt_tidspunkt}
+                    route={mission.route}
+                    latitude={mission.latitude}
+                    longitude={mission.longitude}
+                    status={mission.status}
+                  />
+                </div>
               </div>
             ))
           )}
