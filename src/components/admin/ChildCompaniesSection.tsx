@@ -1805,7 +1805,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     />
                   </div>
                 )}
-              </div>
+              </SubSection>
 
               <SubSection title="Kartpublisering" icon={MapIcon}>
                 <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
