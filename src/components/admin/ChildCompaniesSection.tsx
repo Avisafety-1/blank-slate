@@ -1385,6 +1385,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   />
                 </div>
               )}
+              </SubSection>
 
               <SubSection title="Avviksrapport ved flytur" icon={AlertTriangle}>
                 {(() => {
