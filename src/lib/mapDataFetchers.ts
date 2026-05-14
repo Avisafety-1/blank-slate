@@ -446,6 +446,22 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
 
     layer.clearLayers();
 
+    // Collect polygons (with time window) for overlap detection
+    type PolyEntry = {
+      clip: ClipPolygon | ClipMultiPolygon;
+      starts: number;
+      ends: number;
+      bounds: L.LatLngBounds;
+    };
+    const polyEntries: PolyEntry[] = [];
+
+    const toClipGeom = (geom: any): ClipPolygon | ClipMultiPolygon | null => {
+      if (!geom) return null;
+      if (geom.type === "Polygon") return geom.coordinates as ClipPolygon;
+      if (geom.type === "MultiPolygon") return geom.coordinates as ClipMultiPolygon;
+      return null;
+    };
+
     (data || []).forEach((row: any) => {
       const anon = !!row.anonymous_publish;
       const share = !!row.share_contact_info;
@@ -512,6 +528,14 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
           });
           gj.bindPopup(popupHtml, { maxWidth: 320 });
           gj.addTo(layer);
+
+          // Track for overlap detection
+          const clip = toClipGeom(geom);
+          if (clip) {
+            const starts = row.starts_at ? new Date(row.starts_at).getTime() : now.getTime();
+            const ends = row.ends_at ? new Date(row.ends_at).getTime() : until.getTime();
+            polyEntries.push({ clip, starts, ends, bounds: gj.getBounds() });
+          }
         }
       } catch (e) {
         console.warn("Planned mission polygon render failed:", e);
@@ -535,6 +559,58 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
           .addTo(layer);
       }
     });
+
+    // Compute pairwise overlaps (geometric AND temporal) and render as warning layer
+    try {
+      const overlapPieces: ClipMultiPolygon = [];
+      for (let i = 0; i < polyEntries.length; i++) {
+        for (let j = i + 1; j < polyEntries.length; j++) {
+          const a = polyEntries[i];
+          const b = polyEntries[j];
+          // Time overlap check
+          if (!(a.starts < b.ends && b.starts < a.ends)) continue;
+          // Bounding box pre-filter
+          if (!a.bounds.intersects(b.bounds)) continue;
+          try {
+            const inter = polygonClipping.intersection(
+              a.clip as ClipPolygon,
+              b.clip as ClipPolygon,
+            );
+            if (inter && inter.length) {
+              for (const poly of inter) overlapPieces.push(poly);
+            }
+          } catch (e) {
+            // Ignore individual pair failures
+          }
+        }
+      }
+
+      if (overlapPieces.length) {
+        const overlapGeoJSON = {
+          type: "MultiPolygon",
+          coordinates: overlapPieces,
+        } as GeoJSON.MultiPolygon;
+        const warnColor = "#dc2626";
+        const overlapLayer = L.geoJSON(overlapGeoJSON as any, {
+          style: {
+            color: warnColor,
+            weight: 1.5,
+            opacity: 0.9,
+            fillColor: warnColor,
+            fillOpacity: 0.35,
+          },
+          pane: "missionPane",
+          interactive: false,
+        });
+        overlapLayer.bindTooltip("Overlappende planlagte områder – sjekk konflikter", {
+          sticky: true,
+          direction: "top",
+        });
+        overlapLayer.addTo(layer);
+      }
+    } catch (e) {
+      console.warn("Overlap rendering failed:", e);
+    }
   } catch (err) {
     console.error("Feil ved henting av planlagte publiserte oppdrag:", err);
   }
