@@ -110,8 +110,12 @@ export const MarketingSettings = () => {
     try {
       const { data, error } = await supabase.functions.invoke("backfill-resend-audience", { body: {} });
       if (error) throw error;
-      const d = data as { total?: number; added?: number; updated?: number; failed?: number; skipped?: number };
-      toast.success(`Synk fullført: ${d.added ?? 0} lagt til, ${d.updated ?? 0} oppdatert, ${d.failed ?? 0} feilet (av ${d.total ?? 0})`);
+      const d = data as { total?: number; skipped?: number; audiences?: Record<string, { added: number; updated: number; failed: number }> };
+      const lines = Object.entries(d.audiences ?? {}).map(([name, s]) =>
+        `${name}: +${s.added}/~${s.updated}/!${s.failed}`
+      ).join(" · ");
+      toast.success(`Synk fullført (${d.total ?? 0} brukere) – ${lines || "ingen audiences"}`);
+      refetchCompanyAudiences();
     } catch (e: any) {
       toast.error(e.message || "Kunne ikke synkronisere brukere");
     } finally {
