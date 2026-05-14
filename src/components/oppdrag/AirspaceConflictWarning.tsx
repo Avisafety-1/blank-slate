@@ -13,6 +13,8 @@ interface Props {
   latitude?: number | null;
   longitude?: number | null;
   status?: string;
+  /** Compact mode shows only the heading (used in dense lists like dashboard). */
+  compact?: boolean;
 }
 
 const fmt = (iso: string | null) => {
