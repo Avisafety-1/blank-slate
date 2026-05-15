@@ -2891,6 +2891,7 @@ export type Database = {
           enabled: boolean
           flight_hub_organization_id: string | null
           last_received_at: string | null
+          safesky_forward: boolean
           token_encrypted: string | null
           updated_at: string
         }
@@ -2900,6 +2901,7 @@ export type Database = {
           enabled?: boolean
           flight_hub_organization_id?: string | null
           last_received_at?: string | null
+          safesky_forward?: boolean
           token_encrypted?: string | null
           updated_at?: string
         }
@@ -2909,6 +2911,7 @@ export type Database = {
           enabled?: boolean
           flight_hub_organization_id?: string | null
           last_received_at?: string | null
+          safesky_forward?: boolean
           token_encrypted?: string | null
           updated_at?: string
         }
