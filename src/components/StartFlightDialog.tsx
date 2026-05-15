@@ -139,6 +139,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [dronetagEnabled, setDronetagEnabled] = useState(false);
   // FH2 live source available (webhook enabled + safesky_forward on)
   const [fh2LiveEnabled, setFh2LiveEnabled] = useState(false);
+  // FH2 webhook enabled but safesky_forward off (live still works for internal tracking, no SafeSky broadcast)
+  const [fh2InternalOnly, setFh2InternalOnly] = useState(false);
   // Combined: any live position source available
   const liveAvailable = dronetagEnabled || fh2LiveEnabled;
 
