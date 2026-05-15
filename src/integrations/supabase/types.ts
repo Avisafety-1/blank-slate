@@ -2784,6 +2784,144 @@ export type Database = {
           },
         ]
       }
+      flighthub2_positions: {
+        Row: {
+          altitude_m: number | null
+          company_id: string
+          coordinate_system: number | null
+          course_deg: number | null
+          created_at: string
+          drone_id: string | null
+          flight_status: string
+          ground_speed_ms: number | null
+          height_m: number | null
+          height_type: number | null
+          id: string
+          lat: number
+          lng: number
+          manufacturer_id: string | null
+          mission_id: string | null
+          order_id: string
+          raw: Json | null
+          remote_id_status: number | null
+          sn: string
+          time_stamp: string
+          uas_id: string | null
+          uas_model: string | null
+          vert_speed_ms: number | null
+        }
+        Insert: {
+          altitude_m?: number | null
+          company_id: string
+          coordinate_system?: number | null
+          course_deg?: number | null
+          created_at?: string
+          drone_id?: string | null
+          flight_status: string
+          ground_speed_ms?: number | null
+          height_m?: number | null
+          height_type?: number | null
+          id?: string
+          lat: number
+          lng: number
+          manufacturer_id?: string | null
+          mission_id?: string | null
+          order_id: string
+          raw?: Json | null
+          remote_id_status?: number | null
+          sn: string
+          time_stamp: string
+          uas_id?: string | null
+          uas_model?: string | null
+          vert_speed_ms?: number | null
+        }
+        Update: {
+          altitude_m?: number | null
+          company_id?: string
+          coordinate_system?: number | null
+          course_deg?: number | null
+          created_at?: string
+          drone_id?: string | null
+          flight_status?: string
+          ground_speed_ms?: number | null
+          height_m?: number | null
+          height_type?: number | null
+          id?: string
+          lat?: number
+          lng?: number
+          manufacturer_id?: string | null
+          mission_id?: string | null
+          order_id?: string
+          raw?: Json | null
+          remote_id_status?: number | null
+          sn?: string
+          time_stamp?: string
+          uas_id?: string | null
+          uas_model?: string | null
+          vert_speed_ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flighthub2_positions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flighthub2_positions_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flighthub2_positions_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flighthub2_webhook_config: {
+        Row: {
+          company_id: string
+          created_at: string
+          enabled: boolean
+          flight_hub_organization_id: string | null
+          last_received_at: string | null
+          token_encrypted: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          enabled?: boolean
+          flight_hub_organization_id?: string | null
+          last_received_at?: string | null
+          token_encrypted?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          enabled?: boolean
+          flight_hub_organization_id?: string | null
+          last_received_at?: string | null
+          token_encrypted?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flighthub2_webhook_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incident_cause_types: {
         Row: {
           aktiv: boolean
@@ -6331,6 +6469,14 @@ export type Database = {
         Args: { p_company_id: string; p_key: string }
         Returns: string
       }
+      get_fh2_webhook_token_by_org: {
+        Args: { p_key: string; p_org_id: string }
+        Returns: {
+          company_id: string
+          enabled: boolean
+          token: string
+        }[]
+      }
       get_incident_responsible_users: {
         Args: { target_company_id: string }
         Returns: {
@@ -6488,6 +6634,7 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      purge_old_flighthub2_positions: { Args: never; Returns: undefined }
       retry_dji_sync_job: {
         Args: { _job_id: string }
         Returns: {
@@ -6516,6 +6663,15 @@ export type Database = {
       }
       save_fh2_token: {
         Args: { p_company_id: string; p_key: string; p_token: string }
+        Returns: undefined
+      }
+      save_fh2_webhook_token: {
+        Args: {
+          p_company_id: string
+          p_key: string
+          p_org_id: string
+          p_token: string
+        }
         Returns: undefined
       }
       st_3dclosestpoint: {
@@ -7098,6 +7254,10 @@ export type Database = {
       st_wrapx: {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
+      }
+      touch_fh2_webhook_received: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
       unlockrows: { Args: { "": string }; Returns: number }
       update_eccairs_credentials: {
