@@ -1170,7 +1170,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
                   <div className="space-y-1">
                     <p className="text-muted-foreground">
-                      {t('flight.safeskyLiveInfo')}
+                      {fh2LiveEnabled
+                        ? t('flight.safeskyLiveInfoFh2')
+                        : t('flight.safeskyLiveInfoDronetag')}
                     </p>
                     {gpsLoading && (
                       <p className="text-xs text-muted-foreground">{t('flight.gpsAcquiring')}</p>
