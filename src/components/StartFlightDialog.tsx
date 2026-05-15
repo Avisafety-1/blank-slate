@@ -137,6 +137,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
   // DroneTag enabled flag for the company
   const [dronetagEnabled, setDronetagEnabled] = useState(false);
+  // FH2 live source available (webhook enabled + safesky_forward on)
+  const [fh2LiveEnabled, setFh2LiveEnabled] = useState(false);
+  // Combined: any live position source available
+  const liveAvailable = dronetagEnabled || fh2LiveEnabled;
 
   // Phone in remarks for advisory mode
   const [profilePhone, setProfilePhone] = useState<string>('');
