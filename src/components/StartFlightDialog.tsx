@@ -139,8 +139,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [dronetagEnabled, setDronetagEnabled] = useState(false);
   // FH2 live source available (webhook enabled + safesky_forward on)
   const [fh2LiveEnabled, setFh2LiveEnabled] = useState(false);
+  // FH2 webhook enabled but safesky_forward off (live still works for internal tracking, no SafeSky broadcast)
+  const [fh2InternalOnly, setFh2InternalOnly] = useState(false);
   // Combined: any live position source available
-  const liveAvailable = dronetagEnabled || fh2LiveEnabled;
+  const liveAvailable = dronetagEnabled || fh2LiveEnabled || fh2InternalOnly;
 
   // Live drone-position freshness ("mottar vi posisjon nå?")
   // Polls latest FH2 / DroneTag position for the company while the live mode is active.
@@ -194,6 +196,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         .eq('company_id', companyId)
         .maybeSingle();
       setFh2LiveEnabled(!!(fh2Cfg?.enabled && fh2Cfg?.safesky_forward));
+      setFh2InternalOnly(!!(fh2Cfg?.enabled && !fh2Cfg?.safesky_forward));
     };
 
     fetchCompanyChecklists();
@@ -1275,6 +1278,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                         ? t('flight.safeskyLiveInfoFh2')
                         : t('flight.safeskyLiveInfoDronetag')}
                     </p>
+                    {fh2LiveEnabled && (
+                      <p className="text-xs text-green-700 dark:text-green-400">
+                        ✓ Drona deles til SafeSky så lenge denne flygingen er aktiv. Stopp deling ved å avslutte flyging.
+                      </p>
+                    )}
+                    {fh2InternalOnly && (
+                      <p className="text-xs text-muted-foreground">
+                        ℹ Live-modus brukes kun til intern sporing — selskapet deler ikke til SafeSky (slå på «Del posisjon med SafeSky» under Mitt selskap for å dele).
+                      </p>
+                    )}
                     {gpsLoading && (
                       <p className="text-xs text-muted-foreground">{t('flight.gpsAcquiring')}</p>
                     )}
