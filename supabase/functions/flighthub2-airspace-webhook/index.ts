@@ -5,6 +5,9 @@
 // flight path points in public.flighthub2_positions.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
+
+const SAFESKY_UAV_URL = "https://sandbox-public-api.safesky.app/v1/uav";
 
 const ENC = new TextEncoder();
 
