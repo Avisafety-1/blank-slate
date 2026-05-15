@@ -6477,6 +6477,7 @@ export type Database = {
         Returns: {
           company_id: string
           enabled: boolean
+          safesky_forward: boolean
           token: string
         }[]
       }
