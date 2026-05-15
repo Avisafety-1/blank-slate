@@ -142,6 +142,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   // Combined: any live position source available
   const liveAvailable = dronetagEnabled || fh2LiveEnabled;
 
+  // Live drone-position freshness ("mottar vi posisjon nå?")
+  // Polls latest FH2 / DroneTag position for the company while the live mode is active.
+  const [livePosFreshness, setLivePosFreshness] = useState<{ hasData: boolean; ageSec: number | null; source: 'fh2' | 'dronetag' | null }>({ hasData: false, ageSec: null, source: null });
+
   // Phone in remarks for advisory mode
   const [profilePhone, setProfilePhone] = useState<string>('');
   const [includePhoneInRemarks, setIncludePhoneInRemarks] = useState<boolean>(true);
