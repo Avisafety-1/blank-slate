@@ -252,8 +252,11 @@ export const Header = () => {
               title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
             >
               <Globe className="w-4 h-4" />
-              <span className="text-xs font-medium">{displayLang}</span>
             </Button>
+
+            {isNorconsult && (
+              <StartTourButton className="h-8 w-8 p-0" />
+            )}
             
             {isAdmin && (
               <Button
