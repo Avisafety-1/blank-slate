@@ -1278,6 +1278,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                         ? t('flight.safeskyLiveInfoFh2')
                         : t('flight.safeskyLiveInfoDronetag')}
                     </p>
+                    {fh2LiveEnabled && (
+                      <p className="text-xs text-green-700 dark:text-green-400">
+                        ✓ Drona deles til SafeSky så lenge denne flygingen er aktiv. Stopp deling ved å avslutte flyging.
+                      </p>
+                    )}
+                    {fh2InternalOnly && (
+                      <p className="text-xs text-muted-foreground">
+                        ℹ Live-modus brukes kun til intern sporing — selskapet deler ikke til SafeSky (slå på «Del posisjon med SafeSky» under Mitt selskap for å dele).
+                      </p>
+                    )}
                     {gpsLoading && (
                       <p className="text-xs text-muted-foreground">{t('flight.gpsAcquiring')}</p>
                     )}
