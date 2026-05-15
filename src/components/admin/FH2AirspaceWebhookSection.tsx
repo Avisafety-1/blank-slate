@@ -93,10 +93,6 @@ export const FH2AirspaceWebhookSection = () => {
 
   const handleSave = async () => {
     if (!companyId) return;
-    if (!orgId.trim()) {
-      toast.error("FlightHub Organization ID er påkrevd");
-      return;
-    }
     const tokenIsNew = token && token !== TOKEN_MASK;
     if (!hasSavedToken && !tokenIsNew) {
       toast.error("Generer en token først");
@@ -105,28 +101,25 @@ export const FH2AirspaceWebhookSection = () => {
     setSaving(true);
     try {
       if (tokenIsNew) {
-        const { error } = await supabase.functions.invoke(
+        const { data, error } = await supabase.functions.invoke(
           "flighthub2-airspace-webhook-config",
           {
             body: {
               action: "save",
-              flight_hub_organization_id: orgId.trim(),
               token,
               enabled,
+              safesky_forward: safeskyForward,
             },
           },
         );
         if (error) throw error;
-        // safesky_forward isn't part of the save edge fn yet — apply via direct update
-        await supabase
-          .from("flighthub2_webhook_config")
-          .update({ safesky_forward: safeskyForward } as any)
-          .eq("company_id", companyId);
+        if ((data as any)?.flight_hub_organization_id) {
+          setOrgId((data as any).flight_hub_organization_id);
+        }
       } else {
         const { error } = await supabase
           .from("flighthub2_webhook_config")
           .update({
-            flight_hub_organization_id: orgId.trim(),
             enabled,
             safesky_forward: safeskyForward,
           } as any)
