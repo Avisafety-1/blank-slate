@@ -471,7 +471,14 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
         row.public_title || (anon ? "Planlagt droneoppdrag" : "Planlagt oppdrag")
       );
       const desc = row.public_description ? escapePlannedHtml(row.public_description) : "";
-      const period = `${formatPlannedDateNo(row.starts_at)} – (ukjent sluttid)`;
+      // Detect if ends_at is the trigger's 24h fallback (start + 24h, exact)
+      const startMs = new Date(row.starts_at).getTime();
+      const endMs = row.ends_at ? new Date(row.ends_at).getTime() : NaN;
+      const isFallbackEnd =
+        Number.isFinite(endMs) && Math.abs(endMs - startMs - 24 * 3600 * 1000) < 60_000;
+      const period = isFallbackEnd
+        ? `${formatPlannedDateNo(row.starts_at)} – (ukjent sluttid)`
+        : `${formatPlannedDateNo(row.starts_at)} – ${formatPlannedDateNo(row.ends_at)}`;
       const companyName = !anon && row.public_company_name ? escapePlannedHtml(row.public_company_name) : "";
       const missionType = !anon && row.public_mission_type ? escapePlannedHtml(row.public_mission_type) : "";
 

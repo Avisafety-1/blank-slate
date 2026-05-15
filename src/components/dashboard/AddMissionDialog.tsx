@@ -129,6 +129,7 @@ export const AddMissionDialog = ({
     tittel: initialFormData?.tittel || "",
     lokasjon: initialFormData?.lokasjon || "",
     tidspunkt: initialFormData?.tidspunkt || "",
+    slutt_tidspunkt: (initialFormData as any)?.slutt_tidspunkt || "",
     beskrivelse: initialFormData?.beskrivelse || "",
     merknader: initialFormData?.merknader || "",
     status: initialFormData?.status || "Planlagt",
@@ -149,7 +150,7 @@ export const AddMissionDialog = ({
   const { conflicts: resourceConflicts } = useResourceConflicts(
     mission?.id,
     formData.tidspunkt,
-    undefined, // slutt_tidspunkt not in formData yet
+    formData.slutt_tidspunkt || undefined,
     selectedDrones,
     selectedEquipment,
     selectedPersonnel
@@ -190,6 +191,7 @@ export const AddMissionDialog = ({
           tittel: mission.tittel || "",
           lokasjon: mission.lokasjon || "",
           tidspunkt: mission.tidspunkt ? toLocalDatetimeString(new Date(mission.tidspunkt)) : "",
+          slutt_tidspunkt: (mission as any).slutt_tidspunkt ? toLocalDatetimeString(new Date((mission as any).slutt_tidspunkt)) : "",
           beskrivelse: mission.beskrivelse || "",
           merknader: mission.merknader || "",
           status: mission.status || "Planlagt",
@@ -228,6 +230,7 @@ export const AddMissionDialog = ({
           tittel: initialFormData?.tittel || "",
           lokasjon: autoLokasjon,
           tidspunkt: initialFormData?.tidspunkt || "",
+          slutt_tidspunkt: (initialFormData as any)?.slutt_tidspunkt || "",
           beskrivelse: initialFormData?.beskrivelse || "",
           merknader: initialFormData?.merknader || "",
           status: initialFormData?.status || "Planlagt",
@@ -267,6 +270,7 @@ export const AddMissionDialog = ({
           tittel: "",
           lokasjon: "",
           tidspunkt: "",
+          slutt_tidspunkt: "",
           beskrivelse: "",
           merknader: "",
           status: "Planlagt",
@@ -614,6 +618,7 @@ export const AddMissionDialog = ({
           tittel: formData.tittel,
           lokasjon: formData.lokasjon,
           tidspunkt: formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : formData.tidspunkt,
+          slutt_tidspunkt: formData.slutt_tidspunkt ? new Date(formData.slutt_tidspunkt).toISOString() : null,
           beskrivelse: formData.beskrivelse,
           merknader: formData.merknader,
           status: formData.status,
@@ -775,6 +780,7 @@ export const AddMissionDialog = ({
             tittel: formData.tittel,
             lokasjon: formData.lokasjon,
             tidspunkt: formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : formData.tidspunkt,
+            slutt_tidspunkt: formData.slutt_tidspunkt ? new Date(formData.slutt_tidspunkt).toISOString() : null,
             beskrivelse: formData.beskrivelse,
             merknader: formData.merknader,
             status: formData.status,
@@ -959,6 +965,7 @@ export const AddMissionDialog = ({
         tittel: "",
         lokasjon: "",
         tidspunkt: "",
+        slutt_tidspunkt: "",
         beskrivelse: "",
         merknader: "",
         status: "Planlagt",
@@ -1200,15 +1207,43 @@ export const AddMissionDialog = ({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="tidspunkt">{t('missions.time')} *</Label>
-            <Input
-              id="tidspunkt"
-              type="datetime-local"
-              value={formData.tidspunkt}
-              onChange={(e) => setFormData({ ...formData, tidspunkt: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="tidspunkt">{t('missions.time')} *</Label>
+              <Input
+                id="tidspunkt"
+                type="datetime-local"
+                value={formData.tidspunkt}
+                onChange={(e) => {
+                  const newStart = e.target.value;
+                  setFormData((prev) => {
+                    // Clear end if it's now before start
+                    const next = { ...prev, tidspunkt: newStart };
+                    if (
+                      prev.slutt_tidspunkt &&
+                      newStart &&
+                      new Date(prev.slutt_tidspunkt) <= new Date(newStart)
+                    ) {
+                      next.slutt_tidspunkt = "";
+                    }
+                    return next;
+                  });
+                }}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="slutt_tidspunkt">Sluttidspunkt</Label>
+              <Input
+                id="slutt_tidspunkt"
+                type="datetime-local"
+                value={formData.slutt_tidspunkt}
+                min={formData.tidspunkt || undefined}
+                onChange={(e) =>
+                  setFormData({ ...formData, slutt_tidspunkt: e.target.value })
+                }
+              />
+            </div>
           </div>
 
           <div>

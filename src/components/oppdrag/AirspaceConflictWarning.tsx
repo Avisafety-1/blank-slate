@@ -121,7 +121,16 @@ export const AirspaceConflictWarning = ({
                       : c.public_title || "Planlagt oppdrag"}
                   </span>
                   <span className="text-muted-foreground tabular-nums">
-                    {fmt(c.starts_at)} (ukjent sluttid)
+                    {(() => {
+                      const startMs = new Date(c.starts_at).getTime();
+                      const endMs = c.ends_at ? new Date(c.ends_at).getTime() : NaN;
+                      const isFallback =
+                        Number.isFinite(endMs) &&
+                        Math.abs(endMs - startMs - 24 * 3600 * 1000) < 60_000;
+                      return isFallback || !c.ends_at
+                        ? `${fmt(c.starts_at)} (ukjent sluttid)`
+                        : `${fmt(c.starts_at)} – ${fmt(c.ends_at)}`;
+                    })()}
                   </span>
                 </div>
                 {c.anonymous_publish ? (

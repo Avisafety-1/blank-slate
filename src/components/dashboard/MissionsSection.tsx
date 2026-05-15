@@ -90,15 +90,19 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
 
     const oneDayAgo = new Date();
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-    
+    const nowIso = new Date().toISOString();
+
     try {
       if (abortSignal?.aborted) return;
+      // Show mission while it's not Fullført/Avlyst AND either:
+      //  - it has a slutt_tidspunkt that hasn't passed yet, OR
+      //  - it has no slutt_tidspunkt and tidspunkt is within the last 24h
       const query = (supabase as any)
         .from("missions")
         .select("*, companies:company_id(id, navn)")
         .neq("status", "Fullført")
         .neq("status", "Avlyst")
-        .gte("tidspunkt", oneDayAgo.toISOString())
+        .or(`slutt_tidspunkt.gte.${nowIso},and(slutt_tidspunkt.is.null,tidspunkt.gte.${oneDayAgo.toISOString()})`)
         .order("tidspunkt", { ascending: true });
       if (abortSignal) query.abortSignal(abortSignal);
       const { data, error } = await query;
