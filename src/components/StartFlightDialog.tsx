@@ -1114,7 +1114,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
             <div data-tour="start-flight-publish-mode" className="space-y-3">
               <Label>{t('flight.safeskyPublishing')}</Label>
-              <RadioGroup value={publishMode} onValueChange={(val) => setPublishMode(val as PublishMode)}>
+              <RadioGroup value={publishMode} onValueChange={(val) => { setUserPickedMode(true); setPublishMode(val as PublishMode); }}>
                 <label 
                   htmlFor="mode-none" 
                   className="flex items-start space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
