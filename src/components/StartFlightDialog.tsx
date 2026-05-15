@@ -196,6 +196,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         .eq('company_id', companyId)
         .maybeSingle();
       setFh2LiveEnabled(!!(fh2Cfg?.enabled && fh2Cfg?.safesky_forward));
+      setFh2InternalOnly(!!(fh2Cfg?.enabled && !fh2Cfg?.safesky_forward));
     };
 
     fetchCompanyChecklists();
