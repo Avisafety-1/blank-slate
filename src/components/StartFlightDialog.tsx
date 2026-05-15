@@ -142,6 +142,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   // Combined: any live position source available
   const liveAvailable = dronetagEnabled || fh2LiveEnabled;
 
+  // Live drone-position freshness ("mottar vi posisjon nå?")
+  // Polls latest FH2 / DroneTag position for the company while the live mode is active.
+  const [livePosFreshness, setLivePosFreshness] = useState<{ hasData: boolean; ageSec: number | null; source: 'fh2' | 'dronetag' | null }>({ hasData: false, ageSec: null, source: null });
+
   // Phone in remarks for advisory mode
   const [profilePhone, setProfilePhone] = useState<string>('');
   const [includePhoneInRemarks, setIncludePhoneInRemarks] = useState<boolean>(true);
@@ -256,7 +260,68 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fetchDronetagDevices();
   }, [companyId, open]);
 
-  // Fetch mission checklist state when mission is selected
+  // Live position freshness poll — runs while dialog open + live_uav selected
+  useEffect(() => {
+    if (!open || !companyId || publishMode !== 'live_uav') {
+      setLivePosFreshness({ hasData: false, ageSec: null, source: null });
+      return;
+    }
+
+    let cancelled = false;
+    const checkPosition = async () => {
+      try {
+        // Try FH2 first if enabled
+        let latest: { ts: string; source: 'fh2' | 'dronetag' } | null = null;
+
+        if (fh2LiveEnabled) {
+          const { data } = await supabase
+            .from('flighthub2_positions')
+            .select('time_stamp')
+            .eq('company_id', companyId)
+            .order('time_stamp', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (data?.time_stamp) latest = { ts: data.time_stamp, source: 'fh2' };
+        }
+
+        // Fallback / supplement: DroneTag telemetry for company drones
+        if (!latest && dronetagEnabled) {
+          const { data: droneRows } = await supabase
+            .from('drones')
+            .select('id')
+            .eq('company_id', companyId);
+          const droneIds = (droneRows ?? []).map((d) => d.id);
+          if (droneIds.length > 0) {
+            const { data } = await supabase
+              .from('drone_telemetry')
+              .select('created_at')
+              .in('drone_id', droneIds)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (data?.created_at) latest = { ts: data.created_at, source: 'dronetag' };
+          }
+        }
+
+        if (cancelled) return;
+        if (latest) {
+          const ageSec = Math.round((Date.now() - new Date(latest.ts).getTime()) / 1000);
+          setLivePosFreshness({ hasData: true, ageSec, source: latest.source });
+        } else {
+          setLivePosFreshness({ hasData: false, ageSec: null, source: null });
+        }
+      } catch (err) {
+        if (!cancelled) setLivePosFreshness({ hasData: false, ageSec: null, source: null });
+      }
+    };
+
+    checkPosition();
+    const interval = setInterval(checkPosition, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [open, companyId, publishMode, fh2LiveEnabled, dronetagEnabled]);
   useEffect(() => {
     if (!selectedMissionId || selectedMissionId === 'none') {
       setMissionChecklistIds([]);
@@ -1166,6 +1231,42 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
             {publishMode === 'live_uav' && (
               <div className="space-y-3">
+                {/* Drone live-position freshness indicator */}
+                {(() => {
+                  const fresh = livePosFreshness.hasData && livePosFreshness.ageSec !== null && livePosFreshness.ageSec <= 30;
+                  const stale = livePosFreshness.hasData && livePosFreshness.ageSec !== null && livePosFreshness.ageSec > 30;
+                  const sourceLabel = livePosFreshness.source === 'fh2' ? 'DJI FlightHub 2' : 'DroneTag';
+                  return (
+                    <div className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${
+                      fresh ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
+                    }`}>
+                      <span className={`relative flex h-2.5 w-2.5 flex-shrink-0`}>
+                        {fresh && (
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                        )}
+                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${fresh ? 'bg-green-500' : 'bg-red-500'}`} />
+                      </span>
+                      <div className="flex-1">
+                        {fresh && (
+                          <p className="text-green-700 dark:text-green-400 font-medium">
+                            Mottar droneposisjon · {sourceLabel} ({livePosFreshness.ageSec}s siden)
+                          </p>
+                        )}
+                        {stale && (
+                          <p className="text-red-700 dark:text-red-400 font-medium">
+                            Ingen fersk posisjon · siste {sourceLabel}-punkt for {livePosFreshness.ageSec}s siden
+                          </p>
+                        )}
+                        {!livePosFreshness.hasData && (
+                          <p className="text-red-700 dark:text-red-400 font-medium">
+                            Ingen droneposisjon mottatt enda – sjekk at drona er koblet til {fh2LiveEnabled ? 'DJI FlightHub 2' : 'DroneTag'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
                   <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
                   <div className="space-y-1">
