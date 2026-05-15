@@ -176,19 +176,36 @@ Deno.serve(async (req: Request) => {
       return fail("400", "lookup_failed");
     }
     const row = Array.isArray(cfg) ? cfg[0] : cfg;
-    if (!row || !row.token) return fail("400", "unknown_organization");
-    if (!row.enabled) return fail("400", "webhook_disabled");
+    if (!row || !row.token) {
+      console.warn("[FH2-webhook] unknown_organization", { org: body.flight_hub_organization_id });
+      return fail("400", "unknown_organization");
+    }
+    if (!row.enabled) {
+      console.warn("[FH2-webhook] webhook_disabled", { org: body.flight_hub_organization_id });
+      return fail("400", "webhook_disabled");
+    }
 
     // Verify HMAC
-    const expected = await hmacSha256Hex(row.token as string, [
+    const tokenStr = (row.token as string) ?? "";
+    const expected = await hmacSha256Hex(tokenStr, [
       ENC.encode(timestamp),
       ENC.encode(nonce),
       rawBody,
     ]);
-    if (!constantTimeEqual(expected, signature.toLowerCase())) {
-      console.warn("Invalid signature for org", body.flight_hub_organization_id);
+    const sigLower = signature.toLowerCase();
+    if (!constantTimeEqual(expected, sigLower)) {
+      console.warn("[FH2-webhook] invalid_signature", {
+        org: body.flight_hub_organization_id,
+        tokenLen: tokenStr.length,
+        tokenPrefix: tokenStr.slice(0, 4),
+        tokenSuffix: tokenStr.slice(-4),
+        expectedPrefix: expected.slice(0, 8),
+        gotPrefix: sigLower.slice(0, 8),
+        bodyLen: rawBody.length,
+      });
       return fail("400", "invalid_signature");
     }
+    console.log("[FH2-webhook] signature OK", { org: body.flight_hub_organization_id, paths: body.paths.length });
 
     // Decode + insert positions
     const companyId = row.company_id as string;
