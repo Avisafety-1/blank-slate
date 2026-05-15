@@ -12,10 +12,29 @@ interface Props {
   values: PublicationFields;
   onChange: (next: PublicationFields) => void;
   allowOverride: boolean;
+  shareName?: boolean;
+  sharePhone?: boolean;
+  shareEmail?: boolean;
 }
 
-export const MissionPublicationSection = ({ values, onChange, allowOverride }: Props) => {
+export const MissionPublicationSection = ({
+  values,
+  onChange,
+  allowOverride,
+  shareName = true,
+  sharePhone = true,
+  shareEmail = true,
+}: Props) => {
   const set = (patch: Partial<PublicationFields>) => onChange({ ...values, ...patch });
+
+  const sharedFields: string[] = [];
+  if (shareName) sharedFields.push("navn");
+  if (sharePhone) sharedFields.push("telefon");
+  if (shareEmail) sharedFields.push("e-post");
+  const adminSharesNothing = sharedFields.length === 0;
+  const sharedLabel = adminSharesNothing
+    ? "Del kontaktinfo"
+    : `Del kontaktinfo (${sharedFields.join(", ")})`;
 
   return (
     <div className="rounded-lg border border-border bg-card/50 p-4 space-y-3">
@@ -48,16 +67,23 @@ export const MissionPublicationSection = ({ values, onChange, allowOverride }: P
           />
         </div>
 
-        <div className="flex items-center justify-between py-1.5">
-          <Label htmlFor="share_contact_info" className="text-sm font-normal">
-            Del kontaktinfo (navn, telefon, e-post)
-          </Label>
-          <Switch
-            id="share_contact_info"
-            checked={values.share_contact_info}
-            disabled={!values.publish_to_map || values.anonymous_publish}
-            onCheckedChange={(v) => set({ share_contact_info: v })}
-          />
+        <div className="py-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="share_contact_info" className="text-sm font-normal">
+              {sharedLabel}
+            </Label>
+            <Switch
+              id="share_contact_info"
+              checked={values.share_contact_info && !adminSharesNothing}
+              disabled={!values.publish_to_map || values.anonymous_publish || adminSharesNothing}
+              onCheckedChange={(v) => set({ share_contact_info: v })}
+            />
+          </div>
+          {adminSharesNothing && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Admin har ikke aktivert deling av navn, telefon eller e-post.
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-between py-1.5">

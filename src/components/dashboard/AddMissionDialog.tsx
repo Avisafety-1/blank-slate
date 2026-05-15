@@ -1747,6 +1747,9 @@ export const AddMissionDialog = ({
                     values={publication}
                     onChange={setPublication}
                     allowOverride={companySettings.allow_pilot_override_publish_settings}
+                    shareName={companySettings.default_share_contact_name}
+                    sharePhone={companySettings.default_share_contact_phone}
+                    shareEmail={companySettings.default_share_contact_email}
                   />
                 </div>
               </CollapsibleContent>
