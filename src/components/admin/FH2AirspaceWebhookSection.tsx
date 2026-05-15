@@ -105,7 +105,6 @@ export const FH2AirspaceWebhookSection = () => {
     setSaving(true);
     try {
       if (tokenIsNew) {
-        // Save token via edge function (uses service-role + FH2_ENCRYPTION_KEY)
         const { error } = await supabase.functions.invoke(
           "flighthub2-airspace-webhook-config",
           {
@@ -118,14 +117,19 @@ export const FH2AirspaceWebhookSection = () => {
           },
         );
         if (error) throw error;
+        // safesky_forward isn't part of the save edge fn yet — apply via direct update
+        await supabase
+          .from("flighthub2_webhook_config")
+          .update({ safesky_forward: safeskyForward } as any)
+          .eq("company_id", companyId);
       } else {
-        // Only updating org id / enabled flag — direct update is fine
         const { error } = await supabase
           .from("flighthub2_webhook_config")
           .update({
             flight_hub_organization_id: orgId.trim(),
             enabled,
-          })
+            safesky_forward: safeskyForward,
+          } as any)
           .eq("company_id", companyId);
         if (error) throw error;
       }
