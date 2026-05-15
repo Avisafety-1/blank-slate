@@ -673,7 +673,12 @@ export async function fetchDroneTelemetry(params: {
 
       const droneInfo = droneInfoById.get(droneId);
       const isDronetag = dronetagDroneIds.has(droneId);
+      const rawSource = (t as any).raw?.source as string | undefined;
+      const isFlightHub2 = rawSource === 'flighthub2';
       const callsign = droneInfo?.registration_number || droneInfo?.modell || droneId;
+
+      const sourceKind: 'avisafe-flighthub2' | 'avisafe-dronetag' | 'avisafe' =
+        isFlightHub2 ? 'avisafe-flighthub2' : (isDronetag ? 'avisafe-dronetag' : 'avisafe');
 
       marker.bindPopup(
         renderTrafficPopup({
@@ -683,7 +688,7 @@ export async function fetchDroneTelemetry(params: {
           registration: droneInfo?.registration_number,
           altitudeM: t.alt,
           updatedAt: t.created_at,
-          source: { kind: isDronetag ? 'avisafe-dronetag' : 'avisafe' },
+          source: { kind: sourceKind },
         }),
         { autoPan: false, keepInView: false }
       );

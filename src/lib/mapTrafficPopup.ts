@@ -10,6 +10,7 @@ export type TrafficSource =
   | { kind: "safesky"; subSource?: string | null } // f.eks. "flarm", "ogn", "adsb"
   | { kind: "avisafe-advisory" }                     // publisert via AviSafe → SafeSky
   | { kind: "avisafe-dronetag" }                     // live DroneTag-telemetri
+  | { kind: "avisafe-flighthub2" }                   // live fra DJI FlightHub 2
   | { kind: "avisafe" };                              // generisk live AviSafe
 
 export interface TrafficPopupData {
@@ -58,6 +59,8 @@ function formatSource(src: TrafficSource): string {
       return "AviSafe → SafeSky";
     case "avisafe-dronetag":
       return "AviSafe (DroneTag)";
+    case "avisafe-flighthub2":
+      return "Live · DJI FlightHub 2";
     case "avisafe":
       return "AviSafe";
   }
