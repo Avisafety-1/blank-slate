@@ -321,7 +321,25 @@ Deno.serve(async (req: Request) => {
 
       const safeskyKey = Deno.env.get("SAFESKY_API_KEY");
       if (row.safesky_forward && safeskyKey) {
+        // Per-flight gate: only forward to SafeSky for drones that have an active "Live posisjon" flight.
+        // Master toggle (row.safesky_forward) = company-level permission;
+        // active_flights with publish_mode='live_uav' = pilot-level trigger.
+        const { data: liveFlights } = await supabase
+          .from("active_flights")
+          .select("drone_id")
+          .eq("company_id", companyId)
+          .eq("publish_mode", "live_uav")
+          .not("drone_id", "is", null);
+        const liveDroneIds = new Set<string>(
+          ((liveFlights ?? []) as Array<{ drone_id: string }>).map((f) => f.drone_id),
+        );
+
         for (const r of latestBySn.values()) {
+          const droneIdForSn = droneIdBySn.get(r.sn as string);
+          if (!droneIdForSn || !liveDroneIds.has(droneIdForSn)) {
+            // No active "Live posisjon" flight for this drone — skip SafeSky forwarding
+            continue;
+          }
           const fs = String(r.flight_status ?? "").toLowerCase();
           const isAirborne = fs === "inflight" || fs === "takeoff" || fs === "flying" ||
             (typeof r.ground_speed_ms === "number" && (r.ground_speed_ms as number) > 1);
