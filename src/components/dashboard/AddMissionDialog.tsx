@@ -1207,15 +1207,43 @@ export const AddMissionDialog = ({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="tidspunkt">{t('missions.time')} *</Label>
-            <Input
-              id="tidspunkt"
-              type="datetime-local"
-              value={formData.tidspunkt}
-              onChange={(e) => setFormData({ ...formData, tidspunkt: e.target.value })}
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="tidspunkt">{t('missions.time')} *</Label>
+              <Input
+                id="tidspunkt"
+                type="datetime-local"
+                value={formData.tidspunkt}
+                onChange={(e) => {
+                  const newStart = e.target.value;
+                  setFormData((prev) => {
+                    // Clear end if it's now before start
+                    const next = { ...prev, tidspunkt: newStart };
+                    if (
+                      prev.slutt_tidspunkt &&
+                      newStart &&
+                      new Date(prev.slutt_tidspunkt) <= new Date(newStart)
+                    ) {
+                      next.slutt_tidspunkt = "";
+                    }
+                    return next;
+                  });
+                }}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="slutt_tidspunkt">Sluttidspunkt</Label>
+              <Input
+                id="slutt_tidspunkt"
+                type="datetime-local"
+                value={formData.slutt_tidspunkt}
+                min={formData.tidspunkt || undefined}
+                onChange={(e) =>
+                  setFormData({ ...formData, slutt_tidspunkt: e.target.value })
+                }
+              />
+            </div>
           </div>
 
           <div>
