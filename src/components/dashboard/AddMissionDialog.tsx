@@ -230,6 +230,7 @@ export const AddMissionDialog = ({
           tittel: initialFormData?.tittel || "",
           lokasjon: autoLokasjon,
           tidspunkt: initialFormData?.tidspunkt || "",
+          slutt_tidspunkt: (initialFormData as any)?.slutt_tidspunkt || "",
           beskrivelse: initialFormData?.beskrivelse || "",
           merknader: initialFormData?.merknader || "",
           status: initialFormData?.status || "Planlagt",
