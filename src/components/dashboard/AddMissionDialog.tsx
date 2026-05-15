@@ -191,6 +191,7 @@ export const AddMissionDialog = ({
           tittel: mission.tittel || "",
           lokasjon: mission.lokasjon || "",
           tidspunkt: mission.tidspunkt ? toLocalDatetimeString(new Date(mission.tidspunkt)) : "",
+          slutt_tidspunkt: (mission as any).slutt_tidspunkt ? toLocalDatetimeString(new Date((mission as any).slutt_tidspunkt)) : "",
           beskrivelse: mission.beskrivelse || "",
           merknader: mission.merknader || "",
           status: mission.status || "Planlagt",
