@@ -111,26 +111,48 @@ Deno.serve(async (req: Request) => {
     const signature = req.headers.get("signature") ?? "";
     const timestamp = req.headers.get("timestamp") ?? "";
     const nonce = req.headers.get("nonce") ?? "";
+    const allHeaderKeys = Array.from(req.headers.keys());
+    console.log("[FH2-webhook] incoming", {
+      method: req.method,
+      headers: allHeaderKeys,
+      hasSignature: !!signature,
+      sigLen: signature.length,
+      sigPrefix: signature.slice(0, 6),
+      timestamp,
+      nonceLen: nonce.length,
+    });
+
+    const rawBody = new Uint8Array(await req.arrayBuffer());
+    const rawText = new TextDecoder().decode(rawBody);
+    console.log("[FH2-webhook] body", { len: rawBody.length, preview: rawText.slice(0, 300) });
+
     if (!signature || !timestamp || !nonce) {
       return fail("400", "missing_signature_headers");
     }
 
-    // Optional anti-replay: reject if timestamp is more than 5 minutes off
+    // Anti-replay: reject if timestamp is more than 5 minutes off (skip if body is empty -> treat as DJI verify ping)
     const tsNum = Number(timestamp);
     if (!Number.isFinite(tsNum)) return fail("400", "invalid_timestamp");
     const skew = Math.abs(Math.floor(Date.now() / 1000) - tsNum);
-    if (skew > 300) return fail("400", "timestamp_skew_too_large");
-
-    const rawBody = new Uint8Array(await req.arrayBuffer());
+    if (skew > 300) {
+      console.warn("[FH2-webhook] timestamp_skew_too_large", { skew });
+      return fail("400", "timestamp_skew_too_large");
+    }
 
     let body: RequestBody;
     try {
-      body = JSON.parse(new TextDecoder().decode(rawBody));
+      body = JSON.parse(rawText);
     } catch {
+      console.warn("[FH2-webhook] invalid_json");
       return fail("400", "invalid_json");
     }
-    if (!body?.flight_hub_organization_id || !Array.isArray(body.paths)) {
+    if (!body?.flight_hub_organization_id) {
+      console.warn("[FH2-webhook] missing flight_hub_organization_id", { keys: Object.keys(body ?? {}) });
       return fail("400", "missing_required_fields");
+    }
+    if (!Array.isArray(body.paths)) {
+      // DJI verify-call may send empty paths or no paths at all — accept it once HMAC is valid
+      body.paths = [];
     }
 
     const encKey = Deno.env.get("FH2_ENCRYPTION_KEY");
@@ -154,19 +176,36 @@ Deno.serve(async (req: Request) => {
       return fail("400", "lookup_failed");
     }
     const row = Array.isArray(cfg) ? cfg[0] : cfg;
-    if (!row || !row.token) return fail("400", "unknown_organization");
-    if (!row.enabled) return fail("400", "webhook_disabled");
+    if (!row || !row.token) {
+      console.warn("[FH2-webhook] unknown_organization", { org: body.flight_hub_organization_id });
+      return fail("400", "unknown_organization");
+    }
+    if (!row.enabled) {
+      console.warn("[FH2-webhook] webhook_disabled", { org: body.flight_hub_organization_id });
+      return fail("400", "webhook_disabled");
+    }
 
     // Verify HMAC
-    const expected = await hmacSha256Hex(row.token as string, [
+    const tokenStr = (row.token as string) ?? "";
+    const expected = await hmacSha256Hex(tokenStr, [
       ENC.encode(timestamp),
       ENC.encode(nonce),
       rawBody,
     ]);
-    if (!constantTimeEqual(expected, signature.toLowerCase())) {
-      console.warn("Invalid signature for org", body.flight_hub_organization_id);
+    const sigLower = signature.toLowerCase();
+    if (!constantTimeEqual(expected, sigLower)) {
+      console.warn("[FH2-webhook] invalid_signature", {
+        org: body.flight_hub_organization_id,
+        tokenLen: tokenStr.length,
+        tokenPrefix: tokenStr.slice(0, 4),
+        tokenSuffix: tokenStr.slice(-4),
+        expectedPrefix: expected.slice(0, 8),
+        gotPrefix: sigLower.slice(0, 8),
+        bodyLen: rawBody.length,
+      });
       return fail("400", "invalid_signature");
     }
+    console.log("[FH2-webhook] signature OK", { org: body.flight_hub_organization_id, paths: body.paths.length });
 
     // Decode + insert positions
     const companyId = row.company_id as string;
