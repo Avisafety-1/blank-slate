@@ -261,7 +261,7 @@ export const FH2AirspaceWebhookSection = () => {
                 Del posisjon med SafeSky
               </Label>
               <p className="text-xs text-muted-foreground">
-                Videresender siste FH2-posisjon som «live UAV beacon» til SafeSky.
+                Tillat at FH2-posisjoner deles til SafeSky som «live UAV beacon». Faktisk deling skjer per drone <strong>kun</strong> når en pilot starter en flyging i «Live posisjon»-modus i Avisafe — og stopper automatisk når flygingen avsluttes.
               </p>
             </div>
             <Switch
