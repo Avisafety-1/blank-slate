@@ -1186,8 +1186,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   </div>
                 </div>
                 
-                {/* DroneTag device selector */}
-                <div data-tour="start-flight-dronetag" className="space-y-2 pl-1">
+                {/* DroneTag device selector — only when DroneTag is the active live source */}
+                {dronetagEnabled && !fh2LiveEnabled && (
+                  <div data-tour="start-flight-dronetag" className="space-y-2 pl-1">
                     <Label className="text-sm">{t('flight.dronetagDevice')} *</Label>
                     {dronetagDevices.length > 0 ? (
                       <>
@@ -1227,6 +1228,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                       </div>
                     )}
                   </div>
+                )}
               </div>
             )}
 
