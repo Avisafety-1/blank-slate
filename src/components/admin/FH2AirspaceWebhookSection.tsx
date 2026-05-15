@@ -251,6 +251,23 @@ export const FH2AirspaceWebhookSection = () => {
             />
           </div>
 
+          <div className="flex items-center justify-between rounded-md border border-border/40 px-3 py-2">
+            <div>
+              <Label htmlFor="fh2-safesky" className="cursor-pointer">
+                Del posisjon med SafeSky
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Videresender siste FH2-posisjon som «live UAV beacon» til SafeSky.
+              </p>
+            </div>
+            <Switch
+              id="fh2-safesky"
+              checked={safeskyForward}
+              onCheckedChange={setSafeskyForward}
+              disabled={!enabled}
+            />
+          </div>
+
           {lastReceivedAt && (
             <Alert>
               <Info className="h-4 w-4" />
