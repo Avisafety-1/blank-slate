@@ -103,6 +103,30 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const url = new URL(req.url);
+  console.log("[FH2-webhook] request", { method: req.method, path: url.pathname, search: url.search });
+
+  // DJI FlightHub 2 Airspace verification probe + traffic queries.
+  // DJI calls GET <webhook>/v1/uav?lat=..&lng=..&radius=.. to verify the API.
+  // Respond with 200 + empty JSON array so verification passes.
+  if (req.method === "GET") {
+    if (url.pathname.endsWith("/v1/uav")) {
+      const lat = url.searchParams.get("lat");
+      const lng = url.searchParams.get("lng");
+      const radius = url.searchParams.get("radius") ?? url.searchParams.get("rad");
+      console.log("[FH2-webhook] DJI verify GET /v1/uav", { lat, lng, radius });
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ ok: true, service: "flighthub2-airspace-webhook" }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   if (req.method !== "POST") {
     return fail("400", "method_not_allowed", 405);
   }

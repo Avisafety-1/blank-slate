@@ -1,29 +1,35 @@
-Status nå:
-- `Service provider name = avisafe` er ikke problemet. Det feltet er bare visningsnavn hos DJI.
-- Avisafe har lagret webhook-konfigurasjon med org `4593f426-e454-4ba5-8246-92b109bb0a12`, token finnes, og webhook er aktivert.
-- DJI ser ut til å treffe Edge Function, men funksjonen logger ikke hvilken validering som feiler. Derfor får vi bare “API verification failed” i DJI uten nok sporbarhet.
+## Funn
 
-Plan:
-1. Legg inn sikker, ikke-sensitiv diagnostikk i `flighthub2-airspace-webhook`:
-   - logg om request mangler headers, har feil timestamp, ukjent org, deaktivert config eller invalid signature
-   - logg kun trygge metadata: org-id, body-lengde, token-lengde, signatur-lengde og prefix/suffix – aldri full token eller full signatur
+DJI når nå Edge Functionen, men den kaller ikke bare POST-webhooken fra dokumentasjonen. Under verifisering sender DJI også:
 
-2. Gjør webhooken mer tolerant mot DJIs verify-test:
-   - tillat både header-varianter som `signature`, `timestamp`, `nonce` og mulige store/små bokstaver håndteres allerede av Fetch Headers
-   - vurder å ikke avvise på 5-minutters timestamp-skew under DJI-verifisering hvis dette viser seg å være årsaken
-   - behold HMAC-verifisering for faktiske posisjonsdata
+```text
+GET /flighthub2-airspace-webhook/v1/uav?lat=22.5431&lng=114.0579&radius=100
+```
 
-3. Legg inn en lokal/Edge Function-test for DJIs signaturformat:
-   - bruk samme HMAC-regel som dokumentasjonen: `timestamp + nonce + rawBody`
-   - test at lagret webhook-logikk aksepterer korrekt signatur og avviser feil signatur
+Funksjonen vår aksepterer kun POST og svarer derfor `405 Method Not Allowed`. Det er derfor DJI viser `API verification failed`.
 
-4. Etter endringen:
-   - deploy/test webhook-funksjonen
-   - kall den med en syntetisk signert request for å bekrefte at den returnerer `{ code: "0", result: "success" }`
-   - sjekk Edge Function-logger etter nytt DJI Verify-forsøk for eksakt årsak hvis DJI fortsatt feiler
+`Service provider name = avisafe` er fortsatt ikke problemet.
 
-Mest sannsynlige årsaker som denne planen avklarer:
-- token i DJI er ikke nøyaktig samme som den lagrede i Avisafe
-- DJI sender `flight_hub_organization_id` som ikke matcher org-id i FH2 OAuth-tokenet
-- DJI verify-request har tom/annen body eller timestamp-skew som dagens funksjon avviser
-- signaturberegningen stemmer ikke med hva DJI faktisk sender i verify-kallet
+## Plan
+
+1. **Støtt DJI sin GET-verifisering**
+   - Legg inn en egen GET-handler i `flighthub2-airspace-webhook` for path som slutter på `/v1/uav`.
+   - Returner `200` med JSON-liste, typisk `[]`, slik at DJI sin API-test består.
+   - Godta både `radius` og `rad` som query-parametre, siden DJI bruker `radius` mens SafeSky bruker `rad`.
+
+2. **Behold eksisterende POST-webhook for live droneposisjoner**
+   - POST-logikken med HMAC-signatur, org-oppslag og lagring i `flighthub2_positions` beholdes.
+   - GET-verifisering skal ikke omgå eller svekke HMAC-sjekken for faktiske POST-telemetridata.
+
+3. **Logg GET-verifisering tydelig**
+   - Legg til ikke-sensitive logger for method, path, lat/lng/radius og headers.
+   - Da kan vi se direkte om DJI får 200 etter neste test.
+
+4. **Deploy og test Edge Functionen**
+   - Deploy `flighthub2-airspace-webhook`.
+   - Test samme GET-kall som DJI brukte og bekreft `200`.
+   - Test en ugyldig path/metode slik at den fortsatt avvises riktig.
+
+## Teknisk detalj
+
+Dette er sannsynligvis fordi FH2 Airspace-integrasjonen forventer at leverandøren også eksponerer et `/v1/uav`-kompatibelt API for å hente nærliggende trafikk, ikke bare en webhook for å motta droneposisjoner. Første steg er å returnere gyldig tom respons for verifisering; senere kan endpointet eventuelt kobles til SafeSky/annen trafikkdata hvis DJI faktisk bruker det operativt.
