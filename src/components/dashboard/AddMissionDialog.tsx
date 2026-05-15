@@ -780,6 +780,7 @@ export const AddMissionDialog = ({
             tittel: formData.tittel,
             lokasjon: formData.lokasjon,
             tidspunkt: formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : formData.tidspunkt,
+            slutt_tidspunkt: formData.slutt_tidspunkt ? new Date(formData.slutt_tidspunkt).toISOString() : null,
             beskrivelse: formData.beskrivelse,
             merknader: formData.merknader,
             status: formData.status,
