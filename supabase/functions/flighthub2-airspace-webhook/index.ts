@@ -322,10 +322,10 @@ Deno.serve(async (req: Request) => {
       const safeskyKey = Deno.env.get("SAFESKY_API_KEY");
       if (row.safesky_forward && safeskyKey) {
         for (const r of latestBySn.values()) {
-          const status = (r.flight_status as string) === "FLYING" ||
-              (typeof r.ground_speed_ms === "number" && (r.ground_speed_ms as number) > 1)
-            ? "AIRBORNE"
-            : "GROUNDED";
+          const fs = String(r.flight_status ?? "").toLowerCase();
+          const isAirborne = fs === "inflight" || fs === "takeoff" || fs === "flying" ||
+            (typeof r.ground_speed_ms === "number" && (r.ground_speed_ms as number) > 1);
+          const status = isAirborne ? "AIRBORNE" : "GROUNDED";
           const beaconId = `AVS_FH2_${(r.sn as string).slice(-8)}`;
           const payload = [{
             id: beaconId,
