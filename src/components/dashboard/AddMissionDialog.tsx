@@ -150,7 +150,7 @@ export const AddMissionDialog = ({
   const { conflicts: resourceConflicts } = useResourceConflicts(
     mission?.id,
     formData.tidspunkt,
-    undefined, // slutt_tidspunkt not in formData yet
+    formData.slutt_tidspunkt || undefined,
     selectedDrones,
     selectedEquipment,
     selectedPersonnel
