@@ -6,9 +6,20 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 interface SaveBody {
   action: "save";
-  flight_hub_organization_id: string;
   token: string;
   enabled?: boolean;
+  safesky_forward?: boolean;
+}
+
+function decodeJwtOrgUuid(jwt: string): string {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3) return "";
+    const payload = JSON.parse(atob(parts[1]));
+    return (payload?.organization_uuid as string) || "";
+  } catch {
+    return "";
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -58,7 +69,6 @@ Deno.serve(async (req: Request) => {
   }
   if (
     body?.action !== "save" ||
-    !body.flight_hub_organization_id ||
     !body.token ||
     body.token.length < 32 ||
     body.token.length > 64
@@ -110,9 +120,49 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Auto-derive organization_uuid from the company's saved FH2 OAuth token.
+  // Falls back to parent company if the company inherits FH2 credentials.
+  const { data: company } = await service
+    .from("companies")
+    .select("parent_company_id, propagate_fh2_credentials")
+    .eq("id", profile.company_id)
+    .maybeSingle();
+
+  const fetchFh2Jwt = async (cid: string): Promise<string> => {
+    const { data } = await service.rpc("get_fh2_token", {
+      p_company_id: cid,
+      p_key: encKey,
+    });
+    return ((data as string) || "").trim().replace(/^bearer\s+/i, "");
+  };
+
+  let fh2Jwt = await fetchFh2Jwt(profile.company_id);
+  if (!fh2Jwt && company?.parent_company_id) {
+    fh2Jwt = await fetchFh2Jwt(company.parent_company_id);
+  }
+  if (!fh2Jwt) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "FlightHub 2 er ikke koblet til. Koble til FH2 i selskapsinnstillinger først.",
+      }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  const orgUuid = decodeJwtOrgUuid(fh2Jwt);
+  if (!orgUuid) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Kunne ikke lese organization_uuid fra FH2-token. Koble til FlightHub 2 på nytt.",
+      }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   const { error: saveErr } = await service.rpc("save_fh2_webhook_token", {
     p_company_id: profile.company_id,
-    p_org_id: body.flight_hub_organization_id,
+    p_org_id: orgUuid,
     p_token: body.token,
     p_key: encKey,
   });
@@ -124,15 +174,21 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (typeof body.enabled === "boolean") {
+  const updates: Record<string, unknown> = {};
+  if (typeof body.enabled === "boolean") updates.enabled = body.enabled;
+  if (typeof body.safesky_forward === "boolean") {
+    updates.safesky_forward = body.safesky_forward;
+  }
+  if (Object.keys(updates).length > 0) {
     await service
       .from("flighthub2_webhook_config")
-      .update({ enabled: body.enabled })
+      .update(updates)
       .eq("company_id", profile.company_id);
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({ ok: true, flight_hub_organization_id: orgUuid }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 });
+

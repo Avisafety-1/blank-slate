@@ -93,10 +93,6 @@ export const FH2AirspaceWebhookSection = () => {
 
   const handleSave = async () => {
     if (!companyId) return;
-    if (!orgId.trim()) {
-      toast.error("FlightHub Organization ID er påkrevd");
-      return;
-    }
     const tokenIsNew = token && token !== TOKEN_MASK;
     if (!hasSavedToken && !tokenIsNew) {
       toast.error("Generer en token først");
@@ -105,28 +101,25 @@ export const FH2AirspaceWebhookSection = () => {
     setSaving(true);
     try {
       if (tokenIsNew) {
-        const { error } = await supabase.functions.invoke(
+        const { data, error } = await supabase.functions.invoke(
           "flighthub2-airspace-webhook-config",
           {
             body: {
               action: "save",
-              flight_hub_organization_id: orgId.trim(),
               token,
               enabled,
+              safesky_forward: safeskyForward,
             },
           },
         );
         if (error) throw error;
-        // safesky_forward isn't part of the save edge fn yet — apply via direct update
-        await supabase
-          .from("flighthub2_webhook_config")
-          .update({ safesky_forward: safeskyForward } as any)
-          .eq("company_id", companyId);
+        if ((data as any)?.flight_hub_organization_id) {
+          setOrgId((data as any).flight_hub_organization_id);
+        }
       } else {
         const { error } = await supabase
           .from("flighthub2_webhook_config")
           .update({
-            flight_hub_organization_id: orgId.trim(),
             enabled,
             safesky_forward: safeskyForward,
           } as any)
@@ -184,18 +177,29 @@ export const FH2AirspaceWebhookSection = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fh2-org-id">FlightHub Organization ID</Label>
-            <Input
-              id="fh2-org-id"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              placeholder="105ddf05-54ce-4626-a872-cb32b8c98864"
-              className="font-mono text-xs"
-            />
+            <Label>FlightHub Organization ID</Label>
+            <div className="flex gap-2">
+              <Input
+                value={orgId || "Hentes automatisk fra FH2-tilkoblingen ved lagring"}
+                readOnly
+                className="font-mono text-xs"
+              />
+              {orgId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => copy(orgId, "Organization ID")}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Finnes i FH2 under organisasjonsinnstillinger.
+              Utledes automatisk fra FlightHub 2 OAuth-koblingen — krever at FH2 er tilkoblet for selskapet.
             </p>
           </div>
+
 
           <div className="space-y-2">
             <Label htmlFor="fh2-webhook-token">Token (App Key)</Label>
