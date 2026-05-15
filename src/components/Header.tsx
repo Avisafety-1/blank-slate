@@ -27,7 +27,9 @@ interface Company {
 
 export const Header = () => {
   const navigate = useNavigate();
-  const { signOut, companyName, isSuperAdmin, isAdmin, companyId, accessibleCompanies, switchCompany, hasTrainingModuleAccess } = useAuth();
+  const { signOut, companyName, parentCompanyName, isSuperAdmin, isAdmin, companyId, accessibleCompanies, switchCompany, hasTrainingModuleAccess } = useAuth();
+  const isNorconsult = (companyName?.toLowerCase().includes('norconsult') ?? false)
+    || (parentCompanyName?.toLowerCase().includes('norconsult') ?? false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const { t, i18n } = useTranslation();
 
