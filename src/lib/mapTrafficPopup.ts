@@ -59,6 +59,8 @@ function formatSource(src: TrafficSource): string {
       return "AviSafe → SafeSky";
     case "avisafe-dronetag":
       return "AviSafe (DroneTag)";
+    case "avisafe-flighthub2":
+      return "Live · DJI FlightHub 2";
     case "avisafe":
       return "AviSafe";
   }
