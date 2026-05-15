@@ -260,7 +260,68 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fetchDronetagDevices();
   }, [companyId, open]);
 
-  // Fetch mission checklist state when mission is selected
+  // Live position freshness poll — runs while dialog open + live_uav selected
+  useEffect(() => {
+    if (!open || !companyId || publishMode !== 'live_uav') {
+      setLivePosFreshness({ hasData: false, ageSec: null, source: null });
+      return;
+    }
+
+    let cancelled = false;
+    const checkPosition = async () => {
+      try {
+        // Try FH2 first if enabled
+        let latest: { ts: string; source: 'fh2' | 'dronetag' } | null = null;
+
+        if (fh2LiveEnabled) {
+          const { data } = await supabase
+            .from('flighthub2_positions')
+            .select('time_stamp')
+            .eq('company_id', companyId)
+            .order('time_stamp', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (data?.time_stamp) latest = { ts: data.time_stamp, source: 'fh2' };
+        }
+
+        // Fallback / supplement: DroneTag telemetry for company drones
+        if (!latest && dronetagEnabled) {
+          const { data: droneRows } = await supabase
+            .from('drones')
+            .select('id')
+            .eq('company_id', companyId);
+          const droneIds = (droneRows ?? []).map((d) => d.id);
+          if (droneIds.length > 0) {
+            const { data } = await supabase
+              .from('drone_telemetry')
+              .select('created_at')
+              .in('drone_id', droneIds)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (data?.created_at) latest = { ts: data.created_at, source: 'dronetag' };
+          }
+        }
+
+        if (cancelled) return;
+        if (latest) {
+          const ageSec = Math.round((Date.now() - new Date(latest.ts).getTime()) / 1000);
+          setLivePosFreshness({ hasData: true, ageSec, source: latest.source });
+        } else {
+          setLivePosFreshness({ hasData: false, ageSec: null, source: null });
+        }
+      } catch (err) {
+        if (!cancelled) setLivePosFreshness({ hasData: false, ageSec: null, source: null });
+      }
+    };
+
+    checkPosition();
+    const interval = setInterval(checkPosition, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [open, companyId, publishMode, fh2LiveEnabled, dronetagEnabled]);
   useEffect(() => {
     if (!selectedMissionId || selectedMissionId === 'none') {
       setMissionChecklistIds([]);
