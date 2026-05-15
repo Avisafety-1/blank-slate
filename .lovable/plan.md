@@ -1,30 +1,22 @@
-## Problem
+## To fix
 
-Norconsult-admin (Jan Amund / Joakim) ligger i morselskapet **Norconsult Norge AS**. Tryggve Leigland Njaa ligger i underavdelingen **Sandvika**. Edge-funksjonen `admin-delete-user` har en hard sjekk:
+1. **SafeSky kan ikke skrus av i «Start flytur»**
+   - I `src/components/StartFlightDialog.tsx` (linjer 665–671) tvinger en `useEffect` `publishMode` tilbake til `'advisory'` så snart oppdraget har en rute. Når brukeren velger «Ingen», kjøres effekten umiddelbart og overstyrer valget — det er derfor det ikke går an å skru av.
+   - Initial `useState` (linje 85) starter også på `'advisory'` istedenfor `'none'`.
 
-```
-requesterProfile.company_id !== targetProfile.company_id  →  403 Forbidden
-```
+   **Endring:** Spore om brukeren har gjort et eksplisitt valg (f.eks. `userPickedMode` ref/state satt i `onValueChange` på `RadioGroup`). Effekten skal kun:
+   - tvinge `'none'` når rute mangler (advisory krever rute), og
+   - foreslå `'advisory'` som standard kun ved første lasting/oppdragsbytte når brukeren ikke har valgt selv.
+   Ved nullstilling i close-effekten (linje 400) settes `userPickedMode` tilbake til false.
 
-Den respekterer ikke selskaps­hierarkiet (`get_user_visible_company_ids`), som ellers brukes overalt for parent → child synlighet. Resultatet: en gyldig parent-admin får 403, og frontend viser den generiske meldingen *"Edge Function returned a non-2xx status code"*.
+2. **Blank språk-knapp i mobil header**
+   - I `src/components/Header.tsx` (linjer 171–178) er mobile «Language toggle»-knappen tom — `<Globe />`-ikonet og språkkoden mangler i barn-elementene (desktop-varianten på linje 247–255 har `<Globe />`).
 
-Jeg verifiserte:
-- Tryggve har ingen blokkerende FK-referanser (incidents, mission_personnel, flight_logs osv. = 0).
-- Sandvika har 0 lokale administratorer — eneste admins er på morselskapet.
-- Andre admin-funksjoner i appen aksepterer parent-admins for child-brukere via `get_user_visible_company_ids`.
+   **Endring:** Legge inn `<Globe className="w-3.5 h-3.5" />` (samme størrelse som de andre mobil-ikonene) inne i knappen.
 
-## Løsning
+## Berørte filer
 
-Bytt ut likhets­sjekken i `supabase/functions/admin-delete-user/index.ts` med samme hierarki­regel som resten av systemet:
+- `src/components/StartFlightDialog.tsx` — endre default publishMode + auto-bytte-effekten til å respektere brukerens valg.
+- `src/components/Header.tsx` — fylle inn Globe-ikonet i mobil språkknapp.
 
-1. Hent requester sitt sett av synlige `company_id` via RPC `get_user_visible_company_ids(_user_id)` (allerede SECURITY DEFINER, brukes av flere edge-funksjoner og `_shared/companyScope.ts`).
-2. Hent target sin `company_id` fra `profiles`.
-3. Tillat sletting hvis `targetProfile.company_id` er i settet, eller requester er superadmin (eksisterende bypass beholdes).
-4. Returner fortsatt 403 med tydelig `detail: "Target user is outside requester's company hierarchy"` ellers, så vi får bedre feilsøkings­info i loggen.
-
-Ingen DB-migrasjon nødvendig — kun edge-funksjonsendring. `delete-own-account` er ikke berørt (bruker sletter seg selv).
-
-## Etterpå
-
-- Re-test sletting av Tryggve som Norconsult-admin.
-- Vurdere om vi skal vise mer informativ feiltekst i `Admin.tsx` når funksjonen returnerer `data.detail` (er allerede støttet via `data?.detail`-fallback, så det burde dukke opp neste gang).
+Ingen backend-endringer.

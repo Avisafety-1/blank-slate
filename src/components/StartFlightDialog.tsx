@@ -83,6 +83,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [publishMode, setPublishMode] = useState<PublishMode>('advisory');
+  const [userPickedMode, setUserPickedMode] = useState(false);
   const [loading, setLoading] = useState(false);
   
   // Company-level linked checklists (persisted)
@@ -398,6 +399,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     if (!open) {
       setSelectedMissionId('');
       setPublishMode('none');
+      setUserPickedMode(false);
       setCompletedChecklistIds([]);
       setActiveChecklistId(null);
       setGpsPosition(null);
@@ -665,10 +667,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   useEffect(() => {
     if (!hasRoute && publishMode === 'advisory') {
       setPublishMode('none');
-    } else if (hasRoute && publishMode === 'none') {
+    } else if (hasRoute && publishMode === 'none' && !userPickedMode) {
       setPublishMode('advisory');
     }
-  }, [hasRoute, publishMode]);
+  }, [hasRoute, publishMode, userPickedMode]);
 
   // Admin functions to link/unlink checklists (persisted to company)
   const linkChecklist = async (checklistId: string) => {
@@ -1112,7 +1114,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
             <div data-tour="start-flight-publish-mode" className="space-y-3">
               <Label>{t('flight.safeskyPublishing')}</Label>
-              <RadioGroup value={publishMode} onValueChange={(val) => setPublishMode(val as PublishMode)}>
+              <RadioGroup value={publishMode} onValueChange={(val) => { setUserPickedMode(true); setPublishMode(val as PublishMode); }}>
                 <label 
                   htmlFor="mode-none" 
                   className="flex items-start space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
