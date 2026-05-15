@@ -6,9 +6,20 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 interface SaveBody {
   action: "save";
-  flight_hub_organization_id: string;
   token: string;
   enabled?: boolean;
+  safesky_forward?: boolean;
+}
+
+function decodeJwtOrgUuid(jwt: string): string {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3) return "";
+    const payload = JSON.parse(atob(parts[1]));
+    return (payload?.organization_uuid as string) || "";
+  } catch {
+    return "";
+  }
 }
 
 Deno.serve(async (req: Request) => {
