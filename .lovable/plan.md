@@ -1,24 +1,30 @@
-## Mål
+## Problem
 
-I opprett/rediger oppdrag-dialogen sier toggelen alltid "Del kontaktinfo (navn, telefon, e-post)", uavhengig av hva admin har skrudd på. Admin har granulær kontroll (Del navn / Del telefon / Del e-post). Toggelen i oppdragsdialogen skal vise hva som faktisk vil bli delt.
+Norconsult-admin (Jan Amund / Joakim) ligger i morselskapet **Norconsult Norge AS**. Tryggve Leigland Njaa ligger i underavdelingen **Sandvika**. Edge-funksjonen `admin-delete-user` har en hard sjekk:
 
-## Endringer
+```
+requesterProfile.company_id !== targetProfile.company_id  →  403 Forbidden
+```
 
-### 1. `src/hooks/useCompanySettings.ts`
-- Legg til feltene `default_share_contact_name`, `default_share_contact_phone`, `default_share_contact_email` (alle `boolean`, default `true`) i interface, defaults og select-listen mot `companies`-tabellen. Disse finnes allerede i DB og brukes av `sync_mission_map_publication`-trigger.
+Den respekterer ikke selskaps­hierarkiet (`get_user_visible_company_ids`), som ellers brukes overalt for parent → child synlighet. Resultatet: en gyldig parent-admin får 403, og frontend viser den generiske meldingen *"Edge Function returned a non-2xx status code"*.
 
-### 2. `src/components/dashboard/MissionPublicationSection.tsx`
-- Ta inn tre nye props: `shareName: boolean`, `sharePhone: boolean`, `shareEmail: boolean`.
-- Bygg etiketten dynamisk fra de admin-aktiverte feltene, f.eks.:
-  - alle tre på → "Del kontaktinfo (navn, telefon, e-post)"
-  - bare telefon → "Del kontaktinfo (telefon)"
-  - ingen → toggelen disables og viser "Admin deler ingen kontaktdetaljer" som hjelpetekst (toggelen blir meningsløs).
-- Liten muted hjelpetekst under toggelen: "Admin har valgt å dele: navn, telefon" (lister kun aktive felter).
+Jeg verifiserte:
+- Tryggve har ingen blokkerende FK-referanser (incidents, mission_personnel, flight_logs osv. = 0).
+- Sandvika har 0 lokale administratorer — eneste admins er på morselskapet.
+- Andre admin-funksjoner i appen aksepterer parent-admins for child-brukere via `get_user_visible_company_ids`.
 
-### 3. `src/components/dashboard/AddMissionDialog.tsx`
-- Send `shareName/sharePhone/shareEmail` fra `companySettings` videre til `MissionPublicationSection`.
+## Løsning
 
-## Hva som ikke endres
+Bytt ut likhets­sjekken i `supabase/functions/admin-delete-user/index.ts` med samme hierarki­regel som resten av systemet:
 
-- DB-trigger og kart-popup: respekterer allerede admin-flaggene per felt — ingen endring nødvendig.
-- Admin-siden (`MapPublicationDefaultsCard`): allerede korrekt.
+1. Hent requester sitt sett av synlige `company_id` via RPC `get_user_visible_company_ids(_user_id)` (allerede SECURITY DEFINER, brukes av flere edge-funksjoner og `_shared/companyScope.ts`).
+2. Hent target sin `company_id` fra `profiles`.
+3. Tillat sletting hvis `targetProfile.company_id` er i settet, eller requester er superadmin (eksisterende bypass beholdes).
+4. Returner fortsatt 403 med tydelig `detail: "Target user is outside requester's company hierarchy"` ellers, så vi får bedre feilsøkings­info i loggen.
+
+Ingen DB-migrasjon nødvendig — kun edge-funksjonsendring. `delete-own-account` er ikke berørt (bruker sletter seg selv).
+
+## Etterpå
+
+- Re-test sletting av Tryggve som Norconsult-admin.
+- Vurdere om vi skal vise mer informativ feiltekst i `Admin.tsx` når funksjonen returnerer `data.detail` (er allerede støttet via `data?.detail`-fallback, så det burde dukke opp neste gang).

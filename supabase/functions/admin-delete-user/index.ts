@@ -157,24 +157,38 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    // ---- If requester is only admin (not superadmin), enforce same-company ----
+    // ---- If requester is only admin (not superadmin), enforce hierarchy visibility ----
     if (!isSuperadmin) {
-      const { data: requesterProfile } = await admin
-        .from("profiles")
-        .select("company_id")
-        .eq("id", requester.id)
-        .maybeSingle();
-
       const { data: targetProfile } = await admin
         .from("profiles")
         .select("company_id")
         .eq("id", targetUserId)
         .maybeSingle();
 
-      if (!requesterProfile?.company_id || !targetProfile?.company_id ||
-          requesterProfile.company_id !== targetProfile.company_id) {
+      if (!targetProfile?.company_id) {
         return new Response(
-          JSON.stringify({ error: "Forbidden", stage: "authorization", detail: "Different company" }),
+          JSON.stringify({ error: "Forbidden", stage: "authorization", detail: "Target has no company" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
+        );
+      }
+
+      const { data: visibleRows, error: visErr } = await admin.rpc(
+        "get_user_visible_company_ids",
+        { _user_id: requester.id },
+      );
+      if (visErr) {
+        console.error("get_user_visible_company_ids failed", visErr);
+        return new Response(
+          JSON.stringify({ error: "Forbidden", stage: "authorization", detail: `Visibility lookup failed: ${visErr.message}` }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
+        );
+      }
+      const visible = (visibleRows ?? []).map((row: any) =>
+        typeof row === "string" ? row : row.company_id ?? row.id ?? row,
+      );
+      if (!visible.includes(targetProfile.company_id)) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden", stage: "authorization", detail: "Target user is outside requester's company hierarchy" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 },
         );
       }
