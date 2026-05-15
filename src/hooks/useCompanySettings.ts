@@ -13,6 +13,9 @@ interface CompanySettings {
   deviation_report_enabled: boolean;
   default_publish_planned_missions: boolean;
   default_share_contact_info: boolean;
+  default_share_contact_name: boolean;
+  default_share_contact_phone: boolean;
+  default_share_contact_email: boolean;
   default_anonymous_publish: boolean;
   allow_pilot_override_publish_settings: boolean;
 }
