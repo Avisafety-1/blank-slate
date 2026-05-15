@@ -218,6 +218,82 @@ Deno.serve(async (req: Request) => {
       return fail("400", "persist_failed");
     }
 
+    // ---- Mirror latest position per SN into drone_telemetry + (optionally) SafeSky ----
+    try {
+      const latestBySn = new Map<string, typeof rows[number]>();
+      for (const r of rows) {
+        const sn = r.sn as string;
+        const prev = latestBySn.get(sn);
+        if (!prev || (r.time_stamp as string) > (prev.time_stamp as string)) {
+          latestBySn.set(sn, r);
+        }
+      }
+
+      const sns = Array.from(latestBySn.keys());
+      const droneIdBySn = new Map<string, string>();
+      if (sns.length > 0) {
+        const { data: drones } = await supabase
+          .from("drones")
+          .select("id, serienummer")
+          .eq("company_id", companyId)
+          .in("serienummer", sns);
+        (drones || []).forEach((d: { id: string; serienummer: string }) => {
+          droneIdBySn.set(d.serienummer, d.id);
+        });
+      }
+
+      const telemetryRows = Array.from(latestBySn.values()).map((r) => ({
+        drone_id: droneIdBySn.get(r.sn as string) ?? null,
+        lat: r.lat as number,
+        lon: r.lng as number,
+        alt: (r.altitude_m as number | null) ?? (r.height_m as number | null),
+        raw: { source: "flighthub2", sn: r.sn, order_id: r.order_id, time_stamp: r.time_stamp },
+      }));
+      if (telemetryRows.length > 0) {
+        const { error: telErr } = await supabase
+          .from("drone_telemetry")
+          .insert(telemetryRows);
+        if (telErr) console.error("drone_telemetry insert error", telErr);
+      }
+
+      const safeskyKey = Deno.env.get("SAFESKY_API_KEY");
+      if (row.safesky_forward && safeskyKey) {
+        for (const r of latestBySn.values()) {
+          const status = (r.flight_status as string) === "FLYING" ||
+              (typeof r.ground_speed_ms === "number" && (r.ground_speed_ms as number) > 1)
+            ? "AIRBORNE"
+            : "GROUNDED";
+          const beaconId = `AVS_FH2_${(r.sn as string).slice(-8)}`;
+          const payload = [{
+            id: beaconId,
+            latitude: r.lat,
+            longitude: r.lng,
+            altitude: Math.round((r.altitude_m as number | null) ?? (r.height_m as number | null) ?? 50),
+            status,
+            last_update: Math.floor(new Date(r.time_stamp as string).getTime() / 1000),
+            ground_speed: Math.round((r.ground_speed_ms as number | null) ?? 0),
+            course: Math.round((r.course_deg as number | null) ?? 0),
+          }];
+          try {
+            const sbody = JSON.stringify(payload);
+            const authHeaders = await generateAuthHeaders(safeskyKey, "POST", SAFESKY_UAV_URL, sbody);
+            const resp = await fetch(SAFESKY_UAV_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...authHeaders },
+              body: sbody,
+            });
+            if (!resp.ok) {
+              console.warn("SafeSky forward non-OK", resp.status, await resp.text());
+            }
+          } catch (e) {
+            console.warn("SafeSky forward failed", e);
+          }
+        }
+      }
+    } catch (mirrorErr) {
+      console.error("Mirror/forward error (non-fatal)", mirrorErr);
+    }
+
     await supabase.rpc("touch_fh2_webhook_received", {
       p_company_id: companyId,
     });
