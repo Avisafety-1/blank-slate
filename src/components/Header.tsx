@@ -27,7 +27,9 @@ interface Company {
 
 export const Header = () => {
   const navigate = useNavigate();
-  const { signOut, companyName, isSuperAdmin, isAdmin, companyId, accessibleCompanies, switchCompany, hasTrainingModuleAccess } = useAuth();
+  const { signOut, companyName, parentCompanyName, isSuperAdmin, isAdmin, companyId, accessibleCompanies, switchCompany, hasTrainingModuleAccess } = useAuth();
+  const isNorconsult = (companyName?.toLowerCase().includes('norconsult') ?? false)
+    || (parentCompanyName?.toLowerCase().includes('norconsult') ?? false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const { t, i18n } = useTranslation();
 
@@ -173,8 +175,11 @@ export const Header = () => {
               className="h-7 w-7 min-w-7 p-0"
               title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
             >
-              <Globe className="w-3.5 h-3.5" />
             </Button>
+
+            {isNorconsult && (
+              <StartTourButton className="h-7 w-7 min-w-7 p-0" />
+            )}
             
             {isAdmin && (
               <Button
@@ -247,8 +252,11 @@ export const Header = () => {
               title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
             >
               <Globe className="w-4 h-4" />
-              <span className="text-xs font-medium">{displayLang}</span>
             </Button>
+
+            {isNorconsult && (
+              <StartTourButton className="h-8 w-8 p-0" />
+            )}
             
             {isAdmin && (
               <Button
