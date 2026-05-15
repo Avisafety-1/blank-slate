@@ -182,6 +182,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         setCompanyChecklistIds([]);
       }
       setDronetagEnabled(data?.dronetag_enabled ?? false);
+
+      // Check FH2 webhook config for this company - live is available if webhook is enabled AND positions are forwarded to SafeSky
+      const { data: fh2Cfg } = await supabase
+        .from('flighthub2_webhook_config')
+        .select('enabled, safesky_forward')
+        .eq('company_id', companyId)
+        .maybeSingle();
+      setFh2LiveEnabled(!!(fh2Cfg?.enabled && fh2Cfg?.safesky_forward));
     };
 
     fetchCompanyChecklists();
