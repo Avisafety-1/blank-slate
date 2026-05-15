@@ -31,6 +31,9 @@ const defaultSettings: CompanySettings = {
   deviation_report_enabled: false,
   default_publish_planned_missions: true,
   default_share_contact_info: true,
+  default_share_contact_name: true,
+  default_share_contact_phone: true,
+  default_share_contact_email: true,
   default_anonymous_publish: false,
   allow_pilot_override_publish_settings: true,
 };
