@@ -43,6 +43,7 @@ export const FH2AirspaceWebhookSection = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [enabled, setEnabled] = useState(false);
+  const [safeskyForward, setSafeskyForward] = useState(false);
   const [orgId, setOrgId] = useState("");
   const [token, setToken] = useState("");
   const [hasSavedToken, setHasSavedToken] = useState(false);
@@ -53,18 +54,20 @@ export const FH2AirspaceWebhookSection = () => {
     setLoading(true);
     const { data } = await supabase
       .from("flighthub2_webhook_config")
-      .select("flight_hub_organization_id, enabled, last_received_at, token_encrypted")
+      .select("flight_hub_organization_id, enabled, safesky_forward, last_received_at, token_encrypted")
       .eq("company_id", companyId)
       .maybeSingle();
     if (data) {
       setOrgId(data.flight_hub_organization_id ?? "");
       setEnabled(!!data.enabled);
+      setSafeskyForward(!!(data as any).safesky_forward);
       setLastReceivedAt(data.last_received_at ?? null);
       setHasSavedToken(!!data.token_encrypted);
       setToken(data.token_encrypted ? TOKEN_MASK : "");
     } else {
       setOrgId("");
       setEnabled(false);
+      setSafeskyForward(false);
       setLastReceivedAt(null);
       setHasSavedToken(false);
       setToken("");
