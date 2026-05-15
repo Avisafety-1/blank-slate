@@ -206,3 +206,9 @@ verify_jwt = false
 
 [functions.operations-digest]
 verify_jwt = false
+
+[functions.flighthub2-airspace-webhook]
+verify_jwt = false
+
+[functions.flighthub2-airspace-webhook-config]
+verify_jwt = false
