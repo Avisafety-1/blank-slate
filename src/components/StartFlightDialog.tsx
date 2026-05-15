@@ -1231,6 +1231,42 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
             {publishMode === 'live_uav' && (
               <div className="space-y-3">
+                {/* Drone live-position freshness indicator */}
+                {(() => {
+                  const fresh = livePosFreshness.hasData && livePosFreshness.ageSec !== null && livePosFreshness.ageSec <= 30;
+                  const stale = livePosFreshness.hasData && livePosFreshness.ageSec !== null && livePosFreshness.ageSec > 30;
+                  const sourceLabel = livePosFreshness.source === 'fh2' ? 'DJI FlightHub 2' : 'DroneTag';
+                  return (
+                    <div className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${
+                      fresh ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
+                    }`}>
+                      <span className={`relative flex h-2.5 w-2.5 flex-shrink-0`}>
+                        {fresh && (
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                        )}
+                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${fresh ? 'bg-green-500' : 'bg-red-500'}`} />
+                      </span>
+                      <div className="flex-1">
+                        {fresh && (
+                          <p className="text-green-700 dark:text-green-400 font-medium">
+                            Mottar droneposisjon · {sourceLabel} ({livePosFreshness.ageSec}s siden)
+                          </p>
+                        )}
+                        {stale && (
+                          <p className="text-red-700 dark:text-red-400 font-medium">
+                            Ingen fersk posisjon · siste {sourceLabel}-punkt for {livePosFreshness.ageSec}s siden
+                          </p>
+                        )}
+                        {!livePosFreshness.hasData && (
+                          <p className="text-red-700 dark:text-red-400 font-medium">
+                            Ingen droneposisjon mottatt enda – sjekk at drona er koblet til {fh2LiveEnabled ? 'DJI FlightHub 2' : 'DroneTag'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
                   <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
                   <div className="space-y-1">
