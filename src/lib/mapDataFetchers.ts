@@ -435,6 +435,8 @@ export async function fetchAndDisplayPlannedMissionPublications(params: {
     const { data, error } = await (supabase as any)
       .from("v_planned_mission_map")
       .select("*")
+      // Only show missions still in planned state — once live/completed/cancelled, hide from planned layer
+      .eq("status", "Planlagt")
       // Show items whose visibility window overlaps the [now, now+window] range
       .lte("starts_at", until.toISOString())
       .gte("ends_at", now.toISOString());
