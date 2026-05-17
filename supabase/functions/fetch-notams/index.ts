@@ -265,17 +265,19 @@ Deno.serve(async (req) => {
     let totalSkipped = 0;
     let totalCaaEnriched = 0;
 
-    // Load CAA fareområde polygons once for geometry enrichment (via RPC since geometry is postgis)
+    // Load CAA polygons (fareområder + restriksjoner) once for geometry enrichment
     const caaMap = new Map<string, unknown>();
-    const { data: caaRows, error: caaErr } = await supabase
-      .rpc("get_caa_zones_geojson", { p_layer_id: "fareomrader" });
-    if (caaErr) console.error("CAA load error:", caaErr);
-    for (const row of caaRows ?? []) {
-      if (row.external_id && row.geometry_geojson) {
-        caaMap.set(row.external_id, row.geometry_geojson);
+    for (const layer of ["fareomrader", "restriksjoner"]) {
+      const { data: caaRows, error: caaErr } = await supabase
+        .rpc("get_caa_zones_geojson", { p_layer_id: layer });
+      if (caaErr) console.error(`CAA load error [${layer}]:`, caaErr);
+      for (const row of caaRows ?? []) {
+        if (row.external_id && row.geometry_geojson && !caaMap.has(row.external_id)) {
+          caaMap.set(row.external_id, row.geometry_geojson);
+        }
       }
     }
-    console.log(`Loaded ${caaMap.size} CAA fareområder for NOTAM geometry enrichment`);
+    console.log(`Loaded ${caaMap.size} CAA zones for NOTAM geometry enrichment`);
 
     // ── Step 1: Fetch RSS feeds from notam_rss_feeds table ──
     const { data: feeds } = await supabase
