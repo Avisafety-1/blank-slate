@@ -652,19 +652,19 @@ export function OpenAIPMap({
     } as any);
     layerConfigs.push({ id: "arealbruk", name: "Befolkning / Arealbruk (SSB)", layer: arealbrukLayer, enabled: false, icon: "users" });
 
-    // Befolkningstetthet — SSB (Norge) + JRC GHS-POP (Europa/verden)
+    // Befolkningstetthet — SSB (Norge) + Eurostat GISCO (Europa)
     const ssbBefolkningLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/befolkning_paa_rutenett", {
       layers: "befolkning_1km_2025", format: "image/png", transparent: true, opacity: 0.7,
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
-    // JRC GHS-POP (R2023A, 100 m / 3 arcsec) — global befolkning, OGC WMS
-    const jrcGhsPopLayer = L.tileLayer.wms("https://ghsl.jrc.ec.europa.eu/ghs_wms.php", {
-      layers: "GHS_POP_E2025_GLOBE_R2023A_4326_3ss", format: "image/png", transparent: true, opacity: 0.55,
-      attribution: 'Befolkning © European Commission, JRC – GHSL', version: "1.3.0",
-      minZoom: 4, maxZoom: 12, maxNativeZoom: 10, tiled: true, updateWhenIdle: true, keepBuffer: 1,
+    // Eurostat GISCO Census 2021 — 1 km² grid for hele Europa
+    const eurostatPopLayer = L.tileLayer.wms("https://gisco-services.ec.europa.eu/maps/service", {
+      layers: "PopulationGrid2021", format: "image/png", transparent: true, opacity: 0.6,
+      attribution: '© European Commission – Eurostat (GISCO)', version: "1.3.0",
+      minZoom: 4, maxZoom: 14, tiled: true, updateWhenIdle: true, keepBuffer: 1,
     } as any);
-    const befolkningLayer = L.layerGroup([jrcGhsPopLayer, ssbBefolkningLayer]);
-    layerConfigs.push({ id: "befolkningstetthet", name: "Befolkningstetthet (SSB + JRC)", layer: befolkningLayer, enabled: false, icon: "users" });
+    const befolkningLayer = L.layerGroup([eurostatPopLayer, ssbBefolkningLayer]);
+    layerConfigs.push({ id: "befolkningstetthet", name: "Befolkningstetthet (SSB + Eurostat)", layer: befolkningLayer, enabled: false, icon: "users" });
 
     // SSB Tettsteder (urban settlements ≥200 residents)
     const tettstederLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/tettsteder", {
