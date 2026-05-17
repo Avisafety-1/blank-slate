@@ -32,6 +32,7 @@ import {
   fetchPilotPositions,
   fetchNaturvernZones,
   fetchVernRestrictionZones,
+  fetchCaaDroneZones,
   fetchKraftledningerInBounds,
   fetchAisVesselsInBounds,
   fetchNotams,
