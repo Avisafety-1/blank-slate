@@ -1,78 +1,74 @@
 ## Mål
 
-1. Splitt befolkningstetthet-laget på `/kart` i to uavhengige toggles.
-2. La SORA-beregningene (adjacent area + flight geography population) automatisk velge SSB (Norge) eller Eurostat (Europa) basert på rutens geografi.
-
-## Datakilder
-
-- **Norge:** SSB WFS 250 m grid (uendret, eksisterende `ssb-population` edge function).
-- **Europa:** Eurostat GEOSTAT Census 2021, 1 km² befolkningsrutenett (offisiell EU-pendant til SSB sitt grid). Lastes én gang og lagres i Postgres/PostGIS i Lovable Cloud, eksponeres via ny edge function.
-
-GISCO sitt WMS er kun rendrede tiles — ikke spørrbart per celle. Derfor må vi importere grid-en til databasen for å hente faktiske celler til SORA.
+Bruk samme per-celle befolkningslogikk som SSB også utenfor Norge. Eurostat WMS er bekreftet ikke-spørrbart (server svarer eksplisitt `layer PopulationGrid2021 is not queryable`), og har ingen WFS. Derfor må selve grid-en importeres til Supabase PostGIS.
 
 ## Endringer
 
-### 1. Database (migrasjon)
+### 1. Database (migrasjon mot Supabase)
 
-Ny tabell `eurostat_population_1km`:
-- `grd_id text primary key` (Eurostat sitt INSPIRE-grid-ID, f.eks. `CRS3035RES1000mN3527000E4321000`)
-- `pop_2021 integer not null`
-- `geom geometry(Polygon, 4326)` med GIST-indeks
-- RLS av (offentlig referansedata), tilgjengelig for `anon` SELECT
+```sql
+create extension if not exists postgis;
 
-Engangs-import med `ogr2ogr` fra Eurostat GEOSTAT 2021 1km gpkg, transformert EPSG:3035 → 4326. Kun europeiske celler (~2–3M rader, ~500 MB). Jeg laster ned, klipper og importerer fra sandboxen i samme task.
+create table public.eurostat_population_1km (
+  grd_id text primary key,
+  pop_2021 integer not null,
+  geom geometry(Polygon, 4326) not null
+);
+create index eurostat_pop_geom_idx on public.eurostat_population_1km using gist (geom);
 
-### 2. Edge function `eurostat-population` (ny)
+alter table public.eurostat_population_1km enable row level security;
+create policy "Public read" on public.eurostat_population_1km
+  for select to anon, authenticated using (true);
+```
 
-Speil av `ssb-population`:
+Offentlig referansedata (samme mønster som dagens SSB-cache).
+
+### 2. Engangs-import
+
+Eurostat GEOSTAT 2021 v2 1 km grid (~500 MB GeoPackage, EPSG:3035, hele Europa, ~2,5M celler).
+
+To-trinns prosess fra sandboxen:
+1. Last ned + transformer til EPSG:4326 + del i NDJSON-chunks.
+2. Ny midlertidig edge function `eurostat-import` (kjøres én gang manuelt med service-role) som tar imot chunkene og batch-inserter via `supabase-js`. Slettes etter import.
+
+Bekrefter med `select count(*) from eurostat_population_1km` (forventet ~2,5M).
+
+### 3. Ny edge function `eurostat-population`
+
+Speiler `ssb-population`:
 - Input: `{ bbox: "minLng,minLat,maxLng,maxLat" }`
-- Output: samme shape som SSB-funksjonen returnerer (`features: [{ pop_tot, centroidLat, centroidLng, polygon, densityPerKm2 }]`)
-- Henter celler via SQL `ST_Intersects(geom, ST_MakeEnvelope(...))`
-- `densityPerKm2 = pop_2021` (1 km² ruter), så samme kategori-mapping fungerer
+- Bruker `supabase-js` + RPC `eurostat_pop_in_bbox(min_lng, min_lat, max_lng, max_lat)` som returnerer celler via `geom && ST_MakeEnvelope(...)`
+- Output: identisk shape med SSB (`features[].pop_tot`, `centroidLat/Lng`, `polygon`, `densityPerKm2 = pop_2021`, `gridSource: "eurostat"`)
 
-### 3. `src/lib/adjacentAreaCalculator.ts`
+### 4. `src/lib/adjacentAreaCalculator.ts`
 
-- Ny helper `isBboxInsideNorway(bbox)` — grov sjekk mot Norge sin omsluttende bbox (mainland + Svalbard).
-- `fetchPopulationGrid(bbox)` velger:
-  - Norge → eksisterende `ssb-population` (250 m).
-  - Europa → ny `eurostat-population` (1 km).
-- Hvis bbox krysser grensen, kall begge og slå sammen cellene (SSB innenfor Norge, Eurostat ellers — Eurostat-celler som overlapper Norge filtreres bort).
-- `computeAdjacentAreaDensity` og `computePopulationInGeometry` (flight-geography) bruker samme valg uten ekstra argument.
+- Ny `isBboxInNorway(bbox)` — bounding box (lat 57.5–71.5 / lng 4–32, + Svalbard 74–81 / 10–35).
+- `fetchPopulationGrid(bbox)`:
+  - Helt i Norge → SSB 250 m (uendret).
+  - Helt utenfor → Eurostat 1 km.
+  - Krysser grensen → kall begge, fjern Eurostat-celler hvis sentroide er i Norges bbox.
+- `computeAdjacentAreaDensity` / `computePopulationInGeometry`: ingen API-endring, returnerer ny `gridSource: "ssb" | "eurostat" | "mixed"`.
 
-### 4. `src/components/OpenAIPMap.tsx`
+### 5. UI
 
-Splitt nåværende `befolkningstetthet` (layerGroup) i to:
-- `befolkning_norge` — "Befolkningstetthet Norge (SSB)" — `ssbBefolkningLayer` (1 km eller 250 m WMS, uendret).
-- `befolkning_europa` — "Befolkningstetthet Europa (Eurostat 2021)" — `eurostatPopLayer` (WMS, `maxNativeZoom: 10`).
-
-Begge får samme ikon (`users`) og samme `populationDensityPane`. Toggle hver for seg i lag-velgeren.
-
-### 5. `src/components/BefolkningLegend.tsx`
-
-Vises når enten Norge- eller Europa-laget er aktivt. Tekst tilpasses hvilken som er på (eller begge).
-
-### 6. `src/components/AdjacentAreaPanel.tsx` / `SoraSettingsPanel.tsx`
-
-- Vis kildebadge: "SSB 250 m", "Eurostat 1 km" eller "Blandet" basert på hva som ble brukt.
-- Ingen logikk-endring utover å motta kilde-feltet fra `computeAdjacentAreaDensity`.
+- `AdjacentAreaPanel.tsx` + `SoraSettingsPanel.tsx`: vis kildebadge basert på `result.gridSource`.
+- `BefolkningLegend.tsx`: allerede splittet, ingen endring.
 
 ## Filer som endres / opprettes
 
-- ny migrasjon: `eurostat_population_1km` tabell + GIST-indeks
-- ny edge function: `supabase/functions/eurostat-population/index.ts`
-- `src/lib/adjacentAreaCalculator.ts` — kildevalg
-- `src/components/OpenAIPMap.tsx` — splitt laget
-- `src/components/BefolkningLegend.tsx` — kildevisning
-- `src/components/AdjacentAreaPanel.tsx` — kildebadge
-- `src/types/map.ts` / `src/i18n/locales/*.json` — nye lag-IDer og labels
+- migrasjon: `eurostat_population_1km` + GIST + RLS + RPC-funksjon
+- ny: `supabase/functions/eurostat-import/index.ts` (midlertidig)
+- ny: `supabase/functions/eurostat-population/index.ts`
+- `src/lib/adjacentAreaCalculator.ts`
+- `src/components/AdjacentAreaPanel.tsx`
+- `src/components/SoraSettingsPanel.tsx`
 
 ## Out of scope
 
-- Endrer ikke SORA-formler eller kategori-terskler.
-- Eurostat sitt 1 km grid har lavere oppløsning enn SSB sitt 250 m. SORA-kategori beregnes likevel per celle, men "tilstøtende område" blir grovere utenfor Norge — det er den beste offentlige oppløsningen som finnes for hele Europa.
-- Ingen endring i FH2/Ninox/risk PDF-eksport — de leser bare resultatobjektet.
+- SORA-formler, kategori-terskler, FH2/Ninox/PDF-eksport — uendret.
+- Eurostat 1 km er grovere enn SSB 250 m, men det er den beste offentlige oppløsningen for hele Europa.
 
-## Spørsmål før implementasjon
+## Risiko
 
-1. **Bbox-deteksjon**: Er det greit at "Norge" defineres som bounding box (lat 57.5–71.5, lng 4–32 + Svalbard 74–81/10–35)? Alternativt kan vi bruke en nøyaktig Norge-polygon (litt mer presist, marginalt mer kode).
-2. **Eurostat-import**: GEOSTAT 2021 er ~500 MB komprimert. Vil du at jeg laster ned og importerer hele Europa nå, eller skal vi begrense til EØS/Schengen-land for å spare lagring?
+- Import tar 15–30 min og legger ~500 MB i Supabase-databasen din. Sjekk at din Supabase-plan har plass før vi starter.
+- Hvis nedlasting fra ec.europa.eu feiler i sandboxen, prøver jeg `gisco-services.ec.europa.eu/pub`-speilet.
