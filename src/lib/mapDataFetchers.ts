@@ -931,6 +931,86 @@ export async function fetchVernRestrictionZones(params: BoundsFetchParams) {
   }
 }
 
+// ---- CAA drone zones (dronesoner.no via caa_drone_zones table) ----
+export interface CaaLayerStyle {
+  color: string;
+  iconLabel: string;
+}
+
+const CAA_LAYER_STYLES: Record<string, CaaLayerStyle> = {
+  fengsler: { color: '#b91c1c', iconLabel: '🚫 Fengsel' },
+  ambassader: { color: '#b91c1c', iconLabel: '🚫 Ambassade' },
+  fareomrader: { color: '#eab308', iconLabel: '⚠️ Fareområde' },
+  flyplasser: { color: '#eab308', iconLabel: '✈️ Flyplass' },
+  notam_soner: { color: '#eab308', iconLabel: '⚠️ NOTAM-sone' },
+};
+
+export async function fetchCaaDroneZones(params: BoundsFetchParams & {
+  layerIds: string[];
+}) {
+  const { layer, mode, bounds, layerIds } = params;
+  if (!layerIds.length) return;
+  try {
+    const { data, error } = await supabase.rpc('get_caa_zones_in_bounds', {
+      min_lat: bounds.minLat,
+      min_lng: bounds.minLng,
+      max_lat: bounds.maxLat,
+      max_lng: bounds.maxLng,
+      p_layer_ids: layerIds,
+    });
+    if (error || !data) {
+      if (error) console.error('Feil ved henting av CAA dronesoner:', error);
+      return;
+    }
+    for (const zone of data as any[]) {
+      if (!zone.geometry) continue;
+      const style = CAA_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ Sone' };
+      try {
+        const geojsonFeature = {
+          type: 'Feature' as const,
+          geometry: zone.geometry,
+          properties: zone,
+        };
+        const isWarning = zone.restriction === 'REQ_AUTHORISATION';
+        const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
+          interactive: mode !== 'routePlanning',
+          pane: 'overlayPane',
+          style: {
+            color: style.color,
+            weight: 1.5,
+            fillColor: style.color,
+            fillOpacity: isWarning ? 0.22 : 0.12,
+            dashArray: isWarning ? undefined : '4, 4',
+          },
+          onEachFeature: mode !== 'routePlanning' ? (feature, lyr) => {
+            const p: any = feature.properties || {};
+            const esc = (s: any) =>
+              String(s ?? '').replace(/[&<>"']/g, (c) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+              }[c]!));
+            let html = `<strong>${style.iconLabel}</strong><br/>`;
+            html += `<strong>${esc(p.name || 'Ukjent')}</strong><br/>`;
+            if (p.message) html += `<div style="margin-top:4px;max-width:280px">${esc(p.message)}</div>`;
+            if (p.lower_limit_m != null || p.upper_limit_m != null) {
+              html += `<div style="margin-top:4px">Høyde: ${p.lower_limit_m ?? 'GND'}–${p.upper_limit_m ?? '?'} m ${esc(p.upper_ref || 'AGL')}</div>`;
+            }
+            if (p.authority_name) {
+              html += `<div style="margin-top:4px"><em>Myndighet:</em> ${esc(p.authority_name)}`;
+              if (p.authority_url) html += ` (<a href="${esc(p.authority_url)}" target="_blank" rel="noopener">info</a>)`;
+              html += `</div>`;
+            }
+            if (p.authority_phone) html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
+            lyr.bindPopup(html);
+          } : undefined,
+        });
+        geoJsonLayer.addTo(layer);
+      } catch {/* skip bad geometry */}
+    }
+  } catch (err) {
+    console.error('Kunne ikke hente CAA dronesoner:', err);
+  }
+}
+
 export async function fetchPilotPositions(params: {
   pilotPositionsLayer: L.LayerGroup;
   flightMarkersRef: React.MutableRefObject<Map<string, L.Marker>>;
