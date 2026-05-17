@@ -6294,10 +6294,6 @@ export type Database = {
             }
             Returns: string
           }
-      admin_trigger_edge_function: {
-        Args: { p_body?: Json; p_name: string }
-        Returns: number
-      }
       bulk_upsert_caa_zones: {
         Args: { p_features: Json; p_layer_id: string }
         Returns: Json
