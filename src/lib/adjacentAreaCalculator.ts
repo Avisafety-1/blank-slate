@@ -1024,6 +1024,22 @@ export interface SsbPopulationCell {
   polygon?: RoutePoint[];
   densityPerKm2?: number;
   isDriver?: boolean;
+  /** Source of the cell: "ssb" for SSB 250m, "eurostat" for Eurostat 1km */
+  source?: "ssb" | "eurostat";
+}
+
+/**
+ * True when a bbox lies entirely within mainland Norway or Svalbard.
+ * Used to pick SSB (Norway) vs Eurostat (rest of Europe) per tile.
+ */
+function isBboxInNorway(bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number }): boolean {
+  const inMainland =
+    bbox.minLat >= 57.5 && bbox.maxLat <= 71.5 &&
+    bbox.minLng >= 4 && bbox.maxLng <= 32;
+  const inSvalbard =
+    bbox.minLat >= 74 && bbox.maxLat <= 81 &&
+    bbox.minLng >= 10 && bbox.maxLng <= 35;
+  return inMainland || inSvalbard;
 }
 
 export async function fetchSsbPopulationGrid(
