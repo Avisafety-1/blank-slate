@@ -421,12 +421,19 @@ export default function KartPage() {
       // Started from /kart - just exit route planning mode
       setIsRoutePlanning(false);
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
+      setPilotPosition(undefined);
+      setAdjacentResult(null);
+      setSoraDensityResult(null);
+      soraDensityCacheRef.current.clear();
     }
   };
 
   const handleClearRoute = () => {
     setCurrentRoute({ coordinates: [], totalDistance: 0 });
     setPilotPosition(undefined);
+    setAdjacentResult(null);
+    setSoraDensityResult(null);
+    soraDensityCacheRef.current.clear();
   };
 
   const handleUndoPoint = () => {
