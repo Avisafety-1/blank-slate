@@ -16,10 +16,12 @@ export function BefolkningLegend({ resolution = "1km" }: BefolkningLegendProps) 
   return (
     <div className="absolute bottom-4 left-2 right-2 sm:left-auto sm:right-4 sm:w-auto bg-background/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-lg border border-border z-[1000]">
       <p className="text-[10px] sm:text-xs font-semibold text-foreground mb-1.5">
-        Befolkning per km² (SSB {resolution === "250m" ? "250 m" : "1 km"})
+        Befolkning per km² {resolution === "250m" ? "(SSB 250 m)" : "(SSB 1 km / JRC GHS-POP)"}
       </p>
-      {resolution === "250m" && (
+      {resolution === "250m" ? (
         <p className="text-[10px] text-muted-foreground mb-1.5">Risikovurdering bruker 250 m-ruter × 16.</p>
+      ) : (
+        <p className="text-[10px] text-muted-foreground mb-1.5">Norge: SSB · Europa/verden: JRC GHSL</p>
       )}
       <div className="flex flex-col gap-1">
         {categories.map((c) => (
