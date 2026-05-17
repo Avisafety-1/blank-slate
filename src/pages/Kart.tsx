@@ -1056,7 +1056,7 @@ export default function KartPage() {
           onFocusFlightHandled={() => setFocusFlightId(null)}
           soraSettings={soraSettings}
           adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
-          populationDensityCells={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.cells : undefined}
+          populationDensityCells={mergedDensityCells}
           populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
           routeHintOffsetClass={
             isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
