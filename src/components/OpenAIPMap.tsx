@@ -32,6 +32,7 @@ import {
   fetchPilotPositions,
   fetchNaturvernZones,
   fetchVernRestrictionZones,
+  fetchCaaDroneZones,
   fetchKraftledningerInBounds,
   fetchAisVesselsInBounds,
   fetchNotams,
@@ -656,6 +657,18 @@ export function OpenAIPMap({
     const naturvernLayer = L.layerGroup();
     layerConfigs.push({ id: "naturvern", name: "Verneområder", layer: naturvernLayer, enabled: false, icon: "treePine" });
 
+    // CAA dronesoner (Luftfartstilsynet — dronesoner.no) — alle skjult som default
+    const caaFengslerLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_fengsler", name: "Fengsler (CAA)", layer: caaFengslerLayer, enabled: false, icon: "ban" });
+    const caaAmbassaderLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_ambassader", name: "Ambassader (CAA)", layer: caaAmbassaderLayer, enabled: false, icon: "ban" });
+    const caaFareLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_fareomrader", name: "Fareområder (CAA)", layer: caaFareLayer, enabled: false, icon: "alertTriangle" });
+    const caaFlyplasserLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_flyplasser", name: "Mindre flyplasser (CAA)", layer: caaFlyplasserLayer, enabled: false, icon: "alertTriangle" });
+    const caaNotamSonerLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_notam_soner", name: "NOTAM-soner (CAA)", layer: caaNotamSonerLayer, enabled: false, icon: "alertTriangle" });
+
     // SSB Arealbruk
     const arealbrukLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.arealbruk?", {
       layers: "arealbruk", format: "image/png", transparent: true, opacity: 0.6, attribution: "SSB Arealbruk", minZoom: 0, maxZoom: 20, tiled: true,
@@ -886,15 +899,50 @@ export function OpenAIPMap({
       fetchVernRestrictionZones({ layer: naturvernLayer, mode, bounds });
     };
 
+    // CAA dronesoner: refetch on moveend per aktivert lag
+    const caaLayerMap: Array<[string, L.LayerGroup]> = [
+      ['fengsler', caaFengslerLayer],
+      ['ambassader', caaAmbassaderLayer],
+      ['fareomrader', caaFareLayer],
+      ['flyplasser', caaFlyplasserLayer],
+      ['notam_soner', caaNotamSonerLayer],
+    ];
+    const fetchCaaLayers = () => {
+      if (map.getZoom() < 9) {
+        caaLayerMap.forEach(([, lg]) => lg.clearLayers());
+        return;
+      }
+      const b = map.getBounds();
+      const bounds = {
+        minLat: b.getSouth(), minLng: b.getWest(),
+        maxLat: b.getNorth(), maxLng: b.getEast(),
+      };
+      caaLayerMap.forEach(([layerId, lg]) => {
+        lg.clearLayers();
+        if (map.hasLayer(lg)) {
+          fetchCaaDroneZones({ layer: lg, mode: modeRef.current, bounds, layerIds: [layerId] });
+        }
+      });
+    };
+
     let vernDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetchVern = () => {
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
-      vernDebounceTimer = setTimeout(fetchVerneomraader, 300);
+      vernDebounceTimer = setTimeout(() => {
+        fetchVerneomraader();
+        fetchCaaLayers();
+      }, 300);
     };
 
     // Initial fetch + listen for map moves
     fetchVerneomraader();
+    fetchCaaLayers();
     map.on('moveend', debouncedFetchVern);
+    // Refetch CAA layers when user toggles them on
+    map.on('overlayadd', (e: any) => {
+      const match = caaLayerMap.find(([, lg]) => lg === e.layer);
+      if (match) fetchCaaLayers();
+    });
 
     // Kraftledninger: refetch on moveend if layer is enabled
     let kraftDebounceTimer: ReturnType<typeof setTimeout> | null = null;
