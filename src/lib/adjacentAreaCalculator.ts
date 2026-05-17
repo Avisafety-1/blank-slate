@@ -1024,6 +1024,22 @@ export interface SsbPopulationCell {
   polygon?: RoutePoint[];
   densityPerKm2?: number;
   isDriver?: boolean;
+  /** Source of the cell: "ssb" for SSB 250m, "eurostat" for Eurostat 1km */
+  source?: "ssb" | "eurostat";
+}
+
+/**
+ * True when a bbox lies entirely within mainland Norway or Svalbard.
+ * Used to pick SSB (Norway) vs Eurostat (rest of Europe) per tile.
+ */
+function isBboxInNorway(bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number }): boolean {
+  const inMainland =
+    bbox.minLat >= 57.5 && bbox.maxLat <= 71.5 &&
+    bbox.minLng >= 4 && bbox.maxLng <= 32;
+  const inSvalbard =
+    bbox.minLat >= 74 && bbox.maxLat <= 81 &&
+    bbox.minLng >= 10 && bbox.maxLng <= 35;
+  return inMainland || inSvalbard;
 }
 
 export async function fetchSsbPopulationGrid(
@@ -1051,10 +1067,59 @@ export async function fetchSsbPopulationGrid(
       centroidLng: feature.centroidLng,
       polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
       densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot * 16,
+      source: "ssb",
     });
   }
 
   return cells;
+}
+
+export async function fetchEurostatPopulationGrid(
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  signal?: AbortSignal
+): Promise<SsbPopulationCell[]> {
+  const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase.functions.invoke("eurostat-population", {
+    body: { bbox: bboxStr },
+  });
+
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  if (error) {
+    throw new Error(`Eurostat population proxy error: ${error.message}`);
+  }
+  const cells: SsbPopulationCell[] = [];
+  if (!data?.features) return cells;
+
+  for (const feature of data.features) {
+    cells.push({
+      population: feature.pop_tot,
+      centroidLat: feature.centroidLat,
+      centroidLng: feature.centroidLng,
+      polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
+      // 1 km Eurostat cell — density per km² == population
+      densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot,
+      source: "eurostat",
+    });
+  }
+
+  return cells;
+}
+
+/**
+ * Auto-select SSB (Norway) or Eurostat (rest of Europe) per tile.
+ * Border-crossing bboxes split via splitBboxIntoTiles already, so each
+ * tile is evaluated independently.
+ */
+async function fetchPopulationGridForTile(
+  tile: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  signal?: AbortSignal
+): Promise<SsbPopulationCell[]> {
+  if (isBboxInNorway(tile)) {
+    return fetchSsbPopulationGrid(tile, signal);
+  }
+  return fetchEurostatPopulationGrid(tile, signal);
 }
 
 function splitBboxIntoTiles(
@@ -1091,14 +1156,14 @@ export async function fetchSsbPopulationGridTiled(
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
   const tiles = splitBboxIntoTiles(bbox);
-  if (tiles.length <= 1) return fetchSsbPopulationGrid(bbox, signal);
+  if (tiles.length <= 1) return fetchPopulationGridForTile(bbox, signal);
 
   const uniqueCells = new Map<string, SsbPopulationCell>();
   const concurrency = 4;
   for (let i = 0; i < tiles.length; i += concurrency) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     const batch = tiles.slice(i, i + concurrency);
-    const results = await Promise.all(batch.map(tile => fetchSsbPopulationGrid(tile, signal)));
+    const results = await Promise.all(batch.map(tile => fetchPopulationGridForTile(tile, signal)));
     for (const cells of results) {
       for (const cell of cells) {
         uniqueCells.set(getCellKey(cell), cell);
@@ -1189,8 +1254,21 @@ export async function computeAdjacentAreaDensity(
   );
   const pass = requiredContainment !== "Out of scope" && requiredContainment !== "Error";
 
+  const ssbCount = densityCells.filter(c => c.source !== "eurostat").length;
+  const eurostatCount = densityCells.filter(c => c.source === "eurostat").length;
+  const sourceLabel =
+    eurostatCount === 0
+      ? "SSB befolkning på rutenett 250 m (2025)"
+      : ssbCount === 0
+      ? "Eurostat GEOSTAT 2021 1 km grid"
+      : "SSB 250 m (Norge) + Eurostat 1 km (utland)";
+  const gridRes = eurostatCount > 0 && ssbCount === 0 ? 1000 : 250;
+  const driverIsEurostat = maxDensityCell?.source === "eurostat";
+
   const statusText = `Required containment: ${requiredContainment} · gj.snitt ${avgDensity.toFixed(1)} pers/km² (${POPULATION_DENSITY_LABELS[populationDensityCategory]})`;
-  const method = "SSB 250 m-ruter som berører tilstøtende donut-område summeres; containment beregnes fra gjennomsnittlig befolkningstetthet utenfor bakkerisikobufferen.";
+  const method = eurostatCount > 0
+    ? "Ruter (SSB 250 m i Norge, Eurostat 1 km utenfor) som berører tilstøtende donut-område summeres; containment beregnes fra gjennomsnittlig befolkningstetthet utenfor bakkerisikobufferen."
+    : "SSB 250 m-ruter som berører tilstøtende donut-område summeres; containment beregnes fra gjennomsnittlig befolkningstetthet utenfor bakkerisikobufferen.";
 
   return {
     adjacentRadiusM,
@@ -1206,10 +1284,10 @@ export async function computeAdjacentAreaDensity(
     requiredContainment,
     containmentLevel: requiredContainment,
     statusText,
-    dataSource: "SSB befolkning på rutenett 250 m (2025)",
+    dataSource: sourceLabel,
     method,
-    calculation: `Gjennomsnitt: ${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} pers/km². Tetthetskategori: ${POPULATION_DENSITY_LABELS[populationDensityCategory]}. Høyeste 250 m-rute i området: ${(maxDensityCell?.population ?? 0).toLocaleString("nb-NO")} personer × 16 = ${driverDensity.toFixed(1)} pers/km² (kun kart-/pådriverinfo).`,
-    gridResolutionM: 250,
+    calculation: `Gjennomsnitt: ${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} pers/km². Tetthetskategori: ${POPULATION_DENSITY_LABELS[populationDensityCategory]}. Høyeste rute i området: ${(maxDensityCell?.population ?? 0).toLocaleString("nb-NO")} personer ${driverIsEurostat ? "(Eurostat 1 km²)" : "× 16 (SSB 250 m)"} = ${driverDensity.toFixed(1)} pers/km² (kun kart-/pådriverinfo).`,
+    gridResolutionM: gridRes,
     maxCellPopulation: maxDensityCell?.population,
     densityCells,
     maxDensityCell,
