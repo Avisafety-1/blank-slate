@@ -261,6 +261,20 @@ Deno.serve(async (req) => {
     const now = new Date();
     let totalUpserted = 0;
     let totalSkipped = 0;
+    let totalCaaEnriched = 0;
+
+    // Load CAA fareområde polygons once for geometry enrichment
+    const caaMap = new Map<string, unknown>();
+    const { data: caaRows } = await supabase
+      .from("caa_drone_zones")
+      .select("external_id, geometry_geojson")
+      .eq("layer_id", "fareomrader");
+    for (const row of caaRows ?? []) {
+      if (row.external_id && row.geometry_geojson) {
+        caaMap.set(row.external_id, row.geometry_geojson);
+      }
+    }
+    console.log(`Loaded ${caaMap.size} CAA fareområder for NOTAM geometry enrichment`);
 
     // ── Step 1: Fetch RSS feeds from notam_rss_feeds table ──
     const { data: feeds } = await supabase
