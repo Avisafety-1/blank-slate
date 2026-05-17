@@ -943,6 +943,7 @@ const CAA_LAYER_STYLES: Record<string, CaaLayerStyle> = {
   fareomrader: { color: '#eab308', iconLabel: '⚠️ Fareområde' },
   flyplasser: { color: '#eab308', iconLabel: '✈️ Flyplass' },
   notam_soner: { color: '#eab308', iconLabel: '⚠️ NOTAM-sone' },
+  restriksjoner: { color: '#dc2626', iconLabel: '🚫 Restriksjonsområde' },
 };
 
 export async function fetchCaaDroneZones(params: BoundsFetchParams & {
