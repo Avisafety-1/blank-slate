@@ -658,10 +658,11 @@ export function OpenAIPMap({
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
     // Eurostat GISCO Census 2021 — 1 km² grid for hele Europa
+    // WMS-backenden feiler ved svært små bbox-er; cap maxNativeZoom så Leaflet skalerer opp eksisterende tiles
     const eurostatPopLayer = L.tileLayer.wms("https://gisco-services.ec.europa.eu/maps/service", {
       layers: "PopulationGrid2021", format: "image/png", transparent: true, opacity: 0.6,
       attribution: '© European Commission – Eurostat (GISCO)', version: "1.3.0",
-      minZoom: 4, maxZoom: 14, tiled: true, updateWhenIdle: true, keepBuffer: 1,
+      minZoom: 4, maxZoom: 18, maxNativeZoom: 10, tiled: true, updateWhenIdle: true, keepBuffer: 1,
     } as any);
     const befolkningLayer = L.layerGroup([eurostatPopLayer, ssbBefolkningLayer]);
     layerConfigs.push({ id: "befolkningstetthet", name: "Befolkningstetthet (SSB + Eurostat)", layer: befolkningLayer, enabled: false, icon: "users" });
