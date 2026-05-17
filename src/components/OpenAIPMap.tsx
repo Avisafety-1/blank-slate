@@ -908,6 +908,7 @@ export function OpenAIPMap({
       ['fareomrader', caaFareLayer],
       ['flyplasser', caaFlyplasserLayer],
       ['notam_soner', caaNotamSonerLayer],
+      ['restriksjoner', caaRestriksjonerLayer],
     ];
     const fetchCaaLayers = () => {
       if (map.getZoom() < 9) {
