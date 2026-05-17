@@ -1156,14 +1156,14 @@ export async function fetchSsbPopulationGridTiled(
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
   const tiles = splitBboxIntoTiles(bbox);
-  if (tiles.length <= 1) return fetchSsbPopulationGrid(bbox, signal);
+  if (tiles.length <= 1) return fetchPopulationGridForTile(bbox, signal);
 
   const uniqueCells = new Map<string, SsbPopulationCell>();
   const concurrency = 4;
   for (let i = 0; i < tiles.length; i += concurrency) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     const batch = tiles.slice(i, i + concurrency);
-    const results = await Promise.all(batch.map(tile => fetchSsbPopulationGrid(tile, signal)));
+    const results = await Promise.all(batch.map(tile => fetchPopulationGridForTile(tile, signal)));
     for (const cells of results) {
       for (const cell of cells) {
         uniqueCells.set(getCellKey(cell), cell);
