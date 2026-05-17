@@ -313,7 +313,12 @@ export function OpenAIPMap({
     routeLayerRef.current.clearLayers();
     const points = routePointsRef.current;
 
-    if (points.length === 0) return;
+    if (points.length === 0) {
+      soraLayerRef.current?.clearLayers();
+      adjacentAreaLayerRef.current?.clearLayers();
+      populationDensityLayerRef.current?.clearLayers();
+      return;
+    }
 
     // Draw polyline
     if (points.length > 1) {
