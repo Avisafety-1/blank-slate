@@ -564,13 +564,13 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium">SSB 250 m befolkningstetthet</p>
+          <p className="text-xs font-medium">Befolkningstetthet (SSB 250 m i Norge, Eurostat 1 km i Europa)</p>
           <p className="text-[11px] text-muted-foreground">
             {populationDensityLoading
               ? "Henter aktuelle ruter rundt hele beregnet område…"
               : populationDensityResult?.maxDensityCell
                 ? `Pådriver: ${(populationDensityResult.maxDensityPerKm2).toLocaleString("nb-NO")} pers/km² · ${populationDensityResult.cells.length.toLocaleString("nb-NO")} ruter vurdert`
-                : "Viser befolkede SSB-ruter; tomme felt er normalt 0 registrert befolkning"}
+                : "Viser befolkede ruter rundt SORA-volumet; tomme felt er normalt 0 registrert befolkning"}
           </p>
         </div>
         <Switch checked={showPopulationDensity} onCheckedChange={onShowPopulationDensityChange} />
