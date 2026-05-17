@@ -1160,18 +1160,30 @@ export async function fetchSsbPopulationGridTiled(
 
   const uniqueCells = new Map<string, SsbPopulationCell>();
   const concurrency = 4;
+  let failedTiles = 0;
   for (let i = 0; i < tiles.length; i += concurrency) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
     const batch = tiles.slice(i, i + concurrency);
-    const results = await Promise.all(batch.map(tile => fetchPopulationGridForTile(tile, signal)));
-    for (const cells of results) {
-      for (const cell of cells) {
-        uniqueCells.set(getCellKey(cell), cell);
+    const results = await Promise.allSettled(batch.map(tile => fetchPopulationGridForTile(tile, signal)));
+    for (let j = 0; j < results.length; j++) {
+      const res = results[j];
+      if (res.status === "fulfilled") {
+        for (const cell of res.value) {
+          uniqueCells.set(getCellKey(cell), cell);
+        }
+      } else {
+        failedTiles++;
+        const t = batch[j];
+        console.warn("[adjacentArea] tile failed", `${t.minLng},${t.minLat},${t.maxLng},${t.maxLat}`, res.reason);
       }
     }
   }
 
-  return Array.from(uniqueCells.values());
+  const cells = Array.from(uniqueCells.values());
+  const ssbCount = cells.filter(c => c.source !== "eurostat").length;
+  const eurostatCount = cells.length - ssbCount;
+  console.info(`[adjacentArea] fetched ${cells.length} celler (SSB: ${ssbCount}, Eurostat: ${eurostatCount}, tiles: ${tiles.length}${failedTiles ? `, failed: ${failedTiles}` : ""})`);
+  return cells;
 }
 
 /* ------------------------------------------------------------------ */
