@@ -1124,7 +1124,7 @@ async function fetchPopulationGridForTile(
 
 function splitBboxIntoTiles(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
-  maxTileKm = 4
+  maxTileKm: number = 4
 ) {
   const avgLat = (bbox.minLat + bbox.maxLat) / 2;
   const latStep = maxTileKm / 111.32;
@@ -1155,7 +1155,11 @@ export async function fetchSsbPopulationGridTiled(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
-  const tiles = splitBboxIntoTiles(bbox);
+  // SSB 250 m-grid trives med ~4 km tiles. Eurostat 1 km-grid tåler
+  // mye større bbox per kall, så bruk 25 km tiles utenfor Norge for å
+  // unngå hundrevis av sekvensielle edge-funksjonskall.
+  const tileKm = isBboxInNorway(bbox) ? 4 : 25;
+  const tiles = splitBboxIntoTiles(bbox, tileKm);
   if (tiles.length <= 1) return fetchPopulationGridForTile(bbox, signal);
 
   const uniqueCells = new Map<string, SsbPopulationCell>();
@@ -1340,12 +1344,16 @@ export async function computeSoraVolumePopulationDensity(
   const driverKey = maxDensityCell ? getCellKey(maxDensityCell) : null;
   const markedCells = visibleCells.map(cell => ({ ...cell, isDriver: driverKey === getCellKey(cell) }));
 
+  const ssbCount = visibleCells.filter(c => c.source !== "eurostat").length;
+  const eurostatCount = visibleCells.length - ssbCount;
+  const gridResolutionM = eurostatCount > 0 && ssbCount === 0 ? 1000 : 250;
+
   return {
     cells: markedCells,
     coveragePolygons: coveragePolys,
     maxDensityCell: maxDensityCell ? { ...maxDensityCell, isDriver: true } : undefined,
     totalPopulation,
     maxDensityPerKm2: maxDensityCell?.densityPerKm2 ?? 0,
-    gridResolutionM: 250,
+    gridResolutionM,
   };
 }
