@@ -112,7 +112,9 @@ function normalizeFeature(
   const p = feature.properties ?? {};
   const icao = p.icaoKode && p.icaoKode !== "XXXX" ? p.icaoKode : null;
   const nameKey = p.navn ?? p.Navn ?? p.name ?? p.Name ?? p["name:nb"] ?? p["name:en"] ?? `idx-${index}`;
+  const derivedId = spec.externalIdFn?.(p) ?? null;
   const baseId =
+    derivedId ??
     p.id ??
     p["@id"] ??
     p.identifier ??
