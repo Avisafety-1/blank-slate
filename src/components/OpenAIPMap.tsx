@@ -657,6 +657,18 @@ export function OpenAIPMap({
     const naturvernLayer = L.layerGroup();
     layerConfigs.push({ id: "naturvern", name: "Verneområder", layer: naturvernLayer, enabled: false, icon: "treePine" });
 
+    // CAA dronesoner (Luftfartstilsynet — dronesoner.no) — alle skjult som default
+    const caaFengslerLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_fengsler", name: "Fengsler (CAA)", layer: caaFengslerLayer, enabled: false, icon: "ban" });
+    const caaAmbassaderLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_ambassader", name: "Ambassader (CAA)", layer: caaAmbassaderLayer, enabled: false, icon: "ban" });
+    const caaFareLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_fareomrader", name: "Fareområder (CAA)", layer: caaFareLayer, enabled: false, icon: "alertTriangle" });
+    const caaFlyplasserLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_flyplasser", name: "Mindre flyplasser (CAA)", layer: caaFlyplasserLayer, enabled: false, icon: "alertTriangle" });
+    const caaNotamSonerLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_notam_soner", name: "NOTAM-soner (CAA)", layer: caaNotamSonerLayer, enabled: false, icon: "alertTriangle" });
+
     // SSB Arealbruk
     const arealbrukLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.arealbruk?", {
       layers: "arealbruk", format: "image/png", transparent: true, opacity: 0.6, attribution: "SSB Arealbruk", minZoom: 0, maxZoom: 20, tiled: true,
