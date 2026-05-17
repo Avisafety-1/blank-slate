@@ -259,6 +259,72 @@ export type Database = {
           },
         ]
       }
+      caa_drone_zones: {
+        Row: {
+          authority_name: string | null
+          authority_phone: string | null
+          authority_url: string | null
+          created_at: string
+          external_id: string
+          geometry: unknown
+          id: string
+          last_synced_at: string
+          layer_id: string
+          lower_limit_m: number | null
+          lower_ref: string | null
+          message: string | null
+          name: string | null
+          properties: Json | null
+          reason: string[] | null
+          restriction: string | null
+          updated_at: string
+          upper_limit_m: number | null
+          upper_ref: string | null
+        }
+        Insert: {
+          authority_name?: string | null
+          authority_phone?: string | null
+          authority_url?: string | null
+          created_at?: string
+          external_id: string
+          geometry?: unknown
+          id?: string
+          last_synced_at?: string
+          layer_id: string
+          lower_limit_m?: number | null
+          lower_ref?: string | null
+          message?: string | null
+          name?: string | null
+          properties?: Json | null
+          reason?: string[] | null
+          restriction?: string | null
+          updated_at?: string
+          upper_limit_m?: number | null
+          upper_ref?: string | null
+        }
+        Update: {
+          authority_name?: string | null
+          authority_phone?: string | null
+          authority_url?: string | null
+          created_at?: string
+          external_id?: string
+          geometry?: unknown
+          id?: string
+          last_synced_at?: string
+          layer_id?: string
+          lower_limit_m?: number | null
+          lower_ref?: string | null
+          message?: string | null
+          name?: string | null
+          properties?: Json | null
+          reason?: string[] | null
+          restriction?: string | null
+          updated_at?: string
+          upper_limit_m?: number | null
+          upper_ref?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           company_id: string
@@ -6228,6 +6294,10 @@ export type Database = {
             }
             Returns: string
           }
+      bulk_upsert_caa_zones: {
+        Args: { p_features: Json; p_layer_id: string }
+        Returns: Json
+      }
       bulk_upsert_geojson_features: {
         Args: { p_features: Json; p_table_name: string }
         Returns: Json
@@ -6456,6 +6526,33 @@ export type Database = {
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_ai_risk_eta_ms: { Args: never; Returns: number }
+      get_caa_zones_in_bounds: {
+        Args: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+          p_layer_ids?: string[]
+        }
+        Returns: {
+          authority_name: string
+          authority_phone: string
+          authority_url: string
+          external_id: string
+          geometry: Json
+          id: string
+          layer_id: string
+          lower_limit_m: number
+          lower_ref: string
+          message: string
+          name: string
+          properties: Json
+          reason: string[]
+          restriction: string
+          upper_limit_m: number
+          upper_ref: string
+        }[]
+      }
       get_company_by_registration_code: {
         Args: { p_code: string }
         Returns: {
