@@ -103,7 +103,7 @@ function normalizeFeature(
     icao ??
     `${spec.id}-${nameKey}-${index}`;
   const externalId = baseId;
-  const name = p.navn ?? p.name ?? p["name:nb"] ?? p["name:en"] ?? null;
+  const name = p.navn ?? p.Navn ?? p.name ?? p.Name ?? p["name:nb"] ?? p["name:en"] ?? null;
   const message = p.info ?? p.remarks ?? null;
 
   return {
