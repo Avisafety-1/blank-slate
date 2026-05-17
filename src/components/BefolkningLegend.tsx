@@ -10,19 +10,28 @@ const categories = [
 
 interface BefolkningLegendProps {
   resolution?: "1km" | "250m";
+  source?: "ssb" | "eurostat" | "both";
 }
 
-export function BefolkningLegend({ resolution = "1km" }: BefolkningLegendProps) {
+export function BefolkningLegend({ resolution = "1km", source = "both" }: BefolkningLegendProps) {
+  const headerSuffix =
+    resolution === "250m"
+      ? "(SSB 250 m)"
+      : source === "ssb" ? "(SSB 1 km)"
+      : source === "eurostat" ? "(Eurostat 2021, 1 km)"
+      : "(SSB 1 km / Eurostat 2021)";
+  const subtitle =
+    resolution === "250m"
+      ? "Risikovurdering bruker 250 m-ruter × 16."
+      : source === "ssb" ? "Kilde: SSB (kun Norge)"
+      : source === "eurostat" ? "Kilde: Eurostat GISCO Census 2021"
+      : "Norge: SSB · Europa: Eurostat GISCO (Census 2021)";
   return (
     <div className="absolute bottom-4 left-2 right-2 sm:left-auto sm:right-4 sm:w-auto bg-background/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-lg border border-border z-[1000]">
       <p className="text-[10px] sm:text-xs font-semibold text-foreground mb-1.5">
-        Befolkning per km² {resolution === "250m" ? "(SSB 250 m)" : "(SSB 1 km / Eurostat 2021)"}
+        Befolkning per km² {headerSuffix}
       </p>
-      {resolution === "250m" ? (
-        <p className="text-[10px] text-muted-foreground mb-1.5">Risikovurdering bruker 250 m-ruter × 16.</p>
-      ) : (
-        <p className="text-[10px] text-muted-foreground mb-1.5">Norge: SSB · Europa: Eurostat GISCO (Census 2021)</p>
-      )}
+      <p className="text-[10px] text-muted-foreground mb-1.5">{subtitle}</p>
       <div className="flex flex-col gap-1">
         {categories.map((c) => (
           <div key={c.label} className="flex items-center gap-2">

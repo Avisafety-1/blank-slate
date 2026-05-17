@@ -652,20 +652,21 @@ export function OpenAIPMap({
     } as any);
     layerConfigs.push({ id: "arealbruk", name: "Befolkning / Arealbruk (SSB)", layer: arealbrukLayer, enabled: false, icon: "users" });
 
-    // Befolkningstetthet — SSB (Norge) + Eurostat GISCO (Europa)
+    // Befolkningstetthet — splittet i to togglebare lag
     const ssbBefolkningLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/befolkning_paa_rutenett", {
       layers: "befolkning_1km_2025", format: "image/png", transparent: true, opacity: 0.7,
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
-    // Eurostat GISCO Census 2021 — 1 km² grid for hele Europa
-    // WMS-backenden feiler ved svært små bbox-er; cap maxNativeZoom så Leaflet skalerer opp eksisterende tiles
+    layerConfigs.push({ id: "befolkning_norge", name: "Befolkningstetthet Norge (SSB)", layer: ssbBefolkningLayer, enabled: false, icon: "users" });
+
+    // Eurostat GISCO Census 2021 — 1 km² grid for hele Europa.
+    // WMS-backenden feiler ved svært små bbox-er; cap maxNativeZoom så Leaflet skalerer opp eksisterende tiles.
     const eurostatPopLayer = L.tileLayer.wms("https://gisco-services.ec.europa.eu/maps/service", {
       layers: "PopulationGrid2021", format: "image/png", transparent: true, opacity: 0.6,
       attribution: '© European Commission – Eurostat (GISCO)', version: "1.3.0",
       minZoom: 4, maxZoom: 18, maxNativeZoom: 10, tiled: true, updateWhenIdle: true, keepBuffer: 1,
     } as any);
-    const befolkningLayer = L.layerGroup([eurostatPopLayer, ssbBefolkningLayer]);
-    layerConfigs.push({ id: "befolkningstetthet", name: "Befolkningstetthet (SSB + Eurostat)", layer: befolkningLayer, enabled: false, icon: "users" });
+    layerConfigs.push({ id: "befolkning_europa", name: "Befolkningstetthet Europa (Eurostat 2021)", layer: eurostatPopLayer, enabled: false, icon: "users" });
 
     // SSB Tettsteder (urban settlements ≥200 residents)
     const tettstederLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/tettsteder", {
@@ -1256,8 +1257,15 @@ export function OpenAIPMap({
       )}
 
       {layers.find(l => l.id === "arealbruk")?.enabled && <ArealbrukLegend />}
-      {layers.find(l => l.id === "befolkningstetthet")?.enabled ? (
-        <BefolkningLegend resolution="1km" />
+      {(layers.find(l => l.id === "befolkning_norge")?.enabled || layers.find(l => l.id === "befolkning_europa")?.enabled) ? (
+        <BefolkningLegend
+          resolution="1km"
+          source={
+            layers.find(l => l.id === "befolkning_norge")?.enabled && layers.find(l => l.id === "befolkning_europa")?.enabled
+              ? "both"
+              : layers.find(l => l.id === "befolkning_norge")?.enabled ? "ssb" : "eurostat"
+          }
+        />
       ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
     </div>
