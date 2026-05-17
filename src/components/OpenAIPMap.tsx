@@ -668,6 +668,8 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "caa_flyplasser", name: "Mindre flyplasser (CAA)", layer: caaFlyplasserLayer, enabled: false, icon: "alertTriangle" });
     const caaNotamSonerLayer = L.layerGroup();
     layerConfigs.push({ id: "caa_notam_soner", name: "NOTAM-soner (CAA)", layer: caaNotamSonerLayer, enabled: false, icon: "alertTriangle" });
+    const caaRestriksjonerLayer = L.layerGroup();
+    layerConfigs.push({ id: "caa_restriksjoner", name: "Restriksjonsområder (CAA)", layer: caaRestriksjonerLayer, enabled: false, icon: "ban" });
 
     // SSB Arealbruk
     const arealbrukLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.arealbruk?", {
@@ -906,6 +908,7 @@ export function OpenAIPMap({
       ['fareomrader', caaFareLayer],
       ['flyplasser', caaFlyplasserLayer],
       ['notam_soner', caaNotamSonerLayer],
+      ['restriksjoner', caaRestriksjonerLayer],
     ];
     const fetchCaaLayers = () => {
       if (map.getZoom() < 9) {

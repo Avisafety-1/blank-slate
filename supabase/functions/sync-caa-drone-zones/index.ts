@@ -22,6 +22,8 @@ interface LayerSpec {
   authority_phone?: string;
   default_restriction: string;
   default_reason: string[];
+  /** Optional: derive a canonical external_id (e.g. "ENR102") from feature properties. */
+  externalIdFn?: (p: Record<string, unknown>) => string | null;
 }
 
 const LAYERS: LayerSpec[] = [
@@ -65,6 +67,20 @@ const LAYERS: LayerSpec[] = [
     default_restriction: "CONDITIONAL",
     default_reason: ["AIR_TRAFFIC"],
   },
+  {
+    id: "restriksjoner",
+    url: "https://dronesoner.no/data/forbud_restriksjoner.geojson",
+    authority_name: "Luftfartstilsynet",
+    authority_url: "https://luftfartstilsynet.no",
+    default_restriction: "PROHIBITED",
+    default_reason: ["AIR_TRAFFIC"],
+    // navn like "R102 Oslo sentrum" → canonical NOTAM-friendly id "ENR102"
+    externalIdFn: (p) => {
+      const navn = String((p as any).navn ?? (p as any).Navn ?? "");
+      const m = navn.match(/\bR\s?(\d{2,4})/i);
+      return m ? `ENR${m[1]}` : null;
+    },
+  },
 ];
 
 function parseAltitudeMeters(raw: unknown): number | null {
@@ -96,7 +112,9 @@ function normalizeFeature(
   const p = feature.properties ?? {};
   const icao = p.icaoKode && p.icaoKode !== "XXXX" ? p.icaoKode : null;
   const nameKey = p.navn ?? p.Navn ?? p.name ?? p.Name ?? p["name:nb"] ?? p["name:en"] ?? `idx-${index}`;
+  const derivedId = spec.externalIdFn?.(p) ?? null;
   const baseId =
+    derivedId ??
     p.id ??
     p["@id"] ??
     p.identifier ??
