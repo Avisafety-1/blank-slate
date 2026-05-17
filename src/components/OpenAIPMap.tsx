@@ -899,15 +899,50 @@ export function OpenAIPMap({
       fetchVernRestrictionZones({ layer: naturvernLayer, mode, bounds });
     };
 
+    // CAA dronesoner: refetch on moveend per aktivert lag
+    const caaLayerMap: Array<[string, L.LayerGroup]> = [
+      ['fengsler', caaFengslerLayer],
+      ['ambassader', caaAmbassaderLayer],
+      ['fareomrader', caaFareLayer],
+      ['flyplasser', caaFlyplasserLayer],
+      ['notam_soner', caaNotamSonerLayer],
+    ];
+    const fetchCaaLayers = () => {
+      if (map.getZoom() < 9) {
+        caaLayerMap.forEach(([, lg]) => lg.clearLayers());
+        return;
+      }
+      const b = map.getBounds();
+      const bounds = {
+        minLat: b.getSouth(), minLng: b.getWest(),
+        maxLat: b.getNorth(), maxLng: b.getEast(),
+      };
+      caaLayerMap.forEach(([layerId, lg]) => {
+        lg.clearLayers();
+        if (map.hasLayer(lg)) {
+          fetchCaaDroneZones({ layer: lg, mode: modeRef.current, bounds, layerIds: [layerId] });
+        }
+      });
+    };
+
     let vernDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetchVern = () => {
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
-      vernDebounceTimer = setTimeout(fetchVerneomraader, 300);
+      vernDebounceTimer = setTimeout(() => {
+        fetchVerneomraader();
+        fetchCaaLayers();
+      }, 300);
     };
 
     // Initial fetch + listen for map moves
     fetchVerneomraader();
+    fetchCaaLayers();
     map.on('moveend', debouncedFetchVern);
+    // Refetch CAA layers when user toggles them on
+    map.on('overlayadd', (e: any) => {
+      const match = caaLayerMap.find(([, lg]) => lg === e.layer);
+      if (match) fetchCaaLayers();
+    });
 
     // Kraftledninger: refetch on moveend if layer is enabled
     let kraftDebounceTimer: ReturnType<typeof setTimeout> | null = null;
