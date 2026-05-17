@@ -95,7 +95,7 @@ function normalizeFeature(
   if (!feature?.geometry) return null;
   const p = feature.properties ?? {};
   const icao = p.icaoKode && p.icaoKode !== "XXXX" ? p.icaoKode : null;
-  const nameKey = p.navn ?? p.name ?? p["name:nb"] ?? p["name:en"] ?? `idx-${index}`;
+  const nameKey = p.navn ?? p.Navn ?? p.name ?? p.Name ?? p["name:nb"] ?? p["name:en"] ?? `idx-${index}`;
   const baseId =
     p.id ??
     p["@id"] ??
