@@ -66,6 +66,7 @@ const LAYERS: LayerSpec[] = [
     authority_url: "https://ippc.no",
     default_restriction: "CONDITIONAL",
     default_reason: ["AIR_TRAFFIC"],
+  },
   {
     id: "restriksjoner",
     url: "https://dronesoner.no/data/forbud_restriksjoner.geojson",
@@ -81,6 +82,8 @@ const LAYERS: LayerSpec[] = [
     },
   },
 ];
+
+function parseAltitudeMeters(raw: unknown): number | null {
   if (raw == null) return null;
   if (typeof raw === "number") return raw;
   const s = String(raw).trim().toUpperCase();
