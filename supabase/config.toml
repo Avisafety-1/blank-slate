@@ -36,6 +36,9 @@ verify_jwt = false
 [functions.count-all-users]
 verify_jwt = false
 
+[functions.sync-caa-drone-zones]
+verify_jwt = false
+
 [functions.push-subscribe]
 verify_jwt = true
 
