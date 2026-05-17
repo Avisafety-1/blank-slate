@@ -140,7 +140,7 @@ export function AdjacentAreaPanel({
         <p className="text-xs text-muted-foreground">
           SORA 2.5 krever vurdering av gjennomsnittlig befolkningstetthet i tilstøtende område
           (fra bakkerisikobuffer til {radiusKm} km radius).
-          Beregningen bruker SSB 250m befolkningsrutenett for høyere presisjon enn kartlagets 1 km rutenett.
+          I Norge brukes SSB 250 m befolkningsrutenett; utenfor Norge brukes Eurostat GEOSTAT 2021 1 km grid.
         </p>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -210,10 +210,10 @@ export function AdjacentAreaPanel({
               <div className="text-muted-foreground">Gj.snitt tetthet</div>
               <div className="font-medium">{result.avgDensity.toFixed(1)} pers/km²</div>
 
-              {result.gridResolutionM && (
+              {(result.dataSource || result.gridResolutionM) && (
                 <>
                   <div className="text-muted-foreground">Datagrunnlag</div>
-                  <div className="font-medium">SSB {result.gridResolutionM} m</div>
+                  <div className="font-medium">{result.dataSource ?? `SSB ${result.gridResolutionM} m`}</div>
                 </>
               )}
 

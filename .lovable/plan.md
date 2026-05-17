@@ -1,74 +1,36 @@
-## Mål
+## Problem
 
-Bruk samme per-celle befolkningslogikk som SSB også utenfor Norge. Eurostat WMS er bekreftet ikke-spørrbart (server svarer eksplisitt `layer PopulationGrid2021 is not queryable`), og har ingen WFS. Derfor må selve grid-en importeres til Supabase PostGIS.
+Når SORA er aktivert i Norge tegnes SSB 250 m-rutene automatisk inni operasjonsvolum + tilstøtende donut. Utenfor Norge skjer ingenting visuelt — Eurostat-cellene rendres ikke i bufferen / tilstøtende området, selv om de er lastet inn i `eurostat_population_1km` og edge-funksjonen `eurostat-population` svarer.
+
+Beregnings-pipelinen velger allerede SSB vs Eurostat pr. 4 km tile (`isBboxInNorway`), og `cellTouchesMultiPolygon` håndterer Eurostat sine 1 km polygoner. Likevel ser brukeren ikke noen overlay utenfor Norge. Den mest sannsynlige rotårsaken er en kombinasjon av (a) silent failure i `Promise.all`-batchet hvis én tile feiler, (b) hardkodet "SSB 250 m" i popup/tooltip/panel slik at brukeren ikke ser forskjell, og (c) ingen synlig diagnostikk når Eurostat returnerer 0 celler.
 
 ## Endringer
 
-### 1. Database (migrasjon mot Supabase)
+### 1. Robusthet i tiled fetch (`src/lib/adjacentAreaCalculator.ts`)
+- Bytt `Promise.all` → `Promise.allSettled` i `fetchSsbPopulationGridTiled` slik at én feilet tile (f.eks. midlertidig 502) ikke nuller hele beregningen.
+- Logg `console.warn` for hver rejected tile med bbox + feilmelding.
+- Logg `console.info` med antall celler returnert pr. kilde (ssb / eurostat) når totalresultatet er klart, slik at det er trivielt å verifisere i konsollen.
 
-```sql
-create extension if not exists postgis;
+### 2. Kildebevisst rendering (`src/components/OpenAIPMap.tsx`)
+- I løkken som tegner `densityCells`:
+  - Bytt hardkodet `"SSB 250 m-rute"` i popup ut med dynamisk tekst basert på `cell.source`: `"SSB 250 m-rute"` for `ssb`, `"Eurostat 2021 · 1 km-rute"` for `eurostat`.
+  - Forklar tetthetsutregning korrekt pr. kilde (SSB: `pop × 16`, Eurostat: `pop = pers/km²`).
+  - Tooltipen for pådriver-cellen får samme kildelabel.
 
-create table public.eurostat_population_1km (
-  grd_id text primary key,
-  pop_2021 integer not null,
-  geom geometry(Polygon, 4326) not null
-);
-create index eurostat_pop_geom_idx on public.eurostat_population_1km using gist (geom);
+### 3. Panel-tekst (`src/components/AdjacentAreaPanel.tsx`)
+- Erstatt setningen som hardkoder "SSB 250m" med en kildebevisst beskrivelse: «I Norge brukes SSB 250 m. Utenfor Norge brukes Eurostat 2021 1 km.»
+- Vis kildelabelen fra `result.dataSource` under resultatene i tillegg til `gridResolutionM`.
 
-alter table public.eurostat_population_1km enable row level security;
-create policy "Public read" on public.eurostat_population_1km
-  for select to anon, authenticated using (true);
-```
+### 4. Legende (`src/components/BefolkningLegend.tsx`)
+- Ingen endring kreves — komponenten støtter allerede `source="ssb" | "eurostat" | "both"`.
 
-Offentlig referansedata (samme mønster som dagens SSB-cache).
+### 5. Verifisering
+- Plan en kort rute i Paris (~5 km) med SORA aktivert.
+- Forvent: 1 km Eurostat-polygoner fyller buffer + donut, popup viser "Eurostat 2021 · 1 km-rute", panelet viser `Eurostat GEOSTAT 2021 1 km grid`, og konsollen logger antall celler returnert pr. kilde.
+- Plan en kort rute i Oslo som referansetest — skal fortsatt rendres som SSB 250 m.
 
-### 2. Engangs-import
+## Det dette IKKE endrer
 
-Eurostat GEOSTAT 2021 v2 1 km grid (~500 MB GeoPackage, EPSG:3035, hele Europa, ~2,5M celler).
-
-To-trinns prosess fra sandboxen:
-1. Last ned + transformer til EPSG:4326 + del i NDJSON-chunks.
-2. Ny midlertidig edge function `eurostat-import` (kjøres én gang manuelt med service-role) som tar imot chunkene og batch-inserter via `supabase-js`. Slettes etter import.
-
-Bekrefter med `select count(*) from eurostat_population_1km` (forventet ~2,5M).
-
-### 3. Ny edge function `eurostat-population`
-
-Speiler `ssb-population`:
-- Input: `{ bbox: "minLng,minLat,maxLng,maxLat" }`
-- Bruker `supabase-js` + RPC `eurostat_pop_in_bbox(min_lng, min_lat, max_lng, max_lat)` som returnerer celler via `geom && ST_MakeEnvelope(...)`
-- Output: identisk shape med SSB (`features[].pop_tot`, `centroidLat/Lng`, `polygon`, `densityPerKm2 = pop_2021`, `gridSource: "eurostat"`)
-
-### 4. `src/lib/adjacentAreaCalculator.ts`
-
-- Ny `isBboxInNorway(bbox)` — bounding box (lat 57.5–71.5 / lng 4–32, + Svalbard 74–81 / 10–35).
-- `fetchPopulationGrid(bbox)`:
-  - Helt i Norge → SSB 250 m (uendret).
-  - Helt utenfor → Eurostat 1 km.
-  - Krysser grensen → kall begge, fjern Eurostat-celler hvis sentroide er i Norges bbox.
-- `computeAdjacentAreaDensity` / `computePopulationInGeometry`: ingen API-endring, returnerer ny `gridSource: "ssb" | "eurostat" | "mixed"`.
-
-### 5. UI
-
-- `AdjacentAreaPanel.tsx` + `SoraSettingsPanel.tsx`: vis kildebadge basert på `result.gridSource`.
-- `BefolkningLegend.tsx`: allerede splittet, ingen endring.
-
-## Filer som endres / opprettes
-
-- migrasjon: `eurostat_population_1km` + GIST + RLS + RPC-funksjon
-- ny: `supabase/functions/eurostat-import/index.ts` (midlertidig)
-- ny: `supabase/functions/eurostat-population/index.ts`
-- `src/lib/adjacentAreaCalculator.ts`
-- `src/components/AdjacentAreaPanel.tsx`
-- `src/components/SoraSettingsPanel.tsx`
-
-## Out of scope
-
-- SORA-formler, kategori-terskler, FH2/Ninox/PDF-eksport — uendret.
-- Eurostat 1 km er grovere enn SSB 250 m, men det er den beste offentlige oppløsningen for hele Europa.
-
-## Risiko
-
-- Import tar 15–30 min og legger ~500 MB i Supabase-databasen din. Sjekk at din Supabase-plan har plass før vi starter.
-- Hvis nedlasting fra ec.europa.eu feiler i sandboxen, prøver jeg `gisco-services.ec.europa.eu/pub`-speilet.
+- Containment-matrisen, SORA-geometrien og pådriver-beregningen står som de er.
+- Ingen DB-migrasjoner.
+- Eurostat WMS-overlayet på kartet (separat togglebart lag) endres ikke.
