@@ -1029,17 +1029,46 @@ export interface SsbPopulationCell {
 }
 
 /**
- * True when a bbox lies entirely within mainland Norway or Svalbard.
- * Used to pick SSB (Norway) vs Eurostat (rest of Europe) per tile.
+ * Approximate eastern land border of Norway as a function of latitude.
+ * Used to distinguish Norway from Sweden/Finland/Russia so we don't try to
+ * fetch SSB data for tiles that are actually in Sweden (SSB returns 0 cells
+ * there and the user sees no population grid on the map).
+ */
+function norwayEastLngAtLat(lat: number): number {
+  // Piecewise linear approximation of the eastern border (Oslo-fjord up to Finnmark).
+  // Slightly conservative (i.e. biased west) so border-area tiles use Eurostat,
+  // which covers all of Europe including Norway.
+  if (lat < 58) return 11.5;
+  if (lat < 59) return 11.8;
+  if (lat < 60) return 12.2;
+  if (lat < 62) return 12.5;
+  if (lat < 64) return 13.5;
+  if (lat < 66) return 15.0;
+  if (lat < 68) return 17.5;
+  if (lat < 69) return 20.0;
+  if (lat < 70) return 25.0;
+  return 30.5;
+}
+
+function isPointInNorway(lat: number, lng: number): boolean {
+  // Mainland: west of approx eastern border, east of the coast, in lat range.
+  if (lat >= 57.8 && lat <= 71.3 && lng >= 4.4 && lng <= norwayEastLngAtLat(lat)) {
+    return true;
+  }
+  // Svalbard.
+  if (lat >= 74 && lat <= 81 && lng >= 10 && lng <= 35) return true;
+  return false;
+}
+
+/**
+ * True when a tile's center is clearly inside Norway/Svalbard. Border tiles
+ * fall back to Eurostat (which also covers Norway), and SSB-fallback handles
+ * the edge case where SSB returns nothing for a tile we thought was Norwegian.
  */
 function isBboxInNorway(bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number }): boolean {
-  const inMainland =
-    bbox.minLat >= 57.5 && bbox.maxLat <= 71.5 &&
-    bbox.minLng >= 4 && bbox.maxLng <= 32;
-  const inSvalbard =
-    bbox.minLat >= 74 && bbox.maxLat <= 81 &&
-    bbox.minLng >= 10 && bbox.maxLng <= 35;
-  return inMainland || inSvalbard;
+  const centerLat = (bbox.minLat + bbox.maxLat) / 2;
+  const centerLng = (bbox.minLng + bbox.maxLng) / 2;
+  return isPointInNorway(centerLat, centerLng);
 }
 
 export async function fetchSsbPopulationGrid(
@@ -1098,7 +1127,6 @@ export async function fetchEurostatPopulationGrid(
       centroidLat: feature.centroidLat,
       centroidLng: feature.centroidLng,
       polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
-      // 1 km Eurostat cell — density per km² == population
       densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot,
       source: "eurostat",
     });
@@ -1109,15 +1137,23 @@ export async function fetchEurostatPopulationGrid(
 
 /**
  * Auto-select SSB (Norway) or Eurostat (rest of Europe) per tile.
- * Border-crossing bboxes split via splitBboxIntoTiles already, so each
- * tile is evaluated independently.
+ * If SSB returns 0 cells for a tile we thought was Norwegian, fall back to
+ * Eurostat so the user always sees population grid coverage on the map.
  */
 async function fetchPopulationGridForTile(
   tile: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
   if (isBboxInNorway(tile)) {
-    return fetchSsbPopulationGrid(tile, signal);
+    try {
+      const ssbCells = await fetchSsbPopulationGrid(tile, signal);
+      if (ssbCells.length > 0) return ssbCells;
+      // Empty SSB result near the border — fall through to Eurostat.
+      console.info("[adjacentArea] SSB returnerte 0 celler, prøver Eurostat for tile", tile);
+    } catch (err) {
+      if ((err as any)?.name === "AbortError") throw err;
+      console.warn("[adjacentArea] SSB feilet, faller tilbake til Eurostat", err);
+    }
   }
   return fetchEurostatPopulationGrid(tile, signal);
 }
