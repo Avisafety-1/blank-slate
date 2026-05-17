@@ -1067,10 +1067,59 @@ export async function fetchSsbPopulationGrid(
       centroidLng: feature.centroidLng,
       polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
       densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot * 16,
+      source: "ssb",
     });
   }
 
   return cells;
+}
+
+export async function fetchEurostatPopulationGrid(
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  signal?: AbortSignal
+): Promise<SsbPopulationCell[]> {
+  const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase.functions.invoke("eurostat-population", {
+    body: { bbox: bboxStr },
+  });
+
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  if (error) {
+    throw new Error(`Eurostat population proxy error: ${error.message}`);
+  }
+  const cells: SsbPopulationCell[] = [];
+  if (!data?.features) return cells;
+
+  for (const feature of data.features) {
+    cells.push({
+      population: feature.pop_tot,
+      centroidLat: feature.centroidLat,
+      centroidLng: feature.centroidLng,
+      polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
+      // 1 km Eurostat cell — density per km² == population
+      densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot,
+      source: "eurostat",
+    });
+  }
+
+  return cells;
+}
+
+/**
+ * Auto-select SSB (Norway) or Eurostat (rest of Europe) per tile.
+ * Border-crossing bboxes split via splitBboxIntoTiles already, so each
+ * tile is evaluated independently.
+ */
+async function fetchPopulationGridForTile(
+  tile: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  signal?: AbortSignal
+): Promise<SsbPopulationCell[]> {
+  if (isBboxInNorway(tile)) {
+    return fetchSsbPopulationGrid(tile, signal);
+  }
+  return fetchEurostatPopulationGrid(tile, signal);
 }
 
 function splitBboxIntoTiles(
