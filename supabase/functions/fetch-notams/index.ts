@@ -195,8 +195,10 @@ function enrichGeometryFromCAA(
   caaMap: Map<string, unknown>,
 ): ReturnType<typeof parseRssItem> {
   const text = item.notam_text ?? "";
-  const codeRegex = /\bEN[DR]\d{3}[A-Z]?\b/g;
-  const codes = Array.from(new Set(text.match(codeRegex) ?? []));
+  // Tolerate stray whitespace/dash inside the code (e.g. "EN D354", "END 354")
+  const codeRegex = /\bEN[\s\-]?[DR][\s\-]?\d{3}[A-Z]?\b/g;
+  const rawCodes = text.match(codeRegex) ?? [];
+  const codes = Array.from(new Set(rawCodes.map((c) => c.replace(/[\s\-]/g, "").toUpperCase())));
   for (const code of codes) {
     const exact = caaMap.get(code);
     const stripped = code.replace(/[A-Z]$/, "");
