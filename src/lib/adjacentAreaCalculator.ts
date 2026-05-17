@@ -1072,7 +1072,89 @@ function isBboxInNorway(bbox: { minLat: number; maxLat: number; minLng: number; 
 }
 
 export async function fetchSsbPopulationGrid(
-...
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  signal?: AbortSignal
+): Promise<SsbPopulationCell[]> {
+  const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase.functions.invoke("ssb-population", {
+    body: { bbox: bboxStr, resolution: "250" },
+  });
+
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  if (error) {
+    throw new Error(`SSB population proxy error: ${error.message}`);
+  }
+  const cells: SsbPopulationCell[] = [];
+  if (!data?.features) return cells;
+
+  for (const feature of data.features) {
+    cells.push({
+      population: feature.pop_tot,
+      centroidLat: feature.centroidLat,
+      centroidLng: feature.centroidLng,
+      polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
+      densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot * 16,
+      source: "ssb",
+    });
+  }
+
+  return cells;
+}
+
+export async function fetchEurostatPopulationGrid(
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  signal?: AbortSignal
+): Promise<SsbPopulationCell[]> {
+  const bboxStr = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase.functions.invoke("eurostat-population", {
+    body: { bbox: bboxStr },
+  });
+
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  if (error) {
+    throw new Error(`Eurostat population proxy error: ${error.message}`);
+  }
+  const cells: SsbPopulationCell[] = [];
+  if (!data?.features) return cells;
+
+  for (const feature of data.features) {
+    cells.push({
+      population: feature.pop_tot,
+      centroidLat: feature.centroidLat,
+      centroidLng: feature.centroidLng,
+      polygon: Array.isArray(feature.polygon) ? feature.polygon : undefined,
+      densityPerKm2: typeof feature.densityPerKm2 === "number" ? feature.densityPerKm2 : feature.pop_tot,
+      source: "eurostat",
+    });
+  }
+
+  return cells;
+}
+
+/**
+ * Auto-select SSB (Norway) or Eurostat (rest of Europe) per tile.
+ * If SSB returns 0 cells for a tile we thought was Norwegian, fall back to
+ * Eurostat so the user always sees population grid coverage on the map.
+ */
+async function fetchPopulationGridForTile(
+  tile: { minLat: number; maxLat: number; minLng: number; maxLng: number },
+  signal?: AbortSignal
+): Promise<SsbPopulationCell[]> {
+  if (isBboxInNorway(tile)) {
+    try {
+      const ssbCells = await fetchSsbPopulationGrid(tile, signal);
+      if (ssbCells.length > 0) return ssbCells;
+      // Empty SSB result near the border — fall through to Eurostat.
+      console.info("[adjacentArea] SSB returnerte 0 celler, prøver Eurostat for tile", tile);
+    } catch (err) {
+      if ((err as any)?.name === "AbortError") throw err;
+      console.warn("[adjacentArea] SSB feilet, faller tilbake til Eurostat", err);
+    }
+  }
   return fetchEurostatPopulationGrid(tile, signal);
 }
 
