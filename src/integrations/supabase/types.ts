@@ -6526,6 +6526,13 @@ export type Database = {
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_ai_risk_eta_ms: { Args: never; Returns: number }
+      get_caa_zones_geojson: {
+        Args: { p_layer_id: string }
+        Returns: {
+          external_id: string
+          geometry_geojson: Json
+        }[]
+      }
       get_caa_zones_in_bounds: {
         Args: {
           max_lat: number

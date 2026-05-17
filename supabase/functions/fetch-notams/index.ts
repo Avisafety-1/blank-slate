@@ -263,12 +263,11 @@ Deno.serve(async (req) => {
     let totalSkipped = 0;
     let totalCaaEnriched = 0;
 
-    // Load CAA fareområde polygons once for geometry enrichment
+    // Load CAA fareområde polygons once for geometry enrichment (via RPC since geometry is postgis)
     const caaMap = new Map<string, unknown>();
-    const { data: caaRows } = await supabase
-      .from("caa_drone_zones")
-      .select("external_id, geometry_geojson")
-      .eq("layer_id", "fareomrader");
+    const { data: caaRows, error: caaErr } = await supabase
+      .rpc("get_caa_zones_geojson", { p_layer_id: "fareomrader" });
+    if (caaErr) console.error("CAA load error:", caaErr);
     for (const row of caaRows ?? []) {
       if (row.external_id && row.geometry_geojson) {
         caaMap.set(row.external_id, row.geometry_geojson);
