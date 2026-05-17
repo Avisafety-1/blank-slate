@@ -1,42 +1,78 @@
-## Datakilde (verifisert)
+## Mål
 
-**Eurostat GISCO `PopulationGrid2021`** — EU census 2021, 1 km² grid, dekker hele Europa.
+1. Splitt befolkningstetthet-laget på `/kart` i to uavhengige toggles.
+2. La SORA-beregningene (adjacent area + flight geography population) automatisk velge SSB (Norge) eller Eurostat (Europa) basert på rutens geografi.
 
-- WMS: `https://gisco-services.ec.europa.eu/maps/service`
-- Layer: `PopulationGrid2021`
-- Testet live: returnerer `image/png` (HTTP 200), `Access-Control-Allow-Origin: *`, dekker `EPSG:3857` globalt.
-- Lisens: © European Commission, fri bruk med attribusjon.
+## Datakilder
 
-Dette er den offisielle EU-pendanten til SSB sitt befolkningsrutenett og dekker akkurat det behovet du opprinnelig pekte på.
+- **Norge:** SSB WFS 250 m grid (uendret, eksisterende `ssb-population` edge function).
+- **Europa:** Eurostat GEOSTAT Census 2021, 1 km² befolkningsrutenett (offisiell EU-pendant til SSB sitt grid). Lastes én gang og lagres i Postgres/PostGIS i Lovable Cloud, eksponeres via ny edge function.
+
+GISCO sitt WMS er kun rendrede tiles — ikke spørrbart per celle. Derfor må vi importere grid-en til databasen for å hente faktiske celler til SORA.
 
 ## Endringer
 
-### `src/components/OpenAIPMap.tsx`
-- Erstatt min nåværende (ikke-fungerende) `jrcGhsPopLayer` med et Eurostat WMS-lag.
-- Beholder den samlede `befolkningstetthet`-togglen som inneholder begge:
-  - `ssbBefolkningLayer` (SSB 1 km, dekker Norge, tegnes øverst).
-  - `eurostatPopLayer` (Eurostat PopulationGrid2021, dekker resten av Europa).
-- WMS-parametre:
-  ```
-  layers: "PopulationGrid2021"
-  format: "image/png", transparent: true, version: "1.3.0"
-  opacity: 0.6
-  minZoom: 4, maxZoom: 14, tiled: true
-  updateWhenIdle: true, keepBuffer: 1
-  attribution: "© European Commission – Eurostat (GISCO)"
-  ```
-- Bruker eksisterende `populationDensityPane` (z-index 635).
+### 1. Database (migrasjon)
 
-Smart rendering kommer "gratis" fra WMS tile-mekanismen i Leaflet: kun tiles for synlig viewport hentes, og `minZoom: 4` hindrer at hele kloden lastes ved utzoom.
+Ny tabell `eurostat_population_1km`:
+- `grd_id text primary key` (Eurostat sitt INSPIRE-grid-ID, f.eks. `CRS3035RES1000mN3527000E4321000`)
+- `pop_2021 integer not null`
+- `geom geometry(Polygon, 4326)` med GIST-indeks
+- RLS av (offentlig referansedata), tilgjengelig for `anon` SELECT
 
-### `src/components/BefolkningLegend.tsx`
-- Oppdater attribusjons-/kildelinjen til: "Norge: SSB · Europa: Eurostat GISCO (Census 2021)".
+Engangs-import med `ogr2ogr` fra Eurostat GEOSTAT 2021 1km gpkg, transformert EPSG:3035 → 4326. Kun europeiske celler (~2–3M rader, ~500 MB). Jeg laster ned, klipper og importerer fra sandboxen i samme task.
 
-## Filer som endres
-- `src/components/OpenAIPMap.tsx`
-- `src/components/BefolkningLegend.tsx`
+### 2. Edge function `eurostat-population` (ny)
+
+Speil av `ssb-population`:
+- Input: `{ bbox: "minLng,minLat,maxLng,maxLat" }`
+- Output: samme shape som SSB-funksjonen returnerer (`features: [{ pop_tot, centroidLat, centroidLng, polygon, densityPerKm2 }]`)
+- Henter celler via SQL `ST_Intersects(geom, ST_MakeEnvelope(...))`
+- `densityPerKm2 = pop_2021` (1 km² ruter), så samme kategori-mapping fungerer
+
+### 3. `src/lib/adjacentAreaCalculator.ts`
+
+- Ny helper `isBboxInsideNorway(bbox)` — grov sjekk mot Norge sin omsluttende bbox (mainland + Svalbard).
+- `fetchPopulationGrid(bbox)` velger:
+  - Norge → eksisterende `ssb-population` (250 m).
+  - Europa → ny `eurostat-population` (1 km).
+- Hvis bbox krysser grensen, kall begge og slå sammen cellene (SSB innenfor Norge, Eurostat ellers — Eurostat-celler som overlapper Norge filtreres bort).
+- `computeAdjacentAreaDensity` og `computePopulationInGeometry` (flight-geography) bruker samme valg uten ekstra argument.
+
+### 4. `src/components/OpenAIPMap.tsx`
+
+Splitt nåværende `befolkningstetthet` (layerGroup) i to:
+- `befolkning_norge` — "Befolkningstetthet Norge (SSB)" — `ssbBefolkningLayer` (1 km eller 250 m WMS, uendret).
+- `befolkning_europa` — "Befolkningstetthet Europa (Eurostat 2021)" — `eurostatPopLayer` (WMS, `maxNativeZoom: 10`).
+
+Begge får samme ikon (`users`) og samme `populationDensityPane`. Toggle hver for seg i lag-velgeren.
+
+### 5. `src/components/BefolkningLegend.tsx`
+
+Vises når enten Norge- eller Europa-laget er aktivt. Tekst tilpasses hvilken som er på (eller begge).
+
+### 6. `src/components/AdjacentAreaPanel.tsx` / `SoraSettingsPanel.tsx`
+
+- Vis kildebadge: "SSB 250 m", "Eurostat 1 km" eller "Blandet" basert på hva som ble brukt.
+- Ingen logikk-endring utover å motta kilde-feltet fra `computeAdjacentAreaDensity`.
+
+## Filer som endres / opprettes
+
+- ny migrasjon: `eurostat_population_1km` tabell + GIST-indeks
+- ny edge function: `supabase/functions/eurostat-population/index.ts`
+- `src/lib/adjacentAreaCalculator.ts` — kildevalg
+- `src/components/OpenAIPMap.tsx` — splitt laget
+- `src/components/BefolkningLegend.tsx` — kildevisning
+- `src/components/AdjacentAreaPanel.tsx` — kildebadge
+- `src/types/map.ts` / `src/i18n/locales/*.json` — nye lag-IDer og labels
 
 ## Out of scope
-- Ingen edge function, ingen storage-opplasting, ingen ny dependency.
-- SORA/risiko-beregninger og SSB edge function rører jeg ikke.
-- Klikk-popup på Eurostat-rutene utelates nå (kan legges til via WMS `GetFeatureInfo` senere hvis ønsket).
+
+- Endrer ikke SORA-formler eller kategori-terskler.
+- Eurostat sitt 1 km grid har lavere oppløsning enn SSB sitt 250 m. SORA-kategori beregnes likevel per celle, men "tilstøtende område" blir grovere utenfor Norge — det er den beste offentlige oppløsningen som finnes for hele Europa.
+- Ingen endring i FH2/Ninox/risk PDF-eksport — de leser bare resultatobjektet.
+
+## Spørsmål før implementasjon
+
+1. **Bbox-deteksjon**: Er det greit at "Norge" defineres som bounding box (lat 57.5–71.5, lng 4–32 + Svalbard 74–81/10–35)? Alternativt kan vi bruke en nøyaktig Norge-polygon (litt mer presist, marginalt mer kode).
+2. **Eurostat-import**: GEOSTAT 2021 er ~500 MB komprimert. Vil du at jeg laster ned og importerer hele Europa nå, eller skal vi begrense til EØS/Schengen-land for å spare lagring?
