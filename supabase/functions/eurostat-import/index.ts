@@ -20,8 +20,9 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const secret = Deno.env.get("EUROSTAT_IMPORT_SECRET");
-  if (!secret || req.headers.get("x-import-secret") !== secret) {
+  // One-time hardcoded secret — this function and secret are deleted after import.
+  const IMPORT_SECRET = "es-1km-import-7f4c2b9e8a13d65afc01";
+  if (req.headers.get("x-import-secret") !== IMPORT_SECRET) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
