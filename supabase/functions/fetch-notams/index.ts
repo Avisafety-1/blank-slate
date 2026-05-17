@@ -189,6 +189,33 @@ function parseRssItem(title: string, description: string, guid: string) {
   };
 }
 
+/** Look up precise CAA fareområde geometry for NOTAMs that reference ENDxxx codes. */
+function enrichGeometryFromCAA(
+  item: ReturnType<typeof parseRssItem>,
+  caaMap: Map<string, unknown>,
+): ReturnType<typeof parseRssItem> {
+  const text = item.notam_text ?? "";
+  const codeRegex = /\bEN[DR]\d{3}[A-Z]?\b/g;
+  const codes = Array.from(new Set(text.match(codeRegex) ?? []));
+  for (const code of codes) {
+    const exact = caaMap.get(code);
+    const stripped = code.replace(/[A-Z]$/, "");
+    const fallback = exact ?? (stripped !== code ? caaMap.get(stripped) : undefined);
+    if (fallback) {
+      return {
+        ...item,
+        geometry_geojson: fallback as object,
+        properties: {
+          ...(item.properties as Record<string, unknown>),
+          geometry_source: "caa-fareomrader",
+          matched_caa_id: exact ? code : stripped,
+        },
+      };
+    }
+  }
+  return item;
+}
+
 /** Fetch and parse a single RSS feed */
 async function fetchRssFeed(feedUrl: string): Promise<ReturnType<typeof parseRssItem>[]> {
   const res = await fetch(feedUrl, {
