@@ -1254,8 +1254,21 @@ export async function computeAdjacentAreaDensity(
   );
   const pass = requiredContainment !== "Out of scope" && requiredContainment !== "Error";
 
+  const ssbCount = densityCells.filter(c => c.source !== "eurostat").length;
+  const eurostatCount = densityCells.filter(c => c.source === "eurostat").length;
+  const sourceLabel =
+    eurostatCount === 0
+      ? "SSB befolkning på rutenett 250 m (2025)"
+      : ssbCount === 0
+      ? "Eurostat GEOSTAT 2021 1 km grid"
+      : "SSB 250 m (Norge) + Eurostat 1 km (utland)";
+  const gridRes = eurostatCount > 0 && ssbCount === 0 ? 1000 : 250;
+  const driverIsEurostat = maxDensityCell?.source === "eurostat";
+
   const statusText = `Required containment: ${requiredContainment} · gj.snitt ${avgDensity.toFixed(1)} pers/km² (${POPULATION_DENSITY_LABELS[populationDensityCategory]})`;
-  const method = "SSB 250 m-ruter som berører tilstøtende donut-område summeres; containment beregnes fra gjennomsnittlig befolkningstetthet utenfor bakkerisikobufferen.";
+  const method = eurostatCount > 0
+    ? "Ruter (SSB 250 m i Norge, Eurostat 1 km utenfor) som berører tilstøtende donut-område summeres; containment beregnes fra gjennomsnittlig befolkningstetthet utenfor bakkerisikobufferen."
+    : "SSB 250 m-ruter som berører tilstøtende donut-område summeres; containment beregnes fra gjennomsnittlig befolkningstetthet utenfor bakkerisikobufferen.";
 
   return {
     adjacentRadiusM,
@@ -1271,10 +1284,10 @@ export async function computeAdjacentAreaDensity(
     requiredContainment,
     containmentLevel: requiredContainment,
     statusText,
-    dataSource: "SSB befolkning på rutenett 250 m (2025)",
+    dataSource: sourceLabel,
     method,
-    calculation: `Gjennomsnitt: ${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} pers/km². Tetthetskategori: ${POPULATION_DENSITY_LABELS[populationDensityCategory]}. Høyeste 250 m-rute i området: ${(maxDensityCell?.population ?? 0).toLocaleString("nb-NO")} personer × 16 = ${driverDensity.toFixed(1)} pers/km² (kun kart-/pådriverinfo).`,
-    gridResolutionM: 250,
+    calculation: `Gjennomsnitt: ${totalPop.toLocaleString("nb-NO")} innbyggere / ${adjacentAreaKm2.toFixed(1)} km² = ${avgDensity.toFixed(1)} pers/km². Tetthetskategori: ${POPULATION_DENSITY_LABELS[populationDensityCategory]}. Høyeste rute i området: ${(maxDensityCell?.population ?? 0).toLocaleString("nb-NO")} personer ${driverIsEurostat ? "(Eurostat 1 km²)" : "× 16 (SSB 250 m)"} = ${driverDensity.toFixed(1)} pers/km² (kun kart-/pådriverinfo).`,
+    gridResolutionM: gridRes,
     maxCellPopulation: maxDensityCell?.population,
     densityCells,
     maxDensityCell,
