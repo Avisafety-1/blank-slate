@@ -305,7 +305,13 @@ Deno.serve(async (req) => {
               }
               return true;
             })
-            .map((item) => ({ ...item, fetched_at: now.toISOString() }));
+            .map((item) => {
+              const enriched = enrichGeometryFromCAA(item, caaMap);
+              if ((enriched.properties as any)?.geometry_source === "caa-fareomrader") {
+                totalCaaEnriched++;
+              }
+              return { ...enriched, fetched_at: now.toISOString() };
+            });
 
           // Upsert in batches
           for (let i = 0; i < rows.length; i += 50) {
