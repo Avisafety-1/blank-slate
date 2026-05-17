@@ -22,6 +22,8 @@ interface LayerSpec {
   authority_phone?: string;
   default_restriction: string;
   default_reason: string[];
+  /** Optional: derive a canonical external_id (e.g. "ENR102") from feature properties. */
+  externalIdFn?: (p: Record<string, unknown>) => string | null;
 }
 
 const LAYERS: LayerSpec[] = [
