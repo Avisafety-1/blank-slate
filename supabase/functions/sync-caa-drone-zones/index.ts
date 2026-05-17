@@ -66,10 +66,21 @@ const LAYERS: LayerSpec[] = [
     authority_url: "https://ippc.no",
     default_restriction: "CONDITIONAL",
     default_reason: ["AIR_TRAFFIC"],
+  {
+    id: "restriksjoner",
+    url: "https://dronesoner.no/data/forbud_restriksjoner.geojson",
+    authority_name: "Luftfartstilsynet",
+    authority_url: "https://luftfartstilsynet.no",
+    default_restriction: "PROHIBITED",
+    default_reason: ["AIR_TRAFFIC"],
+    // navn like "R102 Oslo sentrum" → canonical NOTAM-friendly id "ENR102"
+    externalIdFn: (p) => {
+      const navn = String((p as any).navn ?? (p as any).Navn ?? "");
+      const m = navn.match(/\bR\s?(\d{2,4})/i);
+      return m ? `ENR${m[1]}` : null;
+    },
   },
 ];
-
-function parseAltitudeMeters(raw: unknown): number | null {
   if (raw == null) return null;
   if (typeof raw === "number") return raw;
   const s = String(raw).trim().toUpperCase();
