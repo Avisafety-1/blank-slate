@@ -1124,7 +1124,7 @@ async function fetchPopulationGridForTile(
 
 function splitBboxIntoTiles(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
-  maxTileKm = 4
+  maxTileKm: number = 4
 ) {
   const avgLat = (bbox.minLat + bbox.maxLat) / 2;
   const latStep = maxTileKm / 111.32;
