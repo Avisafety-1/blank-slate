@@ -262,6 +262,25 @@ export default function KartPage() {
     return () => ctrl.abort();
   }, [currentRoute.coordinates, soraSettings, showPopulationDensity, showAdjacentArea, soraDroneMaxSpeed, soraDensityCacheKey]);
 
+  // Slå sammen befolkningsruter fra SORA-volum og Tilstøtende område slik at
+  // Eurostat-/SSB-ruter alltid kommer på kartet automatisk — også når det er
+  // tilstøtende-beregningen som finner cellene først (typisk utenfor Norge).
+  const mergedDensityCells = useMemo(() => {
+    if (!soraSettings.enabled || !showPopulationDensity) return undefined;
+    const seen = new Map<string, any>();
+    const add = (cells?: any[]) => {
+      if (!cells) return;
+      for (const c of cells) {
+        const k = `${c.centroidLat.toFixed(6)}:${c.centroidLng.toFixed(6)}:${c.population}`;
+        if (!seen.has(k)) seen.set(k, c);
+        else if (c.isDriver && !seen.get(k).isDriver) seen.set(k, c);
+      }
+    };
+    add(soraDensityResult?.cells);
+    if (showAdjacentArea) add(adjacentResult?.densityCells);
+    return seen.size ? Array.from(seen.values()) : undefined;
+  }, [soraSettings.enabled, showPopulationDensity, soraDensityResult, showAdjacentArea, adjacentResult]);
+
   // KML import handler
   const handleKmlImport = async (file: File) => {
     setImportingKml(true);
@@ -1037,7 +1056,7 @@ export default function KartPage() {
           onFocusFlightHandled={() => setFocusFlightId(null)}
           soraSettings={soraSettings}
           adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
-          populationDensityCells={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.cells : undefined}
+          populationDensityCells={mergedDensityCells}
           populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
           routeHintOffsetClass={
             isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled

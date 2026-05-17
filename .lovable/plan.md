@@ -1,38 +1,25 @@
-## Problem
+Jeg fant at Eurostat-backenden og databasen fungerer: et direkte kall mot `eurostat-population` for Paris returnerer befolkede 1 km-ruter, så problemet ligger sannsynligvis i frontend-flyten for automatisk beregning/visning.
 
-I Norge tegnes SSB 250 m-ruter med pådriver automatisk så snart en rute med buffersoner planlegges. Utenfor Norge skjer ingenting på kartet selv om Eurostat-dataene finnes og `eurostat-population` svarer korrekt (verifisert med en Paris-bbox: returnerer ~40 000 pers/km² celler).
+Plan:
 
-Rotårsak: `fetchSsbPopulationGridTiled` splitter alltid bbox i 4 km tiles. Det er tilpasset SSB sitt 250 m-grid, men for Eurostat sitt 1 km-grid er det altfor smått. En typisk Paris-rute (5 km + ~3 km adjacent + buffer) gir en bbox på ~25-30 km, som blir ~50-70 sekvensielle/4-parallelle edge-funksjonskall mot `eurostat-population`. I praksis tar dette så lang tid (eller faller ut med rate-limit / abort) at `soraDensityResult` aldri populeres, og `OpenAIPMap` får aldri `populationDensityCells` å tegne. Det er ingen visuell fallback eller feilmelding, så brukeren ser bare "ingenting".
+1. Koble tilstøtende-beregningen direkte til kartvisningen
+- Når `AdjacentAreaPanel` har beregnet befolkningstetthet, skal `densityCells` fra resultatet kunne sendes opp til `Kart.tsx`.
+- `Kart.tsx` skal bruke disse cellene som fallback/primærkilde for `OpenAIPMap` når tilstøtende område er aktivt.
+- Dette gjør at rutene som faktisk brukes i containment-beregningen også vises automatisk på kartet.
 
-I tillegg er metadata fortsatt hardkodet i `computeSoraVolumePopulationDensity` (`gridResolutionM: 250`), så panelet kan vise feil oppløsning når kun Eurostat-celler er med.
+2. Gjør Eurostat automatisk på lik linje med SSB
+- Behold SSB i Norge og Eurostat utenfor Norge, men sørg for at `showPopulationDensity` skrus på når SORA/tilstøtende områder aktiveres også utenfor Norge.
+- Oppdater teksten i SORA-panelet fra “SSB 250 m” til kildebevisst tekst: SSB i Norge, Eurostat i Europa, eller blandet ved grensekryssing.
 
-## Endringer
+3. Fiks synlig “pådriver” for Eurostat-ruter
+- Sørg for at høyeste tetthet innenfor bakkerisiko-/SORA-volum markeres som `isDriver` også når kilden er Eurostat.
+- Tooltip/popup skal fortsatt vise “Pådriver for utregning”, men med Eurostat 1 km²-beregning, ikke `pop × 16`.
 
-### 1. Tile-størrelse pr. kilde (`src/lib/adjacentAreaCalculator.ts`)
+4. Legg inn tydelig feildiagnostikk uten å plage brukeren
+- Logg når Eurostat returnerer 0 celler, når celler finnes men ingen treffer bufferpolygonet, og når kall avbrytes.
+- Unngå at en abort/null-resultat skjuler tidligere gyldige celler hvis brukeren fortsatt er på samme rute.
 
-- Klassifiser bbox med `isBboxInNorway` *før* splitting:
-  - Helt i Norge → behold 4 km tiles (SSB 250 m).
-  - Helt utenfor Norge → bruk 25 km tiles (Eurostat 1 km tåler større bbox per kall; en Paris-rute blir 1-4 kall i stedet for 50-70).
-  - Krysser grensen → split i 4 km tiles og la `fetchPopulationGridForTile` velge kilde pr. tile (uendret oppførsel).
-- Implementer ved å legge til en `maxTileKm`-parameter i `splitBboxIntoTiles` og kalle den med riktig verdi fra `fetchSsbPopulationGridTiled` basert på klassifiseringen over.
-- Behold `Promise.allSettled` og kildelogging.
-
-### 2. Riktig metadata for Eurostat-resultater (`computeSoraVolumePopulationDensity`)
-
-- Tell SSB- vs Eurostat-celler i `visibleCells` på samme måte som `computeAdjacentAreaDensity` allerede gjør.
-- Sett `gridResolutionM` til 1000 når alle synlige celler er Eurostat, 250 ellers.
-- (Valgfritt, ikke krav) eksponere `dataSource`-streng i `SoraPopulationDensityResult` slik panelet kan vise samme kilde-tekst som adjacent-resultatet.
-
-### 3. Verifisering
-
-- Test i Norge (Oslo): forventer SSB 250 m-ruter rendres som før, ingen regresjon.
-- Test i Frankrike (Paris ~5 km): forventer Eurostat 1 km-polygoner tegnes automatisk i buffer + adjacent donut innen få sekunder, pådriver markeres, og panelet viser `Eurostat GEOSTAT 2021 1 km grid`.
-- Test grense-case (Strömstad/Halden): forventer blanding av SSB- og Eurostat-celler.
-- Bekreft via konsollen: `[adjacentArea] fetched N celler (SSB: x, Eurostat: y, tiles: z)`.
-
-## Det dette IKKE endrer
-
-- RPC `eurostat_pop_in_bbox`, edge-funksjonen `eurostat-population`, eller databaseskjema.
-- Containment/pådriver-matrisen eller SORA-geometrien.
-- Popup/tooltip-tekstene som allerede er kildebevisste.
-- Eurostat WMS-overlayet (separat lag).
+5. Verifisering
+- Test med et område i Norge for å sikre at SSB fortsatt fungerer.
+- Test med et område i Europa, f.eks. Paris/København, for å bekrefte at Eurostat-ruter vises automatisk, pådriver markeres og beregningen vises i tilstøtende-området.
+- Test en grensenær rute for blandet SSB/Eurostat-kilde.
