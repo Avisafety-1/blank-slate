@@ -351,13 +351,14 @@ Deno.serve(async (req) => {
       .is("effective_end", null)
       .lt("fetched_at", staleDate.toISOString());
 
-    console.log(`NOTAMs: upserted=${totalUpserted}, skipped=${totalSkipped}, deleted=${deleteCount || 0}`);
+    console.log(`NOTAMs: upserted=${totalUpserted}, skipped=${totalSkipped}, deleted=${deleteCount || 0}, caa_enriched=${totalCaaEnriched}`);
 
     return new Response(JSON.stringify({
       source: "RSS",
       upserted: totalUpserted,
       skipped: totalSkipped,
       deleted: deleteCount || 0,
+      caa_enriched: totalCaaEnriched,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
