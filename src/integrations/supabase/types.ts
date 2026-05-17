@@ -2471,6 +2471,24 @@ export type Database = {
           },
         ]
       }
+      eurostat_population_1km: {
+        Row: {
+          geom: unknown
+          grd_id: string
+          pop_2021: number
+        }
+        Insert: {
+          geom: unknown
+          grd_id: string
+          pop_2021: number
+        }
+        Update: {
+          geom?: unknown
+          grd_id?: string
+          pop_2021?: number
+        }
+        Relationships: []
+      }
       fh2_credential_audit: {
         Row: {
           action: string
@@ -6324,6 +6342,21 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      eurostat_pop_in_bbox: {
+        Args: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+        }
+        Returns: {
+          centroid_lat: number
+          centroid_lng: number
+          geom_json: string
+          grd_id: string
+          pop_2021: number
+        }[]
+      }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
