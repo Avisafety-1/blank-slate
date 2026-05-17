@@ -1155,7 +1155,11 @@ export async function fetchSsbPopulationGridTiled(
   bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number },
   signal?: AbortSignal
 ): Promise<SsbPopulationCell[]> {
-  const tiles = splitBboxIntoTiles(bbox);
+  // SSB 250 m-grid trives med ~4 km tiles. Eurostat 1 km-grid tåler
+  // mye større bbox per kall, så bruk 25 km tiles utenfor Norge for å
+  // unngå hundrevis av sekvensielle edge-funksjonskall.
+  const tileKm = isBboxInNorway(bbox) ? 4 : 25;
+  const tiles = splitBboxIntoTiles(bbox, tileKm);
   if (tiles.length <= 1) return fetchPopulationGridForTile(bbox, signal);
 
   const uniqueCells = new Map<string, SsbPopulationCell>();
