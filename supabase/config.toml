@@ -219,5 +219,3 @@ verify_jwt = false
 [functions.eurostat-population]
 verify_jwt = false
 
-[functions.eurostat-import]
-verify_jwt = false
