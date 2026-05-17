@@ -21,7 +21,7 @@ export function BefolkningLegend({ resolution = "1km" }: BefolkningLegendProps) 
       {resolution === "250m" ? (
         <p className="text-[10px] text-muted-foreground mb-1.5">Risikovurdering bruker 250 m-ruter × 16.</p>
       ) : (
-        <p className="text-[10px] text-muted-foreground mb-1.5">Norge: SSB · Europa/verden: JRC GHSL</p>
+        <p className="text-[10px] text-muted-foreground mb-1.5">Norge: SSB · Europa: Eurostat GISCO (Census 2021)</p>
       )}
       <div className="flex flex-col gap-1">
         {categories.map((c) => (
