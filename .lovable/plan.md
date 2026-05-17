@@ -1,60 +1,38 @@
+## Mål
 
-## Plan: Automatisk synk av nye dronesone-lag fra dronesoner.no
+Når en NOTAM refererer til et kjent fareområde (f.eks. "DANGER AREA END354 LEKSDALEN" eller "END365 GISKAS"), skal vi tegne NOTAMet med den faktiske polygonen fra `caa_drone_zones` (layer_id `fareomrader`) i stedet for en sirkel rundt Q-line-senteret.
 
-Henter 5 nye lag fra Luftfartstilsynets dronesoner.no daglig. Skjult som default, inngår i SORA-sikkerhetsanalyse.
+## Slik gjør vi det
 
-### 1. Database (migrasjon)
+**1. Match NOTAM-tekst mot CAA-fareområder**
 
-Ny tabell `caa_drone_zones`:
-- `layer_id` (tekst: 'fengsler', 'ambassader', 'fareomrader', 'flyplasser', 'notam_soner')
-- `external_id`, `name`, `restriction`, `reason` (tekst[]), `message`
-- `authority_name`, `authority_url`, `authority_phone`
-- `lower_limit_m`, `upper_limit_m`, `lower_ref`, `upper_ref` (AGL/AMSL)
-- `geometry` (geography MultiPolygon) + GIST-indeks
-- `last_synced_at`
-- RLS: authenticated read
+I `supabase/functions/fetch-notams/index.ts`, etter at hver RSS-item er parset:
 
-Ny RPC `bulk_upsert_caa_zones(p_layer_id, p_features jsonb)` — upsert per `(layer_id, external_id)` og slett rader som mangler i ny batch.
+- Kjør regex `EN[DR]\d{3}[A-Z]?` mot `notam_text` for å finne kandidatkoder (END104, END365, END548Z, osv).
+- Slå opp kodene i `caa_drone_zones` (layer_id IN ('fareomrader')). Prøv eksakt match først, deretter uten suffiksbokstav (END548Z → END548).
+- Ved treff: erstatt `geometry_geojson` med polygonet fra `caa_drone_zones.geometry_geojson`, og legg på `properties.geometry_source = "caa-fareomrader"` og `properties.matched_caa_id = "END354"` så vi kan se i popup hvor geometrien kommer fra.
+- Ingen treff: behold dagens oppførsel (sirkel fra Q-line, eller pin for scope A).
 
-### 2. Edge function `sync-caa-drone-zones`
+**2. Effektivitet**
 
-- Beskyttet av `requireCronOrSuperadmin`
-- Henter de 5 GeoJSON-filene fra `https://dronesoner.no/data/{forbud_fengsler,forbud_ambassader,obs_fareomrader,obs_flyplasser,obs_notam_soner}.geojson?v=<ts>`
-- Normaliserer features → bulk-upsert via ny RPC
-- Returnerer per-lag-statistikk
+- Last alle relevante CAA-zoner én gang per kjøring (én SELECT på starten av `Deno.serve`-handleren), bygg en `Map<external_id, geometryGeojson>` i minnet, og gjør oppslag synkront per NOTAM.
 
-### 3. pg_cron-jobb
+**3. Refresh av eksisterende NOTAMer**
 
-Daglig 04:00 UTC kaller `sync-caa-drone-zones` (samme mønster som `sync-geo-layers`).
+Trigg `fetch-notams` manuelt én gang etter deploy slik at allerede lagrede NOTAMer får oppdatert geometri (upsert på `notam_id`).
 
-### 4. Frontend (`OpenAIPMap.tsx` + `MapLayerControl`)
+## Visuell merking (lite tillegg)
 
-- Henter `caa_drone_zones` filtrert på viewport (bbox-query via PostGIS)
-- 5 nye toggles i lag-panelet, **alle skjult som default**
-- Farge: rød ved `restriction='REQ_AUTHORISATION'`, gul ved `CONDITIONAL`
-- Popup viser navn, `message`, myndighet (klikkbar tlf/URL), høydegrenser
+I `buildNotamPopup` (`src/lib/mapDataFetchers.ts`): hvis `notam.properties.geometry_source === "caa-fareomrader"`, vis en liten linje i popupen: «Geometri: Luftfartstilsynet AIP (via CAA-fareområde {matched_caa_id})». Hjelper brukeren å forstå hvorfor området ser annerledes ut enn før.
 
-### 5. SORA-sikkerhetsanalyse
+## Hva som IKKE er med (men kan utvides senere)
 
-Utvid `safetyAnalysis` (`src/lib/`-funksjon brukt av route planner) til å sjekke rute-intersect mot `caa_drone_zones` per lag:
-- Fengsler/ambassader/NSM-sensorforbud → **rød** advarsel (krever tillatelse)
-- Fareomrader/små flyplasser/notam-soner → **gul** advarsel (vær oppmerksom)
-- Bruker GIST-indeks for raske ST_Intersects-spørringer på bufferet rute
+- **Restriksjonsområder (ENRxxx)**: dronesoner.no har et eget lag `forbud_restriksjoner.geojson` som vi i dag _ikke_ synkroniserer. Hvis vi vil at f.eks. "RESTRICTED AREA ENR102" skal få presis geometri tilsvarende, må vi først legge til det laget i `sync-caa-drone-zones` (LAYERS-array). Si fra hvis du vil ha det med — det er en liten utvidelse.
+- **Forbud_notam.geojson**: dronesoner.no har også et eget NOTAM-lag derfra. Vi kan vurdere å bytte hele NOTAM-kilden til den, men det er en større endring og vi mister da NOTAMer som ikke har droneforbud. Anbefaler å ikke gjøre det nå.
 
-### Tekniske detaljer
+## Tekniske detaljer
 
-- Total nedlasting ~1,3 MB/dag for de 5 lagene
-- Estimert ~2000 nye geometrier
-- Ingen overlapp med eksisterende tabeller (`rpas_*`, `nsm_*`, `vern_*`)
-- Manuell trigger tilgjengelig for superadmin via Admin-siden (legges til som knapp ved siden av eksisterende sync-knapper)
-
-### Filer som endres/opprettes
-
-```text
-ny  supabase/functions/sync-caa-drone-zones/index.ts
-ny  migrasjon: caa_drone_zones + bulk_upsert_caa_zones + pg_cron-jobb
-mod src/components/OpenAIPMap.tsx       (rendering + henting)
-mod src/components/MapLayerControl.tsx  (legger til toggles)
-mod src/lib/<safetyAnalysis>.ts         (utvid sjekk)
-mod src/pages/Admin.tsx                 (manuell sync-knapp)
-```
+- Filer: `supabase/functions/fetch-notams/index.ts` (hovedendring), `src/lib/mapDataFetchers.ts` (kun popup-tilskudd, ingen ny logikk).
+- Ingen migrasjon nødvendig — vi gjenbruker eksisterende `geometry_geojson`-kolonne.
+- Match-regex inkluderer `[A-Z]?` for suffiksvarianter (END548Z), og fallback uten suffiks gjør oppslaget tolerant.
+- Database-call: én `select external_id, geometry_geojson from caa_drone_zones where layer_id = 'fareomrader'` per kjøring (~47 rader, neglisjerbar).

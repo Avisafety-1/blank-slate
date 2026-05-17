@@ -189,6 +189,33 @@ function parseRssItem(title: string, description: string, guid: string) {
   };
 }
 
+/** Look up precise CAA fareområde geometry for NOTAMs that reference ENDxxx codes. */
+function enrichGeometryFromCAA(
+  item: ReturnType<typeof parseRssItem>,
+  caaMap: Map<string, unknown>,
+): ReturnType<typeof parseRssItem> {
+  const text = item.notam_text ?? "";
+  const codeRegex = /\bEN[DR]\d{3}[A-Z]?\b/g;
+  const codes = Array.from(new Set(text.match(codeRegex) ?? []));
+  for (const code of codes) {
+    const exact = caaMap.get(code);
+    const stripped = code.replace(/[A-Z]$/, "");
+    const fallback = exact ?? (stripped !== code ? caaMap.get(stripped) : undefined);
+    if (fallback) {
+      return {
+        ...item,
+        geometry_geojson: fallback as object,
+        properties: {
+          ...(item.properties as Record<string, unknown>),
+          geometry_source: "caa-fareomrader",
+          matched_caa_id: exact ? code : stripped,
+        },
+      };
+    }
+  }
+  return item;
+}
+
 /** Fetch and parse a single RSS feed */
 async function fetchRssFeed(feedUrl: string): Promise<ReturnType<typeof parseRssItem>[]> {
   const res = await fetch(feedUrl, {
@@ -234,6 +261,20 @@ Deno.serve(async (req) => {
     const now = new Date();
     let totalUpserted = 0;
     let totalSkipped = 0;
+    let totalCaaEnriched = 0;
+
+    // Load CAA fareområde polygons once for geometry enrichment
+    const caaMap = new Map<string, unknown>();
+    const { data: caaRows } = await supabase
+      .from("caa_drone_zones")
+      .select("external_id, geometry_geojson")
+      .eq("layer_id", "fareomrader");
+    for (const row of caaRows ?? []) {
+      if (row.external_id && row.geometry_geojson) {
+        caaMap.set(row.external_id, row.geometry_geojson);
+      }
+    }
+    console.log(`Loaded ${caaMap.size} CAA fareområder for NOTAM geometry enrichment`);
 
     // ── Step 1: Fetch RSS feeds from notam_rss_feeds table ──
     const { data: feeds } = await supabase
@@ -264,7 +305,13 @@ Deno.serve(async (req) => {
               }
               return true;
             })
-            .map((item) => ({ ...item, fetched_at: now.toISOString() }));
+            .map((item) => {
+              const enriched = enrichGeometryFromCAA(item, caaMap);
+              if ((enriched.properties as any)?.geometry_source === "caa-fareomrader") {
+                totalCaaEnriched++;
+              }
+              return { ...enriched, fetched_at: now.toISOString() };
+            });
 
           // Upsert in batches
           for (let i = 0; i < rows.length; i += 50) {
@@ -304,13 +351,14 @@ Deno.serve(async (req) => {
       .is("effective_end", null)
       .lt("fetched_at", staleDate.toISOString());
 
-    console.log(`NOTAMs: upserted=${totalUpserted}, skipped=${totalSkipped}, deleted=${deleteCount || 0}`);
+    console.log(`NOTAMs: upserted=${totalUpserted}, skipped=${totalSkipped}, deleted=${deleteCount || 0}, caa_enriched=${totalCaaEnriched}`);
 
     return new Response(JSON.stringify({
       source: "RSS",
       upserted: totalUpserted,
       skipped: totalSkipped,
       deleted: deleteCount || 0,
+      caa_enriched: totalCaaEnriched,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
