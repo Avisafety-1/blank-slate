@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.admin_trigger_edge_function(text, jsonb) TO PUBLIC;
