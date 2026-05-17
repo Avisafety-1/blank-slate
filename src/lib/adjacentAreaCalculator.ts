@@ -1344,12 +1344,16 @@ export async function computeSoraVolumePopulationDensity(
   const driverKey = maxDensityCell ? getCellKey(maxDensityCell) : null;
   const markedCells = visibleCells.map(cell => ({ ...cell, isDriver: driverKey === getCellKey(cell) }));
 
+  const ssbCount = visibleCells.filter(c => c.source !== "eurostat").length;
+  const eurostatCount = visibleCells.length - ssbCount;
+  const gridResolutionM = eurostatCount > 0 && ssbCount === 0 ? 1000 : 250;
+
   return {
     cells: markedCells,
     coveragePolygons: coveragePolys,
     maxDensityCell: maxDensityCell ? { ...maxDensityCell, isDriver: true } : undefined,
     totalPopulation,
     maxDensityPerKm2: maxDensityCell?.densityPerKm2 ?? 0,
-    gridResolutionM: 250,
+    gridResolutionM,
   };
 }
