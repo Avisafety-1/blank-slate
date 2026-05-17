@@ -94,12 +94,15 @@ function normalizeFeature(
 ): Record<string, unknown> | null {
   if (!feature?.geometry) return null;
   const p = feature.properties ?? {};
-  const externalId =
+  const icao = p.icaoKode && p.icaoKode !== "XXXX" ? p.icaoKode : null;
+  const nameKey = p.navn ?? p.name ?? p["name:nb"] ?? p["name:en"] ?? `idx-${index}`;
+  const baseId =
     p.id ??
     p["@id"] ??
     p.identifier ??
-    p.icaoKode ??
-    `${spec.id}-${p.navn ?? p.name ?? index}`;
+    icao ??
+    `${spec.id}-${nameKey}-${index}`;
+  const externalId = baseId;
   const name = p.navn ?? p.name ?? p["name:nb"] ?? p["name:en"] ?? null;
   const message = p.info ?? p.remarks ?? null;
 
