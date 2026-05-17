@@ -6342,7 +6342,6 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
-      eurostat_bulk_insert: { Args: { payload: Json }; Returns: number }
       eurostat_pop_in_bbox: {
         Args: {
           max_lat: number
