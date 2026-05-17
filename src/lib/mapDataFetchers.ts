@@ -1377,9 +1377,13 @@ function buildNotamPopup(notam: any): string {
     ? `<div style="max-height:150px;overflow-y:auto;font-size:11px;margin-top:4px;white-space:pre-wrap;">${notam.notam_text}</div>`
     : "";
 
+  const geomSource = notam.properties?.geometry_source === "caa-fareomrader"
+    ? `<br/><span style="font-size:10px;color:#16a34a;">📐 Geometri: Luftfartstilsynet AIP (fareområde ${notam.properties?.matched_caa_id ?? ""})</span>`
+    : "";
+
   return `<div style="max-width:320px;">
     <strong>⚠️ NOTAM ${notam.series || ""}${notam.number}/${notam.year}</strong>
-    ${location}${qcode}${flLimits}
+    ${location}${qcode}${flLimits}${geomSource}
     <br/><span style="font-size:11px;">🕐 ${start} → ${end}</span>
     ${text}
   </div>`;
