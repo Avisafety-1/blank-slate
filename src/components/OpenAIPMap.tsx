@@ -191,6 +191,7 @@ export function OpenAIPMap({
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
+  const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
   const baseLayerRef = useRef<L.TileLayer | null>(null);
   const isPlacingPilotRef = useRef(isPlacingPilot);
   const onPilotPositionChangeRef = useRef(onPilotPositionChange);
@@ -1002,6 +1003,38 @@ export function OpenAIPMap({
       if (dkMatch) fetchDkLayers();
     });
 
+    // Befolkning: bytter mellom SSB (Norge) og Eurostat (Europa) basert på kartsenter
+    const isCenterInNorway = (): boolean => {
+      const c = map.getCenter();
+      return c.lat >= 57.5 && c.lat <= 71.5 && c.lng >= 4 && c.lng <= 32;
+    };
+    const syncBefolkningSource = () => {
+      const inNorway = isCenterInNorway();
+      if (inNorway) {
+        if (map.hasLayer(eurostatPopLayer)) eurostatPopLayer.remove();
+        if (!map.hasLayer(ssbBefolkningLayer)) ssbBefolkningLayer.addTo(map);
+        setBefolkningSource('ssb');
+      } else {
+        if (map.hasLayer(ssbBefolkningLayer)) ssbBefolkningLayer.remove();
+        if (!map.hasLayer(eurostatPopLayer)) eurostatPopLayer.addTo(map);
+        setBefolkningSource('eurostat');
+      }
+    };
+    (map as any)._befolkningControls = {
+      sync: syncBefolkningSource,
+      isCenterInNorway,
+      removeAll: () => {
+        if (map.hasLayer(ssbBefolkningLayer)) ssbBefolkningLayer.remove();
+        if (map.hasLayer(eurostatPopLayer)) eurostatPopLayer.remove();
+      },
+    };
+    map.on('moveend', () => {
+      // Bare bytte hvis ett av lagene allerede er aktivt
+      if (map.hasLayer(ssbBefolkningLayer) || map.hasLayer(eurostatPopLayer)) {
+        syncBefolkningSource();
+      }
+    });
+
     // Kraftledninger: refetch on moveend if layer is enabled
     let kraftDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetchKraft = () => {
@@ -1243,6 +1276,22 @@ export function OpenAIPMap({
     const toArr = (l: L.Layer | L.Layer[]): L.Layer[] => (Array.isArray(l) ? l : [l]);
 
     // Kraftledninger: fetch data on enable, clear on disable
+    // Befolkning: legg til riktig kilde (SSB i Norge, Eurostat ellers)
+    if (id === 'befolkning') {
+      const ctl = (map as any)._befolkningControls;
+      setLayers((prevLayers) =>
+        prevLayers.map((layer) => {
+          if (layer.id === id) {
+            if (enabled) ctl?.sync?.();
+            else ctl?.removeAll?.();
+            return { ...layer, enabled };
+          }
+          return layer;
+        })
+      );
+      return;
+    }
+
     if (id === 'kraftledninger') {
       setLayers((prevLayers) =>
         prevLayers.map((layer) => {
@@ -1386,7 +1435,7 @@ export function OpenAIPMap({
       {layers.find(l => l.id === "befolkning")?.enabled ? (
         <BefolkningLegend
           resolution="1km"
-          source="both"
+          source={befolkningSource}
         />
       ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
