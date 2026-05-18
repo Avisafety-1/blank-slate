@@ -191,6 +191,7 @@ export function OpenAIPMap({
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
+  const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
   const baseLayerRef = useRef<L.TileLayer | null>(null);
   const isPlacingPilotRef = useRef(isPlacingPilot);
   const onPilotPositionChangeRef = useRef(onPilotPositionChange);
