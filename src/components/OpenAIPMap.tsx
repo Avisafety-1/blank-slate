@@ -940,23 +940,62 @@ export function OpenAIPMap({
       });
     };
 
+    // 🇩🇰 DK lag: refetch på samme måte som CAA
+    const dkDroneLayerMap: Array<[string, L.LayerGroup]> = [
+      ['rod', dkRodLayer],
+      ['orange', dkOrangeLayer],
+      ['bla', dkBlaLayer],
+    ];
+    const fetchDkLayers = () => {
+      const z = map.getZoom();
+      const b = map.getBounds();
+      const bounds = {
+        minLat: b.getSouth(), minLng: b.getWest(),
+        maxLat: b.getNorth(), maxLng: b.getEast(),
+      };
+      // Punkt-tunge røde/orange/blå polygon-lag — last fra zoom >= 7
+      if (z < 7) {
+        dkDroneLayerMap.forEach(([, lg]) => lg.clearLayers());
+      } else {
+        const activeLayers = dkDroneLayerMap
+          .filter(([, lg]) => map.hasLayer(lg))
+          .map(([id, lg]) => { lg.clearLayers(); return id; });
+        if (activeLayers.length) {
+          fetchDkDroneZones({ layer: dkRodLayer, mode: modeRef.current, bounds, layerIds: activeLayers.filter(id => id === 'rod') });
+          fetchDkDroneZones({ layer: dkOrangeLayer, mode: modeRef.current, bounds, layerIds: activeLayers.filter(id => id === 'orange') });
+          fetchDkDroneZones({ layer: dkBlaLayer, mode: modeRef.current, bounds, layerIds: activeLayers.filter(id => id === 'bla') });
+        }
+      }
+      // Naturområder — bare 140 totalt, last fra zoom >= 6
+      if (map.hasLayer(dkNatureLayer)) {
+        dkNatureLayer.clearLayers();
+        if (z >= 6) {
+          fetchDkNatureAreas({ layer: dkNatureLayer, mode: modeRef.current, bounds, includeInactive: true });
+        }
+      }
+    };
+
     let vernDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetchVern = () => {
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
       vernDebounceTimer = setTimeout(() => {
         fetchVerneomraader();
         fetchCaaLayers();
+        fetchDkLayers();
       }, 300);
     };
 
     // Initial fetch + listen for map moves
     fetchVerneomraader();
     fetchCaaLayers();
+    fetchDkLayers();
     map.on('moveend', debouncedFetchVern);
-    // Refetch CAA layers when user toggles them on
+    // Refetch CAA/DK layers when user toggles them on
     map.on('overlayadd', (e: any) => {
-      const match = caaLayerMap.find(([, lg]) => lg === e.layer);
-      if (match) fetchCaaLayers();
+      const caaMatch = caaLayerMap.find(([, lg]) => lg === e.layer);
+      if (caaMatch) fetchCaaLayers();
+      const dkMatch = [...dkDroneLayerMap.map(([, lg]) => lg), dkNatureLayer].includes(e.layer);
+      if (dkMatch) fetchDkLayers();
     });
 
     // Kraftledninger: refetch on moveend if layer is enabled
