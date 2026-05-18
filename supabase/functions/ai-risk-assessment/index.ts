@@ -1173,7 +1173,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
             .join('\n') || '';
         }
         if (companySoraConfig) {
-          console.log(`Company SORA config loaded: maxWind=${companySoraConfig.max_wind_speed_ms}m/s, maxAlt=${companySoraConfig.max_flight_altitude_m}m, allowBvlos=${companySoraConfig.allow_bvlos}, allowNight=${companySoraConfig.allow_night_flight}`);
+          console.log(`Company SORA config loaded (source=${companySoraConfigSource}): maxWind=${companySoraConfig.max_wind_speed_ms}m/s, maxAlt=${companySoraConfig.max_flight_altitude_m}m, allowBvlos=${companySoraConfig.allow_bvlos}, allowNight=${companySoraConfig.allow_night_flight}`);
         }
       } catch (e) {
         console.error('Error fetching company SORA config (using defaults):', e);
