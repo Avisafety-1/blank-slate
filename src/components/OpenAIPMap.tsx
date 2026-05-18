@@ -33,6 +33,8 @@ import {
   fetchNaturvernZones,
   fetchVernRestrictionZones,
   fetchCaaDroneZones,
+  fetchDkDroneZones,
+  fetchDkNatureAreas,
   fetchKraftledningerInBounds,
   fetchAisVesselsInBounds,
   fetchNotams,
