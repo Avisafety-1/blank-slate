@@ -1546,6 +1546,26 @@ Bruk kontekstdata:
 - landUse/populationDensity: Urbant vs landlig
 - Hvis ingen spesifikke luftromsadvarsler: Anta klasse G (ukontrollert)
 
+#### KRITISK: Tolkning av luftromsadvarsler (airspace.warnings)
+Hver advarsel har feltene `type`, `name`, `inside` (boolean) og `distance` (meter, nærmeste avstand fra ruten til sonen).
+
+- `inside = true`  ⇒ ruten ligger **INNE I** sonen.
+- `inside = false` ⇒ ruten ligger **UTENFOR** sonen; `distance` er nærmeste avstand i meter fra ruten til sonegrensen.
+
+Du MÅ aldri skrive at oppdraget er «innenfor» en sone når `inside = false`. Bruk «utenfor» og oppgi avstanden eksplisitt i meter eller km.
+
+Spesifikke regler per sonetype:
+- **5KM (5 km RPAS-sone rundt flyplass/landingsplass):**
+  - `inside=true` → «Oppdraget er innenfor 5 km-sonen rundt «{name}». Krever Ninox-godkjenning. Maks 120 m AGL.»
+  - `inside=false` → «Oppdraget er UTENFOR 5 km-sonen rundt «{name}» (nærmeste avstand {distance} m / {distance/1000} km). Ingen Ninox-godkjenning kreves for denne sonen.»
+  - Navnet på sonen («5 km Flesland») betyr KUN at det er en 5 km-sone rundt Flesland — det betyr IKKE at oppdraget er innenfor den. Bruk alltid `inside`-flagget.
+- **CTR / TIZ (kontrollert luftrom):**
+  - `inside=true` → «Inne i kontrollert luftrom ({type} «{name}»). Maks 120 m AGL.»
+  - `inside=false` → «Utenfor {type} «{name}» (nærmeste avstand {distance} m).»
+- **NOTAM, NATURVERN, FERDSELSFORBUD, LANDINGSFORBUD, LAVFLYVING:** samme prinsipp — bruk «innenfor»/«utenfor» basert på `inside`, og oppgi avstand når utenfor.
+
+For AEC-valget: en 5KM- eller CTR/TIZ-advarsel med `inside=false` og distance > 500 m skal IKKE automatisk gi klasse D. Bruk avstanden og høyden til å begrunne valget, og fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
+
 #### Steg 2: Bestem initiell ARC (iARC)
 Sett iARC direkte fra AEC-tabellen ovenfor.
 
