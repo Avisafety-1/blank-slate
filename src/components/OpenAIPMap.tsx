@@ -1239,23 +1239,29 @@ export function OpenAIPMap({
       }
     }
 
+    // Helper: normalize layer-or-array → array of Leaflet layers
+    const toArr = (l: L.Layer | L.Layer[]): L.Layer[] => (Array.isArray(l) ? l : [l]);
+
     // Kraftledninger: fetch data on enable, clear on disable
     if (id === 'kraftledninger') {
       setLayers((prevLayers) =>
         prevLayers.map((layer) => {
           if (layer.id === id) {
+            const layers = toArr(layer.layer);
             if (enabled) {
-              layer.layer.addTo(map);
+              layers.forEach((l) => l.addTo(map));
               fetchKraftledningerInBounds({
-                layer: layer.layer as L.LayerGroup,
+                layer: layers[0] as L.LayerGroup,
                 bounds: map.getBounds(),
                 zoom: map.getZoom(),
                 pane: 'powerPane',
                 mode: modeRef.current,
               });
             } else {
-              (layer.layer as L.LayerGroup).clearLayers();
-              layer.layer.remove();
+              layers.forEach((l) => {
+                if ('clearLayers' in l) (l as L.LayerGroup).clearLayers();
+                l.remove();
+              });
             }
             return { ...layer, enabled };
           }
@@ -1270,18 +1276,21 @@ export function OpenAIPMap({
       setLayers((prevLayers) =>
         prevLayers.map((layer) => {
           if (layer.id === id) {
+            const layers = toArr(layer.layer);
             if (enabled) {
-              layer.layer.addTo(map);
+              layers.forEach((l) => l.addTo(map));
               fetchAisVesselsInBounds({
-                layer: layer.layer as L.LayerGroup,
+                layer: layers[0] as L.LayerGroup,
                 bounds: map.getBounds(),
                 zoom: map.getZoom(),
                 pane: 'naisPane',
                 mode: modeRef.current,
               });
             } else {
-              (layer.layer as L.LayerGroup).clearLayers();
-              layer.layer.remove();
+              layers.forEach((l) => {
+                if ('clearLayers' in l) (l as L.LayerGroup).clearLayers();
+                l.remove();
+              });
             }
             return { ...layer, enabled };
           }
@@ -1294,8 +1303,9 @@ export function OpenAIPMap({
     setLayers((prevLayers) =>
       prevLayers.map((layer) => {
         if (layer.id === id) {
-          if (enabled) layer.layer.addTo(map);
-          else layer.layer.remove();
+          const layers = toArr(layer.layer);
+          if (enabled) layers.forEach((l) => l.addTo(map));
+          else layers.forEach((l) => l.remove());
           return { ...layer, enabled };
         }
         return layer;
