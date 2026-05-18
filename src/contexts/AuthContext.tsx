@@ -1012,6 +1012,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       'approved',
       'under_training',
       'training_module_access',
+      'can_approve_missions',
+      'can_be_incident_responsible',
+      'approval_company_ids',
+      'incident_responsible_company_ids',
     ] as const;
 
     const channel = supabase
@@ -1173,6 +1177,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       underTraining,
       trainingModuleAccess,
       hasTrainingModuleAccess: (moduleKey) => !underTraining || trainingModuleAccess.includes(moduleKey),
+      canApproveMissions,
+      canBeIncidentResponsible,
+      approvalCompanyIds,
+      incidentResponsibleCompanyIds,
       authRefreshing,
       authInitialized,
       signOut, 
