@@ -1013,9 +1013,11 @@ export function OpenAIPMap({
       if (inNorway) {
         if (map.hasLayer(eurostatPopLayer)) eurostatPopLayer.remove();
         if (!map.hasLayer(ssbBefolkningLayer)) ssbBefolkningLayer.addTo(map);
+        setBefolkningSource('ssb');
       } else {
         if (map.hasLayer(ssbBefolkningLayer)) ssbBefolkningLayer.remove();
         if (!map.hasLayer(eurostatPopLayer)) eurostatPopLayer.addTo(map);
+        setBefolkningSource('eurostat');
       }
     };
     (map as any)._befolkningControls = {
