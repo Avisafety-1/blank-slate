@@ -1383,14 +1383,10 @@ export function OpenAIPMap({
       )}
 
       {layers.find(l => l.id === "arealbruk")?.enabled && <ArealbrukLegend />}
-      {(layers.find(l => l.id === "befolkning_norge")?.enabled || layers.find(l => l.id === "befolkning_europa")?.enabled) ? (
+      {layers.find(l => l.id === "befolkning")?.enabled ? (
         <BefolkningLegend
           resolution="1km"
-          source={
-            layers.find(l => l.id === "befolkning_norge")?.enabled && layers.find(l => l.id === "befolkning_europa")?.enabled
-              ? "both"
-              : layers.find(l => l.id === "befolkning_norge")?.enabled ? "ssb" : "eurostat"
-          }
+          source="both"
         />
       ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
