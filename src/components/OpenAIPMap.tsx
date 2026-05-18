@@ -793,23 +793,24 @@ export function OpenAIPMap({
 
     // Drone, Missions, SafeSky, Route, Pilot, Advisory layers
     const droneLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "drones", name: "Droner (live)", layer: droneLayer, enabled: true, icon: "navigation" });
+    layerConfigs.push({ id: "drones", name: "Droner", layer: droneLayer, enabled: true, icon: "navigation", group: "Live trafikk" });
 
     const missionsLayer = L.layerGroup();
     if (modeRef.current === "view") missionsLayer.addTo(map);
     missionsLayerRef.current = missionsLayer;
-    layerConfigs.push({ id: "missions", name: "Oppdrag", layer: missionsLayer, enabled: modeRef.current === "view", icon: "mapPin" });
+    layerConfigs.push({ id: "missions", name: "Oppdrag", layer: missionsLayer, enabled: modeRef.current === "view", icon: "mapPin", group: "Oppdrag" });
 
     const completedMissionsLayer = L.layerGroup();
-    layerConfigs.push({ id: "completed_missions", name: "Utførte oppdrag", layer: completedMissionsLayer, enabled: false, icon: "mapPin" });
+    layerConfigs.push({ id: "completed_missions", name: "Utførte oppdrag", layer: completedMissionsLayer, enabled: false, icon: "mapPin", group: "Oppdrag" });
 
     const plannedPublishedLayer = L.layerGroup();
     if (modeRef.current === "view") plannedPublishedLayer.addTo(map);
     plannedPublishedLayerRef.current = plannedPublishedLayer;
-    layerConfigs.push({ id: "planned_published", name: "Planlagte oppdrag (delt)", layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin" });
+    layerConfigs.push({ id: "planned_published", name: "Planlagte oppdrag (delt)", layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin", group: "Oppdrag" });
 
     const safeskyLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "safesky", name: "Lufttrafikk (live)", layer: safeskyLayer, enabled: true, icon: "radar" });
+    layerConfigs.push({ id: "safesky", name: "Lufttrafikk", layer: safeskyLayer, enabled: true, icon: "radar", group: "Live trafikk" });
+    layerConfigs.push({ id: "nais", name: "Skipstrafikk", layer: naisLayer, enabled: false, icon: "navigation", group: "Live trafikk" });
 
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
