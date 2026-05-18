@@ -642,77 +642,71 @@ export function OpenAIPMap({
     const layerConfigs: LayerConfig[] = [];
     let tensioLuftnettLayer: L.TileLayer.WMS | null = null;
 
-    // OpenAIP airspace
+    // ============================================================
+    // LUFTROM
+    // ============================================================
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
       const airspaceUrl = openAipConfig.tiles.airspace.replace("{key}", openAipConfig.apiKey);
       const airspaceLayer = L.tileLayer(airspaceUrl, { opacity: 0.55, subdomains: "abc" }).addTo(map);
-      layerConfigs.push({ id: "airspace", name: "Luftrom (OpenAIP)", layer: airspaceLayer, enabled: true, icon: "layers" });
+      layerConfigs.push({ id: "airspace", name: "Luftrom", layer: airspaceLayer, enabled: true, icon: "layers", group: "Luftrom" });
     }
 
-    // NRL
+    const rpasLayer = L.layerGroup().addTo(map);
+    const nsmLayer = L.layerGroup().addTo(map);
+    const aipLayer = L.layerGroup();
+    const rmzTmzAtzLayer = L.layerGroup().addTo(map);
+
+    // ============================================================
+    // VERNEOMRÅDER + DK NATUR — slått sammen (auto når kartet er over DK)
+    // ============================================================
+    const naturvernLayer = L.layerGroup();
+    const dkNatureLayer = L.layerGroup();
+
+    // ============================================================
+    // CAA dronesoner (Luftfartstilsynet — dronesoner.no)
+    // ============================================================
+    const caaFengslerLayer = L.layerGroup();
+    const caaAmbassaderLayer = L.layerGroup();
+    const caaFareLayer = L.layerGroup();
+    const caaFlyplasserLayer = L.layerGroup();
+    const caaNotamSonerLayer = L.layerGroup();
+    const caaRestriksjonerLayer = L.layerGroup();
+
+    // ============================================================
+    // 🇩🇰 Trafikstyrelsen dronezoner
+    // ============================================================
+    const dkRodLayer = L.layerGroup();
+    const dkOrangeLayer = L.layerGroup();
+    const dkBlaLayer = L.layerGroup();
+
+    // NRL (vises sammen med OpenAIP-hindringer under "Luftfartshindre")
     const nrlLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.nrl5?", {
       layers: "nrlflate,nrllinje,nrlluftspenn,nrlmast,nrlpunkt", format: "image/png", transparent: true, opacity: 0.8, attribution: 'NRL Luftfartshindre',
     });
-    layerConfigs.push({ id: "nrl", name: "Luftfartshindre (NRL)", layer: nrlLayer, enabled: false, icon: "alertTriangle" });
-
-    // Verneområder (naturvern + ferdsels-/landingsforbud) — vektorlag fra DB
-    const naturvernLayer = L.layerGroup();
-    layerConfigs.push({ id: "naturvern", name: "Verneområder", layer: naturvernLayer, enabled: false, icon: "treePine" });
-
-    // CAA dronesoner (Luftfartstilsynet — dronesoner.no) — alle skjult som default
-    const caaFengslerLayer = L.layerGroup();
-    layerConfigs.push({ id: "caa_fengsler", name: "Fengsler (CAA)", layer: caaFengslerLayer, enabled: false, icon: "ban" });
-    const caaAmbassaderLayer = L.layerGroup();
-    layerConfigs.push({ id: "caa_ambassader", name: "Ambassader (CAA)", layer: caaAmbassaderLayer, enabled: false, icon: "ban" });
-    const caaFareLayer = L.layerGroup();
-    layerConfigs.push({ id: "caa_fareomrader", name: "Fareområder (CAA)", layer: caaFareLayer, enabled: false, icon: "alertTriangle" });
-    const caaFlyplasserLayer = L.layerGroup();
-    layerConfigs.push({ id: "caa_flyplasser", name: "Mindre flyplasser (CAA)", layer: caaFlyplasserLayer, enabled: false, icon: "alertTriangle" });
-    const caaNotamSonerLayer = L.layerGroup();
-    layerConfigs.push({ id: "caa_notam_soner", name: "NOTAM-soner (CAA)", layer: caaNotamSonerLayer, enabled: false, icon: "alertTriangle" });
-    const caaRestriksjonerLayer = L.layerGroup();
-    layerConfigs.push({ id: "caa_restriksjoner", name: "Restriksjonsområder (CAA)", layer: caaRestriksjonerLayer, enabled: false, icon: "ban" });
-
-    // 🇩🇰 Danmark — Trafikstyrelsen dronezoner + naturområder (alle skjult som default)
-    const dkRodLayer = L.layerGroup();
-    layerConfigs.push({ id: "dk_rod", name: "🇩🇰 Flyvesikringskritisk (rød)", layer: dkRodLayer, enabled: false, icon: "ban" });
-    const dkOrangeLayer = L.layerGroup();
-    layerConfigs.push({ id: "dk_orange", name: "🇩🇰 Opmærksomhedsområder (orange)", layer: dkOrangeLayer, enabled: false, icon: "alertTriangle" });
-    const dkBlaLayer = L.layerGroup();
-    layerConfigs.push({ id: "dk_bla", name: "🇩🇰 Sikringskritisk (blå)", layer: dkBlaLayer, enabled: false, icon: "shield" });
-    const dkNatureLayer = L.layerGroup();
-    layerConfigs.push({ id: "dk_nature", name: "🇩🇰 Naturområder", layer: dkNatureLayer, enabled: false, icon: "treePine" });
 
     // SSB Arealbruk
     const arealbrukLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.arealbruk?", {
       layers: "arealbruk", format: "image/png", transparent: true, opacity: 0.6, attribution: "SSB Arealbruk", minZoom: 0, maxZoom: 20, tiled: true,
     } as any);
-    layerConfigs.push({ id: "arealbruk", name: "Befolkning / Arealbruk (SSB)", layer: arealbrukLayer, enabled: false, icon: "users" });
 
-    // Befolkningstetthet — splittet i to togglebare lag
+    // Befolkningstetthet — Norge (SSB) + Europa (Eurostat) slått sammen
     const ssbBefolkningLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/befolkning_paa_rutenett", {
       layers: "befolkning_1km_2025", format: "image/png", transparent: true, opacity: 0.7,
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
-    layerConfigs.push({ id: "befolkning_norge", name: "Befolkningstetthet Norge (SSB)", layer: ssbBefolkningLayer, enabled: false, icon: "users" });
-
-    // Eurostat GISCO Census 2021 — 1 km² grid for hele Europa.
-    // WMS-backenden feiler ved svært små bbox-er; cap maxNativeZoom så Leaflet skalerer opp eksisterende tiles.
     const eurostatPopLayer = L.tileLayer.wms("https://gisco-services.ec.europa.eu/maps/service", {
       layers: "PopulationGrid2021", format: "image/png", transparent: true, opacity: 0.6,
       attribution: '© European Commission – Eurostat (GISCO)', version: "1.3.0",
       minZoom: 4, maxZoom: 18, maxNativeZoom: 10, tiled: true, updateWhenIdle: true, keepBuffer: 1,
     } as any);
-    layerConfigs.push({ id: "befolkning_europa", name: "Befolkningstetthet Europa (Eurostat 2021)", layer: eurostatPopLayer, enabled: false, icon: "users" });
 
-    // SSB Tettsteder (urban settlements ≥200 residents)
+    // SSB Tettsteder
     const tettstederLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/tettsteder", {
       layers: "tettsted_2024", format: "image/png", transparent: true, opacity: 0.5,
       attribution: 'Tettsteder © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
-    layerConfigs.push({ id: "tettsteder", name: "Tettsteder (SSB)", layer: tettstederLayer, enabled: false, icon: "users" });
 
-    // Tensio luftnett (WMS) — kun for Tensio og underavdelinger
+    // Tensio luftnett
     if (isTensioHierarchy) {
       tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
         layers: "0,1,2,3,4,5,6,7,8,9",
@@ -723,43 +717,52 @@ export function OpenAIPMap({
         version: "1.3.0",
         pane: "tensioPowerPane",
       } as any).addTo(map);
-      layerConfigs.push({ id: "tensio_luftnett", name: "Luftnett Tensio", layer: tensioLuftnettLayer, enabled: true, icon: "zap" });
     }
 
-    // NVE Kraftledninger (vector via ArcGIS REST)
+    // NVE Kraftledninger
     const kraftledningerLayer = L.layerGroup();
-    layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger (NVE)", layer: kraftledningerLayer, enabled: false, icon: "zap" });
 
-    // NAIS skipstrafikk (BarentsWatch)
+    // NAIS skipstrafikk
     if (!map.getPane('naisPane')) {
       map.createPane('naisPane');
       map.getPane('naisPane')!.style.zIndex = '695';
     }
     const naisLayer = L.layerGroup();
-    layerConfigs.push({ id: "nais", name: "Skipstrafikk (NAIS)", layer: naisLayer, enabled: false, icon: "navigation" });
 
-    // RPAS, NSM, AIP, RMZ layers — added to map BEFORE NOTAM for correct DOM order
-    const rpasLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "rpas", name: "RPAS 5km soner", layer: rpasLayer, enabled: true, icon: "radio" });
-
-    const nsmLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "nsm", name: "NSM Forbudsområder", layer: nsmLayer, enabled: true, icon: "ban" });
-
-    const aipLayer = L.layerGroup();
-    layerConfigs.push({ id: "aip", name: "Fareområder (P/R/D)", layer: aipLayer, enabled: false, icon: "shield" });
-
-    const rmzTmzAtzLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "rmz_tmz_atz", name: "RMZ / TMZ / ATZ", layer: rmzTmzAtzLayer, enabled: true, icon: "radio" });
-
-    // Live NOTAM — added AFTER all airspace layers so it renders on top in DOM
+    // NOTAM (live RSS + CAA-soner slått sammen)
     const notamLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "notam", name: "Live Notam (test)", layer: notamLayer, enabled: true, icon: "alertTriangle" });
-
     const obstaclesLayer = L.layerGroup();
-    layerConfigs.push({ id: "obstacles", name: "Hindringer (OpenAIP)", layer: obstaclesLayer, enabled: false, icon: "alertTriangle" });
-
     const airportsLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "airports", name: "Flyplasser", layer: airportsLayer, enabled: true, icon: "planeLanding" });
+
+    // ============================================================
+    // BYGG LAYER-KONFIGURASJON med grupper og sammenslåtte toggles
+    // ============================================================
+
+    // Luftrom
+    layerConfigs.push({ id: "rpas", name: "RPAS 5 km", layer: rpasLayer, enabled: true, icon: "radio", group: "Luftrom" });
+    layerConfigs.push({ id: "nsm", name: "NSM forbudsområder", layer: nsmLayer, enabled: true, icon: "ban", group: "Luftrom" });
+    layerConfigs.push({ id: "aip", name: "P/R/D-soner", layer: aipLayer, enabled: false, icon: "shield", group: "Luftrom" });
+    layerConfigs.push({ id: "rmz_tmz_atz", name: "RMZ / TMZ / ATZ", layer: rmzTmzAtzLayer, enabled: true, icon: "radio", group: "Luftrom" });
+
+    // Restriksjoner — slått sammen NO + DK
+    layerConfigs.push({ id: "restriksjonsomrader", name: "Restriksjonsområder", layer: [caaRestriksjonerLayer, dkRodLayer], enabled: false, icon: "ban", group: "Restriksjoner" });
+    layerConfigs.push({ id: "fareomrader", name: "Fareområder", layer: [caaFareLayer, dkOrangeLayer], enabled: false, icon: "alertTriangle", group: "Restriksjoner" });
+    layerConfigs.push({ id: "sikringsobjekter", name: "Sikringsobjekter", layer: [caaFengslerLayer, caaAmbassaderLayer, dkBlaLayer], enabled: false, icon: "shield", group: "Restriksjoner" });
+    layerConfigs.push({ id: "notam", name: "NOTAM", layer: [notamLayer, caaNotamSonerLayer], enabled: true, icon: "alertTriangle", group: "Restriksjoner" });
+
+    // Natur & befolkning
+    layerConfigs.push({ id: "verneomrader", name: "Verneområder", layer: [naturvernLayer, dkNatureLayer], enabled: false, icon: "treePine", group: "Natur & befolkning" });
+    layerConfigs.push({ id: "befolkning", name: "Befolkning", layer: [eurostatPopLayer, ssbBefolkningLayer], enabled: false, icon: "users", group: "Natur & befolkning" });
+    layerConfigs.push({ id: "tettsteder", name: "Tettsteder", layer: tettstederLayer, enabled: false, icon: "users", group: "Natur & befolkning" });
+    layerConfigs.push({ id: "arealbruk", name: "Arealbruk", layer: arealbrukLayer, enabled: false, icon: "users", group: "Natur & befolkning" });
+
+    // Infrastruktur
+    layerConfigs.push({ id: "luftfartshindre", name: "Luftfartshindre", layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: "Infrastruktur" });
+    layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger", layer: kraftledningerLayer, enabled: false, icon: "zap", group: "Infrastruktur" });
+    if (tensioLuftnettLayer) {
+      layerConfigs.push({ id: "tensio_luftnett", name: "Luftnett Tensio", layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: "Infrastruktur" });
+    }
+    layerConfigs.push({ id: "flyplasser", name: "Flyplasser", layer: [airportsLayer, caaFlyplasserLayer], enabled: true, icon: "planeLanding", group: "Infrastruktur" });
 
     // Geolocation
     if (!initialCenter && navigator.geolocation) {
@@ -790,23 +793,24 @@ export function OpenAIPMap({
 
     // Drone, Missions, SafeSky, Route, Pilot, Advisory layers
     const droneLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "drones", name: "Droner (live)", layer: droneLayer, enabled: true, icon: "navigation" });
+    layerConfigs.push({ id: "drones", name: "Droner", layer: droneLayer, enabled: true, icon: "navigation", group: "Live trafikk" });
 
     const missionsLayer = L.layerGroup();
     if (modeRef.current === "view") missionsLayer.addTo(map);
     missionsLayerRef.current = missionsLayer;
-    layerConfigs.push({ id: "missions", name: "Oppdrag", layer: missionsLayer, enabled: modeRef.current === "view", icon: "mapPin" });
+    layerConfigs.push({ id: "missions", name: "Oppdrag", layer: missionsLayer, enabled: modeRef.current === "view", icon: "mapPin", group: "Oppdrag" });
 
     const completedMissionsLayer = L.layerGroup();
-    layerConfigs.push({ id: "completed_missions", name: "Utførte oppdrag", layer: completedMissionsLayer, enabled: false, icon: "mapPin" });
+    layerConfigs.push({ id: "completed_missions", name: "Utførte oppdrag", layer: completedMissionsLayer, enabled: false, icon: "mapPin", group: "Oppdrag" });
 
     const plannedPublishedLayer = L.layerGroup();
     if (modeRef.current === "view") plannedPublishedLayer.addTo(map);
     plannedPublishedLayerRef.current = plannedPublishedLayer;
-    layerConfigs.push({ id: "planned_published", name: "Planlagte oppdrag (delt)", layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin" });
+    layerConfigs.push({ id: "planned_published", name: "Planlagte oppdrag (delt)", layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin", group: "Oppdrag" });
 
     const safeskyLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "safesky", name: "Lufttrafikk (live)", layer: safeskyLayer, enabled: true, icon: "radar" });
+    layerConfigs.push({ id: "safesky", name: "Lufttrafikk", layer: safeskyLayer, enabled: true, icon: "radar", group: "Live trafikk" });
+    layerConfigs.push({ id: "nais", name: "Skipstrafikk", layer: naisLayer, enabled: false, icon: "navigation", group: "Live trafikk" });
 
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
@@ -1235,23 +1239,29 @@ export function OpenAIPMap({
       }
     }
 
+    // Helper: normalize layer-or-array → array of Leaflet layers
+    const toArr = (l: L.Layer | L.Layer[]): L.Layer[] => (Array.isArray(l) ? l : [l]);
+
     // Kraftledninger: fetch data on enable, clear on disable
     if (id === 'kraftledninger') {
       setLayers((prevLayers) =>
         prevLayers.map((layer) => {
           if (layer.id === id) {
+            const layers = toArr(layer.layer);
             if (enabled) {
-              layer.layer.addTo(map);
+              layers.forEach((l) => l.addTo(map));
               fetchKraftledningerInBounds({
-                layer: layer.layer as L.LayerGroup,
+                layer: layers[0] as L.LayerGroup,
                 bounds: map.getBounds(),
                 zoom: map.getZoom(),
                 pane: 'powerPane',
                 mode: modeRef.current,
               });
             } else {
-              (layer.layer as L.LayerGroup).clearLayers();
-              layer.layer.remove();
+              layers.forEach((l) => {
+                if ('clearLayers' in l) (l as L.LayerGroup).clearLayers();
+                l.remove();
+              });
             }
             return { ...layer, enabled };
           }
@@ -1266,18 +1276,21 @@ export function OpenAIPMap({
       setLayers((prevLayers) =>
         prevLayers.map((layer) => {
           if (layer.id === id) {
+            const layers = toArr(layer.layer);
             if (enabled) {
-              layer.layer.addTo(map);
+              layers.forEach((l) => l.addTo(map));
               fetchAisVesselsInBounds({
-                layer: layer.layer as L.LayerGroup,
+                layer: layers[0] as L.LayerGroup,
                 bounds: map.getBounds(),
                 zoom: map.getZoom(),
                 pane: 'naisPane',
                 mode: modeRef.current,
               });
             } else {
-              (layer.layer as L.LayerGroup).clearLayers();
-              layer.layer.remove();
+              layers.forEach((l) => {
+                if ('clearLayers' in l) (l as L.LayerGroup).clearLayers();
+                l.remove();
+              });
             }
             return { ...layer, enabled };
           }
@@ -1290,8 +1303,9 @@ export function OpenAIPMap({
     setLayers((prevLayers) =>
       prevLayers.map((layer) => {
         if (layer.id === id) {
-          if (enabled) layer.layer.addTo(map);
-          else layer.layer.remove();
+          const layers = toArr(layer.layer);
+          if (enabled) layers.forEach((l) => l.addTo(map));
+          else layers.forEach((l) => l.remove());
           return { ...layer, enabled };
         }
         return layer;
@@ -1369,14 +1383,10 @@ export function OpenAIPMap({
       )}
 
       {layers.find(l => l.id === "arealbruk")?.enabled && <ArealbrukLegend />}
-      {(layers.find(l => l.id === "befolkning_norge")?.enabled || layers.find(l => l.id === "befolkning_europa")?.enabled) ? (
+      {layers.find(l => l.id === "befolkning")?.enabled ? (
         <BefolkningLegend
           resolution="1km"
-          source={
-            layers.find(l => l.id === "befolkning_norge")?.enabled && layers.find(l => l.id === "befolkning_europa")?.enabled
-              ? "both"
-              : layers.find(l => l.id === "befolkning_norge")?.enabled ? "ssb" : "eurostat"
-          }
+          source="both"
         />
       ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}

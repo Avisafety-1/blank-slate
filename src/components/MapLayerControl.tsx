@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Layers, 
   Ban, 
@@ -45,9 +45,12 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 export interface LayerConfig {
   id: string;
   name: string;
-  layer: L.Layer;
+  /** A single Leaflet layer, or several layers that toggle together as one. */
+  layer: L.Layer | L.Layer[];
   enabled: boolean;
   icon?: string;
+  /** Optional section header shown above the toggle. */
+  group?: string;
 }
 
 interface MapLayerControlProps {
@@ -55,8 +58,34 @@ interface MapLayerControlProps {
   onLayerToggle: (id: string, enabled: boolean) => void;
 }
 
+// Stable section order — anything without a group falls into "Annet"
+const GROUP_ORDER = [
+  "Luftrom",
+  "Restriksjoner",
+  "Natur & befolkning",
+  "Infrastruktur",
+  "Live trafikk",
+  "Oppdrag",
+  "Annet",
+];
+
 export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps) {
   const [open, setOpen] = useState(false);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, LayerConfig[]>();
+    for (const l of layers) {
+      const key = l.group ?? "Annet";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(l);
+    }
+    return GROUP_ORDER
+      .filter((g) => map.has(g))
+      .map((g) => [g, map.get(g)!] as const)
+      .concat(
+        [...map.entries()].filter(([g]) => !GROUP_ORDER.includes(g))
+      );
+  }, [layers]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -75,30 +104,39 @@ export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps)
           <SheetTitle>Kartlag</SheetTitle>
         </SheetHeader>
         <ScrollArea className="mt-6 h-[calc(100vh-8rem)]">
-          <div className="space-y-4 pr-3">
-            {layers.map((layer) => {
-              const IconComponent = layer.icon ? iconMap[layer.icon] : null;
-              return (
-                <div key={layer.id} className="flex items-center space-x-3">
-                  <Checkbox
-                    id={layer.id}
-                    checked={layer.enabled}
-                    onCheckedChange={(checked) => {
-                      onLayerToggle(layer.id, checked as boolean);
-                    }}
-                  />
-                  {IconComponent && (
-                    <IconComponent className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <Label
-                    htmlFor={layer.id}
-                    className="text-sm font-normal cursor-pointer flex-1"
-                  >
-                    {layer.name}
-                  </Label>
+          <div className="space-y-5 pr-3">
+            {grouped.map(([groupName, items]) => (
+              <div key={groupName} className="space-y-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                  {groupName}
                 </div>
-              );
-            })}
+                <div className="space-y-3">
+                  {items.map((layer) => {
+                    const IconComponent = layer.icon ? iconMap[layer.icon] : null;
+                    return (
+                      <div key={layer.id} className="flex items-center space-x-3">
+                        <Checkbox
+                          id={layer.id}
+                          checked={layer.enabled}
+                          onCheckedChange={(checked) => {
+                            onLayerToggle(layer.id, checked as boolean);
+                          }}
+                        />
+                        {IconComponent && (
+                          <IconComponent className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <Label
+                          htmlFor={layer.id}
+                          className="text-sm font-normal cursor-pointer flex-1"
+                        >
+                          {layer.name}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </ScrollArea>
       </SheetContent>
