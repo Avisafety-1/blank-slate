@@ -472,7 +472,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     }).then(({ data, error }) => {
       if (error) { setNinoxChecking(false); return; }
       const rawArray = (data as any[]) || [];
-      const has5km = rawArray.some((r: any) => r.z_type === '5KM');
+      // Only block if route is actually INSIDE the 5KM zone — RPC also returns
+      // nearby 5KM zones (route_inside=false) for proximity warnings.
+      const has5km = rawArray.some((r: any) => r.z_type === '5KM' && r.route_inside === true);
       setMissionIn5kmZone(has5km);
       setNinoxChecking(false);
     });
