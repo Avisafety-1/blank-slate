@@ -120,7 +120,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, companyId, parentCompanyId, accessibleCompanies, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, companyId, parentCompanyId, accessibleCompanies, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole, canApproveMissions, canBeIncidentResponsible, approvalCompanyIds } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -132,9 +132,7 @@ export const ProfileDialog = () => {
   const [pendingApprovalMissions, setPendingApprovalMissions] = useState<any[]>([]);
   const [pendingTraining, setPendingTraining] = useState<any[]>([]);
   const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
-  const [canApproveMissions, setCanApproveMissions] = useState(false);
   const [preventSelfApproval, setPreventSelfApproval] = useState(false);
-  const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
