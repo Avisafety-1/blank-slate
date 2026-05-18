@@ -656,23 +656,28 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const selectedMission = selectedMissionId && selectedMissionId !== 'none' 
     ? missions.find(m => m.id === selectedMissionId) 
     : null;
-  const hasRoute = selectedMission?.route && 
-    typeof selectedMission.route === 'object' && 
+  const routeCoordsCount = selectedMission?.route &&
+    typeof selectedMission.route === 'object' &&
     selectedMission.route !== null &&
     'coordinates' in selectedMission.route &&
-    Array.isArray((selectedMission.route as { coordinates: unknown[] }).coordinates) &&
-    (selectedMission.route as { coordinates: unknown[] }).coordinates.length > 0;
+    Array.isArray((selectedMission.route as { coordinates: unknown[] }).coordinates)
+      ? (selectedMission.route as { coordinates: unknown[] }).coordinates.length
+      : 0;
+  const hasRoute = routeCoordsCount > 0;
+  // SafeSky krever minst 3 rutepunkter for å publisere et advisory
+  const hasAdvisoryRoute = routeCoordsCount >= 3;
 
-  // Auto-bytt SafeSky-modus basert på om rute er tilgjengelig:
-  // - Uten rute: tving 'none' (advisory krever rute)
-  // - Med rute: default til 'advisory' når brukeren ikke aktivt har valgt
+  // Auto-bytt SafeSky-modus basert på om advisory-rute er tilgjengelig:
+  // - Uten gyldig rute (<3 punkter): tving 'none'
+  // - Med gyldig rute: default til 'advisory' når brukeren ikke aktivt har valgt
   useEffect(() => {
-    if (!hasRoute && publishMode === 'advisory') {
+    if (!hasAdvisoryRoute && publishMode === 'advisory') {
       setPublishMode('none');
-    } else if (hasRoute && publishMode === 'none' && !userPickedMode) {
+    } else if (hasAdvisoryRoute && publishMode === 'none' && !userPickedMode) {
       setPublishMode('advisory');
     }
-  }, [hasRoute, publishMode, userPickedMode]);
+  }, [hasAdvisoryRoute, publishMode, userPickedMode]);
+
 
   // Admin functions to link/unlink checklists (persisted to company)
   const linkChecklist = async (checklistId: string) => {
@@ -1132,18 +1137,20 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
                 <label 
                   htmlFor="mode-advisory" 
-                  className={`flex items-start space-x-3 rounded-lg border p-3 transition-colors ${!hasRoute ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}
+                  className={`flex items-start space-x-3 rounded-lg border p-3 transition-colors ${!hasAdvisoryRoute ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}
                 >
-                  <RadioGroupItem value="advisory" id="mode-advisory" disabled={!hasRoute} className="mt-0.5" />
+                  <RadioGroupItem value="advisory" id="mode-advisory" disabled={!hasAdvisoryRoute} className="mt-0.5" />
                   <div className="flex-1 space-y-0.5">
                     <div className="flex items-center gap-2">
                       <Radio className="h-4 w-4 text-primary" />
                       <span className="font-medium">{t('flight.safeskyAdvisory')}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {hasRoute 
+                      {hasAdvisoryRoute
                         ? t('flight.safeskyAdvisoryDesc')
-                        : t('flight.safeskyAdvisoryRequiresRoute')}
+                        : hasRoute
+                          ? `SafeSky-advisory krever en rute med minst 3 rutepunkter (denne ruten har ${routeCoordsCount}). Legg til flere veipunkter på oppdraget for å kunne publisere advisory.`
+                          : t('flight.safeskyAdvisoryRequiresRoute')}
                     </p>
                   </div>
                 </label>
