@@ -509,6 +509,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         departmentsEnabled: false,
         underTraining: false,
         trainingModuleAccess: [],
+        canApproveMissions: canApproveMissions,
+        canBeIncidentResponsible: canBeIncidentResponsible,
+        approvalCompanyIds: approvalCompanyIds,
+        incidentResponsibleCompanyIds: incidentResponsibleCompanyIds,
       };
 
       if (profileResult.error && roleResult.error) {
@@ -538,6 +542,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.ardupilotFlightlogEnabled = company?.ardupilot_enabled ?? false;
         profileData.stripeExempt = company?.stripe_exempt ?? false;
         profileData.departmentsEnabled = company?.departments_enabled ?? false;
+        profileData.canApproveMissions = (profile as any).can_approve_missions ?? false;
+        profileData.canBeIncidentResponsible = (profile as any).can_be_incident_responsible ?? false;
+        profileData.approvalCompanyIds = (profile as any).approval_company_ids ?? null;
+        profileData.incidentResponsibleCompanyIds = (profile as any).incident_responsible_company_ids ?? null;
 
         // Inherit parent company settings if needed
         if (resolvedParentCompanyId) {
@@ -601,6 +609,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setStripeExempt(profileData.stripeExempt);
       setUnderTraining(profileData.underTraining ?? false);
       setTrainingModuleAccess(profileData.trainingModuleAccess ?? []);
+      setCanApproveMissions(profileData.canApproveMissions ?? false);
+      setCanBeIncidentResponsible(profileData.canBeIncidentResponsible ?? false);
+      setApprovalCompanyIds(profileData.approvalCompanyIds ?? null);
+      setIncidentResponsibleCompanyIds(profileData.incidentResponsibleCompanyIds ?? null);
       setProfileLoaded(true);
 
       // Apply accessible companies
