@@ -1273,6 +1273,22 @@ export function OpenAIPMap({
     const toArr = (l: L.Layer | L.Layer[]): L.Layer[] => (Array.isArray(l) ? l : [l]);
 
     // Kraftledninger: fetch data on enable, clear on disable
+    // Befolkning: legg til riktig kilde (SSB i Norge, Eurostat ellers)
+    if (id === 'befolkning') {
+      const ctl = (map as any)._befolkningControls;
+      setLayers((prevLayers) =>
+        prevLayers.map((layer) => {
+          if (layer.id === id) {
+            if (enabled) ctl?.sync?.();
+            else ctl?.removeAll?.();
+            return { ...layer, enabled };
+          }
+          return layer;
+        })
+      );
+      return;
+    }
+
     if (id === 'kraftledninger') {
       setLayers((prevLayers) =>
         prevLayers.map((layer) => {
