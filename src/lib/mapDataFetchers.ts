@@ -1012,6 +1012,146 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
   }
 }
 
+// ---- DK drone zones (Trafikstyrelsen via dk_drone_zones table) ----
+const DK_LAYER_STYLES: Record<string, { color: string; iconLabel: string; warningLevel: 'danger' | 'warning' | 'caution' }> = {
+  rod:    { color: '#dc2626', iconLabel: '🚫 Flyvesikringskritisk', warningLevel: 'danger' },
+  orange: { color: '#f97316', iconLabel: '⚠️ Opmærksomhedsområde', warningLevel: 'warning' },
+  bla:    { color: '#2563eb', iconLabel: '🛡️ Sikringskritisk', warningLevel: 'caution' },
+};
+
+export async function fetchDkDroneZones(params: BoundsFetchParams & {
+  layerIds: string[];
+}) {
+  const { layer, mode, bounds, layerIds } = params;
+  if (!layerIds.length) return;
+  try {
+    const { data, error } = await supabase.rpc('get_dk_drone_zones_in_bounds', {
+      min_lat: bounds.minLat,
+      min_lng: bounds.minLng,
+      max_lat: bounds.maxLat,
+      max_lng: bounds.maxLng,
+      p_layer_ids: layerIds,
+    });
+    if (error || !data) {
+      if (error) console.error('Feil ved henting av DK dronezoner:', error);
+      return;
+    }
+    const esc = (s: any) =>
+      String(s ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]!));
+
+    for (const zone of data as any[]) {
+      if (!zone.geometry) continue;
+      const style = DK_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ DK sone' };
+      try {
+        if (zone.geometry_type === 'point') {
+          const coords = (zone.geometry as any).coordinates;
+          if (!coords || coords.length < 2) continue;
+          L.circleMarker([coords[1], coords[0]], {
+            radius: 6,
+            color: '#fff',
+            weight: 1.5,
+            fillColor: style.color,
+            fillOpacity: 0.9,
+            pane: 'overlayPane',
+            interactive: mode !== 'routePlanning',
+          })
+            .bindPopup(
+              `<strong>${style.iconLabel}</strong><br/>` +
+              `<strong>${esc(zone.name || zone.icao || 'Ukjent')}</strong>` +
+              (zone.category ? `<div>${esc(zone.category)}</div>` : '') +
+              (zone.buffer ? `<div>Bufferzone: ${esc(zone.buffer)}</div>` : '') +
+              `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`
+            )
+            .addTo(layer);
+        } else {
+          const geojsonFeature = {
+            type: 'Feature' as const,
+            geometry: zone.geometry,
+            properties: zone,
+          };
+          L.geoJSON(geojsonFeature as any, {
+            interactive: mode !== 'routePlanning',
+            pane: 'overlayPane',
+            style: {
+              color: style.color,
+              weight: 1.5,
+              fillColor: style.color,
+              fillOpacity: style.warningLevel === 'danger' ? 0.22 : 0.14,
+              dashArray: style.warningLevel === 'danger' ? undefined : '4, 4',
+            },
+            onEachFeature: mode !== 'routePlanning' ? (_f, lyr) => {
+              let html = `<strong>${style.iconLabel}</strong><br/>`;
+              html += `<strong>${esc(zone.name || 'Ukjent')}</strong>`;
+              if (zone.category) html += `<div>${esc(zone.category)}</div>`;
+              if (zone.buffer) html += `<div>Bufferzone: ${esc(zone.buffer)}</div>`;
+              html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
+              lyr.bindPopup(html);
+            } : undefined,
+          }).addTo(layer);
+        }
+      } catch {/* skip bad geometry */}
+    }
+  } catch (err) {
+    console.error('Kunne ikke hente DK dronezoner:', err);
+  }
+}
+
+export async function fetchDkNatureAreas(params: BoundsFetchParams & {
+  includeInactive?: boolean;
+}) {
+  const { layer, mode, bounds, includeInactive = true } = params;
+  try {
+    const { data, error } = await supabase.rpc('get_dk_nature_areas_in_bounds', {
+      min_lat: bounds.minLat,
+      min_lng: bounds.minLng,
+      max_lat: bounds.maxLat,
+      max_lng: bounds.maxLng,
+      p_include_inactive: includeInactive,
+    });
+    if (error || !data) {
+      if (error) console.error('Feil ved henting av DK naturområder:', error);
+      return;
+    }
+    const esc = (s: any) =>
+      String(s ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]!));
+
+    for (const area of data as any[]) {
+      if (!area.geometry) continue;
+      const isActive = area.active !== false;
+      const color = isActive ? '#16a34a' : '#9ca3af';
+      try {
+        L.geoJSON({ type: 'Feature' as const, geometry: area.geometry, properties: area } as any, {
+          interactive: mode !== 'routePlanning',
+          pane: 'overlayPane',
+          style: {
+            color,
+            weight: 1.5,
+            fillColor: color,
+            fillOpacity: isActive ? 0.25 : 0.08,
+            dashArray: isActive ? undefined : '5, 5',
+          },
+          onEachFeature: mode !== 'routePlanning' ? (_f, lyr) => {
+            let html = `<strong>🌿 Naturområde (DK) ${isActive ? '' : '— inaktiv'}</strong><br/>`;
+            html += `<strong>${esc(area.name || 'Ukjent')}</strong>`;
+            if (area.theme) html += `<div>${esc(area.theme)}</div>`;
+            if (area.restriction_period) html += `<div>Periode: ${esc(area.restriction_period)}</div>`;
+            if (area.reason) html += `<div style="margin-top:4px">${esc(area.reason)}</div>`;
+            if (area.source_url) html += `<div style="margin-top:4px"><a href="${esc(area.source_url)}" target="_blank" rel="noopener">Mer info</a></div>`;
+            html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
+            lyr.bindPopup(html);
+          } : undefined,
+        }).addTo(layer);
+      } catch {/* skip */}
+    }
+  } catch (err) {
+    console.error('Kunne ikke hente DK naturområder:', err);
+  }
+}
+
 export async function fetchPilotPositions(params: {
   pilotPositionsLayer: L.LayerGroup;
   flightMarkersRef: React.MutableRefObject<Map<string, L.Marker>>;
