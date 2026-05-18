@@ -36,6 +36,10 @@ interface CachedProfile {
   accessibleCompanies?: AccessibleCompany[];
   underTraining?: boolean;
   trainingModuleAccess?: TrainingModuleKey[];
+  canApproveMissions?: boolean;
+  canBeIncidentResponsible?: boolean;
+  approvalCompanyIds?: string[] | null;
+  incidentResponsibleCompanyIds?: string[] | null;
   cachedAt?: number;
 }
 
@@ -80,6 +84,10 @@ interface AuthContextType {
   underTraining: boolean;
   trainingModuleAccess: TrainingModuleKey[];
   hasTrainingModuleAccess: (moduleKey: TrainingModuleKey) => boolean;
+  canApproveMissions: boolean;
+  canBeIncidentResponsible: boolean;
+  approvalCompanyIds: string[] | null;
+  incidentResponsibleCompanyIds: string[] | null;
   authRefreshing: boolean;
   authInitialized: boolean;
   signOut: () => Promise<void>;
@@ -124,6 +132,10 @@ const AuthContext = createContext<AuthContextType>({
   underTraining: false,
   trainingModuleAccess: [],
   hasTrainingModuleAccess: () => true,
+  canApproveMissions: false,
+  canBeIncidentResponsible: false,
+  approvalCompanyIds: null,
+  incidentResponsibleCompanyIds: null,
   authRefreshing: false,
   authInitialized: false,
   signOut: async () => {},
@@ -185,6 +197,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
   const [underTraining, setUnderTraining] = useState(false);
   const [trainingModuleAccess, setTrainingModuleAccess] = useState<TrainingModuleKey[]>([]);
+  const [canApproveMissions, setCanApproveMissions] = useState(false);
+  const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
+  const [approvalCompanyIds, setApprovalCompanyIds] = useState<string[] | null>(null);
+  const [incidentResponsibleCompanyIds, setIncidentResponsibleCompanyIds] = useState<string[] | null>(null);
 
   const resetAuthState = () => {
     setSession(null);
@@ -218,6 +234,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setAccessibleCompanies([]);
     setUnderTraining(false);
     setTrainingModuleAccess([]);
+    setCanApproveMissions(false);
+    setCanBeIncidentResponsible(false);
+    setApprovalCompanyIds(null);
+    setIncidentResponsibleCompanyIds(null);
   };
 
   const getErrorMessage = (error: unknown): string => {
@@ -304,6 +324,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setStripeExempt(cached.stripeExempt ?? false);
       setUnderTraining(cached.underTraining ?? false);
       setTrainingModuleAccess(normalizeTrainingModules(cached.trainingModuleAccess));
+      setCanApproveMissions(cached.canApproveMissions ?? false);
+      setCanBeIncidentResponsible(cached.canBeIncidentResponsible ?? false);
+      setApprovalCompanyIds(cached.approvalCompanyIds ?? null);
+      setIncidentResponsibleCompanyIds(cached.incidentResponsibleCompanyIds ?? null);
       if (cached.accessibleCompanies?.length) {
         setAccessibleCompanies(cached.accessibleCompanies);
       }
