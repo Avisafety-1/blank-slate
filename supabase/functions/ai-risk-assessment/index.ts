@@ -1787,7 +1787,7 @@ Returner en JSON-respons med denne strukturen:
     "airspace": {
       "score": <number 1-10>,
       "go_decision": "<GO|BETINGET|NO-GO>",
-      "actual_conditions": "<beskrivelse av luftromsforhold>",
+      "actual_conditions": "<beskrivelse av luftromsforhold. Bruk ALLTID ordene 'innenfor' eller 'utenfor' basert på warnings[].inside, og oppgi avstand i meter/km når inside=false. Aldri skriv 'innenfor 5 km av X' når inside=false — skriv 'utenfor 5 km-sonen rundt X (N m unna)'.>",
       "factors": ["<positive faktorer>"],
       "concerns": ["<bekymringer>"]
     },
