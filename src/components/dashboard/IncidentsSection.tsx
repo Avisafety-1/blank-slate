@@ -42,9 +42,8 @@ type Incident = Tables<"incidents">;
 
 export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t, i18n } = useTranslation();
-  const { companyId, user, departmentsEnabled } = useAuth();
+  const { companyId, user, departmentsEnabled, canBeIncidentResponsible } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
-  const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,18 +57,6 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
   // Fetch incidents from database
-  useEffect(() => {
-    const fetchFlag = async () => {
-      if (!user) return;
-      const { data } = await supabase
-        .from('profiles')
-        .select('can_be_incident_responsible')
-        .eq('id', user.id)
-        .single();
-      setCanBeIncidentResponsible(data?.can_be_incident_responsible === true);
-    };
-    fetchFlag();
-  }, [user]);
 
   useEffect(() => {
     fetchIncidents();

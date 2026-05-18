@@ -36,6 +36,10 @@ interface CachedProfile {
   accessibleCompanies?: AccessibleCompany[];
   underTraining?: boolean;
   trainingModuleAccess?: TrainingModuleKey[];
+  canApproveMissions?: boolean;
+  canBeIncidentResponsible?: boolean;
+  approvalCompanyIds?: string[] | null;
+  incidentResponsibleCompanyIds?: string[] | null;
   cachedAt?: number;
 }
 
@@ -80,6 +84,10 @@ interface AuthContextType {
   underTraining: boolean;
   trainingModuleAccess: TrainingModuleKey[];
   hasTrainingModuleAccess: (moduleKey: TrainingModuleKey) => boolean;
+  canApproveMissions: boolean;
+  canBeIncidentResponsible: boolean;
+  approvalCompanyIds: string[] | null;
+  incidentResponsibleCompanyIds: string[] | null;
   authRefreshing: boolean;
   authInitialized: boolean;
   signOut: () => Promise<void>;
@@ -124,6 +132,10 @@ const AuthContext = createContext<AuthContextType>({
   underTraining: false,
   trainingModuleAccess: [],
   hasTrainingModuleAccess: () => true,
+  canApproveMissions: false,
+  canBeIncidentResponsible: false,
+  approvalCompanyIds: null,
+  incidentResponsibleCompanyIds: null,
   authRefreshing: false,
   authInitialized: false,
   signOut: async () => {},
@@ -185,6 +197,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
   const [underTraining, setUnderTraining] = useState(false);
   const [trainingModuleAccess, setTrainingModuleAccess] = useState<TrainingModuleKey[]>([]);
+  const [canApproveMissions, setCanApproveMissions] = useState(false);
+  const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
+  const [approvalCompanyIds, setApprovalCompanyIds] = useState<string[] | null>(null);
+  const [incidentResponsibleCompanyIds, setIncidentResponsibleCompanyIds] = useState<string[] | null>(null);
 
   const resetAuthState = () => {
     setSession(null);
@@ -218,6 +234,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setAccessibleCompanies([]);
     setUnderTraining(false);
     setTrainingModuleAccess([]);
+    setCanApproveMissions(false);
+    setCanBeIncidentResponsible(false);
+    setApprovalCompanyIds(null);
+    setIncidentResponsibleCompanyIds(null);
   };
 
   const getErrorMessage = (error: unknown): string => {
@@ -304,6 +324,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setStripeExempt(cached.stripeExempt ?? false);
       setUnderTraining(cached.underTraining ?? false);
       setTrainingModuleAccess(normalizeTrainingModules(cached.trainingModuleAccess));
+      setCanApproveMissions(cached.canApproveMissions ?? false);
+      setCanBeIncidentResponsible(cached.canBeIncidentResponsible ?? false);
+      setApprovalCompanyIds(cached.approvalCompanyIds ?? null);
+      setIncidentResponsibleCompanyIds(cached.incidentResponsibleCompanyIds ?? null);
       if (cached.accessibleCompanies?.length) {
         setAccessibleCompanies(cached.accessibleCompanies);
       }
@@ -426,6 +450,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             approved,
             under_training,
             training_module_access,
+            can_approve_missions,
+            can_be_incident_responsible,
+            approval_company_ids,
+            incident_responsible_company_ids,
             companies (
               id,
               navn,
@@ -481,6 +509,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         departmentsEnabled: false,
         underTraining: false,
         trainingModuleAccess: [],
+        canApproveMissions: canApproveMissions,
+        canBeIncidentResponsible: canBeIncidentResponsible,
+        approvalCompanyIds: approvalCompanyIds,
+        incidentResponsibleCompanyIds: incidentResponsibleCompanyIds,
       };
 
       if (profileResult.error && roleResult.error) {
@@ -510,6 +542,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.ardupilotFlightlogEnabled = company?.ardupilot_enabled ?? false;
         profileData.stripeExempt = company?.stripe_exempt ?? false;
         profileData.departmentsEnabled = company?.departments_enabled ?? false;
+        profileData.canApproveMissions = (profile as any).can_approve_missions ?? false;
+        profileData.canBeIncidentResponsible = (profile as any).can_be_incident_responsible ?? false;
+        profileData.approvalCompanyIds = (profile as any).approval_company_ids ?? null;
+        profileData.incidentResponsibleCompanyIds = (profile as any).incident_responsible_company_ids ?? null;
 
         // Inherit parent company settings if needed
         if (resolvedParentCompanyId) {
@@ -573,6 +609,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setStripeExempt(profileData.stripeExempt);
       setUnderTraining(profileData.underTraining ?? false);
       setTrainingModuleAccess(profileData.trainingModuleAccess ?? []);
+      setCanApproveMissions(profileData.canApproveMissions ?? false);
+      setCanBeIncidentResponsible(profileData.canBeIncidentResponsible ?? false);
+      setApprovalCompanyIds(profileData.approvalCompanyIds ?? null);
+      setIncidentResponsibleCompanyIds(profileData.incidentResponsibleCompanyIds ?? null);
       setProfileLoaded(true);
 
       // Apply accessible companies
@@ -972,6 +1012,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       'approved',
       'under_training',
       'training_module_access',
+      'can_approve_missions',
+      'can_be_incident_responsible',
+      'approval_company_ids',
+      'incident_responsible_company_ids',
     ] as const;
 
     const channel = supabase
@@ -1133,6 +1177,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       underTraining,
       trainingModuleAccess,
       hasTrainingModuleAccess: (moduleKey) => !underTraining || trainingModuleAccess.includes(moduleKey),
+      canApproveMissions,
+      canBeIncidentResponsible,
+      approvalCompanyIds,
+      incidentResponsibleCompanyIds,
       authRefreshing,
       authInitialized,
       signOut, 

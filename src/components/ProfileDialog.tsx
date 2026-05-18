@@ -120,7 +120,7 @@ const severityColors = {
 };
 
 export const ProfileDialog = () => {
-  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, companyId, parentCompanyId, accessibleCompanies, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole } = useAuth();
+  const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, companyId, parentCompanyId, accessibleCompanies, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole, canApproveMissions, canBeIncidentResponsible, approvalCompanyIds } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
@@ -132,9 +132,7 @@ export const ProfileDialog = () => {
   const [pendingApprovalMissions, setPendingApprovalMissions] = useState<any[]>([]);
   const [pendingTraining, setPendingTraining] = useState<any[]>([]);
   const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
-  const [canApproveMissions, setCanApproveMissions] = useState(false);
   const [preventSelfApproval, setPreventSelfApproval] = useState(false);
-  const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
@@ -179,19 +177,14 @@ export const ProfileDialog = () => {
 
     const fetchBadgeCounts = async () => {
       try {
-        // Run incident count and approval check in parallel
-        const [incidentsResult, approvalResult, trainingResult] = await Promise.all([
+        // Approval flag comes from AuthContext cache; only fetch incidents + training here
+        const [incidentsResult, trainingResult] = await Promise.all([
           supabase
             .from("incidents")
             .select("id, tittel, hendelsestidspunkt, status, alvorlighetsgrad, beskrivelse, kategori, lokasjon, mission_id, oppdatert_dato, oppfolgingsansvarlig_id, opprettet_dato, rapportert_av, user_id, company_id, hovedaarsak, medvirkende_aarsak, incident_number, bilde_url, pilot_id, drone_id, equipment_ids, reported_anonymously")
             .eq("oppfolgingsansvarlig_id", user.id)
             .neq("status", "Lukket")
             .order("hendelsestidspunkt", { ascending: false }),
-          supabase
-            .from("profiles")
-            .select("can_approve_missions, company_id")
-            .eq("id", user.id)
-            .single(),
           supabase
             .from("training_assignments")
             .select("id, course_id, saved_answers, training_courses(title, description)")
@@ -207,13 +200,12 @@ export const ProfileDialog = () => {
           setPendingTraining(trainingResult.data);
         }
 
-        if (approvalResult.data?.can_approve_missions && approvalResult.data.company_id) {
-          setCanApproveMissions(true);
+        if (canApproveMissions && companyId) {
           const { data: pendingMissions } = await supabase
             .from("missions")
             .select("*")
             .eq("approval_status", "pending_approval")
-            .eq("company_id", approvalResult.data.company_id)
+            .eq("company_id", companyId)
             .order("submitted_for_approval_at", { ascending: false });
 
           if (pendingMissions) {
@@ -226,7 +218,7 @@ export const ProfileDialog = () => {
     };
 
     fetchBadgeCounts();
-  }, [user]);
+  }, [user, canApproveMissions, companyId]);
 
   // Only fetch heavy user data when dialog is actually opened
   useEffect(() => {
@@ -317,21 +309,13 @@ export const ProfileDialog = () => {
         setFollowUpIncidents(followUpIncidentsData);
       }
 
-      // Check if user can approve missions
-      const { data: profileApproval } = await supabase
-        .from("profiles")
-        .select("can_approve_missions, can_be_incident_responsible, approval_company_ids, incident_responsible_company_ids")
-        .eq("id", user.id)
-        .single();
-
-      const userCanApprove = profileApproval?.can_approve_missions === true;
-      setCanApproveMissions(userCanApprove);
-      setCanBeIncidentResponsible(profileApproval?.can_be_incident_responsible === true);
+      // Approval flags come from AuthContext cache (no DB roundtrip)
+      const userCanApprove = canApproveMissions;
 
       // Fetch pending approval missions if user can approve
       if (userCanApprove && profileData?.company_id) {
         // Determine which companies this user can approve for
-        const approvalIds = (profileApproval as any)?.approval_company_ids;
+        const approvalIds = approvalCompanyIds;
         let pendingQuery = supabase
           .from("missions")
           .select("*")
