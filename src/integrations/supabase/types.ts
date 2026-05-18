@@ -6403,6 +6403,11 @@ export type Database = {
         Args: { p_features: Json; p_layer_id: string }
         Returns: Json
       }
+      bulk_upsert_dk_drone_zones: {
+        Args: { p_features: Json; p_layer_id: string }
+        Returns: Json
+      }
+      bulk_upsert_dk_nature_areas: { Args: { p_features: Json }; Returns: Json }
       bulk_upsert_geojson_features: {
         Args: { p_features: Json; p_table_name: string }
         Returns: Json
