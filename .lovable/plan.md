@@ -1,82 +1,32 @@
-# Audit: gjenstående propagation-hull mor → avdeling
+# Fiks AI-forvirring rundt 5 km-sone (Flesland m.fl.)
 
-## Status etter forrige fiks
+## Problem
+AI-risikovurderingen for oppdraget «Gravdalsvatnet – Bergen – Norconsult» påstår at oppdraget er **innenfor 5 km av Flesland**, selv om ruten faktisk ligger utenfor 5 km-sonen. AI får riktig data fra `check_mission_airspace` (zonetype `5KM`, `route_inside=false`, `min_distance` i meter), men i prompten finnes det ingen eksplisitt instruksjon om hvordan disse feltene skal tolkes. Modellen ser «5KM» i navnet og konkluderer feilaktig at oppdraget er innenfor sonen.
 
-**Allerede løst:**
-- `companies`-felt (luftroms-adv., skjul rapportør, oppdragsgodkjenning, prevent self-approval, ack maintenance, SORA-krav, avvik, SafeSky callsign) → DB-trigger re-syncer ved enhver oppdatering
-- `propagate_sora_config` → `ai-risk-assessment` leser mor sin `company_sora_config` ved kjøring
+## Løsning
+Stramme inn system-prompten i `supabase/functions/ai-risk-assessment/index.ts` slik at modellen alltid bruker `inside`-flagget og `distance`-feltet eksplisitt, og skiller tydelig mellom «innenfor» og «utenfor» 5 km-sonen (og tilsvarende for CTR/TIZ, NOTAM, naturvern osv.).
 
-**Allerede korrekt (read-time, ingen sync trengs):**
-- `propagate_fh2_credentials` → `flighthub2-proxy` + webhook-config leser mor
-- `propagate_sora_approval` → RPC `get_effective_sora_approval_config`
-- `propagate_deviation_report` → LogFlightTimeDialog leser effektiv verdi
-- `propagate_flight_alerts` → UploadDroneLogDialog bruker RPC `get_effective_flight_alert_config`
+### Konkrete prompt-endringer
+1. **I avsnittet «Bruk kontekstdata» (linje 1543–1547):** Legg til en eksplisitt regel:
+   - `inside=true` ⇒ ruten ligger **inne i** sonen.
+   - `inside=false` ⇒ ruten ligger **utenfor** sonen; `distance` angir nærmeste avstand i meter.
+   - Modellen skal aldri si «innenfor X» når `inside=false`.
+2. **Ny seksjon «Tolkning av luftromsadvarsler»** rett før AEC-tabellen, med formuleringseksempler:
+   - 5KM `inside=true` → «Oppdraget er innenfor 5 km-sonen rundt …, krever Ninox-godkjenning, maks 120 m AGL.»
+   - 5KM `inside=false` → «Oppdraget er **utenfor** 5 km-sonen rundt … (nærmeste avstand: N meter / N,N km). Ingen Ninox-godkjenning kreves.»
+   - CTR/TIZ tilsvarende.
+3. **I `airspace.actual_conditions`-feltet** krev at modellen alltid eksplisitt angir avstand i meter/km når `inside=false`, og bruker ordene «innenfor» / «utenfor» konsekvent.
+4. **Konsekvens for `air_risk_analysis.aec_reasoning`:** når alle 5KM/CTR/TIZ-advarsler har `inside=false`, skal modellen ikke automatisk anta klasse D — bruke avstanden til å begrunne valgt klasse.
 
-## Hull som gjenstår
+### Hva som IKKE endres
+- `check_mission_airspace`-RPCen og felt-strukturen sendt til AI er allerede korrekt.
+- Frontend-visning (`AirspaceWarnings.tsx`) er allerede korrekt — den bruker `is_inside`.
+- Ingen DB-migrasjon, ingen RLS-endringer.
 
-Disse propagation-flaggene kopierer kun data ved første toggle og leses fra avdelingens egen rad. Senere endringer hos mor når aldri avdelinger:
+## Teknisk
+- Fil: `supabase/functions/ai-risk-assessment/index.ts` (kun prompt-strenger ca. linje 1310–1320 og 1543–1547, samt JSON-skjema-kommentar for `airspace.actual_conditions`).
+- Edge function blir automatisk re-deployert.
+- Etter deploy: be brukeren regenerere risikovurderingen for det aktuelle oppdraget og verifisere at AI nå sier «utenfor 5 km-sonen rundt Flesland (X m unna)».
 
-### 1. `propagate_mission_roles` (oppdragsroller)
-- **Lagring:** `company_mission_roles` (én rad per rolle per selskap)
-- **Forbruker:** `AddMissionDialog.fetchCompanyMissionRoles` leser kun `eq company_id`
-- **Symptom:** Mor legger til/endrer/sletter en rolle → avdeling ser fortsatt gammelt sett
-- **Fiks:** Trigger på `company_mission_roles` (INSERT/UPDATE/DELETE). Når raden tilhører en mor med `propagate_mission_roles = true`, speil endringen til alle avdelinger. Pluss engangs-backfill.
-
-### 2. `propagate_sora_buffer_mode` (SORA-defaults: bufferMode + flight geography + altitude)
-- **Lagring:** `company_sora_config.default_buffer_mode`, `default_flight_geography_m`, `default_flight_altitude_m`
-- **Forbrukere:** `src/pages/Kart.tsx`, `src/components/dashboard/ExpandedMapDialog.tsx` leser kun avdelingens egen rad
-- **Symptom:** Mor endrer default buffer mode → avdeling ser sin gamle default
-- **Fiks:** Trigger på `company_sora_config` AFTER UPDATE. Når raden tilhører en mor og mor har `propagate_sora_buffer_mode = true`, oppdater disse tre feltene på alle avdelingers `company_sora_config` (upsert). Pluss engangs-backfill.
-
-### 3. `propagate_flight_alerts` (datarad-konsistens)
-- **Lagring:** `company_flight_alerts` + `company_flight_alert_recipients`
-- **Forbruker:** Bruker allerede RPC som leser mor — så pålogget bruk er korrekt
-- **Hull:** Hvis en avdelings-admin redigerer sine egne `company_flight_alerts`-rader mens propagation er på, vil endringene ligge "under" men aldri brukes (forvirrende UI-tilstand). Eventuelt: blokker UPDATE/INSERT på avdelingens rader når mor propagerer (gjennom RLS eller trigger). Lavere prioritet.
-
-## Anbefalt rekkefølge
-
-1. **Mission roles re-sync trigger** (#1) — størst funksjonelt hull
-2. **SORA-defaults re-sync trigger** (#2) — samme mønster
-3. **Flight alerts forsvars-lås** (#3) — kun hvis vi opplever rot i praksis
-
-## Tekniske detaljer
-
-### Trigger for company_mission_roles
-```text
-AFTER INSERT/UPDATE/DELETE ON company_mission_roles
-FOR EACH ROW
-  hvis OLD/NEW.company_id tilhører en parent (parent_company_id IS NULL)
-    og den parent har propagate_mission_roles = true:
-      INSERT → opprett samme rolle (navn) i alle avdelinger som mangler den
-      UPDATE → endre navn på matchende rolle i alle avdelinger
-      DELETE → slett matchende rolle i alle avdelinger
-```
-Matching gjøres på `name` (kombinasjon med company_id) siden id-er er ulike per avdeling.
-
-### Trigger for company_sora_config (SORA-defaults)
-```text
-AFTER UPDATE ON company_sora_config
-FOR EACH ROW
-  hvis raden tilhører en parent og parent.propagate_sora_buffer_mode = true,
-  og minst ett av de tre defaultsene endret seg:
-    UPSERT på alle avdelingers company_sora_config — bare de tre default-feltene
-```
-Berører ikke andre SORA-config-felt (de styres av `propagate_sora_config` som allerede er read-time i ai-risk-assessment).
-
-### Engangs-backfill
-Kort SQL som syncer eksisterende skjevheter for begge tabellene.
-
-## Hva som IKKE endres
-
-- Frontend-komponenter — alle eksisterende skjermbilder fortsetter å fungere uendret
-- RLS-policies
-- Edge functions
-- Ingen nye kolonner
-
-## Risiko
-
-- Triggerne kjører kun når mor-rader endres → ingen ekstra last på normal drift
-- Re-entrancy: triggeren oppdaterer avdelingsrader, ikke mor → ingen rekursjon
-- Sletting av roller på mor sletter automatisk på avdelinger — påvirker `mission_personnel.role_id` ON DELETE SET NULL (allerede konfigurert via prosjektets standard for bevart historikk)
-
-Vil du at jeg implementerer #1 og #2 nå?
+## Memory-oppdatering
+Legg til en notis i `mem://architecture/missions/ai-risk-assessment-logic` om at 5KM/CTR/TIZ-advarsler MÅ tolkes med `inside`-flagget, ikke bare på navn.
