@@ -671,6 +671,16 @@ export function OpenAIPMap({
     const caaRestriksjonerLayer = L.layerGroup();
     layerConfigs.push({ id: "caa_restriksjoner", name: "Restriksjonsområder (CAA)", layer: caaRestriksjonerLayer, enabled: false, icon: "ban" });
 
+    // 🇩🇰 Danmark — Trafikstyrelsen dronezoner + naturområder (alle skjult som default)
+    const dkRodLayer = L.layerGroup();
+    layerConfigs.push({ id: "dk_rod", name: "🇩🇰 Flyvesikringskritisk (rød)", layer: dkRodLayer, enabled: false, icon: "ban" });
+    const dkOrangeLayer = L.layerGroup();
+    layerConfigs.push({ id: "dk_orange", name: "🇩🇰 Opmærksomhedsområder (orange)", layer: dkOrangeLayer, enabled: false, icon: "alertTriangle" });
+    const dkBlaLayer = L.layerGroup();
+    layerConfigs.push({ id: "dk_bla", name: "🇩🇰 Sikringskritisk (blå)", layer: dkBlaLayer, enabled: false, icon: "shield" });
+    const dkNatureLayer = L.layerGroup();
+    layerConfigs.push({ id: "dk_nature", name: "🇩🇰 Naturområder", layer: dkNatureLayer, enabled: false, icon: "treePine" });
+
     // SSB Arealbruk
     const arealbrukLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.arealbruk?", {
       layers: "arealbruk", format: "image/png", transparent: true, opacity: 0.6, attribution: "SSB Arealbruk", minZoom: 0, maxZoom: 20, tiled: true,
