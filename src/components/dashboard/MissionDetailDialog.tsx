@@ -298,7 +298,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     cachedWarnings={cachedAirspaceWarnings ?? undefined}
                     showAll={companySettings.show_all_airspace_warnings}
                     onAirspaceResult={(warnings) => {
-                      setHas5kmZone(warnings.some(w => w.zone_type === '5KM'));
+                      setHas5kmZone(warnings.some(w => w.zone_type === '5KM' && w.is_inside === true));
                       if (!cachedAirspaceWarnings && warnings.length > 0) {
                         setCachedAirspaceWarnings(warnings);
                         if (mission) {
