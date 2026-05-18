@@ -1002,6 +1002,36 @@ export function OpenAIPMap({
       if (dkMatch) fetchDkLayers();
     });
 
+    // Befolkning: bytter mellom SSB (Norge) og Eurostat (Europa) basert på kartsenter
+    const isCenterInNorway = (): boolean => {
+      const c = map.getCenter();
+      return c.lat >= 57.5 && c.lat <= 71.5 && c.lng >= 4 && c.lng <= 32;
+    };
+    const syncBefolkningSource = () => {
+      const inNorway = isCenterInNorway();
+      if (inNorway) {
+        if (map.hasLayer(eurostatPopLayer)) eurostatPopLayer.remove();
+        if (!map.hasLayer(ssbBefolkningLayer)) ssbBefolkningLayer.addTo(map);
+      } else {
+        if (map.hasLayer(ssbBefolkningLayer)) ssbBefolkningLayer.remove();
+        if (!map.hasLayer(eurostatPopLayer)) eurostatPopLayer.addTo(map);
+      }
+    };
+    (map as any)._befolkningControls = {
+      sync: syncBefolkningSource,
+      isCenterInNorway,
+      removeAll: () => {
+        if (map.hasLayer(ssbBefolkningLayer)) ssbBefolkningLayer.remove();
+        if (map.hasLayer(eurostatPopLayer)) eurostatPopLayer.remove();
+      },
+    };
+    map.on('moveend', () => {
+      // Bare bytte hvis ett av lagene allerede er aktivt
+      if (map.hasLayer(ssbBefolkningLayer) || map.hasLayer(eurostatPopLayer)) {
+        syncBefolkningSource();
+      }
+    });
+
     // Kraftledninger: refetch on moveend if layer is enabled
     let kraftDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetchKraft = () => {
