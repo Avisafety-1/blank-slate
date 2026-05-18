@@ -1435,7 +1435,7 @@ export function OpenAIPMap({
       {layers.find(l => l.id === "befolkning")?.enabled ? (
         <BefolkningLegend
           resolution="1km"
-          source="both"
+          source={befolkningSource}
         />
       ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
