@@ -1188,6 +1188,111 @@ export type Database = {
           },
         ]
       }
+      dk_drone_zones: {
+        Row: {
+          buffer: string | null
+          category: string | null
+          created_at: string
+          elevation_m: number | null
+          external_id: string
+          geometry: unknown
+          geometry_type: string
+          icao: string | null
+          id: string
+          last_synced_at: string
+          layer_id: string
+          lower_limit_m: number | null
+          name: string | null
+          properties: Json
+          updated_at: string
+          upper_limit_m: number | null
+        }
+        Insert: {
+          buffer?: string | null
+          category?: string | null
+          created_at?: string
+          elevation_m?: number | null
+          external_id: string
+          geometry: unknown
+          geometry_type: string
+          icao?: string | null
+          id?: string
+          last_synced_at?: string
+          layer_id: string
+          lower_limit_m?: number | null
+          name?: string | null
+          properties?: Json
+          updated_at?: string
+          upper_limit_m?: number | null
+        }
+        Update: {
+          buffer?: string | null
+          category?: string | null
+          created_at?: string
+          elevation_m?: number | null
+          external_id?: string
+          geometry?: unknown
+          geometry_type?: string
+          icao?: string | null
+          id?: string
+          last_synced_at?: string
+          layer_id?: string
+          lower_limit_m?: number | null
+          name?: string | null
+          properties?: Json
+          updated_at?: string
+          upper_limit_m?: number | null
+        }
+        Relationships: []
+      }
+      dk_nature_areas: {
+        Row: {
+          active: boolean
+          created_at: string
+          external_id: string
+          geometry: unknown
+          id: string
+          last_synced_at: string
+          name: string | null
+          properties: Json
+          reason: string | null
+          restriction_period: string | null
+          source_url: string | null
+          theme: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          external_id: string
+          geometry: unknown
+          id?: string
+          last_synced_at?: string
+          name?: string | null
+          properties?: Json
+          reason?: string | null
+          restriction_period?: string | null
+          source_url?: string | null
+          theme?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          external_id?: string
+          geometry?: unknown
+          id?: string
+          last_synced_at?: string
+          name?: string | null
+          properties?: Json
+          reason?: string | null
+          restriction_period?: string | null
+          source_url?: string | null
+          theme?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_folder_items: {
         Row: {
           added_at: string | null
@@ -6565,6 +6670,51 @@ export type Database = {
         Returns: {
           company_id: string
           company_name: string
+        }[]
+      }
+      get_dk_drone_zones_in_bounds: {
+        Args: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+          p_layer_ids: string[]
+        }
+        Returns: {
+          buffer: string
+          category: string
+          elevation_m: number
+          external_id: string
+          geometry: Json
+          geometry_type: string
+          icao: string
+          id: string
+          layer_id: string
+          lower_limit_m: number
+          name: string
+          properties: Json
+          upper_limit_m: number
+        }[]
+      }
+      get_dk_nature_areas_in_bounds: {
+        Args: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+          p_include_inactive?: boolean
+        }
+        Returns: {
+          active: boolean
+          external_id: string
+          geometry: Json
+          id: string
+          name: string
+          properties: Json
+          reason: string
+          restriction_period: string
+          source_url: string
+          theme: string
         }[]
       }
       get_eccairs_credentials: {
