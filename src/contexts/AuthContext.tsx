@@ -450,6 +450,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             approved,
             under_training,
             training_module_access,
+            can_approve_missions,
+            can_be_incident_responsible,
+            approval_company_ids,
+            incident_responsible_company_ids,
             companies (
               id,
               navn,
