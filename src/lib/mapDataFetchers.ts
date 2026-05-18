@@ -1043,7 +1043,7 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
 
     for (const zone of data as any[]) {
       if (!zone.geometry) continue;
-      const style = DK_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ DK sone' };
+      const style = DK_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ DK sone', warningLevel: 'danger' as const };
       try {
         if (zone.geometry_type === 'point') {
           const coords = (zone.geometry as any).coordinates;
