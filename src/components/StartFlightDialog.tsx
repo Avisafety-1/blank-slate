@@ -656,23 +656,28 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const selectedMission = selectedMissionId && selectedMissionId !== 'none' 
     ? missions.find(m => m.id === selectedMissionId) 
     : null;
-  const hasRoute = selectedMission?.route && 
-    typeof selectedMission.route === 'object' && 
+  const routeCoordsCount = selectedMission?.route &&
+    typeof selectedMission.route === 'object' &&
     selectedMission.route !== null &&
     'coordinates' in selectedMission.route &&
-    Array.isArray((selectedMission.route as { coordinates: unknown[] }).coordinates) &&
-    (selectedMission.route as { coordinates: unknown[] }).coordinates.length > 0;
+    Array.isArray((selectedMission.route as { coordinates: unknown[] }).coordinates)
+      ? (selectedMission.route as { coordinates: unknown[] }).coordinates.length
+      : 0;
+  const hasRoute = routeCoordsCount > 0;
+  // SafeSky krever minst 3 rutepunkter for å publisere et advisory
+  const hasAdvisoryRoute = routeCoordsCount >= 3;
 
-  // Auto-bytt SafeSky-modus basert på om rute er tilgjengelig:
-  // - Uten rute: tving 'none' (advisory krever rute)
-  // - Med rute: default til 'advisory' når brukeren ikke aktivt har valgt
+  // Auto-bytt SafeSky-modus basert på om advisory-rute er tilgjengelig:
+  // - Uten gyldig rute (<3 punkter): tving 'none'
+  // - Med gyldig rute: default til 'advisory' når brukeren ikke aktivt har valgt
   useEffect(() => {
-    if (!hasRoute && publishMode === 'advisory') {
+    if (!hasAdvisoryRoute && publishMode === 'advisory') {
       setPublishMode('none');
-    } else if (hasRoute && publishMode === 'none' && !userPickedMode) {
+    } else if (hasAdvisoryRoute && publishMode === 'none' && !userPickedMode) {
       setPublishMode('advisory');
     }
-  }, [hasRoute, publishMode, userPickedMode]);
+  }, [hasAdvisoryRoute, publishMode, userPickedMode]);
+
 
   // Admin functions to link/unlink checklists (persisted to company)
   const linkChecklist = async (checklistId: string) => {
