@@ -1104,47 +1104,63 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
     }
 
     // 9d. Fetch company-specific SORA config
+    // Inheritance rules:
+    //   1) If parent exists AND parent.propagate_sora_config = true AND parent has
+    //      a company_sora_config row -> use PARENT's config (overrides child).
+    //   2) Else if child has own row -> use child's.
+    //   3) Else fall back to parent's row if any.
     let companySoraConfig: any = null;
+    let companySoraConfigSource: 'own' | 'parent-propagated' | 'parent-fallback' | 'none' = 'none';
     let linkedDocumentSummary = '';
     let companyRequireSora = false;
+    const soraSelect = 'max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, require_civil_twilight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids';
     if (companyId) {
       try {
-        const { data: soraConfigData } = await supabase
+        const { data: companyRow } = await supabase
+          .from('companies')
+          .select('parent_company_id, require_sora_on_missions')
+          .eq('id', companyId)
+          .maybeSingle();
+        companyRequireSora = !!(companyRow as any)?.require_sora_on_missions;
+        const parentId = (companyRow as any)?.parent_company_id ?? null;
+
+        // Fetch own config
+        const { data: ownConfig } = await supabase
           .from('company_sora_config' as any)
-          .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, require_civil_twilight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids')
+          .select(soraSelect)
           .eq('company_id', companyId)
           .maybeSingle();
 
-        companySoraConfig = soraConfigData;
-
-        // Fallback to parent company config if none found
-        if (!companySoraConfig) {
-          const { data: companyRow } = await supabase
+        // Look at parent if there is one
+        let parentPropagates = false;
+        let parentConfig: any = null;
+        if (parentId) {
+          const { data: parentCompany } = await supabase
             .from('companies')
-            .select('parent_company_id, require_sora_on_missions')
-            .eq('id', companyId)
+            .select('propagate_sora_config')
+            .eq('id', parentId)
             .maybeSingle();
+          parentPropagates = !!(parentCompany as any)?.propagate_sora_config;
 
-          companyRequireSora = !!(companyRow as any)?.require_sora_on_missions;
-
-          if (companyRow?.parent_company_id) {
-            const { data: parentConfig } = await supabase
-              .from('company_sora_config' as any)
-              .select('max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, require_civil_twilight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids')
-              .eq('company_id', companyRow.parent_company_id)
-              .maybeSingle();
-            if (parentConfig) {
-              companySoraConfig = parentConfig;
-              console.log(`Using parent company SORA config (parent_id=${companyRow.parent_company_id})`);
-            }
-          }
-        } else {
-          const { data: companyRow } = await supabase
-            .from('companies')
-            .select('require_sora_on_missions')
-            .eq('id', companyId)
+          const { data: pCfg } = await supabase
+            .from('company_sora_config' as any)
+            .select(soraSelect)
+            .eq('company_id', parentId)
             .maybeSingle();
-          companyRequireSora = !!(companyRow as any)?.require_sora_on_missions;
+          parentConfig = pCfg;
+        }
+
+        if (parentPropagates && parentConfig) {
+          companySoraConfig = parentConfig;
+          companySoraConfigSource = 'parent-propagated';
+          console.log(`Using parent SORA config (propagate_sora_config=true, parent_id=${parentId})`);
+        } else if (ownConfig) {
+          companySoraConfig = ownConfig;
+          companySoraConfigSource = 'own';
+        } else if (parentConfig) {
+          companySoraConfig = parentConfig;
+          companySoraConfigSource = 'parent-fallback';
+          console.log(`Using parent SORA config as fallback (no own row, parent_id=${parentId})`);
         }
 
         if (companySoraConfig?.linked_document_ids?.length > 0) {
@@ -1157,7 +1173,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
             .join('\n') || '';
         }
         if (companySoraConfig) {
-          console.log(`Company SORA config loaded: maxWind=${companySoraConfig.max_wind_speed_ms}m/s, maxAlt=${companySoraConfig.max_flight_altitude_m}m, allowBvlos=${companySoraConfig.allow_bvlos}, allowNight=${companySoraConfig.allow_night_flight}`);
+          console.log(`Company SORA config loaded (source=${companySoraConfigSource}): maxWind=${companySoraConfig.max_wind_speed_ms}m/s, maxAlt=${companySoraConfig.max_flight_altitude_m}m, allowBvlos=${companySoraConfig.allow_bvlos}, allowNight=${companySoraConfig.allow_night_flight}`);
         }
       } catch (e) {
         console.error('Error fetching company SORA config (using defaults):', e);
