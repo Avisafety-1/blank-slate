@@ -1137,18 +1137,20 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
                 <label 
                   htmlFor="mode-advisory" 
-                  className={`flex items-start space-x-3 rounded-lg border p-3 transition-colors ${!hasRoute ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}
+                  className={`flex items-start space-x-3 rounded-lg border p-3 transition-colors ${!hasAdvisoryRoute ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'}`}
                 >
-                  <RadioGroupItem value="advisory" id="mode-advisory" disabled={!hasRoute} className="mt-0.5" />
+                  <RadioGroupItem value="advisory" id="mode-advisory" disabled={!hasAdvisoryRoute} className="mt-0.5" />
                   <div className="flex-1 space-y-0.5">
                     <div className="flex items-center gap-2">
                       <Radio className="h-4 w-4 text-primary" />
                       <span className="font-medium">{t('flight.safeskyAdvisory')}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {hasRoute 
+                      {hasAdvisoryRoute
                         ? t('flight.safeskyAdvisoryDesc')
-                        : t('flight.safeskyAdvisoryRequiresRoute')}
+                        : hasRoute
+                          ? `SafeSky-advisory krever en rute med minst 3 rutepunkter (denne ruten har ${routeCoordsCount}). Legg til flere veipunkter på oppdraget for å kunne publisere advisory.`
+                          : t('flight.safeskyAdvisoryRequiresRoute')}
                     </p>
                   </div>
                 </label>
