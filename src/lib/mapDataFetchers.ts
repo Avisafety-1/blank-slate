@@ -802,12 +802,15 @@ export interface BoundsFetchParams extends FetchParams {
 
 export async function fetchNaturvernZones(params: BoundsFetchParams) {
   const { layer, mode, bounds } = params;
+  const cache = getCache('naturvern');
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds);
   try {
     const { data, error } = await supabase.rpc('get_naturvern_in_bounds', {
-      min_lat: bounds.minLat,
-      min_lng: bounds.minLng,
-      max_lat: bounds.maxLat,
-      max_lng: bounds.maxLng,
+      min_lat: padded.minLat,
+      min_lng: padded.minLng,
+      max_lat: padded.maxLat,
+      max_lng: padded.maxLng,
     });
 
     if (error || !data) {
@@ -825,40 +828,28 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
       'Plantefredningsområde': '#84cc16',
     };
 
-    for (const zone of data) {
-      if (!zone.geometry) continue;
-      try {
-        const geojsonFeature = {
-          type: 'Feature' as const,
-          geometry: zone.geometry,
-          properties: { name: zone.name, verneform: zone.verneform },
-        };
-
+    diffRender(
+      layer,
+      cache,
+      (data as any[]).filter((z) => z?.geometry),
+      (z) => hashString(`nv|${z.name ?? ''}|${z.verneform ?? ''}|${JSON.stringify(z.geometry)}`),
+      (zone) => {
         const color = verneformColors[zone.verneform || ''] || '#16a34a';
-
-        const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
+        return L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: { name: zone.name, verneform: zone.verneform } } as any, {
           interactive: mode !== 'routePlanning',
           pane: 'overlayPane',
-          style: {
-            color,
-            weight: 1.5,
-            fillColor: color,
-            fillOpacity: 0.15,
-          },
-          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
+          style: { color, weight: 1.5, fillColor: color, fillOpacity: 0.15 },
+          onEachFeature: mode !== 'routePlanning' ? (feature, lyr) => {
             const p = feature.properties || {};
             let popup = `<strong>🌿 Naturvernområde</strong><br/>`;
             popup += `<strong>${p.name || 'Ukjent'}</strong><br/>`;
             if (p.verneform) popup += `Verneform: ${p.verneform}<br/>`;
-            layer.bindPopup(popup);
+            lyr.bindPopup(popup);
           } : undefined,
         });
-        geoJsonLayer.addTo(layer);
-      } catch (err) {
-        // Skip individual zones that fail
-      }
-    }
-    console.log(`Rendered ${data.length} naturvernområder (viewport)`);
+      },
+    );
+    cache.cachedBounds = padded;
   } catch (err) {
     console.error('Kunne ikke hente naturvernområder:', err);
   }
@@ -866,12 +857,15 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
 
 export async function fetchVernRestrictionZones(params: BoundsFetchParams) {
   const { layer, mode, bounds } = params;
+  const cache = getCache('vernRestriction');
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds);
   try {
     const { data, error } = await supabase.rpc('get_vern_restrictions_in_bounds', {
-      min_lat: bounds.minLat,
-      min_lng: bounds.minLng,
-      max_lat: bounds.maxLat,
-      max_lng: bounds.maxLng,
+      min_lat: padded.minLat,
+      min_lng: padded.minLng,
+      max_lat: padded.maxLat,
+      max_lng: padded.maxLng,
     });
 
     if (error || !data) {
@@ -884,48 +878,34 @@ export async function fetchVernRestrictionZones(params: BoundsFetchParams) {
       'LANDINGSFORBUD': '#f97316',
       'LAVFLYVING': '#eab308',
     };
-
     const restrictionLabels: Record<string, string> = {
       'FERDSELSFORBUD': 'Ferdselsforbud',
       'LANDINGSFORBUD': 'Landingsforbud',
       'LAVFLYVING': 'Lavflyvingsforbud under 300m',
     };
 
-    for (const zone of data) {
-      if (!zone.geometry) continue;
-      try {
-        const geojsonFeature = {
-          type: 'Feature' as const,
-          geometry: zone.geometry,
-          properties: { name: zone.name, restriction_type: zone.restriction_type },
-        };
-
+    diffRender(
+      layer,
+      cache,
+      (data as any[]).filter((z) => z?.geometry),
+      (z) => hashString(`vr|${z.name ?? ''}|${z.restriction_type ?? ''}|${JSON.stringify(z.geometry)}`),
+      (zone) => {
         const color = restrictionColors[zone.restriction_type || ''] || '#ef4444';
         const label = restrictionLabels[zone.restriction_type || ''] || zone.restriction_type || 'Restriksjon';
-
-        const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
+        return L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: { name: zone.name, restriction_type: zone.restriction_type } } as any, {
           interactive: mode !== 'routePlanning',
           pane: 'overlayPane',
-          style: {
-            color,
-            weight: 2,
-            fillColor: color,
-            fillOpacity: 0.2,
-            dashArray: '5, 5',
-          },
-          onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
+          style: { color, weight: 2, fillColor: color, fillOpacity: 0.2, dashArray: '5, 5' },
+          onEachFeature: mode !== 'routePlanning' ? (feature, lyr) => {
             const p = feature.properties || {};
             let popup = `<strong>⛔ ${label}</strong><br/>`;
             popup += `<strong>${p.name || 'Ukjent'}</strong>`;
-            layer.bindPopup(popup);
+            lyr.bindPopup(popup);
           } : undefined,
         });
-        geoJsonLayer.addTo(layer);
-      } catch (err) {
-        // Skip individual zones that fail
-      }
-    }
-    console.log(`Rendered ${data.length} vern-restriksjoner (viewport)`);
+      },
+    );
+    cache.cachedBounds = padded;
   } catch (err) {
     console.error('Kunne ikke hente vern-restriksjoner:', err);
   }
