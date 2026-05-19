@@ -192,9 +192,9 @@ export function OpenAIPMap({
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
-  const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
+  const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo' | 'icao'>('osm');
   const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
-  const baseLayerRef = useRef<L.TileLayer | null>(null);
+  const baseLayerRef = useRef<L.Layer | null>(null);
   const isPlacingPilotRef = useRef(isPlacingPilot);
   const onPilotPositionChangeRef = useRef(onPilotPositionChange);
   const weatherEnabledRef = useRef(false);
