@@ -1343,7 +1343,9 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         }
       }
       if (insideCtr.length > 0) {
-        summaryParts.push(`Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}.`);
+        summaryParts.push(isAtOrBelow120m && !requiresNinox
+          ? `Ruten overlapper kontrollert luftrom/CTR-lag (${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}), men ved maks 120 m AGL og utenfor 5 km-sonen skal dette behandles som operativt varsel/aktsomhet — ikke automatisk no-go eller hard-stop.`
+          : `Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}. Avklar krav til klarering/tillatelse før flyging.`);
       } else {
         const nearCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && !w.inside);
         if (nearCtr.length > 0) {
@@ -1357,6 +1359,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           inside_controlled_airspace: insideCtr.length > 0,
           inside_5km_zone: inside5km.length > 0,
           distance_semantics: 'Alle avstander (warnings[].distance og tall i summary.text) er avstand til SONEGRENSEN (polygonens yttergrense), IKKE til flyplass/aerodrome/NSM-anlegg. For 5KM-soner: avstand til selve flyplassen ≈ 5000 m + distance.',
+          controlled_airspace_policy: isAtOrBelow120m && requiresNinox === false ? 'CTR/TIZ-overlapp ved maks 120 m AGL og utenfor 5 km-sonen er operativt varsel/aktsomhet, ikke automatisk no-go/hard-stop.' : 'Avklar lokale luftromskrav basert på høyde og soneoverlapp.',
           text: summaryParts.join(' '),
         },
       };
