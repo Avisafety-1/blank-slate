@@ -59,6 +59,10 @@ export async function fetchNsmData(params: GeoJsonFetchParams) {
             ${details ? `<div style="margin-top:6px;">${details}</div>` : ''}
           </div>`
         );
+        attachHoverPromotion(layer, {
+          paneName: 'nsmPane',
+          baseStyle: { color: '#ff0000', weight: 2, fillColor: '#ff0000', fillOpacity: 0.25 },
+        });
       } : undefined,
     });
 
