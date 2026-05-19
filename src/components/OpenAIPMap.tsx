@@ -1428,12 +1428,24 @@ export function OpenAIPMap({
           size="icon"
           className="shadow-lg bg-card hover:bg-accent"
           onClick={() => {
-            const next = baseLayerType === "osm" ? "satellite" : baseLayerType === "satellite" ? "topo" : "osm";
+            const next: 'osm' | 'satellite' | 'topo' | 'icao' =
+              baseLayerType === "osm" ? "satellite"
+              : baseLayerType === "satellite" ? "topo"
+              : baseLayerType === "topo" ? "icao"
+              : "osm";
             switchBaseLayer(next);
           }}
-          title={baseLayerType === "osm" ? "Bytt til satellittkart" : baseLayerType === "satellite" ? "Bytt til topografisk kart" : "Bytt til standard kart"}
+          title={
+            baseLayerType === "osm" ? "Bytt til satellittkart"
+            : baseLayerType === "satellite" ? "Bytt til topografisk kart"
+            : baseLayerType === "topo" ? "Bytt til ICAO 1:500 000 flykart (Avinor)"
+            : "Bytt til standard kart"
+          }
         >
-          {baseLayerType === "osm" ? <Satellite className="h-5 w-5" /> : baseLayerType === "satellite" ? <Mountain className="h-5 w-5" /> : <MapIcon className="h-5 w-5" />}
+          {baseLayerType === "osm" ? <Satellite className="h-5 w-5" />
+            : baseLayerType === "satellite" ? <Mountain className="h-5 w-5" />
+            : baseLayerType === "topo" ? <Plane className="h-5 w-5" />
+            : <MapIcon className="h-5 w-5" />}
         </Button>
 
         <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
