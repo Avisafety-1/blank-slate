@@ -994,15 +994,15 @@ export function OpenAIPMap({
     fetchCaaLayers();
     fetchDkLayers();
     map.on('moveend', debouncedFetchVern);
-    // Refetch CAA/DK layers when user toggles them on
-    map.on('overlayadd', (e: any) => {
+    // Refetch CAA/DK layers when user toggles them on (layeradd fires on .addTo(map))
+    map.on('layeradd', (e: any) => {
       const caaMatch = caaLayerMap.find(([, lg]) => lg === e.layer);
       if (caaMatch) fetchCaaLayers();
       const dkMatch = [...dkDroneLayerMap.map(([, lg]) => lg), dkNatureLayer].includes(e.layer);
       if (dkMatch) fetchDkLayers();
     });
     // Reset cache + clear features when CAA/DK/kraft/nais lag toggles off, so re-toggle fetches fresh
-    map.on('overlayremove', (e: any) => {
+    map.on('layerremove', (e: any) => {
       const caaMatch = caaLayerMap.find(([, lg]) => lg === e.layer);
       if (caaMatch) resetCache(`caa:${caaMatch[0]}`, caaMatch[1]);
       const dkMatch = dkDroneLayerMap.find(([, lg]) => lg === e.layer);
