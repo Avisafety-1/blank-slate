@@ -12,7 +12,10 @@ import L from "leaflet";
  * hit-test, men på geometrisk point-in-polygon over alle registrerte lag.
  */
 
-const PANE_HOVER_Z = 745; // Under safeskyPane (750), over alt annet polygon-innhold
+// Ligger over alle polygon-paner (nsmPane=650) men UNDER marker-paner
+// (airportPane=670, notamPinPane=675, missionPane=680) — slik at pins/ikoner
+// fortsatt mottar mouse-events selv når et stort polygon under er hovret.
+const PANE_HOVER_Z = 668;
 
 interface Registered {
   layer: L.Layer;
