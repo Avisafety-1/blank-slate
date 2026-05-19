@@ -36,6 +36,7 @@ export const AvinorIcaoLayer = L.Layer.extend({
   onAdd(map: L.Map) {
     this._map = map;
     this._cache = [];
+    this._pendingImages = new Set<HTMLImageElement>();
     this._requestId = 0;
     this._loadForViewport(false);
     this._schedulePaddedLoad = () => this._loadForViewport(true);
@@ -50,6 +51,7 @@ export const AvinorIcaoLayer = L.Layer.extend({
     (this._cache as CachedOverlay[] | undefined)?.forEach((entry) => {
       map.removeLayer(entry.overlay);
     });
+    (this._pendingImages as Set<HTMLImageElement> | undefined)?.clear();
     this._cache = [];
   },
 
@@ -117,14 +119,14 @@ export const AvinorIcaoLayer = L.Layer.extend({
     const requestId = ++this._requestId;
     const url = this._buildExportUrl(bounds, padded);
     const img = new Image();
-    img.crossOrigin = "";
+    (this._pendingImages as Set<HTMLImageElement>).add(img);
     img.onload = () => {
+      (this._pendingImages as Set<HTMLImageElement>).delete(img);
       if (!this._map || requestId < this._requestId - 2) return;
       const overlay = L.imageOverlay(url, bounds, {
         opacity: this.options.opacity,
         pane: this.options.pane,
         attribution: this.options.attribution,
-        crossOrigin: true,
         interactive: false,
       });
       overlay.addTo(map).bringToFront();
@@ -137,6 +139,9 @@ export const AvinorIcaoLayer = L.Layer.extend({
       });
       this._pruneCache();
     };
+    img.onerror = () => {
+      (this._pendingImages as Set<HTMLImageElement>).delete(img);
+    };
     img.src = url;
   },
 
@@ -146,8 +151,11 @@ export const AvinorIcaoLayer = L.Layer.extend({
     const mapSize = (this._map as L.Map).getSize();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const scale = padded ? 3 : 1;
-    const width = Math.min(MAX_IMAGE_PX, Math.ceil(mapSize.x * dpr * scale));
-    const height = Math.min(MAX_IMAGE_PX, Math.ceil(mapSize.y * dpr * scale));
+    const rawWidth = mapSize.x * dpr * scale;
+    const rawHeight = mapSize.y * dpr * scale;
+    const maxScale = Math.min(1, MAX_IMAGE_PX / Math.max(rawWidth, rawHeight));
+    const width = Math.ceil(rawWidth * maxScale);
+    const height = Math.ceil(rawHeight * maxScale);
 
     const params = new URLSearchParams({
       bbox: `${sw.x},${sw.y},${ne.x},${ne.y}`,
