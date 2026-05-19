@@ -2297,6 +2297,39 @@ Returner en JSON-respons med denne strukturen:
             aiAnalysis.categories.airspace.score = Math.max(Number(aiAnalysis.categories.airspace.score) || 0, 6);
           }
         }
+
+        // ATC/Ninox-koordinering: gi creditt eller trekk basert på pilotInputs.atcRequired
+        // når oppdrag faktisk krever Ninox (innenfor 5 km-sonen).
+        const requiresNinox = sum.requires_ninox_approval === true;
+        const atcConfirmed = pilotInputs?.atcRequired === true;
+        if (requiresNinox) {
+          const cat = aiAnalysis.categories.airspace;
+          if (atcConfirmed) {
+            // Positiv mitigering — piloten har bekreftet at Ninox/ATC innhentes.
+            const currentScore = Number(cat.score) || 0;
+            cat.score = Math.min(9, currentScore + 2);
+            cat.factors = [
+              ...(Array.isArray(cat.factors) ? cat.factors : []),
+              `Ninox-/ATC-koordinering bekreftet av pilot: klarering vil innhentes før flyging. Behandles som planlagt strategisk mitigering for operasjon innenfor 5 km-sonen.`,
+            ];
+            // Fjern bekymringer som handler om manglende ATC/Ninox-koordinering
+            if (Array.isArray(cat.concerns)) {
+              cat.concerns = cat.concerns.filter((c: string) => {
+                const t = (c || '').toLowerCase();
+                return !(/ninox|atc|klarering|tårn/i.test(t) && /mangl|ikke.*(bekreft|innhent|avklart|koordinert)|må\s+(?:innhent|avklar|koordiner)/i.test(t));
+              });
+            }
+            if (cat.go_decision === 'NO-GO') {
+              cat.go_decision = 'BETINGET';
+            }
+          } else {
+            // Pilot har ikke bekreftet — sørg for at dette fremgår som reell bekymring.
+            cat.concerns = [
+              ...(Array.isArray(cat.concerns) ? cat.concerns : []),
+              `Oppdraget er innenfor 5 km-sonen og krever Ninox-/ATC-godkjenning, men piloten har ikke bekreftet at koordinering er planlagt. Avklar klarering før flyging.`,
+            ];
+          }
+        }
       }
 
       // 2) Rewrite air_risk_analysis fields
