@@ -1285,6 +1285,11 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
     // Normalize airspace warnings (server returns either new schema {z_type,z_name,min_distance,route_inside}
     // or older schema {zone_type,zone_name,distance_meters,is_inside}). Compute deterministic summary.
     const airspaceFacts = (() => {
+      const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
+      const isAtOrBelow120m = Number.isFinite(flightHeightM) && flightHeightM <= 120;
+      const fmtDistance = (meters: number) => meters >= 1000
+        ? `${meters} m (${(meters / 1000).toFixed(2)} km)`
+        : `${meters} m`;
       const normalizeType = (t: string | null | undefined): string => {
         if (!t) return 'UKJENT';
         const up = String(t).toUpperCase();
@@ -1309,10 +1314,12 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           distance_label = 'avstand til 5 km-sonens yttergrense (IKKE avstand til selve flyplassen)';
           description = inside
             ? `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`
-            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}». Nærmeste avstand til 5 km-sonegrensen er ${dist} m (${(dist/1000).toFixed(2)} km). MERK: dette er avstand til SONEGRENSEN, IKKE til selve flyplassen — selve flyplassen ligger ca. ${(5 + dist/1000).toFixed(2)} km unna. Ingen Ninox-godkjenning kreves for denne sonen.`;
+            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» — ${fmtDistance(dist)} utenfor 5 km-sonens yttergrense (≈ ${(5 + dist/1000).toFixed(2)} km fra selve flyplassen). Dette er IKKE «${dist} m fra flyplassen» og IKKE «innenfor 5 km-buffer». Ingen Ninox-godkjenning kreves for denne sonen${isAtOrBelow120m ? ' når flygingen holdes på maks 120 m AGL' : ''}.`;
         } else if (type === 'CTR' || type === 'TIZ') {
           description = inside
-            ? `Oppdraget er INNENFOR kontrollert luftrom (${type} «${name}»). Maks 120 m AGL. Klarering fra ATC påkrevd.`
+            ? (isAtOrBelow120m
+              ? `Ruten overlapper ${type}-laget «${name}». Dette skal behandles som et varsel/operativ begrensning, ikke automatisk no-go: hold maks 120 m AGL og verifiser lokale vilkår før flyging.`
+              : `Ruten overlapper ${type}-laget «${name}» og planlagt høyde er over 120 m AGL. Avklar krav til klarering/tillatelse før flyging.`)
             : `Oppdraget er UTENFOR ${type} «${name}». Nærmeste avstand til ${type}-sonens yttergrense er ${dist} m. Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
         } else {
           description = inside
@@ -1330,7 +1337,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       } else {
         const outside5km = mappedWarnings.filter(w => w.type === '5KM' && !w.inside);
         if (outside5km.length > 0) {
-          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (nærmeste avstand til sonegrensen: ${outside5km.map(w => `${w.name}: ${w.distance} m til 5 km-grensen ≈ ${(5 + w.distance/1000).toFixed(2)} km til selve flyplassen`).join('; ')}). Ingen Ninox-godkjenning kreves.`);
+          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» ≈ ${(5 + w.distance/1000).toFixed(2)} km fra selve flyplassen`).join('; ')}). Ingen Ninox-godkjenning kreves${isAtOrBelow120m ? ' når flygingen holdes på maks 120 m AGL' : ''}.`);
         } else {
           summaryParts.push('Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
         }
