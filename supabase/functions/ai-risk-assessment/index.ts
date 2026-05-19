@@ -2288,7 +2288,7 @@ Returner en JSON-respons med denne strukturen:
       // 4) Clear airspace-only hard_stop (independent of other NO-GOs).
       //    Other categories' NO-GO state remain authoritative, but a bogus
       //    CTR/5km hardstop reason must never stand.
-      if (aiAnalysis.hard_stop_triggered === true && !insideAny5km && !insideAnyCtr) {
+      if (aiAnalysis.hard_stop_triggered === true && !insideAny5km && (!insideAnyCtr || ctrOverlapIsCautionOnly)) {
         const reason = String(aiAnalysis.hard_stop_reason || '').toLowerCase();
         const summaryLc = String(aiAnalysis.summary || '').toLowerCase();
         const reasonMentionsAirspace = /ctr|tiz|kontrollert luftrom|5\s*km|ninox|flyplass|lufthavn|aerodrom/.test(reason) ||
@@ -2299,11 +2299,11 @@ Returner en JSON-respons med denne strukturen:
           (aiAnalysis.categories?.pilot_experience?.go_decision === 'NO-GO');
 
         if (reasonMentionsAirspace && !otherHardStop) {
-          console.log('Clearing bogus airspace-based HARD STOP (server says outside 5km & outside CTR/TIZ)');
+          console.log('Clearing bogus airspace-based HARD STOP (server says outside 5km and CTR/TIZ is not an automatic no-go for this altitude/policy)');
           aiAnalysis.hard_stop_triggered = false;
           aiAnalysis.hard_stop_reason = null;
           if (aiAnalysis.categories?.airspace) {
-            aiAnalysis.categories.airspace.go_decision = 'GO';
+            aiAnalysis.categories.airspace.go_decision = ctrOverlapIsCautionOnly ? 'BETINGET' : 'GO';
           }
           aiAnalysis.recommendation = deriveRiskRecommendation(
             aiAnalysis.overall_score,
