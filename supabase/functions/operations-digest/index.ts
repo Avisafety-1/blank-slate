@@ -44,9 +44,9 @@ Deno.serve(async (req) => {
     const recipients: string[] = cfg.recipient_emails ?? [];
 
     const [missions24, risk24, incidents24, flightLogs24] = await Promise.all([
-      safeCount("missions"),
+      safeCount("missions", "opprettet_dato"),
       safeCount("mission_risk_assessments"),
-      safeCount("incidents"),
+      safeCount("incidents", "opprettet_dato"),
       safeCount("flight_logs"),
     ]);
 

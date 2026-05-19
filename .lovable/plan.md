@@ -1,32 +1,33 @@
-# Fiks AI-forvirring rundt 5 km-sone (Flesland m.fl.)
 
-## Problem
-AI-risikovurderingen for oppdraget «Gravdalsvatnet – Bergen – Norconsult» påstår at oppdraget er **innenfor 5 km av Flesland**, selv om ruten faktisk ligger utenfor 5 km-sonen. AI får riktig data fra `check_mission_airspace` (zonetype `5KM`, `route_inside=false`, `min_distance` i meter), men i prompten finnes det ingen eksplisitt instruksjon om hvordan disse feltene skal tolkes. Modellen ser «5KM» i navnet og konkluderer feilaktig at oppdraget er innenfor sonen.
+## Funn
 
-## Løsning
-Stramme inn system-prompten i `supabase/functions/ai-risk-assessment/index.ts` slik at modellen alltid bruker `inside`-flagget og `distance`-feltet eksplisitt, og skiller tydelig mellom «innenfor» og «utenfor» 5 km-sonen (og tilsvarende for CTR/TIZ, NOTAM, naturvern osv.).
+Jeg sjekket `monitoring_alerts`, postgres-logger og edge-latency for siste uke. Begge varslene er reelle, men skyldes egne feil i monitorering/digest – ikke faktiske problemer i appen.
 
-### Konkrete prompt-endringer
-1. **I avsnittet «Bruk kontekstdata» (linje 1543–1547):** Legg til en eksplisitt regel:
-   - `inside=true` ⇒ ruten ligger **inne i** sonen.
-   - `inside=false` ⇒ ruten ligger **utenfor** sonen; `distance` angir nærmeste avstand i meter.
-   - Modellen skal aldri si «innenfor X» når `inside=false`.
-2. **Ny seksjon «Tolkning av luftromsadvarsler»** rett før AEC-tabellen, med formuleringseksempler:
-   - 5KM `inside=true` → «Oppdraget er innenfor 5 km-sonen rundt …, krever Ninox-godkjenning, maks 120 m AGL.»
-   - 5KM `inside=false` → «Oppdraget er **utenfor** 5 km-sonen rundt … (nærmeste avstand: N meter / N,N km). Ingen Ninox-godkjenning kreves.»
-   - CTR/TIZ tilsvarende.
-3. **I `airspace.actual_conditions`-feltet** krev at modellen alltid eksplisitt angir avstand i meter/km når `inside=false`, og bruker ordene «innenfor» / «utenfor» konsekvent.
-4. **Konsekvens for `air_risk_analysis.aec_reasoning`:** når alle 5KM/CTR/TIZ-advarsler har `inside=false`, skal modellen ikke automatisk anta klasse D — bruke avstanden til å begrunne valgt klasse.
+### 1. "Mange DB-feil" (db_errors)
 
-### Hva som IKKE endres
-- `check_mission_airspace`-RPCen og felt-strukturen sendt til AI er allerede korrekt.
-- Frontend-visning (`AirspaceWarnings.tsx`) er allerede korrekt — den bruker `is_inside`.
-- Ingen DB-migrasjon, ingen RLS-endringer.
+Eneste DB-feil siste uke er disse to, som dukker opp samtidig hver gang `operations-digest` kjører:
 
-## Teknisk
-- Fil: `supabase/functions/ai-risk-assessment/index.ts` (kun prompt-strenger ca. linje 1310–1320 og 1543–1547, samt JSON-skjema-kommentar for `airspace.actual_conditions`).
-- Edge function blir automatisk re-deployert.
-- Etter deploy: be brukeren regenerere risikovurderingen for det aktuelle oppdraget og verifisere at AI nå sier «utenfor 5 km-sonen rundt Flesland (X m unna)».
+```
+ERROR: column missions.created_at does not exist
+ERROR: column incidents.created_at does not exist
+```
 
-## Memory-oppdatering
-Legg til en notis i `mem://architecture/missions/ai-risk-assessment-logic` om at 5KM/CTR/TIZ-advarsler MÅ tolkes med `inside`-flagget, ikke bare på navn.
+Årsak: `supabase/functions/operations-digest/index.ts` bruker hjelperen `safeCount(table, sinceCol = "created_at", ...)` og kaller `safeCount("missions")` og `safeCount("incidents")`. Begge tabellene bruker `opprettet_dato`, ikke `created_at`. Resultatet er at den daglige drift-rapporten viser `-1` for nye oppdrag og hendelser, og hver kjøring logger 2 DB-feil. Når terskelen (10 feil / 10 min) treffes, sendes varsel.
+
+`mission_risk_assessments` og `flight_logs` har faktisk `created_at`, så de er OK.
+
+### 2. "Høy latency" (high_latency)
+
+Eneste edge-funksjon over 10 s p95 siste døgn er `ai-risk-assessment` med 35 s execution. Det er forventet for en LLM-call og ikke et reelt problem. Funksjonen burde være på `latency_excluded_function_ids` på linje med de to andre tunge AI-funksjonene som allerede er ekskludert.
+
+## Endringer
+
+1. `supabase/functions/operations-digest/index.ts`
+   - Endre `safeCount("missions")` → `safeCount("missions", "opprettet_dato")`
+   - Endre `safeCount("incidents")` → `safeCount("incidents", "opprettet_dato")`
+   - La `mission_risk_assessments` og `flight_logs` stå urørt (de bruker `created_at`).
+   - Effekt: daglig digest viser riktige tall, og de to gjentakende DB-feilene forsvinner.
+
+2. Migrasjon: legg edge-function-id for `ai-risk-assessment` (`4b281c52-4bbe-4481-b102-eb24d46300af`) til `monitoring_config.latency_excluded_function_ids`. Da slutter latency-varselet å trigge på normale AI-kjøringer, men terskelen gjelder fortsatt for alle andre funksjoner.
+
+Ingen andre filer, RLS eller frontend berøres.
