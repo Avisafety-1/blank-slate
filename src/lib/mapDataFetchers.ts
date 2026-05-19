@@ -6,6 +6,7 @@ import { droneAnimatedIcon } from "@/lib/mapIcons";
 import droneStaticIcon from "@/assets/drone-static.png";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
+import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 
 interface FetchParams {
   layer: L.LayerGroup;
