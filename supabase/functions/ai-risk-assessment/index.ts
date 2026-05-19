@@ -2245,6 +2245,17 @@ Returner en JSON-respons med denne strukturen:
         if (Array.isArray(aiAnalysis.categories.airspace.factors)) {
           aiAnalysis.categories.airspace.factors = aiAnalysis.categories.airspace.factors.map((c: string) => scrubAirportDistanceText(c));
         }
+        if (!insideAny5km && fiveKmWarnings.length > 0) {
+          const outsideTexts = fiveKmWarnings.map((w: any) => `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» (≈ ${(5 + w.distance / 1000).toFixed(2)} km fra selve flyplassen)`);
+          aiAnalysis.categories.airspace.factors = [
+            ...(Array.isArray(aiAnalysis.categories.airspace.factors) ? aiAnalysis.categories.airspace.factors : []),
+            `Oppdraget er utenfor 5 km-sonen: ${outsideTexts.join('; ')}. Ingen Ninox-godkjenning kreves${lowAltitudeOutside5km ? ' ved maks 120 m AGL' : ''}.`,
+          ];
+        }
+        if (ctrOverlapIsCautionOnly && aiAnalysis.categories.airspace.go_decision === 'NO-GO') {
+          aiAnalysis.categories.airspace.go_decision = 'BETINGET';
+          aiAnalysis.categories.airspace.score = Math.max(Number(aiAnalysis.categories.airspace.score) || 0, 6);
+        }
       }
 
       // 2) Rewrite air_risk_analysis fields
