@@ -295,14 +295,29 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
     lines.push(bodyParts.join(" "));
 
-    // LOWER / UPPER limits
+    // FROM / TO + LOWER / UPPER / RADIUS — matches Avinor NOTAM format
+    const fmtFromTo = (d: Date) => {
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      const mon = months[d.getUTCMonth()];
+      const yyyy = d.getUTCFullYear();
+      const hh = String(d.getUTCHours()).padStart(2, "0");
+      const mm = String(d.getUTCMinutes()).padStart(2, "0");
+      return `${dd}-${mon}-${yyyy} ${hh}:${mm}`;
+    };
     lines.push("");
-    lines.push("LOWER: GND");
-    if (upperAmslFt != null) {
-      lines.push(`UPPER: ${upperAmslFt}FT AMSL`);
-    } else {
-      lines.push(`UPPER: ${maxAglFt}FT AGL${elevationLoading ? " (henter terrenghøyde…)" : " (terrenghøyde ikke tilgjengelig)"}`);
+    if (startDate || endDate) {
+      const fromStr = startDate ? fmtFromTo(startDate) : "?";
+      const toStr = endDate ? fmtFromTo(endDate) : "?";
+      lines.push(`FROM: ${fromStr} TO: ${toStr}`);
     }
+    if (upperAmslFt != null) {
+      lines.push(`LOWER: GND UPPER: ${upperAmslFt}FT AMSL`);
+    } else {
+      lines.push(`LOWER: GND UPPER: ${maxAglFt}FT AGL${elevationLoading ? " (henter terrenghøyde…)" : " (terrenghøyde ikke tilgjengelig)"}`);
+    }
+    lines.push(`RADIUS: ${radiusNm}NM.`);
+
 
     if (vhfFrequency.trim()) {
       lines.push(`VHF ${vhfFrequency.trim()}`);
