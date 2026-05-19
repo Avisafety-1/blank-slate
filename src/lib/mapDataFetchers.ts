@@ -1268,6 +1268,8 @@ const getFirstProperty = (props: Record<string, unknown>, keys: string[]) => {
   return match ? props[match] : "";
 };
 
+const kraftZoomCache = new Map<string, number>();
+
 export async function fetchKraftledningerInBounds(params: {
   layer: L.LayerGroup;
   bounds: L.LatLngBounds;
@@ -1276,11 +1278,27 @@ export async function fetchKraftledningerInBounds(params: {
   mode: string;
 }) {
   const { layer, bounds, zoom, pane, mode } = params;
-  layer.clearLayers();
 
-  const sw = bounds.getSouthWest();
-  const ne = bounds.getNorthEast();
+  const bbox = {
+    minLat: bounds.getSouth(),
+    minLng: bounds.getWest(),
+    maxLat: bounds.getNorth(),
+    maxLng: bounds.getEast(),
+  };
+
+  const cache = getCache('kraft');
+  const lastZoom = kraftZoomCache.get('kraft');
+  // Skip fetch when viewport is inside cached bbox AND zoom hasn't changed
+  // (zoom change toggles which kraft sub-layers are visible)
+  if (lastZoom === zoom && bboxCovered(cache.cachedBounds, bbox)) return;
+
+  const padded = padBBox(bbox);
+  const sw = L.latLng(padded.minLat, padded.minLng);
+  const ne = L.latLng(padded.maxLat, padded.maxLng);
   const envelope = `${sw.lng},${sw.lat},${ne.lng},${ne.lat}`;
+
+  type FetchedItem = { def: typeof KRAFT_LAYERS[number]; feature: any };
+  const items: FetchedItem[] = [];
 
   const fetches = KRAFT_LAYERS
     .filter(def => zoom >= def.minZoom && (!def.maxZoom || zoom <= def.maxZoom))
@@ -1294,52 +1312,67 @@ export async function fetchKraftledningerInBounds(params: {
         }
         const geojson = await res.json();
         if (!geojson.features?.length) return;
-
-        const geoLayer = L.geoJSON(geojson, {
-          pane,
-          interactive: mode !== "routePlanning",
-          style: def.isPoint ? undefined : {
-            color: def.color,
-            weight: def.weight,
-            opacity: def.isPolygon ? 0.5 : 0.85,
-            fillColor: def.isPolygon ? def.color : undefined,
-            fillOpacity: def.fillOpacity ?? (def.isPolygon ? 0.08 : 0),
-            dashArray: def.dashArray,
-          },
-          pointToLayer: def.isPoint ? (_f, latlng) => {
-            return L.circleMarker(latlng, {
-              pane,
-              radius: def.layerId === 4 ? 3 : 5,
-              fillColor: def.color,
-              color: "#fff",
-              weight: 1,
-              fillOpacity: 0.8,
-            });
-          } : undefined,
-          onEachFeature: mode !== "routePlanning" ? (feature, l) => {
-            const p = feature.properties || {};
-            const details = [
-              ["Navn", getFirstProperty(p, ["NAVN", "navn", "Navn", "name", "Name"])],
-              ["Eier", getFirstProperty(p, ["EIER", "eier", "Eier", "NETTSELSKAP", "nettselskap"])],
-              ["Spenning", getFirstProperty(p, ["SPENNING", "spenning", "Spenning", "SPENNING_KV", "spenning_kv"])],
-              ["Type", getFirstProperty(p, ["TYPE", "type", "Type", "NETTNIVA", "NETTNIVÅ", "nettniva", "nettnivå"])],
-              ["Status", getFirstProperty(p, ["STATUS", "status", "Status"])],
-            ].filter(([, value]) => value !== "");
-            const rows = details.map(([label, value]) => {
-              const suffix = label === "Spenning" && !String(value).toLowerCase().includes("kv") ? " kV" : "";
-              return `<div style="display:grid;grid-template-columns:72px 1fr;gap:8px;font-size:12px;line-height:1.35;padding:2px 0;"><span style="color:#64748b;">${escapePopupHtml(label)}</span><strong style="font-weight:600;overflow-wrap:anywhere;">${escapePopupHtml(value)}${suffix}</strong></div>`;
-            }).join("");
-            const popup = `<div style="min-width:180px;max-width:280px;"><strong>${escapePopupHtml(def.label)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
-            l.bindPopup(popup);
-          } : undefined,
-        });
-        geoLayer.addTo(layer);
+        for (const f of geojson.features) items.push({ def, feature: f });
       } catch (err) {
         console.error(`Feil ved henting av NVE lag ${def.layerId}:`, err);
       }
     });
 
   await Promise.all(fetches);
+
+  diffRender(
+    layer,
+    cache,
+    items,
+    ({ def, feature }) => {
+      const p = feature?.properties || {};
+      const fid =
+        p.OBJECTID ?? p.objectid ?? p.GLOBALID ?? p.globalid ??
+        p.OBJECTID_1 ?? hashString(JSON.stringify(feature?.geometry ?? feature));
+      return `k${def.layerId}:${fid}`;
+    },
+    ({ def, feature }) => L.geoJSON(feature, {
+      pane,
+      interactive: mode !== "routePlanning",
+      style: def.isPoint ? undefined : {
+        color: def.color,
+        weight: def.weight,
+        opacity: def.isPolygon ? 0.5 : 0.85,
+        fillColor: def.isPolygon ? def.color : undefined,
+        fillOpacity: def.fillOpacity ?? (def.isPolygon ? 0.08 : 0),
+        dashArray: def.dashArray,
+      },
+      pointToLayer: def.isPoint ? (_f, latlng) => {
+        return L.circleMarker(latlng, {
+          pane,
+          radius: def.layerId === 4 ? 3 : 5,
+          fillColor: def.color,
+          color: "#fff",
+          weight: 1,
+          fillOpacity: 0.8,
+        });
+      } : undefined,
+      onEachFeature: mode !== "routePlanning" ? (feat, l) => {
+        const p = feat.properties || {};
+        const details = [
+          ["Navn", getFirstProperty(p, ["NAVN", "navn", "Navn", "name", "Name"])],
+          ["Eier", getFirstProperty(p, ["EIER", "eier", "Eier", "NETTSELSKAP", "nettselskap"])],
+          ["Spenning", getFirstProperty(p, ["SPENNING", "spenning", "Spenning", "SPENNING_KV", "spenning_kv"])],
+          ["Type", getFirstProperty(p, ["TYPE", "type", "Type", "NETTNIVA", "NETTNIVÅ", "nettniva", "nettnivå"])],
+          ["Status", getFirstProperty(p, ["STATUS", "status", "Status"])],
+        ].filter(([, value]) => value !== "");
+        const rows = details.map(([label, value]) => {
+          const suffix = label === "Spenning" && !String(value).toLowerCase().includes("kv") ? " kV" : "";
+          return `<div style="display:grid;grid-template-columns:72px 1fr;gap:8px;font-size:12px;line-height:1.35;padding:2px 0;"><span style="color:#64748b;">${escapePopupHtml(label)}</span><strong style="font-weight:600;overflow-wrap:anywhere;">${escapePopupHtml(value)}${suffix}</strong></div>`;
+        }).join("");
+        const popup = `<div style="min-width:180px;max-width:280px;"><strong>${escapePopupHtml(def.label)}</strong>${rows ? `<div style="margin-top:6px;">${rows}</div>` : "<br/>Ingen detaljer tilgjengelig"}</div>`;
+        l.bindPopup(popup);
+      } : undefined,
+    }),
+  );
+
+  cache.cachedBounds = padded;
+  kraftZoomCache.set('kraft', zoom);
 }
 
 // --- Live NOTAM ---
