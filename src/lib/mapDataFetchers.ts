@@ -7,6 +7,7 @@ import droneStaticIcon from "@/assets/drone-static.png";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
 import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
+import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
 
 interface FetchParams {
   layer: L.LayerGroup;
@@ -58,6 +59,10 @@ export async function fetchNsmData(params: GeoJsonFetchParams) {
             ${details ? `<div style="margin-top:6px;">${details}</div>` : ''}
           </div>`
         );
+        attachHoverPromotion(layer, {
+          paneName: 'nsmPane',
+          baseStyle: { color: '#ff0000', weight: 2, fillColor: '#ff0000', fillOpacity: 0.25 },
+        });
       } : undefined,
     });
 
@@ -97,6 +102,10 @@ export async function fetchRpasData(params: GeoJsonFetchParams) {
           const name = feature.properties.navn || feature.properties.name || 'Ukjent';
           layer.bindPopup(`<strong>RPAS 5km sone</strong><br/>${name}`);
         }
+        attachHoverPromotion(layer, {
+          paneName: 'rpasPane',
+          baseStyle: { color: '#f97316', weight: 2, fillColor: '#f97316', fillOpacity: 0.2 },
+        });
       } : undefined
     });
 
@@ -200,6 +209,10 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
             if (p.lower_limit) popup += `Nedre grense: ${p.lower_limit}<br/>`;
             if (p.remarks) popup += `<div style="font-size: 11px; margin-top: 4px; color: #666;">${p.remarks}</div>`;
             layer.bindPopup(popup);
+            attachHoverPromotion(layer, {
+              paneName: pane,
+              baseStyle: { color, weight: 2, fillColor: color, fillOpacity, dashArray },
+            });
           } : undefined,
         });
         geoJsonLayer.addTo(targetLayer);
@@ -846,6 +859,10 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
             popup += `<strong>${p.name || 'Ukjent'}</strong><br/>`;
             if (p.verneform) popup += `Verneform: ${p.verneform}<br/>`;
             lyr.bindPopup(popup);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: { color, weight: 1.5, fillColor: color, fillOpacity: 0.15 },
+            });
           } : undefined,
         });
       },
@@ -902,6 +919,10 @@ export async function fetchVernRestrictionZones(params: BoundsFetchParams) {
             let popup = `<strong>⛔ ${label}</strong><br/>`;
             popup += `<strong>${p.name || 'Ukjent'}</strong>`;
             lyr.bindPopup(popup);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: { color, weight: 2, fillColor: color, fillOpacity: 0.2, dashArray: '5, 5' },
+            });
           } : undefined,
         });
       },
@@ -985,6 +1006,16 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
             }
             if (p.authority_phone) html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
             lyr.bindPopup(html);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: {
+                color: style.color,
+                weight: 1.5,
+                fillColor: style.color,
+                fillOpacity: isWarning ? 0.22 : 0.12,
+                dashArray: isWarning ? undefined : '4, 4',
+              },
+            });
           } : undefined,
         });
       },
@@ -1071,6 +1102,16 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
             if (zone.buffer) html += `<div>Bufferzone: ${esc(zone.buffer)}</div>`;
             html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
             lyr.bindPopup(html);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: {
+                color: style.color,
+                weight: 1.5,
+                fillColor: style.color,
+                fillOpacity: style.warningLevel === 'danger' ? 0.22 : 0.14,
+                dashArray: style.warningLevel === 'danger' ? undefined : '4, 4',
+              },
+            });
           } : undefined,
         });
       },
@@ -1132,6 +1173,16 @@ export async function fetchDkNatureAreas(params: BoundsFetchParams & {
             if (area.source_url) html += `<div style="margin-top:4px"><a href="${esc(area.source_url)}" target="_blank" rel="noopener">Mer info</a></div>`;
             html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
             lyr.bindPopup(html);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: {
+                color,
+                weight: 1.5,
+                fillColor: color,
+                fillOpacity: isActive ? 0.25 : 0.08,
+                dashArray: isActive ? undefined : '5, 5',
+              },
+            });
           } : undefined,
         });
       },
