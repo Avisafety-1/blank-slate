@@ -39,6 +39,7 @@ import {
   fetchAisVesselsInBounds,
   fetchNotams,
 } from "@/lib/mapDataFetchers";
+import { resetCache } from "@/lib/viewportLayerCache";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
 import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
