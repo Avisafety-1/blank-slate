@@ -1102,6 +1102,16 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
             if (zone.buffer) html += `<div>Bufferzone: ${esc(zone.buffer)}</div>`;
             html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
             lyr.bindPopup(html);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: {
+                color: style.color,
+                weight: 1.5,
+                fillColor: style.color,
+                fillOpacity: style.warningLevel === 'danger' ? 0.22 : 0.14,
+                dashArray: style.warningLevel === 'danger' ? undefined : '4, 4',
+              },
+            });
           } : undefined,
         });
       },
