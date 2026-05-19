@@ -1625,22 +1625,22 @@ Bruk kontekstdata:
 #### KRITISK: Tolkning av luftromsadvarsler (airspace.warnings og airspace.summary)
 Server har FORHÅNDSBEREGNET autoritativ tekst. Du MÅ bruke disse feltene som fasit og IKKE finne på egen tolkning:
 
-- `airspace.summary.text` — autoritativ ett-setnings oppsummering. Bruk den (eller en svært nær parafrase) ordrett i `air_risk_analysis.actual_conditions` og i fritekstforklaringen for luftrom.
-- `airspace.summary.requires_ninox_approval` (boolean) — den ENESTE sannheten for om Ninox-godkjenning kreves pga. 5 km-sonen. Hvis `false`, IKKE skriv at oppdraget krever Ninox-godkjenning eller at det er innenfor 5 km-sonen. Hvis `true`, nevn det eksplisitt.
-- `airspace.summary.inside_controlled_airspace` (boolean) — kun nevn «innenfor kontrollert luftrom (CTR/TIZ)» når denne er `true`.
-- `airspace.summary.distance_semantics` — forklarer at ALLE avstander er til sonens yttergrense.
-- Hver `warnings[i].description` — server-generert tekst per sone. Gjengi denne ordrett heller enn å omformulere selv.
-- Hver `warnings[i].inside` (boolean) — `true` = ruten er INNE I sonen, `false` = ruten er UTENFOR sonen.
-- Hver `warnings[i].distance` (meter) — avstand til SONENS YTTERGRENSE (polygon-boundary). For 5KM betyr 329 m at man er 329 m utenfor 5 km-radiusen, dvs. ~5,3 km fra selve flyplassen.
+- airspace.summary.text — autoritativ ett-setnings oppsummering. Bruk den (eller en svært nær parafrase) ordrett i air_risk_analysis.actual_conditions og i fritekstforklaringen for luftrom.
+- airspace.summary.requires_ninox_approval (boolean) — den ENESTE sannheten for om Ninox-godkjenning kreves pga. 5 km-sonen. Hvis false, IKKE skriv at oppdraget krever Ninox-godkjenning eller at det er innenfor 5 km-sonen. Hvis true, nevn det eksplisitt.
+- airspace.summary.inside_controlled_airspace (boolean) — kun nevn «innenfor kontrollert luftrom (CTR/TIZ)» når denne er true.
+- airspace.summary.distance_semantics — forklarer at ALLE avstander er til sonens yttergrense.
+- Hver warnings[i].description — server-generert tekst per sone. Gjengi denne ordrett heller enn å omformulere selv.
+- Hver warnings[i].inside (boolean) — true = ruten er INNE I sonen, false = ruten er UTENFOR sonen.
+- Hver warnings[i].distance (meter) — avstand til SONENS YTTERGRENSE (polygon-boundary). For 5KM betyr 329 m at man er 329 m utenfor 5 km-radiusen, dvs. ~5,3 km fra selve flyplassen.
 
 ABSOLUTTE FORBUD:
-- Skriv ALDRI at oppdraget er «innenfor» en sone når `inside = false`.
-- Skriv ALDRI at oppdraget krever Ninox-godkjenning når `airspace.summary.requires_ninox_approval = false`.
-- Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun `inside`-flagget og `description`.
-- En 5KM- eller CTR/TIZ-advarsel med `inside=false` skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
-- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når `airspace.summary.inside_controlled_airspace = true` OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
+- Skriv ALDRI at oppdraget er «innenfor» en sone når inside = false.
+- Skriv ALDRI at oppdraget krever Ninox-godkjenning når airspace.summary.requires_ninox_approval = false.
+- Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun inside-flagget og description.
+- En 5KM- eller CTR/TIZ-advarsel med inside=false skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
+- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når airspace.summary.inside_controlled_airspace = true OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
 - Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
-- KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI `warnings[i].distance` (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonegrensen rundt X (≈ 5,33 km fra selve flyplassen)».
+- KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonegrensen rundt X (≈ 5,33 km fra selve flyplassen)».
 
 
 Eksempel feil → riktig:
