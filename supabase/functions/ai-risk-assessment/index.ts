@@ -1285,6 +1285,11 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
     // Normalize airspace warnings (server returns either new schema {z_type,z_name,min_distance,route_inside}
     // or older schema {zone_type,zone_name,distance_meters,is_inside}). Compute deterministic summary.
     const airspaceFacts = (() => {
+      const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
+      const isAtOrBelow120m = Number.isFinite(flightHeightM) && flightHeightM <= 120;
+      const fmtDistance = (meters: number) => meters >= 1000
+        ? `${meters} m (${(meters / 1000).toFixed(2)} km)`
+        : `${meters} m`;
       const normalizeType = (t: string | null | undefined): string => {
         if (!t) return 'UKJENT';
         const up = String(t).toUpperCase();
@@ -1309,10 +1314,12 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           distance_label = 'avstand til 5 km-sonens yttergrense (IKKE avstand til selve flyplassen)';
           description = inside
             ? `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`
-            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}». Nærmeste avstand til 5 km-sonegrensen er ${dist} m (${(dist/1000).toFixed(2)} km). MERK: dette er avstand til SONEGRENSEN, IKKE til selve flyplassen — selve flyplassen ligger ca. ${(5 + dist/1000).toFixed(2)} km unna. Ingen Ninox-godkjenning kreves for denne sonen.`;
+            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» — ${fmtDistance(dist)} utenfor 5 km-sonens yttergrense (≈ ${(5 + dist/1000).toFixed(2)} km fra selve flyplassen). Dette er IKKE «${dist} m fra flyplassen» og IKKE «innenfor 5 km-buffer». Ingen Ninox-godkjenning kreves for denne sonen${isAtOrBelow120m ? ' når flygingen holdes på maks 120 m AGL' : ''}.`;
         } else if (type === 'CTR' || type === 'TIZ') {
           description = inside
-            ? `Oppdraget er INNENFOR kontrollert luftrom (${type} «${name}»). Maks 120 m AGL. Klarering fra ATC påkrevd.`
+            ? (isAtOrBelow120m
+              ? `Ruten overlapper ${type}-laget «${name}». Dette skal behandles som et varsel/operativ begrensning, ikke automatisk no-go: hold maks 120 m AGL og verifiser lokale vilkår før flyging.`
+              : `Ruten overlapper ${type}-laget «${name}» og planlagt høyde er over 120 m AGL. Avklar krav til klarering/tillatelse før flyging.`)
             : `Oppdraget er UTENFOR ${type} «${name}». Nærmeste avstand til ${type}-sonens yttergrense er ${dist} m. Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
         } else {
           description = inside
@@ -1330,13 +1337,15 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       } else {
         const outside5km = mappedWarnings.filter(w => w.type === '5KM' && !w.inside);
         if (outside5km.length > 0) {
-          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (nærmeste avstand til sonegrensen: ${outside5km.map(w => `${w.name}: ${w.distance} m til 5 km-grensen ≈ ${(5 + w.distance/1000).toFixed(2)} km til selve flyplassen`).join('; ')}). Ingen Ninox-godkjenning kreves.`);
+          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» ≈ ${(5 + w.distance/1000).toFixed(2)} km fra selve flyplassen`).join('; ')}). Ingen Ninox-godkjenning kreves${isAtOrBelow120m ? ' når flygingen holdes på maks 120 m AGL' : ''}.`);
         } else {
           summaryParts.push('Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
         }
       }
       if (insideCtr.length > 0) {
-        summaryParts.push(`Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}.`);
+        summaryParts.push(isAtOrBelow120m && !requiresNinox
+          ? `Ruten overlapper kontrollert luftrom/CTR-lag (${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}), men ved maks 120 m AGL og utenfor 5 km-sonen skal dette behandles som operativt varsel/aktsomhet — ikke automatisk no-go eller hard-stop.`
+          : `Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}. Avklar krav til klarering/tillatelse før flyging.`);
       } else {
         const nearCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && !w.inside);
         if (nearCtr.length > 0) {
@@ -1350,6 +1359,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           inside_controlled_airspace: insideCtr.length > 0,
           inside_5km_zone: inside5km.length > 0,
           distance_semantics: 'Alle avstander (warnings[].distance og tall i summary.text) er avstand til SONEGRENSEN (polygonens yttergrense), IKKE til flyplass/aerodrome/NSM-anlegg. For 5KM-soner: avstand til selve flyplassen ≈ 5000 m + distance.',
+          controlled_airspace_policy: isAtOrBelow120m && requiresNinox === false ? 'CTR/TIZ-overlapp ved maks 120 m AGL og utenfor 5 km-sonen er operativt varsel/aktsomhet, ikke automatisk no-go/hard-stop.' : 'Avklar lokale luftromskrav basert på høyde og soneoverlapp.',
           text: summaryParts.join(' '),
         },
       };
@@ -1615,22 +1625,22 @@ Bruk kontekstdata:
 #### KRITISK: Tolkning av luftromsadvarsler (airspace.warnings og airspace.summary)
 Server har FORHÅNDSBEREGNET autoritativ tekst. Du MÅ bruke disse feltene som fasit og IKKE finne på egen tolkning:
 
-- `airspace.summary.text` — autoritativ ett-setnings oppsummering. Bruk den (eller en svært nær parafrase) ordrett i `air_risk_analysis.actual_conditions` og i fritekstforklaringen for luftrom.
-- `airspace.summary.requires_ninox_approval` (boolean) — den ENESTE sannheten for om Ninox-godkjenning kreves pga. 5 km-sonen. Hvis `false`, IKKE skriv at oppdraget krever Ninox-godkjenning eller at det er innenfor 5 km-sonen. Hvis `true`, nevn det eksplisitt.
-- `airspace.summary.inside_controlled_airspace` (boolean) — kun nevn «innenfor kontrollert luftrom (CTR/TIZ)» når denne er `true`.
-- `airspace.summary.distance_semantics` — forklarer at ALLE avstander er til sonens yttergrense.
-- Hver `warnings[i].description` — server-generert tekst per sone. Gjengi denne ordrett heller enn å omformulere selv.
-- Hver `warnings[i].inside` (boolean) — `true` = ruten er INNE I sonen, `false` = ruten er UTENFOR sonen.
-- Hver `warnings[i].distance` (meter) — avstand til SONENS YTTERGRENSE (polygon-boundary). For 5KM betyr 329 m at man er 329 m utenfor 5 km-radiusen, dvs. ~5,3 km fra selve flyplassen.
+- airspace.summary.text — autoritativ ett-setnings oppsummering. Bruk den (eller en svært nær parafrase) ordrett i air_risk_analysis.actual_conditions og i fritekstforklaringen for luftrom.
+- airspace.summary.requires_ninox_approval (boolean) — den ENESTE sannheten for om Ninox-godkjenning kreves pga. 5 km-sonen. Hvis false, IKKE skriv at oppdraget krever Ninox-godkjenning eller at det er innenfor 5 km-sonen. Hvis true, nevn det eksplisitt.
+- airspace.summary.inside_controlled_airspace (boolean) — kun nevn «innenfor kontrollert luftrom (CTR/TIZ)» når denne er true.
+- airspace.summary.distance_semantics — forklarer at ALLE avstander er til sonens yttergrense.
+- Hver warnings[i].description — server-generert tekst per sone. Gjengi denne ordrett heller enn å omformulere selv.
+- Hver warnings[i].inside (boolean) — true = ruten er INNE I sonen, false = ruten er UTENFOR sonen.
+- Hver warnings[i].distance (meter) — avstand til SONENS YTTERGRENSE (polygon-boundary). For 5KM betyr 329 m at man er 329 m utenfor 5 km-radiusen, dvs. ~5,3 km fra selve flyplassen.
 
 ABSOLUTTE FORBUD:
-- Skriv ALDRI at oppdraget er «innenfor» en sone når `inside = false`.
-- Skriv ALDRI at oppdraget krever Ninox-godkjenning når `airspace.summary.requires_ninox_approval = false`.
-- Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun `inside`-flagget og `description`.
-- En 5KM- eller CTR/TIZ-advarsel med `inside=false` skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
-- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når `airspace.summary.inside_controlled_airspace = true` OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
+- Skriv ALDRI at oppdraget er «innenfor» en sone når inside = false.
+- Skriv ALDRI at oppdraget krever Ninox-godkjenning når airspace.summary.requires_ninox_approval = false.
+- Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun inside-flagget og description.
+- En 5KM- eller CTR/TIZ-advarsel med inside=false skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
+- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når airspace.summary.inside_controlled_airspace = true OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
 - Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
-- KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI `warnings[i].distance` (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonegrensen rundt X (≈ 5,33 km fra selve flyplassen)».
+- KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonegrensen rundt X (≈ 5,33 km fra selve flyplassen)».
 
 
 Eksempel feil → riktig:
@@ -2163,6 +2173,9 @@ Returner en JSON-respons med denne strukturen:
       const sum = airspaceFacts.summary;
       const insideAny5km = sum.inside_5km_zone === true;
       const insideAnyCtr = sum.inside_controlled_airspace === true;
+      const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
+      const lowAltitudeOutside5km = Number.isFinite(flightHeightM) && flightHeightM <= 120 && !insideAny5km;
+      const ctrOverlapIsCautionOnly = insideAnyCtr && lowAltitudeOutside5km;
 
       // Build the set of 5KM zone names and their boundary distances for
       // text scrubbing: any AI sentence that says "N m fra <airport name>"
@@ -2212,8 +2225,10 @@ Returner en JSON-respons med denne strukturen:
         aiAnalysis.categories.airspace.actual_conditions = sum.text;
         const falseClaim = (s: string): boolean => {
           const t = (s || '').toLowerCase();
-          if (!insideAny5km && (t.includes('innenfor 5 km') || t.includes('innenfor 5km') || t.includes('krever ninox') || t.includes('ninox-godkjenning'))) return true;
+          if (!insideAny5km && (t.includes('innenfor 5 km') || t.includes('innenfor 5km') || t.includes('5 km buffer') || t.includes('5km buffer') || t.includes('krever ninox') || t.includes('ninox-godkjenning'))) return true;
+          if (!insideAny5km && /nærhet til .*?(lufthavn|flyplass|aerodrom).*?(konflikt med bemannet|tillatelse|koordinering)/i.test(s || '')) return true;
           if (!insideAnyCtr && (t.includes('innenfor kontrollert luftrom') || t.includes('innenfor ctr') || t.includes('innenfor tiz') || t.includes('i kontrollert luftrom (ctr)'))) return true;
+          if (ctrOverlapIsCautionOnly && /kontrollert luftrom|ctr|tiz/i.test(s || '') && /hard stop|no-go|ikke tillatt|overtredelse|kritisk brudd|krever spesifikk klarering|klarering.*ikke.*bekreftet|atc.*required/i.test(s || '')) return true;
           // Drop concerns that wrongly state proximity to airport based on the boundary distance.
           for (const w of fiveKmWarnings) {
             if (w.distance && new RegExp(`\\b${w.distance}\\s*(?:m|meter)\\s*(?:fra|unna|til)\\s*[^.,;()]*(?:lufthavn|flyplass|aerodrom|airport)`, 'i').test(s || '')) {
@@ -2229,6 +2244,17 @@ Returner en JSON-respons med denne strukturen:
         }
         if (Array.isArray(aiAnalysis.categories.airspace.factors)) {
           aiAnalysis.categories.airspace.factors = aiAnalysis.categories.airspace.factors.map((c: string) => scrubAirportDistanceText(c));
+        }
+        if (!insideAny5km && fiveKmWarnings.length > 0) {
+          const outsideTexts = fiveKmWarnings.map((w: any) => `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» (≈ ${(5 + w.distance / 1000).toFixed(2)} km fra selve flyplassen)`);
+          aiAnalysis.categories.airspace.factors = [
+            ...(Array.isArray(aiAnalysis.categories.airspace.factors) ? aiAnalysis.categories.airspace.factors : []),
+            `Oppdraget er utenfor 5 km-sonen: ${outsideTexts.join('; ')}. Ingen Ninox-godkjenning kreves${lowAltitudeOutside5km ? ' ved maks 120 m AGL' : ''}.`,
+          ];
+        }
+        if (ctrOverlapIsCautionOnly && aiAnalysis.categories.airspace.go_decision === 'NO-GO') {
+          aiAnalysis.categories.airspace.go_decision = 'BETINGET';
+          aiAnalysis.categories.airspace.score = Math.max(Number(aiAnalysis.categories.airspace.score) || 0, 6);
         }
       }
 
@@ -2262,7 +2288,7 @@ Returner en JSON-respons med denne strukturen:
       // 4) Clear airspace-only hard_stop (independent of other NO-GOs).
       //    Other categories' NO-GO state remain authoritative, but a bogus
       //    CTR/5km hardstop reason must never stand.
-      if (aiAnalysis.hard_stop_triggered === true && !insideAny5km && !insideAnyCtr) {
+      if (aiAnalysis.hard_stop_triggered === true && !insideAny5km && (!insideAnyCtr || ctrOverlapIsCautionOnly)) {
         const reason = String(aiAnalysis.hard_stop_reason || '').toLowerCase();
         const summaryLc = String(aiAnalysis.summary || '').toLowerCase();
         const reasonMentionsAirspace = /ctr|tiz|kontrollert luftrom|5\s*km|ninox|flyplass|lufthavn|aerodrom/.test(reason) ||
@@ -2273,11 +2299,11 @@ Returner en JSON-respons med denne strukturen:
           (aiAnalysis.categories?.pilot_experience?.go_decision === 'NO-GO');
 
         if (reasonMentionsAirspace && !otherHardStop) {
-          console.log('Clearing bogus airspace-based HARD STOP (server says outside 5km & outside CTR/TIZ)');
+          console.log('Clearing bogus airspace-based HARD STOP (server says outside 5km and CTR/TIZ is not an automatic no-go for this altitude/policy)');
           aiAnalysis.hard_stop_triggered = false;
           aiAnalysis.hard_stop_reason = null;
           if (aiAnalysis.categories?.airspace) {
-            aiAnalysis.categories.airspace.go_decision = 'GO';
+            aiAnalysis.categories.airspace.go_decision = ctrOverlapIsCautionOnly ? 'BETINGET' : 'GO';
           }
           aiAnalysis.recommendation = deriveRiskRecommendation(
             aiAnalysis.overall_score,
