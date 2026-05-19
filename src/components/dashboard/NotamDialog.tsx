@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { fetchTerrainElevations } from "@/lib/terrainElevation";
 
 type Mission = any;
 
@@ -101,6 +102,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const [vhfFrequency, setVhfFrequency] = useState("");
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [groundElevationM, setGroundElevationM] = useState<number | null>(null);
+  const [elevationLoading, setElevationLoading] = useState(false);
 
   // Pre-fill from mission data
   useEffect(() => {
@@ -184,6 +187,31 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
   }, [open, mission?.id]);
 
+  // Fetch ground elevation at center point to compute UPPER AMSL
+  useEffect(() => {
+    if (centerLat == null || centerLng == null) {
+      setGroundElevationM(null);
+      return;
+    }
+    let cancelled = false;
+    setElevationLoading(true);
+    fetchTerrainElevations([{ lat: centerLat, lng: centerLng }])
+      .then((els) => {
+        if (cancelled) return;
+        const e = els?.[0];
+        setGroundElevationM(typeof e === "number" ? e : null);
+      })
+      .catch(() => {
+        if (!cancelled) setGroundElevationM(null);
+      })
+      .finally(() => {
+        if (!cancelled) setElevationLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [centerLat, centerLng]);
+
   const toggleDay = (day: string) => {
     setScheduleDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
@@ -214,6 +242,14 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
     return null;
   }, [scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate]);
+
+  // UPPER AMSL = ground elevation (m) -> ft + AGL, rounded up to nearest 50 ft
+  const upperAmslFt = useMemo(() => {
+    if (groundElevationM == null) return null;
+    const groundFt = groundElevationM * 3.28084;
+    const totalFt = groundFt + maxAglFt;
+    return Math.ceil(totalFt / 50) * 50;
+  }, [groundElevationM, maxAglFt]);
 
   const generatedText = useMemo(() => {
     const lines: string[] = [];
@@ -246,18 +282,26 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       lines.push(`${datePrefix}${timeFrom}-${timeTo}`);
     }
 
-    lines.push(`Unmanned ACFT (${operationType}) will take place in ${areaName}`);
-
+    // Main body — uppercase, matches Avinor NOTAM format
+    const areaUpper = (areaName || "").toUpperCase().trim();
+    const bodyParts: string[] = [];
+    bodyParts.push(`UNMANNED ACFT (${operationType}) WILL TAKE PLACE${areaUpper ? ` AT ${areaUpper} AREA` : ""}`);
     if (centerLat != null && centerLng != null) {
-      lines.push(`PSN ${toNotamCoord(centerLat, centerLng)}, radius ${radiusNm} NM.`);
+      bodyParts.push(`PSN ${toNotamCoord(centerLat, centerLng)}, RADIUS ${radiusNm}NM.`);
     }
+    bodyParts.push(`MAX HGT ${maxAglFt}FT AGL.`);
+    if (contactPhone.trim()) {
+      bodyParts.push(`CTC ${contactPhone.trim()}.`);
+    }
+    lines.push(bodyParts.join(" "));
 
-    lines.push(`MAX HGT ${maxAglFt} FT AGL.`);
-
-    if (contactName || companyName) {
-      const who = companyName || contactName;
-      const tel = contactPhone ? `, tel ${contactPhone}` : "";
-      lines.push(`For realtime status ctc ${who}${tel}`);
+    // LOWER / UPPER limits
+    lines.push("");
+    lines.push("LOWER: GND");
+    if (upperAmslFt != null) {
+      lines.push(`UPPER: ${upperAmslFt}FT AMSL`);
+    } else {
+      lines.push(`UPPER: ${maxAglFt}FT AGL${elevationLoading ? " (henter terrenghøyde…)" : " (terrenghøyde ikke tilgjengelig)"}`);
     }
 
     if (vhfFrequency.trim()) {
@@ -265,7 +309,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
 
     return lines.join("\n");
-  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, contactName, contactPhone, companyName, vhfFrequency]);
+  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, contactName, contactPhone, companyName, vhfFrequency, upperAmslFt, elevationLoading]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
