@@ -1506,6 +1506,21 @@ export async function fetchNotams(params: {
 
           if (mode !== "routePlanning") {
             geoLayer.bindPopup(buildNotamPopup(notam));
+            geoLayer.eachLayer((child) => {
+              // Hover-promotion kun på polygon-children (ikke pin-markers i pinPane)
+              if (typeof (child as any).setStyle === "function") {
+                attachHoverPromotion(child, {
+                  paneName: pane,
+                  baseStyle: {
+                    color: "#e67e22",
+                    weight: 2,
+                    fillColor: "#f39c12",
+                    fillOpacity: 0.15,
+                    dashArray: "5, 5",
+                  },
+                });
+              }
+            });
           }
 
           geoLayer.addTo(layer);
