@@ -1669,6 +1669,14 @@ ABSOLUTTE FORBUD:
 - CTR/TIZ-overlapp UTENFOR 5 km-sonen ved maks 120 m AGL: 100 % lovlig. Skriv ALDRI at piloten må «kontakte tårnet», «få klarering», «avklare med ATC», «kreves aktiv handling» eller lignende. Skriv kun en kort aktsomhets­advarsel om bemannet trafikk.
 - KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonegrensen rundt X (≈ 5,33 km fra selve flyplassen)».
 
+### ATC / NINOX-KOORDINERING (pilotInputs.atcRequired)
+Feltet `pilotInputs.atcRequired` (boolean) er pilotens egen bekreftelse på at ATC-/Ninox-koordinering er planlagt og vil bli innhentet før flyging.
+
+- Hvis `requires_ninox_approval = true` (oppdrag er innenfor 5 km-sonen):
+  - `atcRequired = true`: Behandle Ninox/ATC-godkjenning som PLANLAGT og DOKUMENTERT. Dette er en POSITIV strategisk mitigering. Skriv eksplisitt at piloten har bekreftet at klarering vil innhentes. ØK airspace.score med +2 (men ikke over 9), endre `go_decision` fra NO-GO til BETINGET/GO, og legg til en positiv setning i `factors` om at ATC-koordinering er bekreftet. IKKE skriv at «manglende klarering er en bekymring» eller at det er en NO-GO.
+  - `atcRequired = false`: Dette er en reell bekymring. Skriv at piloten IKKE har bekreftet Ninox-koordinering, behold NO-GO/CAUTION, og krev at klarering må innhentes før flyging.
+- Hvis `requires_ninox_approval = false` (utenfor 5 km-sonen): `atcRequired` er irrelevant — ikke kommenter på det og ikke gi verken trekk eller bonus for det.
+
 
 Eksempel feil → riktig:
 - FEIL: «Operasjonsområdet ligger 329 m fra Trondheim lufthavn, Værnes.»
