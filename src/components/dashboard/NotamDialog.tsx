@@ -102,6 +102,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const [vhfFrequency, setVhfFrequency] = useState("");
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [groundElevationM, setGroundElevationM] = useState<number | null>(null);
+  const [elevationLoading, setElevationLoading] = useState(false);
 
   // Pre-fill from mission data
   useEffect(() => {
