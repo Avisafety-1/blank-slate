@@ -1618,6 +1618,9 @@ ABSOLUTTE FORBUD:
 - Skriv ALDRI at oppdraget krever Ninox-godkjenning når `airspace.summary.requires_ninox_approval = false`.
 - Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun `inside`-flagget og `description`.
 - En 5KM- eller CTR/TIZ-advarsel med `inside=false` skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
+- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når `airspace.summary.inside_controlled_airspace = true` OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
+- Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
+
 
 Eksempel feil → riktig:
 - FEIL: «Operasjonsområdet ligger innenfor kontrollert luftrom (CTR) og 5 km-sonen for Værnes (329 meters avstand).»
