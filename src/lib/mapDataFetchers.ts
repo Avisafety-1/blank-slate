@@ -859,6 +859,10 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
             popup += `<strong>${p.name || 'Ukjent'}</strong><br/>`;
             if (p.verneform) popup += `Verneform: ${p.verneform}<br/>`;
             lyr.bindPopup(popup);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: { color, weight: 1.5, fillColor: color, fillOpacity: 0.15 },
+            });
           } : undefined,
         });
       },
