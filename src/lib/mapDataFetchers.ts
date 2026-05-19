@@ -1173,6 +1173,16 @@ export async function fetchDkNatureAreas(params: BoundsFetchParams & {
             if (area.source_url) html += `<div style="margin-top:4px"><a href="${esc(area.source_url)}" target="_blank" rel="noopener">Mer info</a></div>`;
             html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
             lyr.bindPopup(html);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: {
+                color,
+                weight: 1.5,
+                fillColor: color,
+                fillOpacity: isActive ? 0.25 : 0.08,
+                dashArray: isActive ? undefined : '5, 5',
+              },
+            });
           } : undefined,
         });
       },
