@@ -1298,21 +1298,28 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         const inside = !!(w.route_inside ?? w.is_inside);
         const type = normalizeType(w.z_type ?? w.zone_type);
         const name = w.z_name ?? w.zone_name ?? 'ukjent';
+        // CRITICAL: distance is ALWAYS distance to the zone polygon boundary,
+        // NOT distance to an airport, aerodrome or NSM facility. For 5KM zones
+        // the boundary is a 5 km radius around the airport — 329 m from the
+        // boundary means ~5.3 km from the airport itself.
+        const distance_kind = 'zone_boundary';
+        let distance_label = `avstand til ${type}-sonens yttergrense`;
         let description = '';
         if (type === '5KM') {
+          distance_label = 'avstand til 5 km-sonens yttergrense (IKKE avstand til selve flyplassen)';
           description = inside
             ? `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`
-            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» (nærmeste avstand ${dist} m / ${(dist/1000).toFixed(2)} km). Ingen Ninox-godkjenning kreves for denne sonen.`;
+            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}». Nærmeste avstand til 5 km-sonegrensen er ${dist} m (${(dist/1000).toFixed(2)} km). MERK: dette er avstand til SONEGRENSEN, IKKE til selve flyplassen — selve flyplassen ligger ca. ${(5 + dist/1000).toFixed(2)} km unna. Ingen Ninox-godkjenning kreves for denne sonen.`;
         } else if (type === 'CTR' || type === 'TIZ') {
           description = inside
             ? `Oppdraget er INNENFOR kontrollert luftrom (${type} «${name}»). Maks 120 m AGL. Klarering fra ATC påkrevd.`
-            : `Oppdraget er UTENFOR ${type} «${name}» (nærmeste avstand ${dist} m). Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
+            : `Oppdraget er UTENFOR ${type} «${name}». Nærmeste avstand til ${type}-sonens yttergrense er ${dist} m. Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
         } else {
           description = inside
             ? `Oppdraget er INNENFOR sone ${type} «${name}».`
-            : `Oppdraget er UTENFOR sone ${type} «${name}» (nærmeste avstand ${dist} m).`;
+            : `Oppdraget er UTENFOR sone ${type} «${name}». Nærmeste avstand til sonegrensen er ${dist} m.`;
         }
-        return { type, name, distance: dist, inside, severity: w.severity ?? null, description };
+        return { type, name, distance: dist, distance_kind, distance_label, inside, severity: w.severity ?? null, description };
       });
       const inside5km = mappedWarnings.filter(w => w.type === '5KM' && w.inside);
       const insideCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && w.inside);
@@ -1323,7 +1330,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       } else {
         const outside5km = mappedWarnings.filter(w => w.type === '5KM' && !w.inside);
         if (outside5km.length > 0) {
-          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.name}: ${w.distance} m`).join('; ')}). Ingen Ninox-godkjenning kreves.`);
+          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (nærmeste avstand til sonegrensen: ${outside5km.map(w => `${w.name}: ${w.distance} m til 5 km-grensen ≈ ${(5 + w.distance/1000).toFixed(2)} km til selve flyplassen`).join('; ')}). Ingen Ninox-godkjenning kreves.`);
         } else {
           summaryParts.push('Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
         }
@@ -1333,7 +1340,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       } else {
         const nearCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && !w.inside);
         if (nearCtr.length > 0) {
-          summaryParts.push(`Utenfor kontrollert luftrom (nærmeste: ${nearCtr.map(w => `${w.type} «${w.name}» ${w.distance} m`).join('; ')}). Ingen ATC-klarering kreves.`);
+          summaryParts.push(`Utenfor kontrollert luftrom (nærmeste avstand til sonegrense: ${nearCtr.map(w => `${w.type} «${w.name}» ${w.distance} m`).join('; ')}). Ingen ATC-klarering kreves.`);
         }
       }
       return {
@@ -1342,6 +1349,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           requires_ninox_approval: requiresNinox,
           inside_controlled_airspace: insideCtr.length > 0,
           inside_5km_zone: inside5km.length > 0,
+          distance_semantics: 'Alle avstander (warnings[].distance og tall i summary.text) er avstand til SONEGRENSEN (polygonens yttergrense), IKKE til flyplass/aerodrome/NSM-anlegg. For 5KM-soner: avstand til selve flyplassen ≈ 5000 m + distance.',
           text: summaryParts.join(' '),
         },
       };
