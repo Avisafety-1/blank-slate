@@ -1620,9 +1620,12 @@ export async function fetchAisVesselsInBounds(params: {
   mode: string;
 }) {
   const { layer, bounds, zoom, pane, mode } = params;
-  layer.clearLayers();
 
-  if (zoom < 8) return;
+  if (zoom < 8) {
+    // Outside zoom range — clear and reset cache
+    resetCache('ais', layer);
+    return;
+  }
 
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
@@ -1650,33 +1653,47 @@ export async function fetchAisVesselsInBounds(params: {
       return;
     }
 
-    for (const v of vessels) {
-      if (v.lat == null || v.lon == null) continue;
+    const cache = getCache('ais');
+    const filtered = vessels.filter((v: any) => v && v.lat != null && v.lon != null);
+    const seen = new Set<string>();
 
-      const icon = createVesselIcon(v.cog, v.shipType);
-      const marker = L.marker([v.lat, v.lon], {
-        icon,
-        interactive: mode !== "routePlanning",
-        pane,
-      });
-
-      const typeName = getShipTypeName(v.shipType);
-      const sogKnots = v.sog != null ? `${v.sog.toFixed(1)} kn` : "–";
-      const cogDeg = v.cog != null ? `${Math.round(v.cog)}°` : "–";
-      const name = v.name || "Ukjent";
-
-      let popup = `<strong>🚢 ${name}</strong><br/>`;
-      popup += `MMSI: ${v.mmsi || "–"}<br/>`;
-      popup += `Type: ${typeName}<br/>`;
-      popup += `Fart: ${sogKnots}<br/>`;
-      popup += `Kurs: ${cogDeg}<br/>`;
-      if (v.destination) popup += `Dest: ${v.destination}<br/>`;
-
-      marker.bindPopup(popup);
-      marker.addTo(layer);
+    for (const v of filtered) {
+      const id = String(v.mmsi || `${v.lat.toFixed(4)},${v.lon.toFixed(4)}`);
+      seen.add(id);
+      const existing = cache.features.get(id) as L.Marker | undefined;
+      if (existing) {
+        // Reuse marker — just update position + icon orientation
+        existing.setLatLng([v.lat, v.lon]);
+        existing.setIcon(createVesselIcon(v.cog, v.shipType));
+      } else {
+        const marker = L.marker([v.lat, v.lon], {
+          icon: createVesselIcon(v.cog, v.shipType),
+          interactive: mode !== "routePlanning",
+          pane,
+        });
+        const typeName = getShipTypeName(v.shipType);
+        const sogKnots = v.sog != null ? `${v.sog.toFixed(1)} kn` : "–";
+        const cogDeg = v.cog != null ? `${Math.round(v.cog)}°` : "–";
+        const name = v.name || "Ukjent";
+        let popup = `<strong>🚢 ${name}</strong><br/>`;
+        popup += `MMSI: ${v.mmsi || "–"}<br/>`;
+        popup += `Type: ${typeName}<br/>`;
+        popup += `Fart: ${sogKnots}<br/>`;
+        popup += `Kurs: ${cogDeg}<br/>`;
+        if (v.destination) popup += `Dest: ${v.destination}<br/>`;
+        marker.bindPopup(popup);
+        marker.addTo(layer);
+        cache.features.set(id, marker);
+      }
     }
 
-    console.log(`[NAIS] Rendered ${vessels.length} vessels`);
+    // Remove vessels that disappeared
+    for (const [id, lyr] of cache.features) {
+      if (!seen.has(id)) {
+        try { layer.removeLayer(lyr); } catch { /* ignore */ }
+        cache.features.delete(id);
+      }
+    }
   } catch (err) {
     console.error("[NAIS] Error:", err);
   }
