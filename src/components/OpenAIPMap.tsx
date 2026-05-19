@@ -9,7 +9,8 @@ import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
 import { Button } from "@/components/ui/button";
-import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
+import { CloudSun, Route, Satellite, Mountain, Map as MapIcon, Plane } from "lucide-react";
+import * as EsriLeaflet from "esri-leaflet";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 
