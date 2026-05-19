@@ -10,7 +10,7 @@ import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon, Plane } from "lucide-react";
-import * as EsriLeaflet from "esri-leaflet";
+import { createAvinorIcaoLayer } from "@/lib/avinorIcaoLayer";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 
