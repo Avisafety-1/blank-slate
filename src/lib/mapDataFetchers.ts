@@ -1085,12 +1085,15 @@ export async function fetchDkNatureAreas(params: BoundsFetchParams & {
   includeInactive?: boolean;
 }) {
   const { layer, mode, bounds, includeInactive = true } = params;
+  const cache = getCache('dkNature');
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds);
   try {
     const { data, error } = await supabase.rpc('get_dk_nature_areas_in_bounds', {
-      min_lat: bounds.minLat,
-      min_lng: bounds.minLng,
-      max_lat: bounds.maxLat,
-      max_lng: bounds.maxLng,
+      min_lat: padded.minLat,
+      min_lng: padded.minLng,
+      max_lat: padded.maxLat,
+      max_lng: padded.maxLng,
       p_include_inactive: includeInactive,
     });
     if (error || !data) {
@@ -1102,12 +1105,15 @@ export async function fetchDkNatureAreas(params: BoundsFetchParams & {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
       }[c]!));
 
-    for (const area of data as any[]) {
-      if (!area.geometry) continue;
-      const isActive = area.active !== false;
-      const color = isActive ? '#16a34a' : '#9ca3af';
-      try {
-        L.geoJSON({ type: 'Feature' as const, geometry: area.geometry, properties: area } as any, {
+    diffRender(
+      layer,
+      cache,
+      (data as any[]).filter((a) => a?.geometry),
+      (a) => hashString(`dkn|${a.name ?? ''}|${a.theme ?? ''}|${JSON.stringify(a.geometry)}`),
+      (area) => {
+        const isActive = area.active !== false;
+        const color = isActive ? '#16a34a' : '#9ca3af';
+        return L.geoJSON({ type: 'Feature' as const, geometry: area.geometry, properties: area } as any, {
           interactive: mode !== 'routePlanning',
           pane: 'overlayPane',
           style: {
@@ -1127,9 +1133,10 @@ export async function fetchDkNatureAreas(params: BoundsFetchParams & {
             html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
             lyr.bindPopup(html);
           } : undefined,
-        }).addTo(layer);
-      } catch {/* skip */}
-    }
+        });
+      },
+    );
+    cache.cachedBounds = padded;
   } catch (err) {
     console.error('Kunne ikke hente DK naturområder:', err);
   }
