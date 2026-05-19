@@ -243,6 +243,14 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     return null;
   }, [scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate]);
 
+  // UPPER AMSL = ground elevation (m) -> ft + AGL, rounded up to nearest 50 ft
+  const upperAmslFt = useMemo(() => {
+    if (groundElevationM == null) return null;
+    const groundFt = groundElevationM * 3.28084;
+    const totalFt = groundFt + maxAglFt;
+    return Math.ceil(totalFt / 50) * 50;
+  }, [groundElevationM, maxAglFt]);
+
   const generatedText = useMemo(() => {
     const lines: string[] = [];
 
@@ -274,18 +282,26 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       lines.push(`${datePrefix}${timeFrom}-${timeTo}`);
     }
 
-    lines.push(`Unmanned ACFT (${operationType}) will take place in ${areaName}`);
-
+    // Main body — uppercase, matches Avinor NOTAM format
+    const areaUpper = (areaName || "").toUpperCase().trim();
+    const bodyParts: string[] = [];
+    bodyParts.push(`UNMANNED ACFT (${operationType}) WILL TAKE PLACE${areaUpper ? ` AT ${areaUpper} AREA` : ""}`);
     if (centerLat != null && centerLng != null) {
-      lines.push(`PSN ${toNotamCoord(centerLat, centerLng)}, radius ${radiusNm} NM.`);
+      bodyParts.push(`PSN ${toNotamCoord(centerLat, centerLng)}, RADIUS ${radiusNm}NM.`);
     }
+    bodyParts.push(`MAX HGT ${maxAglFt}FT AGL.`);
+    if (contactPhone.trim()) {
+      bodyParts.push(`CTC ${contactPhone.trim()}.`);
+    }
+    lines.push(bodyParts.join(" "));
 
-    lines.push(`MAX HGT ${maxAglFt} FT AGL.`);
-
-    if (contactName || companyName) {
-      const who = companyName || contactName;
-      const tel = contactPhone ? `, tel ${contactPhone}` : "";
-      lines.push(`For realtime status ctc ${who}${tel}`);
+    // LOWER / UPPER limits
+    lines.push("");
+    lines.push("LOWER: GND");
+    if (upperAmslFt != null) {
+      lines.push(`UPPER: ${upperAmslFt}FT AMSL`);
+    } else {
+      lines.push(`UPPER: ${maxAglFt}FT AGL${elevationLoading ? " (henter terrenghøyde…)" : " (terrenghøyde ikke tilgjengelig)"}`);
     }
 
     if (vhfFrequency.trim()) {
