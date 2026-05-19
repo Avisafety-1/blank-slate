@@ -2268,9 +2268,15 @@ Returner en JSON-respons med denne strukturen:
             `Oppdraget er utenfor 5 km-sonen: ${outsideTexts.join('; ')}. Ingen Ninox-godkjenning kreves${lowAltitudeOutside5km ? ' ved maks 120 m AGL' : ''}.`,
           ];
         }
-        if (ctrOverlapIsCautionOnly && aiAnalysis.categories.airspace.go_decision === 'NO-GO') {
-          aiAnalysis.categories.airspace.go_decision = 'BETINGET';
-          aiAnalysis.categories.airspace.score = Math.max(Number(aiAnalysis.categories.airspace.score) || 0, 6);
+        if (ctrOverlapIsCautionOnly) {
+          aiAnalysis.categories.airspace.factors = [
+            ...(Array.isArray(aiAnalysis.categories.airspace.factors) ? aiAnalysis.categories.airspace.factors : []),
+            `Ruten overlapper kontrollert luftrom (CTR/TIZ), men ligger utenfor 5 km-sonen. Ved maks 120 m AGL er dette 100 % lovlig — ingen ATC-klarering eller tårnkontakt kreves. Behandles kun som aktsomhets­advarsel: vær oppmerksom på bemannet trafikk.`,
+          ];
+          if (aiAnalysis.categories.airspace.go_decision === 'NO-GO') {
+            aiAnalysis.categories.airspace.go_decision = 'BETINGET';
+            aiAnalysis.categories.airspace.score = Math.max(Number(aiAnalysis.categories.airspace.score) || 0, 6);
+          }
         }
       }
 
