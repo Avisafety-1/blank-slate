@@ -102,6 +102,10 @@ export async function fetchRpasData(params: GeoJsonFetchParams) {
           const name = feature.properties.navn || feature.properties.name || 'Ukjent';
           layer.bindPopup(`<strong>RPAS 5km sone</strong><br/>${name}`);
         }
+        attachHoverPromotion(layer, {
+          paneName: 'rpasPane',
+          baseStyle: { color: '#f97316', weight: 2, fillColor: '#f97316', fillOpacity: 0.2 },
+        });
       } : undefined
     });
 
