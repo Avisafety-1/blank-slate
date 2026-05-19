@@ -867,51 +867,61 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         signal: AbortSignal.timeout(5000),
       });
       if (kpRes.ok) {
-        const kpRaw: string[][] = await kpRes.json();
-        // Format: [["time_tag","Kp","observed","noaa_scale"], ["2026-03-25 00:00:00","2.33","observed","0"], ...]
-        // Find highest Kp for mission date
-        // Extract date from mission.tidspunkt (ISO timestamp) or fall back to today
-        const missionDateStr = mission.tidspunkt
-          ? new Date(mission.tidspunkt).toISOString().substring(0, 10)
-          : new Date().toISOString().substring(0, 10);
-        let maxKp = 0;
-        let matchedDate = false;
-        for (let i = 1; i < kpRaw.length; i++) {
-          const row = kpRaw[i];
-          if (!row || row.length < 2) continue;
-          const rowDate = (row[0] || '').substring(0, 10);
-          const kpVal = parseFloat(row[1]);
-          if (rowDate === missionDateStr && !isNaN(kpVal) && kpVal > maxKp) {
-            maxKp = kpVal;
-            matchedDate = true;
-          }
-        }
-        // If no data for mission date, check tomorrow as fallback (forecast)
-        if (!matchedDate) {
-          const tomorrow = new Date(missionDateStr);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const tomorrowStr = tomorrow.toISOString().substring(0, 10);
-          for (let i = 1; i < kpRaw.length; i++) {
-            const row = kpRaw[i];
-            if (!row || row.length < 2) continue;
-            const rowDate = (row[0] || '').substring(0, 10);
-            const kpVal = parseFloat(row[1]);
-            if ((rowDate === missionDateStr || rowDate === tomorrowStr) && !isNaN(kpVal) && kpVal > maxKp) {
-              maxKp = kpVal;
+        const kpRaw = await kpRes.json();
+        // Format: [{ "time_tag": "2026-05-12T00:00:00", "kp": 0.67, "observed": "observed", "noaa_scale": null }, ...]
+        if (!Array.isArray(kpRaw) || kpRaw.length === 0 || typeof kpRaw[0]?.kp !== 'number') {
+          console.warn('NOAA Kp response unexpected shape, leaving kpIndex=null. Sample:', JSON.stringify(kpRaw?.[0] ?? kpRaw).slice(0, 200));
+        } else {
+          type KpRow = { time_tag: string; kp: number; observed?: string; noaa_scale?: string | null };
+          const rows = kpRaw as KpRow[];
+          const missionDateStr = mission.tidspunkt
+            ? new Date(mission.tidspunkt).toISOString().substring(0, 10)
+            : new Date().toISOString().substring(0, 10);
+          let maxKp = 0;
+          let matchedDate = false;
+          for (const row of rows) {
+            if (!row || typeof row.kp !== 'number' || !row.time_tag) continue;
+            const rowDate = row.time_tag.substring(0, 10);
+            if (rowDate === missionDateStr && row.kp > maxKp) {
+              maxKp = row.kp;
+              matchedDate = true;
             }
           }
-        }
-        const roundedKp = Math.round(maxKp * 10) / 10;
-        let noaaScale = 'G0';
-        let level = 'low';
-        if (roundedKp >= 9) { noaaScale = 'G5'; level = 'extreme'; }
-        else if (roundedKp >= 8) { noaaScale = 'G4'; level = 'severe'; }
-        else if (roundedKp >= 7) { noaaScale = 'G3'; level = 'strong'; }
-        else if (roundedKp >= 6) { noaaScale = 'G2'; level = 'moderate'; }
-        else if (roundedKp >= 5) { noaaScale = 'G1'; level = 'minor'; }
+          // Fallback to tomorrow if no data for mission date
+          if (!matchedDate) {
+            const tomorrow = new Date(missionDateStr);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = tomorrow.toISOString().substring(0, 10);
+            for (const row of rows) {
+              if (!row || typeof row.kp !== 'number' || !row.time_tag) continue;
+              const rowDate = row.time_tag.substring(0, 10);
+              if ((rowDate === missionDateStr || rowDate === tomorrowStr) && row.kp > maxKp) {
+                maxKp = row.kp;
+                matchedDate = true;
+              }
+            }
+          }
+          // If still no match (mission far in future/past), fall back to most recent observed value
+          if (!matchedDate) {
+            for (const row of rows) {
+              if (!row || typeof row.kp !== 'number') continue;
+              if (row.kp > maxKp) maxKp = row.kp;
+            }
+          }
+          const roundedKp = Math.round(maxKp * 10) / 10;
+          let noaaScale = 'G0';
+          let level = 'low';
+          if (roundedKp >= 9) { noaaScale = 'G5'; level = 'extreme'; }
+          else if (roundedKp >= 8) { noaaScale = 'G4'; level = 'severe'; }
+          else if (roundedKp >= 7) { noaaScale = 'G3'; level = 'strong'; }
+          else if (roundedKp >= 6) { noaaScale = 'G2'; level = 'moderate'; }
+          else if (roundedKp >= 5) { noaaScale = 'G1'; level = 'minor'; }
 
-        solarActivity = { kpIndex: roundedKp, noaaScale, level };
-        console.log(`Solar activity: Kp=${roundedKp}, scale=${noaaScale}, level=${level}`);
+          solarActivity = { kpIndex: roundedKp, noaaScale, level };
+          console.log(`Solar activity: rows=${rows.length}, missionDate=${missionDateStr}, matched=${matchedDate}, Kp=${roundedKp}, scale=${noaaScale}, level=${level}`);
+        }
+      } else {
+        console.warn('NOAA Kp fetch non-ok:', kpRes.status);
       }
     } catch (e) {
       console.error('Solar activity fetch error (non-blocking):', e);
