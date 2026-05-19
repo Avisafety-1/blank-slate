@@ -10,7 +10,7 @@ import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon, Plane } from "lucide-react";
-import * as EsriLeaflet from "esri-leaflet";
+import { createAvinorIcaoLayer } from "@/lib/avinorIcaoLayer";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -264,12 +264,7 @@ export function OpenAIPMap({
 
     if (newType === 'icao') {
       // Avinor ICAO 1:500 000 VFR-flykart (dynamisk ArcGIS MapServer, reprojiseres on-the-fly)
-      newLayer = EsriLeaflet.dynamicMapLayer({
-        url: 'https://avigis.avinor.no/agsmap/rest/services/ICAO_500000_ExB/MapServer',
-        opacity: 1,
-        f: 'image',
-        attribution: 'ICAO 1:500 000 © Avinor',
-      } as any).addTo(map);
+      newLayer = createAvinorIcaoLayer({ opacity: 1 }).addTo(map);
     } else {
       let url: string;
       let attribution: string;
