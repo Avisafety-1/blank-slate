@@ -1307,15 +1307,54 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         recommendation: weatherData.droneFlightRecommendation,
         bestWindow: weatherData.bestFlightWindow,
       } : null),
-      airspace: {
-        warnings: airspaceWarnings.map((w: any) => ({
-          type: w.z_type,
-          name: w.z_name,
-          distance: Math.round(w.min_distance),
-          inside: w.route_inside,
-          severity: w.severity,
-        })),
-      },
+      airspace: (() => {
+        const mappedWarnings = airspaceWarnings.map((w: any) => {
+          const dist = Math.round(w.min_distance);
+          const inside = !!w.route_inside;
+          const type = w.z_type;
+          const name = w.z_name;
+          let description = '';
+          if (type === '5KM') {
+            description = inside
+              ? `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`
+              : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» (nærmeste avstand ${dist} m / ${(dist/1000).toFixed(2)} km). Ingen Ninox-godkjenning kreves for denne sonen.`;
+          } else if (type === 'CTR' || type === 'TIZ') {
+            description = inside
+              ? `Oppdraget er INNENFOR kontrollert luftrom (${type} «${name}»). Maks 120 m AGL. Klarering fra ATC påkrevd.`
+              : `Oppdraget er UTENFOR ${type} «${name}» (nærmeste avstand ${dist} m).`;
+          } else {
+            description = inside
+              ? `Oppdraget er INNENFOR sone ${type} «${name}».`
+              : `Oppdraget er UTENFOR sone ${type} «${name}» (nærmeste avstand ${dist} m).`;
+          }
+          return { type, name, distance: dist, inside, severity: w.severity, description };
+        });
+        const inside5km = mappedWarnings.filter(w => w.type === '5KM' && w.inside);
+        const insideCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && w.inside);
+        const requiresNinox = inside5km.length > 0;
+        const summaryParts: string[] = [];
+        if (requiresNinox) {
+          summaryParts.push(`Oppdraget er innenfor 5 km-sonen rundt ${inside5km.map(w => `«${w.name}»`).join(', ')} og krever Ninox-godkjenning.`);
+        } else {
+          const outside5km = mappedWarnings.filter(w => w.type === '5KM' && !w.inside);
+          if (outside5km.length > 0) {
+            summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.name}: ${w.distance} m`).join('; ')}). Ingen Ninox-godkjenning kreves.`);
+          } else {
+            summaryParts.push('Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
+          }
+        }
+        if (insideCtr.length > 0) {
+          summaryParts.push(`Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}.`);
+        }
+        return {
+          warnings: mappedWarnings,
+          summary: {
+            requires_ninox_approval: requiresNinox,
+            inside_controlled_airspace: insideCtr.length > 0,
+            text: summaryParts.join(' '),
+          },
+        };
+      })(),
       // GDPR: Anonymize pilot data before sending to AI - use identifiers instead of names
       assignedPilots: assignedPilots.map((p: any, index: number) => ({
         identifier: `Pilot ${index + 1}`,
