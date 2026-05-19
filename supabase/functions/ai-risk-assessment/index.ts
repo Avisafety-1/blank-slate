@@ -1282,6 +1282,72 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       ? Math.floor((today.getTime() - new Date(aggregatedFlightStats.lastFlightDate).getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
+    // Normalize airspace warnings (server returns either new schema {z_type,z_name,min_distance,route_inside}
+    // or older schema {zone_type,zone_name,distance_meters,is_inside}). Compute deterministic summary.
+    const airspaceFacts = (() => {
+      const normalizeType = (t: string | null | undefined): string => {
+        if (!t) return 'UKJENT';
+        const up = String(t).toUpperCase();
+        if (up.includes('5KM') || up.includes('5 KM') || up === 'RPAS 5KM' || up === 'RPAS 5KM SONE') return '5KM';
+        if (up === 'CTR' || up === 'TIZ' || up === 'CTR/TIZ') return up === 'CTR/TIZ' ? 'CTR' : up;
+        return up;
+      };
+      const mappedWarnings = (airspaceWarnings || []).map((w: any) => {
+        const rawDist = w.min_distance ?? w.distance_meters ?? 0;
+        const dist = Math.round(Number(rawDist) || 0);
+        const inside = !!(w.route_inside ?? w.is_inside);
+        const type = normalizeType(w.z_type ?? w.zone_type);
+        const name = w.z_name ?? w.zone_name ?? 'ukjent';
+        let description = '';
+        if (type === '5KM') {
+          description = inside
+            ? `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`
+            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» (nærmeste avstand ${dist} m / ${(dist/1000).toFixed(2)} km). Ingen Ninox-godkjenning kreves for denne sonen.`;
+        } else if (type === 'CTR' || type === 'TIZ') {
+          description = inside
+            ? `Oppdraget er INNENFOR kontrollert luftrom (${type} «${name}»). Maks 120 m AGL. Klarering fra ATC påkrevd.`
+            : `Oppdraget er UTENFOR ${type} «${name}» (nærmeste avstand ${dist} m). Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
+        } else {
+          description = inside
+            ? `Oppdraget er INNENFOR sone ${type} «${name}».`
+            : `Oppdraget er UTENFOR sone ${type} «${name}» (nærmeste avstand ${dist} m).`;
+        }
+        return { type, name, distance: dist, inside, severity: w.severity ?? null, description };
+      });
+      const inside5km = mappedWarnings.filter(w => w.type === '5KM' && w.inside);
+      const insideCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && w.inside);
+      const requiresNinox = inside5km.length > 0;
+      const summaryParts: string[] = [];
+      if (requiresNinox) {
+        summaryParts.push(`Oppdraget er innenfor 5 km-sonen rundt ${inside5km.map(w => `«${w.name}»`).join(', ')} og krever Ninox-godkjenning.`);
+      } else {
+        const outside5km = mappedWarnings.filter(w => w.type === '5KM' && !w.inside);
+        if (outside5km.length > 0) {
+          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.name}: ${w.distance} m`).join('; ')}). Ingen Ninox-godkjenning kreves.`);
+        } else {
+          summaryParts.push('Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
+        }
+      }
+      if (insideCtr.length > 0) {
+        summaryParts.push(`Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}.`);
+      } else {
+        const nearCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && !w.inside);
+        if (nearCtr.length > 0) {
+          summaryParts.push(`Utenfor kontrollert luftrom (nærmeste: ${nearCtr.map(w => `${w.type} «${w.name}» ${w.distance} m`).join('; ')}). Ingen ATC-klarering kreves.`);
+        }
+      }
+      return {
+        warnings: mappedWarnings,
+        summary: {
+          requires_ninox_approval: requiresNinox,
+          inside_controlled_airspace: insideCtr.length > 0,
+          inside_5km_zone: inside5km.length > 0,
+          text: summaryParts.join(' '),
+        },
+      };
+    })();
+    console.log('Airspace facts summary:', JSON.stringify(airspaceFacts.summary));
+
     const contextData = {
       mission: {
         title: mission.tittel,
@@ -1307,54 +1373,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         recommendation: weatherData.droneFlightRecommendation,
         bestWindow: weatherData.bestFlightWindow,
       } : null),
-      airspace: (() => {
-        const mappedWarnings = airspaceWarnings.map((w: any) => {
-          const dist = Math.round(w.min_distance);
-          const inside = !!w.route_inside;
-          const type = w.z_type;
-          const name = w.z_name;
-          let description = '';
-          if (type === '5KM') {
-            description = inside
-              ? `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`
-              : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» (nærmeste avstand ${dist} m / ${(dist/1000).toFixed(2)} km). Ingen Ninox-godkjenning kreves for denne sonen.`;
-          } else if (type === 'CTR' || type === 'TIZ') {
-            description = inside
-              ? `Oppdraget er INNENFOR kontrollert luftrom (${type} «${name}»). Maks 120 m AGL. Klarering fra ATC påkrevd.`
-              : `Oppdraget er UTENFOR ${type} «${name}» (nærmeste avstand ${dist} m).`;
-          } else {
-            description = inside
-              ? `Oppdraget er INNENFOR sone ${type} «${name}».`
-              : `Oppdraget er UTENFOR sone ${type} «${name}» (nærmeste avstand ${dist} m).`;
-          }
-          return { type, name, distance: dist, inside, severity: w.severity, description };
-        });
-        const inside5km = mappedWarnings.filter(w => w.type === '5KM' && w.inside);
-        const insideCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && w.inside);
-        const requiresNinox = inside5km.length > 0;
-        const summaryParts: string[] = [];
-        if (requiresNinox) {
-          summaryParts.push(`Oppdraget er innenfor 5 km-sonen rundt ${inside5km.map(w => `«${w.name}»`).join(', ')} og krever Ninox-godkjenning.`);
-        } else {
-          const outside5km = mappedWarnings.filter(w => w.type === '5KM' && !w.inside);
-          if (outside5km.length > 0) {
-            summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.name}: ${w.distance} m`).join('; ')}). Ingen Ninox-godkjenning kreves.`);
-          } else {
-            summaryParts.push('Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
-          }
-        }
-        if (insideCtr.length > 0) {
-          summaryParts.push(`Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}.`);
-        }
-        return {
-          warnings: mappedWarnings,
-          summary: {
-            requires_ninox_approval: requiresNinox,
-            inside_controlled_airspace: insideCtr.length > 0,
-            text: summaryParts.join(' '),
-          },
-        };
-      })(),
+      airspace: airspaceFacts,
       // GDPR: Anonymize pilot data before sending to AI - use identifiers instead of names
       assignedPilots: assignedPilots.map((p: any, index: number) => ({
         identifier: `Pilot ${index + 1}`,
@@ -1599,6 +1618,9 @@ ABSOLUTTE FORBUD:
 - Skriv ALDRI at oppdraget krever Ninox-godkjenning når `airspace.summary.requires_ninox_approval = false`.
 - Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun `inside`-flagget og `description`.
 - En 5KM- eller CTR/TIZ-advarsel med `inside=false` skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
+- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når `airspace.summary.inside_controlled_airspace = true` OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
+- Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
+
 
 Eksempel feil → riktig:
 - FEIL: «Operasjonsområdet ligger innenfor kontrollert luftrom (CTR) og 5 km-sonen for Værnes (329 meters avstand).»
@@ -2120,6 +2142,74 @@ Returner en JSON-respons med denne strukturen:
     }
 
     console.log(`GRC deterministic: ${deterministicGroundRisk.igrc_table_basis} => iGRC=${deterministicGroundRisk.igrc}, reductions=${deterministicGroundRisk.total_reduction}, fGRC=${deterministicGroundRisk.fgrc}`);
+
+
+    // ===== DETERMINISTIC AIRSPACE GUARD =====
+    // Override anything the AI made up about 5km/CTR with the server-computed truth.
+    try {
+      const sum = airspaceFacts.summary;
+      const insideAny5km = sum.inside_5km_zone === true;
+      const insideAnyCtr = sum.inside_controlled_airspace === true;
+
+      // 1) Rewrite airspace category actual_conditions to authoritative text
+      if (aiAnalysis.categories?.airspace) {
+        aiAnalysis.categories.airspace.actual_conditions = sum.text;
+        // Filter out concerns that falsely claim "innenfor 5 km" / "innenfor CTR" / Ninox required
+        const falseClaim = (s: string): boolean => {
+          const t = (s || '').toLowerCase();
+          if (!insideAny5km && (t.includes('innenfor 5 km') || t.includes('innenfor 5km') || (t.includes('krever ninox') || t.includes('ninox-godkjenning')))) return true;
+          if (!insideAnyCtr && (t.includes('innenfor kontrollert luftrom') || t.includes('innenfor ctr') || t.includes('innenfor tiz') || t.includes('i kontrollert luftrom (ctr)'))) return true;
+          return false;
+        };
+        if (Array.isArray(aiAnalysis.categories.airspace.concerns)) {
+          aiAnalysis.categories.airspace.concerns = aiAnalysis.categories.airspace.concerns.filter((c: string) => !falseClaim(c));
+        }
+      }
+
+      // 2) Rewrite air_risk_analysis fields if they contradict server truth
+      if (aiAnalysis.air_risk_analysis) {
+        const reasoning = String(aiAnalysis.air_risk_analysis.aec_reasoning || '');
+        if (!insideAnyCtr && /klasse\s*d|ctr|tiz|kontrollert luftrom/i.test(reasoning)) {
+          aiAnalysis.air_risk_analysis.aec_reasoning =
+            `Operasjonen er utenfor kontrollert luftrom (CTR/TIZ). ${sum.text} Klasse G antas under 500 ft.`;
+          // Conservative fallback: AEC 11 (urbant) or 12 (landlig). Keep existing if not D-based.
+          if (/AEC\s*[3-6]/i.test(String(aiAnalysis.air_risk_analysis.aec || ''))) {
+            aiAnalysis.air_risk_analysis.aec = 'AEC 12';
+          }
+        }
+      }
+
+      // 3) Clear hard_stop if the only/primary reason is bogus CTR/5km claim
+      if (aiAnalysis.hard_stop_triggered === true && !insideAny5km && !insideAnyCtr) {
+        const reason = String(aiAnalysis.hard_stop_reason || '').toLowerCase();
+        const summary = String(aiAnalysis.summary || '').toLowerCase();
+        const reasonMentionsAirspace = /ctr|tiz|kontrollert luftrom|5\s*km|ninox/.test(reason) || /ctr|tiz|kontrollert luftrom|5\s*km|ninox/.test(summary);
+        // Check that no OTHER hardstop trigger applies (weather, equipment, pilot, height etc.)
+        const otherHardStop =
+          (aiAnalysis.categories?.weather?.go_decision === 'NO-GO') ||
+          (aiAnalysis.categories?.equipment?.go_decision === 'NO-GO') ||
+          (aiAnalysis.categories?.pilot_experience?.go_decision === 'NO-GO');
+        if (reasonMentionsAirspace && !otherHardStop) {
+          console.log('Clearing bogus airspace-based HARD STOP (server says outside 5km & outside CTR/TIZ)');
+          aiAnalysis.hard_stop_triggered = false;
+          aiAnalysis.hard_stop_reason = null;
+          if (aiAnalysis.categories?.airspace) {
+            aiAnalysis.categories.airspace.go_decision = 'GO';
+          }
+          // Re-derive recommendation from score now that hard stop is gone
+          aiAnalysis.recommendation = deriveRiskRecommendation(
+            aiAnalysis.overall_score,
+            false,
+            'go'
+          );
+          // Append a note to summary
+          aiAnalysis.summary = (aiAnalysis.summary ? aiAnalysis.summary + ' ' : '') +
+            `(Korrigert: ${sum.text})`;
+        }
+      }
+    } catch (guardErr) {
+      console.error('Airspace deterministic guard error (non-blocking):', guardErr);
+    }
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
