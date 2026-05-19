@@ -254,33 +254,49 @@ export function OpenAIPMap({
   );
 
   // Switch between base map layers
-  const switchBaseLayer = useCallback((newType: 'osm' | 'satellite' | 'topo') => {
+  const switchBaseLayer = useCallback((newType: 'osm' | 'satellite' | 'topo' | 'icao') => {
     if (!leafletMapRef.current || !baseLayerRef.current) return;
-    
+
     const map = leafletMapRef.current;
     map.removeLayer(baseLayerRef.current);
-    
-    let url: string;
-    let attribution: string;
-    let subdomains: string | string[] = 'abc';
-    
-    switch (newType) {
-      case 'satellite':
-        url = openAipConfig.tiles.satellite;
-        attribution = openAipConfig.attribution.satellite;
-        subdomains = [];
-        break;
-      case 'topo':
-        url = openAipConfig.tiles.topo;
-        attribution = openAipConfig.attribution.topo;
-        break;
-      default:
-        url = openAipConfig.tiles.base;
-        attribution = openAipConfig.attribution.osm;
+
+    let newLayer: L.Layer;
+
+    if (newType === 'icao') {
+      // Avinor ICAO 1:500 000 VFR-flykart (dynamisk ArcGIS MapServer, reprojiseres on-the-fly)
+      newLayer = EsriLeaflet.dynamicMapLayer({
+        url: 'https://avigis.avinor.no/agsmap/rest/services/ICAO_500000_ExB/MapServer',
+        opacity: 1,
+        f: 'image',
+        attribution: 'ICAO 1:500 000 © Avinor',
+      } as any).addTo(map);
+    } else {
+      let url: string;
+      let attribution: string;
+      let subdomains: string | string[] = 'abc';
+
+      switch (newType) {
+        case 'satellite':
+          url = openAipConfig.tiles.satellite;
+          attribution = openAipConfig.attribution.satellite;
+          subdomains = [];
+          break;
+        case 'topo':
+          url = openAipConfig.tiles.topo;
+          attribution = openAipConfig.attribution.topo;
+          break;
+        default:
+          url = openAipConfig.tiles.base;
+          attribution = openAipConfig.attribution.osm;
+      }
+
+      const tileLayer = L.tileLayer(url, { attribution, subdomains }).addTo(map);
+      newLayer = tileLayer;
     }
-    
-    const newLayer = L.tileLayer(url, { attribution, subdomains }).addTo(map);
-    newLayer.bringToBack();
+
+    if ('bringToBack' in newLayer && typeof (newLayer as any).bringToBack === 'function') {
+      (newLayer as any).bringToBack();
+    }
     baseLayerRef.current = newLayer;
     setBaseLayerType(newType);
   }, []);
