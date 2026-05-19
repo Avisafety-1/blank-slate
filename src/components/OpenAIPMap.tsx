@@ -669,7 +669,7 @@ export function OpenAIPMap({
     const caaFengslerLayer = L.layerGroup();
     const caaAmbassaderLayer = L.layerGroup();
     const caaFareLayer = L.layerGroup();
-    const caaFlyplasserLayer = L.layerGroup();
+    const caaFlyplasserLayer = L.layerGroup().addTo(map);
     const caaNotamSonerLayer = L.layerGroup();
     const caaRestriksjonerLayer = L.layerGroup();
 

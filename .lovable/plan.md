@@ -1,49 +1,30 @@
-# Fiks Kp-indeks fra NOAA — alltid 0
+## Problem
 
-## Hva er feil
+1. **Flyplasser-laget krever av/på-toggle for å fungere**: `caaFlyplasserLayer` (CAA dronesoner-polygonene rundt flyplasser) opprettes i `OpenAIPMap.tsx` men legges aldri til kartet ved init. Bare `airportsLayer` (ikon-markørene) får `.addTo(map)`. Når `fetchCaaLayers()` kjører første gang, sjekker den `map.hasLayer(caaFlyplasserLayer)` → false → hopper over henting. Først når brukeren togler av og på får laget `addTo(map)` via `handleLayerToggle`, og neste `moveend` (eller umiddelbar fetch i toggle) henter polygonene.
 
-NOAA-endepunktet `https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json` returnerer en **liste med objekter**:
+2. **Polygonfarge for flyplasser**: I `src/lib/mapDataFetchers.ts` står `flyplasser: { color: '#eab308' }` (gul). Brukeren vil ha rød med opacity for bedre synlighet.
 
-```json
-[
-  {"time_tag":"2026-05-12T00:00:00","kp":0.67,"observed":"observed","noaa_scale":null},
-  {"time_tag":"2026-05-12T03:00:00","kp":1.00,"observed":"observed","noaa_scale":null},
-  ...
-]
-```
+## Endringer
 
-Men `supabase/functions/ai-risk-assessment/index.ts` (linje 858–918) leser den som **liste med arrays** (gammelt CSV-lignende format):
+### `src/components/OpenAIPMap.tsx` (rundt linje 672)
+Legg `caaFlyplasserLayer` til kartet ved init, slik at den initielle `fetchCaaLayers()`-kallet faktisk henter polygonene:
 
 ```ts
-const kpRaw: string[][] = await kpRes.json();
-// ...
-for (let i = 1; i < kpRaw.length; i++) {   // hopper over første rad (var "header")
-  const row = kpRaw[i];
-  const rowDate = (row[0] || '').substring(0, 10);  // row[0] er undefined
-  const kpVal = parseFloat(row[1]);                  // NaN
-  ...
-}
+const caaFlyplasserLayer = L.layerGroup().addTo(map);
 ```
 
-Resultat: `row[0]`/`row[1]` finnes ikke på objekter, `kpVal` blir `NaN`, `maxKp` forblir `0`. Derfor viser AI-risikovurderingen så å si alltid **Kp = 0 (G0, rolig)** — uavhengig av faktisk geomagnetisk aktivitet.
+Default-toggle (`enabled: true`) i layer-config beholdes uendret på linje 766.
 
-## Endring
+### `src/lib/mapDataFetchers.ts` (linje 944)
+Endre farge for flyplasser-polygonet til rød:
 
-I `supabase/functions/ai-risk-assessment/index.ts`, blokken som henter Kp:
+```ts
+flyplasser: { color: '#dc2626', iconLabel: '✈️ Flyplass' },
+```
 
-1. Type kpRaw som `Array<{ time_tag: string; kp: number; observed?: string; noaa_scale?: string | null }>`.
-2. Start løkken på `i = 0` (ingen header-rad lenger).
-3. Les `row.time_tag.substring(0, 10)` (ISO `YYYY-MM-DDTHH:...`, så `substring(0,10)` gir riktig dato).
-4. Les `row.kp` direkte (allerede number).
-5. Behold logikken for `missionDateStr`, fallback til neste dag, avrunding, og G-skala-mapping.
-6. Legg til defensiv sjekk: hvis responsen ikke er en array, eller første element ikke har `kp`-feltet, logg advarsel og behold `kpIndex: null` (slik at prompten sier "ikke tilgjengelig" i stedet for å bløffe Kp 0).
-7. Logg `kpRaw.length` og høyeste Kp funnet, så vi kan verifisere i edge function-loggene.
+`fillOpacity` styres allerede dynamisk (0.22 for `REQ_AUTHORISATION`, ellers 0.12) og trenger ikke endres — rødfargen vil være synlig med samme opacity-skjema som andre soner.
 
-Ingen andre filer endres. Prompten håndterer allerede `kpIndex === null` korrekt.
+## Resultat
 
-## Verifisering
-
-- Deploy `ai-risk-assessment` på nytt.
-- Kjør en risikovurdering på et oppdrag i dag.
-- Sjekk edge function-loggene for `Solar activity: Kp=...` med en realistisk verdi (typisk 1–3 på rolige dager).
-- Sjekk "Vær"-seksjonen i rapporten — Kp-linjen skal nå reflektere faktisk verdi.
+- Flyplass-polygoner vises umiddelbart ved kartlasting uten manuell toggle.
+- Polygonene rundt små-/helikopterplasser tegnes i rødt med eksisterende lett gjennomsiktighet, klart skilt fra gule fareområder.
