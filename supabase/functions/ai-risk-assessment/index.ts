@@ -1656,6 +1656,7 @@ ABSOLUTTE FORBUD:
 - En 5KM- eller CTR/TIZ-advarsel med inside=false skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
 - UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når airspace.summary.inside_controlled_airspace = true OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
 - Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
+- CTR/TIZ-overlapp UTENFOR 5 km-sonen ved maks 120 m AGL: 100 % lovlig. Skriv ALDRI at piloten må «kontakte tårnet», «få klarering», «avklare med ATC», «kreves aktiv handling» eller lignende. Skriv kun en kort aktsomhets­advarsel om bemannet trafikk.
 - KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonegrensen rundt X (≈ 5,33 km fra selve flyplassen)».
 
 
