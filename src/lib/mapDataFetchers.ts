@@ -1006,6 +1006,16 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
             }
             if (p.authority_phone) html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
             lyr.bindPopup(html);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: {
+                color: style.color,
+                weight: 1.5,
+                fillColor: style.color,
+                fillOpacity: isWarning ? 0.22 : 0.12,
+                dashArray: isWarning ? undefined : '4, 4',
+              },
+            });
           } : undefined,
         });
       },
