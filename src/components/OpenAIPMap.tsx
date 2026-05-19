@@ -9,8 +9,7 @@ import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
 import { Button } from "@/components/ui/button";
-import { CloudSun, Route, Satellite, Mountain, Map as MapIcon, Plane } from "lucide-react";
-import { createAvinorIcaoLayer } from "@/lib/avinorIcaoLayer";
+import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -192,7 +191,7 @@ export function OpenAIPMap({
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
-  const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo' | 'icao'>('osm');
+  const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
   const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
   const baseLayerRef = useRef<L.Layer | null>(null);
   const isPlacingPilotRef = useRef(isPlacingPilot);
