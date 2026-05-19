@@ -9,8 +9,7 @@ import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
 import { Button } from "@/components/ui/button";
-import { CloudSun, Route, Satellite, Mountain, Map as MapIcon, Plane } from "lucide-react";
-import { createAvinorIcaoLayer } from "@/lib/avinorIcaoLayer";
+import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -192,7 +191,7 @@ export function OpenAIPMap({
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
   const [weatherEnabled, setWeatherEnabled] = useState(false);
-  const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo' | 'icao'>('osm');
+  const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
   const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
   const baseLayerRef = useRef<L.Layer | null>(null);
   const isPlacingPilotRef = useRef(isPlacingPilot);
@@ -254,40 +253,32 @@ export function OpenAIPMap({
   );
 
   // Switch between base map layers
-  const switchBaseLayer = useCallback((newType: 'osm' | 'satellite' | 'topo' | 'icao') => {
+  const switchBaseLayer = useCallback((newType: 'osm' | 'satellite' | 'topo') => {
     if (!leafletMapRef.current || !baseLayerRef.current) return;
 
     const map = leafletMapRef.current;
     map.removeLayer(baseLayerRef.current);
 
-    let newLayer: L.Layer;
+    let url: string;
+    let attribution: string;
+    let subdomains: string | string[] = 'abc';
 
-    if (newType === 'icao') {
-      // Avinor ICAO 1:500 000 VFR-flykart (dynamisk ArcGIS MapServer, reprojiseres on-the-fly)
-      newLayer = createAvinorIcaoLayer({ opacity: 1 }).addTo(map);
-    } else {
-      let url: string;
-      let attribution: string;
-      let subdomains: string | string[] = 'abc';
-
-      switch (newType) {
-        case 'satellite':
-          url = openAipConfig.tiles.satellite;
-          attribution = openAipConfig.attribution.satellite;
-          subdomains = [];
-          break;
-        case 'topo':
-          url = openAipConfig.tiles.topo;
-          attribution = openAipConfig.attribution.topo;
-          break;
-        default:
-          url = openAipConfig.tiles.base;
-          attribution = openAipConfig.attribution.osm;
-      }
-
-      const tileLayer = L.tileLayer(url, { attribution, subdomains }).addTo(map);
-      newLayer = tileLayer;
+    switch (newType) {
+      case 'satellite':
+        url = openAipConfig.tiles.satellite;
+        attribution = openAipConfig.attribution.satellite;
+        subdomains = [];
+        break;
+      case 'topo':
+        url = openAipConfig.tiles.topo;
+        attribution = openAipConfig.attribution.topo;
+        break;
+      default:
+        url = openAipConfig.tiles.base;
+        attribution = openAipConfig.attribution.osm;
     }
+
+    const newLayer = L.tileLayer(url, { attribution, subdomains }).addTo(map);
 
     if ('bringToBack' in newLayer && typeof (newLayer as any).bringToBack === 'function') {
       (newLayer as any).bringToBack();
@@ -1423,23 +1414,20 @@ export function OpenAIPMap({
           size="icon"
           className="shadow-lg bg-card hover:bg-accent"
           onClick={() => {
-            const next: 'osm' | 'satellite' | 'topo' | 'icao' =
+            const next: 'osm' | 'satellite' | 'topo' =
               baseLayerType === "osm" ? "satellite"
               : baseLayerType === "satellite" ? "topo"
-              : baseLayerType === "topo" ? "icao"
               : "osm";
             switchBaseLayer(next);
           }}
           title={
             baseLayerType === "osm" ? "Bytt til satellittkart"
             : baseLayerType === "satellite" ? "Bytt til topografisk kart"
-            : baseLayerType === "topo" ? "Bytt til ICAO 1:500 000 flykart (Avinor)"
             : "Bytt til standard kart"
           }
         >
           {baseLayerType === "osm" ? <Satellite className="h-5 w-5" />
             : baseLayerType === "satellite" ? <Mountain className="h-5 w-5" />
-            : baseLayerType === "topo" ? <Plane className="h-5 w-5" />
             : <MapIcon className="h-5 w-5" />}
         </Button>
 
