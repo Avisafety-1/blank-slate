@@ -115,16 +115,18 @@ export const AvinorIcaoLayer = L.Layer.extend({
     if ((this._cache as CachedOverlay[]).some((entry) => entry.id === id)) return;
 
     const requestId = ++this._requestId;
-    const overlay = L.imageOverlay(this._buildExportUrl(bounds, padded), bounds, {
-      opacity: this.options.opacity,
-      pane: this.options.pane,
-      attribution: this.options.attribution,
-      crossOrigin: true,
-      interactive: false,
-    });
-
-    overlay.once("load", () => {
+    const url = this._buildExportUrl(bounds, padded);
+    const img = new Image();
+    img.crossOrigin = "";
+    img.onload = () => {
       if (!this._map || requestId < this._requestId - 2) return;
+      const overlay = L.imageOverlay(url, bounds, {
+        opacity: this.options.opacity,
+        pane: this.options.pane,
+        attribution: this.options.attribution,
+        crossOrigin: true,
+        interactive: false,
+      });
       overlay.addTo(map).bringToFront();
       (this._cache as CachedOverlay[]).push({
         id,
@@ -134,7 +136,8 @@ export const AvinorIcaoLayer = L.Layer.extend({
         lastUsed: Date.now(),
       });
       this._pruneCache();
-    });
+    };
+    img.src = url;
   },
 
   _buildExportUrl(bounds: L.LatLngBounds, padded: boolean): string {
