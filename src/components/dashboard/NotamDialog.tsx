@@ -309,7 +309,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
 
     return lines.join("\n");
-  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, contactName, contactPhone, companyName, vhfFrequency]);
+  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, contactName, contactPhone, companyName, vhfFrequency, upperAmslFt, elevationLoading]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
