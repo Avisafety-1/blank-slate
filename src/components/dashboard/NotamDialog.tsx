@@ -187,6 +187,31 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
   }, [open, mission?.id]);
 
+  // Fetch ground elevation at center point to compute UPPER AMSL
+  useEffect(() => {
+    if (centerLat == null || centerLng == null) {
+      setGroundElevationM(null);
+      return;
+    }
+    let cancelled = false;
+    setElevationLoading(true);
+    fetchTerrainElevations([{ lat: centerLat, lng: centerLng }])
+      .then((els) => {
+        if (cancelled) return;
+        const e = els?.[0];
+        setGroundElevationM(typeof e === "number" ? e : null);
+      })
+      .catch(() => {
+        if (!cancelled) setGroundElevationM(null);
+      })
+      .finally(() => {
+        if (!cancelled) setElevationLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [centerLat, centerLng]);
+
   const toggleDay = (day: string) => {
     setScheduleDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
