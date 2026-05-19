@@ -817,8 +817,8 @@ const Auth = () => {
                 )}
                 {!isLogin && <PasswordRequirements password={password} className="mt-2" />}
               </div>
-              <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && regMode === 'new' && !newCompanyName.trim()) || (!isLogin && !isPasswordValid(password))}>
-                {loading ? t('common.processing') : isLogin ? t('auth.signIn') : regMode === 'new' ? 'Opprett selskap og konto' : t('auth.signUp')}
+              <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'new') || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && !isPasswordValid(password))}>
+                {loading ? t('common.processing') : isLogin ? t('auth.signIn') : regMode === 'new' ? 'Selv-registrering stengt' : t('auth.signUp')}
               </Button>
             </form>
             
