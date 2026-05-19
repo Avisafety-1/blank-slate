@@ -1021,10 +1021,10 @@ const Auth = () => {
               <Button 
                 type="button" 
                 onClick={handleGoogleRegistrationSubmit} 
-                disabled={loading || !googleFullName.trim() || (googleRegMode === 'code' && !googleValidatedCompany) || (googleRegMode === 'new' && !googleNewCompanyName.trim())}
+                disabled={loading || !googleFullName.trim() || googleRegMode === 'new' || (googleRegMode === 'code' && !googleValidatedCompany)}
                 className="flex-1"
               >
-                {loading ? t('common.processing') : googleRegMode === 'new' ? 'Opprett selskap og konto' : t('auth.signUp')}
+                {loading ? t('common.processing') : googleRegMode === 'new' ? 'Selv-registrering stengt' : t('auth.signUp')}
               </Button>
             </div>
           </div>
