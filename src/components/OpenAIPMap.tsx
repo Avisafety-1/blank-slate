@@ -39,6 +39,7 @@ import {
   fetchAisVesselsInBounds,
   fetchNotams,
 } from "@/lib/mapDataFetchers";
+import { resetCache } from "@/lib/viewportLayerCache";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
 import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
@@ -903,7 +904,8 @@ export function OpenAIPMap({
     // Viewport-based verneområder fetching with debounce
     const fetchVerneomraader = () => {
       if (map.getZoom() < 10) {
-        naturvernLayer.clearLayers();
+        resetCache('naturvern', naturvernLayer);
+        resetCache('vernRestriction', naturvernLayer);
         return;
       }
       const b = map.getBounds();
@@ -913,7 +915,7 @@ export function OpenAIPMap({
         maxLat: b.getNorth(),
         maxLng: b.getEast(),
       };
-      naturvernLayer.clearLayers();
+      // Diff-render inside fetchers — no pre-clear (eliminates flicker)
       fetchNaturvernZones({ layer: naturvernLayer, mode, bounds });
       fetchVernRestrictionZones({ layer: naturvernLayer, mode, bounds });
     };
@@ -929,7 +931,7 @@ export function OpenAIPMap({
     ];
     const fetchCaaLayers = () => {
       if (map.getZoom() < 9) {
-        caaLayerMap.forEach(([, lg]) => lg.clearLayers());
+        caaLayerMap.forEach(([layerId, lg]) => resetCache(`caa:${layerId}`, lg));
         return;
       }
       const b = map.getBounds();
@@ -938,8 +940,8 @@ export function OpenAIPMap({
         maxLat: b.getNorth(), maxLng: b.getEast(),
       };
       caaLayerMap.forEach(([layerId, lg]) => {
-        lg.clearLayers();
         if (map.hasLayer(lg)) {
+          // Diff-render inside fetcher — no pre-clear (eliminates flicker)
           fetchCaaDroneZones({ layer: lg, mode: modeRef.current, bounds, layerIds: [layerId] });
         }
       });
@@ -958,24 +960,21 @@ export function OpenAIPMap({
         minLat: b.getSouth(), minLng: b.getWest(),
         maxLat: b.getNorth(), maxLng: b.getEast(),
       };
-      // Punkt-tunge røde/orange/blå polygon-lag — last fra zoom >= 7
       if (z < 7) {
-        dkDroneLayerMap.forEach(([, lg]) => lg.clearLayers());
+        dkDroneLayerMap.forEach(([layerId, lg]) => resetCache(`dk:${layerId}`, lg));
       } else {
-        const activeLayers = dkDroneLayerMap
-          .filter(([, lg]) => map.hasLayer(lg))
-          .map(([id, lg]) => { lg.clearLayers(); return id; });
-        if (activeLayers.length) {
-          fetchDkDroneZones({ layer: dkRodLayer, mode: modeRef.current, bounds, layerIds: activeLayers.filter(id => id === 'rod') });
-          fetchDkDroneZones({ layer: dkOrangeLayer, mode: modeRef.current, bounds, layerIds: activeLayers.filter(id => id === 'orange') });
-          fetchDkDroneZones({ layer: dkBlaLayer, mode: modeRef.current, bounds, layerIds: activeLayers.filter(id => id === 'bla') });
-        }
+        dkDroneLayerMap.forEach(([layerId, lg]) => {
+          if (map.hasLayer(lg)) {
+            fetchDkDroneZones({ layer: lg, mode: modeRef.current, bounds, layerIds: [layerId] });
+          }
+        });
       }
       // Naturområder — bare 140 totalt, last fra zoom >= 6
       if (map.hasLayer(dkNatureLayer)) {
-        dkNatureLayer.clearLayers();
         if (z >= 6) {
           fetchDkNatureAreas({ layer: dkNatureLayer, mode: modeRef.current, bounds, includeInactive: true });
+        } else {
+          resetCache('dkNature', dkNatureLayer);
         }
       }
     };
@@ -995,12 +994,22 @@ export function OpenAIPMap({
     fetchCaaLayers();
     fetchDkLayers();
     map.on('moveend', debouncedFetchVern);
-    // Refetch CAA/DK layers when user toggles them on
-    map.on('overlayadd', (e: any) => {
+    // Refetch CAA/DK layers when user toggles them on (layeradd fires on .addTo(map))
+    map.on('layeradd', (e: any) => {
       const caaMatch = caaLayerMap.find(([, lg]) => lg === e.layer);
       if (caaMatch) fetchCaaLayers();
       const dkMatch = [...dkDroneLayerMap.map(([, lg]) => lg), dkNatureLayer].includes(e.layer);
       if (dkMatch) fetchDkLayers();
+    });
+    // Reset cache + clear features when CAA/DK/kraft/nais lag toggles off, so re-toggle fetches fresh
+    map.on('layerremove', (e: any) => {
+      const caaMatch = caaLayerMap.find(([, lg]) => lg === e.layer);
+      if (caaMatch) resetCache(`caa:${caaMatch[0]}`, caaMatch[1]);
+      const dkMatch = dkDroneLayerMap.find(([, lg]) => lg === e.layer);
+      if (dkMatch) resetCache(`dk:${dkMatch[0]}`, dkMatch[1]);
+      if (e.layer === dkNatureLayer) resetCache('dkNature', dkNatureLayer);
+      if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
+      if (e.layer === naisLayer) resetCache('ais', naisLayer);
     });
 
     // Befolkning: bytter mellom SSB (Norge) og Eurostat (Europa) basert på kartsenter
