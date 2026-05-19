@@ -209,6 +209,10 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
             if (p.lower_limit) popup += `Nedre grense: ${p.lower_limit}<br/>`;
             if (p.remarks) popup += `<div style="font-size: 11px; margin-top: 4px; color: #666;">${p.remarks}</div>`;
             layer.bindPopup(popup);
+            attachHoverPromotion(layer, {
+              paneName: pane,
+              baseStyle: { color, weight: 2, fillColor: color, fillOpacity, dashArray },
+            });
           } : undefined,
         });
         geoJsonLayer.addTo(targetLayer);
