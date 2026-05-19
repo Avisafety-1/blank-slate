@@ -2173,6 +2173,9 @@ Returner en JSON-respons med denne strukturen:
       const sum = airspaceFacts.summary;
       const insideAny5km = sum.inside_5km_zone === true;
       const insideAnyCtr = sum.inside_controlled_airspace === true;
+      const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
+      const lowAltitudeOutside5km = Number.isFinite(flightHeightM) && flightHeightM <= 120 && !insideAny5km;
+      const ctrOverlapIsCautionOnly = insideAnyCtr && lowAltitudeOutside5km;
 
       // Build the set of 5KM zone names and their boundary distances for
       // text scrubbing: any AI sentence that says "N m fra <airport name>"
@@ -2222,8 +2225,10 @@ Returner en JSON-respons med denne strukturen:
         aiAnalysis.categories.airspace.actual_conditions = sum.text;
         const falseClaim = (s: string): boolean => {
           const t = (s || '').toLowerCase();
-          if (!insideAny5km && (t.includes('innenfor 5 km') || t.includes('innenfor 5km') || t.includes('krever ninox') || t.includes('ninox-godkjenning'))) return true;
+          if (!insideAny5km && (t.includes('innenfor 5 km') || t.includes('innenfor 5km') || t.includes('5 km buffer') || t.includes('5km buffer') || t.includes('krever ninox') || t.includes('ninox-godkjenning'))) return true;
+          if (!insideAny5km && /nærhet til .*?(lufthavn|flyplass|aerodrom).*?(konflikt med bemannet|tillatelse|koordinering)/i.test(s || '')) return true;
           if (!insideAnyCtr && (t.includes('innenfor kontrollert luftrom') || t.includes('innenfor ctr') || t.includes('innenfor tiz') || t.includes('i kontrollert luftrom (ctr)'))) return true;
+          if (ctrOverlapIsCautionOnly && /kontrollert luftrom|ctr|tiz/i.test(s || '') && /hard stop|no-go|ikke tillatt|overtredelse|kritisk brudd|krever spesifikk klarering|klarering.*ikke.*bekreftet|atc.*required/i.test(s || '')) return true;
           // Drop concerns that wrongly state proximity to airport based on the boundary distance.
           for (const w of fiveKmWarnings) {
             if (w.distance && new RegExp(`\\b${w.distance}\\s*(?:m|meter)\\s*(?:fra|unna|til)\\s*[^.,;()]*(?:lufthavn|flyplass|aerodrom|airport)`, 'i').test(s || '')) {
