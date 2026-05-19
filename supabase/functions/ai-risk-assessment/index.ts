@@ -2130,15 +2130,78 @@ Returner en JSON-respons med denne strukturen:
         ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
         population_density_description: populationDensityDescription,
       };
-    } else {
-      aiAnalysis.ground_risk_analysis = {
-        ...(aiAnalysis.ground_risk_analysis || {}),
-        ...deterministicGroundRisk,
-        population_density_description: 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
-      };
-    }
+    aiAnalysis.recommendation = deriveRiskRecommendation(
+      aiAnalysis.overall_score,
+      aiAnalysis.hard_stop_triggered === true,
+      aiAnalysis.recommendation
+    );
 
-    console.log(`GRC deterministic: ${deterministicGroundRisk.igrc_table_basis} => iGRC=${deterministicGroundRisk.igrc}, reductions=${deterministicGroundRisk.total_reduction}, fGRC=${deterministicGroundRisk.fgrc}`);
+    // ===== DETERMINISTIC AIRSPACE GUARD =====
+    // Override anything the AI made up about 5km/CTR with the server-computed truth.
+    try {
+      const sum = airspaceFacts.summary;
+      const insideAny5km = sum.inside_5km_zone === true;
+      const insideAnyCtr = sum.inside_controlled_airspace === true;
+
+      // 1) Rewrite airspace category actual_conditions to authoritative text
+      if (aiAnalysis.categories?.airspace) {
+        aiAnalysis.categories.airspace.actual_conditions = sum.text;
+        // Filter out concerns that falsely claim "innenfor 5 km" / "innenfor CTR" / Ninox required
+        const falseClaim = (s: string): boolean => {
+          const t = (s || '').toLowerCase();
+          if (!insideAny5km && (t.includes('innenfor 5 km') || t.includes('innenfor 5km') || (t.includes('krever ninox') || t.includes('ninox-godkjenning')))) return true;
+          if (!insideAnyCtr && (t.includes('innenfor kontrollert luftrom') || t.includes('innenfor ctr') || t.includes('innenfor tiz') || t.includes('i kontrollert luftrom (ctr)'))) return true;
+          return false;
+        };
+        if (Array.isArray(aiAnalysis.categories.airspace.concerns)) {
+          aiAnalysis.categories.airspace.concerns = aiAnalysis.categories.airspace.concerns.filter((c: string) => !falseClaim(c));
+        }
+      }
+
+      // 2) Rewrite air_risk_analysis fields if they contradict server truth
+      if (aiAnalysis.air_risk_analysis) {
+        const reasoning = String(aiAnalysis.air_risk_analysis.aec_reasoning || '');
+        if (!insideAnyCtr && /klasse\s*d|ctr|tiz|kontrollert luftrom/i.test(reasoning)) {
+          aiAnalysis.air_risk_analysis.aec_reasoning =
+            `Operasjonen er utenfor kontrollert luftrom (CTR/TIZ). ${sum.text} Klasse G antas under 500 ft.`;
+          // Conservative fallback: AEC 11 (urbant) or 12 (landlig). Keep existing if not D-based.
+          if (/AEC\s*[3-6]/i.test(String(aiAnalysis.air_risk_analysis.aec || ''))) {
+            aiAnalysis.air_risk_analysis.aec = 'AEC 12';
+          }
+        }
+      }
+
+      // 3) Clear hard_stop if the only/primary reason is bogus CTR/5km claim
+      if (aiAnalysis.hard_stop_triggered === true && !insideAny5km && !insideAnyCtr) {
+        const reason = String(aiAnalysis.hard_stop_reason || '').toLowerCase();
+        const summary = String(aiAnalysis.summary || '').toLowerCase();
+        const reasonMentionsAirspace = /ctr|tiz|kontrollert luftrom|5\s*km|ninox/.test(reason) || /ctr|tiz|kontrollert luftrom|5\s*km|ninox/.test(summary);
+        // Check that no OTHER hardstop trigger applies (weather, equipment, pilot, height etc.)
+        const otherHardStop =
+          (aiAnalysis.categories?.weather?.go_decision === 'NO-GO') ||
+          (aiAnalysis.categories?.equipment?.go_decision === 'NO-GO') ||
+          (aiAnalysis.categories?.pilot_experience?.go_decision === 'NO-GO');
+        if (reasonMentionsAirspace && !otherHardStop) {
+          console.log('Clearing bogus airspace-based HARD STOP (server says outside 5km & outside CTR/TIZ)');
+          aiAnalysis.hard_stop_triggered = false;
+          aiAnalysis.hard_stop_reason = null;
+          if (aiAnalysis.categories?.airspace) {
+            aiAnalysis.categories.airspace.go_decision = 'GO';
+          }
+          // Re-derive recommendation from score now that hard stop is gone
+          aiAnalysis.recommendation = deriveRiskRecommendation(
+            aiAnalysis.overall_score,
+            false,
+            'go'
+          );
+          // Append a note to summary
+          aiAnalysis.summary = (aiAnalysis.summary ? aiAnalysis.summary + ' ' : '') +
+            `(Korrigert: ${sum.text})`;
+        }
+      }
+    } catch (guardErr) {
+      console.error('Airspace deterministic guard error (non-blocking):', guardErr);
+    }
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
