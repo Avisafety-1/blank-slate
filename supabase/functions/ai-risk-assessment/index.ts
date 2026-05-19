@@ -2130,11 +2130,16 @@ Returner en JSON-respons med denne strukturen:
         ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
         population_density_description: populationDensityDescription,
       };
-    aiAnalysis.recommendation = deriveRiskRecommendation(
-      aiAnalysis.overall_score,
-      aiAnalysis.hard_stop_triggered === true,
-      aiAnalysis.recommendation
-    );
+    } else {
+      aiAnalysis.ground_risk_analysis = {
+        ...(aiAnalysis.ground_risk_analysis || {}),
+        ...deterministicGroundRisk,
+        population_density_description: 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
+      };
+    }
+
+    console.log(`GRC deterministic: ${deterministicGroundRisk.igrc_table_basis} => iGRC=${deterministicGroundRisk.igrc}, reductions=${deterministicGroundRisk.total_reduction}, fGRC=${deterministicGroundRisk.fgrc}`);
+
 
     // ===== DETERMINISTIC AIRSPACE GUARD =====
     // Override anything the AI made up about 5km/CTR with the server-computed truth.
