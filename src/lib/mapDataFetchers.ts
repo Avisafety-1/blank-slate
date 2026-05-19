@@ -932,29 +932,31 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
 }) {
   const { layer, mode, bounds, layerIds } = params;
   if (!layerIds.length) return;
+  const cacheKey = `caa:${layerIds.slice().sort().join(',')}`;
+  const cache = getCache(cacheKey);
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds);
   try {
     const { data, error } = await supabase.rpc('get_caa_zones_in_bounds', {
-      min_lat: bounds.minLat,
-      min_lng: bounds.minLng,
-      max_lat: bounds.maxLat,
-      max_lng: bounds.maxLng,
+      min_lat: padded.minLat,
+      min_lng: padded.minLng,
+      max_lat: padded.maxLat,
+      max_lng: padded.maxLng,
       p_layer_ids: layerIds,
     });
     if (error || !data) {
       if (error) console.error('Feil ved henting av CAA dronesoner:', error);
       return;
     }
-    for (const zone of data as any[]) {
-      if (!zone.geometry) continue;
-      const style = CAA_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ Sone' };
-      try {
-        const geojsonFeature = {
-          type: 'Feature' as const,
-          geometry: zone.geometry,
-          properties: zone,
-        };
+    diffRender(
+      layer,
+      cache,
+      (data as any[]).filter((z) => z?.geometry),
+      (z) => hashString(`caa|${z.layer_id ?? ''}|${z.name ?? ''}|${JSON.stringify(z.geometry)}`),
+      (zone) => {
+        const style = CAA_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ Sone' };
         const isWarning = zone.restriction === 'REQ_AUTHORISATION';
-        const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
+        return L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: zone } as any, {
           interactive: mode !== 'routePlanning',
           pane: 'overlayPane',
           style: {
@@ -985,9 +987,9 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
             lyr.bindPopup(html);
           } : undefined,
         });
-        geoJsonLayer.addTo(layer);
-      } catch {/* skip bad geometry */}
-    }
+      },
+    );
+    cache.cachedBounds = padded;
   } catch (err) {
     console.error('Kunne ikke hente CAA dronesoner:', err);
   }
