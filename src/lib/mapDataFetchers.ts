@@ -919,6 +919,10 @@ export async function fetchVernRestrictionZones(params: BoundsFetchParams) {
             let popup = `<strong>⛔ ${label}</strong><br/>`;
             popup += `<strong>${p.name || 'Ukjent'}</strong>`;
             lyr.bindPopup(popup);
+            attachHoverPromotion(lyr, {
+              paneName: 'overlayPane',
+              baseStyle: { color, weight: 2, fillColor: color, fillOpacity: 0.2, dashArray: '5, 5' },
+            });
           } : undefined,
         });
       },
