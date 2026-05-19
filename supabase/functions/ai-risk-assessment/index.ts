@@ -1282,6 +1282,72 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       ? Math.floor((today.getTime() - new Date(aggregatedFlightStats.lastFlightDate).getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
+    // Normalize airspace warnings (server returns either new schema {z_type,z_name,min_distance,route_inside}
+    // or older schema {zone_type,zone_name,distance_meters,is_inside}). Compute deterministic summary.
+    const airspaceFacts = (() => {
+      const normalizeType = (t: string | null | undefined): string => {
+        if (!t) return 'UKJENT';
+        const up = String(t).toUpperCase();
+        if (up.includes('5KM') || up.includes('5 KM') || up === 'RPAS 5KM' || up === 'RPAS 5KM SONE') return '5KM';
+        if (up === 'CTR' || up === 'TIZ' || up === 'CTR/TIZ') return up === 'CTR/TIZ' ? 'CTR' : up;
+        return up;
+      };
+      const mappedWarnings = (airspaceWarnings || []).map((w: any) => {
+        const rawDist = w.min_distance ?? w.distance_meters ?? 0;
+        const dist = Math.round(Number(rawDist) || 0);
+        const inside = !!(w.route_inside ?? w.is_inside);
+        const type = normalizeType(w.z_type ?? w.zone_type);
+        const name = w.z_name ?? w.zone_name ?? 'ukjent';
+        let description = '';
+        if (type === '5KM') {
+          description = inside
+            ? `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`
+            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» (nærmeste avstand ${dist} m / ${(dist/1000).toFixed(2)} km). Ingen Ninox-godkjenning kreves for denne sonen.`;
+        } else if (type === 'CTR' || type === 'TIZ') {
+          description = inside
+            ? `Oppdraget er INNENFOR kontrollert luftrom (${type} «${name}»). Maks 120 m AGL. Klarering fra ATC påkrevd.`
+            : `Oppdraget er UTENFOR ${type} «${name}» (nærmeste avstand ${dist} m). Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
+        } else {
+          description = inside
+            ? `Oppdraget er INNENFOR sone ${type} «${name}».`
+            : `Oppdraget er UTENFOR sone ${type} «${name}» (nærmeste avstand ${dist} m).`;
+        }
+        return { type, name, distance: dist, inside, severity: w.severity ?? null, description };
+      });
+      const inside5km = mappedWarnings.filter(w => w.type === '5KM' && w.inside);
+      const insideCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && w.inside);
+      const requiresNinox = inside5km.length > 0;
+      const summaryParts: string[] = [];
+      if (requiresNinox) {
+        summaryParts.push(`Oppdraget er innenfor 5 km-sonen rundt ${inside5km.map(w => `«${w.name}»`).join(', ')} og krever Ninox-godkjenning.`);
+      } else {
+        const outside5km = mappedWarnings.filter(w => w.type === '5KM' && !w.inside);
+        if (outside5km.length > 0) {
+          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.name}: ${w.distance} m`).join('; ')}). Ingen Ninox-godkjenning kreves.`);
+        } else {
+          summaryParts.push('Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
+        }
+      }
+      if (insideCtr.length > 0) {
+        summaryParts.push(`Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}.`);
+      } else {
+        const nearCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && !w.inside);
+        if (nearCtr.length > 0) {
+          summaryParts.push(`Utenfor kontrollert luftrom (nærmeste: ${nearCtr.map(w => `${w.type} «${w.name}» ${w.distance} m`).join('; ')}). Ingen ATC-klarering kreves.`);
+        }
+      }
+      return {
+        warnings: mappedWarnings,
+        summary: {
+          requires_ninox_approval: requiresNinox,
+          inside_controlled_airspace: insideCtr.length > 0,
+          inside_5km_zone: inside5km.length > 0,
+          text: summaryParts.join(' '),
+        },
+      };
+    })();
+    console.log('Airspace facts summary:', JSON.stringify(airspaceFacts.summary));
+
     const contextData = {
       mission: {
         title: mission.tittel,
