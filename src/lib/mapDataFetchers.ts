@@ -1007,12 +1007,16 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
 }) {
   const { layer, mode, bounds, layerIds } = params;
   if (!layerIds.length) return;
+  const cacheKey = `dk:${layerIds.slice().sort().join(',')}`;
+  const cache = getCache(cacheKey);
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds);
   try {
     const { data, error } = await supabase.rpc('get_dk_drone_zones_in_bounds', {
-      min_lat: bounds.minLat,
-      min_lng: bounds.minLng,
-      max_lat: bounds.maxLat,
-      max_lng: bounds.maxLng,
+      min_lat: padded.minLat,
+      min_lng: padded.minLng,
+      max_lat: padded.maxLat,
+      max_lng: padded.maxLng,
       p_layer_ids: layerIds,
     });
     if (error || !data) {
@@ -1024,14 +1028,17 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
       }[c]!));
 
-    for (const zone of data as any[]) {
-      if (!zone.geometry) continue;
-      const style = DK_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ DK sone', warningLevel: 'danger' as const };
-      try {
+    diffRender(
+      layer,
+      cache,
+      (data as any[]).filter((z) => z?.geometry),
+      (z) => hashString(`dk|${z.layer_id ?? ''}|${z.name ?? ''}|${z.icao ?? ''}|${JSON.stringify(z.geometry)}`),
+      (zone) => {
+        const style = DK_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ DK sone', warningLevel: 'danger' as const };
         if (zone.geometry_type === 'point') {
           const coords = (zone.geometry as any).coordinates;
-          if (!coords || coords.length < 2) continue;
-          L.circleMarker([coords[1], coords[0]], {
+          if (!coords || coords.length < 2) return null;
+          return L.circleMarker([coords[1], coords[0]], {
             radius: 6,
             color: '#fff',
             weight: 1.5,
@@ -1039,43 +1046,36 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
             fillOpacity: 0.9,
             pane: 'overlayPane',
             interactive: mode !== 'routePlanning',
-          })
-            .bindPopup(
-              `<strong>${style.iconLabel}</strong><br/>` +
-              `<strong>${esc(zone.name || zone.icao || 'Ukjent')}</strong>` +
-              (zone.category ? `<div>${esc(zone.category)}</div>` : '') +
-              (zone.buffer ? `<div>Bufferzone: ${esc(zone.buffer)}</div>` : '') +
-              `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`
-            )
-            .addTo(layer);
-        } else {
-          const geojsonFeature = {
-            type: 'Feature' as const,
-            geometry: zone.geometry,
-            properties: zone,
-          };
-          L.geoJSON(geojsonFeature as any, {
-            interactive: mode !== 'routePlanning',
-            pane: 'overlayPane',
-            style: {
-              color: style.color,
-              weight: 1.5,
-              fillColor: style.color,
-              fillOpacity: style.warningLevel === 'danger' ? 0.22 : 0.14,
-              dashArray: style.warningLevel === 'danger' ? undefined : '4, 4',
-            },
-            onEachFeature: mode !== 'routePlanning' ? (_f, lyr) => {
-              let html = `<strong>${style.iconLabel}</strong><br/>`;
-              html += `<strong>${esc(zone.name || 'Ukjent')}</strong>`;
-              if (zone.category) html += `<div>${esc(zone.category)}</div>`;
-              if (zone.buffer) html += `<div>Bufferzone: ${esc(zone.buffer)}</div>`;
-              html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
-              lyr.bindPopup(html);
-            } : undefined,
-          }).addTo(layer);
+          }).bindPopup(
+            `<strong>${style.iconLabel}</strong><br/>` +
+            `<strong>${esc(zone.name || zone.icao || 'Ukjent')}</strong>` +
+            (zone.category ? `<div>${esc(zone.category)}</div>` : '') +
+            (zone.buffer ? `<div>Bufferzone: ${esc(zone.buffer)}</div>` : '') +
+            `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`
+          );
         }
-      } catch {/* skip bad geometry */}
-    }
+        return L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: zone } as any, {
+          interactive: mode !== 'routePlanning',
+          pane: 'overlayPane',
+          style: {
+            color: style.color,
+            weight: 1.5,
+            fillColor: style.color,
+            fillOpacity: style.warningLevel === 'danger' ? 0.22 : 0.14,
+            dashArray: style.warningLevel === 'danger' ? undefined : '4, 4',
+          },
+          onEachFeature: mode !== 'routePlanning' ? (_f, lyr) => {
+            let html = `<strong>${style.iconLabel}</strong><br/>`;
+            html += `<strong>${esc(zone.name || 'Ukjent')}</strong>`;
+            if (zone.category) html += `<div>${esc(zone.category)}</div>`;
+            if (zone.buffer) html += `<div>Bufferzone: ${esc(zone.buffer)}</div>`;
+            html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
+            lyr.bindPopup(html);
+          } : undefined,
+        });
+      },
+    );
+    cache.cachedBounds = padded;
   } catch (err) {
     console.error('Kunne ikke hente DK dronezoner:', err);
   }
