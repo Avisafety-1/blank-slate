@@ -944,9 +944,11 @@ export const exportToPDF = async (
       const sourceLabels: Record<string, string> = {
         manual: "Manuell",
         dji: "DJI",
+        dronelogapi: "DJI (dronelog)",
         ardupilot: "ArduPilot",
         dronetag: "DroneTag",
       };
+
 
       for (let logIdx = 0; logIdx < mission.flightLogs.length; logIdx++) {
         const log = mission.flightLogs[logIdx];
