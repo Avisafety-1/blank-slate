@@ -1,46 +1,32 @@
-## Mål
-Filtrere DJI-logger mot `dji_sync_from_date` allerede i `dji-sync-enqueue` ved å hente datoen ut av filnavnet (`DJIflightrecord_YYYY_MM_DD...`). Da slipper vi nedlasting + parsing av logger eldre enn cutoff, og sparer dronelog API-kall.
+## Problem
+
+Gamle NOTAMs (f.eks. Trondheim 17. mai, `A3142/26`) blir liggende selv om sluttdato er passert. To bugs i `supabase/functions/fetch-notams/index.ts`:
+
+1. **PERM-deteksjonen er for løs.** Regex `/PERM|permanent/i` matcher delstrenger som "**PERM**ISSION" i NOTAM-tekster som "UNLESS PRIOR PERMISSION GRANTED…". Mange tidsavgrensede tempo-soner blir derfor stemplet `effective_end_interpretation = 'PERM'`.
+2. **Opprydning hopper alltid over PERM og EST.** Sletteforespørselen (linje 344–348) ekskluderer både `PERM` og `EST` selv når `effective_end` faktisk er passert. Resultat: feilstemplet `PERM` = evig liv. Også reelle `EST` med konkret sluttdato bør ryddes når datoen er passert.
 
 ## Endringer
 
-### 1. `supabase/functions/dji-sync-enqueue/index.ts`
+### 1. Strammere PERM-deteksjon (parser, linje 154)
+- Bytt fra `/PERM|permanent/i` til ordgrensestrenger som faktisk forekommer i NOTAM-formatet, f.eks. `/\bPERM\b/i` (men ekskluder treff på "PERMISSION"/"PERMITTED"), eller enklere: kun sett `PERM` når det ikke finnes en `TO:`-dato i samme tekst.
+- Logikk: `isPerm = !toMatch && /\bPERM(?!I)\w*/i.test(cleanDesc)` — krever fravær av TO-dato. PERM med konkret sluttdato er motsigelse og skal aldri trigges.
 
-**Ny hjelpefunksjon** `extractDateFromDjiLog(log)`:
-1. Prøv felter i rekkefølge: `log.fileName`, `log.name`, `log.filename`, `log.file`, `log.path`
-2. Regex mot strengen: `/(\d{4})[_\-](\d{2})[_\-](\d{2})/` → returner `Date(YYYY, MM-1, DD)`
-3. Fallback: `log.date` hvis det finnes
-4. Returner `null` hvis ingenting funnet
+### 2. Rydd basert på `effective_end` uavhengig av tolkning (linje 343–348)
+- Endre slettespørringen til å fjerne alle rader hvor `effective_end < now()`, uavhengig av `effective_end_interpretation`. PERM uten sluttdato (effective_end IS NULL) beholdes via stale-grensen på 30 dager (linje 350–355), som allerede finnes.
+- Dette gjør oss robuste mot fremtidige feilklassifiseringer: så lenge vi har en sluttdato i fortiden, slettes raden.
 
-**Erstatt filterblokken** (linje 157-165):
-```ts
-for (const log of logs) {
-  const logId = log.id || log.logId;
-  if (!logId) { skipped++; continue; }
-  if (syncFromDate) {
-    const d = extractDateFromDjiLog(log);
-    if (d && d < syncFromDate) { skipped++; continue; }
-    // Hvis vi ikke finner dato i det hele tatt: la den passere
-    // (sjelden tilfelle, bedre å laste enn å miste data)
-  }
-  candidates.push({ dji_log_id: String(logId), log });
-}
-```
-
-**Lagre datoen** i `payload.log_date` (linje 199) ved å bruke samme `extractDateFromDjiLog(log)` (med ISO-string), så worker/UI får riktig dato uten parsing.
-
-**Fjern** den midlertidige debug-loggingen (linje 139-148) — vi trenger den ikke lenger siden vi ikke er avhengig av å oppdage feltnavnet.
-
-### 2. Ingen worker-endringer
-Worker prosesserer kun det enqueue legger inn → automatisk besparelse.
-
-### 3. Re-sync ved endret cutoff
-Hvis `dji_sync_from_date` flyttes bakover: neste sync re-scanner hele listen (cap 200), filtreringen er ikke-destruktiv (ingen `skipped_too_old`-markering), så eldre logger plukkes opp og prosesseres normalt.
+### 3. Engangs-opprydning av eksisterende feildata
+- Etter koden er deployert kjøres en SELECT/DELETE-runde manuelt (via `read_query`/migrasjon) for å fjerne alle eksisterende rader hvor `effective_end < now()` — inkludert dagens Trondheim-NOTAM.
 
 ## Effekt
-- Elmea-tilfellet: 135 unødige download+parse-kall unngås, kun 1 list-kall per sync
-- Robust mot at DroneLog-API ikke har et `date`-felt i listen (vi har bevis på at debug-loggingen aldri trigget med dato-felt vi forventet)
-- Manuell opplasting upåvirket (går ikke via denne funksjonen)
 
-## Risiko / kant-tilfeller
-- Logger med uvanlige filnavn (ikke DJI-standard) → faller gjennom filteret og lastes ned. Bedre enn å miste data.
-- Tidssone: filnavnet er datoen brukerens enhet skrev filen, ikke UTC. Cutoff er en dato (ikke tidspunkt), så ±1 dag avvik er akseptabelt.
+- Trondheim-NOTAMen forsvinner umiddelbart etter neste sync (eller manuell opprydning).
+- Fremtidige tempo-soner med "PERMISSION" i teksten klassifiseres riktig og ryddes automatisk når sluttdato passeres.
+- Cron-jobben kjører allerede daglig (`fetch-notams`), så ingen ekstra schedulering nødvendig.
+
+## Tekniske detaljer
+
+Berørte filer:
+- `supabase/functions/fetch-notams/index.ts` — to små endringer (regex + delete-query).
+
+Ingen DB-skjemaendringer. Ingen frontend-endringer. Manuell engangs-DELETE kjøres etter deploy for å fjerne historisk skrot.
