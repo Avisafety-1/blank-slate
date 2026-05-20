@@ -838,6 +838,321 @@ export const exportToPDF = async (
       
       yPos = (pdf as any).lastAutoTable.finalY + 10;
     }
+
+    // Detailed flight log report (graphs, warnings, sampled coordinates)
+    if (sections.flightLogsDetailed && mission.flightLogs?.length > 0) {
+      const parsePtSeconds = (v: any): number | null => {
+        if (typeof v === "number") return v;
+        if (typeof v !== "string") return null;
+        // ISO 8601 duration like "PT8S" / "PT1M5S"
+        const m = v.match(/^PT(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$/);
+        if (m) {
+          const min = m[1] ? parseFloat(m[1]) : 0;
+          const sec = m[2] ? parseFloat(m[2]) : 0;
+          return min * 60 + sec;
+        }
+        const d = new Date(v).getTime();
+        if (Number.isFinite(d)) return d / 1000;
+        return null;
+      };
+
+      const sample = <T,>(arr: T[], n: number): T[] => {
+        if (arr.length <= n) return arr;
+        const step = arr.length / n;
+        const out: T[] = [];
+        for (let i = 0; i < n; i++) out.push(arr[Math.floor(i * step)]);
+        if (out[out.length - 1] !== arr[arr.length - 1]) out.push(arr[arr.length - 1]);
+        return out;
+      };
+
+      const drawLineGraph = (
+        title: string,
+        series: { label: string; color: [number, number, number]; points: { x: number; y: number }[] }[],
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        yUnit: string
+      ) => {
+        // Axes background
+        pdf.setDrawColor(180);
+        pdf.setLineWidth(0.2);
+        pdf.rect(x, y, w, h);
+
+        const allPts = series.flatMap(s => s.points);
+        if (allPts.length === 0) return;
+        const xs = allPts.map(p => p.x);
+        const ys = allPts.map(p => p.y);
+        const xMin = Math.min(...xs);
+        const xMax = Math.max(...xs);
+        const yMin = Math.min(...ys);
+        const yMax = Math.max(...ys);
+        const xRange = xMax - xMin || 1;
+        const yRange = yMax - yMin || 1;
+
+        // Title
+        pdf.setFontSize(8);
+        setFontStyle(pdf, "bold");
+        pdf.setTextColor(60);
+        pdf.text(sanitizeForPdf(title), x, y - 1);
+
+        // Y axis labels
+        setFontStyle(pdf, "normal");
+        pdf.setFontSize(6);
+        pdf.text(`${yMax.toFixed(0)}${yUnit}`, x - 1, y + 2, { align: "right" });
+        pdf.text(`${yMin.toFixed(0)}${yUnit}`, x - 1, y + h, { align: "right" });
+        // X axis labels (seconds → mm:ss)
+        const fmtT = (sec: number) => {
+          const m = Math.floor(sec / 60);
+          const s = Math.floor(sec % 60);
+          return `${m}:${s.toString().padStart(2, "0")}`;
+        };
+        pdf.text(fmtT(xMin), x, y + h + 3);
+        pdf.text(fmtT(xMax), x + w, y + h + 3, { align: "right" });
+
+        // Plot series
+        pdf.setLineWidth(0.3);
+        for (const s of series) {
+          pdf.setDrawColor(s.color[0], s.color[1], s.color[2]);
+          for (let i = 1; i < s.points.length; i++) {
+            const p1 = s.points[i - 1];
+            const p2 = s.points[i];
+            const x1 = x + ((p1.x - xMin) / xRange) * w;
+            const y1 = y + h - ((p1.y - yMin) / yRange) * h;
+            const x2 = x + ((p2.x - xMin) / xRange) * w;
+            const y2 = y + h - ((p2.y - yMin) / yRange) * h;
+            pdf.line(x1, y1, x2, y2);
+          }
+        }
+
+        // Legend
+        let lx = x;
+        const ly = y + h + 7;
+        pdf.setFontSize(7);
+        for (const s of series) {
+          pdf.setDrawColor(s.color[0], s.color[1], s.color[2]);
+          pdf.setLineWidth(1);
+          pdf.line(lx, ly, lx + 4, ly);
+          pdf.setTextColor(60);
+          pdf.text(sanitizeForPdf(s.label), lx + 5, ly + 1);
+          lx += pdf.getTextWidth(s.label) + 12;
+        }
+        pdf.setTextColor(0);
+        pdf.setLineWidth(0.2);
+      };
+
+      const sourceLabels: Record<string, string> = {
+        manual: "Manuell",
+        dji: "DJI",
+        ardupilot: "ArduPilot",
+        dronetag: "DroneTag",
+      };
+
+      for (let logIdx = 0; logIdx < mission.flightLogs.length; logIdx++) {
+        const log = mission.flightLogs[logIdx];
+
+        if (yPos > 230) {
+          pdf.addPage();
+          yPos = 20;
+        }
+
+        pdf.setFontSize(11);
+        setFontStyle(pdf, "bold");
+        pdf.text(
+          sanitizeForPdf(
+            `Flytur ${logIdx + 1}: ${format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: nb })}`
+          ),
+          15,
+          yPos
+        );
+        yPos += 6;
+
+        // Summary table
+        const summaryRows: string[][] = [
+          ["Pilot", log.pilot?.full_name || "-"],
+          ["Drone", `${log.drones?.modell || log.drone_model || "-"}${log.aircraft_serial ? ` (SN: ${log.aircraft_serial})` : ""}`],
+          ["Kilde", sourceLabels[log.source || ""] || log.source || "-"],
+          ["Varighet", `${log.flight_duration_minutes ?? "-"} min`],
+          ["Avgang", log.departure_location || "-"],
+          ["Landing", log.landing_location || "-"],
+          ["Total distanse", log.total_distance_m != null ? `${Number(log.total_distance_m).toFixed(0)} m` : "-"],
+          ["Maks avstand", log.max_distance_m != null ? `${Number(log.max_distance_m).toFixed(0)} m` : "-"],
+          ["Maks høyde", log.max_height_m != null ? `${Number(log.max_height_m).toFixed(1)} m` : "-"],
+          ["Maks horisontal fart", log.max_horiz_speed_ms != null ? `${Number(log.max_horiz_speed_ms).toFixed(1)} m/s` : "-"],
+          ["Maks vertikal fart", log.max_vert_speed_ms != null ? `${Number(log.max_vert_speed_ms).toFixed(1)} m/s` : "-"],
+          ["RTH utløst", log.rth_triggered ? "Ja" : "Nei"],
+        ];
+        autoTable(pdf, {
+          startY: yPos,
+          head: [["Sammendrag", "Verdi"]],
+          body: summaryRows,
+          theme: "grid",
+          styles: { fontSize: 8, font: getPdfFontName() },
+          columnStyles: { 0: { cellWidth: 55, fontStyle: "bold" } },
+        });
+        yPos = (pdf as any).lastAutoTable.finalY + 4;
+
+        // Battery + GPS table
+        const hasBattery =
+          log.battery_sn ||
+          log.battery_cycles != null ||
+          log.battery_health_pct != null ||
+          log.battery_voltage_min_v != null ||
+          log.battery_cell_deviation_max_v != null ||
+          log.battery_temp_min_c != null ||
+          log.battery_temp_max_c != null ||
+          log.battery_full_capacity_mah != null;
+        if (hasBattery || log.gps_sat_min != null || log.gps_sat_max != null) {
+          if (yPos > 250) { pdf.addPage(); yPos = 20; }
+          const techRows: string[][] = [];
+          if (hasBattery) {
+            techRows.push(
+              ["Batteri SN", log.battery_sn || "-"],
+              ["Sykluser", log.battery_cycles != null ? String(log.battery_cycles) : "-"],
+              ["Helse", log.battery_health_pct != null ? `${Number(log.battery_health_pct).toFixed(0)} %` : "-"],
+              ["Full kapasitet", log.battery_full_capacity_mah != null ? `${log.battery_full_capacity_mah} mAh` : "-"],
+              ["Min spenning", log.battery_voltage_min_v != null ? `${Number(log.battery_voltage_min_v).toFixed(2)} V` : "-"],
+              ["Maks celleavvik", log.battery_cell_deviation_max_v != null ? `${Number(log.battery_cell_deviation_max_v).toFixed(3)} V` : "-"],
+              ["Temp min", log.battery_temp_min_c != null ? `${Number(log.battery_temp_min_c).toFixed(1)} °C` : "-"],
+              ["Temp maks", log.battery_temp_max_c != null ? `${Number(log.battery_temp_max_c).toFixed(1)} °C` : "-"],
+            );
+          }
+          if (log.gps_sat_min != null || log.gps_sat_max != null) {
+            techRows.push(
+              ["GPS satellitter min", log.gps_sat_min != null ? String(log.gps_sat_min) : "-"],
+              ["GPS satellitter maks", log.gps_sat_max != null ? String(log.gps_sat_max) : "-"],
+            );
+          }
+          autoTable(pdf, {
+            startY: yPos,
+            head: [["Batteri og GPS", "Verdi"]],
+            body: techRows,
+            theme: "grid",
+            styles: { fontSize: 8, font: getPdfFontName() },
+            columnStyles: { 0: { cellWidth: 55, fontStyle: "bold" } },
+          });
+          yPos = (pdf as any).lastAutoTable.finalY + 4;
+        }
+
+        // Graph: height + speed over time
+        const positions: any[] = log.flight_track?.positions || [];
+        if (positions.length > 1) {
+          const withT = positions
+            .map(p => ({ ...p, _t: parsePtSeconds(p.timestamp) }))
+            .filter(p => p._t != null && (p.alt != null || p.height != null));
+          if (withT.length > 1) {
+            const sampled = sample(withT, 200);
+            const t0 = sampled[0]._t!;
+            const heightPts = sampled.map(p => ({
+              x: (p._t! - t0),
+              y: Number(p.height ?? p.alt) || 0,
+            }));
+            const hasSpeed = sampled.some(p => p.speed != null);
+            const series: { label: string; color: [number, number, number]; points: { x: number; y: number }[] }[] = [
+              { label: "Høyde (m)", color: [37, 99, 235], points: heightPts },
+            ];
+            if (hasSpeed) {
+              // Normalize speed onto same vertical scale as height for display only
+              const speedPts = sampled.map(p => ({
+                x: (p._t! - t0),
+                y: Number(p.speed) || 0,
+              }));
+              // Render as separate graph below
+              if (yPos > 200) { pdf.addPage(); yPos = 20; }
+              drawLineGraph("Høyde over tid", series, 20, yPos + 4, 170, 35, " m");
+              yPos += 50;
+              if (yPos > 220) { pdf.addPage(); yPos = 20; }
+              drawLineGraph(
+                "Hastighet over tid",
+                [{ label: "Fart (m/s)", color: [220, 38, 38], points: speedPts }],
+                20,
+                yPos + 4,
+                170,
+                35,
+                " m/s"
+              );
+              yPos += 50;
+            } else {
+              if (yPos > 200) { pdf.addPage(); yPos = 20; }
+              drawLineGraph("Høyde over tid", series, 20, yPos + 4, 170, 35, " m");
+              yPos += 50;
+            }
+          }
+        }
+
+        // App warnings
+        const warnings: any[] = Array.isArray(log.dronelog_warnings) ? log.dronelog_warnings : [];
+        if (warnings.length > 0) {
+          if (yPos > 240) { pdf.addPage(); yPos = 20; }
+          const maxWarn = 50;
+          const shown = warnings.slice(0, maxWarn);
+          const warnRows = shown.map((w: any) => [
+            w.type || w.code || "-",
+            w.timestamp ? String(w.timestamp) : (w.time || "-"),
+            w.message || w.text || "-",
+            w.value != null ? String(w.value) : "-",
+          ]);
+          autoTable(pdf, {
+            startY: yPos,
+            head: [["Type", "Tid", "Melding", "Verdi"]],
+            body: warnRows,
+            theme: "grid",
+            styles: { fontSize: 7, font: getPdfFontName() },
+            columnStyles: {
+              0: { cellWidth: 30 },
+              1: { cellWidth: 22 },
+              2: { cellWidth: 100 },
+              3: { cellWidth: 18 },
+            },
+          });
+          yPos = (pdf as any).lastAutoTable.finalY + 2;
+          if (warnings.length > maxWarn) {
+            pdf.setFontSize(7);
+            pdf.setTextColor(120);
+            pdf.text(`+ ${warnings.length - maxWarn} flere advarsler ikke vist`, 15, yPos);
+            pdf.setTextColor(0);
+            yPos += 4;
+          }
+          yPos += 2;
+        }
+
+        // Sampled coordinates from actual flight track
+        if (positions.length > 0) {
+          if (yPos > 220) { pdf.addPage(); yPos = 20; }
+          const sampled = sample(positions, 50);
+          const coordRows = sampled.map((p: any) => {
+            const t = parsePtSeconds(p.timestamp);
+            return [
+              t != null
+                ? (() => {
+                    const m = Math.floor(t / 60);
+                    const s = Math.floor(t % 60);
+                    return `${m}:${s.toString().padStart(2, "0")}`;
+                  })()
+                : (p.timestamp ?? "-"),
+              (p.lat != null ? Number(p.lat).toFixed(6) : "-"),
+              (p.lng != null ? Number(p.lng).toFixed(6) : "-"),
+              (p.alt != null ? `${Number(p.alt).toFixed(1)}` : "-"),
+            ];
+          });
+          autoTable(pdf, {
+            startY: yPos,
+            head: [[`Koordinater fra fløyet rute (${sampled.length} av ${positions.length} punkter)`, "Lat", "Lng", "Alt (m)"]],
+            body: coordRows,
+            theme: "grid",
+            styles: { fontSize: 7, font: getPdfFontName() },
+            columnStyles: {
+              0: { cellWidth: 25 },
+              1: { cellWidth: 30 },
+              2: { cellWidth: 30 },
+              3: { cellWidth: 25 },
+            },
+          });
+          yPos = (pdf as any).lastAutoTable.finalY + 8;
+        }
+      }
+    }
+
     
     // Description & Notes
     if (sections.descriptionNotes && (mission.beskrivelse || mission.merknader)) {
