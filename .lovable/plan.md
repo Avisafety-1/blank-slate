@@ -1,62 +1,34 @@
+# Detaljert flylogg-rapport i PDF-eksport
+
 ## Mål
+På `/oppdrag` → "Eksporter PDF" skal man, når oppdraget har én eller flere `flight_logs`, kunne huke av en ny seksjon **"Detaljert flylogg-rapport"** som legger til en utvidet del per flytur i PDF-en.
 
-Etterligne droneflykart.no: når musa hovrer over et polygon/geosone på kartet, løftes det laget midlertidig til toppen slik at klikk treffer riktig sone (typisk når flere soner overlapper). I tillegg en liten visuell hover-effekt på selve polygonet.
+## Endringer
 
-Dagens faste z-indeks-hierarki beholdes uendret som baseline — vi legger kun til en midlertidig promotion under hover.
+### 1. `src/lib/oppdragPdfExport.ts`
+- Utvid `DEFAULT_PDF_SECTIONS` med `flightLogsDetailed: false` (av som standard for å unngå svære PDF-er; brukeren skrur den på).
+- Etter eksisterende "Flyturer"-tabell (linje 770–838): hvis `sections.flightLogsDetailed && mission.flightLogs?.length > 0`, render én blokk per flylogg med:
+  - **Sammendrag-tabell**: dato/tid, varighet, pilot, drone + serienummer, kilde (DJI/ArduPilot/Manuell), avgangs-/landingssted, total distanse, maks høyde, maks horisontal/vertikal hastighet, maks avstand, RTH utløst.
+  - **Batteri**: SN, syklus, helse %, full kapasitet, min spenning, maks celle-avvik, min/max temp.
+  - **GPS**: min/max satellitter.
+  - **App-advarsler** (`dronelog_warnings`): liten tabell med tidspunkt + melding (begrenset til f.eks. 50 stk, med "+X flere" hvis trunkert).
+  - **Høyde-/hastighetsgraf** generert fra `flight_track.positions` via jsPDF (enkel linjegraf rendret som vektor: x = tid, y = høyde og en sekundær linje for fart). Plottes på canvas/SVG-lik måte direkte i PDF med `pdf.line()`.
+  - **Koordinater fra faktisk fløyet rute**: nedsamplet til maks ~50 punkter (jevnt fordelt fra `flight_track.positions`) — tabell med tid, lat, lon, høyde.
+- Hver flylogg starter på ny side hvis nødvendig (`pdf.addPage()` ved lite plass).
 
-## Slik fungerer det
+### 2. `src/hooks/useOppdragData.ts`
+- Utvid `flight_logs`-SELECT (linje 164 og 299) til også å hente feltene som trengs: `dronelog_warnings, start_time_utc, end_time_utc, total_distance_m, max_height_m, max_horiz_speed_ms, max_vert_speed_ms, max_distance_m, rth_triggered, battery_sn, battery_health_pct, battery_full_capacity_mah, battery_voltage_min_v, battery_cell_deviation_max_v, battery_temp_min_c, battery_temp_max_c, battery_cycles, gps_sat_min, gps_sat_max, drone_model, aircraft_serial, source, departure_location, landing_location, notes`.
 
-1. **Pane-promotion ved hover** — Når musa går inn på et feature i et hover-aktivert pane (f.eks. `nsmPane`, `aipPane`, `rmzPane`, `rpasPane`, `notamPane`, `airportPane`, `populationDensityPane`, naturvern-/CAA-/DK-soner), settes pane sin `z-index` midlertidig til en høy verdi (f.eks. `760`, like under `safeskyPane` 750 men over alt annet polygon-innhold). Ved `mouseout` restaureres opprinnelig verdi.
-2. **Visuell hover-effekt på polygonet** — Det hovrede feature får økt `fillOpacity` (+0.15), tykkere `weight` (+1), og lett lysere stroke. Restaureres på `mouseout`. Bruker `setStyle()` på Leaflet-layeret.
-3. **Klikk treffer riktig** — Fordi pane-z løftes på hover, vil Leaflet sin hit-test sende klikket til det øverste (hovrede) laget — samme oppførsel som droneflykart.no.
+### 3. `src/components/oppdrag/dialogs/OppdragDialogs.tsx`
+- Under den eksisterende "Flyturer"-checkboxen (linje 441–445), legg til en avhengig under-checkbox **"Detaljert flylogg-rapport (grafer, advarsler, koordinater)"** som bare er synlig/aktiv når `pdfSections.flightLogs` er på og `flightLogs.length > 0`.
+- Inkluder `flightLogsDetailed` i "Velg alle/Fjern alle"-logikken (`visibleKeys`) når relevant.
 
-## Implementasjon
+## Tekniske detaljer
+- Grafen tegnes med `pdf.setDrawColor` + `pdf.line()` mellom punkter; akse-labels med `pdf.text`. Ingen ny avhengighet.
+- `flight_track.positions` antas å være `[{ t, lat, lon, alt, speed? }]`. Hvis felter mangler, skipp grafen for den loggen.
+- Nedsampling: ta `Math.floor(positions.length / N)`-steg så vi får ~50 koordinater og ~200 graf-punkter.
+- App-advarsler: vi viser `severity`, `code`/`message`, `timestamp` hvis tilgjengelig (følger eksisterende DJI-parser-skjema).
 
-### Ny hjelpefunksjon: `src/lib/mapHoverPromotion.ts`
-
-Eksporterer to verktøy:
-
-- `attachHoverPromotion(layer, { paneName, originalZ, hoverZ, hoverStyle })` — fester `mouseover`/`mouseout`/`remove` handlere på et enkelt Leaflet-feature-layer. På `mouseover`: sett pane z-index = `hoverZ`, lagre original style, kall `setStyle(hoverStyle)`. På `mouseout`: gjenopprett.
-- `promotePaneOnHover(map, paneName, hoverZ)` — leser opprinnelig z-indeks fra `map.getPane(paneName).style.zIndex`, returnerer `{ enter, leave }` callbacks som setter/restaurerer.
-
-Robusthet: counter på antall aktive hover-er per pane, slik at raske mouseover/out på naboshapes innenfor samme pane ikke flikker pane'en ned før neste enter.
-
-### Bruke i fetchers (`src/lib/mapDataFetchers.ts`)
-
-I `onEachFeature`-callbacks i `L.geoJSON({...})` for:
-- `fetchCaaDroneZones` (caaFlyplasserLayer m.fl.)
-- `fetchNaturvernZones`
-- `fetchVernRestrictionZones`
-- `fetchDkDroneZones`, `fetchDkNatureAreas`
-- NSM, RPAS, CTR (kalt fra OpenAIPMap)
-- AIP-soner
-
-…legges til:
-```ts
-attachHoverPromotion(layer, {
-  paneName: '<pane>',
-  hoverZ: 760,
-  hoverStyle: { weight: weight + 1, fillOpacity: Math.min(fillOpacity + 0.15, 0.6) },
-});
-```
-
-### Bruke i `OpenAIPMap.tsx`
-
-For NSM/RPAS/CTR/AIP og lignende geosoner som lages direkte der: samme `attachHoverPromotion`-kall i `onEachFeature`. Faste z-indeksverdier i `paneConfig` røres ikke.
-
-### Eksklusjoner
-
-- Live-trafikk (SafeSky-fly, drone-markører, AIS), oppdragsmarkører, kraftledninger og NOTAM-pins får ikke hover-promotion (de er allerede øverst eller skal ikke "flytte seg").
-- Hover-promotion er deaktivert i `routePlanning`-modus (pointer-events allerede `none` på de fleste underliggende panes — vi sjekker `modeRef.current`).
-
-## Filer som endres
-
-- ny: `src/lib/mapHoverPromotion.ts`
-- `src/lib/mapDataFetchers.ts` — koble på `attachHoverPromotion` i relevante `onEachFeature`
-- `src/components/OpenAIPMap.tsx` — koble på i NSM/RPAS/CTR/AIP-rendering, og pane-init beholdes uendret
-
-## Risiko / detaljer
-
-- Endre pane z-index midt i hover er en lovlig DOM-operasjon, men gjør det via `pane.style.zIndex = String(n)` (ikke via Leaflet API som ikke finnes).
-- Husk å fjerne handlere når laget tas av kartet (`layer.on('remove', cleanup)`) for å unngå at promotion blir hengende dersom diff-render fjerner feature mens den er hovret.
-- `diffRender`-cachen er kompatibel — hover-state er per layer, og nye layers får hover påkoblet i `onEachFeature`.
+## Ikke i scope
+- Endringer i hvordan flyloggene parses/lagres.
+- Eksport av rådata-CSV.
