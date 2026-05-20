@@ -311,7 +311,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                 ...((mission?.sora || (mission?.route as any)?.soraSettings?.enabled || (mission?.route as any)?.adjacentAreaDocumentation?.enabled) ? ['sora'] : []),
                 ...(mission?.aiRisk ? ['riskAssessment'] : []),
                 ...(mission?.incidents?.length > 0 ? ['incidents'] : []),
-                ...(mission?.flightLogs?.length > 0 ? ['flightLogs'] : []),
+                ...(mission?.flightLogs?.length > 0 ? ['flightLogs', 'flightLogsDetailed'] : []),
                 ...((mission?.beskrivelse || mission?.merknader) ? ['descriptionNotes'] : []),
               ] as (keyof typeof DEFAULT_PDF_SECTIONS)[];
               const allOn = visibleKeys.every(k => props.pdfSections[k]);
@@ -444,6 +444,13 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                       <span className="text-sm">Flyturer</span>
                     </label>
                   )}
+                  {props.exportPdfMission?.flightLogs?.length > 0 && props.pdfSections.flightLogs && (
+                    <label className="flex items-center gap-2 cursor-pointer pl-6">
+                      <Checkbox checked={props.pdfSections.flightLogsDetailed} onCheckedChange={v => props.setPdfSections(s => ({ ...s, flightLogsDetailed: v === true }))} />
+                      <span className="text-sm">Detaljert flylogg-rapport (grafer, app-advarsler, koordinater)</span>
+                    </label>
+                  )}
+
                 </div>
               </div>
             )}
