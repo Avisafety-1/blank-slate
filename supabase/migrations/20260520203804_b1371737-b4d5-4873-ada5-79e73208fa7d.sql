@@ -1,0 +1,1 @@
+DELETE FROM public.notams WHERE effective_end IS NOT NULL AND effective_end < now();
