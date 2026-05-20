@@ -202,8 +202,11 @@ export const useOppdragData = () => {
       const missionsWithDetails = missionsList.map((mission) => {
         const missionLogs = (logsMap.get(mission.id) || []).map((log: any) => {
           const pilotEntry = (flpMap.get(log.id) || [])[0];
-          return { ...log, pilot: pilotEntry?.profiles || null };
+          const fallbackName = log.user_id ? profileMap.get(log.user_id) : null;
+          const pilot = pilotEntry?.profiles || (fallbackName ? { id: log.user_id, full_name: fallbackName } : null);
+          return { ...log, pilot };
         });
+
 
         const riskEntries = risksMap.get(mission.id) || [];
 
