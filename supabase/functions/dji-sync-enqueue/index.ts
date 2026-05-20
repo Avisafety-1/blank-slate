@@ -136,33 +136,24 @@ async function enqueueForUser(
   }
   if (!Array.isArray(logs)) logs = [];
 
-  // DEBUG: dump first log object so we can see what fields the dronelog list returns
-  // (specifically which field contains the flight date). Remove after diagnosis.
-  if (logs.length > 0) {
-    console.log(`[enqueue][DEBUG] company=${company.navn} user=${cred.user_id} list_count=${logs.length}`);
-    console.log(`[enqueue][DEBUG] first_log_keys=${JSON.stringify(Object.keys(logs[0]))}`);
-    console.log(`[enqueue][DEBUG] first_log_sample=${JSON.stringify(logs[0]).slice(0, 1000)}`);
-    if (logs.length > 1) {
-      console.log(`[enqueue][DEBUG] second_log_sample=${JSON.stringify(logs[1]).slice(0, 1000)}`);
-    }
-  }
-
   const syncFromDate = company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : null;
   let jobs_added = 0;
   let skipped = 0;
 
   // Pre-filter logs and collect candidate IDs
-  type Candidate = { dji_log_id: string; log: any };
+  type Candidate = { dji_log_id: string; log: any; parsedDate: Date | null };
   const candidates: Candidate[] = [];
   for (const log of logs) {
     const logId = log.id || log.logId;
     if (!logId) { skipped++; continue; }
-    if (syncFromDate && log.date) {
-      const d = new Date(log.date);
-      if (d < syncFromDate) { skipped++; continue; }
+    const parsedDate = extractDateFromDjiLog(log);
+    if (syncFromDate && parsedDate && parsedDate < syncFromDate) {
+      skipped++;
+      continue;
     }
-    candidates.push({ dji_log_id: String(logId), log });
+    candidates.push({ dji_log_id: String(logId), log, parsedDate });
   }
+
 
   if (candidates.length > 0) {
     const allIds = candidates.map((c) => c.dji_log_id);
