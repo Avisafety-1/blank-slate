@@ -187,7 +187,7 @@ async function enqueueForUser(
         payload: {
           dronelog_account_id: accountId,
           aircraft_name_hint: c.log.aircraft || null,
-          log_date: normalizeDateToISO(c.log.date),
+          log_date: c.parsedDate ? c.parsedDate.toISOString() : normalizeDateToISO(c.log.date),
           list_duration: c.log.duration ?? null,
         },
       }));
