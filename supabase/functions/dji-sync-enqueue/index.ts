@@ -136,6 +136,17 @@ async function enqueueForUser(
   }
   if (!Array.isArray(logs)) logs = [];
 
+  // DEBUG: dump first log object so we can see what fields the dronelog list returns
+  // (specifically which field contains the flight date). Remove after diagnosis.
+  if (logs.length > 0) {
+    console.log(`[enqueue][DEBUG] company=${company.navn} user=${cred.user_id} list_count=${logs.length}`);
+    console.log(`[enqueue][DEBUG] first_log_keys=${JSON.stringify(Object.keys(logs[0]))}`);
+    console.log(`[enqueue][DEBUG] first_log_sample=${JSON.stringify(logs[0]).slice(0, 1000)}`);
+    if (logs.length > 1) {
+      console.log(`[enqueue][DEBUG] second_log_sample=${JSON.stringify(logs[1]).slice(0, 1000)}`);
+    }
+  }
+
   const syncFromDate = company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : null;
   let jobs_added = 0;
   let skipped = 0;
