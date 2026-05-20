@@ -444,6 +444,13 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                       <span className="text-sm">Flyturer</span>
                     </label>
                   )}
+                  {props.exportPdfMission?.flightLogs?.length > 0 && props.pdfSections.flightLogs && (
+                    <label className="flex items-center gap-2 cursor-pointer pl-6">
+                      <Checkbox checked={props.pdfSections.flightLogsDetailed} onCheckedChange={v => props.setPdfSections(s => ({ ...s, flightLogsDetailed: v === true }))} />
+                      <span className="text-sm">Detaljert flylogg-rapport (grafer, app-advarsler, koordinater)</span>
+                    </label>
+                  )}
+
                 </div>
               </div>
             )}
