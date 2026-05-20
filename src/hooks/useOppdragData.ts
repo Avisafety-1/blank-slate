@@ -169,10 +169,14 @@ export const useOppdragData = () => {
         ? await supabase.from("flight_log_personnel").select("flight_log_id, profile_id, profiles(id, full_name)").in("flight_log_id", allFlightLogIds)
         : { data: [] };
 
-      const uniqueUserIds = [...new Set(missionsList.map(m => m.user_id).filter(Boolean))] as string[];
+      const uniqueUserIds = [...new Set([
+        ...missionsList.map(m => m.user_id).filter(Boolean),
+        ...(logsRes.data || []).map((l: any) => l.user_id).filter(Boolean),
+      ])] as string[];
       const profilesRes = uniqueUserIds.length > 0
         ? await supabase.from("profiles").select("id, full_name").in("id", uniqueUserIds)
         : { data: [] };
+
 
       const groupBy = <T extends Record<string, any>>(arr: T[], key: string): Map<string, T[]> => {
         const map = new Map<string, T[]>();
