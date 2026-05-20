@@ -967,6 +967,23 @@ export const exportToPDF = async (
         );
         yPos += 6;
 
+        const isManual = !log.source || log.source === "manual";
+        if (isManual) {
+          pdf.setFontSize(8);
+          setFontStyle(pdf, "normal");
+          pdf.setTextColor(120);
+          pdf.text(
+            sanitizeForPdf("Manuelt loggført flytur — telemetri (distanse, høyde, fart, batteri, GPS, koordinater, advarsler) er ikke tilgjengelig. Importer en dronelogg for å få detaljert data."),
+            15,
+            yPos,
+            { maxWidth: 180 }
+          );
+          pdf.setTextColor(0);
+          setFontStyle(pdf, "normal");
+          yPos += 8;
+        }
+
+
         // Summary table
         const summaryRows: string[][] = [
           ["Pilot", log.pilot?.full_name || "-"],

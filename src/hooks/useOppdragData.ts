@@ -169,10 +169,14 @@ export const useOppdragData = () => {
         ? await supabase.from("flight_log_personnel").select("flight_log_id, profile_id, profiles(id, full_name)").in("flight_log_id", allFlightLogIds)
         : { data: [] };
 
-      const uniqueUserIds = [...new Set(missionsList.map(m => m.user_id).filter(Boolean))] as string[];
+      const uniqueUserIds = [...new Set([
+        ...missionsList.map(m => m.user_id).filter(Boolean),
+        ...(logsRes.data || []).map((l: any) => l.user_id).filter(Boolean),
+      ])] as string[];
       const profilesRes = uniqueUserIds.length > 0
         ? await supabase.from("profiles").select("id, full_name").in("id", uniqueUserIds)
         : { data: [] };
+
 
       const groupBy = <T extends Record<string, any>>(arr: T[], key: string): Map<string, T[]> => {
         const map = new Map<string, T[]>();
@@ -198,8 +202,11 @@ export const useOppdragData = () => {
       const missionsWithDetails = missionsList.map((mission) => {
         const missionLogs = (logsMap.get(mission.id) || []).map((log: any) => {
           const pilotEntry = (flpMap.get(log.id) || [])[0];
-          return { ...log, pilot: pilotEntry?.profiles || null };
+          const fallbackName = log.user_id ? profileMap.get(log.user_id) : null;
+          const pilot = pilotEntry?.profiles || (fallbackName ? { id: log.user_id, full_name: fallbackName } : null);
+          return { ...log, pilot };
         });
+
 
         const riskEntries = risksMap.get(mission.id) || [];
 
@@ -304,10 +311,14 @@ export const useOppdragData = () => {
         ? await supabase.from("flight_log_personnel").select("flight_log_id, profile_id, profiles(id, full_name)").in("flight_log_id", allFlightLogIds)
         : { data: [] };
 
-      const uniqueUserIds = [...new Set(missionsList.map(m => m.user_id).filter(Boolean))] as string[];
+      const uniqueUserIds = [...new Set([
+        ...missionsList.map(m => m.user_id).filter(Boolean),
+        ...(logsRes.data || []).map((l: any) => l.user_id).filter(Boolean),
+      ])] as string[];
       const profilesRes = uniqueUserIds.length > 0
         ? await supabase.from("profiles").select("id, full_name").in("id", uniqueUserIds)
         : { data: [] };
+
 
       const groupBy = <T extends Record<string, any>>(arr: T[], key: string): Map<string, T[]> => {
         const map = new Map<string, T[]>();
@@ -333,8 +344,11 @@ export const useOppdragData = () => {
       const missionsWithDetails = missionsList.map((mission) => {
         const missionLogs = (logsMap.get(mission.id) || []).map((log: any) => {
           const pilotEntry = (flpMap.get(log.id) || [])[0];
-          return { ...log, pilot: pilotEntry?.profiles || null };
+          const fallbackName = log.user_id ? profileMap.get(log.user_id) : null;
+          const pilot = pilotEntry?.profiles || (fallbackName ? { id: log.user_id, full_name: fallbackName } : null);
+          return { ...log, pilot };
         });
+
         const riskEntries = risksMap.get(mission.id) || [];
         return {
           ...mission,
