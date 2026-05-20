@@ -1097,10 +1097,93 @@ export const exportToPDF = async (
               yPos += 50;
             }
           }
+
+          // Additional graphs: battery %, battery temp, RC sticks, wind
+          const tWith: any[] = positions
+            .map((p: any) => ({ ...p, _t: parsePtSeconds(p.timestamp) }))
+            .filter((p: any) => p._t != null);
+          if (tWith.length > 1) {
+            const sampled2 = sample(tWith, 200);
+            const t0 = sampled2[0]._t;
+            const pickNum = (p: any, keys: string[]): number | null => {
+              for (const k of keys) {
+                const v = p[k];
+                if (v != null && !isNaN(Number(v))) return Number(v);
+              }
+              return null;
+            };
+            const buildSeries = (label: string, color: [number, number, number], keys: string[]) => {
+              const pts = sampled2
+                .map((p: any) => ({ x: p._t - t0, y: pickNum(p, keys) }))
+                .filter((pt: any) => pt.y != null) as { x: number; y: number }[];
+              return pts.length > 1 ? { label, color, points: pts } : null;
+            };
+
+            // Battery percentage
+            const battSeries: any[] = [];
+            const b1 = buildSeries("Batteri 1 (%)", [22, 163, 74], ["battery1"]);
+            const b2 = buildSeries("Batteri 2 (%)", [234, 88, 12], ["battery2"]);
+            const bMain = buildSeries("Batteri (%)", [22, 163, 74], ["battery"]);
+            if (b1) battSeries.push(b1);
+            if (b2) battSeries.push(b2);
+            if (!b1 && !b2 && bMain) battSeries.push(bMain);
+            if (battSeries.length) {
+              if (yPos > 200) { pdf.addPage(); yPos = 20; }
+              drawLineGraph("Batterinivå over tid", battSeries, 20, yPos + 4, 170, 35, " %");
+              yPos += 50;
+            }
+
+            // Battery temperature
+            const tempSeries: any[] = [];
+            const tA = buildSeries("Batt 1 temp (°C)", [220, 38, 38], ["temp1"]);
+            const tB = buildSeries("Batt 2 temp (°C)", [234, 88, 12], ["temp2"]);
+            const tMain = buildSeries("Batt temp (°C)", [220, 38, 38], ["temp"]);
+            if (tA) tempSeries.push(tA);
+            if (tB) tempSeries.push(tB);
+            if (!tA && !tB && tMain) tempSeries.push(tMain);
+            if (tempSeries.length) {
+              if (yPos > 200) { pdf.addPage(); yPos = 20; }
+              drawLineGraph("Batteritemperatur over tid", tempSeries, 20, yPos + 4, 170, 35, " °C");
+              yPos += 50;
+            }
+
+            // RC stick inputs
+            const rcSeries = [
+              buildSeries("Throttle", [37, 99, 235], ["rcThrottle"]),
+              buildSeries("Elevator", [220, 38, 38], ["rcElevator"]),
+              buildSeries("Aileron", [22, 163, 74], ["rcAileron"]),
+              buildSeries("Rudder", [234, 88, 12], ["rcRudder"]),
+            ].filter(Boolean) as any[];
+            if (rcSeries.length) {
+              if (yPos > 200) { pdf.addPage(); yPos = 20; }
+              drawLineGraph("RC stikkeinput over tid", rcSeries, 20, yPos + 4, 170, 35, "");
+              yPos += 50;
+            }
+
+            // Wind speed
+            const windSeries: any[] = [];
+            const wS = buildSeries("Vind (m/s)", [2, 132, 199], ["windSpeed"]);
+            const wMax = buildSeries("Maks vind (m/s)", [220, 38, 38], ["maxWindSpeed"]);
+            if (wS) windSeries.push(wS);
+            if (wMax) windSeries.push(wMax);
+            if (windSeries.length) {
+              if (yPos > 200) { pdf.addPage(); yPos = 20; }
+              drawLineGraph("Vindhastighet over tid", windSeries, 20, yPos + 4, 170, 35, " m/s");
+              yPos += 50;
+            }
+          }
         }
 
         // App warnings
         const warnings: any[] = Array.isArray(log.dronelog_warnings) ? log.dronelog_warnings : [];
+        if (!isManual) {
+          if (yPos > 250) { pdf.addPage(); yPos = 20; }
+          pdf.setFontSize(9);
+          setFontStyle(pdf, "bold");
+          pdf.text("App-advarsler", 15, yPos);
+          yPos += 5;
+          setFontStyle(pdf, "normal");
+        }
         if (warnings.length > 0) {
           if (yPos > 240) { pdf.addPage(); yPos = 20; }
           const maxWarn = 50;
@@ -1133,6 +1216,12 @@ export const exportToPDF = async (
             yPos += 4;
           }
           yPos += 2;
+        } else if (!isManual) {
+          pdf.setFontSize(8);
+          pdf.setTextColor(100);
+          pdf.text("Ingen app-advarsler", 15, yPos);
+          pdf.setTextColor(0);
+          yPos += 6;
         }
 
         // Sampled coordinates from actual flight track
