@@ -150,8 +150,8 @@ function parseRssItem(title: string, description: string, guid: string) {
   const effectiveStart = fromMatch ? parseRssDate(fromMatch[1]) : null;
   const effectiveEnd = toMatch ? parseRssDate(toMatch[1]) : null;
 
-  // Check for PERM
-  const isPerm = /PERM|permanent/i.test(cleanDesc);
+  // Check for PERM — must NOT match "PERMISSION"/"PERMITTED" etc., and only valid if no TO-date present
+  const isPerm = !toMatch && /\bPERM\b(?!I)/i.test(cleanDesc);
   const effectiveEndInterpretation = isPerm ? "PERM" : (effectiveEnd ? null : "EST");
 
   // Parse polygon from text coordinates
