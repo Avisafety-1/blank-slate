@@ -72,8 +72,10 @@ export const DEFAULT_PDF_SECTIONS = {
   riskAssessment: true,
   incidents: true,
   flightLogs: true,
+  flightLogsDetailed: false,
   descriptionNotes: true,
 };
+
 
 export type PdfSections = typeof DEFAULT_PDF_SECTIONS;
 
