@@ -341,11 +341,13 @@ Deno.serve(async (req) => {
     }
 
     // ── Step 2: Clean up expired NOTAMs ──
+    // Any NOTAM with a concrete effective_end in the past is removed,
+    // regardless of interpretation (PERM with a past end-date is a contradiction
+    // and usually a parser false-positive on words like "PERMISSION").
     const { count: deleteCount } = await supabase
       .from("notams")
       .delete({ count: "exact" })
-      .lt("effective_end", now.toISOString())
-      .not("effective_end_interpretation", "in", '("PERM","EST")');
+      .lt("effective_end", now.toISOString());
 
     const staleDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     await supabase
