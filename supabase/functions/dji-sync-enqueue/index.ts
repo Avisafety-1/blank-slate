@@ -34,6 +34,29 @@ function json(body: unknown, status = 200) {
   });
 }
 
+
+/**
+ * Extract flight date from a DroneLog list entry.
+ * DJI files follow `DJIflightrecord_YYYY_MM_DD_<time>.txt`, so the filename
+ * is a reliable source even when the list API omits a `date` field.
+ */
+function extractDateFromDjiLog(log: any): Date | null {
+  const candidates = [log?.fileName, log?.name, log?.filename, log?.file, log?.path];
+  for (const s of candidates) {
+    if (typeof s !== "string") continue;
+    const m = s.match(/(\d{4})[_\-](\d{2})[_\-](\d{2})/);
+    if (m) {
+      const d = new Date(Date.UTC(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])));
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+  if (log?.date) {
+    const d = new Date(log.date);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
 interface CredRow {
   user_id: string;
   dji_email: string;
