@@ -311,7 +311,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                 ...((mission?.sora || (mission?.route as any)?.soraSettings?.enabled || (mission?.route as any)?.adjacentAreaDocumentation?.enabled) ? ['sora'] : []),
                 ...(mission?.aiRisk ? ['riskAssessment'] : []),
                 ...(mission?.incidents?.length > 0 ? ['incidents'] : []),
-                ...(mission?.flightLogs?.length > 0 ? ['flightLogs'] : []),
+                ...(mission?.flightLogs?.length > 0 ? ['flightLogs', 'flightLogsDetailed'] : []),
                 ...((mission?.beskrivelse || mission?.merknader) ? ['descriptionNotes'] : []),
               ] as (keyof typeof DEFAULT_PDF_SECTIONS)[];
               const allOn = visibleKeys.every(k => props.pdfSections[k]);
