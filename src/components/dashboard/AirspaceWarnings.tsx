@@ -46,6 +46,9 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
     if (warning.zone_type === '5KM' && warning.is_inside) {
       return { ...warning, level: 'warning' };
     }
+    if (warning.zone_type === 'ATZ_5KM' && warning.is_inside) {
+      return { ...warning, level: 'warning' };
+    }
     return warning;
   };
 
