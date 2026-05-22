@@ -1691,6 +1691,11 @@ ABSOLUTTE FORBUD:
 - CTR/TIZ-overlapp UTENFOR 5 km-sonen ved maks 120 m AGL: 100 % lovlig. Skriv ALDRI at piloten må «kontakte tårnet», «få klarering», «avklare med ATC», «kreves aktiv handling» eller lignende. Skriv kun en kort aktsomhets­advarsel om bemannet trafikk.
 - KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonegrensen rundt X (≈ 5,33 km fra selve flyplassen)».
 
+### SMÅFLYPLASS — 5 KM SONE (ATZ_5KM)
+- type = «ATZ_5KM» betyr 5 km-sone rundt en småflyplass (ATZ — Aerodrome Traffic Zone, f.eks. Eggemoen, Gvarv, Starmoen). Dette er IKKE en Avinor-aerodrome og IKKE en kontrollert luftromssone.
+- Hvis airspace.summary.inside_small_airfield_5km_zone = true (eller en ATZ_5KM-advarsel har inside=true): Skriv eksplisitt i airspace.actual_conditions og som concern at piloten må kontakte flyplassen før flyging og sjekke myppr.no for PPR (Prior Permission Required). Trekk litt på airspace.score (typisk –1 til –2), men IKKE no-go og IKKE hard stop.
+- Krever IKKE Ninox-godkjenning, IKKE ATC-klarering, IKKE tårnkontakt. Bland ALDRI ATZ_5KM med vanlig 5KM (Avinor) i tekst eller konklusjon.
+
 ### ATC / NINOX-KOORDINERING (pilotInputs.atcRequired)
 Feltet pilotInputs.atcRequired (boolean) er pilotens egen bekreftelse på at ATC-/Ninox-koordinering er planlagt og vil bli innhentet før flyging.
 
