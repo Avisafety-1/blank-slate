@@ -1303,6 +1303,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       const normalizeType = (t: string | null | undefined): string => {
         if (!t) return 'UKJENT';
         const up = String(t).toUpperCase();
+        if (up === 'ATZ_5KM') return 'ATZ_5KM';
         if (up.includes('5KM') || up.includes('5 KM') || up === 'RPAS 5KM' || up === 'RPAS 5KM SONE') return '5KM';
         if (up === 'CTR' || up === 'TIZ' || up === 'CTR/TIZ') return up === 'CTR/TIZ' ? 'CTR' : up;
         return up;
