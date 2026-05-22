@@ -1602,7 +1602,17 @@ Terskler:
 - Differanse > 5°C: OK — lav isingsrisiko
 ALDRI si at høy differanse øker risikoen — det er FEIL. Høy differanse betyr tørr luft og er positivt.
 
-${skipWeather ? '### VÆR-MERKNAD\nBruker har valgt å hoppe over værvurdering. Sett weather.score til 7, weather.go_decision til "BETINGET", og noter at vær må vurderes separat før flyging.' : ''}
+${skipWeather ? `### VÆR — IKKE VURDERT (OBLIGATORISK)
+Brukeren har valgt å hoppe over værvurdering. Du MÅ følge disse reglene strengt:
+- Sett categories.weather.score til null (ikke et tall, ikke 7, ikke 10).
+- Sett categories.weather.go_decision til "IKKE VURDERT".
+- categories.weather.actual_conditions: "Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging."
+- categories.weather.factors: [] (tom liste).
+- categories.weather.concerns: [] (tom liste).
+- IKKE inkluder Kp-indeks/geomagnetisk aktivitet i weather-kategorien — den obligatoriske Kp-regelen lenger ned gjelder IKKE når vær er IKKE VURDERT.
+- IKKE utløs HARD STOP basert på vær (vind, sikt, nedbør, ising, duggpunkt).
+- IKKE inkluder vær-relaterte bekymringer i summary eller recommendations.
+- Beregning av overall_score: EKSKLUDER weather fullstendig. Bruk snittet av de fire øvrige kategoriene (airspace, equipment, pilot_experience, mission_complexity), avrundet til én desimal.` : ''}
 
 ### VLOS / BVLOS-VURDERING
 Pilotens input angir om operasjonen er VLOS eller BVLOS (isVlos-feltet i pilotInputs).
