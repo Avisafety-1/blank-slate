@@ -231,14 +231,18 @@ export const RiskScoreCard = ({
                     <span className="font-medium text-sm sm:text-base">{categoryLabels[key] || key}</span>
                     {getGoDecisionBadge(category.go_decision)}
                   </div>
-                  <span className="text-xs sm:text-sm font-medium flex-shrink-0">{category.score.toFixed(1)}/10</span>
+                  <span className="text-xs sm:text-sm font-medium flex-shrink-0">
+                    {typeof category.score === 'number' ? `${category.score.toFixed(1)}/10` : 'Ikke vurdert'}
+                  </span>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className={cn("h-full transition-all", getScoreColor(category.score))}
-                    style={{ width: `${(category.score / 10) * 100}%` }}
-                  />
-                </div>
+                {typeof category.score === 'number' && (
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={cn("h-full transition-all", getScoreColor(category.score))}
+                      style={{ width: `${(category.score / 10) * 100}%` }}
+                    />
+                  </div>
+                )}
                 
                 {/* Category details */}
                 {(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors) && (
