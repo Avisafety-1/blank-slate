@@ -102,10 +102,14 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
           const baseSeverity = r.severity; // WARNING, CAUTION, or INFO from DB
           const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
           const is5km = r.z_type === '5KM';
+          const isAtz5km = r.z_type === 'ATZ_5KM';
           let level: AirspaceWarning["level"];
           
           if (is5km && r.route_inside) {
             // Inside a 5 km RPAS/Ninox approval zone must always be a red warning.
+            level = "warning";
+          } else if (isAtz5km && r.route_inside) {
+            // Inside a 5 km småflyplass-zone — kontakt flyplassen / PPR.
             level = "warning";
           } else if (r.route_inside) {
             // Inside: WARNING stays warning, CAUTION stays caution, INFO→caution
