@@ -7,8 +7,8 @@ import { GroundRiskAnalysisSection } from "./GroundRiskAnalysisSection";
 import { OperationClassificationSection } from "./OperationClassificationSection";
 
 interface CategoryScore {
-  score: number;
-  go_decision?: 'GO' | 'BETINGET' | 'NO-GO';
+  score: number | null;
+  go_decision?: 'GO' | 'BETINGET' | 'NO-GO' | 'IKKE VURDERT';
   factors: string[];
   concerns: string[];
   actual_conditions?: string;
