@@ -135,6 +135,13 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
               const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
               message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
             }
+          } else if (isAtz5km) {
+            if (r.route_inside) {
+              message = `Inne i 5 km-sonen rundt småflyplassen «${r.z_name}». Kontakt flyplassen før flyging — se myppr.no for PPR (Prior Permission Required).`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Nærhet til 5 km-sonen rundt småflyplassen «${r.z_name}», ${distStr} unna. PPR kan kreves — se myppr.no.`;
+            }
           } else if (r.z_type === 'NOTAM') {
             // z_name is now "A1234/26: UNMANNED ACFT (BLOS) WILL ..."
             const cleanName = (r.z_name || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
