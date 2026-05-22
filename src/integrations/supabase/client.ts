@@ -6,6 +6,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 import { isRefreshLockedByOtherTab, setRefreshLock, broadcastSession } from '@/lib/authTabSync';
+import { safeAuthStorage } from '@/lib/safeStorage';
 
 // --- Deduplicated session refresh ---
 let activeRefreshPromise: Promise<void> | null = null;
@@ -73,7 +74,7 @@ const fetchWithRetry: typeof fetch = async (input, init) => {
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: safeAuthStorage,
     persistSession: true,
     autoRefreshToken: true,
   },
