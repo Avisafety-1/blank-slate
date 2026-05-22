@@ -1859,7 +1859,7 @@ Sjekk om selskapet krever SORA for alle oppdrag (company_requires_sora_on_missio
 Feltet "solarActivity" inneholder Kp-indeks fra NOAA Space Weather Prediction Center.
 Aktuell verdi: Kp = ${solarActivity.kpIndex ?? 'ikke tilgjengelig'} (${solarActivity.noaaScale}, ${solarActivity.level}).
 
-KRITISK: Kp-indeks MÅ ALLTID inkluderes i weather-kategoriens "factors"- eller "concerns"-liste som ETT separat punkt, uavhengig av verdi (også når Kp = 0 eller data mangler). Bruk eksakt disse malene:
+KRITISK: Disse Kp-reglene gjelder KUN når værvurdering er aktiv. Hvis vær er IKKE VURDERT (se vær-merknad over), skal Kp-punktet UTELATES helt fra weather-kategorien og ikke påvirke noen score. Ellers MÅ Kp-indeks ALLTID inkluderes i weather-kategoriens "factors"- eller "concerns"-liste som ETT separat punkt, uavhengig av verdi (også når Kp = 0 eller data mangler). Bruk eksakt disse malene:
 
 - Hvis kpIndex === null (ikke tilgjengelig):
   Legg til i weather "factors": "Geomagnetisk aktivitet (Kp): data ikke tilgjengelig fra NOAA — verifiser manuelt før flygning."
