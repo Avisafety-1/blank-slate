@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { safeSetItem } from './safeStorage';
 
 const QUEUE_KEY = 'avisafe_offline_queue';
 
@@ -54,7 +55,7 @@ export const getQueueLength = (): number => {
  * Save queue to localStorage
  */
 const saveQueue = (queue: QueuedOperation[]) => {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+  safeSetItem(QUEUE_KEY, JSON.stringify(queue));
 };
 
 /**
