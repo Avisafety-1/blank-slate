@@ -2134,11 +2134,30 @@ Returner en JSON-respons med denne strukturen:
 
     if (aiAnalysis.categories) {
       for (const key of Object.keys(aiAnalysis.categories)) {
-        if (aiAnalysis.categories[key]?.score !== undefined) {
+        if (aiAnalysis.categories[key]?.score !== undefined && aiAnalysis.categories[key]?.score !== null) {
           aiAnalysis.categories[key].score = normalizeRiskScore(aiAnalysis.categories[key].score) ?? aiAnalysis.categories[key].score;
         }
       }
     }
+
+    // Enforce "weather not assessed" when user opted out — weather must not influence overall_score
+    if (skipWeather && aiAnalysis.categories?.weather) {
+      aiAnalysis.categories.weather.score = null;
+      aiAnalysis.categories.weather.go_decision = 'IKKE VURDERT';
+      aiAnalysis.categories.weather.actual_conditions = 'Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging.';
+      aiAnalysis.categories.weather.factors = [];
+      aiAnalysis.categories.weather.concerns = [];
+    }
+    if (skipWeather && aiAnalysis.categories && !aiAnalysis.hard_stop_triggered) {
+      const otherScores = ['airspace', 'equipment', 'pilot_experience', 'mission_complexity']
+        .map((k) => Number(aiAnalysis.categories?.[k]?.score))
+        .filter((n) => Number.isFinite(n));
+      if (otherScores.length > 0) {
+        const avg = otherScores.reduce((a, b) => a + b, 0) / otherScores.length;
+        aiAnalysis.overall_score = Math.round(avg * 10) / 10;
+      }
+    }
+
     if (aiAnalysis.overall_score !== undefined) {
       aiAnalysis.overall_score = normalizeRiskScore(aiAnalysis.overall_score) ?? aiAnalysis.overall_score;
     }
