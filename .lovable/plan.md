@@ -1,75 +1,71 @@
-## Hva som er feil i dag
 
-Når brukeren krysser av «Ikke vurder vær» (`pilotInputs.skipWeatherEvaluation = true`) i AI-risikovurderingen, instrueres modellen i dag (linje 1605 i `supabase/functions/ai-risk-assessment/index.ts`) til å:
+# Plan: 5 km småflyplass-soner med PPR-varsel
 
-> «Sett `weather.score` til 7, `weather.go_decision` til 'BETINGET', og noter at vær må vurderes separat før flyging.»
+Småflyplassene som vises på kartet i dag er **ATZ-soner** (Aerodrome Traffic Zone) fra OpenAIP — f.eks. Eggemoen, Gauldal, Gvarv, Starmoen. I dag tegnes de som blå OpenAIP-polygoner og inngår **ikke** i `check_mission_airspace`-RPC-en (kun de offisielle Avinor-aerodromene i `rpas_5km_zones` gjør det).
 
-Det betyr at vær fortsatt bidrar med en kunstig 7/10 inn i `overall_score`, selv om brukeren eksplisitt ba om at vær ikke skulle vurderes.
+Vi skal gjøre småflyplassene til 5 km-soner — både visuelt på kartet og som luftroms­advarsel — uten å røre eksisterende 5 km-logikk for hovedflyplasser.
 
-## Mål
+## Endringer
 
-Når `skipWeatherEvaluation = true`:
-- `categories.weather.score` skal være `null` (ikke et tall).
-- `weather.go_decision` skal være `"IKKE VURDERT"`.
-- Vær-kategorien skal vises i rapporten med tydelig tekst om at vær ikke er vurdert, men uten å trekke ned eller opp.
-- `overall_score` skal beregnes som snittet av de **gjenværende 4 kategoriene** (airspace, equipment, pilot_experience, mission_complexity).
-- Kp-indeks (geomagnetisk aktivitet) skal også hoppes over i vær-kategorien når vær er skippet, siden den ellers fortsatt ville trukket score.
-- HARD STOP-logikken for vær (vind/sikt/nedbør) skal være deaktivert når vær er skippet — brukeren tar ansvar selv.
+### 1. Kartlag: ATZ vises som 5 km sirkel
+**Fil:** `src/lib/mapDataFetchers.ts` (ATZ-grenen rundt linje 168)
 
-## Endringer (kun i `supabase/functions/ai-risk-assessment/index.ts`)
+For zone_type `ATZ`: regn ut polygonets sentroide (`L.geoJSON(...).getBounds().getCenter()` eller turf), og tegn en `L.circle(center, { radius: 5000 })` i stedet for den originale polygonen. Beholder samme `rmzTmzAtzLayer`, samme pane og samme popup, men oppdaterer label til "Småflyplass — 5 km sone" og legger til linje "Kontakt flyplassen før flyging — myppr.no" i popupen.
 
-### 1) Erstatt vær-merknaden i prompten (rundt linje 1605)
-Bytt ut dagens instruksjon med:
+Samme behandling i `MissionMapPreview.tsx` og `ExpandedMapDialog.tsx` hvis de gjengir ATZ separat (sjekk og oppdater hvis ja — søk på `'ATZ'`).
 
-> «### VÆR — IKKE VURDERT
-> Brukeren har valgt å hoppe over værvurdering. Du MÅ følge disse reglene strengt:
-> - Sett `categories.weather.score` til `null` (ikke et tall, ikke 7).
-> - Sett `categories.weather.go_decision` til `"IKKE VURDERT"`.
-> - `actual_conditions`: «Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging.»
-> - `factors`: tom liste `[]`.
-> - `concerns`: tom liste `[]`.
-> - IKKE inkluder Kp-indeks/geomagnetisk aktivitet i vær-kategorien (den obligatoriske Kp-regelen gjelder ikke når vær er skippet).
-> - IKKE utløs HARD STOP basert på vær (vind, sikt, nedbør, ising, duggpunkt).
-> - IKKE inkluder vær-relaterte bekymringer i `summary` eller `recommendations`.
-> - Beregning av `overall_score`: ekskluder weather fullstendig. Bruk snittet av de fire øvrige kategoriene (airspace, equipment, pilot_experience, mission_complexity), avrundet til én desimal.»
+### 2. RPC: ny `ATZ_5KM` warning-type
+**Migrasjon** som oppdaterer `check_mission_airspace`-funksjonen.
 
-### 2) Oppdater responseskjema-kommentar (linje ~1897)
-Endre `"score": <number 1-10>` til `"score": <number 1-10 eller null hvis IKKE VURDERT>` for weather, og `"go_decision": "<GO|BETINGET|NO-GO|IKKE VURDERT>"`.
+Legg til en ny `UNION ALL`-blokk i `candidate_zones`:
 
-### 3) Oppdater Kp-instruksjonen (linje ~1852)
-Legg til en innledende setning: «Disse Kp-reglene gjelder KUN når værvurdering er aktiv. Hvis vær er IKKE VURDERT (se vær-merknad over), hopp over Kp-punktet helt.»
-
-### 4) Post-prosessering (sikkerhetsnett)
-Etter AI-svaret er parset (rundt linje 2125–2140), legg til:
-
-```ts
-if (skipWeather && aiAnalysis.categories?.weather) {
-  aiAnalysis.categories.weather.score = null;
-  aiAnalysis.categories.weather.go_decision = 'IKKE VURDERT';
-}
-
-// Rekalkulér overall_score uten weather hvis vær er skippet
-if (skipWeather && aiAnalysis.categories) {
-  const otherScores = ['airspace','equipment','pilot_experience','mission_complexity']
-    .map(k => Number(aiAnalysis.categories?.[k]?.score))
-    .filter(n => Number.isFinite(n));
-  if (otherScores.length > 0 && !aiAnalysis.hard_stop_triggered) {
-    const avg = otherScores.reduce((a,b) => a+b, 0) / otherScores.length;
-    aiAnalysis.overall_score = Math.round(avg * 10) / 10;
-  }
-}
+```sql
+SELECT a.id::text, 'ATZ_5KM',
+       COALESCE(a.name, a.zone_id, 'Ukjent småflyplass'),
+       ST_Buffer(ST_Centroid(a.geometry)::geography, 5000)::geometry
+FROM aip_restriction_zones a
+WHERE a.zone_type = 'ATZ'
+  AND a.geometry IS NOT NULL
+  AND a.is_official = true
+  AND ST_DWithin(ST_Centroid(a.geometry)::geography, v_envelope::geography, 50000)
 ```
 
-Dette sikrer at selv om AI «glemmer» seg, blir vær-score nullet ut og `overall_score` korrekt regnet uten vær. Hvis en hard stop er utløst i en annen kategori, beholdes AI-ens overall_score som er.
+I severity-CASE: `WHEN rc.cz_type = 'ATZ_5KM' THEN 'CAUTION'` (inside blir uansett oppgradert til WARNING i frontend via samme mønster som 5KM, se under).
 
-### 5) `previousAnalysis`-snapshot (linje 664)
-`weather_score: previousAnalysis.categories?.weather?.score || null` — `||` gjør allerede `null` av falsy verdier, så ingen endring nødvendig. Bekreftet OK.
+Den eksisterende `rpas_5km_zones`-grenen for `'5KM'` røres ikke.
 
-## Frontend / PDF
-- `src/components/dashboard/RiskAssessmentDialog.tsx` og `src/lib/riskAssessmentPdfExport.ts` itererer kategorier generisk. Når `weather.score = null` og `go_decision = "IKKE VURDERT"`, vil de allerede vise kategorien med teksten vi setter i `actual_conditions`. Ingen krav om endring der — men jeg vil ta en sjekk under implementasjon for å være sikker på at `null`-score ikke krasjer rendering (f.eks. ved `.toFixed()`). Hvis det krasjer, legges en liten guard inn for å vise "Ikke vurdert" i stedet for et tall.
+### 3. Frontend: warning-melding for ATZ_5KM
+**Fil:** `src/components/dashboard/AirspaceWarnings.tsx`
+
+I `normalizeWarning`: oppgrader `ATZ_5KM` med `is_inside=true` til level `warning` (samme som 5KM).
+
+I severity-mapping i `checkAirspace`: behandle `ATZ_5KM` på samme måte som `5KM` (inside → warning, nearby → caution).
+
+I message-genereringen, ny gren før den generiske else:
+- Inside: `"Inne i 5 km-sonen rundt småflyplassen «{name}». Kontakt flyplassen før flyging — se myppr.no."`
+- Nearby: `"Nærhet til 5 km-sonen rundt småflyplassen «{name}», {dist} unna. PPR (Prior Permission Required) kan kreves — se myppr.no."`
+
+(Lenken renderes som klikkbar i Alert via en liten markup-tilpasning, eller bare som tekst hvis enklere — vi velger ren tekst for konsistens med andre meldinger.)
+
+### 4. AI-risikovurdering
+**Fil:** `supabase/functions/ai-risk-assessment/index.ts`
+
+I airspace-fact-mappingen (rundt linje 1306): legg `ATZ_5KM` i type-normaliseringen og behandle det som egen kategori (ikke som vanlig 5KM — vi vil ikke aktivere Ninox-logikken).
+
+I prompt-instruksjoner (rundt linje 1670–1685): legg til en regel om at `ATZ_5KM` med `inside=true` betyr "innenfor 5 km-sonen rundt en småflyplass — pilot må kontakte flyplass / sjekke myppr.no for PPR". Dette skal nevnes i `airspace.actual_conditions` og som relevant concern, men det er **ikke** automatisk HARD STOP og krever **ikke** Ninox.
+
+Server-side override (rundt linje 2235): pass på at eksisterende "outside 5km"-overrides ikke feilaktig fjerner ATZ_5KM-omtaler.
+
+## Tekniske detaljer
+
+- Sentroide av en ATZ-polygon ligger normalt på selve rullebanen → 5 km sirkel rundt centroid er en god proxy for "5 km fra småflyplass".
+- `is_official=false` ATZ-er (modellfly/seilfly-klubber i sync-edge-functionen, linje 47–53) ekskluderes — vi vil ikke spamme PPR-varsel for klubbflyplasser.
+- Ingen endringer i `rpas_5km_zones`, ingen endringer i Ninox-flagg/sjekker, ingen endringer i `missionIn5kmZone`-blokking i `StartFlightDialog`.
 
 ## Filer som endres
-- `supabase/functions/ai-risk-assessment/index.ts` (prompt + post-prosessering)
-- Eventuelt små guards i `RiskAssessmentDialog.tsx` / `riskAssessmentPdfExport.ts` hvis `null`-score ikke håndteres trygt i dag.
 
-Ingen DB-migrasjoner. Ingen RLS-endringer. Ingen sikkerhetspåvirkning.
+1. `src/lib/mapDataFetchers.ts` — ATZ → 5 km sirkel
+2. `src/components/dashboard/MissionMapPreview.tsx` + `ExpandedMapDialog.tsx` — speil endringen hvis ATZ tegnes der
+3. Ny SQL-migrasjon — `check_mission_airspace` får ATZ_5KM-gren
+4. `src/components/dashboard/AirspaceWarnings.tsx` — melding + farge­logikk for ATZ_5KM
+5. `supabase/functions/ai-risk-assessment/index.ts` — mapping + prompt-regel for ATZ_5KM
