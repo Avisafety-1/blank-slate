@@ -103,6 +103,7 @@ export const RiskScoreCard = ({
       'GO': 'bg-green-500/20 text-green-700 dark:text-green-300',
       'BETINGET': 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300',
       'NO-GO': 'bg-red-500/20 text-red-700 dark:text-red-300',
+      'IKKE VURDERT': 'bg-muted text-muted-foreground',
     };
 
     return (
