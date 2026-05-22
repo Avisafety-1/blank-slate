@@ -1303,6 +1303,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
       const normalizeType = (t: string | null | undefined): string => {
         if (!t) return 'UKJENT';
         const up = String(t).toUpperCase();
+        if (up === 'ATZ_5KM') return 'ATZ_5KM';
         if (up.includes('5KM') || up.includes('5 KM') || up === 'RPAS 5KM' || up === 'RPAS 5KM SONE') return '5KM';
         if (up === 'CTR' || up === 'TIZ' || up === 'CTR/TIZ') return up === 'CTR/TIZ' ? 'CTR' : up;
         return up;
@@ -1347,6 +1348,11 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           } else {
             description = `Oppdraget er UTENFOR ${type} «${name}». Nærmeste avstand til ${type}-sonens yttergrense er ${dist} m. Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
           }
+        } else if (type === 'ATZ_5KM') {
+          distance_label = 'avstand til 5 km-sonens yttergrense rundt småflyplassen';
+          description = inside
+            ? `Oppdraget er INNENFOR 5 km-sonen rundt småflyplassen «${name}». Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR (Prior Permission Required). Dette er IKKE en Avinor-aerodrome og krever IKKE Ninox.`
+            : `Oppdraget er UTENFOR 5 km-sonen rundt småflyplassen «${name}» — ${fmtDistance(dist)} utenfor sonegrensen. PPR kreves ikke, men vær oppmerksom på lokal trafikk.`;
         } else {
           description = inside
             ? `Oppdraget er INNENFOR sone ${type} «${name}».`
@@ -1378,14 +1384,20 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           summaryParts.push(`Utenfor kontrollert luftrom (nærmeste avstand til sonegrense: ${nearCtr.map(w => `${w.type} «${w.name}» ${w.distance} m`).join('; ')}). Ingen ATC-klarering kreves.`);
         }
       }
+      const insideAtz5km = mappedWarnings.filter(w => w.type === 'ATZ_5KM' && w.inside);
+      if (insideAtz5km.length > 0) {
+        summaryParts.push(`Innenfor 5 km-sonen rundt småflyplass(er): ${insideAtz5km.map(w => `«${w.name}»`).join(', ')}. Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR. Krever IKKE Ninox.`);
+      }
       return {
         warnings: mappedWarnings,
         summary: {
           requires_ninox_approval: requiresNinox,
           inside_controlled_airspace: insideCtr.length > 0,
           inside_5km_zone: inside5km.length > 0,
-          distance_semantics: 'Alle avstander (warnings[].distance og tall i summary.text) er avstand til SONEGRENSEN (polygonens yttergrense), IKKE til flyplass/aerodrome/NSM-anlegg. For 5KM-soner: avstand til selve flyplassen ≈ 5000 m + distance.',
+          inside_small_airfield_5km_zone: insideAtz5km.length > 0,
+          distance_semantics: 'Alle avstander (warnings[].distance og tall i summary.text) er avstand til SONEGRENSEN (polygonens yttergrense), IKKE til flyplass/aerodrome/NSM-anlegg. For 5KM-soner: avstand til selve flyplassen ≈ 5000 m + distance. For ATZ_5KM (småflyplass): avstand til 5 km-sirkelens grense.',
           controlled_airspace_policy: isAtOrBelow120m && requiresNinox === false ? 'CTR/TIZ-overlapp ved maks 120 m AGL og utenfor 5 km-sonen er operativt varsel/aktsomhet, ikke automatisk no-go/hard-stop.' : 'Avklar lokale luftromskrav basert på høyde og soneoverlapp.',
+          small_airfield_policy: 'ATZ_5KM = 5 km rundt en småflyplass. Krever PPR (Prior Permission Required) — pilot må kontakte flyplassen / bruke myppr.no. IKKE automatisk no-go/hard-stop, IKKE Ninox.',
           text: summaryParts.join(' '),
         },
       };
@@ -1678,6 +1690,11 @@ ABSOLUTTE FORBUD:
 - Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
 - CTR/TIZ-overlapp UTENFOR 5 km-sonen ved maks 120 m AGL: 100 % lovlig. Skriv ALDRI at piloten må «kontakte tårnet», «få klarering», «avklare med ATC», «kreves aktiv handling» eller lignende. Skriv kun en kort aktsomhets­advarsel om bemannet trafikk.
 - KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonegrensen rundt X (≈ 5,33 km fra selve flyplassen)».
+
+### SMÅFLYPLASS — 5 KM SONE (ATZ_5KM)
+- type = «ATZ_5KM» betyr 5 km-sone rundt en småflyplass (ATZ — Aerodrome Traffic Zone, f.eks. Eggemoen, Gvarv, Starmoen). Dette er IKKE en Avinor-aerodrome og IKKE en kontrollert luftromssone.
+- Hvis airspace.summary.inside_small_airfield_5km_zone = true (eller en ATZ_5KM-advarsel har inside=true): Skriv eksplisitt i airspace.actual_conditions og som concern at piloten må kontakte flyplassen før flyging og sjekke myppr.no for PPR (Prior Permission Required). Trekk litt på airspace.score (typisk –1 til –2), men IKKE no-go og IKKE hard stop.
+- Krever IKKE Ninox-godkjenning, IKKE ATC-klarering, IKKE tårnkontakt. Bland ALDRI ATZ_5KM med vanlig 5KM (Avinor) i tekst eller konklusjon.
 
 ### ATC / NINOX-KOORDINERING (pilotInputs.atcRequired)
 Feltet pilotInputs.atcRequired (boolean) er pilotens egen bekreftelse på at ATC-/Ninox-koordinering er planlagt og vil bli innhentet før flyging.

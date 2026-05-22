@@ -166,7 +166,7 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
       } else if (zone.zone_type === 'TMZ') {
         color = '#06b6d4'; label = 'TMZ (Transponder Mandatory Zone)'; dashArray = '8, 6'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
       } else if (zone.zone_type === 'ATZ') {
-        color = '#38bdf8'; label = 'ATZ (Aerodrome Traffic Zone)'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
+        color = '#38bdf8'; label = 'Småflyplass — 5 km sone'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
       } else if (zone.zone_type === 'CTR') {
         color = '#ec4899'; label = 'CTR (Control Zone)'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
       } else if (zone.zone_type === 'TIZ') {
@@ -189,6 +189,35 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
             remarks: zone.remarks,
           }
         };
+
+        // ATZ småflyplasser tegnes som 5 km sirkel rundt sentroide
+        // (PPR — kontakt flyplassen før flyging via myppr.no).
+        if (zone.zone_type === 'ATZ') {
+          const tmpGeo = L.geoJSON(geojsonFeature as any);
+          const center = tmpGeo.getBounds().getCenter();
+          const displayName = zone.name || zone.zone_id || 'Ukjent småflyplass';
+          let popup = `<strong>${label}</strong><br/>`;
+          popup += `<strong>${displayName}</strong><br/>`;
+          popup += `<div style="font-size: 12px; margin-top: 4px;">Kontakt flyplassen før flyging — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a></div>`;
+          const circle = L.circle(center, {
+            radius: 5000,
+            interactive: mode !== 'routePlanning',
+            pane,
+            color,
+            weight: 2,
+            fillColor: color,
+            fillOpacity,
+          });
+          if (mode !== 'routePlanning') {
+            circle.bindPopup(popup);
+            attachHoverPromotion(circle as unknown as L.Path, {
+              paneName: pane,
+              baseStyle: { color, weight: 2, fillColor: color, fillOpacity },
+            });
+          }
+          circle.addTo(targetLayer);
+          continue;
+        }
 
         const geoJsonLayer = L.geoJSON(geojsonFeature as any, {
           interactive: mode !== 'routePlanning',

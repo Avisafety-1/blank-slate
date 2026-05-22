@@ -46,6 +46,9 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
     if (warning.zone_type === '5KM' && warning.is_inside) {
       return { ...warning, level: 'warning' };
     }
+    if (warning.zone_type === 'ATZ_5KM' && warning.is_inside) {
+      return { ...warning, level: 'warning' };
+    }
     return warning;
   };
 
@@ -99,10 +102,14 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
           const baseSeverity = r.severity; // WARNING, CAUTION, or INFO from DB
           const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
           const is5km = r.z_type === '5KM';
+          const isAtz5km = r.z_type === 'ATZ_5KM';
           let level: AirspaceWarning["level"];
           
           if (is5km && r.route_inside) {
             // Inside a 5 km RPAS/Ninox approval zone must always be a red warning.
+            level = "warning";
+          } else if (isAtz5km && r.route_inside) {
+            // Inside a 5 km småflyplass-zone — kontakt flyplassen / PPR.
             level = "warning";
           } else if (r.route_inside) {
             // Inside: WARNING stays warning, CAUTION stays caution, INFO→caution
@@ -127,6 +134,13 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
             } else {
               const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
               message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
+            }
+          } else if (isAtz5km) {
+            if (r.route_inside) {
+              message = `Inne i 5 km-sonen rundt småflyplassen «${r.z_name}». Kontakt flyplassen før flyging — se myppr.no for PPR (Prior Permission Required).`;
+            } else {
+              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
+              message = `Nærhet til 5 km-sonen rundt småflyplassen «${r.z_name}», ${distStr} unna. PPR kan kreves — se myppr.no.`;
             }
           } else if (r.z_type === 'NOTAM') {
             // z_name is now "A1234/26: UNMANNED ACFT (BLOS) WILL ..."

@@ -296,11 +296,22 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
             else if (zone.zone_type === 'D') { dashArray = '5, 5'; }
             else if (zone.zone_type === 'RMZ') { color = '#22c55e'; label = 'RMZ'; dashArray = '8, 6'; }
             else if (zone.zone_type === 'TMZ') { color = '#06b6d4'; label = 'TMZ'; dashArray = '8, 6'; }
-            else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = 'ATZ'; }
+            else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = 'Småflyplass — 5 km'; }
             else if (zone.zone_type === 'CTR') { color = '#ec4899'; label = 'CTR'; }
             else if (zone.zone_type === 'TIZ') { color = '#a78bfa'; label = 'TIZ'; dashArray = '8, 6'; }
 
             try {
+              // ATZ småflyplasser tegnes som 5 km sirkel rundt sentroide.
+              if (zone.zone_type === 'ATZ') {
+                const tmp = L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any);
+                const center = tmp.getBounds().getCenter();
+                const displayName = zone.name || zone.zone_id || 'Ukjent småflyplass';
+                L.circle(center, {
+                  radius: 5000,
+                  color, weight: 2, fillColor: color, fillOpacity: 0.15,
+                }).bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>Kontakt flyplassen — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a>`).addTo(zonesLayer);
+                continue;
+              }
               L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
                 style: { color, weight: 2, fillColor: color, fillOpacity: 0.15, dashArray },
                 onEachFeature: (_feature, layer) => {
