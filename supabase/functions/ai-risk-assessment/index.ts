@@ -1348,6 +1348,11 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
           } else {
             description = `Oppdraget er UTENFOR ${type} «${name}». Nærmeste avstand til ${type}-sonens yttergrense er ${dist} m. Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
           }
+        } else if (type === 'ATZ_5KM') {
+          distance_label = 'avstand til 5 km-sonens yttergrense rundt småflyplassen';
+          description = inside
+            ? `Oppdraget er INNENFOR 5 km-sonen rundt småflyplassen «${name}». Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR (Prior Permission Required). Dette er IKKE en Avinor-aerodrome og krever IKKE Ninox.`
+            : `Oppdraget er UTENFOR 5 km-sonen rundt småflyplassen «${name}» — ${fmtDistance(dist)} utenfor sonegrensen. PPR kreves ikke, men vær oppmerksom på lokal trafikk.`;
         } else {
           description = inside
             ? `Oppdraget er INNENFOR sone ${type} «${name}».`
