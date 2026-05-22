@@ -1602,7 +1602,17 @@ Terskler:
 - Differanse > 5°C: OK — lav isingsrisiko
 ALDRI si at høy differanse øker risikoen — det er FEIL. Høy differanse betyr tørr luft og er positivt.
 
-${skipWeather ? '### VÆR-MERKNAD\nBruker har valgt å hoppe over værvurdering. Sett weather.score til 7, weather.go_decision til "BETINGET", og noter at vær må vurderes separat før flyging.' : ''}
+${skipWeather ? `### VÆR — IKKE VURDERT (OBLIGATORISK)
+Brukeren har valgt å hoppe over værvurdering. Du MÅ følge disse reglene strengt:
+- Sett categories.weather.score til null (ikke et tall, ikke 7, ikke 10).
+- Sett categories.weather.go_decision til "IKKE VURDERT".
+- categories.weather.actual_conditions: "Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging."
+- categories.weather.factors: [] (tom liste).
+- categories.weather.concerns: [] (tom liste).
+- IKKE inkluder Kp-indeks/geomagnetisk aktivitet i weather-kategorien — den obligatoriske Kp-regelen lenger ned gjelder IKKE når vær er IKKE VURDERT.
+- IKKE utløs HARD STOP basert på vær (vind, sikt, nedbør, ising, duggpunkt).
+- IKKE inkluder vær-relaterte bekymringer i summary eller recommendations.
+- Beregning av overall_score: EKSKLUDER weather fullstendig. Bruk snittet av de fire øvrige kategoriene (airspace, equipment, pilot_experience, mission_complexity), avrundet til én desimal.` : ''}
 
 ### VLOS / BVLOS-VURDERING
 Pilotens input angir om operasjonen er VLOS eller BVLOS (isVlos-feltet i pilotInputs).
@@ -1849,7 +1859,7 @@ Sjekk om selskapet krever SORA for alle oppdrag (company_requires_sora_on_missio
 Feltet "solarActivity" inneholder Kp-indeks fra NOAA Space Weather Prediction Center.
 Aktuell verdi: Kp = ${solarActivity.kpIndex ?? 'ikke tilgjengelig'} (${solarActivity.noaaScale}, ${solarActivity.level}).
 
-KRITISK: Kp-indeks MÅ ALLTID inkluderes i weather-kategoriens "factors"- eller "concerns"-liste som ETT separat punkt, uavhengig av verdi (også når Kp = 0 eller data mangler). Bruk eksakt disse malene:
+KRITISK: Disse Kp-reglene gjelder KUN når værvurdering er aktiv. Hvis vær er IKKE VURDERT (se vær-merknad over), skal Kp-punktet UTELATES helt fra weather-kategorien og ikke påvirke noen score. Ellers MÅ Kp-indeks ALLTID inkluderes i weather-kategoriens "factors"- eller "concerns"-liste som ETT separat punkt, uavhengig av verdi (også når Kp = 0 eller data mangler). Bruk eksakt disse malene:
 
 - Hvis kpIndex === null (ikke tilgjengelig):
   Legg til i weather "factors": "Geomagnetisk aktivitet (Kp): data ikke tilgjengelig fra NOAA — verifiser manuelt før flygning."
@@ -1895,9 +1905,9 @@ Returner en JSON-respons med denne strukturen:
   "summary": "<kort oppsummering på norsk>",
   "categories": {
     "weather": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|BETINGET|NO-GO>",
-      "actual_conditions": "<beskrivelse av faktiske værdata>",
+      "score": <number 1-10, eller null hvis IKKE VURDERT>,
+      "go_decision": "<GO|BETINGET|NO-GO|IKKE VURDERT>",
+      "actual_conditions": "<beskrivelse av faktiske værdata, eller IKKE VURDERT-tekst>",
       "comparison_to_limits": "<sammenligning mot sikkerhetsgrenser>",
       "factors": ["<positive faktorer>"],
       "concerns": ["<bekymringer>"]
@@ -2124,11 +2134,30 @@ Returner en JSON-respons med denne strukturen:
 
     if (aiAnalysis.categories) {
       for (const key of Object.keys(aiAnalysis.categories)) {
-        if (aiAnalysis.categories[key]?.score !== undefined) {
+        if (aiAnalysis.categories[key]?.score !== undefined && aiAnalysis.categories[key]?.score !== null) {
           aiAnalysis.categories[key].score = normalizeRiskScore(aiAnalysis.categories[key].score) ?? aiAnalysis.categories[key].score;
         }
       }
     }
+
+    // Enforce "weather not assessed" when user opted out — weather must not influence overall_score
+    if (skipWeather && aiAnalysis.categories?.weather) {
+      aiAnalysis.categories.weather.score = null;
+      aiAnalysis.categories.weather.go_decision = 'IKKE VURDERT';
+      aiAnalysis.categories.weather.actual_conditions = 'Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging.';
+      aiAnalysis.categories.weather.factors = [];
+      aiAnalysis.categories.weather.concerns = [];
+    }
+    if (skipWeather && aiAnalysis.categories && !aiAnalysis.hard_stop_triggered) {
+      const otherScores = ['airspace', 'equipment', 'pilot_experience', 'mission_complexity']
+        .map((k) => Number(aiAnalysis.categories?.[k]?.score))
+        .filter((n) => Number.isFinite(n));
+      if (otherScores.length > 0) {
+        const avg = otherScores.reduce((a, b) => a + b, 0) / otherScores.length;
+        aiAnalysis.overall_score = Math.round(avg * 10) / 10;
+      }
+    }
+
     if (aiAnalysis.overall_score !== undefined) {
       aiAnalysis.overall_score = normalizeRiskScore(aiAnalysis.overall_score) ?? aiAnalysis.overall_score;
     }

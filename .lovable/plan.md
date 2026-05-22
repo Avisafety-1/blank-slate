@@ -1,32 +1,75 @@
-## Problem
+## Hva som er feil i dag
 
-Gamle NOTAMs (f.eks. Trondheim 17. mai, `A3142/26`) blir liggende selv om sluttdato er passert. To bugs i `supabase/functions/fetch-notams/index.ts`:
+Når brukeren krysser av «Ikke vurder vær» (`pilotInputs.skipWeatherEvaluation = true`) i AI-risikovurderingen, instrueres modellen i dag (linje 1605 i `supabase/functions/ai-risk-assessment/index.ts`) til å:
 
-1. **PERM-deteksjonen er for løs.** Regex `/PERM|permanent/i` matcher delstrenger som "**PERM**ISSION" i NOTAM-tekster som "UNLESS PRIOR PERMISSION GRANTED…". Mange tidsavgrensede tempo-soner blir derfor stemplet `effective_end_interpretation = 'PERM'`.
-2. **Opprydning hopper alltid over PERM og EST.** Sletteforespørselen (linje 344–348) ekskluderer både `PERM` og `EST` selv når `effective_end` faktisk er passert. Resultat: feilstemplet `PERM` = evig liv. Også reelle `EST` med konkret sluttdato bør ryddes når datoen er passert.
+> «Sett `weather.score` til 7, `weather.go_decision` til 'BETINGET', og noter at vær må vurderes separat før flyging.»
 
-## Endringer
+Det betyr at vær fortsatt bidrar med en kunstig 7/10 inn i `overall_score`, selv om brukeren eksplisitt ba om at vær ikke skulle vurderes.
 
-### 1. Strammere PERM-deteksjon (parser, linje 154)
-- Bytt fra `/PERM|permanent/i` til ordgrensestrenger som faktisk forekommer i NOTAM-formatet, f.eks. `/\bPERM\b/i` (men ekskluder treff på "PERMISSION"/"PERMITTED"), eller enklere: kun sett `PERM` når det ikke finnes en `TO:`-dato i samme tekst.
-- Logikk: `isPerm = !toMatch && /\bPERM(?!I)\w*/i.test(cleanDesc)` — krever fravær av TO-dato. PERM med konkret sluttdato er motsigelse og skal aldri trigges.
+## Mål
 
-### 2. Rydd basert på `effective_end` uavhengig av tolkning (linje 343–348)
-- Endre slettespørringen til å fjerne alle rader hvor `effective_end < now()`, uavhengig av `effective_end_interpretation`. PERM uten sluttdato (effective_end IS NULL) beholdes via stale-grensen på 30 dager (linje 350–355), som allerede finnes.
-- Dette gjør oss robuste mot fremtidige feilklassifiseringer: så lenge vi har en sluttdato i fortiden, slettes raden.
+Når `skipWeatherEvaluation = true`:
+- `categories.weather.score` skal være `null` (ikke et tall).
+- `weather.go_decision` skal være `"IKKE VURDERT"`.
+- Vær-kategorien skal vises i rapporten med tydelig tekst om at vær ikke er vurdert, men uten å trekke ned eller opp.
+- `overall_score` skal beregnes som snittet av de **gjenværende 4 kategoriene** (airspace, equipment, pilot_experience, mission_complexity).
+- Kp-indeks (geomagnetisk aktivitet) skal også hoppes over i vær-kategorien når vær er skippet, siden den ellers fortsatt ville trukket score.
+- HARD STOP-logikken for vær (vind/sikt/nedbør) skal være deaktivert når vær er skippet — brukeren tar ansvar selv.
 
-### 3. Engangs-opprydning av eksisterende feildata
-- Etter koden er deployert kjøres en SELECT/DELETE-runde manuelt (via `read_query`/migrasjon) for å fjerne alle eksisterende rader hvor `effective_end < now()` — inkludert dagens Trondheim-NOTAM.
+## Endringer (kun i `supabase/functions/ai-risk-assessment/index.ts`)
 
-## Effekt
+### 1) Erstatt vær-merknaden i prompten (rundt linje 1605)
+Bytt ut dagens instruksjon med:
 
-- Trondheim-NOTAMen forsvinner umiddelbart etter neste sync (eller manuell opprydning).
-- Fremtidige tempo-soner med "PERMISSION" i teksten klassifiseres riktig og ryddes automatisk når sluttdato passeres.
-- Cron-jobben kjører allerede daglig (`fetch-notams`), så ingen ekstra schedulering nødvendig.
+> «### VÆR — IKKE VURDERT
+> Brukeren har valgt å hoppe over værvurdering. Du MÅ følge disse reglene strengt:
+> - Sett `categories.weather.score` til `null` (ikke et tall, ikke 7).
+> - Sett `categories.weather.go_decision` til `"IKKE VURDERT"`.
+> - `actual_conditions`: «Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging.»
+> - `factors`: tom liste `[]`.
+> - `concerns`: tom liste `[]`.
+> - IKKE inkluder Kp-indeks/geomagnetisk aktivitet i vær-kategorien (den obligatoriske Kp-regelen gjelder ikke når vær er skippet).
+> - IKKE utløs HARD STOP basert på vær (vind, sikt, nedbør, ising, duggpunkt).
+> - IKKE inkluder vær-relaterte bekymringer i `summary` eller `recommendations`.
+> - Beregning av `overall_score`: ekskluder weather fullstendig. Bruk snittet av de fire øvrige kategoriene (airspace, equipment, pilot_experience, mission_complexity), avrundet til én desimal.»
 
-## Tekniske detaljer
+### 2) Oppdater responseskjema-kommentar (linje ~1897)
+Endre `"score": <number 1-10>` til `"score": <number 1-10 eller null hvis IKKE VURDERT>` for weather, og `"go_decision": "<GO|BETINGET|NO-GO|IKKE VURDERT>"`.
 
-Berørte filer:
-- `supabase/functions/fetch-notams/index.ts` — to små endringer (regex + delete-query).
+### 3) Oppdater Kp-instruksjonen (linje ~1852)
+Legg til en innledende setning: «Disse Kp-reglene gjelder KUN når værvurdering er aktiv. Hvis vær er IKKE VURDERT (se vær-merknad over), hopp over Kp-punktet helt.»
 
-Ingen DB-skjemaendringer. Ingen frontend-endringer. Manuell engangs-DELETE kjøres etter deploy for å fjerne historisk skrot.
+### 4) Post-prosessering (sikkerhetsnett)
+Etter AI-svaret er parset (rundt linje 2125–2140), legg til:
+
+```ts
+if (skipWeather && aiAnalysis.categories?.weather) {
+  aiAnalysis.categories.weather.score = null;
+  aiAnalysis.categories.weather.go_decision = 'IKKE VURDERT';
+}
+
+// Rekalkulér overall_score uten weather hvis vær er skippet
+if (skipWeather && aiAnalysis.categories) {
+  const otherScores = ['airspace','equipment','pilot_experience','mission_complexity']
+    .map(k => Number(aiAnalysis.categories?.[k]?.score))
+    .filter(n => Number.isFinite(n));
+  if (otherScores.length > 0 && !aiAnalysis.hard_stop_triggered) {
+    const avg = otherScores.reduce((a,b) => a+b, 0) / otherScores.length;
+    aiAnalysis.overall_score = Math.round(avg * 10) / 10;
+  }
+}
+```
+
+Dette sikrer at selv om AI «glemmer» seg, blir vær-score nullet ut og `overall_score` korrekt regnet uten vær. Hvis en hard stop er utløst i en annen kategori, beholdes AI-ens overall_score som er.
+
+### 5) `previousAnalysis`-snapshot (linje 664)
+`weather_score: previousAnalysis.categories?.weather?.score || null` — `||` gjør allerede `null` av falsy verdier, så ingen endring nødvendig. Bekreftet OK.
+
+## Frontend / PDF
+- `src/components/dashboard/RiskAssessmentDialog.tsx` og `src/lib/riskAssessmentPdfExport.ts` itererer kategorier generisk. Når `weather.score = null` og `go_decision = "IKKE VURDERT"`, vil de allerede vise kategorien med teksten vi setter i `actual_conditions`. Ingen krav om endring der — men jeg vil ta en sjekk under implementasjon for å være sikker på at `null`-score ikke krasjer rendering (f.eks. ved `.toFixed()`). Hvis det krasjer, legges en liten guard inn for å vise "Ikke vurdert" i stedet for et tall.
+
+## Filer som endres
+- `supabase/functions/ai-risk-assessment/index.ts` (prompt + post-prosessering)
+- Eventuelt små guards i `RiskAssessmentDialog.tsx` / `riskAssessmentPdfExport.ts` hvis `null`-score ikke håndteres trygt i dag.
+
+Ingen DB-migrasjoner. Ingen RLS-endringer. Ingen sikkerhetspåvirkning.
