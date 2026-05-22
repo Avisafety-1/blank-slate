@@ -1905,9 +1905,9 @@ Returner en JSON-respons med denne strukturen:
   "summary": "<kort oppsummering på norsk>",
   "categories": {
     "weather": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|BETINGET|NO-GO>",
-      "actual_conditions": "<beskrivelse av faktiske værdata>",
+      "score": <number 1-10, eller null hvis IKKE VURDERT>,
+      "go_decision": "<GO|BETINGET|NO-GO|IKKE VURDERT>",
+      "actual_conditions": "<beskrivelse av faktiske værdata, eller IKKE VURDERT-tekst>",
       "comparison_to_limits": "<sammenligning mot sikkerhetsgrenser>",
       "factors": ["<positive faktorer>"],
       "concerns": ["<bekymringer>"]
