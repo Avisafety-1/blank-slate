@@ -1006,6 +1006,39 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
       (zone) => {
         const style = CAA_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ Sone' };
         const isWarning = zone.restriction === 'REQ_AUTHORISATION';
+        const esc = (s: any) =>
+          String(s ?? '').replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+          }[c]!));
+
+        // Småflyplasser tegnes som 5 km sirkel rundt sentroide — kontakt flyplassen/myppr.no.
+        if (zone.layer_id === 'flyplasser') {
+          try {
+            const tmp = L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: {} } as any);
+            const center = tmp.getBounds().getCenter();
+            const circle = L.circle(center, {
+              radius: 5000,
+              color: '#38bdf8',
+              weight: 2,
+              fillColor: '#38bdf8',
+              fillOpacity: 0.12,
+              pane: 'overlayPane',
+              interactive: mode !== 'routePlanning',
+            });
+            if (mode !== 'routePlanning') {
+              const p: any = zone || {};
+              let html = `<strong>✈️ Småflyplass — 5 km sone</strong><br/>`;
+              html += `<strong>${esc(p.name || 'Ukjent')}</strong><br/>`;
+              html += `<div style="margin-top:4px">Kontakt flyplassen før flyging — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a></div>`;
+              if (p.authority_phone) html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
+              circle.bindPopup(html);
+            }
+            return circle;
+          } catch {
+            // fallthrough to default rendering
+          }
+        }
+
         return L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: zone } as any, {
           interactive: mode !== 'routePlanning',
           pane: 'overlayPane',
@@ -1018,10 +1051,6 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
           },
           onEachFeature: mode !== 'routePlanning' ? (feature, lyr) => {
             const p: any = feature.properties || {};
-            const esc = (s: any) =>
-              String(s ?? '').replace(/[&<>"']/g, (c) => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-              }[c]!));
             let html = `<strong>${style.iconLabel}</strong><br/>`;
             html += `<strong>${esc(p.name || 'Ukjent')}</strong><br/>`;
             if (p.message) html += `<div style="margin-top:4px;max-width:280px">${esc(p.message)}</div>`;
@@ -1048,6 +1077,7 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
           } : undefined,
         });
       },
+
     );
     cache.cachedBounds = padded;
   } catch (err) {
