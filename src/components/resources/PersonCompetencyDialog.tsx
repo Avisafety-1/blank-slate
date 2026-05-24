@@ -274,6 +274,7 @@ export function PersonCompetencyDialog({
     if (newFileInputRef.current) newFileInputRef.current.value = '';
     
     onCompetencyUpdated();
+    setAddDialogOpen(false);
   };
 
   const handleStartEdit = (competency: Competency) => {
