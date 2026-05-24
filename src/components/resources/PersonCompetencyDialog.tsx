@@ -59,6 +59,7 @@ export function PersonCompetencyDialog({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [competencyToDelete, setCompetencyToDelete] = useState<string | null>(null);
   const [logbookDialogOpen, setLogbookDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [availableCourses, setAvailableCourses] = useState<any[]>([]);
   const [takeCourseAssignmentId, setTakeCourseAssignmentId] = useState<string | null>(null);
   
