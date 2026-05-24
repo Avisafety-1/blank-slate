@@ -1011,19 +1011,22 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
           }[c]!));
 
-        // Småflyplasser tegnes som 5 km sirkel rundt sentroide — kontakt flyplassen/myppr.no.
-        if (zone.layer_id === 'flyplasser') {
+        // Småflyplasser (faste fly) tegnes som 5 km sirkel rundt sentroide — kontakt flyplassen/myppr.no.
+        // Helikopterplasser holdes som ordinære små markører (default rendering nedenfor).
+        const caaType = String(zone?.properties?.type ?? '').toLowerCase();
+        if (zone.layer_id === 'flyplasser' && caaType === 'fly') {
           try {
             const tmp = L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: {} } as any);
             const center = tmp.getBounds().getCenter();
             const circle = L.circle(center, {
               radius: 5000,
-              color: '#38bdf8',
+              color: '#f59e0b',
               weight: 2,
-              fillColor: '#38bdf8',
+              fillColor: '#f59e0b',
               fillOpacity: 0.12,
-              pane: 'overlayPane',
+              pane: 'rmzPane',
               interactive: mode !== 'routePlanning',
+              bubblingMouseEvents: false,
             });
             if (mode !== 'routePlanning') {
               const p: any = zone || {};
@@ -1032,6 +1035,7 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
               html += `<div style="margin-top:4px">Kontakt flyplassen før flyging — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a></div>`;
               if (p.authority_phone) html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
               circle.bindPopup(html);
+              circle.on('add', () => { try { circle.bringToFront(); } catch {} });
             }
             return circle;
           } catch {
