@@ -498,20 +498,33 @@ export function PersonCompetencyDialog({
         <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] p-3 sm:p-6 overflow-hidden box-border">
           <DialogHeader className="space-y-3">
             <DialogTitle className="text-base sm:text-lg pr-8">{person.full_name}</DialogTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              data-tour="person-logbok"
-              onClick={() => setLogbookDialogOpen(true)}
-              className="gap-2 w-full sm:w-auto"
-            >
-              <Book className="w-4 h-4" />
-              Loggbok
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                data-tour="person-logbok"
+                onClick={() => setLogbookDialogOpen(true)}
+                className="gap-2 w-full sm:w-auto"
+              >
+                <Book className="w-4 h-4" />
+                Loggbok
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setAddDialogOpen(true)}
+                className="gap-2 w-full sm:w-auto"
+              >
+                <Plus className="w-4 h-4" />
+                Legg til kompetanse
+              </Button>
+            </div>
           </DialogHeader>
 
-          <ScrollArea className="h-[calc(90vh-10rem)] sm:h-[calc(90vh-8rem)] w-full max-w-full">
-            <div className="pr-3 sm:pr-4 max-w-full overflow-hidden">
+          <ScrollArea className="h-[calc(90vh-12rem)] sm:h-[calc(90vh-10rem)] w-full max-w-full">
+            <div className="pr-3 sm:pr-4 max-w-full overflow-hidden space-y-4">
+              <PersonnelFlightKpi personId={person.id} />
+
+
 
 
             {/* Existing Competencies */}
