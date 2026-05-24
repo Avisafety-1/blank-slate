@@ -782,152 +782,161 @@ export function PersonCompetencyDialog({
             )}
 
 
-            <div className="border-t pt-4 mt-4 min-w-0 overflow-hidden">
-              <h3 data-tour="person-add-competency" className="text-sm font-semibold mb-3">Legg til kompetanse</h3>
-              <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="new-type" className="text-xs">Type *</Label>
-                    <Select value={newType} onValueChange={setNewType}>
-                      <SelectTrigger id="new-type" className="h-9">
-                        <SelectValue placeholder="Velg type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Kurs">Kurs</SelectItem>
-                        <SelectItem value="Sertifikat">Sertifikat</SelectItem>
-                        <SelectItem value="Lisens">Lisens</SelectItem>
-                        <SelectItem value="Utdanning">Utdanning</SelectItem>
-                        <SelectItem value="Godkjenning">Godkjenning</SelectItem>
-                        <SelectItem value="Kompetanse">Kompetanse</SelectItem>
-                        <SelectItem value="Annet">Annet</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="new-name" className="text-xs">Navn *</Label>
-                    {newType === "Kurs" ? (
-                      <>
-                        <Select
-                          value={["STS", "A1/A3", "A2"].includes(newName) ? newName : (newName ? "__custom__" : "")}
-                          onValueChange={(v) => setNewName(v === "__custom__" ? "" : v)}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Velg kurs..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="STS">STS</SelectItem>
-                            <SelectItem value="A1/A3">A1/A3</SelectItem>
-                            <SelectItem value="A2">A2</SelectItem>
-                            <SelectItem value="__custom__">Annet (skriv inn)...</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {!["STS", "A1/A3", "A2"].includes(newName) && (
-                          <Input
-                            id="new-name"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            placeholder="Skriv inn kursnavn"
-                            className="h-9 mt-2"
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <Input
-                        id="new-name"
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        placeholder="F.eks. A3 drone"
-                        className="h-9"
-                      />
-                    )}
-                  </div>
-                </div>
+            </div>
+            </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
+      {/* Add competency dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] p-3 sm:p-6 overflow-hidden box-border">
+          <DialogHeader>
+            <DialogTitle className="text-base sm:text-lg">Legg til kompetanse</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[calc(90vh-6rem)] w-full">
+            <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0 pr-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="new-description" className="text-xs">Beskrivelse</Label>
-                  <Textarea
-                    id="new-description"
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    placeholder="Valgfri"
-                    className="min-h-[60px]"
-                  />
+                  <Label htmlFor="new-type" className="text-xs">Type *</Label>
+                  <Select value={newType} onValueChange={setNewType}>
+                    <SelectTrigger id="new-type" className="h-9">
+                      <SelectValue placeholder="Velg type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Kurs">Kurs</SelectItem>
+                      <SelectItem value="Sertifikat">Sertifikat</SelectItem>
+                      <SelectItem value="Lisens">Lisens</SelectItem>
+                      <SelectItem value="Utdanning">Utdanning</SelectItem>
+                      <SelectItem value="Godkjenning">Godkjenning</SelectItem>
+                      <SelectItem value="Kompetanse">Kompetanse</SelectItem>
+                      <SelectItem value="Annet">Annet</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <Label htmlFor="new-issue-date" className="text-xs">Utstedt</Label>
+                <div>
+                  <Label htmlFor="new-name" className="text-xs">Navn *</Label>
+                  {newType === "Kurs" ? (
+                    <>
+                      <Select
+                        value={["STS", "A1/A3", "A2"].includes(newName) ? newName : (newName ? "__custom__" : "")}
+                        onValueChange={(v) => setNewName(v === "__custom__" ? "" : v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Velg kurs..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="STS">STS</SelectItem>
+                          <SelectItem value="A1/A3">A1/A3</SelectItem>
+                          <SelectItem value="A2">A2</SelectItem>
+                          <SelectItem value="__custom__">Annet (skriv inn)...</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {!["STS", "A1/A3", "A2"].includes(newName) && (
+                        <Input
+                          id="new-name"
+                          value={newName}
+                          onChange={(e) => setNewName(e.target.value)}
+                          placeholder="Skriv inn kursnavn"
+                          className="h-9 mt-2"
+                        />
+                      )}
+                    </>
+                  ) : (
                     <Input
-                      id="new-issue-date"
-                      type="date"
-                      value={newIssueDate}
-                      onChange={(e) => setNewIssueDate(e.target.value)}
+                      id="new-name"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="F.eks. A3 drone"
                       className="h-9"
                     />
-                  </div>
-                  <div className="min-w-0">
-                    <Label htmlFor="new-expiry-date" className="text-xs">Utløper</Label>
-                    <Input
-                      id="new-expiry-date"
-                      type="date"
-                      value={newExpiryDate}
-                      onChange={(e) => setNewExpiryDate(e.target.value)}
-                      className="h-9"
-                    />
-                  </div>
+                  )}
                 </div>
+              </div>
 
-                <div>
-                  <Label htmlFor="new-warning-days" className="text-xs flex items-center gap-1">
-                    <Bell className="h-3 w-3" />
-                    Varsle (dager før utløp)
-                  </Label>
+              <div>
+                <Label htmlFor="new-description" className="text-xs">Beskrivelse</Label>
+                <Textarea
+                  id="new-description"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Valgfri"
+                  className="min-h-[60px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="min-w-0">
+                  <Label htmlFor="new-issue-date" className="text-xs">Utstedt</Label>
                   <Input
-                    id="new-warning-days"
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={newWarningDays}
-                    onChange={(e) => setNewWarningDays(Number(e.target.value) || 30)}
-                    placeholder="30"
+                    id="new-issue-date"
+                    type="date"
+                    value={newIssueDate}
+                    onChange={(e) => setNewIssueDate(e.target.value)}
                     className="h-9"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Gul status og e-postvarsel utløses {newWarningDays} dager før utløp.
-                  </p>
                 </div>
-
-                {renderFileInput(
-                  newFile,
-                  newDocumentUrl,
-                  null,
-                  setNewFile,
-                  setNewDocumentUrl,
-                  null,
-                  newFileInputRef,
-                  () => setNewDocPickerOpen(true),
-                )}
-
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="new-affects-status"
-                    checked={newAffectsStatus}
-                    onCheckedChange={setNewAffectsStatus}
+                <div className="min-w-0">
+                  <Label htmlFor="new-expiry-date" className="text-xs">Utløper</Label>
+                  <Input
+                    id="new-expiry-date"
+                    type="date"
+                    value={newExpiryDate}
+                    onChange={(e) => setNewExpiryDate(e.target.value)}
+                    className="h-9"
                   />
-                  <Label htmlFor="new-affects-status" className="text-xs">
-                    Påvirker status
-                  </Label>
                 </div>
+              </div>
 
-                <Button type="submit" className="w-full h-10">
-                  Legg til
-                </Button>
-              </form>
-            </div>
-            </div>
+              <div>
+                <Label htmlFor="new-warning-days" className="text-xs flex items-center gap-1">
+                  <Bell className="h-3 w-3" />
+                  Varsle (dager før utløp)
+                </Label>
+                <Input
+                  id="new-warning-days"
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={newWarningDays}
+                  onChange={(e) => setNewWarningDays(Number(e.target.value) || 30)}
+                  placeholder="30"
+                  className="h-9"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Gul status og e-postvarsel utløses {newWarningDays} dager før utløp.
+                </p>
+              </div>
+
+              {renderFileInput(
+                newFile,
+                newDocumentUrl,
+                null,
+                setNewFile,
+                setNewDocumentUrl,
+                null,
+                newFileInputRef,
+                () => setNewDocPickerOpen(true),
+              )}
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="new-affects-status"
+                  checked={newAffectsStatus}
+                  onCheckedChange={setNewAffectsStatus}
+                />
+                <Label htmlFor="new-affects-status" className="text-xs">
+                  Påvirker status
+                </Label>
+              </div>
+
+              <Button type="submit" className="w-full h-10">
+                Legg til
+              </Button>
+            </form>
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
