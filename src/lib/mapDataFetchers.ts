@@ -166,7 +166,7 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
       } else if (zone.zone_type === 'TMZ') {
         color = '#06b6d4'; label = 'TMZ (Transponder Mandatory Zone)'; dashArray = '8, 6'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
       } else if (zone.zone_type === 'ATZ') {
-        color = '#38bdf8'; label = 'Småflyplass — 5 km sone'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
+        color = '#f59e0b'; label = 'Småflyplass — 5 km sone'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
       } else if (zone.zone_type === 'CTR') {
         color = '#ec4899'; label = 'CTR (Control Zone)'; fillOpacity = 0.12; pane = 'rmzPane'; targetLayer = rmzTmzAtzLayer;
       } else if (zone.zone_type === 'TIZ') {
