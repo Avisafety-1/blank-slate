@@ -74,7 +74,7 @@ export function PersonnelFlightKpi({ personId }: Props) {
       const cutoff = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000)
         .toISOString()
         .slice(0, 10);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("flight_logs")
         .select("flight_date, flight_duration_minutes")
         .eq("profile_id", personId)
