@@ -179,6 +179,15 @@ export function PersonnelFlightKpi({ personId }: Props) {
                   />
                 </div>
               ))}
+              <div className="flex items-center justify-between border-t pt-3">
+                <div className="space-y-0.5 pr-2">
+                  <Label className="text-xs leading-tight">Påvirker status</Label>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Gul {"<"} 2t / Rød {"<"} 1t siste 90d
+                  </p>
+                </div>
+                <Switch checked={affectsStatus} onCheckedChange={handleToggleAffects} />
+              </div>
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setEditOpen(false)}>Avbryt</Button>
                 <Button size="sm" onClick={savePeriods}>Lagre</Button>
