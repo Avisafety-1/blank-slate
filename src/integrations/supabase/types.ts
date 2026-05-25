@@ -5197,6 +5197,7 @@ export type Database = {
           company_id: string
           created_at: string | null
           email: string | null
+          flight_time_affects_status: boolean
           flyvetimer: number | null
           full_name: string | null
           id: string
@@ -5227,6 +5228,7 @@ export type Database = {
           company_id: string
           created_at?: string | null
           email?: string | null
+          flight_time_affects_status?: boolean
           flyvetimer?: number | null
           full_name?: string | null
           id: string
@@ -5257,6 +5259,7 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           email?: string | null
+          flight_time_affects_status?: boolean
           flyvetimer?: number | null
           full_name?: string | null
           id?: string
