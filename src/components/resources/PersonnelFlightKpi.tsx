@@ -97,6 +97,35 @@ export function PersonnelFlightKpi({ personId }: Props) {
     };
   }, [personId, maxDays]);
 
+  // Load affects_status flag from profile
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from("profiles")
+        .select("flight_time_affects_status")
+        .eq("id", personId)
+        .maybeSingle();
+      if (!cancelled && !error && data) {
+        setAffectsStatus(Boolean(data.flight_time_affects_status));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [personId]);
+
+  const handleToggleAffects = async (value: boolean) => {
+    const prev = affectsStatus;
+    setAffectsStatus(value);
+    const { error } = await (supabase as any)
+      .from("profiles")
+      .update({ flight_time_affects_status: value })
+      .eq("id", personId);
+    if (error) {
+      setAffectsStatus(prev);
+      toast({ title: "Kunne ikke lagre", description: error.message, variant: "destructive" });
+    }
+  };
+
   const stats = useMemo(() => {
     return periods.map((days) => {
       const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
