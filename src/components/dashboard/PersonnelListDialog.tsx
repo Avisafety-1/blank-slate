@@ -27,11 +27,11 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
   const { isOnline } = usePresence();
   const { companyId } = useAuth();
 
-  // Calculate status for each person based on their competencies
+  // Use precomputed status (includes flight time when enabled), fallback to competency calc
   const personnelWithStatus = useMemo(() => {
     return personnel.map(person => ({
       ...person,
-      calculatedStatus: calculatePersonnelAggregatedStatus(
+      calculatedStatus: (person.status as Status) ?? calculatePersonnelAggregatedStatus(
         person.personnel_competencies || [],
         30
       )
