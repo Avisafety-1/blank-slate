@@ -64,6 +64,7 @@ export function PersonnelFlightKpi({ personId }: Props) {
   const [periods, setPeriods] = useState<[number, number, number]>(loadPeriods);
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState<[number, number, number]>(periods);
+  const [affectsStatus, setAffectsStatus] = useState(false);
   const [logs, setLogs] = useState<FlightLog[]>([]);
   const [loading, setLoading] = useState(true);
 
