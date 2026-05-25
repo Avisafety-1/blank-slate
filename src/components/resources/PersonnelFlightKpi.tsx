@@ -77,7 +77,7 @@ export function PersonnelFlightKpi({ personId }: Props) {
       const { data, error } = await (supabase as any)
         .from("flight_logs")
         .select("flight_date, flight_duration_minutes")
-        .eq("profile_id", personId)
+        .eq("user_id", personId)
         .gte("flight_date", cutoff);
       if (cancelled) return;
       if (error) {
