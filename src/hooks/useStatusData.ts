@@ -150,13 +150,41 @@ const fetchPersonnel = async (companyId: string, userId: string) => {
     throw error;
   }
 
-  return data.map(profile => ({
-    ...profile,
-    status: calculatePersonnelAggregatedStatus(
+  // Fetch flight time totals for personnel that have the toggle enabled
+  const personIds = data
+    .filter((p: any) => p.flight_time_affects_status)
+    .map((p: any) => p.id);
+  const flightTotals: Record<string, number> = {};
+  if (personIds.length > 0) {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const { data: logs } = await supabase
+      .from("flight_logs")
+      .select("user_id, flight_duration_minutes")
+      .in("user_id", personIds)
+      .gte("flight_date", cutoff);
+    for (const row of logs || []) {
+      if (!row.user_id) continue;
+      flightTotals[row.user_id] = (flightTotals[row.user_id] || 0) + (row.flight_duration_minutes || 0);
+    }
+  }
+
+  return data.map(profile => {
+    const competencyStatus = calculatePersonnelAggregatedStatus(
       profile.personnel_competencies || [],
       30
-    )
-  }));
+    );
+    let status: Status = competencyStatus;
+    if ((profile as any).flight_time_affects_status) {
+      const minutes = flightTotals[profile.id] || 0;
+      let flightStatus: Status = "Grønn";
+      if (minutes < 60) flightStatus = "Rød";
+      else if (minutes < 120) flightStatus = "Gul";
+      status = worstStatus(status, flightStatus);
+    }
+    return { ...profile, status };
+  });
 };
 
 export const useStatusData = () => {

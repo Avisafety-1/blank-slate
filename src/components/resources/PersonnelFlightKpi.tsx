@@ -5,6 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/hooks/use-toast";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 
 interface Props {
@@ -62,6 +64,7 @@ export function PersonnelFlightKpi({ personId }: Props) {
   const [periods, setPeriods] = useState<[number, number, number]>(loadPeriods);
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState<[number, number, number]>(periods);
+  const [affectsStatus, setAffectsStatus] = useState(false);
   const [logs, setLogs] = useState<FlightLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -93,6 +96,35 @@ export function PersonnelFlightKpi({ personId }: Props) {
       cancelled = true;
     };
   }, [personId, maxDays]);
+
+  // Load affects_status flag from profile
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from("profiles")
+        .select("flight_time_affects_status")
+        .eq("id", personId)
+        .maybeSingle();
+      if (!cancelled && !error && data) {
+        setAffectsStatus(Boolean(data.flight_time_affects_status));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [personId]);
+
+  const handleToggleAffects = async (value: boolean) => {
+    const prev = affectsStatus;
+    setAffectsStatus(value);
+    const { error } = await (supabase as any)
+      .from("profiles")
+      .update({ flight_time_affects_status: value })
+      .eq("id", personId);
+    if (error) {
+      setAffectsStatus(prev);
+      toast({ title: "Kunne ikke lagre", description: error.message, variant: "destructive" });
+    }
+  };
 
   const stats = useMemo(() => {
     return periods.map((days) => {
@@ -147,6 +179,15 @@ export function PersonnelFlightKpi({ personId }: Props) {
                   />
                 </div>
               ))}
+              <div className="flex items-center justify-between border-t pt-3">
+                <div className="space-y-0.5 pr-2">
+                  <Label className="text-xs leading-tight">Påvirker status</Label>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Gul {"<"} 2t / Rød {"<"} 1t siste 90d
+                  </p>
+                </div>
+                <Switch checked={affectsStatus} onCheckedChange={handleToggleAffects} />
+              </div>
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setEditOpen(false)}>Avbryt</Button>
                 <Button size="sm" onClick={savePeriods}>Lagre</Button>
