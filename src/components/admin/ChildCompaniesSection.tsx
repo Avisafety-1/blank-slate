@@ -633,8 +633,12 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     currency_requirement_enabled: boolean;
     currency_requirement_hours: number;
     currency_requirement_days: number;
+    currency_requirement_2_enabled: boolean;
+    currency_requirement_2_hours: number;
+    currency_requirement_2_days: number;
     propagate_currency_requirement: boolean;
   }>) => {
+
     if (!companyId) return;
     setSavingSettings(true);
     const { error } = await (supabase as any)
@@ -1372,72 +1376,108 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 />
               </div>
 
-              {/* Currency-krav (flytid) */}
+              {/* Currency-krav (flytid) — to uavhengige regler */}
               {(() => {
                 const locked = isChildDept && !!inherited?.propagate_currency_requirement;
-                const enabledValue = locked ? inherited!.currency_requirement_enabled : currencyEnabled;
-                const hoursValue = locked ? inherited!.currency_requirement_hours : currencyHours;
-                const daysValue = locked ? inherited!.currency_requirement_days : currencyDays;
+                const r1Enabled = locked ? inherited!.currency_requirement_enabled : currencyEnabled;
+                const r2Enabled = locked ? inherited!.currency_requirement_2_enabled : currency2Enabled;
+                const r1Hours = locked ? String(inherited!.currency_requirement_hours) : currencyHours;
+                const r1Days = locked ? String(inherited!.currency_requirement_days) : currencyDays;
+                const r2Hours = locked ? String(inherited!.currency_requirement_2_hours) : currency2Hours;
+                const r2Days = locked ? String(inherited!.currency_requirement_2_days) : currency2Days;
+
+                const parseOrNull = (s: string) => {
+                  if (s.trim() === "") return null;
+                  const n = Number(s);
+                  return Number.isFinite(n) && n > 0 ? n : null;
+                };
+
+                const renderRule = (
+                  idx: 1 | 2,
+                  ruleEnabled: boolean,
+                  hoursVal: string,
+                  daysVal: string,
+                ) => {
+                  const isR1 = idx === 1;
+                  const enabledKey = isR1 ? "currency_requirement_enabled" : "currency_requirement_2_enabled";
+                  const hoursKey = isR1 ? "currency_requirement_hours" : "currency_requirement_2_hours";
+                  const daysKey = isR1 ? "currency_requirement_days" : "currency_requirement_2_days";
+                  const setEnabled = isR1 ? setCurrencyEnabled : setCurrency2Enabled;
+                  const setHours = isR1 ? setCurrencyHours : setCurrency2Hours;
+                  const setDays = isR1 ? setCurrencyDays : setCurrency2Days;
+
+                  return (
+                    <div className="rounded-md border border-border/60 bg-card/40 p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-medium">Regel {idx}</div>
+                        <Switch
+                          checked={ruleEnabled}
+                          onCheckedChange={async (checked) => {
+                            setEnabled(checked);
+                            await saveCurrencyRequirement({ [enabledKey]: checked } as any);
+                          }}
+                          disabled={savingSettings || locked}
+                        />
+                      </div>
+                      {ruleEnabled && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs">Minimum flytimer</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={0.5}
+                              value={hoursVal}
+                              disabled={locked || savingSettings}
+                              onChange={(e) => setHours(e.target.value)}
+                              onBlur={() => {
+                                const n = parseOrNull(hoursVal);
+                                if (!locked && n !== null) saveCurrencyRequirement({ [hoursKey]: n } as any);
+                              }}
+                              className="h-8"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">I løpet av siste … dager</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={3650}
+                              value={daysVal}
+                              disabled={locked || savingSettings}
+                              onChange={(e) => setDays(e.target.value)}
+                              onBlur={() => {
+                                const n = parseOrNull(daysVal);
+                                if (!locked && n !== null) saveCurrencyRequirement({ [daysKey]: Math.floor(n) } as any);
+                              }}
+                              className="h-8"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+
                 return (
                   <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="currency-req" className="flex-1 cursor-pointer pr-4">
-                        <div className="font-medium text-sm flex items-center gap-1.5">
-                          Krav til flytid (currency)
-                          {locked && (
-                            <Badge variant="secondary" className="text-[10px] gap-1">
-                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          Sett minimum flytimer i en gitt periode. Påvirker grønn/gul/rød-status på personell (rød = krav ikke oppfylt, gul = nær kravet).
-                        </div>
-                      </Label>
-                      <Switch
-                        id="currency-req"
-                        checked={enabledValue}
-                        onCheckedChange={async (checked) => {
-                          setCurrencyEnabled(checked);
-                          await saveCurrencyRequirement({ currency_requirement_enabled: checked });
-                        }}
-                        disabled={savingSettings || locked}
-                      />
-                    </div>
-                    {enabledValue && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-xs">Minimum flytimer</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.5}
-                            value={hoursValue}
-                            disabled={locked || savingSettings}
-                            onChange={(e) => setCurrencyHours(Math.max(0, Number(e.target.value) || 0))}
-                            onBlur={() => {
-                              if (!locked) saveCurrencyRequirement({ currency_requirement_hours: currencyHours });
-                            }}
-                            className="h-8"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">I løpet av siste … dager</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={3650}
-                            value={daysValue}
-                            disabled={locked || savingSettings}
-                            onChange={(e) => setCurrencyDays(Math.max(1, Number(e.target.value) || 1))}
-                            onBlur={() => {
-                              if (!locked) saveCurrencyRequirement({ currency_requirement_days: currencyDays });
-                            }}
-                            className="h-8"
-                          />
-                        </div>
+                    <div>
+                      <div className="font-medium text-sm flex items-center gap-1.5">
+                        Krav til flytid (currency)
+                        {locked && (
+                          <Badge variant="secondary" className="text-[10px] gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                          </Badge>
+                        )}
                       </div>
-                    )}
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Sett minimum flytimer i én eller to perioder. Påvirker grønn/gul/rød-status på personell
+                        (rød = krav ikke oppfylt, gul = innenfor men nær terskelen).
+                      </div>
+                    </div>
+                    {renderRule(1, r1Enabled, r1Hours, r1Days)}
+                    {renderRule(2, r2Enabled, r2Hours, r2Days)}
+
                     {!isChildDept && (
                       <div className="flex items-center justify-between border-t border-border/60 pt-3">
                         <Label htmlFor="currency-propagate" className="flex-1 cursor-pointer pr-4">
