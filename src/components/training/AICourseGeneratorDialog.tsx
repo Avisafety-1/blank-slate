@@ -175,7 +175,7 @@ export const AICourseGeneratorDialog = ({
     setTopics([]);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-course-topics", {
-        body: { manual_id: mid },
+        body: { manual_id: mid, language: getCurrentLanguage() },
       });
       if (error) {
         const ctx: any = (error as any).context;
