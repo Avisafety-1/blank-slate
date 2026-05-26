@@ -781,18 +781,44 @@ export const MissionCard = ({
                 
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   {log.flight_track?.positions?.length > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
-                      onClick={() => {
-                        setAnalysisTrack(log.flight_track);
-                        setAnalysisOpen(true);
-                      }}
-                    >
-                      <BarChart3 className="h-3 w-3" />
-                      Analyser
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
+                        onClick={() => {
+                          setAnalysisTrack(log.flight_track);
+                          setAnalysisOpen(true);
+                        }}
+                      >
+                        <BarChart3 className="h-3 w-3" />
+                        Analyser
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
+                        onClick={() => {
+                          const base = `${mission.tittel || 'flight'}-${log.flight_date ? format(new Date(log.flight_date), 'yyyyMMdd-HHmm') : 'log'}`;
+                          downloadGpx(log.flight_track, base);
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                        GPX
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1 text-muted-foreground hover:text-primary"
+                        onClick={() => {
+                          const base = `${mission.tittel || 'flight'}-${log.flight_date ? format(new Date(log.flight_date), 'yyyyMMdd-HHmm') : 'log'}`;
+                          downloadKmz(log.flight_track, base);
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                        KMZ
+                      </Button>
+                    </>
                   )}
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
