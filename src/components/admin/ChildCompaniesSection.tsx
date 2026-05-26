@@ -419,7 +419,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, propagate_currency_requirement")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
@@ -485,6 +485,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             currency_requirement_enabled: parent.currency_requirement_enabled ?? false,
             currency_requirement_hours: Number(parent.currency_requirement_hours ?? 2),
             currency_requirement_days: Number(parent.currency_requirement_days ?? 90),
+            currency_requirement_2_enabled: parent.currency_requirement_2_enabled ?? false,
+            currency_requirement_2_hours: Number(parent.currency_requirement_2_hours ?? 1),
+            currency_requirement_2_days: Number(parent.currency_requirement_2_days ?? 30),
+
             safesky_callsign_propagate: parent.safesky_callsign_propagate ?? false,
             safesky_callsign_prefix: parent.safesky_callsign_prefix ?? null,
             safesky_callsign_variable: ((parent.safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter'),
