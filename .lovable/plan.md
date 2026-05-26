@@ -1,41 +1,69 @@
-# Robust språkbytte — fix race med AuthContext
+# Tydelig språkvelger som faktisk speiler DB
 
-## Problem
+## Diagnose
 
-Konsoll-loggen viser at `i18n.language === 'no'` på samme tidspunkt som AI-kallet kjører, selv om brukeren har togglet til EN. Resultat: edge-funksjonen får `language: "no"` og svarer på norsk.
-
-Rot­årsak: `AuthContext` re-hydrerer i18n fra `profiles.preferred_language` på *hver* profil-fetch (SIGNED_IN, TOKEN_REFRESHED, selskaps­bytte). Hvis en slik fetch lander rett etter en toggle — før DB-skrivingen har commitet, eller før profil-cachen er invalidert — leses gammel verdi `no` og overstyrer brukerens `en`-valg.
+- DB-skriving fungerer: `profiles.preferred_language` ble oppdatert til `'no'` kl 18:32 av innlogget bruker. RLS og `setLanguage()` virker som forventet.
+- Edge-funksjonen `ai-risk-assessment` mottar `language`-feltet fra klienten og bruker `getPrompts(language)`. AI-svar er på norsk fordi klienten faktisk sender `'no'`.
+- Rotårsak er UI: dagens toggle er kun et globus-ikon. Brukeren ser ikke hvilket språk som er aktivt og kan ikke vite at et klikk faktisk byttet retning. Ingen toast bekrefter heller resultatet. Resultatet er at man tror man bytter til engelsk, men ender opp på norsk.
 
 ## Endringer (kun frontend)
 
-### 1. `src/contexts/AuthContext.tsx` — hydrér KUN én gang per session
+### 1. `src/components/Header.tsx` — segmentert språkvelger
 
-- Legg til en `useRef<boolean>(false)` `i18nHydratedRef`.
-- I blokken som leser `preferred_language` (linje ~553-564): bare kall `i18n.changeLanguage(preferred)` hvis `i18nHydratedRef.current === false`. Sett flagget til `true` etter første hydrering.
-- Nullstill flagget i `onAuthStateChange` ved `SIGNED_OUT` (så ny innlogging hydrerer på nytt).
-- Resultat: påfølgende profil-refresher rører ikke i18n. Brukerens toggle vinner alltid mid-session.
+Erstatt dagens enkelt-knapp (mobil + desktop) med en segmentert kontroll som viser begge språk og merker det aktive:
 
-### 2. `src/lib/i18nHelpers.ts` — vent på DB-skriving + tydelig logging
+```
+[ NO | EN ]
+```
 
-- I `setLanguage`: behold rekkefølgen (changeLanguage først for umiddelbar UI-respons), men la DB-skrivingen være `await`-et og logg utfallet eksplisitt:
-  - Suksess: `console.info('[i18n] Persisted preferred_language=', lang)`
-  - Feil/ingen bruker: `console.warn(...)`
-- Ingen funksjonell endring for ikke-innloggede brukere.
+- Aktivt segment: `bg-primary text-primary-foreground`. Inaktivt: `text-muted-foreground hover:bg-muted/50`.
+- Klikk på inaktivt segment → kaller `setLanguage(target)`. Klikk på aktivt segment → ingen-op.
+- Hele kontrollen deaktiveres mens et språkbytte pågår (lokal `isSwitching`-state) for å hindre dobbeltklikk-race.
+- Mobil-variant beholder kompakt høyde (`h-7`), desktop-variant `h-8`. Bruker eksisterende `Button` + Tailwind-tokens — ingen ny komponent.
+- Fjerner `displayLang`-variabelen og `Globe`-importen blir kun beholdt hvis fortsatt brukt.
 
-### 3. `src/components/Header.tsx` — await toggle
+### 2. `src/components/Header.tsx` — toast-bekreftelse
 
-- Endre `toggleLanguage` til `async` og `await setLanguage(newLang)`. Dette sikrer at hvis noe (toast, navigasjon, AI-kall) skjer rett etter, så er DB-skrivingen ferdig.
+I `toggleLanguage` (omdøpt til `handleLanguageChange(target)`):
+- Etter `await setLanguage(target)`: `toast.success(t('header.languageChanged.' + target))`.
+- Hvis `setLanguage` returnerer at DB-skriving feilet (se punkt 3): `toast.warning(t('header.languageNotPersisted'))` i tillegg.
+- Hvis selve `changeLanguage` kaster: `toast.error(t('header.languageChangeFailed'))`.
+
+### 3. `src/lib/i18nHelpers.ts` — eksponer persisterings-status
+
+Endre `setLanguage` til å returnere `{ t: TFunction; persisted: boolean }`:
+
+```ts
+export async function setLanguage(lang: AppLanguage): Promise<{ t: TFunction; persisted: boolean }>
+```
+
+- `persisted = true` kun hvis bruker er innlogget og `update`-kallet ikke ga feil.
+- Eksisterende kallere som ignorerer retur-verdien påvirkes ikke (TypeScript-signaturen smalner, men ingen kode i prosjektet bruker `t`-feltet i dag).
+
+### 4. Oversettelser
+
+Legg til i `src/i18n/locales/no.json` og `en.json`:
+
+```jsonc
+"header": {
+  "languageChanged": {
+    "no": "Språk endret til Norsk",   // EN: "Language set to Norwegian"
+    "en": "Språk endret til Engelsk"  // EN: "Language set to English"
+  },
+  "languageNotPersisted": "Språket ble byttet, men ikke lagret på profilen.",
+  "languageChangeFailed": "Kunne ikke bytte språk."
+}
+```
 
 ## Verifisering
 
-1. Logg inn, observer i konsoll: `[i18n] Active language on init: no` + (hvis DB har `no`) `[i18n] Active language changed to: no` fra AuthContext-hydrering.
-2. Klikk toggle → forventet:
-   - `[i18n] Active language changed to: en`
-   - `[i18n] Persisted preferred_language= en`
-3. Trigg en token-refresh (vent, eller bytt fane) → AuthContext skal IKKE lenger logge `Active language changed to: ...` (hydrering hoppes over).
-4. Kjør risk assessment → edge-loggen skal vise `Received language from client: "en"` og svaret skal være på engelsk.
+1. Last inn appen — segmentet skal vise korrekt aktivt språk basert på DB-hydrert tilstand.
+2. Klikk det inaktive segmentet → toast bekrefter; konsoll: `[i18n] Persisted preferred_language= en`; nytt DB-rad-update synlig.
+3. Kjør risikovurdering → svar på valgt språk. Edge-logg viser `[ai-risk-assessment] Received language from client: "en"`.
+4. Logg ut og inn → segmentet beholder valgt språk (hydrert fra DB).
 
-## Bevaring av eksisterende oppførsel
+## Hva planen IKKE rører
 
-- Eksisterende brukere uten toggle-handling: AuthContext hydrerer fortsatt fra DB ved første innlogging (default `no`) → ingen synlig endring.
-- Ingen migrasjon, ingen edge-function-endring, ingen oversettelses­endring.
+- Ingen DB-migrasjon, ingen RLS, ingen edge-function-endring.
+- AuthContext-hydrering og `i18nHydratedRef`-logikken er allerede korrekt og endres ikke.
+- `setLanguage`-DB-skrivingen er allerede `await`-et; ingen endring i selve persisterings-flyten utover å rapportere resultatet tilbake.
