@@ -59,7 +59,8 @@
     "noRole": "Ingen rolle",
     "noResults": "Ingen treff for",
     "processing": "Behandler...",
-    "other": "Annet"
+    "other": "Annet",
+    "missionFallback": "Oppdrag"
   },
   "auth": {
     "signIn": "Logg inn",
