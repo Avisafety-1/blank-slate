@@ -134,36 +134,43 @@ const fetchEquipment = async () => {
   return equipmentWithMissions;
 };
 
-// Resolves currency requirement for a given company, honoring parent propagation.
-const resolveCurrencyRequirement = async (companyId: string): Promise<{
-  enabled: boolean;
-  hours: number;
-  days: number;
+interface CurrencyRule { enabled: boolean; hours: number; days: number }
+
+// Resolves currency requirements (rule 1 + rule 2) for a given company, honoring parent propagation.
+const resolveCurrencyRequirements = async (companyId: string): Promise<{
+  rules: CurrencyRule[];
 } | null> => {
   const { data: own } = await (supabase as any)
     .from("companies")
-    .select("parent_company_id, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days")
+    .select("parent_company_id, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days")
     .eq("id", companyId)
     .maybeSingle();
   if (!own) return null;
 
-  let enabled = !!own.currency_requirement_enabled;
-  let hours = Number(own.currency_requirement_hours ?? 2);
-  let days = Number(own.currency_requirement_days ?? 90);
+  let source: any = own;
 
   if (own.parent_company_id) {
     const { data: parent } = await (supabase as any)
       .from("companies")
-      .select("currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, propagate_currency_requirement")
+      .select("currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement")
       .eq("id", own.parent_company_id)
       .maybeSingle();
-    if (parent?.propagate_currency_requirement) {
-      enabled = !!parent.currency_requirement_enabled;
-      hours = Number(parent.currency_requirement_hours ?? hours);
-      days = Number(parent.currency_requirement_days ?? days);
-    }
+    if (parent?.propagate_currency_requirement) source = parent;
   }
-  return { enabled, hours, days };
+
+  const rules: CurrencyRule[] = [
+    {
+      enabled: !!source.currency_requirement_enabled,
+      hours: Number(source.currency_requirement_hours ?? 0),
+      days: Number(source.currency_requirement_days ?? 0),
+    },
+    {
+      enabled: !!source.currency_requirement_2_enabled,
+      hours: Number(source.currency_requirement_2_hours ?? 0),
+      days: Number(source.currency_requirement_2_days ?? 0),
+    },
+  ];
+  return { rules };
 };
 
 const fetchPersonnel = async (companyId: string, userId: string) => {
@@ -182,28 +189,34 @@ const fetchPersonnel = async (companyId: string, userId: string) => {
     throw error;
   }
 
-  // Resolve currency requirement (with parent propagation) once
-  const currency = await resolveCurrencyRequirement(companyId);
-  const requiredMinutes = currency && currency.enabled ? currency.hours * 60 : 0;
-  const warnMinutes = requiredMinutes * 0.8;
+  const currency = await resolveCurrencyRequirements(companyId);
+  const activeRules = (currency?.rules || []).filter(
+    (r) => r.enabled && r.hours > 0 && r.days > 0
+  );
 
-  // Fetch flight time totals when currency requirement is active
-  const flightTotals: Record<string, number> = {};
-  if (currency?.enabled && requiredMinutes > 0 && data.length > 0) {
-    const cutoff = new Date(Date.now() - currency.days * 24 * 60 * 60 * 1000)
+  // Fetch flight logs covering the widest window across all active rules.
+  const flightLogs: Record<string, { date: number; minutes: number }[]> = {};
+  if (activeRules.length > 0 && data.length > 0) {
+    const maxDays = Math.max(...activeRules.map((r) => r.days));
+    const cutoff = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
     const personIds = data.map((p: any) => p.id);
     const { data: logs } = await supabase
       .from("flight_logs")
-      .select("user_id, flight_duration_minutes")
+      .select("user_id, flight_date, flight_duration_minutes")
       .in("user_id", personIds)
       .gte("flight_date", cutoff);
     for (const row of logs || []) {
       if (!row.user_id) continue;
-      flightTotals[row.user_id] = (flightTotals[row.user_id] || 0) + (row.flight_duration_minutes || 0);
+      (flightLogs[row.user_id] ||= []).push({
+        date: new Date(row.flight_date).getTime(),
+        minutes: row.flight_duration_minutes || 0,
+      });
     }
   }
+
+  const now = Date.now();
 
   return data.map(profile => {
     const competencyStatus = calculatePersonnelAggregatedStatus(
@@ -211,16 +224,25 @@ const fetchPersonnel = async (companyId: string, userId: string) => {
       30
     );
     let status: Status = competencyStatus;
-    if (currency?.enabled && requiredMinutes > 0) {
-      const minutes = flightTotals[profile.id] || 0;
-      let flightStatus: Status = "Grønn";
-      if (minutes < warnMinutes) flightStatus = "Rød";
-      else if (minutes < requiredMinutes) flightStatus = "Gul";
+    for (const rule of activeRules) {
+      const requiredMinutes = rule.hours * 60;
+      const cutoff = now - rule.days * 24 * 60 * 60 * 1000;
+      const minutes = (flightLogs[profile.id] || [])
+        .filter((l) => l.date >= cutoff)
+        .reduce((sum, l) => sum + l.minutes, 0);
+      // Red: requirement breached (below required hours)
+      // Yellow: meets requirement but close to falling below (< 120 % of required)
+      // Green: comfortably above requirement
+      let flightStatus: Status;
+      if (minutes < requiredMinutes) flightStatus = "Rød";
+      else if (minutes < requiredMinutes * 1.2) flightStatus = "Gul";
+      else flightStatus = "Grønn";
       status = worstStatus(status, flightStatus);
     }
     return { ...profile, status };
   });
 };
+
 
 export const useStatusData = () => {
   const { user, companyId } = useAuth();

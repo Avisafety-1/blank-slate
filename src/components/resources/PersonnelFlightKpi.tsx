@@ -63,17 +63,31 @@ export function PersonnelFlightKpi({ personId }: Props) {
   const company = useCompanySettings();
   const [userPeriods, setUserPeriods] = useState<[number, number, number]>(loadPeriods);
   const [editOpen, setEditOpen] = useState(false);
-  const [draft, setDraft] = useState<[number, number, number]>(userPeriods);
+  const [draft, setDraft] = useState<string[]>(userPeriods.map(String));
   const [logs, setLogs] = useState<FlightLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // When currency-requirement is active, make sure the required period is the first KPI.
+  // Active currency rules (rule 1 & 2)
+  const activeRules = useMemo(() => {
+    const rules: { hours: number; days: number }[] = [];
+    if (company.currency_requirement_enabled && company.currency_requirement_hours > 0 && company.currency_requirement_days > 0) {
+      rules.push({ hours: company.currency_requirement_hours, days: company.currency_requirement_days });
+    }
+    if (company.currency_requirement_2_enabled && company.currency_requirement_2_hours > 0 && company.currency_requirement_2_days > 0) {
+      rules.push({ hours: company.currency_requirement_2_hours, days: company.currency_requirement_2_days });
+    }
+    return rules;
+  }, [company]);
+
+  // Show required periods first so the pilot card always surfaces them.
   const periods = useMemo<[number, number, number]>(() => {
-    if (!company.currency_requirement_enabled) return userPeriods;
-    const reqDays = company.currency_requirement_days;
-    const others = userPeriods.filter((d) => d !== reqDays);
-    return [reqDays, others[0] ?? 90, others[1] ?? 180];
-  }, [company.currency_requirement_enabled, company.currency_requirement_days, userPeriods]);
+    if (activeRules.length === 0) return userPeriods;
+    const required = Array.from(new Set(activeRules.map((r) => r.days)));
+    const rest = userPeriods.filter((d) => !required.includes(d));
+    const combined = [...required, ...rest];
+    while (combined.length < 3) combined.push(rest.shift() ?? 180);
+    return [combined[0], combined[1], combined[2]] as [number, number, number];
+  }, [activeRules, userPeriods]);
 
   const maxDays = Math.max(...periods);
 
@@ -114,23 +128,35 @@ export function PersonnelFlightKpi({ personId }: Props) {
   }, [logs, periods]);
 
   const savePeriods = () => {
-    setUserPeriods(draft);
+    const parsed = draft.map((s) => {
+      const n = Number(s);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+    });
+    const next: [number, number, number] = [
+      parsed[0] ?? userPeriods[0],
+      parsed[1] ?? userPeriods[1],
+      parsed[2] ?? userPeriods[2],
+    ];
+    setUserPeriods(next);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {}
     setEditOpen(false);
   };
 
-  const requiredMinutes = company.currency_requirement_enabled
-    ? company.currency_requirement_hours * 60
-    : 0;
-
-  const currencyStatusColor = (minutes: number): string => {
-    if (!company.currency_requirement_enabled) return "";
-    if (minutes >= requiredMinutes) return "text-status-green";
-    if (minutes >= requiredMinutes * 0.8) return "text-status-yellow";
-    return "text-status-red";
+  // Per-period status colour based on the matching active rule, if any.
+  const statusColorForDays = (days: number, minutes: number): string => {
+    const rule = activeRules.find((r) => r.days === days);
+    if (!rule) return "";
+    const required = rule.hours * 60;
+    if (minutes < required) return "text-status-red";
+    if (minutes < required * 1.2) return "text-status-yellow";
+    return "text-status-green";
   };
+
+  const requirementLabel = activeRules
+    .map((r) => `${r.hours}t/${r.days}d`)
+    .join(" · ");
 
   return (
     <div className="border rounded-lg p-3 bg-card space-y-2">
@@ -138,13 +164,13 @@ export function PersonnelFlightKpi({ personId }: Props) {
         <h3 className="text-sm font-semibold flex items-center gap-1.5 text-muted-foreground">
           <Plane className="h-3.5 w-3.5" />
           Flytid
-          {company.currency_requirement_enabled && (
+          {activeRules.length > 0 && (
             <span className="text-[10px] font-normal text-muted-foreground/80">
-              · Krav {company.currency_requirement_hours}t / {company.currency_requirement_days}d
+              · Krav {requirementLabel}
             </span>
           )}
         </h3>
-        <Popover open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) setDraft(userPeriods); }}>
+        <Popover open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) setDraft(userPeriods.map(String)); }}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7">
               <Pencil className="h-3.5 w-3.5" />
@@ -162,10 +188,9 @@ export function PersonnelFlightKpi({ personId }: Props) {
                     max={3650}
                     value={value}
                     onChange={(e) => {
-                      const v = Math.max(1, Number(e.target.value) || 1);
                       setDraft((prev) => {
-                        const next = [...prev] as [number, number, number];
-                        next[i] = v;
+                        const next = [...prev];
+                        next[i] = e.target.value;
                         return next;
                       });
                     }}
@@ -173,10 +198,9 @@ export function PersonnelFlightKpi({ personId }: Props) {
                   />
                 </div>
               ))}
-              {company.currency_requirement_enabled && (
+              {activeRules.length > 0 && (
                 <p className="text-[10px] text-muted-foreground leading-tight">
-                  Selskapet krever {company.currency_requirement_hours}t flytid siste{" "}
-                  {company.currency_requirement_days} dager. Den perioden vises alltid først.
+                  Selskapet krever {requirementLabel}. Disse periodene vises alltid først.
                 </p>
               )}
               <div className="flex justify-end gap-2">
@@ -190,16 +214,13 @@ export function PersonnelFlightKpi({ personId }: Props) {
 
       <div className="grid grid-cols-3 gap-2">
         {stats.map((s, i) => {
-          const isRequirementCard = company.currency_requirement_enabled && s.days === company.currency_requirement_days;
+          const colorClass = statusColorForDays(s.days, s.total);
           return (
             <div key={i} className="rounded-md border border-border/60 bg-muted/20 p-2 min-w-0">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 Siste {s.days}d
               </p>
-              <p className={cn(
-                "text-base sm:text-lg font-bold leading-tight",
-                isRequirementCard && currencyStatusColor(s.total)
-              )}>
+              <p className={cn("text-base sm:text-lg font-bold leading-tight", colorClass)}>
                 {loading ? "…" : formatHours(s.total)}
               </p>
               <div className="h-10 mt-1">
