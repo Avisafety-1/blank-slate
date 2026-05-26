@@ -25,6 +25,7 @@ import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
 import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculateEquipmentMaintenanceStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { useStatusData } from "@/hooks/useStatusData";
 import { Status } from "@/types";
 import { usePresence } from "@/hooks/usePresence";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
