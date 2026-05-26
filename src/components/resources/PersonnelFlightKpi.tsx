@@ -170,7 +170,7 @@ export function PersonnelFlightKpi({ personId }: Props) {
             </span>
           )}
         </h3>
-        <Popover open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) setDraft(userPeriods.map(String)); }}>
+        <Popover open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) setDraft(periods.map(String)); }}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7">
               <Pencil className="h-3.5 w-3.5" />
@@ -179,25 +179,32 @@ export function PersonnelFlightKpi({ personId }: Props) {
           <PopoverContent className="w-64" align="end">
             <div className="space-y-3">
               <p className="text-xs font-medium">Tilpass perioder (dager)</p>
-              {draft.map((value, i) => (
-                <div key={i}>
-                  <Label className="text-xs">Periode {i + 1}</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={3650}
-                    value={value}
-                    onChange={(e) => {
-                      setDraft((prev) => {
-                        const next = [...prev];
-                        next[i] = e.target.value;
-                        return next;
-                      });
-                    }}
-                    className="h-8"
-                  />
-                </div>
-              ))}
+              {draft.map((value, i) => {
+                const locked = i < activeRules.length;
+                return (
+                  <div key={i}>
+                    <Label className="text-xs">
+                      Periode {i + 1}
+                      {locked && <span className="ml-1 text-muted-foreground">(låst av selskap)</span>}
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      value={value}
+                      disabled={locked}
+                      onChange={(e) => {
+                        setDraft((prev) => {
+                          const next = [...prev];
+                          next[i] = e.target.value;
+                          return next;
+                        });
+                      }}
+                      className="h-8"
+                    />
+                  </div>
+                );
+              })}
               {activeRules.length > 0 && (
                 <p className="text-[10px] text-muted-foreground leading-tight">
                   Selskapet krever {requirementLabel}. Disse periodene vises alltid først.
