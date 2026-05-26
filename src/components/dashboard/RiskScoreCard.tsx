@@ -232,7 +232,7 @@ export const RiskScoreCard = ({
                     {getGoDecisionBadge(category.go_decision)}
                   </div>
                   <span className="text-xs sm:text-sm font-medium flex-shrink-0">
-                    {typeof category.score === 'number' ? `${category.score.toFixed(1)}/10` : 'Ikke vurdert'}
+                    {typeof category.score === 'number' ? `${category.score.toFixed(1)}/10` : t('riskAssessment.notRated', 'Ikke vurdert')}
                   </span>
                 </div>
                 {typeof category.score === 'number' && (

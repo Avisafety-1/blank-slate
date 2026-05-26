@@ -44,20 +44,20 @@ export const OperationClassificationSection = ({ data }: OperationClassification
         <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
           <div className="flex items-center gap-2 flex-wrap">
             <Plane className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <span className="font-medium text-sm">Operasjonskategorisering (Steg 0)</span>
+            <span className="font-medium text-sm">{t('riskAssessment.opClassification.title', 'Operasjonskategorisering (Steg 0)')}</span>
             {data.category && (
               <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", categoryColor(data.category))}>
                 {data.category}{data.subcategory ? ` — ${data.subcategory}` : ''}
               </span>
             )}
             {data.requires_sora && data.sora_buffers_calculated && (
-              <Badge variant="default" className="text-[10px] bg-green-600">SORA utført</Badge>
+              <Badge variant="default" className="text-[10px] bg-green-600">{t('riskAssessment.opClassification.soraDone', 'SORA utført')}</Badge>
             )}
             {data.requires_sora && !data.sora_buffers_calculated && (
-              <Badge variant="destructive" className="text-[10px]">SORA påkrevd</Badge>
+              <Badge variant="destructive" className="text-[10px]">{t('riskAssessment.opClassification.soraRequired', 'SORA påkrevd')}</Badge>
             )}
             {data.requires_sora === false && (
-              <Badge variant="default" className="text-[10px] bg-green-600">SORA ikke påkrevd</Badge>
+              <Badge variant="default" className="text-[10px] bg-green-600">{t('riskAssessment.opClassification.soraNotRequired', 'SORA ikke påkrevd')}</Badge>
             )}
           </div>
           {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -67,7 +67,7 @@ export const OperationClassificationSection = ({ data }: OperationClassification
           {/* Reasoning */}
           {data.reasoning && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Begrunnelse</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.opClassification.reasoning', 'Begrunnelse')}</p>
               <p className="text-sm">{data.reasoning}</p>
             </div>
           )}
@@ -75,7 +75,7 @@ export const OperationClassificationSection = ({ data }: OperationClassification
           {/* STS applicable */}
           {data.sts_applicable && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Standard Scenario</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.opClassification.standardScenario', 'Standard Scenario')}</p>
               <p className="text-sm">{data.sts_applicable}</p>
             </div>
           )}
@@ -83,7 +83,7 @@ export const OperationClassificationSection = ({ data }: OperationClassification
           {/* Open category rules */}
           {data.open_category_rules && data.open_category_rules.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Regler for kategorien</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.opClassification.categoryRules', 'Regler for kategorien')}</p>
               {data.open_category_rules.map((rule, i) => (
                 <p key={i} className="text-xs text-muted-foreground flex items-start gap-1">
                   <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-500" />
@@ -96,7 +96,7 @@ export const OperationClassificationSection = ({ data }: OperationClassification
           {/* ALOS */}
           {data.alos_max_m && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">ALOS (Attitude Line of Sight)</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.opClassification.alos', 'ALOS (Attitude Line of Sight)')}</p>
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs">{data.alos_max_m} m</Badge>
                 {data.alos_calculation && (
@@ -113,10 +113,10 @@ export const OperationClassificationSection = ({ data }: OperationClassification
                 <MapPin className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                    SORA-buffersoner ikke beregnet
+                    {t('riskAssessment.opClassification.buffersNotCalculated', 'SORA-buffersoner ikke beregnet')}
                   </p>
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                    {data.sora_buffers_recommendation || 'Anbefaler å utføre SORA-bufferberegning på kartet før flyging.'}
+                    {data.sora_buffers_recommendation || t('riskAssessment.opClassification.buffersRecommendation', 'Anbefaler å utføre SORA-bufferberegning på kartet før flyging.')}
                   </p>
                 </div>
               </div>
@@ -126,7 +126,7 @@ export const OperationClassificationSection = ({ data }: OperationClassification
           {data.requires_sora && data.sora_buffers_calculated === true && (
             <p className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
               <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-              <span>SORA-buffersoner er beregnet for dette oppdraget</span>
+              <span>{t('riskAssessment.opClassification.buffersCalculated', 'SORA-buffersoner er beregnet for dette oppdraget')}</span>
             </p>
           )}
 
@@ -136,7 +136,7 @@ export const OperationClassificationSection = ({ data }: OperationClassification
               <div className="flex items-start gap-2">
                 <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-blue-700 dark:text-blue-300">
-                  Operasjonen kan utføres uten SORA, men selskapet krever SORA som internkrav.
+                  {t('riskAssessment.opClassification.companyRequiresSora', 'Operasjonen kan utføres uten SORA, men selskapet krever SORA som internkrav.')}
                 </p>
               </div>
             </div>

@@ -64,7 +64,7 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
         <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
           <div className="flex items-center gap-2 flex-wrap">
             <Radar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <span className="font-medium text-sm">Luftrisikoanalyse (ARC/TMPR)</span>
+            <span className="font-medium text-sm">{t('riskAssessment.air.title', 'Luftrisikoanalyse (ARC/TMPR)')}</span>
             {data.residual_arc && (
               <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", arcColor(data.residual_arc))}>
                 {data.residual_arc}
@@ -86,7 +86,7 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
           {/* AEC */}
           {data.aec && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Air Encounter Category</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.air.encounterCategory', 'Air Encounter Category')}</p>
               <p className="text-sm font-medium">{data.aec}</p>
               {data.aec_reasoning && (
                 <p className="text-xs text-muted-foreground">{data.aec_reasoning}</p>
@@ -97,7 +97,7 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
           {/* ARC progression */}
           {data.initial_arc && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Air Risk Class (ARC)</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.air.arc', 'Air Risk Class (ARC)')}</p>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", arcColor(data.initial_arc))}>
                   iARC: {data.initial_arc}
@@ -106,12 +106,12 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
                   <>
                     <span className="text-muted-foreground text-xs">→</span>
                     <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", arcColor(data.residual_arc))}>
-                      Residual: {data.residual_arc}
+                      {t('riskAssessment.air.residual', 'Residual')}: {data.residual_arc}
                     </span>
                   </>
                 )}
                 {!arcChanged && (
-                  <span className="text-xs text-muted-foreground">(ingen reduksjon)</span>
+                  <span className="text-xs text-muted-foreground">{t('riskAssessment.air.noReduction', '(ingen reduksjon)')}</span>
                 )}
               </div>
               {data.arc_reduction_reasoning && arcChanged && (
@@ -123,7 +123,7 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
           {/* Strategic mitigations */}
           {(data.strategic_mitigations_applied?.length || 0) > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Strategiske mitigeringer</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.air.strategicMitigations', 'Strategiske mitigeringer')}</p>
               {data.strategic_mitigations_applied!.map((m, i) => (
                 <p key={i} className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
                   <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
@@ -143,7 +143,7 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
           {data.tmpr_level && data.tmpr_requirements && !data.vlos_exemption && (
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                TMPR-krav ({data.tmpr_level})
+                {t('riskAssessment.air.tmprRequirements', 'TMPR-krav')} ({data.tmpr_level})
               </p>
               <div className="grid gap-1 text-xs">
                 {Object.entries(data.tmpr_requirements).map(([key, val]) => {
@@ -169,14 +169,14 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
           {data.vlos_exemption && (
             <p className="text-xs text-muted-foreground italic flex items-start gap-1">
               <Eye className="w-3 h-3 mt-0.5 flex-shrink-0" />
-              VLOS-operasjon — visuell kontakt med dronen er akseptabel taktisk mitigering for alle ARC-klasser.
+              {t('riskAssessment.air.vlosNote', 'VLOS-operasjon — visuell kontakt med dronen er akseptabel taktisk mitigering for alle ARC-klasser.')}
             </p>
           )}
 
           {/* Detection recommendations */}
           {(data.detection_recommendations?.length || 0) > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Anbefalte deteksjonssystemer</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.air.detectionSystems', 'Anbefalte deteksjonssystemer')}</p>
               <ul className="text-xs space-y-0.5">
                 {data.detection_recommendations!.map((r, i) => (
                   <li key={i} className="flex items-start gap-1">
@@ -191,10 +191,10 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
           {/* Traffic types */}
           {(data.traffic_types_to_consider?.length || 0) > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Trafikktyper å vurdere</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.air.trafficTypes', 'Trafikktyper å vurdere')}</p>
               <div className="flex flex-wrap gap-1">
-                {data.traffic_types_to_consider!.map((t, i) => (
-                  <Badge key={i} variant="outline" className="text-[10px]">{t}</Badge>
+                {data.traffic_types_to_consider!.map((tt, i) => (
+                  <Badge key={i} variant="outline" className="text-[10px]">{tt}</Badge>
                 ))}
               </div>
             </div>
