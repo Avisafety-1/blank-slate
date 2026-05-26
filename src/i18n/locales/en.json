@@ -185,7 +185,13 @@
     "superAdmin": "Super Administrator",
     "switchedTo": "Switched to {{company}}",
     "couldNotSwitch": "Could not switch company",
-    "loggedOut": "Logged out"
+    "loggedOut": "Logged out",
+    "languageChanged": {
+      "no": "Language set to Norwegian",
+      "en": "Language set to English"
+    },
+    "languageNotPersisted": "Language switched, but not saved to your profile.",
+    "languageChangeFailed": "Could not switch language."
   },
   "dashboard": {
     "search": {
