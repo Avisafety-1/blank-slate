@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { getPrompts } from "./prompts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,16 +11,16 @@ const ALLOWED_VOICES = new Set([
   "coral", "sage", "onyx", "nova", "alloy", "ash", "ballad", "echo", "fable", "shimmer", "verse", "marin", "cedar",
 ]);
 
-const TTS_INSTRUCTIONS =
-  "Snakk i en rolig, profesjonell og lærerik tone på norsk. Tydelig artikulasjon, moderat tempo, vennlig og inkluderende — som en erfaren instruktør som forklarer for en kollega.";
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Default prompts (norsk) – overstyres når vi har lest body.
+  let prompts = getPrompts(undefined);
 
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missingAuth }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
     if (!OPENAI_API_KEY) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY ikke konfigurert" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.openAiNotConfigured }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -42,7 +43,7 @@ Deno.serve(async (req) => {
     });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: "Invalid auth" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.invalidAuth }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -50,25 +51,28 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     const body = await req.json();
-    const { text, course_id, slide_key, voice: requestedVoice, speed: requestedSpeed } = body as {
+    const { text, course_id, slide_key, voice: requestedVoice, speed: requestedSpeed, language } = body as {
       text: string;
       course_id: string;
       slide_key?: string;
       voice?: string;
       speed?: number;
+      language?: string;
     };
+    prompts = getPrompts(language);
+
     const speed = typeof requestedSpeed === "number" && requestedSpeed >= 0.25 && requestedSpeed <= 4
       ? requestedSpeed
       : 1.0;
 
     if (!text || !text.trim()) {
-      return new Response(JSON.stringify({ error: "Tekst mangler" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.textMissing }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (!course_id) {
-      return new Response(JSON.stringify({ error: "course_id mangler" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.courseIdMissing }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -78,14 +82,13 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Authorize: user must be able to see the course's company
     const { data: courseRow, error: courseErr } = await admin
       .from("training_courses")
       .select("id, company_id")
       .eq("id", course_id)
       .maybeSingle();
     if (courseErr || !courseRow) {
-      return new Response(JSON.stringify({ error: "Kurs ikke funnet" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.courseNotFound }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -103,13 +106,12 @@ Deno.serve(async (req) => {
       authorized = prof?.company_id === courseRow.company_id;
     }
     if (!authorized) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.forbidden }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Call OpenAI TTS
     const ttsResp = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: {
@@ -120,7 +122,7 @@ Deno.serve(async (req) => {
         model: "gpt-4o-mini-tts",
         voice,
         input: text.slice(0, 4000),
-        instructions: TTS_INSTRUCTIONS,
+        instructions: prompts.ttsInstructions,
         response_format: "mp3",
         speed,
       }),
@@ -130,7 +132,7 @@ Deno.serve(async (req) => {
       const errText = await ttsResp.text();
       console.error("[tts] openai failed", ttsResp.status, errText);
       return new Response(
-        JSON.stringify({ error: `OpenAI TTS feilet (${ttsResp.status})` }),
+        JSON.stringify({ error: prompts.errors.ttsFailed(ttsResp.status) }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -146,7 +148,7 @@ Deno.serve(async (req) => {
       .upload(path, audioBytes, { contentType: "audio/mpeg", upsert: true });
     if (upErr) {
       console.error("[tts] upload error", upErr);
-      return new Response(JSON.stringify({ error: `Opplasting feilet: ${upErr.message}` }), {
+      return new Response(JSON.stringify({ error: prompts.errors.uploadFailed(upErr.message) }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -162,7 +164,7 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error("generate-narration error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : prompts.errors.unknown }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
