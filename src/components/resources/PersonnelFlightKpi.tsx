@@ -5,9 +5,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { toast } from "@/hooks/use-toast";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { cn } from "@/lib/utils";
 
 interface Props {
   personId: string;
@@ -42,7 +42,6 @@ function formatHours(minutes: number): string {
 }
 
 function bucketize(logs: FlightLog[], days: number): { label: string; minutes: number }[] {
-  // ~12 buckets across the period
   const buckets = Math.min(12, Math.max(6, Math.ceil(days / 7)));
   const bucketDays = days / buckets;
   const now = Date.now();
@@ -61,12 +60,20 @@ function bucketize(logs: FlightLog[], days: number): { label: string; minutes: n
 }
 
 export function PersonnelFlightKpi({ personId }: Props) {
-  const [periods, setPeriods] = useState<[number, number, number]>(loadPeriods);
+  const company = useCompanySettings();
+  const [userPeriods, setUserPeriods] = useState<[number, number, number]>(loadPeriods);
   const [editOpen, setEditOpen] = useState(false);
-  const [draft, setDraft] = useState<[number, number, number]>(periods);
-  const [affectsStatus, setAffectsStatus] = useState(false);
+  const [draft, setDraft] = useState<[number, number, number]>(userPeriods);
   const [logs, setLogs] = useState<FlightLog[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // When currency-requirement is active, make sure the required period is the first KPI.
+  const periods = useMemo<[number, number, number]>(() => {
+    if (!company.currency_requirement_enabled) return userPeriods;
+    const reqDays = company.currency_requirement_days;
+    const others = userPeriods.filter((d) => d !== reqDays);
+    return [reqDays, others[0] ?? 90, others[1] ?? 180];
+  }, [company.currency_requirement_enabled, company.currency_requirement_days, userPeriods]);
 
   const maxDays = Math.max(...periods);
 
@@ -97,35 +104,6 @@ export function PersonnelFlightKpi({ personId }: Props) {
     };
   }, [personId, maxDays]);
 
-  // Load affects_status flag from profile
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await (supabase as any)
-        .from("profiles")
-        .select("flight_time_affects_status")
-        .eq("id", personId)
-        .maybeSingle();
-      if (!cancelled && !error && data) {
-        setAffectsStatus(Boolean(data.flight_time_affects_status));
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [personId]);
-
-  const handleToggleAffects = async (value: boolean) => {
-    const prev = affectsStatus;
-    setAffectsStatus(value);
-    const { error } = await (supabase as any)
-      .from("profiles")
-      .update({ flight_time_affects_status: value })
-      .eq("id", personId);
-    if (error) {
-      setAffectsStatus(prev);
-      toast({ title: "Kunne ikke lagre", description: error.message, variant: "destructive" });
-    }
-  };
-
   const stats = useMemo(() => {
     return periods.map((days) => {
       const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -136,11 +114,22 @@ export function PersonnelFlightKpi({ personId }: Props) {
   }, [logs, periods]);
 
   const savePeriods = () => {
-    setPeriods(draft);
+    setUserPeriods(draft);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
     } catch {}
     setEditOpen(false);
+  };
+
+  const requiredMinutes = company.currency_requirement_enabled
+    ? company.currency_requirement_hours * 60
+    : 0;
+
+  const currencyStatusColor = (minutes: number): string => {
+    if (!company.currency_requirement_enabled) return "";
+    if (minutes >= requiredMinutes) return "text-status-green";
+    if (minutes >= requiredMinutes * 0.8) return "text-status-yellow";
+    return "text-status-red";
   };
 
   return (
@@ -149,8 +138,13 @@ export function PersonnelFlightKpi({ personId }: Props) {
         <h3 className="text-sm font-semibold flex items-center gap-1.5 text-muted-foreground">
           <Plane className="h-3.5 w-3.5" />
           Flytid
+          {company.currency_requirement_enabled && (
+            <span className="text-[10px] font-normal text-muted-foreground/80">
+              · Krav {company.currency_requirement_hours}t / {company.currency_requirement_days}d
+            </span>
+          )}
         </h3>
-        <Popover open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) setDraft(periods); }}>
+        <Popover open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (o) setDraft(userPeriods); }}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7">
               <Pencil className="h-3.5 w-3.5" />
@@ -179,15 +173,12 @@ export function PersonnelFlightKpi({ personId }: Props) {
                   />
                 </div>
               ))}
-              <div className="flex items-center justify-between border-t pt-3">
-                <div className="space-y-0.5 pr-2">
-                  <Label className="text-xs leading-tight">Påvirker status</Label>
-                  <p className="text-[10px] text-muted-foreground leading-tight">
-                    Gul {"<"} 2t / Rød {"<"} 1t siste 90d
-                  </p>
-                </div>
-                <Switch checked={affectsStatus} onCheckedChange={handleToggleAffects} />
-              </div>
+              {company.currency_requirement_enabled && (
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  Selskapet krever {company.currency_requirement_hours}t flytid siste{" "}
+                  {company.currency_requirement_days} dager. Den perioden vises alltid først.
+                </p>
+              )}
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setEditOpen(false)}>Avbryt</Button>
                 <Button size="sm" onClick={savePeriods}>Lagre</Button>
@@ -198,36 +189,42 @@ export function PersonnelFlightKpi({ personId }: Props) {
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        {stats.map((s, i) => (
-          <div key={i} className="rounded-md border border-border/60 bg-muted/20 p-2 min-w-0">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Siste {s.days}d
-            </p>
-            <p className="text-base sm:text-lg font-bold leading-tight">
-              {loading ? "…" : formatHours(s.total)}
-            </p>
-            <div className="h-10 mt-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={s.buckets}>
-                  <XAxis dataKey="label" hide />
-                  <Tooltip
-                    cursor={{ fill: "hsl(var(--muted))" }}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: 6,
-                      fontSize: 11,
-                      padding: "4px 6px",
-                    }}
-                    formatter={(v: number) => [formatHours(v), "Flytid"]}
-                    labelFormatter={() => ""}
-                  />
-                  <Bar dataKey="minutes" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+        {stats.map((s, i) => {
+          const isRequirementCard = company.currency_requirement_enabled && s.days === company.currency_requirement_days;
+          return (
+            <div key={i} className="rounded-md border border-border/60 bg-muted/20 p-2 min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Siste {s.days}d
+              </p>
+              <p className={cn(
+                "text-base sm:text-lg font-bold leading-tight",
+                isRequirementCard && currencyStatusColor(s.total)
+              )}>
+                {loading ? "…" : formatHours(s.total)}
+              </p>
+              <div className="h-10 mt-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={s.buckets}>
+                    <XAxis dataKey="label" hide />
+                    <Tooltip
+                      cursor={{ fill: "hsl(var(--muted))" }}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        padding: "4px 6px",
+                      }}
+                      formatter={(v: number) => [formatHours(v), "Flytid"]}
+                      labelFormatter={() => ""}
+                    />
+                    <Bar dataKey="minutes" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
