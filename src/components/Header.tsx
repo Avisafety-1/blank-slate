@@ -205,7 +205,7 @@ export const Header = () => {
             </DropdownMenu>
             
             {/* Language toggle - Mobile */}
-            <LanguageSegmented size="xs" />
+            <LanguageToggleButton size="xs" />
 
             {isNorconsult && (
               <StartTourButton className="h-7 w-7 min-w-7 p-0" />
@@ -274,7 +274,7 @@ export const Header = () => {
             )}
             
             {/* Language toggle - Desktop */}
-            <LanguageSegmented size="sm" />
+            <LanguageToggleButton size="sm" />
 
             {isNorconsult && (
               <StartTourButton className="h-8 w-8 p-0" />
