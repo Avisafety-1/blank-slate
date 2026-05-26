@@ -53,11 +53,14 @@ const grcColor = (grc?: number) => {
   return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
 };
 
-const mitigationLabels: Record<string, string> = {
-  m1a_sheltering: 'M1(A) Skjerming',
-  m1b_operational_restrictions: 'M1(B) Operasjonelle restriksjoner',
-  m1c_ground_observation: 'M1(C) Bakkeobservasjon',
-  m2_impact_reduction: 'M2 Redusert treffenergi',
+const useMitigationLabels = () => {
+  const { t } = useTranslation();
+  return {
+    m1a_sheltering: t('riskAssessment.ground.m1a', 'M1(A) Skjerming'),
+    m1b_operational_restrictions: t('riskAssessment.ground.m1b', 'M1(B) Operasjonelle restriksjoner'),
+    m1c_ground_observation: t('riskAssessment.ground.m1c', 'M1(C) Bakkeobservasjon'),
+    m2_impact_reduction: t('riskAssessment.ground.m2', 'M2 Redusert treffenergi'),
+  } as Record<string, string>;
 };
 
 const formatNumber = (value: number, decimals = 0) =>
@@ -69,6 +72,7 @@ const formatNumber = (value: number, decimals = 0) =>
 export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const mitigationLabels = useMitigationLabels();
 
   if (!data || (data.igrc == null && data.fgrc == null)) return null;
 
@@ -80,17 +84,17 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
         <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
           <div className="flex items-center gap-2 flex-wrap">
             <Layers className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <span className="font-medium text-sm">Bakkerisikoanalyse (iGRC/fGRC)</span>
+            <span className="font-medium text-sm">{t('riskAssessment.ground.title', 'Bakkerisikoanalyse (iGRC/fGRC)')}</span>
             {data.fgrc != null && (
               <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", grcColor(data.fgrc))}>
                 fGRC: {data.fgrc}
               </span>
             )}
             {data.controlled_ground_area && (
-              <Badge variant="outline" className="text-[10px]">Kontrollert</Badge>
+              <Badge variant="outline" className="text-[10px]">{t('riskAssessment.ground.controlled', 'Kontrollert')}</Badge>
             )}
             {data.grc_calculation_method && (
-              <Badge variant="secondary" className="text-[10px]">Systemberegnet</Badge>
+              <Badge variant="secondary" className="text-[10px]">{t('riskAssessment.ground.systemCalculated', 'Systemberegnet')}</Badge>
             )}
           </div>
           {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -101,25 +105,25 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
           <div className="grid grid-cols-2 gap-2 text-xs">
             {data.characteristic_dimension && (
               <div>
-                <span className="text-muted-foreground">Dimensjon:</span>{' '}
+                <span className="text-muted-foreground">{t('riskAssessment.ground.dimension', 'Dimensjon')}:</span>{' '}
                 <span className="font-medium">{data.characteristic_dimension}</span>
               </div>
             )}
             {data.max_speed_category && (
               <div>
-                <span className="text-muted-foreground">Maks hastighet:</span>{' '}
+                <span className="text-muted-foreground">{t('riskAssessment.ground.maxSpeed', 'Maks hastighet')}:</span>{' '}
                 <span className="font-medium">{data.max_speed_category}</span>
               </div>
             )}
             {data.drone_weight_kg != null && (
               <div>
-                <span className="text-muted-foreground">MTOW:</span>{' '}
+                <span className="text-muted-foreground">{t('riskAssessment.ground.mtow', 'MTOW')}:</span>{' '}
                 <span className="font-medium">{data.drone_weight_kg} kg</span>
               </div>
             )}
             {data.population_density_value != null && (
               <div className="col-span-2">
-                <span className="text-muted-foreground">Befolkning:</span>{' '}
+                <span className="text-muted-foreground">{t('riskAssessment.ground.population', 'Befolkning')}:</span>{' '}
                 <span className="font-medium">{formatNumber(data.population_density_value)} /km²</span>
               </div>
             )}
@@ -131,19 +135,19 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
 
           {(data.population_density_calculation || data.population_density_source || data.population_density_driver) && (
             <div className="rounded-md border border-border bg-muted/40 p-2 text-xs space-y-1">
-              <p className="font-medium text-foreground">SSB befolkningstetthet – beregning</p>
-              {data.population_density_source && <p className="text-muted-foreground">Datakilde: {data.population_density_source}</p>}
-              {data.population_density_footprint && <p className="text-muted-foreground">Fotavtrykk: {data.population_density_footprint}</p>}
-              {data.population_density_calculation && <p className="text-foreground">Beregning: {data.population_density_calculation}</p>}
-              {data.population_density_average != null && <p className="text-muted-foreground">Gjennomsnitt i fotavtrykk: {formatNumber(data.population_density_average, 1)} pers/km²</p>}
-              {data.population_density_driver && <p className="text-muted-foreground">Dimensjonerende del av ruten: {data.population_density_driver}</p>}
+              <p className="font-medium text-foreground">{t('riskAssessment.ground.ssbCalcTitle', 'SSB befolkningstetthet – beregning')}</p>
+              {data.population_density_source && <p className="text-muted-foreground">{t('riskAssessment.ground.dataSource', 'Datakilde')}: {data.population_density_source}</p>}
+              {data.population_density_footprint && <p className="text-muted-foreground">{t('riskAssessment.ground.footprint', 'Fotavtrykk')}: {data.population_density_footprint}</p>}
+              {data.population_density_calculation && <p className="text-foreground">{t('riskAssessment.ground.calculation', 'Beregning')}: {data.population_density_calculation}</p>}
+              {data.population_density_average != null && <p className="text-muted-foreground">{t('riskAssessment.ground.footprintAverage', 'Gjennomsnitt i fotavtrykk')}: {formatNumber(data.population_density_average, 1)} pers/km²</p>}
+              {data.population_density_driver && <p className="text-muted-foreground">{t('riskAssessment.ground.routeDriver', 'Dimensjonerende del av ruten')}: {data.population_density_driver}</p>}
             </div>
           )}
 
           {/* iGRC → fGRC progression */}
           {data.igrc != null && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ground Risk Class (GRC)</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.ground.grc', 'Ground Risk Class (GRC)')}</p>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", grcColor(data.igrc))}>
                   iGRC: {data.igrc}
@@ -160,7 +164,7 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
                   </>
                 )}
                 {!grcChanged && (
-                  <span className="text-xs text-muted-foreground">(ingen reduksjon)</span>
+                  <span className="text-xs text-muted-foreground">{t('riskAssessment.ground.noReduction', '(ingen reduksjon)')}</span>
                 )}
               </div>
               {data.igrc_reasoning && (
@@ -169,9 +173,9 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
               {(data.grc_calculation_method || data.igrc_table_basis) && (
                 <div className="rounded-md border border-border bg-muted/40 p-2 text-xs space-y-1 mt-2">
                   {data.grc_calculation_method && <p className="font-medium text-foreground">{data.grc_calculation_method}</p>}
-                  {data.igrc_table_basis && <p className="text-muted-foreground">Tabellgrunnlag: {data.igrc_table_basis}</p>}
-                  {data.total_reduction != null && <p className="text-muted-foreground">Dokumentert reduksjon: {data.total_reduction}</p>}
-                  {data.fgrc != null && <p className="text-muted-foreground">Endelig fGRC: {data.fgrc}</p>}
+                  {data.igrc_table_basis && <p className="text-muted-foreground">{t('riskAssessment.ground.tableBasis', 'Tabellgrunnlag')}: {data.igrc_table_basis}</p>}
+                  {data.total_reduction != null && <p className="text-muted-foreground">{t('riskAssessment.ground.documentedReduction', 'Dokumentert reduksjon')}: {data.total_reduction}</p>}
+                  {data.fgrc != null && <p className="text-muted-foreground">{t('riskAssessment.ground.finalFgrc', 'Endelig fGRC')}: {data.fgrc}</p>}
                 </div>
               )}
             </div>
@@ -180,7 +184,7 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
           {/* Mitigations table */}
           {data.mitigations && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Mitigeringer</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.ground.mitigations', 'Mitigeringer')}</p>
               <div className="space-y-1.5">
                 {Object.entries(data.mitigations).map(([key, m]) => {
                   if (!m) return null;
