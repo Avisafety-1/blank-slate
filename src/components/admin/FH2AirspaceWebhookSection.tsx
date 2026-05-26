@@ -155,10 +155,10 @@ export const FH2AirspaceWebhookSection = () => {
         )}
       </div>
 
-      <Alert className="bg-yellow-500/10 border-yellow-500/30 text-yellow-100">
-        <Info className="h-4 w-4 text-yellow-400" />
-        <AlertTitle className="text-yellow-200">Kun for dock-droner</AlertTitle>
-        <AlertDescription className="text-yellow-100/80">
+      <Alert className="bg-yellow-500/10 border-yellow-500/30 text-black">
+        <Info className="h-4 w-4 text-black" />
+        <AlertTitle className="text-black">Kun for dock-droner</AlertTitle>
+        <AlertDescription className="text-black/80">
           FlightHub 2 luftromsdeling fungerer kun for droner tilkoblet en DJI Dock.
         </AlertDescription>
       </Alert>
