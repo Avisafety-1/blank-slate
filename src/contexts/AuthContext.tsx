@@ -167,6 +167,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
   // Flag to suppress onAuthStateChange echoes caused by cross-tab setSession
   const ignoreNextAuthEventRef = useRef(false);
+  // Hydrate i18n from profiles.preferred_language only once per session,
+  // so a mid-session user toggle is never overwritten by a later profile fetch.
+  const i18nHydratedRef = useRef(false);
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
