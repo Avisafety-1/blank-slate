@@ -1024,7 +1024,7 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
               weight: 2,
               fillColor: '#f59e0b',
               fillOpacity: 0.12,
-              pane: 'rmzPane',
+              pane: 'atzPane',
               interactive: mode !== 'routePlanning',
               bubblingMouseEvents: false,
             });
@@ -1035,7 +1035,10 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
               html += `<div style="margin-top:4px">Kontakt flyplassen før flyging — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a></div>`;
               if (p.authority_phone) html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
               circle.bindPopup(html);
-              circle.on('add', () => { try { circle.bringToFront(); } catch {} });
+              attachHoverPromotion(circle as unknown as L.Path, {
+                paneName: 'atzPane',
+                baseStyle: { color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.12 },
+              });
             }
             return circle;
           } catch {
