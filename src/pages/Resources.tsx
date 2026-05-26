@@ -894,9 +894,12 @@ const Resources = () => {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">
-                          {person.full_name || t('common.unknownName')}
-                        </h3>
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-semibold truncate">
+                            {person.full_name || t('common.unknownName')}
+                          </h3>
+                          <StatusBadge status={getPersonStatus(person)} />
+                        </div>
                         {person.tittel && (
                           <p className="text-xs text-muted-foreground truncate">{person.tittel}</p>
                         )}
