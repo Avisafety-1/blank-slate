@@ -10,6 +10,7 @@
  */
 
 import i18n from "@/i18n";
+import { supabase } from "@/integrations/supabase/client";
 import type { TFunction } from "i18next";
 
 export type AppLanguage = "no" | "en";
@@ -32,10 +33,27 @@ export function getCurrentLanguage(): AppLanguage {
 
 /**
  * Bytt aktivt språk programmatisk. Tynn wrapper rundt `i18n.changeLanguage`
- * som validerer input.
+ * som validerer input. Persisterer også valget på `profiles.preferred_language`
+ * for innlogget bruker (best-effort — feil blokkerer ikke språkbyttet).
  */
-export function setLanguage(lang: AppLanguage): Promise<TFunction> {
-  return i18n.changeLanguage(lang);
+export async function setLanguage(lang: AppLanguage): Promise<TFunction> {
+  const result = await i18n.changeLanguage(lang);
+  // Best-effort: persistér til DB. Feil svelges (offline, RLS, osv.).
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ preferred_language: lang })
+        .eq('id', user.id);
+      if (error) {
+        console.warn('[i18n] Could not persist preferred_language to DB:', error.message);
+      }
+    }
+  } catch (err) {
+    console.warn('[i18n] preferred_language persist threw:', err);
+  }
+  return result;
 }
 
 /**
