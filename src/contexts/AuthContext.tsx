@@ -881,6 +881,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Broadcast sign-out to other tabs
           broadcastSignOut();
           resetAuthState();
+          i18nHydratedRef.current = false;
           setLoading(false);
           setAuthInitialized(true);
         } else {
