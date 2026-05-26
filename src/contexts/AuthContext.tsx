@@ -454,6 +454,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             can_be_incident_responsible,
             approval_company_ids,
             incident_responsible_company_ids,
+            preferred_language,
             companies (
               id,
               navn,
