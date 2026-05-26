@@ -1,51 +1,41 @@
-# Problem
+# Persistent språkvalg via database (minimal, ikke-disruptiv)
 
-Risikovurderingen kommer alltid på norsk uansett UI-språk, selv etter at hovedpromptene (`buildSystemPromptEN`/`buildUserPromptEN`) ble styrket.
+## Mål
+Gjør språkbytte robust ved å lagre brukerens valg i `profiles.preferred_language`. Cache i localStorage kan ikke lenger henge igjen feil. **Ingen UI-endringer**, ingen overraskelser for eksisterende brukere.
 
-# Rot­årsak
+## Bevaring av eksisterende oppførsel
+- Default `preferred_language = 'no'` for alle eksisterende rader → de fortsetter på norsk, akkurat som i dag.
+- Hvis kolonnen er `null` (ny bruker, eller spesialtilfelle), så *gjør vi ingenting* — i18n beholder localStorage/navigator-deteksjon. Vi overstyrer **kun** når DB har en eksplisitt verdi som avviker.
+- Toggle-knappen i `Header.tsx` røres ikke visuelt. Eneste tillegg: kallet til `setLanguage(...)` skriver også til DB.
 
-Når brukeren kjører en risikovurdering via dialogen, går kallet faktisk gjennom **SORA re-assessment-grenen** i `supabase/functions/ai-risk-assessment/index.ts` (linje 430). Den grenen har **hardkodede norske prompts**:
+## Endringer
 
-- `soraSystemPrompt` (linje 433) — starter med `"Du er en SORA-spesialist…"`
-- `soraUserPrompt` (linje 587) — `"Generer en SORA-analyse basert på følgende data…"`
+### 1. Migrasjon
+- `ALTER TABLE public.profiles ADD COLUMN preferred_language text DEFAULT 'no' CHECK (preferred_language IN ('no','en'))`.
+- Ingen RLS-endring (eksisterende profil-policies dekker oppdatering av egen rad).
 
-Disse promptene leser **aldri** `language`-parameteren. Endringene i `prompts.ts` (`buildSystemPromptEN`/`buildUserPromptEN`) brukes kun i den "vanlige" risikovurderings-grenen lenger ned, ikke i SORA re-assessment.
+### 2. `src/lib/i18nHelpers.ts`
+- I `setLanguage(lang)`: etter `i18n.changeLanguage(lang)`, gjør best-effort `supabase.from('profiles').update({ preferred_language: lang }).eq('user_id', currentUserId)`. Feil svelges (logges som warning) — språk-bytte i UI skal aldri blokkeres av nettverksfeil.
 
-Edge-loggene bekrefter dette — siste kjøring traff SORA-grenen og produserte norsk output uansett `language: "en"`.
+### 3. Hydrering ved innlogging
+- I sentral auth-hook (`useAuth` / der `onAuthStateChange` lyttes på):
+  - Ved `SIGNED_IN` / sesjonsoppdatering: les `profiles.preferred_language` for innlogget bruker.
+  - Hvis verdien er `'no'` eller `'en'` **og** avviker fra `i18n.language` → kall `i18n.changeLanguage(...)`.
+  - Hvis verdien er `null` → ikke gjør noe (bevarer dagens oppførsel for eksisterende brukere).
 
-# Plan
+### 4. Lett verifiserings-logg
+- `src/i18n/index.ts`: legg til `i18n.on('languageChanged', l => console.info('[i18n] Active language:', l))` (kun dev). Hjelper i feilsøking — påvirker ikke prod.
 
-### 1. Flytt SORA-promptene til `prompts.ts` med språkvariant
+## Filer som endres
+- Migrasjon (legger til kolonne med trygg default)
+- `src/lib/i18nHelpers.ts`
+- `src/hooks/useAuth.tsx` (eller der auth-state håndteres)
+- `src/i18n/index.ts` (kun dev-logg)
 
-Legg til to nye eksporterte funksjoner i `supabase/functions/ai-risk-assessment/prompts.ts`:
+## Verifisering
+1. Eksisterende bruker logger inn → `preferred_language = 'no'` (default) → UI forblir på norsk. ✅
+2. Bruker klikker språk-toggle → i18n bytter umiddelbart + DB oppdateres.
+3. Samme bruker logger inn på ny enhet / etter cache-clear → DB-verdien `'en'` overstyrer localStorage → UI åpner på engelsk.
+4. Kjør risikovurdering → edge-logg viser `Received language from client: "en"` → AI-svar på engelsk.
 
-- `buildSoraReassessSystemPrompt(lang: Lang): string`
-- `buildSoraReassessUserPrompt(lang: Lang, previousAnalysis, pilotComments): string`
-
-Norsk versjon = eksisterende tekst (kopier ordrett fra index.ts linje 433–585 og 587–597).
-
-Engelsk versjon = oversettelse av samme innhold, med samme strenge språkdirektiv på toppen som de andre EN-promptene:
-> "CRITICAL LANGUAGE INSTRUCTION: You MUST respond ENTIRELY in English. Input data may contain Norwegian terms — translate them. Never mirror Norwegian in your output."
-
-### 2. Bruk språkvariant i `index.ts`
-
-I `supabase/functions/ai-risk-assessment/index.ts` linje 430–612:
-
-- Erstatt hardkodede `soraSystemPrompt`/`soraUserPrompt`-konstantene med kall til de nye prompt-builder-funksjonene, ved bruk av samme resolved language som `prompts = getPrompts(language)` allerede gir.
-- Legg til en logg-linje `console.log('[ai-risk-assessment/SORA] Using language:', lang)` for å bekrefte i edge-loggene.
-
-### 3. Verifisering
-
-1. Bytt UI til engelsk, kjør risikovurdering på samme oppdrag.
-2. Sjekk edge-funksjonens logg for:
-   - `[ai-risk-assessment] Received language from client: "en" -> resolved: en`
-   - `[ai-risk-assessment/SORA] Using language: en`
-3. Bekreft at `soraAnalysis.summary` og alle felt nå er på engelsk.
-4. Bytt tilbake til norsk, kjør på nytt, bekreft norsk output (regresjonssjekk).
-
-# Filer som endres
-
-- `supabase/functions/ai-risk-assessment/prompts.ts` — to nye eksporterte funksjoner (NO + EN varianter av SORA-prompt)
-- `supabase/functions/ai-risk-assessment/index.ts` — erstatt hardkodede prompts (linje 433–597) med kall til de nye funksjonene
-
-Ingen frontend-endringer nødvendig — `language: lang` sendes allerede korrekt fra `RiskAssessmentDialog.tsx`.
+Ingen endringer i edge-funksjonen — EN-promptene er allerede klare og aktiveres straks `language: "en"` faktisk sendes.
