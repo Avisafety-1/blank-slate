@@ -133,7 +133,7 @@ export const AISearchBar = () => {
             Authorization: `Bearer ${token}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ messages: newMessages }),
+          body: JSON.stringify({ messages: newMessages, language: getCurrentLanguage() }),
         }
       );
 
