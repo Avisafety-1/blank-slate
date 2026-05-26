@@ -501,6 +501,9 @@ export type Database = {
           before_takeoff_checklist_ids: string[] | null
           billing_user_id: string | null
           created_at: string
+          currency_requirement_days: number
+          currency_requirement_enabled: boolean
+          currency_requirement_hours: number
           default_anonymous_publish: boolean
           default_publish_planned_missions: boolean
           default_share_contact_email: boolean
@@ -528,6 +531,7 @@ export type Database = {
           prevent_self_approval: boolean
           propagate_airspace_warnings: boolean
           propagate_all_users_can_acknowledge_maintenance: boolean
+          propagate_currency_requirement: boolean
           propagate_deviation_report: boolean
           propagate_fh2_credentials: boolean
           propagate_flight_alerts: boolean
@@ -564,6 +568,9 @@ export type Database = {
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
           created_at?: string
+          currency_requirement_days?: number
+          currency_requirement_enabled?: boolean
+          currency_requirement_hours?: number
           default_anonymous_publish?: boolean
           default_publish_planned_missions?: boolean
           default_share_contact_email?: boolean
@@ -591,6 +598,7 @@ export type Database = {
           prevent_self_approval?: boolean
           propagate_airspace_warnings?: boolean
           propagate_all_users_can_acknowledge_maintenance?: boolean
+          propagate_currency_requirement?: boolean
           propagate_deviation_report?: boolean
           propagate_fh2_credentials?: boolean
           propagate_flight_alerts?: boolean
@@ -627,6 +635,9 @@ export type Database = {
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
           created_at?: string
+          currency_requirement_days?: number
+          currency_requirement_enabled?: boolean
+          currency_requirement_hours?: number
           default_anonymous_publish?: boolean
           default_publish_planned_missions?: boolean
           default_share_contact_email?: boolean
@@ -654,6 +665,7 @@ export type Database = {
           prevent_self_approval?: boolean
           propagate_airspace_warnings?: boolean
           propagate_all_users_can_acknowledge_maintenance?: boolean
+          propagate_currency_requirement?: boolean
           propagate_deviation_report?: boolean
           propagate_fh2_credentials?: boolean
           propagate_flight_alerts?: boolean
