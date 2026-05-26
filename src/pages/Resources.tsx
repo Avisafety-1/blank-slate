@@ -25,6 +25,7 @@ import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
 import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculateEquipmentMaintenanceStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { useStatusData } from "@/hooks/useStatusData";
 import { Status } from "@/types";
 import { usePresence } from "@/hooks/usePresence";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
@@ -35,6 +36,12 @@ const Resources = () => {
   const { user, loading, companyId } = useAuth();
   const terminology = useTerminology();
   const { isOnline } = usePresence();
+  const { personnel: personnelWithStatus } = useStatusData();
+  const personnelStatusMap = (() => {
+    const m: Record<string, Status> = {};
+    for (const p of personnelWithStatus || []) m[(p as any).id] = (p as any).status;
+    return m;
+  })();
   const [drones, setDrones] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<any[]>([]);
   const [dronetags, setDronetags] = useState<any[]>([]);
@@ -380,19 +387,10 @@ const Resources = () => {
   };
 
   // Helper to get person's worst competency status
-  const getPersonStatus = (person: any): string => {
-    if (!person.personnel_competencies || person.personnel_competencies.length === 0) return "Grønn";
-    let worst = "Grønn";
-    for (const comp of person.personnel_competencies) {
-      if (!comp.utloper_dato) continue;
-      const expiry = new Date(comp.utloper_dato);
-      const now = new Date();
-      if (expiry < now) return "Rød";
-      const warningDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      if (expiry < warningDate) worst = "Gul";
-    }
-    return worst;
+  const getPersonStatus = (person: any): Status => {
+    return (personnelStatusMap[person.id] as Status) || "Grønn";
   };
+
 
 
   // Bro for guidet tour: lar resources-touren åpne dialoger programmatisk
@@ -896,9 +894,12 @@ const Resources = () => {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">
-                          {person.full_name || t('common.unknownName')}
-                        </h3>
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-semibold truncate">
+                            {person.full_name || t('common.unknownName')}
+                          </h3>
+                          <StatusBadge status={getPersonStatus(person)} />
+                        </div>
                         {person.tittel && (
                           <p className="text-xs text-muted-foreground truncate">{person.tittel}</p>
                         )}
