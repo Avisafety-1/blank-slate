@@ -2074,19 +2074,19 @@ Returner en JSON-respons med denne strukturen:
       console.error('AI gateway error:', aiResponse!.status, errorText);
       
       if (aiResponse!.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later' }), {
+        return new Response(JSON.stringify({ error: prompts.errors.rateLimited }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (aiResponse!.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted, please add funds' }), {
+        return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (aiResponse!.status === 502 || aiResponse!.status === 503) {
-        return new Response(JSON.stringify({ error: 'AI-tjenesten er midlertidig utilgjengelig. Prøv igjen om et øyeblikk.' }), {
+        return new Response(JSON.stringify({ error: prompts.errors.aiUnavailable }), {
           status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
