@@ -191,7 +191,8 @@
       "en": "Language set to English"
     },
     "languageNotPersisted": "Language switched, but not saved to your profile.",
-    "languageChangeFailed": "Could not switch language."
+    "languageChangeFailed": "Could not switch language.",
+    "switchToLanguage": "Switch to {{lang}}"
   },
   "dashboard": {
     "search": {

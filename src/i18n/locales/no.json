@@ -193,7 +193,8 @@
       "en": "Språk endret til Engelsk"
     },
     "languageNotPersisted": "Språket ble byttet, men ikke lagret på profilen.",
-    "languageChangeFailed": "Kunne ikke bytte språk."
+    "languageChangeFailed": "Kunne ikke bytte språk.",
+    "switchToLanguage": "Bytt til {{lang}}"
   },
   "dashboard": {
     "search": {
