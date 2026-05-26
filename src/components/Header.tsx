@@ -32,7 +32,7 @@ export const Header = () => {
   const isNorconsult = (companyName?.toLowerCase().includes('norconsult') ?? false)
     || (parentCompanyName?.toLowerCase().includes('norconsult') ?? false);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   // Superadmins: fetch ALL companies for full switcher
   // Non-superadmins with multi-company access: use accessibleCompanies from AuthContext
