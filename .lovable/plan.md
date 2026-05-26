@@ -1,34 +1,57 @@
-## Endringer i `PersonCompetencyDialog.tsx`
+# Currency-krav som selskapsinnstilling
 
-### 1. Topp-knappelinje (ved siden av "Loggbok")
-Flytt "Legg til kompetanse" fra bunnen av kortet opp til DialogHeader. Knappene plasseres side-ved-side (på mobil under hverandre):
-- Loggbok (eksisterende)
-- Legg til kompetanse (ny — åpner et dialogvindu med skjemaet som i dag ligger nederst)
+## Mål
+Admin setter ett currency-krav på morselskapet (f.eks. «minst 2 timer flytid siste 90 dager»). Kravet arves automatisk til alle avdelinger (ekte arv — endring i mor oppdaterer barn live), styrer perioden som vises på personellkortets KPI-er, og bestemmer status grønn/gul/rød på personellet.
 
-Selve "Legg til"-skjemaet (linje 769–...) flyttes ut i en egen liten Dialog-komponent som åpnes av den nye knappen. Skjema-state og `handleAddCompetency` beholdes uendret.
+## Status-logikk
+For hver pilot summeres flytid i perioden (fra `flight_logs.flight_duration_minutes`):
+- **Grønn** — timer ≥ krav
+- **Gul** — timer < krav, men ≥ 80 % av krav (kravet er snart møtt)
+- **Rød** — timer < 80 % av krav (kravet er overskredet)
 
-### 2. Ny KPI-seksjon "Flytid" (under knappelinjen)
-Tre kort side-ved-side (mobil: stablet) som viser sum flytid for personen i tre perioder. Standard: 30 / 90 / 180 dager.
+Statusen tas inn i `fetchPersonnel` (useStatusData) via `worstStatus(...)` slik at den eksisterende kompetanse-statusen fortsatt teller.
 
-- Henter `flight_logs` filtrert på `profile_id = person.id` og `flight_date >= now - N dager`, summerer `flight_duration_minutes`.
-- Vises som tall (timer + minutter) + en liten sparkline/bar (recharts) som viser daglig/ukentlig fordeling i perioden for visuell kontekst.
-- Liten blyant-ikon (Pencil) øverst i seksjonen åpner en popover hvor brukeren kan endre de tre periodene (tall i dager). Verdiene lagres lokalt i `localStorage` per bruker (nøkkel: `personnel-kpi-periods`) inntil selskapsinnstilling lages senere.
+## Database (migrasjon på `companies`)
+Nye kolonner:
+- `currency_requirement_enabled` boolean default false
+- `currency_requirement_hours` numeric default 2
+- `currency_requirement_days` int default 90
+- `propagate_currency_requirement` boolean default false (når true overstyres avdelingenes verdier av morens)
 
-### 3. Layout-rekkefølge i dialogen
-```
-Header: Navn
-        [Loggbok]  [Legg til kompetanse]
-KPI-flytid: [30d] [90d] [180d]   ✎
-Kompetanser-liste
-Tilgjengelige kurs
-(skjema for legg til er fjernet fra bunnen)
-```
+Ingen RLS-endringer — feltene leses via samme `companies`-policyer som de andre innstillingene.
 
-## Tekniske detaljer
+## UI — Generelle innstillinger (ChildCompaniesSection)
+Nytt kort «Currency-krav for piloter» plassert sammen med øvrige toggles:
+- Switch: Aktiver currency-krav
+- Tall-input: «Minimum flytimer» (timer, desimaltall)
+- Tall-input: «I løpet av siste … dager»
+- Switch: «Tving samme krav på alle avdelinger» (= propagate)
+- Når man er avdeling og mor har `propagate_currency_requirement=true`: feltene låses med `Lock`-badge «Arvet fra {parent}» (samme mønster som øvrige propagerte innstillinger)
 
-- Ny komponent `PersonnelFlightKpi.tsx` i `src/components/resources/` som tar `personId` som prop, henter data og rendrer de tre kortene + edit-popover. Bruker `recharts` BarChart (allerede brukt i prosjektet, se `KPIChart.tsx`).
-- Spørring: `supabase.from('flight_logs').select('flight_date, flight_duration_minutes').eq('profile_id', personId).gte('flight_date', cutoff)`.
-- Aggregering: grupper per uke for sparkline, sum totalt for stort tall.
-- Periode-state: `useState<[number, number, number]>([30, 90, 180])`, persistert i `localStorage`.
-- "Legg til kompetanse"-dialog: enkel `Dialog` som wrapper det eksisterende skjemaet 1:1. `handleAddCompetency` lukker dialogen ved suksess.
-- Ingen DB-/RLS-endringer nødvendig.
+## Frontend-tilkobling
+
+**`useCompanySettings.ts`**
+- Legg til de fire feltene i `CompanySettings`-interfacet, defaultSettings og `select(...)`.
+- I merge-blokken: hvis `parentSettings.propagate_currency_requirement` er true, overskriv `currency_requirement_enabled/_hours/_days` med morens verdier (samme mønster som `incident_reports_visible_to_all_companies`).
+
+**`PersonnelFlightKpi.tsx`**
+- Les `useCompanySettings()`. Når `currency_requirement_enabled` er på:
+  - Sett periodene til `[currency_requirement_days, ...gjeldende ekstra perioder]` slik at currency-perioden alltid er første KPI-kort.
+  - Vis krav-linje under kortet (f.eks. «Krav: 2t / 90d») og fargemarker tallet grønn/gul/rød ut fra status­logikken over.
+- Fjern den per-bruker «Påvirker status»-switchen og tilhørende `flight_time_affects_status`-lesing/skriving (erstattes av selskapsinnstillingen). Blyant-popoveren beholder bare brukervalgte perioder (localStorage som i dag).
+
+**`useStatusData.ts` — `fetchPersonnel`**
+- Hent gjeldende `companies`-rad for innlogget bruker (samt parent når aktuelt) for å resolve currency-kravet inkl. arv. Bruk samme `fetchCompanySettings`-cache der det er praktisk, eller direkte spørring innenfor hooken.
+- Hvis kravet er aktivt: hent `flight_logs` (user_id, flight_duration_minutes) for alle synlige `personIds` med `flight_date >= now - days`, summer pr. bruker, mappe til Grønn/Gul/Rød etter terskelen, og `worstStatus(competencyStatus, currencyStatus)`.
+- Fjern bruken av `profile.flight_time_affects_status` (kolonnen kan bli liggende ubrukt — ingen nedmigrering nødvendig).
+
+## Rekkefølge
+1. Migrasjon (companies-kolonner) — krever godkjenning.
+2. `useCompanySettings.ts` utvides med felt + arv.
+3. UI-blokk i `ChildCompaniesSection.tsx` (state, handlers, kort med Lock-badge).
+4. `useStatusData.ts` bytter fra per-bruker flagg til selskapsinnstilling.
+5. `PersonnelFlightKpi.tsx` kobler periode + krav-indikator til settingen og fjerner per-bruker switch.
+
+## Avgrensning
+- Beholder `flight_time_affects_status`-kolonnen i databasen (urørt) for å unngå datatap; ingen UI leser den lenger.
+- 80 %-terskelen for «gul» er hardkodet nå; kan eksponeres som egen innstilling senere ved behov.
