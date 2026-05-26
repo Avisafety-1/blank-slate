@@ -155,12 +155,11 @@ export const FH2AirspaceWebhookSection = () => {
         )}
       </div>
 
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>Kun for dock-droner</AlertTitle>
-        <AlertDescription>
+      <Alert className="bg-yellow-500/10 border-yellow-500/30 text-yellow-100">
+        <Info className="h-4 w-4 text-yellow-400" />
+        <AlertTitle className="text-yellow-200">Kun for dock-droner</AlertTitle>
+        <AlertDescription className="text-yellow-100/80">
           FlightHub 2 luftromsdeling fungerer kun for droner tilkoblet en DJI Dock.
-          Håndholdte fjernkontroller (RC) støttes ikke av FH2 sitt luftroms-API.
         </AlertDescription>
       </Alert>
 
