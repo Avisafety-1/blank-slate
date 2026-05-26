@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/lib/i18nHelpers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -151,6 +152,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             soraReassessment: true,
             previousAnalysis: currentAssessment,
             pilotComments: categoryComments,
+            language: getCurrentLanguage(),
           }),
         }
       );
@@ -462,6 +464,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             pilotInputs,
             droneId,
             pilotComments: categoryComments,
+            language: getCurrentLanguage(),
           }),
         }
       );

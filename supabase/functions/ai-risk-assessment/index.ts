@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getPrompts } from "./prompts.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -322,9 +323,12 @@ serve(async (req) => {
   }
 
   try {
+  let prompts = getPrompts(undefined);
+
+  try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+      throw new Error(prompts.errors.apiKeyMissing);
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -333,7 +337,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missingAuthHeader }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -343,20 +347,22 @@ serve(async (req) => {
       authHeader.replace('Bearer ', '')
     );
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: prompts.errors.unauthorized }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments } = await req.json();
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language } = await req.json();
+    prompts = getPrompts(language);
 
     if (!missionId) {
-      return new Response(JSON.stringify({ error: 'Mission ID is required' }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missionIdRequired }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
 
     // ---- Concurrency gate + job tracking (Phase 2) ----
     const { data: gateProfile } = await supabase
@@ -608,12 +614,12 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         const errorText = await soraAiResponse.text();
         console.error('SORA AI gateway error:', soraAiResponse.status, errorText);
         if (soraAiResponse.status === 429) {
-          return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
+          return new Response(JSON.stringify({ error: prompts.errors.rateLimited }), {
             status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
         if (soraAiResponse.status === 402) {
-          return new Response(JSON.stringify({ error: 'AI credits exhausted' }), {
+          return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
             status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
@@ -729,7 +735,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
 
     if (missionError || !mission) {
       console.error('Mission fetch error:', missionError);
-      return new Response(JSON.stringify({ error: 'Mission not found' }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missionNotFound }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -2068,19 +2074,19 @@ Returner en JSON-respons med denne strukturen:
       console.error('AI gateway error:', aiResponse!.status, errorText);
       
       if (aiResponse!.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later' }), {
+        return new Response(JSON.stringify({ error: prompts.errors.rateLimited }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (aiResponse!.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted, please add funds' }), {
+        return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (aiResponse!.status === 502 || aiResponse!.status === 503) {
-        return new Response(JSON.stringify({ error: 'AI-tjenesten er midlertidig utilgjengelig. Prøv igjen om et øyeblikk.' }), {
+        return new Response(JSON.stringify({ error: prompts.errors.aiUnavailable }), {
           status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
