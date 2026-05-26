@@ -41,13 +41,17 @@ export async function setLanguage(lang: AppLanguage): Promise<TFunction> {
   // Best-effort: persistér til DB. Feil svelges (offline, RLS, osv.).
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    if (!user) {
+      console.warn('[i18n] No user — skipped persisting preferred_language');
+    } else {
       const { error } = await supabase
         .from('profiles')
         .update({ preferred_language: lang })
         .eq('id', user.id);
       if (error) {
         console.warn('[i18n] Could not persist preferred_language to DB:', error.message);
+      } else {
+        console.info('[i18n] Persisted preferred_language=', lang);
       }
     }
   } catch (err) {
