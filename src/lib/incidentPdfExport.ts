@@ -4,6 +4,7 @@ import { nb } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addPdfHeader, addSectionHeader, checkPageBreak, arePdfFontsLoaded } from "./pdfUtils";
 import { getIncidentReporterDisplayName } from "./incidentVisibility";
+import { getCurrentLanguage, getFixedT, type AppLanguage } from "./i18nHelpers";
 
 type Incident = {
   id: string;
@@ -48,6 +49,8 @@ interface ExportOptions {
   isAdmin?: boolean;
   isParentCompany?: boolean;
   departmentsEnabled?: boolean;
+  /** Språk for rendret PDF. Default = brukerens nåværende språk. */
+  language?: AppLanguage;
 }
 
 export const exportIncidentPDF = async ({
@@ -61,7 +64,10 @@ export const exportIncidentPDF = async ({
   isAdmin = false,
   isParentCompany = false,
   departmentsEnabled = false,
+  language,
 }: ExportOptions): Promise<boolean> => {
+  const lang: AppLanguage = language ?? getCurrentLanguage();
+  const t = getFixedT(lang, 'pdf');
   try {
     // Fetch company name
     const { data: companyData } = await supabase
@@ -75,29 +81,31 @@ export const exportIncidentPDF = async ({
     const pageWidth = doc.internal.pageSize.getWidth();
     
     // Header
-    let yPos = addPdfHeader(doc, "HENDELSESRAPPORT", incident.tittel, companyName);
+    let yPos = addPdfHeader(doc, t('incident.headerTitle'), incident.tittel, companyName);
 
     // Detaljer
-    yPos = addSectionHeader(doc, "DETALJER", yPos);
+    yPos = addSectionHeader(doc, t('incident.sections.details'), yPos);
 
     doc.setFontSize(10);
     setFontStyle(doc, "normal");
 
     const reporterName = getIncidentReporterDisplayName({ incident, hideReporterIdentity, isAdmin, isParentCompany, departmentsEnabled });
+    const notSpecified = t('incident.placeholders.notSpecified');
+    const notAssigned = t('incident.placeholders.notAssigned');
     const details: [string, string][] = [
-      ["Status", sanitizeForPdf(incident.status)],
-      ["Alvorlighetsgrad", sanitizeForPdf(incident.alvorlighetsgrad)],
-      ["Kategori", sanitizeForPdf(incident.kategori) || "Ikke spesifisert"],
-      ["Hovedarsak", sanitizeForPdf(incident.hovedaarsak) || "Ikke spesifisert"],
-      ["Medvirkende arsak", sanitizeForPdf(incident.medvirkende_aarsak) || "Ikke spesifisert"],
-      ["Hendelsestidspunkt", formatDateForPdf(incident.hendelsestidspunkt)],
-      ["Lokasjon", sanitizeForPdf(incident.lokasjon) || "Ikke spesifisert"],
-      ["Rapportert av", sanitizeForPdf(reporterName) || "Ikke spesifisert"],
-      ["Oppfolgingsansvarlig", sanitizeForPdf(oppfolgingsansvarligName) || "Ikke tildelt"],
+      [t('incident.labels.status'), sanitizeForPdf(incident.status)],
+      [t('incident.labels.severity'), sanitizeForPdf(incident.alvorlighetsgrad)],
+      [t('incident.labels.category'), sanitizeForPdf(incident.kategori) || notSpecified],
+      [t('incident.labels.rootCause'), sanitizeForPdf(incident.hovedaarsak) || notSpecified],
+      [t('incident.labels.contributingCause'), sanitizeForPdf(incident.medvirkende_aarsak) || notSpecified],
+      [t('incident.labels.occurredAt'), formatDateForPdf(incident.hendelsestidspunkt)],
+      [t('incident.labels.location'), sanitizeForPdf(incident.lokasjon) || notSpecified],
+      [t('incident.labels.reportedBy'), sanitizeForPdf(reporterName) || notSpecified],
+      [t('incident.labels.followUpOwner'), sanitizeForPdf(oppfolgingsansvarligName) || notAssigned],
     ];
 
     if (relatedMissionTitle) {
-      details.push(["Knyttet oppdrag", sanitizeForPdf(relatedMissionTitle)]);
+      details.push([t('incident.labels.relatedMission'), sanitizeForPdf(relatedMissionTitle)]);
     }
 
     details.forEach(([label, value]) => {
@@ -113,7 +121,7 @@ export const exportIncidentPDF = async ({
     // Beskrivelse
     if (incident.beskrivelse) {
       yPos = checkPageBreak(doc, yPos, 40);
-      yPos = addSectionHeader(doc, "BESKRIVELSE", yPos);
+      yPos = addSectionHeader(doc, t('incident.sections.description'), yPos);
 
       doc.setFontSize(10);
       setFontStyle(doc, "normal");
@@ -126,12 +134,12 @@ export const exportIncidentPDF = async ({
     // Kommentarer
     if (comments.length > 0) {
       yPos = checkPageBreak(doc, yPos, 50);
-      yPos = addSectionHeader(doc, "KOMMENTARER", yPos);
+      yPos = addSectionHeader(doc, t('incident.sections.comments'), yPos);
 
       const fontName = arePdfFontsLoaded() ? 'Roboto' : 'helvetica';
       autoTable(doc, {
         startY: yPos,
-        head: [["Dato", "Av", "Kommentar"]],
+        head: [[t('incident.comments.headers.date'), t('incident.comments.headers.by'), t('incident.comments.headers.comment')]],
         body: comments.map(c => [
           formatDateForPdf(c.created_at),
           sanitizeForPdf(c.created_by_name),
@@ -169,7 +177,7 @@ export const exportIncidentPDF = async ({
         if (finalY) yPos = finalY + 10;
 
         yPos = checkPageBreak(doc, yPos, imgHeight + 20);
-        yPos = addSectionHeader(doc, "VEDLEGG", yPos);
+        yPos = addSectionHeader(doc, t('incident.sections.attachment'), yPos);
 
         doc.addImage(imgData, 'JPEG', 14, yPos, maxWidth, imgHeight);
         yPos += imgHeight + 10;
@@ -181,7 +189,7 @@ export const exportIncidentPDF = async ({
     // Generer filnavn og blob
     const dateStr = format(new Date(), "yyyy-MM-dd");
     const safeTitle = sanitizeFilenameForPdf(incident.tittel).substring(0, 30);
-    const fileName = `hendelsesrapport-${safeTitle}-${dateStr}.pdf`;
+    const fileName = `${t('incident.filename')}-${safeTitle}-${dateStr}.pdf`;
     
     const pdfBlob = doc.output('blob');
     const filePath = `${companyId}/${fileName}`;
@@ -192,7 +200,7 @@ export const exportIncidentPDF = async ({
       .select('full_name')
       .eq('id', userId)
       .single();
-    const opprettetAv = userProfile?.full_name || 'Ukjent';
+    const opprettetAv = userProfile?.full_name || t('incident.placeholders.unknown');
 
     // Last opp til Supabase Storage
     const { error: uploadError } = await supabase.storage
@@ -204,18 +212,21 @@ export const exportIncidentPDF = async ({
 
     if (uploadError) throw uploadError;
 
+    const sanitizedTitle = sanitizeForPdf(incident.tittel);
+    const displayDate = formatDateForPdf(new Date(), "dd.MM.yyyy");
+
     // Opprett dokumentoppføring
     const { error: docError } = await supabase
       .from('documents')
       .insert({
-        tittel: `Hendelsesrapport - ${sanitizeForPdf(incident.tittel)} - ${formatDateForPdf(new Date(), "dd.MM.yyyy")}`,
+        tittel: t('incident.document.title', { title: sanitizedTitle, date: displayDate }),
         kategori: 'rapporter',
         fil_url: filePath,
         fil_navn: fileName,
         company_id: companyId,
         user_id: userId,
         opprettet_av: opprettetAv,
-        beskrivelse: `Automatisk generert rapport for hendelse: ${sanitizeForPdf(incident.tittel)}`
+        beskrivelse: t('incident.document.description', { title: sanitizedTitle }),
       });
 
     if (docError) throw docError;

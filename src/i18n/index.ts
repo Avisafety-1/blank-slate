@@ -3,6 +3,8 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import no from './locales/no.json';
 import en from './locales/en.json';
+import noPdf from './locales/no/pdf.json';
+import enPdf from './locales/en/pdf.json';
 
 /**
  * i18n-oppsett.
@@ -26,9 +28,11 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      no: { translation: no },
-      en: { translation: en },
+      no: { translation: no, pdf: noPdf },
+      en: { translation: en, pdf: enPdf },
     },
+    ns: ['translation', 'pdf'],
+    defaultNS: 'translation',
     fallbackLng: 'no',
     // Aldri returner null/tom streng – vi vil ha synlig nøkkel-fallback i stedet
     // for tomme områder i UI dersom en oversettelse mangler.
