@@ -85,9 +85,9 @@ export const Header = () => {
     navigate("/auth");
   };
 
-  const toggleLanguage = () => {
+  const toggleLanguage = async () => {
     const newLang = getCurrentLanguage() === 'no' ? 'en' : 'no';
-    setLanguage(newLang);
+    await setLanguage(newLang);
   };
 
   const displayLang = getCurrentLanguage() === 'en' ? 'NO' : 'EN';
