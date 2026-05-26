@@ -317,6 +317,7 @@ export const AICourseGeneratorDialog = ({
           include_narration: includeNarration,
           include_visuals: includeVisuals,
           voice: includeNarration ? voice : undefined,
+          language: getCurrentLanguage(),
         },
       });
 
