@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage, setLanguage } from "@/lib/i18nHelpers";
 import type { TrainingModuleKey } from "@/config/trainingModules";
 
 interface Company {
@@ -85,12 +86,11 @@ export const Header = () => {
   };
 
   const toggleLanguage = () => {
-    const currentLang = i18n.language?.startsWith('en') ? 'en' : 'no';
-    const newLang = currentLang === 'no' ? 'en' : 'no';
-    i18n.changeLanguage(newLang);
+    const newLang = getCurrentLanguage() === 'no' ? 'en' : 'no';
+    setLanguage(newLang);
   };
 
-  const displayLang = i18n.language?.startsWith('en') ? 'NO' : 'EN';
+  const displayLang = getCurrentLanguage() === 'en' ? 'NO' : 'EN';
   const canShowModule = (moduleKey: TrainingModuleKey) => hasTrainingModuleAccess(moduleKey);
 
   return (
