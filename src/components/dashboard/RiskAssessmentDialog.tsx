@@ -127,7 +127,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   const runSoraReassessment = async () => {
     if (!canAccess('sora')) {
-      toast.error('SORA re-vurdering krever Grower-planen eller høyere.');
+      toast.error(t('riskAssessment.soraReassessRequiresPlan', 'SORA re-vurdering krever Grower-planen eller høyere.'));
       return;
     }
     if (!currentMissionId || !currentAssessment) return;
@@ -135,7 +135,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error('Du må være logget inn');
+        toast.error(t('riskAssessment.mustBeLoggedIn', 'Du må være logget inn'));
         return;
       }
 
@@ -172,11 +172,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         setCurrentAssessmentId(result.assessment.id);
       }
       setActiveTab('sora');
-      toast.success('SORA re-vurdering fullført');
+      toast.success(t('riskAssessment.soraReassessCompleted', 'SORA re-vurdering fullført'));
       loadPreviousAssessments();
     } catch (error) {
       console.error('SORA reassessment error:', error);
-      toast.error('Kunne ikke utføre SORA re-vurdering');
+      toast.error(t('riskAssessment.soraReassessError', 'Kunne ikke utføre SORA re-vurdering'));
     } finally {
       setRunningSora(false);
     }
@@ -319,15 +319,15 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   const handleSoraSave = async () => {
     if (!currentMissionId) {
-      toast.error("Vennligst velg et oppdrag");
+      toast.error(t('riskAssessment.selectMissionRequired', 'Vennligst velg et oppdrag'));
       return;
     }
     if (!companyId) {
-      toast.error("Kunne ikke finne selskaps-ID");
+      toast.error(t('riskAssessment.companyIdNotFound', 'Kunne ikke finne selskaps-ID'));
       return;
     }
     if (!user?.id) {
-      toast.error("Kunne ikke finne bruker-ID");
+      toast.error(t('riskAssessment.userIdNotFound', 'Kunne ikke finne bruker-ID'));
       return;
     }
 
@@ -379,12 +379,12 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
       if (error) throw error;
 
-      toast.success(existingSora ? "SORA-analyse oppdatert" : "SORA-analyse opprettet");
+      toast.success(existingSora ? t('riskAssessment.soraUpdated', 'SORA-analyse oppdatert') : t('riskAssessment.soraCreated', 'SORA-analyse opprettet'));
       onSoraSaved?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error saving SORA:", error);
-      toast.error("Kunne ikke lagre SORA-analyse: " + error.message);
+      toast.error(t('riskAssessment.soraSaveError', 'Kunne ikke lagre SORA-analyse: ') + error.message);
     } finally {
       setSoraSaving(false);
     }
@@ -482,7 +482,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         if (response.status === 429) {
           if (error?.status === 'queued') {
             const waitSec = Math.ceil((error.retryAfterMs ?? 30000) / 1000);
-            toast.warning(`AI er opptatt (3 vurderinger kjører nå). Prøv igjen om ca. ${waitSec} sekunder.`);
+            toast.warning(t('riskAssessment.aiBusy', 'AI er opptatt (3 vurderinger kjører nå). Prøv igjen om ca. {{seconds}} sekunder.', { seconds: waitSec }));
           } else {
             toast.error(t('riskAssessment.rateLimitError', 'For mange forespørsler, prøv igjen senere'));
           }
@@ -505,7 +505,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       setCurrentAssessmentId(result.assessment?.id || null);
       setActiveTab('result');
       if (result.autoApproved) {
-        toast.success('Oppdraget ble automatisk godkjent basert på SORA-vurderingen');
+        toast.success(t('riskAssessment.autoApproved', 'Oppdraget ble automatisk godkjent basert på SORA-vurderingen'));
       } else {
         toast.success(t('riskAssessment.completed', 'Risikovurdering fullført'));
       }
@@ -552,10 +552,10 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error('Du må være logget inn');
+        toast.error(t('riskAssessment.mustBeLoggedIn', 'Du må være logget inn'));
         return;
       }
-      const mTitle = mission?.tittel || missions.find(m => m.id === selectedMissionId)?.tittel || 'Oppdrag';
+      const mTitle = mission?.tittel || missions.find(m => m.id === selectedMissionId)?.tittel || t('common.missionFallback', 'Oppdrag');
       const success = await exportRiskAssessmentPDF({
         assessment: assessmentData,
         missionTitle: mTitle,
@@ -568,14 +568,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       });
       if (success) {
         queryClient.invalidateQueries({ queryKey: ["documents"] });
-        const label = exportType === 'sora' ? 'SORA-analyse' : 'Risikovurdering';
-        toast.success(`${label} eksportert til PDF og lagret i Dokumenter`);
+        const label = exportType === 'sora' ? t('riskAssessment.soraAnalysisLabel', 'SORA-analyse') : t('riskAssessment.riskAssessmentLabel', 'Risikovurdering');
+        toast.success(t('riskAssessment.pdfExported', '{{label}} eksportert til PDF og lagret i Dokumenter', { label }));
       } else {
-        toast.error('Kunne ikke eksportere til PDF');
+        toast.error(t('riskAssessment.pdfExportError', 'Kunne ikke eksportere til PDF'));
       }
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      toast.error('Kunne ikke eksportere til PDF');
+      toast.error(t('riskAssessment.pdfExportError', 'Kunne ikke eksportere til PDF'));
     } finally {
       setExportingPdf(false);
     }
@@ -606,13 +606,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             )}
             <TabsTrigger value="manual-sora" className="text-xs sm:text-sm">
               <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-              <span className="hidden sm:inline">Manuell SORA</span>
-              <span className="sm:hidden">SORA</span>
+              <span className="hidden sm:inline">{t('riskAssessment.manualSoraTab', 'Manuell SORA')}</span>
+              <span className="sm:hidden">{t('riskAssessment.manualSoraTabShort', 'SORA')}</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="text-xs sm:text-sm">
               <History className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
               <span className="hidden sm:inline">{t('riskAssessment.historyTab', 'Historikk')}</span>
-              <span className="sm:hidden">Hist.</span>
+              <span className="sm:hidden">{t('riskAssessment.historyTabShort', 'Hist.')}</span>
             </TabsTrigger>
             <TabsTrigger value="result" disabled={!currentAssessment} className="text-xs sm:text-sm">
               {t('riskAssessment.resultTab', 'Resultat')}
@@ -818,8 +818,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>{Math.round(progress)}%</span>
                         <span>
-                          Estimert tid: ~{Math.ceil(etaMs / 1000)}s
-                          {progress >= 95 && ' (sluttfører…)'}
+                          {t('riskAssessment.estimatedTime', 'Estimert tid: ~{{seconds}}s', { seconds: Math.ceil(etaMs / 1000) })}
+                          {progress >= 95 && ` ${t('riskAssessment.finalizing', '(sluttfører…)')}`}
                         </span>
                       </div>
                     </div>
@@ -837,14 +837,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       <div className="flex items-start gap-2">
                         <AlertTriangle className="w-4 h-4 text-foreground mt-0.5 flex-shrink-0" />
                         <p className="text-xs text-foreground">
-                          AI risikovurdering kan brukes som beslutningsstøtte. Det er alltid «pilot-in-command» som selv må vurdere risikoen knyttet til oppdraget. Vurderingen er basert på tilgjengelige data på vurderingstidspunktet. Endringer i data kan påvirke resultatet.
+                          {t('riskAssessment.aiDisclaimerText', 'AI risikovurdering kan brukes som beslutningsstøtte. Det er alltid «pilot-in-command» som selv må vurdere risikoen knyttet til oppdraget. Vurderingen er basert på tilgjengelige data på vurderingstidspunktet. Endringer i data kan påvirke resultatet.')}
                         </p>
                       </div>
                     </div>
 
                     {/* Summary */}
                     <div>
-                      <h3 className="text-sm font-semibold mb-2">Foreslått konklusjon</h3>
+                      <h3 className="text-sm font-semibold mb-2">{t('riskAssessment.suggestedConclusion', 'Foreslått konklusjon')}</h3>
                       <div className="p-4 rounded-lg bg-muted/50">
                         <p className="text-sm">{currentAssessment.summary}</p>
                       </div>
@@ -900,7 +900,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           ) : (
                             <FileDown className="w-4 h-4 mr-2 flex-shrink-0" />
                           )}
-                          <span className="truncate">Eksporter til PDF</span>
+                          <span className="truncate">{t('riskAssessment.exportPdf', 'Eksporter til PDF')}</span>
                         </Button>
                       </div>
                     )}
@@ -916,18 +916,18 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           {runningSora ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Kjører SORA re-vurdering...
+                              {t('riskAssessment.runSoraRunning', 'Kjører SORA re-vurdering…')}
                             </>
                           ) : (
                             <>
                               <BarChart3 className="w-4 h-4 mr-2" />
-                              Kjør SORA-basert re-vurdering
+                              {t('riskAssessment.runSora', 'Kjør SORA-basert re-vurdering')}
                             </>
                           )}
                         </Button>
                         {!allCommentsComplete && (
                           <p className="text-xs text-muted-foreground text-center">
-                            Kreves at alle manuelle felt er fylt inn
+                            {t('riskAssessment.requireAllComments', 'Kreves at alle manuelle felt er fylt inn')}
                           </p>
                         )}
                       </div>
@@ -962,12 +962,12 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       ) : (
                         <FileDown className="w-4 h-4 mr-2" />
                       )}
-                      Eksporter SORA-analyse til PDF
+                      {t('riskAssessment.exportSoraPdf', 'Eksporter SORA-analyse til PDF')}
                     </Button>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    Ingen SORA-analyse tilgjengelig
+                    {t('riskAssessment.noSoraAvailable', 'Ingen SORA-analyse tilgjengelig')}
                   </p>
                 )}
               </ScrollArea>
