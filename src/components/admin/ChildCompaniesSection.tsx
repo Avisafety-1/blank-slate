@@ -1488,7 +1488,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                               min={1}
                               max={3650}
                               value={daysVal}
-                              disabled={locked || savingSettings}
+                              disabled={locked}
                               onCommit={(n) => {
                                 const v = Math.floor(n);
                                 setDays(String(v));
