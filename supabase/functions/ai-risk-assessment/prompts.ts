@@ -1175,11 +1175,9 @@ const PROMPTS: Record<Lang, Prompts> = {
       creditsExhausted: 'AI credits exhausted, please add funds',
       aiUnavailable: 'The AI service is temporarily unavailable. Please try again in a moment.',
     },
-    // TODO (PR B.2): translate the system + user prompts to English.
-    // Until then EN reuses the authoritative Norwegian content so the
-    // assessment behaves identically regardless of UI language.
-    buildSystemPrompt: buildSystemPromptNO,
-    buildUserPrompt: buildUserPromptNO,
+    // EN translation provided in PR B.2.
+    buildSystemPrompt: buildSystemPromptEN,
+    buildUserPrompt: buildUserPromptEN,
   },
 };
 
