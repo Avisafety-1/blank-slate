@@ -99,6 +99,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
   const [parentDeviationCompanyId, setParentDeviationCompanyId] = useState<string | null>(null);
+  // Currency requirement (flight time per period)
+  const [currencyEnabled, setCurrencyEnabled] = useState(false);
+  const [currencyHours, setCurrencyHours] = useState<number>(2);
+  const [currencyDays, setCurrencyDays] = useState<number>(90);
+  const [propagateCurrency, setPropagateCurrency] = useState(false);
   // Inheritance: when current company has a parent that propagates a setting,
   // the field is locked and shows the parent's value.
   const [isChildDept, setIsChildDept] = useState(false);
