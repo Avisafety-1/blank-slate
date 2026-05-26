@@ -1,4 +1,4 @@
-import { LogOut, Settings, Menu, Globe, Download, BarChart3, Activity, Megaphone } from "lucide-react";
+import { LogOut, Settings, Menu, Download, BarChart3, Activity, Megaphone } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
 
 import { Button } from "@/components/ui/button";
@@ -85,9 +85,60 @@ export const Header = () => {
     navigate("/auth");
   };
 
-  const toggleLanguage = async () => {
-    const newLang = getCurrentLanguage() === 'no' ? 'en' : 'no';
-    await setLanguage(newLang);
+  const [isSwitchingLang, setIsSwitchingLang] = useState(false);
+  const currentLang = getCurrentLanguage();
+
+  const handleLanguageChange = async (target: 'no' | 'en') => {
+    if (target === currentLang || isSwitchingLang) return;
+    setIsSwitchingLang(true);
+    try {
+      const { persisted } = await setLanguage(target);
+      toast.success(t(`header.languageChanged.${target}`));
+      if (!persisted) {
+        toast.warning(t('header.languageNotPersisted'));
+      }
+    } catch (err) {
+      console.error('Language switch failed', err);
+      toast.error(t('header.languageChangeFailed'));
+    } finally {
+      setIsSwitchingLang(false);
+    }
+  };
+
+  const LanguageSegmented = ({ size = 'sm' }: { size?: 'sm' | 'xs' }) => {
+    const h = size === 'xs' ? 'h-7' : 'h-8';
+    const segCls = (active: boolean) =>
+      `${h} px-2 text-xs font-semibold transition-colors ${
+        active
+          ? 'bg-primary text-primary-foreground'
+          : 'text-muted-foreground hover:bg-muted/50'
+      } ${isSwitchingLang ? 'opacity-60 pointer-events-none' : ''}`;
+    return (
+      <div
+        className={`inline-flex items-center rounded-md border border-border overflow-hidden ${h}`}
+        role="group"
+        aria-label="Language"
+      >
+        <button
+          type="button"
+          onClick={() => handleLanguageChange('no')}
+          className={segCls(currentLang === 'no')}
+          aria-pressed={currentLang === 'no'}
+          disabled={isSwitchingLang}
+        >
+          NO
+        </button>
+        <button
+          type="button"
+          onClick={() => handleLanguageChange('en')}
+          className={segCls(currentLang === 'en')}
+          aria-pressed={currentLang === 'en'}
+          disabled={isSwitchingLang}
+        >
+          EN
+        </button>
+      </div>
+    );
   };
 
   const displayLang = getCurrentLanguage() === 'en' ? 'NO' : 'EN';
@@ -168,15 +219,7 @@ export const Header = () => {
             </DropdownMenu>
             
             {/* Language toggle - Mobile */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleLanguage}
-              className="h-7 w-7 min-w-7 p-0"
-              title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
-            >
-              <Globe className="w-3.5 h-3.5" />
-            </Button>
+            <LanguageSegmented size="xs" />
 
             {isNorconsult && (
               <StartTourButton className="h-7 w-7 min-w-7 p-0" />
@@ -245,15 +288,7 @@ export const Header = () => {
             )}
             
             {/* Language toggle - Desktop */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleLanguage}
-              className="gap-1"
-              title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
-            >
-              <Globe className="w-4 h-4" />
-            </Button>
+            <LanguageSegmented size="sm" />
 
             {isNorconsult && (
               <StartTourButton className="h-8 w-8 p-0" />

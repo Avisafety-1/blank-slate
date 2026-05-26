@@ -36,9 +36,11 @@ export function getCurrentLanguage(): AppLanguage {
  * som validerer input. Persisterer også valget på `profiles.preferred_language`
  * for innlogget bruker (best-effort — feil blokkerer ikke språkbyttet).
  */
-export async function setLanguage(lang: AppLanguage): Promise<TFunction> {
-  const result = await i18n.changeLanguage(lang);
-  // Best-effort: persistér til DB. Feil svelges (offline, RLS, osv.).
+export async function setLanguage(
+  lang: AppLanguage,
+): Promise<{ t: TFunction; persisted: boolean }> {
+  const t = await i18n.changeLanguage(lang);
+  let persisted = false;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -52,12 +54,13 @@ export async function setLanguage(lang: AppLanguage): Promise<TFunction> {
         console.warn('[i18n] Could not persist preferred_language to DB:', error.message);
       } else {
         console.info('[i18n] Persisted preferred_language=', lang);
+        persisted = true;
       }
     }
   } catch (err) {
     console.warn('[i18n] preferred_language persist threw:', err);
   }
-  return result;
+  return { t, persisted };
 }
 
 /**
