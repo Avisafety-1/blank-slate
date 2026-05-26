@@ -614,12 +614,12 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
         const errorText = await soraAiResponse.text();
         console.error('SORA AI gateway error:', soraAiResponse.status, errorText);
         if (soraAiResponse.status === 429) {
-          return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
+          return new Response(JSON.stringify({ error: prompts.errors.rateLimited }), {
             status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
         if (soraAiResponse.status === 402) {
-          return new Response(JSON.stringify({ error: 'AI credits exhausted' }), {
+          return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
             status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
