@@ -167,6 +167,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
   // Flag to suppress onAuthStateChange echoes caused by cross-tab setSession
   const ignoreNextAuthEventRef = useRef(false);
+  // Hydrate i18n from profiles.preferred_language only once per session,
+  // so a mid-session user toggle is never overwritten by a later profile fetch.
+  const i18nHydratedRef = useRef(false);
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -552,12 +555,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Hvis kolonnen er null → ikke gjør noe (bevarer dagens oppførsel for eksisterende brukere).
         try {
           const preferred = (profile as any).preferred_language as string | null | undefined;
-          if (preferred === 'no' || preferred === 'en') {
+          if (!i18nHydratedRef.current && (preferred === 'no' || preferred === 'en')) {
             const { default: i18n } = await import('@/i18n');
             const current = (i18n.language || '').toLowerCase().split('-')[0];
             if (current !== preferred) {
               await i18n.changeLanguage(preferred);
             }
+            i18nHydratedRef.current = true;
           }
         } catch (langErr) {
           console.warn('AuthContext: Failed to hydrate i18n from preferred_language', langErr);
@@ -877,6 +881,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Broadcast sign-out to other tabs
           broadcastSignOut();
           resetAuthState();
+          i18nHydratedRef.current = false;
           setLoading(false);
           setAuthInitialized(true);
         } else {
