@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
-import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route, BarChart3, Radio } from "lucide-react";
+import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route, BarChart3, Radio, Download } from "lucide-react";
+import { downloadGpx, downloadKmz } from "@/lib/flightTrackExport";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -370,18 +371,44 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                       </span>
                     </div>
                     {log.flight_track?.positions?.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => {
-                          setAnalysisTrack(log.flight_track);
-                          setAnalysisOpen(true);
-                        }}
-                      >
-                        <BarChart3 className="w-3.5 h-3.5 mr-1" />
-                        Analyser
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            setAnalysisTrack(log.flight_track);
+                            setAnalysisOpen(true);
+                          }}
+                        >
+                          <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                          Analyser
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            const base = `${currentMission.tittel || 'flight'}-${log.flight_date ? format(new Date(log.flight_date), 'yyyyMMdd-HHmm') : 'log'}`;
+                            downloadGpx(log.flight_track, base);
+                          }}
+                        >
+                          <Download className="w-3.5 h-3.5 mr-1" />
+                          GPX
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            const base = `${currentMission.tittel || 'flight'}-${log.flight_date ? format(new Date(log.flight_date), 'yyyyMMdd-HHmm') : 'log'}`;
+                            downloadKmz(log.flight_track, base);
+                          }}
+                        >
+                          <Download className="w-3.5 h-3.5 mr-1" />
+                          KMZ
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
