@@ -1022,7 +1022,9 @@ Return ONLY valid JSON without markdown formatting. Always respond in English.`;
 };
 
 const buildUserPromptEN = (contextData: unknown): string => {
-  return `Analyse this drone mission risk assessment:
+  return `CRITICAL LANGUAGE INSTRUCTION: You MUST respond ENTIRELY in English. The input data below contains Norwegian text from Norwegian data sources (Met.no weather, airspace zones, SORA configuration, place names). DO NOT mirror the Norwegian language of the input. Translate or paraphrase any Norwegian terms (e.g. "Tynt befolket" → "sparsely populated", "vindkast" → "wind gusts", "duggpunkt" → "dew point", "luftrom" → "airspace", "ingen 5 km-soner" → "no 5 km zones", "utenfor kontrollert luftrom" → "outside controlled airspace") into natural English in EVERY text field (summary, mission_overview, factors, concerns, reasoning, actions, recommendations, etc.). Place names may remain in Norwegian.
+
+Analyse this drone mission risk assessment:
 
 ${JSON.stringify(contextData, null, 2)}
 
