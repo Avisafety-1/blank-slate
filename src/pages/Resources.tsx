@@ -36,6 +36,12 @@ const Resources = () => {
   const { user, loading, companyId } = useAuth();
   const terminology = useTerminology();
   const { isOnline } = usePresence();
+  const { personnel: personnelWithStatus } = useStatusData();
+  const personnelStatusMap = (() => {
+    const m: Record<string, Status> = {};
+    for (const p of personnelWithStatus || []) m[(p as any).id] = (p as any).status;
+    return m;
+  })();
   const [drones, setDrones] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<any[]>([]);
   const [dronetags, setDronetags] = useState<any[]>([]);
