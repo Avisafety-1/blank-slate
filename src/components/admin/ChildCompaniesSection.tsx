@@ -47,6 +47,53 @@ interface ChildCompany {
   parent_company_id?: string | null;
 }
 
+// Local-draft numeric input that does not get overridden by realtime refreshes
+// while the user is editing. Syncs from `value` prop only when not focused.
+const LocalNumberInput = ({
+  value,
+  disabled,
+  onCommit,
+  min,
+  max,
+  step,
+  className,
+}: {
+  value: string;
+  disabled?: boolean;
+  onCommit: (n: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  className?: string;
+}) => {
+  const [draft, setDraft] = useState(value);
+  const focusedRef = useRef(false);
+  useEffect(() => {
+    if (!focusedRef.current) setDraft(value);
+  }, [value]);
+  return (
+    <Input
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      value={draft}
+      disabled={disabled}
+      onFocus={() => { focusedRef.current = true; }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        focusedRef.current = false;
+        const trimmed = draft.trim();
+        if (trimmed === "") { setDraft(value); return; }
+        const n = Number(trimmed);
+        if (!Number.isFinite(n) || n <= 0) { setDraft(value); return; }
+        onCommit(n);
+      }}
+      className={className}
+    />
+  );
+};
+
 interface ChildCompaniesSectionProps {
   departmentsEnabled: boolean;
 }
