@@ -1422,7 +1422,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {ruleEnabled && (
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <Label className="text-xs">Minimum flytimer</Label>
+                            <Label className="text-xs">Min. flytimer</Label>
                             <Input
                               type="number"
                               min={0}
@@ -1438,7 +1438,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">I løpet av siste … dager</Label>
+                            <Label className="text-xs">Siste antall dager</Label>
                             <Input
                               type="number"
                               min={1}
