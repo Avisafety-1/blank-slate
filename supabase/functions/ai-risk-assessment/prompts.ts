@@ -479,7 +479,9 @@ Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
 };
 
 const buildUserPromptNO = (contextData: unknown): string => {
-  return `Analyser denne droneoppdrag-risikovurderingen:
+  return `KRITISK SPRÅKINSTRUKSJON: Du SKAL svare HELE responsen på norsk (bokmål). Selv om input-data nedenfor kan inneholde engelske begreper eller kodenavn, skal alle dine tekstfelter (summary, mission_overview, factors, concerns, reasoning, actions, osv.) være på naturlig norsk. Oversett eller omskriv engelske termer til norsk.
+
+Analyser denne droneoppdrag-risikovurderingen:
 
 ${JSON.stringify(contextData, null, 2)}
 
