@@ -459,13 +459,17 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({
-            missionId: currentMissionId,
-            pilotInputs,
-            droneId,
-            pilotComments: categoryComments,
-            language: getCurrentLanguage(),
-          }),
+          body: (() => {
+            const lang = getCurrentLanguage();
+            console.log('[RiskAssessment] Sending language to AI:', lang, 'i18n.language=', (window as any).i18next?.language);
+            return JSON.stringify({
+              missionId: currentMissionId,
+              pilotInputs,
+              droneId,
+              pilotComments: categoryComments,
+              language: lang,
+            });
+          })(),
         }
       );
 

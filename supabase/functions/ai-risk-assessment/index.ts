@@ -354,6 +354,7 @@ serve(async (req) => {
     }
 
     const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language } = await req.json();
+    console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
     if (!missionId) {
