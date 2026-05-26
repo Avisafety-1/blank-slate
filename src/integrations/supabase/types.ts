@@ -501,6 +501,9 @@ export type Database = {
           before_takeoff_checklist_ids: string[] | null
           billing_user_id: string | null
           created_at: string
+          currency_requirement_2_days: number
+          currency_requirement_2_enabled: boolean
+          currency_requirement_2_hours: number
           currency_requirement_days: number
           currency_requirement_enabled: boolean
           currency_requirement_hours: number
@@ -568,6 +571,9 @@ export type Database = {
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
           created_at?: string
+          currency_requirement_2_days?: number
+          currency_requirement_2_enabled?: boolean
+          currency_requirement_2_hours?: number
           currency_requirement_days?: number
           currency_requirement_enabled?: boolean
           currency_requirement_hours?: number
@@ -635,6 +641,9 @@ export type Database = {
           before_takeoff_checklist_ids?: string[] | null
           billing_user_id?: string | null
           created_at?: string
+          currency_requirement_2_days?: number
+          currency_requirement_2_enabled?: boolean
+          currency_requirement_2_hours?: number
           currency_requirement_days?: number
           currency_requirement_enabled?: boolean
           currency_requirement_hours?: number
