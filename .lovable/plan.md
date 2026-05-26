@@ -1,25 +1,30 @@
-## Mål
-Legge til knapper for nedlasting av **GPX** og **KMZ** ved siden av "Analyser"-knappen på hver flylogg i oppdragskortene (faktisk flydd rute fra `flight_track.positions`).
+## Planlegg currency-status cron til ~07:00 norsk tid
 
-## Endringer
+Edge-funksjonen `check-currency-status` er allerede deployet. Mangler bare cron-schedule (forrige forsøk på `30 7 * * *` ble avbrutt — og den slottet er uansett opptatt-nær).
 
-### 1. Ny util: `src/lib/flightTrackExport.ts`
-- `buildGpxFromTrack(track, name)` → GPX 1.1 XML-string med `<trkpt lat lng>` (inkluderer `<ele>` og `<time>` om tilgjengelig på posisjonene).
-- `buildKmlFromTrack(track, name)` → KML `<LineString>` med `coordinates` (lng,lat,alt) for faktisk flydd spor.
-- `downloadGpx(track, baseName)` og `downloadKmz(track, baseName)` → Genererer Blob (KMZ via JSZip slik som `kmzExport.ts`), trigger nettleser-nedlasting via skjult `<a download>`. Ingen Supabase-opplasting (dette er kun lokal nedlasting til bruker).
-- Bruker `sanitizeFilename` fra `kmzExport.ts`.
+### Valgt tidspunkt: `30 5 * * *` UTC
 
-### 2. `src/components/oppdrag/MissionCard.tsx` (ca. linje 782-806)
-Legg til to nye knapper rett etter "Analyser":
+- 06:30 norsk tid om vinteren
+- 07:30 norsk tid om sommeren
+- Snitt ≈ kl. 07:00 lokalt, som ønsket
+- Ingen konflikt med eksisterende jobber (07:00/07:10/07:20 UTC, hver 15. min, hver time o.l.)
+
+### Endring
+
+Kjør via `pg_cron` (samme mønster som `check-competency-expiry-daily` osv.):
+
+```sql
+select cron.schedule(
+  'check-currency-status-daily',
+  '30 5 * * *',
+  $$
+  select net.http_post(
+    url:='https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/check-currency-status',
+    headers:='{"Content-Type":"application/json","apikey":"<anon key>"}'::jsonb,
+    body:='{}'::jsonb
+  );
+  $$
+);
 ```
-[Analyser]  [GPX]  [KMZ]
-```
-Begge bruker `variant="ghost" size="sm"` med samme styling som Analyser, ikon `Download`, kaller `downloadGpx`/`downloadKmz` med `log.flight_track` og filnavn `${mission.tittel}-${flight_date}`.
 
-### 3. `src/components/dashboard/MissionDetailDialog.tsx` (ca. linje 372-385)
-Samme to knapper ved siden av Analyser-knappen i flyloggraden.
-
-## Teknisk
-- Ingen DB- eller backend-endringer.
-- Knappene vises kun når `log.flight_track?.positions?.length > 0` (samme betingelse som Analyser).
-- KMZ-en her er en enkel "track"-KMZ (ikke DJI-waypoint-format) — riktig for visning i Google Earth/QGIS. Hvis du vil at KMZ skal være DJI-kompatibel waypoint-fil i stedet, si fra.
+Ingen kodeendringer i frontend eller edge-funksjon. Kun ny cron-schedule.
