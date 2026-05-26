@@ -155,6 +155,15 @@ export const FH2AirspaceWebhookSection = () => {
         )}
       </div>
 
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Kun for dock-droner</AlertTitle>
+        <AlertDescription>
+          FlightHub 2 luftromsdeling fungerer kun for droner tilkoblet en DJI Dock.
+          Håndholdte fjernkontroller (RC) støttes ikke av FH2 sitt luftroms-API.
+        </AlertDescription>
+      </Alert>
+
       {loading ? (
         <div className="flex items-center justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -176,29 +185,7 @@ export const FH2AirspaceWebhookSection = () => {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>FlightHub Organization ID</Label>
-            <div className="flex gap-2">
-              <Input
-                value={orgId || "Hentes automatisk fra FH2-tilkoblingen ved lagring"}
-                readOnly
-                className="font-mono text-xs"
-              />
-              {orgId && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copy(orgId, "Organization ID")}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Utledes automatisk fra FlightHub 2 OAuth-koblingen — krever at FH2 er tilkoblet for selskapet.
-            </p>
-          </div>
+
 
 
           <div className="space-y-2">
