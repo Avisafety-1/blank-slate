@@ -79,7 +79,10 @@ const buildSystemPromptNO = (p: SystemPromptParams): string => {
     solarActivity,
   } = p;
 
-  return `Du er en profesjonell Safety Management System (SMS)-assistent for UAS-operasjoner.
+  return `### REGEL 0 — SPRÅK (ABSOLUTT)
+ALL output (alle tekstfelter i JSON-responsen) SKAL være på naturlig norsk bokmål. Input-data kan inneholde engelske termer; oversett/omskriv disse til norsk. Stedsnavn beholdes på originalspråk.
+
+Du er en profesjonell Safety Management System (SMS)-assistent for UAS-operasjoner.
 
 Din oppgave er å gjennomføre en strukturert, revisjonsvennlig og beslutningsstøttende risikovurdering for et droneoppdrag i AviSafe, i tråd med EASA-prinsipper, god SMS-praksis og Human Factors.
 
@@ -479,7 +482,9 @@ Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
 };
 
 const buildUserPromptNO = (contextData: unknown): string => {
-  return `Analyser denne droneoppdrag-risikovurderingen:
+  return `KRITISK SPRÅKINSTRUKSJON: Du SKAL svare HELE responsen på norsk (bokmål). Selv om input-data nedenfor kan inneholde engelske begreper eller kodenavn, skal alle dine tekstfelter (summary, mission_overview, factors, concerns, reasoning, actions, osv.) være på naturlig norsk. Oversett eller omskriv engelske termer til norsk.
+
+Analyser denne droneoppdrag-risikovurderingen:
 
 ${JSON.stringify(contextData, null, 2)}
 
@@ -620,7 +625,10 @@ const buildSystemPromptEN = (p: SystemPromptParams): string => {
     solarActivity,
   } = p;
 
-  return `You are a professional Safety Management System (SMS) assistant for UAS operations.
+  return `### RULE 0 — LANGUAGE (ABSOLUTE)
+ALL output (every text field in the JSON response) MUST be in natural English. The input data is in Norwegian (from Norwegian data sources: Met.no, airspace zones, SORA config). Translate or paraphrase Norwegian terms into English. Place names may stay in Norwegian.
+
+You are a professional Safety Management System (SMS) assistant for UAS operations.
 
 Your task is to perform a structured, audit-friendly and decision-supporting risk assessment for a drone mission in AviSafe, in line with EASA principles, good SMS practice and Human Factors.
 
@@ -1020,7 +1028,9 @@ Return ONLY valid JSON without markdown formatting. Always respond in English.`;
 };
 
 const buildUserPromptEN = (contextData: unknown): string => {
-  return `Analyse this drone mission risk assessment:
+  return `CRITICAL LANGUAGE INSTRUCTION: You MUST respond ENTIRELY in English. The input data below contains Norwegian text from Norwegian data sources (Met.no weather, airspace zones, SORA configuration, place names). DO NOT mirror the Norwegian language of the input. Translate or paraphrase any Norwegian terms (e.g. "Tynt befolket" → "sparsely populated", "vindkast" → "wind gusts", "duggpunkt" → "dew point", "luftrom" → "airspace", "ingen 5 km-soner" → "no 5 km zones", "utenfor kontrollert luftrom" → "outside controlled airspace") into natural English in EVERY text field (summary, mission_overview, factors, concerns, reasoning, actions, recommendations, etc.). Place names may remain in Norwegian.
+
+Analyse this drone mission risk assessment:
 
 ${JSON.stringify(contextData, null, 2)}
 

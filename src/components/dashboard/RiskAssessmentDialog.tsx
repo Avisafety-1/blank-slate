@@ -147,13 +147,17 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({
-            missionId: currentMissionId,
-            soraReassessment: true,
-            previousAnalysis: currentAssessment,
-            pilotComments: categoryComments,
-            language: getCurrentLanguage(),
-          }),
+          body: (() => {
+            const lang = getCurrentLanguage();
+            console.log('[RiskAssessment/SORA-reassess] Sending language to AI:', lang);
+            return JSON.stringify({
+              missionId: currentMissionId,
+              soraReassessment: true,
+              previousAnalysis: currentAssessment,
+              pilotComments: categoryComments,
+              language: lang,
+            });
+          })(),
         }
       );
 
