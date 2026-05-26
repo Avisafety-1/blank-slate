@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage, setLanguage } from "@/lib/i18nHelpers";
 import type { TrainingModuleKey } from "@/config/trainingModules";
 
 interface Company {
@@ -31,7 +32,7 @@ export const Header = () => {
   const isNorconsult = (companyName?.toLowerCase().includes('norconsult') ?? false)
     || (parentCompanyName?.toLowerCase().includes('norconsult') ?? false);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   // Superadmins: fetch ALL companies for full switcher
   // Non-superadmins with multi-company access: use accessibleCompanies from AuthContext
@@ -85,12 +86,11 @@ export const Header = () => {
   };
 
   const toggleLanguage = () => {
-    const currentLang = i18n.language?.startsWith('en') ? 'en' : 'no';
-    const newLang = currentLang === 'no' ? 'en' : 'no';
-    i18n.changeLanguage(newLang);
+    const newLang = getCurrentLanguage() === 'no' ? 'en' : 'no';
+    setLanguage(newLang);
   };
 
-  const displayLang = i18n.language?.startsWith('en') ? 'NO' : 'EN';
+  const displayLang = getCurrentLanguage() === 'en' ? 'NO' : 'EN';
   const canShowModule = (moduleKey: TrainingModuleKey) => hasTrainingModuleAccess(moduleKey);
 
   return (
