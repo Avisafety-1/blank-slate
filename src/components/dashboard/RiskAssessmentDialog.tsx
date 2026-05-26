@@ -152,6 +152,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             soraReassessment: true,
             previousAnalysis: currentAssessment,
             pilotComments: categoryComments,
+            language: getCurrentLanguage(),
           }),
         }
       );
