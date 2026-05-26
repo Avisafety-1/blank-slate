@@ -735,7 +735,7 @@ Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, contai
 
     if (missionError || !mission) {
       console.error('Mission fetch error:', missionError);
-      return new Response(JSON.stringify({ error: 'Mission not found' }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missionNotFound }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
