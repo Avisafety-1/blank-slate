@@ -378,6 +378,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setAllUsersCanAcknowledgeMaintenance((data as any).all_users_can_acknowledge_maintenance ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
+      setCurrencyEnabled(!!(data as any).currency_requirement_enabled);
+      setCurrencyHours(Number((data as any).currency_requirement_hours ?? 2));
+      setCurrencyDays(Number((data as any).currency_requirement_days ?? 90));
+      setPropagateCurrency(!!(data as any).propagate_currency_requirement);
       const parentId = (data as any).parent_company_id as string | null;
       setParentDeviationCompanyId(parentId);
       setIsChildDept(!!parentId);
