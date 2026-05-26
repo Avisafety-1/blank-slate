@@ -21,6 +21,9 @@ interface CompanySettings {
   currency_requirement_enabled: boolean;
   currency_requirement_hours: number;
   currency_requirement_days: number;
+  currency_requirement_2_enabled: boolean;
+  currency_requirement_2_hours: number;
+  currency_requirement_2_days: number;
   propagate_currency_requirement: boolean;
 }
 
@@ -43,13 +46,15 @@ const defaultSettings: CompanySettings = {
   currency_requirement_enabled: false,
   currency_requirement_hours: 2,
   currency_requirement_days: 90,
+  currency_requirement_2_enabled: false,
+  currency_requirement_2_hours: 1,
+  currency_requirement_2_days: 30,
   propagate_currency_requirement: false,
 };
 
-// Simple in-memory cache keyed by companyId
 const cache: Record<string, { settings: CompanySettings; ts: number }> = {};
 const inflight: Record<string, Promise<CompanySettings>> = {};
-const CACHE_TTL = 30_000; // 30 seconds
+const CACHE_TTL = 30_000;
 
 export function invalidateCompanySettingsCache() {
   for (const key of Object.keys(cache)) {
@@ -62,7 +67,7 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 
   const promise = (supabase
     .from("companies")
-    .select("show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, default_publish_planned_missions, default_share_contact_info, default_share_contact_name, default_share_contact_phone, default_share_contact_email, default_anonymous_publish, allow_pilot_override_publish_settings, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, propagate_currency_requirement")
+    .select("show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, default_publish_planned_missions, default_share_contact_info, default_share_contact_name, default_share_contact_phone, default_share_contact_email, default_anonymous_publish, allow_pilot_override_publish_settings, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement")
     .eq("id", companyId)
     .single() as any)
     .then(({ data }: any) => {
@@ -85,6 +90,9 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
         currency_requirement_enabled: data?.currency_requirement_enabled ?? false,
         currency_requirement_hours: Number(data?.currency_requirement_hours ?? 2),
         currency_requirement_days: data?.currency_requirement_days ?? 90,
+        currency_requirement_2_enabled: data?.currency_requirement_2_enabled ?? false,
+        currency_requirement_2_hours: Number(data?.currency_requirement_2_hours ?? 1),
+        currency_requirement_2_days: data?.currency_requirement_2_days ?? 30,
         propagate_currency_requirement: data?.propagate_currency_requirement ?? false,
       };
       cache[companyId] = { settings: s, ts: Date.now() };
@@ -121,12 +129,14 @@ export function useCompanySettings() {
       setSettings({
         ...ownSettings,
         incident_reports_visible_to_all_companies: parentSettings.incident_reports_visible_to_all_companies,
-        // Ekte arv av currency-krav når mor har skrudd på propagering
         ...(parentSettings.propagate_currency_requirement
           ? {
               currency_requirement_enabled: parentSettings.currency_requirement_enabled,
               currency_requirement_hours: parentSettings.currency_requirement_hours,
               currency_requirement_days: parentSettings.currency_requirement_days,
+              currency_requirement_2_enabled: parentSettings.currency_requirement_2_enabled,
+              currency_requirement_2_hours: parentSettings.currency_requirement_2_hours,
+              currency_requirement_2_days: parentSettings.currency_requirement_2_days,
               propagate_currency_requirement: true,
             }
           : {}),
