@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentLanguage } from "@/lib/i18nHelpers";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -115,7 +116,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       const voice = cj.narration_voice || "coral";
       const speed = parseFloat(cj.narration_speed || "1") || 1;
       const { data, error } = await supabase.functions.invoke("generate-narration", {
-        body: { text, course_id: courseId, slide_key: s.id || `slide-${sIdx}`, voice, speed },
+        body: { text, course_id: courseId, slide_key: s.id || `slide-${sIdx}`, voice, speed, language: getCurrentLanguage() },
       });
       if (error) throw error;
       const audioUrl = (data as any)?.audio_url;
