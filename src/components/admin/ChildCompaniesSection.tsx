@@ -1474,7 +1474,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                               min={0}
                               step={0.5}
                               value={hoursVal}
-                              disabled={locked || savingSettings}
+                              disabled={locked}
                               onCommit={(n) => {
                                 setHours(String(n));
                                 if (!locked) saveCurrencyRequirement({ [hoursKey]: n } as any);
