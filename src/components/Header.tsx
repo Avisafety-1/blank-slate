@@ -219,15 +219,7 @@ export const Header = () => {
             </DropdownMenu>
             
             {/* Language toggle - Mobile */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleLanguage}
-              className="h-7 w-7 min-w-7 p-0"
-              title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
-            >
-              <Globe className="w-3.5 h-3.5" />
-            </Button>
+            <LanguageSegmented size="xs" />
 
             {isNorconsult && (
               <StartTourButton className="h-7 w-7 min-w-7 p-0" />
