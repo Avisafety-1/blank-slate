@@ -1,0 +1,40 @@
+{
+  "incident": {
+    "headerTitle": "INCIDENT REPORT",
+    "sections": {
+      "details": "DETAILS",
+      "description": "DESCRIPTION",
+      "comments": "COMMENTS",
+      "attachment": "ATTACHMENT"
+    },
+    "labels": {
+      "status": "Status",
+      "severity": "Severity",
+      "category": "Category",
+      "rootCause": "Root cause",
+      "contributingCause": "Contributing cause",
+      "occurredAt": "Occurred at",
+      "location": "Location",
+      "reportedBy": "Reported by",
+      "followUpOwner": "Follow-up owner",
+      "relatedMission": "Related mission"
+    },
+    "placeholders": {
+      "notSpecified": "Not specified",
+      "notAssigned": "Not assigned",
+      "unknown": "Unknown"
+    },
+    "comments": {
+      "headers": {
+        "date": "Date",
+        "by": "By",
+        "comment": "Comment"
+      }
+    },
+    "filename": "incident-report",
+    "document": {
+      "title": "Incident report - {{title}} - {{date}}",
+      "description": "Automatically generated report for incident: {{title}}"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "incident": {
+    "headerTitle": "HENDELSESRAPPORT",
+    "sections": {
+      "details": "DETALJER",
+      "description": "BESKRIVELSE",
+      "comments": "KOMMENTARER",
+      "attachment": "VEDLEGG"
+    },
+    "labels": {
+      "status": "Status",
+      "severity": "Alvorlighetsgrad",
+      "category": "Kategori",
+      "rootCause": "Hovedarsak",
+      "contributingCause": "Medvirkende arsak",
+      "occurredAt": "Hendelsestidspunkt",
+      "location": "Lokasjon",
+      "reportedBy": "Rapportert av",
+      "followUpOwner": "Oppfolgingsansvarlig",
+      "relatedMission": "Knyttet oppdrag"
+    },
+    "placeholders": {
+      "notSpecified": "Ikke spesifisert",
+      "notAssigned": "Ikke tildelt",
+      "unknown": "Ukjent"
+    },
+    "comments": {
+      "headers": {
+        "date": "Dato",
+        "by": "Av",
+        "comment": "Kommentar"
+      }
+    },
+    "filename": "hendelsesrapport",
+    "document": {
+      "title": "Hendelsesrapport - {{title}} - {{date}}",
+      "description": "Automatisk generert rapport for hendelse: {{title}}"
+    }
+  }
+}
