@@ -1438,7 +1438,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">I løpet av siste … dager</Label>
+                            <Label className="text-xs">Siste antall dager</Label>
                             <Input
                               type="number"
                               min={1}
