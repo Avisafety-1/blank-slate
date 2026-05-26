@@ -5268,6 +5268,7 @@ export type Database = {
           is_technical_responsible: boolean | null
           nødkontakt_navn: string | null
           nødkontakt_telefon: string | null
+          preferred_language: string | null
           signature_url: string | null
           telefon: string | null
           tittel: string | null
@@ -5299,6 +5300,7 @@ export type Database = {
           is_technical_responsible?: boolean | null
           nødkontakt_navn?: string | null
           nødkontakt_telefon?: string | null
+          preferred_language?: string | null
           signature_url?: string | null
           telefon?: string | null
           tittel?: string | null
@@ -5330,6 +5332,7 @@ export type Database = {
           is_technical_responsible?: boolean | null
           nødkontakt_navn?: string | null
           nødkontakt_telefon?: string | null
+          preferred_language?: string | null
           signature_url?: string | null
           telefon?: string | null
           tittel?: string | null
