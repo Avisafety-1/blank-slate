@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { getPrompts } from "./prompts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const courseSchema = {
+const buildCourseSchema = (prompts: ReturnType<typeof getPrompts>) => ({
   type: "object",
   properties: {
     title: { type: "string" },
@@ -14,14 +15,14 @@ const courseSchema = {
     learning_objectives: { type: "array", items: { type: "string" } },
     intro_slides: {
       type: "array",
-      description: "2-3 forklarende intro-slides FØR spørsmålene",
+      description: prompts.schemaDescriptions.introSlides,
       items: {
         type: "object",
         properties: {
-          heading: { type: "string", description: "Tittel på slidet" },
-          narration_text: { type: "string", description: "Tekst som skal leses opp (2-4 setninger på norsk)" },
-          image_prompt: { type: "string", description: "Engelsk prompt for AI-bildegenerering. Profesjonell teknisk illustrasjon, mørk SaaS-bakgrunn, fotorealistisk drone-kontekst, ingen tekst i bildet." },
-          source_reference: { type: "string", description: "Kapittel-/seksjonsreferanse fra manualen" },
+          heading: { type: "string", description: prompts.schemaDescriptions.heading },
+          narration_text: { type: "string", description: prompts.schemaDescriptions.narrationText },
+          image_prompt: { type: "string", description: prompts.schemaDescriptions.imagePrompt },
+          source_reference: { type: "string", description: prompts.schemaDescriptions.sourceReference },
         },
         required: ["heading", "narration_text", "image_prompt", "source_reference"],
       },
@@ -32,8 +33,8 @@ const courseSchema = {
         type: "object",
         properties: {
           question: { type: "string" },
-          options: { type: "array", items: { type: "string" }, description: "Nøyaktig 4 alternativer" },
-          correct_answer: { type: "string", description: "Må matche EN av options ord-for-ord" },
+          options: { type: "array", items: { type: "string" }, description: prompts.schemaDescriptions.options },
+          correct_answer: { type: "string", description: prompts.schemaDescriptions.correctAnswer },
           explanation: { type: "string" },
           source_reference: { type: "string" },
         },
@@ -42,9 +43,14 @@ const courseSchema = {
     },
   },
   required: ["title", "description", "intro_slides", "questions"],
-};
+});
 
-async function generateWithAI(systemPrompt: string, userPrompt: string, apiKey: string) {
+async function generateWithAI(
+  systemPrompt: string,
+  userPrompt: string,
+  apiKey: string,
+  prompts: ReturnType<typeof getPrompts>,
+) {
   const body = {
     model: "google/gemini-2.5-pro",
     messages: [
@@ -56,8 +62,8 @@ async function generateWithAI(systemPrompt: string, userPrompt: string, apiKey: 
         type: "function",
         function: {
           name: "emit_course",
-          description: "Emit the structured training course based on the manual content.",
-          parameters: courseSchema,
+          description: prompts.toolDescription,
+          parameters: buildCourseSchema(prompts),
         },
       },
     ],
@@ -110,7 +116,6 @@ async function generateImage(prompt: string, apiKey: string): Promise<Uint8Array
 }
 
 const ALLOWED_VOICES = new Set(["coral", "sage", "onyx", "nova", "alloy", "ash", "ballad", "echo", "fable", "shimmer", "verse", "marin", "cedar"]);
-const TTS_INSTRUCTIONS = "Snakk i en rolig, profesjonell og lærerik tone på norsk. Tydelig artikulasjon, moderat tempo, vennlig og inkluderende — som en erfaren instruktør som forklarer for en kollega.";
 
 async function generateTTS(
   text: string,
@@ -118,10 +123,11 @@ async function generateTTS(
   warnings: string[],
   slideLabel: string,
   voice: string,
+  prompts: ReturnType<typeof getPrompts>,
 ): Promise<Uint8Array | null> {
   console.log(`[tts:${slideLabel}] start — text length=${text?.length ?? 0}, voice=${voice}, openaiKey=${openaiKey ? "PRESENT" : "MISSING"}`);
   if (!openaiKey) {
-    warnings.push("OPENAI_API_KEY mangler — hopper over server-side tale (bruker nettleser-fallback).");
+    warnings.push(prompts.errors.openAiMissingForTts);
     return null;
   }
   if (!text || text.trim().length === 0) {
@@ -136,7 +142,7 @@ async function generateTTS(
         model: "gpt-4o-mini-tts",
         voice,
         input: text.slice(0, 4000),
-        instructions: TTS_INSTRUCTIONS,
+        instructions: prompts.ttsInstructions,
         response_format: "mp3",
       }),
     });
@@ -144,7 +150,7 @@ async function generateTTS(
     if (!resp.ok) {
       const body = await resp.text();
       console.error(`[tts:${slideLabel}] openai failed`, resp.status, body);
-      warnings.push(`OpenAI TTS feilet (${resp.status}) — bruker nettleser-fallback.`);
+      warnings.push(prompts.errors.openAiTtsFailed(resp.status));
       return null;
     }
     const buf = await resp.arrayBuffer();
@@ -153,7 +159,7 @@ async function generateTTS(
     return bytes;
   } catch (e) {
     console.error(`[tts:${slideLabel}] exception`, e);
-    warnings.push("OpenAI TTS-kall kastet exception — bruker nettleser-fallback.");
+    warnings.push(prompts.errors.openAiTtsException);
     return null;
   }
 }
@@ -161,10 +167,12 @@ async function generateTTS(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  let prompts = getPrompts(undefined);
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missingAuth }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -179,13 +187,10 @@ Deno.serve(async (req) => {
     console.log(`[startup] LOVABLE_API_KEY=${LOVABLE_API_KEY ? "PRESENT" : "MISSING"}, OPENAI_API_KEY=${OPENAI_API_KEY ? "PRESENT" : "MISSING"}`);
 
     if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.apiKeyMissing }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-    if (!OPENAI_API_KEY) {
-      warnings.push("OPENAI_API_KEY er ikke satt — server-side tale deaktivert (Web Speech fallback brukes).");
     }
 
     const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -193,7 +198,7 @@ Deno.serve(async (req) => {
     });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: "Invalid auth" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.invalidAuth }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -211,6 +216,7 @@ Deno.serve(async (req) => {
       include_narration,
       include_visuals,
       voice: requestedVoice,
+      language,
     } = body as {
       manual_id: string;
       length: number;
@@ -222,14 +228,21 @@ Deno.serve(async (req) => {
       include_narration?: boolean;
       include_visuals?: boolean;
       voice?: string;
+      language?: string;
     };
+
+    prompts = getPrompts(language);
+
+    if (!OPENAI_API_KEY) {
+      warnings.push(prompts.errors.openAiMissingWarning);
+    }
 
     const voice = requestedVoice && ALLOWED_VOICES.has(requestedVoice) ? requestedVoice : "coral";
 
     console.log(`[request] manual_id=${manual_id}, length=${length}, include_narration=${include_narration}, include_visuals=${include_visuals}, voice=${voice}`);
 
     if (!manual_id || !topic_title || !length) {
-      return new Response(JSON.stringify({ error: "missing fields" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missingFields }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -243,7 +256,7 @@ Deno.serve(async (req) => {
       .eq("id", manual_id)
       .maybeSingle();
     if (manualErr || !manual) {
-      return new Response(JSON.stringify({ error: "Manual not found" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.manualNotFound }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -260,14 +273,14 @@ Deno.serve(async (req) => {
       authorized = prof?.company_id === manual.company_id;
     }
     if (!authorized) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.forbidden }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Retrieve chunks via even sampling (embedding model removed from AI Gateway)
-    let chunks: { chunk_index: number; chunk_text: string; section_heading: string | null }[] = [];
+    const chunks: { chunk_index: number; chunk_text: string; section_heading: string | null }[] = [];
     const { data: all } = await admin
       .from("manual_chunks")
       .select("chunk_index, chunk_text, section_heading")
@@ -275,7 +288,7 @@ Deno.serve(async (req) => {
       .order("chunk_index", { ascending: true });
     const total = all?.length || 0;
     if (total === 0) {
-      return new Response(JSON.stringify({ error: "Ingen innhold funnet i manualen" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.noContent }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -288,63 +301,40 @@ Deno.serve(async (req) => {
     console.log(`[chunks] selected ${chunks.length} of ${total}`);
 
     const contextBlock = chunks
-      .map(
-        (c, i) =>
-          `--- CHUNK ${i + 1}${c.section_heading ? ` (Seksjon: ${c.section_heading})` : ""} ---\n${c.chunk_text}`
-      )
+      .map((c, i) => `${prompts.chunkLabel(i, c.section_heading)}\n${c.chunk_text}`)
       .join("\n\n");
 
-    const systemPrompt = `Du er en ekspert på flysikkerhet og droneoperasjoner og lager opplæringsmateriell på norsk.
-
-Din oppgave er å generere et test-orientert treningskurs UTELUKKENDE basert på det oppgitte manualinnholdet.
-
-Kursstruktur:
-1. 2-3 INTRO-SLIDES med forklarende tekst (narration_text) som introduserer temaet før testen begynner. Hvert slide skal ha en treffende heading, en god 2-4 setningers fortellende tekst som kan leses opp, og en image_prompt for et illustrerende bilde.
-2. ${length} FLERVALGSSPØRSMÅL (kun multiple_choice — én test, ingen scenario-tekst).
-
-Regler:
-- IKKE finn på eller anta informasjon — bruk kun det som står i manualen
-- Prioriter sikkerhetskritiske prosedyrer
-- Hvert spørsmål skal ha NØYAKTIG 4 alternativer
-- "correct_answer" må matche EN av "options" ord-for-ord
-- Alle felt på norsk (image_prompt på engelsk for bedre AI-bildegenerering)
-- "source_reference" peker til kapittel/seksjon fra manualen
-- Returner KUN gyldig output via emit_course-verktøyet`;
-
-    const userPrompt = `Generer et kurs om følgende tema:
-
-Tittel: ${topic_title}
-${chapter_reference ? `Kapittel: ${chapter_reference}` : ""}
-${topic_description ? `Beskrivelse: ${topic_description}` : ""}
-
-Antall spørsmål: ${length}
-
-Manualtittel: ${manual.title}
-
-Innhold:
-${contextBlock}`;
+    const systemPrompt = prompts.systemPrompt(length);
+    const userPrompt = prompts.userPrompt({
+      topic_title,
+      chapter_reference,
+      topic_description,
+      length,
+      manual_title: manual.title,
+      context_block: contextBlock,
+    });
 
     let aiResult: any;
     try {
-      aiResult = await generateWithAI(systemPrompt, userPrompt, LOVABLE_API_KEY);
+      aiResult = await generateWithAI(systemPrompt, userPrompt, LOVABLE_API_KEY, prompts);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "AI feilet";
+      const msg = e instanceof Error ? e.message : prompts.errors.aiFailed;
       if (msg === "rate_limit") {
-        return new Response(JSON.stringify({ error: "AI er overbelastet. Prøv igjen om litt." }), {
+        return new Response(JSON.stringify({ error: prompts.errors.aiOverloaded }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (msg === "payment_required") {
         return new Response(
-          JSON.stringify({ error: "AI-kreditter brukt opp. Legg til kreditter i Settings → Workspace → Usage." }),
+          JSON.stringify({ error: prompts.errors.creditsExhausted }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       try {
-        aiResult = await generateWithAI(systemPrompt, userPrompt, LOVABLE_API_KEY);
+        aiResult = await generateWithAI(systemPrompt, userPrompt, LOVABLE_API_KEY, prompts);
       } catch {
-        return new Response(JSON.stringify({ error: "AI-generering feilet" }), {
+        return new Response(JSON.stringify({ error: prompts.errors.aiGenerationFailed }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -355,7 +345,7 @@ ${contextBlock}`;
     const description =
       (aiResult.description || topic_description || "") +
       (aiResult.learning_objectives?.length
-        ? "\n\nLæringsmål:\n• " + aiResult.learning_objectives.join("\n• ")
+        ? `\n\n${prompts.fallbackDescription.learningObjectivesLabel}:\n• ` + aiResult.learning_objectives.join("\n• ")
         : "");
 
     const { data: courseRow, error: courseErr } = await admin
@@ -414,7 +404,7 @@ ${contextBlock}`;
       let narrationAudioUrl: string | null = null;
       console.log(`[${label}] include_narration=${include_narration}, has_text=${!!slide.narration_text}`);
       if (include_narration && slide.narration_text) {
-        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings, label, voice);
+        const audioBytes = await generateTTS(slide.narration_text, OPENAI_API_KEY, warnings, label, voice, prompts);
         if (audioBytes) {
           const path = `${manual.company_id}/${courseId}/${slideId}.mp3`;
           const { error: upErr } = await admin.storage
@@ -422,7 +412,7 @@ ${contextBlock}`;
             .upload(path, audioBytes, { contentType: "audio/mpeg", upsert: true });
           if (upErr) {
             console.error(`[${label}] audio upload error`, upErr);
-            warnings.push(`Lyd-opplasting feilet for ${label}: ${upErr.message}`);
+            warnings.push(prompts.errors.audioUploadFailed(label, upErr.message));
           } else {
             const { data: signed } = await admin.storage
               .from("training-narration")
@@ -441,11 +431,10 @@ ${contextBlock}`;
         source_reference: slide.source_reference || null,
       };
 
-      // Insert with content_json as raw object (jsonb serialization handled by PostgREST)
       const insertRow: any = {
         id: slideId,
         course_id: courseId,
-        question_text: slide.heading || "Intro",
+        question_text: slide.heading || prompts.fallbackDescription.introHeading,
         sort_order: sortOrder++,
         slide_type: "content",
         image_url: imageUrl,
@@ -455,7 +444,7 @@ ${contextBlock}`;
 
       if (insErr) {
         console.error(`[${label}] insert error`, insErr);
-        warnings.push(`Intro-slide insert feilet: ${insErr.message}`);
+        warnings.push(prompts.errors.introInsertFailed(insErr.message));
         continue;
       }
       createdSlides++;
@@ -475,7 +464,7 @@ ${contextBlock}`;
           .eq("id", slideId);
         if (updErr) {
           console.error(`[${label}] update fallback failed`, updErr);
-          warnings.push(`content_json kunne ikke lagres for ${label}: ${updErr.message}`);
+          warnings.push(prompts.errors.contentJsonNotPersisted(label, updErr.message));
         } else {
           const { data: re } = await admin
             .from("training_questions")
@@ -513,7 +502,7 @@ ${contextBlock}`;
 
       if (qErr || !qRow) {
         console.error("question insert error", qErr);
-        if (qErr) warnings.push(`Spørsmål-insert feilet: ${qErr.message}`);
+        if (qErr) warnings.push(prompts.errors.questionInsertFailed(qErr.message));
         continue;
       }
 
@@ -555,7 +544,7 @@ ${contextBlock}`;
     );
   } catch (e) {
     console.error("generate-course error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : prompts.errors.unknown }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
