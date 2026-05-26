@@ -288,15 +288,7 @@ export const Header = () => {
             )}
             
             {/* Language toggle - Desktop */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleLanguage}
-              className="gap-1"
-              title={displayLang === 'EN' ? 'Switch to English' : 'Bytt til norsk'}
-            >
-              <Globe className="w-4 h-4" />
-            </Button>
+            <LanguageSegmented size="sm" />
 
             {isNorconsult && (
               <StartTourButton className="h-8 w-8 p-0" />
