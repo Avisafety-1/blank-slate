@@ -555,12 +555,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Hvis kolonnen er null → ikke gjør noe (bevarer dagens oppførsel for eksisterende brukere).
         try {
           const preferred = (profile as any).preferred_language as string | null | undefined;
-          if (preferred === 'no' || preferred === 'en') {
+          if (!i18nHydratedRef.current && (preferred === 'no' || preferred === 'en')) {
             const { default: i18n } = await import('@/i18n');
             const current = (i18n.language || '').toLowerCase().split('-')[0];
             if (current !== preferred) {
               await i18n.changeLanguage(preferred);
             }
+            i18nHydratedRef.current = true;
           }
         } catch (langErr) {
           console.warn('AuthContext: Failed to hydrate i18n from preferred_language', langErr);
