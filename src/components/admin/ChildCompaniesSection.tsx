@@ -1470,32 +1470,29 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <Label className="text-xs">Min. flytimer</Label>
-                            <Input
-                              type="number"
+                            <LocalNumberInput
                               min={0}
                               step={0.5}
                               value={hoursVal}
                               disabled={locked || savingSettings}
-                              onChange={(e) => setHours(e.target.value)}
-                              onBlur={() => {
-                                const n = parseOrNull(hoursVal);
-                                if (!locked && n !== null) saveCurrencyRequirement({ [hoursKey]: n } as any);
+                              onCommit={(n) => {
+                                setHours(String(n));
+                                if (!locked) saveCurrencyRequirement({ [hoursKey]: n } as any);
                               }}
                               className="h-8"
                             />
                           </div>
                           <div>
                             <Label className="text-xs">Siste antall dager</Label>
-                            <Input
-                              type="number"
+                            <LocalNumberInput
                               min={1}
                               max={3650}
                               value={daysVal}
                               disabled={locked || savingSettings}
-                              onChange={(e) => setDays(e.target.value)}
-                              onBlur={() => {
-                                const n = parseOrNull(daysVal);
-                                if (!locked && n !== null) saveCurrencyRequirement({ [daysKey]: Math.floor(n) } as any);
+                              onCommit={(n) => {
+                                const v = Math.floor(n);
+                                setDays(String(v));
+                                if (!locked) saveCurrencyRequirement({ [daysKey]: v } as any);
                               }}
                               className="h-8"
                             />
