@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { getPrompts } from "./prompts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const topicsSchema = {
+const buildTopicsSchema = (prompts: ReturnType<typeof getPrompts>) => ({
   type: "object",
   properties: {
     topics: {
@@ -14,25 +15,27 @@ const topicsSchema = {
       items: {
         type: "object",
         properties: {
-          title: { type: "string", description: "Kort, beskrivende kurstittel på norsk" },
-          chapter_reference: { type: "string", description: "Referanse til kapittel/seksjon i manualen, f.eks. 'Kap. 7.3' eller 'Seksjon 4.1–4.2'" },
-          description: { type: "string", description: "1-2 setninger som forklarer hva kurset dekker" },
-          focus_query: { type: "string", description: "Kort søkesetning som kan brukes for retrieval" },
+          title: { type: "string", description: prompts.schemaDescriptions.title },
+          chapter_reference: { type: "string", description: prompts.schemaDescriptions.chapterReference },
+          description: { type: "string", description: prompts.schemaDescriptions.description },
+          focus_query: { type: "string", description: prompts.schemaDescriptions.focusQuery },
         },
         required: ["title", "chapter_reference", "description", "focus_query"],
       },
     },
   },
   required: ["topics"],
-};
+});
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  let prompts = getPrompts(undefined);
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missingAuth }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -42,7 +45,7 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.apiKeyMissing }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -53,16 +56,18 @@ Deno.serve(async (req) => {
     });
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: "Invalid auth" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.invalidAuth }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const userId = userData.user.id;
 
-    const { manual_id } = (await req.json()) as { manual_id: string };
+    const { manual_id, language } = (await req.json()) as { manual_id: string; language?: string };
+    prompts = getPrompts(language);
+
     if (!manual_id) {
-      return new Response(JSON.stringify({ error: "manual_id required" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.manualIdRequired }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -76,13 +81,12 @@ Deno.serve(async (req) => {
       .eq("id", manual_id)
       .maybeSingle();
     if (!manual) {
-      return new Response(JSON.stringify({ error: "Manual not found" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.manualNotFound }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Authorization (same pattern as generate-course)
     const { data: visibleRaw } = await admin.rpc("get_user_visible_company_ids", { p_user_id: userId });
     const visibleIds: string[] = Array.isArray(visibleRaw)
       ? visibleRaw.map((v: any) => (typeof v === "string" ? v : v?.company_id ?? v?.get_user_visible_company_ids ?? null)).filter(Boolean)
@@ -93,13 +97,12 @@ Deno.serve(async (req) => {
       authorized = prof?.company_id === manual.company_id;
     }
     if (!authorized) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.forbidden }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch a representative sample of chunks (preferring those with headings)
     const { data: all } = await admin
       .from("manual_chunks")
       .select("chunk_index, chunk_text, section_heading")
@@ -108,13 +111,12 @@ Deno.serve(async (req) => {
 
     const total = all?.length || 0;
     if (total === 0) {
-      return new Response(JSON.stringify({ error: "Ingen innhold funnet i manualen" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.noContent }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Diversified sampling — up to 20 chunks, prioritizing those with section_heading
     const want = Math.min(20, total);
     const step = Math.max(1, Math.floor(total / want));
     const sampled: any[] = [];
@@ -125,26 +127,11 @@ Deno.serve(async (req) => {
     const contextBlock = sampled
       .map(
         (c, i) =>
-          `--- CHUNK ${i + 1}${c.section_heading ? ` (Seksjon: ${c.section_heading})` : ""} ---\n${(c.chunk_text || "").slice(0, 1200)}`
+          `${prompts.chunkLabel(i, c.section_heading)}\n${(c.chunk_text || "").slice(0, 1200)}`
       )
       .join("\n\n");
 
-    const systemPrompt = `Du er en ekspert på dronesikkerhet og opplæring. Din oppgave er å analysere en operasjonsmanual og foreslå 5-8 spesifikke kurs-temaer som passer for trening av personell.
-
-Regler:
-- Hvert tema skal være FOKUSERT (ikke for bredt)
-- Bruk faktiske kapittel-/seksjonsreferanser fra manualen når mulig
-- Prioriter sikkerhetskritiske og operativt viktige temaer
-- Unngå generiske temaer — vær konkret om hva manualen faktisk dekker
-- Alle felt skal være på norsk
-- Returner KUN gyldig output via emit_topics-verktøyet`;
-
-    const userPrompt = `Analyser denne manualen og foreslå 5-8 kurs-temaer:
-
-Manualtittel: ${manual.title}
-
-Innhold (utvalg på tvers av manualen):
-${contextBlock}`;
+    const userPrompt = prompts.userPrompt(manual.title, contextBlock);
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -152,7 +139,7 @@ ${contextBlock}`;
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: prompts.systemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools: [
@@ -160,8 +147,8 @@ ${contextBlock}`;
             type: "function",
             function: {
               name: "emit_topics",
-              description: "Foreslå kurs-temaer basert på manualinnholdet",
-              parameters: topicsSchema,
+              description: prompts.toolDescription,
+              parameters: buildTopicsSchema(prompts),
             },
           },
         ],
@@ -170,13 +157,13 @@ ${contextBlock}`;
     });
 
     if (resp.status === 429) {
-      return new Response(JSON.stringify({ error: "AI er overbelastet. Prøv igjen om litt." }), {
+      return new Response(JSON.stringify({ error: prompts.errors.aiOverloaded }), {
         status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (resp.status === 402) {
-      return new Response(JSON.stringify({ error: "AI-kreditter brukt opp." }), {
+      return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
         status: 402,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -184,7 +171,7 @@ ${contextBlock}`;
     if (!resp.ok) {
       const t = await resp.text();
       console.error("AI error", resp.status, t);
-      return new Response(JSON.stringify({ error: "AI-kall feilet" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.aiFailed }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -193,7 +180,7 @@ ${contextBlock}`;
     const data = await resp.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
-      return new Response(JSON.stringify({ error: "AI returnerte ikke forslag" }), {
+      return new Response(JSON.stringify({ error: prompts.errors.noSuggestions }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -204,7 +191,7 @@ ${contextBlock}`;
     });
   } catch (e) {
     console.error("suggest-course-topics error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : prompts.errors.unknown }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

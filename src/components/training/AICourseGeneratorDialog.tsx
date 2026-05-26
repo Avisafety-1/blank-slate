@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getCurrentLanguage } from "@/lib/i18nHelpers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,7 +175,7 @@ export const AICourseGeneratorDialog = ({
     setTopics([]);
     try {
       const { data, error } = await supabase.functions.invoke("suggest-course-topics", {
-        body: { manual_id: mid },
+        body: { manual_id: mid, language: getCurrentLanguage() },
       });
       if (error) {
         const ctx: any = (error as any).context;
