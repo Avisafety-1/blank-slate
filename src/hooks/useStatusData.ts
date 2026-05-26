@@ -134,6 +134,38 @@ const fetchEquipment = async () => {
   return equipmentWithMissions;
 };
 
+// Resolves currency requirement for a given company, honoring parent propagation.
+const resolveCurrencyRequirement = async (companyId: string): Promise<{
+  enabled: boolean;
+  hours: number;
+  days: number;
+} | null> => {
+  const { data: own } = await (supabase as any)
+    .from("companies")
+    .select("parent_company_id, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days")
+    .eq("id", companyId)
+    .maybeSingle();
+  if (!own) return null;
+
+  let enabled = !!own.currency_requirement_enabled;
+  let hours = Number(own.currency_requirement_hours ?? 2);
+  let days = Number(own.currency_requirement_days ?? 90);
+
+  if (own.parent_company_id) {
+    const { data: parent } = await (supabase as any)
+      .from("companies")
+      .select("currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, propagate_currency_requirement")
+      .eq("id", own.parent_company_id)
+      .maybeSingle();
+    if (parent?.propagate_currency_requirement) {
+      enabled = !!parent.currency_requirement_enabled;
+      hours = Number(parent.currency_requirement_hours ?? hours);
+      days = Number(parent.currency_requirement_days ?? days);
+    }
+  }
+  return { enabled, hours, days };
+};
+
 const fetchPersonnel = async (companyId: string, userId: string) => {
   const { data: companyIds } = await supabase
     .rpc("get_user_visible_company_ids", { _user_id: userId });
@@ -150,15 +182,18 @@ const fetchPersonnel = async (companyId: string, userId: string) => {
     throw error;
   }
 
-  // Fetch flight time totals for personnel that have the toggle enabled
-  const personIds = data
-    .filter((p: any) => p.flight_time_affects_status)
-    .map((p: any) => p.id);
+  // Resolve currency requirement (with parent propagation) once
+  const currency = await resolveCurrencyRequirement(companyId);
+  const requiredMinutes = currency && currency.enabled ? currency.hours * 60 : 0;
+  const warnMinutes = requiredMinutes * 0.8;
+
+  // Fetch flight time totals when currency requirement is active
   const flightTotals: Record<string, number> = {};
-  if (personIds.length > 0) {
-    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+  if (currency?.enabled && requiredMinutes > 0 && data.length > 0) {
+    const cutoff = new Date(Date.now() - currency.days * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
+    const personIds = data.map((p: any) => p.id);
     const { data: logs } = await supabase
       .from("flight_logs")
       .select("user_id, flight_duration_minutes")
@@ -176,11 +211,11 @@ const fetchPersonnel = async (companyId: string, userId: string) => {
       30
     );
     let status: Status = competencyStatus;
-    if ((profile as any).flight_time_affects_status) {
+    if (currency?.enabled && requiredMinutes > 0) {
       const minutes = flightTotals[profile.id] || 0;
       let flightStatus: Status = "Grønn";
-      if (minutes < 60) flightStatus = "Rød";
-      else if (minutes < 120) flightStatus = "Gul";
+      if (minutes < warnMinutes) flightStatus = "Rød";
+      else if (minutes < requiredMinutes) flightStatus = "Gul";
       status = worstStatus(status, flightStatus);
     }
     return { ...profile, status };

@@ -99,6 +99,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [requireSoraSteps, setRequireSoraSteps] = useState(1);
   const [deviationReportEnabled, setDeviationReportEnabled] = useState(false);
   const [parentDeviationCompanyId, setParentDeviationCompanyId] = useState<string | null>(null);
+  // Currency requirement (flight time per period)
+  const [currencyEnabled, setCurrencyEnabled] = useState(false);
+  const [currencyHours, setCurrencyHours] = useState<number>(2);
+  const [currencyDays, setCurrencyDays] = useState<number>(90);
+  const [propagateCurrency, setPropagateCurrency] = useState(false);
   // Inheritance: when current company has a parent that propagates a setting,
   // the field is locked and shows the parent's value.
   const [isChildDept, setIsChildDept] = useState(false);
@@ -124,6 +129,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_mission_roles: boolean;
     propagate_flight_alerts: boolean;
     propagate_fh2_credentials: boolean;
+    propagate_currency_requirement: boolean;
+    currency_requirement_enabled: boolean;
+    currency_requirement_hours: number;
+    currency_requirement_days: number;
     safesky_callsign_propagate: boolean;
     safesky_callsign_prefix: string | null;
     safesky_callsign_variable: 'counter' | 'drone_registration';
@@ -356,7 +365,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, propagate_currency_requirement")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -369,6 +378,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setAllUsersCanAcknowledgeMaintenance((data as any).all_users_can_acknowledge_maintenance ?? false);
       setRequireSoraOnMissions((data as any).require_sora_on_missions ?? false);
       setRequireSoraSteps((data as any).require_sora_steps ?? 1);
+      setCurrencyEnabled(!!(data as any).currency_requirement_enabled);
+      setCurrencyHours(Number((data as any).currency_requirement_hours ?? 2));
+      setCurrencyDays(Number((data as any).currency_requirement_days ?? 90));
+      setPropagateCurrency(!!(data as any).propagate_currency_requirement);
       const parentId = (data as any).parent_company_id as string | null;
       setParentDeviationCompanyId(parentId);
       setIsChildDept(!!parentId);
@@ -394,7 +407,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, propagate_currency_requirement")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
@@ -456,6 +469,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             propagate_mission_roles: parent.propagate_mission_roles ?? false,
             propagate_flight_alerts: parent.propagate_flight_alerts ?? false,
             propagate_fh2_credentials: parent.propagate_fh2_credentials ?? false,
+            propagate_currency_requirement: parent.propagate_currency_requirement ?? false,
+            currency_requirement_enabled: parent.currency_requirement_enabled ?? false,
+            currency_requirement_hours: Number(parent.currency_requirement_hours ?? 2),
+            currency_requirement_days: Number(parent.currency_requirement_days ?? 90),
             safesky_callsign_propagate: parent.safesky_callsign_propagate ?? false,
             safesky_callsign_prefix: parent.safesky_callsign_prefix ?? null,
             safesky_callsign_variable: ((parent.safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter'),
@@ -592,6 +609,27 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
     setSavingSettings(false);
     setIncidentReportsVisibleToAllCompanies(checked);
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
+  const saveCurrencyRequirement = async (patch: Partial<{
+    currency_requirement_enabled: boolean;
+    currency_requirement_hours: number;
+    currency_requirement_days: number;
+    propagate_currency_requirement: boolean;
+  }>) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await (supabase as any)
+      .from("companies")
+      .update(patch)
+      .eq("id", companyId);
+    setSavingSettings(false);
+    if (error) {
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
     invalidateCompanySettingsCache();
     toast.success("Innstilling lagret");
   };
@@ -1317,6 +1355,95 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   disabled={savingSettings || allUsersCanAcknowledgeMaintenanceLocked}
                 />
               </div>
+
+              {/* Currency-krav (flytid) */}
+              {(() => {
+                const locked = isChildDept && !!inherited?.propagate_currency_requirement;
+                const enabledValue = locked ? inherited!.currency_requirement_enabled : currencyEnabled;
+                const hoursValue = locked ? inherited!.currency_requirement_hours : currencyHours;
+                const daysValue = locked ? inherited!.currency_requirement_days : currencyDays;
+                return (
+                  <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="currency-req" className="flex-1 cursor-pointer pr-4">
+                        <div className="font-medium text-sm flex items-center gap-1.5">
+                          Krav til flytid (currency)
+                          {locked && (
+                            <Badge variant="secondary" className="text-[10px] gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          Sett minimum flytimer i en gitt periode. Påvirker grønn/gul/rød-status på personell (rød = krav ikke oppfylt, gul = nær kravet).
+                        </div>
+                      </Label>
+                      <Switch
+                        id="currency-req"
+                        checked={enabledValue}
+                        onCheckedChange={async (checked) => {
+                          setCurrencyEnabled(checked);
+                          await saveCurrencyRequirement({ currency_requirement_enabled: checked });
+                        }}
+                        disabled={savingSettings || locked}
+                      />
+                    </div>
+                    {enabledValue && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Minimum flytimer</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.5}
+                            value={hoursValue}
+                            disabled={locked || savingSettings}
+                            onChange={(e) => setCurrencyHours(Math.max(0, Number(e.target.value) || 0))}
+                            onBlur={() => {
+                              if (!locked) saveCurrencyRequirement({ currency_requirement_hours: currencyHours });
+                            }}
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">I løpet av siste … dager</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={3650}
+                            value={daysValue}
+                            disabled={locked || savingSettings}
+                            onChange={(e) => setCurrencyDays(Math.max(1, Number(e.target.value) || 1))}
+                            onBlur={() => {
+                              if (!locked) saveCurrencyRequirement({ currency_requirement_days: currencyDays });
+                            }}
+                            className="h-8"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {!isChildDept && (
+                      <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                        <Label htmlFor="currency-propagate" className="flex-1 cursor-pointer pr-4">
+                          <div className="text-xs font-medium">Tving samme krav på alle avdelinger</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            Når aktivert overstyrer kravet avdelingenes egne verdier — endringer her oppdateres automatisk hos avdelingene.
+                          </div>
+                        </Label>
+                        <Switch
+                          id="currency-propagate"
+                          checked={propagateCurrency}
+                          onCheckedChange={async (checked) => {
+                            setPropagateCurrency(checked);
+                            await saveCurrencyRequirement({ propagate_currency_requirement: checked });
+                          }}
+                          disabled={savingSettings}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Krev SORA */}
               {(() => {

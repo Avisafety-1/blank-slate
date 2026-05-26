@@ -18,6 +18,10 @@ interface CompanySettings {
   default_share_contact_email: boolean;
   default_anonymous_publish: boolean;
   allow_pilot_override_publish_settings: boolean;
+  currency_requirement_enabled: boolean;
+  currency_requirement_hours: number;
+  currency_requirement_days: number;
+  propagate_currency_requirement: boolean;
 }
 
 const defaultSettings: CompanySettings = {
@@ -36,6 +40,10 @@ const defaultSettings: CompanySettings = {
   default_share_contact_email: true,
   default_anonymous_publish: false,
   allow_pilot_override_publish_settings: true,
+  currency_requirement_enabled: false,
+  currency_requirement_hours: 2,
+  currency_requirement_days: 90,
+  propagate_currency_requirement: false,
 };
 
 // Simple in-memory cache keyed by companyId
@@ -54,7 +62,7 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
 
   const promise = (supabase
     .from("companies")
-    .select("show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, default_publish_planned_missions, default_share_contact_info, default_share_contact_name, default_share_contact_phone, default_share_contact_email, default_anonymous_publish, allow_pilot_override_publish_settings")
+    .select("show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, require_sora_on_missions, require_sora_steps, deviation_report_enabled, default_publish_planned_missions, default_share_contact_info, default_share_contact_name, default_share_contact_phone, default_share_contact_email, default_anonymous_publish, allow_pilot_override_publish_settings, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, propagate_currency_requirement")
     .eq("id", companyId)
     .single() as any)
     .then(({ data }: any) => {
@@ -74,6 +82,10 @@ function fetchCompanySettings(companyId: string): Promise<CompanySettings> {
         default_share_contact_email: data?.default_share_contact_email ?? true,
         default_anonymous_publish: data?.default_anonymous_publish ?? false,
         allow_pilot_override_publish_settings: data?.allow_pilot_override_publish_settings ?? true,
+        currency_requirement_enabled: data?.currency_requirement_enabled ?? false,
+        currency_requirement_hours: Number(data?.currency_requirement_hours ?? 2),
+        currency_requirement_days: data?.currency_requirement_days ?? 90,
+        propagate_currency_requirement: data?.propagate_currency_requirement ?? false,
       };
       cache[companyId] = { settings: s, ts: Date.now() };
       return s;
@@ -109,6 +121,15 @@ export function useCompanySettings() {
       setSettings({
         ...ownSettings,
         incident_reports_visible_to_all_companies: parentSettings.incident_reports_visible_to_all_companies,
+        // Ekte arv av currency-krav når mor har skrudd på propagering
+        ...(parentSettings.propagate_currency_requirement
+          ? {
+              currency_requirement_enabled: parentSettings.currency_requirement_enabled,
+              currency_requirement_hours: parentSettings.currency_requirement_hours,
+              currency_requirement_days: parentSettings.currency_requirement_days,
+              propagate_currency_requirement: true,
+            }
+          : {}),
       });
     });
   }, [companyId, parentCompanyId]);
