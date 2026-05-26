@@ -54,4 +54,13 @@ i18n
     },
   });
 
+if (import.meta.env.DEV) {
+  // eslint-disable-next-line no-console
+  console.info('[i18n] Active language on init:', i18n.language);
+  i18n.on('languageChanged', (lng) => {
+    // eslint-disable-next-line no-console
+    console.info('[i18n] Active language changed to:', lng);
+  });
+}
+
 export default i18n;
