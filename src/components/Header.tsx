@@ -105,43 +105,29 @@ export const Header = () => {
     }
   };
 
-  const LanguageSegmented = ({ size = 'sm' }: { size?: 'sm' | 'xs' }) => {
-    const h = size === 'xs' ? 'h-7' : 'h-8';
-    const segCls = (active: boolean) =>
-      `${h} px-2 text-xs font-semibold transition-colors ${
-        active
-          ? 'bg-primary text-primary-foreground'
-          : 'text-muted-foreground hover:bg-muted/50'
-      } ${isSwitchingLang ? 'opacity-60 pointer-events-none' : ''}`;
+  const displayLang = currentLang === 'en' ? 'NO' : 'EN';
+
+  const LanguageToggleButton = ({ size = 'sm' }: { size?: 'sm' | 'xs' }) => {
+    const target: 'no' | 'en' = currentLang === 'en' ? 'no' : 'en';
+    const dims = size === 'xs' ? 'h-7 w-7' : 'h-8 w-8';
     return (
-      <div
-        className={`inline-flex items-center rounded-md border border-border overflow-hidden ${h}`}
-        role="group"
-        aria-label="Language"
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`${dims} relative`}
+        onClick={() => handleLanguageChange(target)}
+        disabled={isSwitchingLang}
+        title={t('header.switchToLanguage', { lang: displayLang })}
+        aria-label={t('header.switchToLanguage', { lang: displayLang })}
       >
-        <button
-          type="button"
-          onClick={() => handleLanguageChange('no')}
-          className={segCls(currentLang === 'no')}
-          aria-pressed={currentLang === 'no'}
-          disabled={isSwitchingLang}
-        >
-          NO
-        </button>
-        <button
-          type="button"
-          onClick={() => handleLanguageChange('en')}
-          className={segCls(currentLang === 'en')}
-          aria-pressed={currentLang === 'en'}
-          disabled={isSwitchingLang}
-        >
-          EN
-        </button>
-      </div>
+        <Globe className={size === 'xs' ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+        <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold leading-none bg-primary text-primary-foreground rounded px-0.5">
+          {displayLang}
+        </span>
+      </Button>
     );
   };
 
-  const displayLang = getCurrentLanguage() === 'en' ? 'NO' : 'EN';
   const canShowModule = (moduleKey: TrainingModuleKey) => hasTrainingModuleAccess(moduleKey);
 
   return (
