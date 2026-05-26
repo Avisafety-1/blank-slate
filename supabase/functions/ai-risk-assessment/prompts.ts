@@ -1,11 +1,11 @@
 // Foundation prompts for ai-risk-assessment edge function.
 //
-// 3-PR migration split:
-//   - PR A: language normalization, error/UI strings, request shape.
-//   - PR B (this commit): migrate the large system prompt + user prompt builders.
-//     NO is authoritative. EN currently falls back to NO content — a follow-up
-//     PR (B.2) will provide the full English translation.
-//   - PR C: migrate rule/scenario text fragments (icing, weather rules, etc.).
+// Migration status:
+//   - PR A: language normalization, error/UI strings, request shape. [done]
+//   - PR B: system + user prompt builders extracted from index.ts. [done]
+//   - PR B.2: full English translation of system + user prompts. [done]
+//   - PR C: extract any remaining inline rule fragments. [pending — currently
+//           the prompt is self-contained, so PR C may be a no-op.]
 //
 // Frittstående, ingen frontend-imports.
 
