@@ -10,6 +10,7 @@
  */
 
 import i18n from "@/i18n";
+import { supabase } from "@/integrations/supabase/client";
 import type { TFunction } from "i18next";
 
 export type AppLanguage = "no" | "en";
