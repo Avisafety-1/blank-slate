@@ -1,92 +1,43 @@
-## Mål for denne PR-en
+## Problem
 
-Etablere et **trygt i18n-fundament** uten å migrere noe brukerflate-kode ennå. Alle eksisterende `t(...)`-kall, nøkler og filer beholdes uendret. Ingen UI/layout/styling-endringer.
+Skjermbildet bekrefter at UI-en din står på engelsk, men AI-en svarer på norsk. Roten til problemet er ikke `getCurrentLanguage()` — det er kombinasjonen av:
 
-PDF- og AI-migrasjon er **planlagt, men ikke utført her** – det blir egne, små PR-er per modul. Det gjør denne PR-en liten og enkel å reviewe.
+1. **Inn-data er på norsk.** `contextData` som sendes til modellen inneholder norsk tekst fra Met.no, luftromsanalyse, SORA-config osv. (f.eks. `"text":"Ingen 5 km-soner i nærheten"`). Gemini speiler språket i input-dataene.
+2. **Språkdirektivet i prompten er for svakt.** EN-prompten har kun én linje på slutten: *"Always respond in English."* Den blir overdøvet av all norsken modellen leser.
+3. **Vi har enda ikke bekreftet** at klienten faktisk sender `language: "en"` til edge-funksjonen — den nye debug-loggen min har ikke dukket opp i edge-loggene ennå, sannsynligvis fordi det første fetch-kallet (linje 155 — SORA-reassessment) ikke har logging, og det er det som ble brukt.
 
-## Hva som beholdes urørt
+## Plan
 
-- `i18next` + `react-i18next` + `LanguageDetector` (localStorage).
-- Eksisterende `translation`-namespace i `src/i18n/locales/no.json` og `en.json`. Ingen nøkler omdøpes, flyttes eller fjernes.
-- `fallbackLng: 'no'` – norsk-først forblir norsk-først.
-- `useTerminology`-hooken.
-- Språkbytte-knappen i `Header.tsx` (men vi bytter ut en liten inline-utregning mot en helper – ingen visuell endring).
+### 1. Bekreft hva som faktisk sendes
+- Legg til samme `console.log` på det første fetch-kallet i `RiskAssessmentDialog.tsx` (linje 142–158) som det jeg allerede la til på det andre kallet.
+- Behold edge-function-loggen som allerede er der.
 
-## Hva som legges til (kun fundament)
+### 2. Forsterk språkdirektivet i selve user-prompten
+I `supabase/functions/ai-risk-assessment/prompts.ts`:
 
-### 1. Sentralisert språkhjelper
-Ny fil `src/lib/i18nHelpers.ts`:
-- `getCurrentLanguage(): 'no' | 'en'` – én sannhetskilde, normaliserer `i18n.language`.
-- `formatDate(date, opts?)`, `formatNumber(n, opts?)` – bruker locale fra `getCurrentLanguage()`.
-- `getFixedT(language, namespace?)` – tynn wrapper rundt `i18n.getFixedT`, brukt **utenfor React** (PDF, exports, varsler). Returnerer typesikker `t`-funksjon.
+- **`buildUserPromptEN`** — bytt åpningslinjen til en hard instruks som står BÅDE først og sist:
+  > "CRITICAL LANGUAGE INSTRUCTION: Respond ENTIRELY in English. The input data below contains Norwegian text from Norwegian data sources (Met.no, airspace zones, SORA config). Translate or paraphrase any Norwegian terms into English in your output. Do NOT mirror the language of the input."
+- **`buildUserPromptNO`** — speilvend: instruks om at ALL output må være på norsk (modellen blander noen ganger inn engelske SORA-termer på norske kjøringer også).
+- I tillegg legg samme tospråk-direktiv øverst i system-prompten (`buildSystemPromptEN` / `buildSystemPromptNO`) som en numerisk regel #0 før resten.
 
-Begrunnelse: PDF og andre ikke-React-kontekster trenger en stabil måte å hente oversettelser på uten hooks. Den ligger klar når PDF-modulene migreres i senere PR.
+### 3. Oversett gjenstående UI-strenger i resultatvisningen
+Konsollen og skjermbildet viser at disse UI-labels mangler oversettelse:
+- `riskAssessment.skipWeather`, `riskAssessment.saveComments`, `riskAssessment.addComment`, `riskAssessment.prerequisites`, `riskAssessment.weatherOptions`
+- "SORA utført"-pillen (hardkodet norsk i `RiskScoreCard.tsx` eller `RiskAssessmentDialog.tsx`)
 
-### 2. Trygg fallback-policy i `src/i18n/index.ts`
-Endrer **kun** init-options (ingen ressursendringer):
-- `returnEmptyString: false` – tomme strenger faller tilbake til key/fallback i stedet for å rendre tomt.
-- `returnNull: false`.
-- `saveMissing: import.meta.env.DEV` med `missingKeyHandler` som `console.warn`-er i dev og er stille i prod.
-- Behold `fallbackLng: 'no'`.
+Legg til norske + engelske oversettelser i `src/i18n/locales/no.json` og `en.json` under `riskAssessment.*`, og bytt ut den hardkodede "SORA utført"-strengen med `t('riskAssessment.soraCompleted')`.
 
-Begrunnelse: garanterer at manglende nøkler aldri brekker UI, og gir utviklere synlighet under migrasjon.
+### 4. Verifiser
+- Be deg kjøre en ny vurdering på engelsk UI.
+- Sjekk:
+  - Browser-konsoll: `[RiskAssessment] Sending language to AI: en`
+  - Edge-logg: `[ai-risk-assessment] Received language: "en" -> resolved: en`
+  - AI-summary kommer på engelsk
+- Når bekreftet OK: fjern de to `console.log`-debuggene.
 
-### 3. Header bruker helperen
-`src/components/Header.tsx`: bytt ut `i18n.language?.startsWith('en') ? 'en' : 'no'`-uttrykkene mot `getCurrentLanguage()`. Ingen visuell endring, ingen endring i knapp/styling/oppførsel.
+## Technical notes
 
-### 4. Migrasjonsverktøy (kun script + dokumentasjon)
-- `scripts/i18n-scan.ts` – Node-script som scanner `src/` for sannsynlig hardkodet norsk (æ/ø/å i strenger/JSX-tekst), grupperer per fil, skriver rapport til `i18n-scan-report.md`. **Ikke** wired inn i build – kjøres manuelt av utvikleren.
-- `src/i18n/README.md` – kort guide: namespace-konvensjon for fremtiden, hvordan legge til nytt språk, hvordan velge mellom React-hook og `getFixedT`, hvordan migrere én modul.
-
-### 5. Forberedelse for fremtidige namespaces (kun dokumentert, ingen tomme filer)
-README beskriver det planlagte namespace-oppsettet (`pdf`, `ai`, `map`, `sora`, `safety`, `notifications`) som skal opprettes **per modul når den faktisk migreres**, ikke på forhånd. Ingen tomme JSON-filer.
-
-`src/i18n/index.ts` får en kort kommentar som forklarer hvordan nye namespaces registreres når tiden kommer – ingen kode endres for det nå.
-
-## Det som *eksplisitt ikke* gjøres i denne PR-en
-
-- Ingen PDF-tekst migreres (`oppdragPdfExport.ts` m.fl. forblir hardkodet norsk – fungerer som før).
-- Ingen edge-functions endres. `ai-search` og andre AI-funksjoner forblir som de er.
-- Ingen komponentstrenger flyttes inn i i18n.
-- Ingen UI/layout/style/oppførsel-endringer.
-- Ingen eksisterende nøkler omdøpes eller flyttes.
-- Ingen ESLint-regler aktiveres.
-- Ingen tomme placeholder-JSON-filer.
-
-## Anbefalt sekvens for senere PR-er (én av gangen, små)
-
-Hver av disse blir egen PR med kun den modulens nøkler + tekstbytte + verifisering i begge språk:
-
-1. **PDF – `oppdragPdfExport.ts`** først (selvstendig, ingen UI-risiko, klar mal for andre PDF-er via `getFixedT('no'|'en', 'pdf')`).
-2. **Edge-function `ai-search`** – legg til `language` i body fra klient, hent prompt fra `supabase/functions/ai-search/prompts/{no,en}.ts`. Bruker ikke frontend-i18n.
-3. **`pages/Status.tsx`** (toppen av heatmap, 61 norske strenger, lite forretningsrisiko).
-4. **`admin/EmailTemplateEditor.tsx`**.
-5. Videre nedover heatmap-lista fra scan-rapporten.
-
-## TypeScript-sjekk
-
-- `i18nHelpers.ts` skrives med strenge typer (`type AppLanguage = 'no' | 'en'`).
-- `getFixedT` får generic for namespace.
-- Header-endringen er ren refaktor – samme returtyper.
-
-## Output-format ved hver framtidig modul-PR
-
-I PR-beskrivelsen for hver senere modul:
-1. Hva ble lagt til (nøkler + filer).
-2. Hva ble migrert (strenger + lokasjon).
-3. Hva ble bevisst ikke endret.
-4. Gjenværende hardkodet tekst i den modulen (med fil/linje).
-5. Anbefalt neste modul (basert på scan-rapport).
-
-## Endrede/nye filer i denne PR-en
-
-**Nye**
-- `src/lib/i18nHelpers.ts`
-- `src/i18n/README.md`
-- `scripts/i18n-scan.ts`
-
-**Endret (minimalt)**
-- `src/i18n/index.ts` – init-options for fallback/missing-key, kommentar om fremtidige namespaces. Ingen ressursendringer.
-- `src/components/Header.tsx` – bruk `getCurrentLanguage()`. Ingen visuell endring.
-
-Det er hele scope.
+- Vi rører ikke `getCurrentLanguage()` — den fungerer.
+- Vi rører ikke modellvalget — Gemini 3 Flash er kapabel nok, problemet er prompt-engineering.
+- De manglende-nøkkel-varslene `for [no]` i konsollen er et i18next-artefakt (`saveMissingTo: 'fallback'` rapporterer fallback-språket, ikke aktivt språk) — bekreftet av skjermbildet at UI faktisk er engelsk.
+- Endringene berører kun `prompts.ts` (edge), `RiskAssessmentDialog.tsx` (klient-logging) og to JSON-filer (oversettelser). Ingen DB-endringer.
