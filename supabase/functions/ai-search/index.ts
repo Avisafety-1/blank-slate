@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.0";
 import { requireUser, authErrorResponse } from "../_shared/auth.ts";
+import { getPrompts } from "./prompts.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +18,9 @@ serve(async (req) => {
     // PT-4 fix: derive userId from JWT, never trust client-supplied userId.
     const user = await requireUser(req);
 
-    const { query } = await req.json();
+    const body = await req.json();
+    const { query, language } = body ?? {};
+    const prompts = getPrompts(language);
 
     if (!query || typeof query !== 'string') {
       return new Response(
@@ -262,21 +265,22 @@ serve(async (req) => {
 
     // Build AI summary
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const L = prompts.labels;
     const resultsContext = `
-Søkeresultater for "${query}":
+${prompts.contextHeader(query)}
 
-Oppdrag (${allMissions.length}): ${allMissions.map(m => m.tittel).join(', ') || 'Ingen'}
-Hendelser (${allIncidents.length}): ${allIncidents.map(i => i.tittel).join(', ') || 'Ingen'}
-Dokumenter (${documents.data?.length || 0}): ${documents.data?.map((d: any) => d.tittel).join(', ') || 'Ingen'}
-Utstyr (${equipment.data?.length || 0}): ${equipment.data?.map((e: any) => e.navn).join(', ') || 'Ingen'}
-Droner (${drones.data?.length || 0}): ${drones.data?.map((d: any) => d.modell).join(', ') || 'Ingen'}
-Kompetanse (${competencies.data?.length || 0}): ${competencies.data?.map((c: any) => c.navn).join(', ') || 'Ingen'}
-SORA-analyser (${allSora.length}): ${allSora.map((s: any) => s.conops_summary || s.sora_status).join(', ') || 'Ingen'}
-Personell (${personnel.data?.length || 0}): ${personnel.data?.map((p: any) => p.full_name).join(', ') || 'Ingen'}
-Kunder (${customers.data?.length || 0}): ${customers.data?.map((c: any) => c.navn).join(', ') || 'Ingen'}
-Nyheter (${news.data?.length || 0}): ${news.data?.map((n: any) => n.tittel).join(', ') || 'Ingen'}
-Flylogger (${flightLogs.data?.length || 0}): ${flightLogs.data?.map((f: any) => `${f.departure_location} → ${f.landing_location}`).join(', ') || 'Ingen'}
-Kalender (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map((c: any) => c.title).join(', ') || 'Ingen'}
+${L.missions} (${allMissions.length}): ${allMissions.map(m => m.tittel).join(', ') || L.none}
+${L.incidents} (${allIncidents.length}): ${allIncidents.map(i => i.tittel).join(', ') || L.none}
+${L.documents} (${documents.data?.length || 0}): ${documents.data?.map((d: any) => d.tittel).join(', ') || L.none}
+${L.equipment} (${equipment.data?.length || 0}): ${equipment.data?.map((e: any) => e.navn).join(', ') || L.none}
+${L.drones} (${drones.data?.length || 0}): ${drones.data?.map((d: any) => d.modell).join(', ') || L.none}
+${L.competencies} (${competencies.data?.length || 0}): ${competencies.data?.map((c: any) => c.navn).join(', ') || L.none}
+${L.sora} (${allSora.length}): ${allSora.map((s: any) => s.conops_summary || s.sora_status).join(', ') || L.none}
+${L.personnel} (${personnel.data?.length || 0}): ${personnel.data?.map((p: any) => p.full_name).join(', ') || L.none}
+${L.customers} (${customers.data?.length || 0}): ${customers.data?.map((c: any) => c.navn).join(', ') || L.none}
+${L.news} (${news.data?.length || 0}): ${news.data?.map((n: any) => n.tittel).join(', ') || L.none}
+${L.flightLogs} (${flightLogs.data?.length || 0}): ${flightLogs.data?.map((f: any) => `${f.departure_location} → ${f.landing_location}`).join(', ') || L.none}
+${L.calendarEvents} (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map((c: any) => c.title).join(', ') || L.none}
 `;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -290,12 +294,12 @@ Kalender (${calendarEvents.data?.length || 0}): ${calendarEvents.data?.map((c: a
         messages: [
           {
             role: 'system',
-            content: 'Du er en assistent som hjelper til med å oppsummere søkeresultater. Svar kort og konsist på norsk.'
+            content: prompts.systemPrompt,
           },
           {
             role: 'user',
-            content: `Lag en kort oppsummering (maks 2 setninger) av disse søkeresultatene:\n\n${resultsContext}`
-          }
+            content: `${prompts.summarizeInstruction}\n\n${resultsContext}`,
+          },
         ],
       }),
     });

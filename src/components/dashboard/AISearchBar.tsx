@@ -16,6 +16,7 @@ import { SoraAnalysisDialog } from "./SoraAnalysisDialog";
 import { NewsDetailDialog } from "./NewsDetailDialog";
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
 import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/lib/i18nHelpers";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Switch } from "@/components/ui/switch";
@@ -96,6 +97,7 @@ export const AISearchBar = () => {
       const { data, error } = await supabase.functions.invoke("ai-search", {
         body: {
           query: query.trim(),
+          language: getCurrentLanguage(),
         },
       });
       if (error) throw error;
