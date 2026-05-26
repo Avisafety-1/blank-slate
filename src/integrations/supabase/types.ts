@@ -995,6 +995,36 @@ export type Database = {
           },
         ]
       }
+      currency_status_log: {
+        Row: {
+          company_id: string
+          id: string
+          last_notified_at: string
+          last_status: string
+          rule_index: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          last_notified_at?: string
+          last_status: string
+          rule_index: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          last_notified_at?: string
+          last_status?: string
+          rule_index?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           adresse: string | null
@@ -4825,6 +4855,8 @@ export type Database = {
           email_child_maintenance_reminder: boolean
           email_child_missions: boolean
           email_child_new_user_pending: boolean
+          email_currency_expired: boolean
+          email_currency_warning: boolean
           email_document_expiry: boolean
           email_followup_assigned: boolean
           email_inspection_reminder: boolean
@@ -4836,6 +4868,8 @@ export type Database = {
           inspection_reminder_days: number
           mission_reminder_hours: number | null
           push_competency_expiry: boolean | null
+          push_currency_expired: boolean
+          push_currency_warning: boolean
           push_document_expiry: boolean | null
           push_enabled: boolean | null
           push_maintenance_reminder: boolean | null
@@ -4850,6 +4884,8 @@ export type Database = {
           email_child_maintenance_reminder?: boolean
           email_child_missions?: boolean
           email_child_new_user_pending?: boolean
+          email_currency_expired?: boolean
+          email_currency_warning?: boolean
           email_document_expiry?: boolean
           email_followup_assigned?: boolean
           email_inspection_reminder?: boolean
@@ -4861,6 +4897,8 @@ export type Database = {
           inspection_reminder_days?: number
           mission_reminder_hours?: number | null
           push_competency_expiry?: boolean | null
+          push_currency_expired?: boolean
+          push_currency_warning?: boolean
           push_document_expiry?: boolean | null
           push_enabled?: boolean | null
           push_maintenance_reminder?: boolean | null
@@ -4875,6 +4913,8 @@ export type Database = {
           email_child_maintenance_reminder?: boolean
           email_child_missions?: boolean
           email_child_new_user_pending?: boolean
+          email_currency_expired?: boolean
+          email_currency_warning?: boolean
           email_document_expiry?: boolean
           email_followup_assigned?: boolean
           email_inspection_reminder?: boolean
@@ -4886,6 +4926,8 @@ export type Database = {
           inspection_reminder_days?: number
           mission_reminder_hours?: number | null
           push_competency_expiry?: boolean | null
+          push_currency_expired?: boolean
+          push_currency_warning?: boolean
           push_document_expiry?: boolean | null
           push_enabled?: boolean | null
           push_maintenance_reminder?: boolean | null
