@@ -387,19 +387,10 @@ const Resources = () => {
   };
 
   // Helper to get person's worst competency status
-  const getPersonStatus = (person: any): string => {
-    if (!person.personnel_competencies || person.personnel_competencies.length === 0) return "Grønn";
-    let worst = "Grønn";
-    for (const comp of person.personnel_competencies) {
-      if (!comp.utloper_dato) continue;
-      const expiry = new Date(comp.utloper_dato);
-      const now = new Date();
-      if (expiry < now) return "Rød";
-      const warningDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      if (expiry < warningDate) worst = "Gul";
-    }
-    return worst;
+  const getPersonStatus = (person: any): Status => {
+    return (personnelStatusMap[person.id] as Status) || "Grønn";
   };
+
 
 
   // Bro for guidet tour: lar resources-touren åpne dialoger programmatisk
