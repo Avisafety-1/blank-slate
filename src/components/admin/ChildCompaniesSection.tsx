@@ -47,6 +47,53 @@ interface ChildCompany {
   parent_company_id?: string | null;
 }
 
+// Local-draft numeric input that does not get overridden by realtime refreshes
+// while the user is editing. Syncs from `value` prop only when not focused.
+const LocalNumberInput = ({
+  value,
+  disabled,
+  onCommit,
+  min,
+  max,
+  step,
+  className,
+}: {
+  value: string;
+  disabled?: boolean;
+  onCommit: (n: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  className?: string;
+}) => {
+  const [draft, setDraft] = useState(value);
+  const focusedRef = useRef(false);
+  useEffect(() => {
+    if (!focusedRef.current) setDraft(value);
+  }, [value]);
+  return (
+    <Input
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      value={draft}
+      disabled={disabled}
+      onFocus={() => { focusedRef.current = true; }}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        focusedRef.current = false;
+        const trimmed = draft.trim();
+        if (trimmed === "") { setDraft(value); return; }
+        const n = Number(trimmed);
+        if (!Number.isFinite(n) || n <= 0) { setDraft(value); return; }
+        onCommit(n);
+      }}
+      className={className}
+    />
+  );
+};
+
 interface ChildCompaniesSectionProps {
   departmentsEnabled: boolean;
 }
@@ -1423,32 +1470,29 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <Label className="text-xs">Min. flytimer</Label>
-                            <Input
-                              type="number"
+                            <LocalNumberInput
                               min={0}
                               step={0.5}
                               value={hoursVal}
-                              disabled={locked || savingSettings}
-                              onChange={(e) => setHours(e.target.value)}
-                              onBlur={() => {
-                                const n = parseOrNull(hoursVal);
-                                if (!locked && n !== null) saveCurrencyRequirement({ [hoursKey]: n } as any);
+                              disabled={locked}
+                              onCommit={(n) => {
+                                setHours(String(n));
+                                if (!locked) saveCurrencyRequirement({ [hoursKey]: n } as any);
                               }}
                               className="h-8"
                             />
                           </div>
                           <div>
                             <Label className="text-xs">Siste antall dager</Label>
-                            <Input
-                              type="number"
+                            <LocalNumberInput
                               min={1}
                               max={3650}
                               value={daysVal}
-                              disabled={locked || savingSettings}
-                              onChange={(e) => setDays(e.target.value)}
-                              onBlur={() => {
-                                const n = parseOrNull(daysVal);
-                                if (!locked && n !== null) saveCurrencyRequirement({ [daysKey]: Math.floor(n) } as any);
+                              disabled={locked}
+                              onCommit={(n) => {
+                                const v = Math.floor(n);
+                                setDays(String(v));
+                                if (!locked) saveCurrencyRequirement({ [daysKey]: v } as any);
                               }}
                               className="h-8"
                             />
