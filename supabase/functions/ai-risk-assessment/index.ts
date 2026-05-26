@@ -323,9 +323,12 @@ serve(async (req) => {
   }
 
   try {
+  let prompts = getPrompts(undefined);
+
+  try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+      throw new Error(prompts.errors.apiKeyMissing);
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -334,7 +337,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missingAuthHeader }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -344,20 +347,22 @@ serve(async (req) => {
       authHeader.replace('Bearer ', '')
     );
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: prompts.errors.unauthorized }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments } = await req.json();
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language } = await req.json();
+    prompts = getPrompts(language);
 
     if (!missionId) {
-      return new Response(JSON.stringify({ error: 'Mission ID is required' }), {
+      return new Response(JSON.stringify({ error: prompts.errors.missionIdRequired }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
 
     // ---- Concurrency gate + job tracking (Phase 2) ----
     const { data: gateProfile } = await supabase
