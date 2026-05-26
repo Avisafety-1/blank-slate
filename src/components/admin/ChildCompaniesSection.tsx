@@ -613,6 +613,27 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     toast.success("Innstilling lagret");
   };
 
+  const saveCurrencyRequirement = async (patch: Partial<{
+    currency_requirement_enabled: boolean;
+    currency_requirement_hours: number;
+    currency_requirement_days: number;
+    propagate_currency_requirement: boolean;
+  }>) => {
+    if (!companyId) return;
+    setSavingSettings(true);
+    const { error } = await (supabase as any)
+      .from("companies")
+      .update(patch)
+      .eq("id", companyId);
+    setSavingSettings(false);
+    if (error) {
+      toast.error("Kunne ikke lagre innstilling");
+      return;
+    }
+    invalidateCompanySettingsCache();
+    toast.success("Innstilling lagret");
+  };
+
   const handleToggleRequireMissionApproval = async (checked: boolean) => {
     if (!companyId) return;
     setSavingSettings(true);
