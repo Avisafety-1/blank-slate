@@ -129,6 +129,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_mission_roles: boolean;
     propagate_flight_alerts: boolean;
     propagate_fh2_credentials: boolean;
+    propagate_currency_requirement: boolean;
+    currency_requirement_enabled: boolean;
+    currency_requirement_hours: number;
+    currency_requirement_days: number;
     safesky_callsign_propagate: boolean;
     safesky_callsign_prefix: string | null;
     safesky_callsign_variable: 'counter' | 'drone_registration';
