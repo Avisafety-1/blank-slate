@@ -322,7 +322,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
   let prompts = getPrompts(undefined);
 
   try {
