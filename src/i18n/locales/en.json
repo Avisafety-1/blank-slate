@@ -59,7 +59,8 @@
     "noRole": "No role",
     "noResults": "No results for",
     "processing": "Processing...",
-    "other": "Other"
+    "other": "Other",
+    "missionFallback": "Mission"
   },
   "auth": {
     "signIn": "Sign in",
