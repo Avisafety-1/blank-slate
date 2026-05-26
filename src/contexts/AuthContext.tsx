@@ -548,6 +548,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profileData.approvalCompanyIds = (profile as any).approval_company_ids ?? null;
         profileData.incidentResponsibleCompanyIds = (profile as any).incident_responsible_company_ids ?? null;
 
+        // Hydrer i18n fra DB hvis brukeren har lagret et eksplisitt språkvalg.
+        // Hvis kolonnen er null → ikke gjør noe (bevarer dagens oppførsel for eksisterende brukere).
+        try {
+          const preferred = (profile as any).preferred_language as string | null | undefined;
+          if (preferred === 'no' || preferred === 'en') {
+            const { default: i18n } = await import('@/i18n');
+            const current = (i18n.language || '').toLowerCase().split('-')[0];
+            if (current !== preferred) {
+              await i18n.changeLanguage(preferred);
+            }
+          }
+        } catch (langErr) {
+          console.warn('AuthContext: Failed to hydrate i18n from preferred_language', langErr);
+        }
+
         // Inherit parent company settings if needed
         if (resolvedParentCompanyId) {
           try {
