@@ -1,69 +1,46 @@
-# Tydelig språkvelger som faktisk speiler DB
+# Oversettelse av resten av appen (kun UI)
 
-## Diagnose
+Scope: kun UI-tekster (etiketter, knapper, faner, badges, toasts, dialoger). AI-genererte tekster fra edge-funksjonen er allerede språkbevisste og rører vi ikke.
 
-- DB-skriving fungerer: `profiles.preferred_language` ble oppdatert til `'no'` kl 18:32 av innlogget bruker. RLS og `setLanguage()` virker som forventet.
-- Edge-funksjonen `ai-risk-assessment` mottar `language`-feltet fra klienten og bruker `getPrompts(language)`. AI-svar er på norsk fordi klienten faktisk sender `'no'`.
-- Rotårsak er UI: dagens toggle er kun et globus-ikon. Brukeren ser ikke hvilket språk som er aktivt og kan ikke vite at et klikk faktisk byttet retning. Ingen toast bekrefter heller resultatet. Resultatet er at man tror man bytter til engelsk, men ender opp på norsk.
+## Batch 1 — AI risikovurdering-resultatet
 
-## Endringer (kun frontend)
+Hardkodet norsk rundt AI-svaret:
 
-### 1. `src/components/Header.tsx` — segmentert språkvelger
+- `RiskAssessmentDialog.tsx` — faneetiketter (Input / Manuell SORA / History / Result), "Foreslått konklusjon", "OPPDRAGSOVERSIKT", "VURDERINGSMETODE", "Overall score", anbefalingsbåndet ("Fly with precautions" osv. — UI-label, ikke AI-tekst), "Lagre kommentarer", "Eksporter til PDF", "Kjør SORA-basert re-vurdering", "Kreves at alle manuelle felt er fylt inn", AI-disclaimer-boksen.
+- `RiskScoreCard.tsx` — "Operasjonskategorisering (Steg 0)", "Specific — SORA", "SORA utført", "Systemberegnet".
+- `AirRiskAnalysisSection.tsx` — "Luftrisikoanalyse (ARC/TMPR)" + statiske labels.
+- `GroundRiskAnalysisSection.tsx` — "Bakkerisikoanalyse (iGRC/fGRC)", "Systemberegnet".
+- `OperationClassificationSection.tsx` — klassifiserings-labels.
+- `RiskRecommendations.tsx` — kun seksjonstittel "Forutsetninger for flyging" (selve anbefalingene kommer fra AI).
 
-Erstatt dagens enkelt-knapp (mobil + desktop) med en segmentert kontroll som viser begge språk og merker det aktive:
+## Batch 2 — Dashboard-widgets rundt resultatet
 
-```
-[ NO | EN ]
-```
+- `MissionsSection.tsx` — gjenværende strenger: "Risiko"-fallback, "Sjekkliste"-badge, "Oppdrag"-fallback, AlertDialog ("Send til godkjenning?", "Avbryt", "Send til godkjenning"), toasts ("Gjennomfør SORA først", "Kunne ikke sjekke godkjennere", "Ingen i selskapet ...", "Kunne ikke sende til godkjenning").
+- `IncidentsSection.tsx` — "Report incident", faneetiketter, "Incidents last 6 months", månedsforkortelser, alvorlighetsbadges, statusbadges, kategori-/årsak-badges.
+- `DocumentSection.tsx` — "Documents"-overskrift, "Expired"-badge, dokumentkategori-labels.
+- `CalendarSection.tsx` / `CalendarWidget.tsx` — ukedager, månedsnavn via `date-fns` locale, "Active flights", "Free flight", "View on map", "Upcoming missions".
+- `ActiveFlightsSection.tsx` — "Start flight", "End flight", "Log flight time / Upload flight log".
 
-- Aktivt segment: `bg-primary text-primary-foreground`. Inaktivt: `text-muted-foreground hover:bg-muted/50`.
-- Klikk på inaktivt segment → kaller `setLanguage(target)`. Klikk på aktivt segment → ingen-op.
-- Hele kontrollen deaktiveres mens et språkbytte pågår (lokal `isSwitching`-state) for å hindre dobbeltklikk-race.
-- Mobil-variant beholder kompakt høyde (`h-7`), desktop-variant `h-8`. Bruker eksisterende `Button` + Tailwind-tokens — ingen ny komponent.
-- Fjerner `displayLang`-variabelen og `Globe`-importen blir kun beholdt hvis fortsatt brukt.
+## Batch 3 — DB-verdier som vises i UI
 
-### 2. `src/components/Header.tsx` — toast-bekreftelse
+Verdier som "Planlagt/Pågående/Godkjent/Fullført/Avlyst", "Åpen/Under behandling/Lukket", "Lav/Middels/Høy", "Luft/Operativ", "Materiellsvikt/Menneskelig feil/svikt" og dokumentkategorier ("loggbok", "oppdrag", ...) er lagret som rene strenger i DB (og brukt i WHERE-filtre). Vi rører ikke databasen — i stedet:
 
-I `toggleLanguage` (omdøpt til `handleLanguageChange(target)`):
-- Etter `await setLanguage(target)`: `toast.success(t('header.languageChanged.' + target))`.
-- Hvis `setLanguage` returnerer at DB-skriving feilet (se punkt 3): `toast.warning(t('header.languageNotPersisted'))` i tillegg.
-- Hvis selve `changeLanguage` kaster: `toast.error(t('header.languageChangeFailed'))`.
+- Utvider `src/lib/i18nHelpers.ts` med `translateMissionStatus`, `translateApprovalStatus`, `translateIncidentStatus`, `translateSeverity`, `translateIncidentCategory`, `translateRootCause`, `translateDocCategory`.
+- Bruker dem ved visning. DB-verdien forblir norsk så filtre og eksisterende data fortsetter å virke.
 
-### 3. `src/lib/i18nHelpers.ts` — eksponer persisterings-status
+## Batch 4 — Sekundære dialoger
 
-Endre `setLanguage` til å returnere `{ t: TFunction; persisted: boolean }`:
+`RiskAssessmentTypeDialog`, `NotamDialog`, `MissionDetailDialog`, `AddMissionDialog`, `AddIncidentDialog`, `NewsSection`, `StatusPanel`, "Internt søk (regelverkssøk)" (`AISearchBar`), resource status-kort.
 
-```ts
-export async function setLanguage(lang: AppLanguage): Promise<{ t: TFunction; persisted: boolean }>
-```
+## Batch 5 — Sider utenfor dashboardet
 
-- `persisted = true` kun hvis bruker er innlogget og `update`-kallet ikke ga feil.
-- Eksisterende kallere som ignorerer retur-verdien påvirkes ikke (TypeScript-signaturen smalner, men ingen kode i prosjektet bruker `t`-feltet i dag).
+Egen runde per side: `Oppdrag`, `Hendelser`, `Resources`, `Documents`, `Kalender`, `Kart`, `Statistikk`, `SoraProcess`, `Marketing`, admin-komponenter.
 
-### 4. Oversettelser
+## Arbeidsmetode per batch
 
-Legg til i `src/i18n/locales/no.json` og `en.json`:
+1. Identifiser hardkodede strenger (også toast/alert/aria).
+2. Legg nye nøkler under tydelig namespace i `no.json` + `en.json` (`risk.result.*`, `dashboard.incidents.*`, `enums.missionStatus.*`).
+3. Erstatt med `t('...')`. DB-verdier oversettes kun ved visning.
+4. Verifiser i preview ved språkbytte.
 
-```jsonc
-"header": {
-  "languageChanged": {
-    "no": "Språk endret til Norsk",   // EN: "Language set to Norwegian"
-    "en": "Språk endret til Engelsk"  // EN: "Language set to English"
-  },
-  "languageNotPersisted": "Språket ble byttet, men ikke lagret på profilen.",
-  "languageChangeFailed": "Kunne ikke bytte språk."
-}
-```
-
-## Verifisering
-
-1. Last inn appen — segmentet skal vise korrekt aktivt språk basert på DB-hydrert tilstand.
-2. Klikk det inaktive segmentet → toast bekrefter; konsoll: `[i18n] Persisted preferred_language= en`; nytt DB-rad-update synlig.
-3. Kjør risikovurdering → svar på valgt språk. Edge-logg viser `[ai-risk-assessment] Received language from client: "en"`.
-4. Logg ut og inn → segmentet beholder valgt språk (hydrert fra DB).
-
-## Hva planen IKKE rører
-
-- Ingen DB-migrasjon, ingen RLS, ingen edge-function-endring.
-- AuthContext-hydrering og `i18nHydratedRef`-logikken er allerede korrekt og endres ikke.
-- `setLanguage`-DB-skrivingen er allerede `await`-et; ingen endring i selve persisterings-flyten utover å rapportere resultatet tilbake.
+Si fra om rekkefølgen passer, eller om noe (f.eks. Hendelser eller Dokumenter) skal opp først, så starter jeg Batch 1.
