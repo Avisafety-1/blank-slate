@@ -631,14 +631,16 @@ export function PersonCompetencyDialog({
                           <h4 className="font-semibold text-sm sm:text-base break-words">{competency.navn}</h4>
                           <span className="text-xs text-muted-foreground">{competency.type}</span>
                         </div>
-                        <div className="flex gap-0.5 shrink-0">
-                          <Button onClick={() => handleStartEdit(competency)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button onClick={() => handleDeleteClick(competency.id)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        {canEdit && (
+                          <div className="flex gap-0.5 shrink-0">
+                            <Button onClick={() => handleStartEdit(competency)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button onClick={() => handleDeleteClick(competency.id)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       {competency.beskrivelse && (
                         <p className="text-xs sm:text-sm text-muted-foreground break-words">{competency.beskrivelse}</p>
