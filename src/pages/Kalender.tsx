@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTranslation } from "react-i18next";
 
 import type { Tables } from "@/integrations/supabase/types";
 import { AddMissionDialog } from "@/components/dashboard/AddMissionDialog";
@@ -62,6 +63,7 @@ const getColorForType = (type: string): string => {
 };
 
 export default function Kalender() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, companyId, ensureValidToken, isAdmin } = useAuth();
   const isMobile = useIsMobile();
@@ -711,11 +713,11 @@ export default function Kalender() {
               <TabsList className="bg-card/50 backdrop-blur-sm">
                 <TabsTrigger value="month" className="gap-1.5">
                   <LayoutGrid className="w-4 h-4" />
-                  <span className="hidden sm:inline">Månedsoversikt</span>
+                  <span className="hidden sm:inline">{t('pages.calendar.monthlyView')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="resources" className="gap-1.5">
                   <GanttChart className="w-4 h-4" />
-                  <span className="hidden sm:inline">Ressurskalender</span>
+                  <span className="hidden sm:inline">{t('pages.calendar.resourceCalendar')}</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -727,7 +729,7 @@ export default function Kalender() {
                   <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
                     <div className="flex items-center gap-2">
                       <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                      <h2 className="text-xl sm:text-2xl font-semibold">Månedsoversikt</h2>
+                      <h2 className="text-xl sm:text-2xl font-semibold">{t('pages.calendar.monthlyView')}</h2>
                     </div>
 
                     <div className="flex flex-row gap-2">
@@ -738,14 +740,14 @@ export default function Kalender() {
                         onClick={() => setExportDialogOpen(true)}
                       >
                         <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline">Synkroniser</span>
+                        <span className="hidden sm:inline">{t('pages.calendar.synchronize')}</span>
                       </Button>
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size={isMobile ? "sm" : "default"} className="gap-2">
                             <Plus className="w-4 h-4" />
-                            <span className="hidden sm:inline">Legg til oppføring</span>
+                            <span className="hidden sm:inline">{t('pages.calendar.addEntry')}</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -994,13 +996,13 @@ export default function Kalender() {
                   id="event-title"
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  placeholder="Skriv tittel..."
+                  placeholder={t('pages.calendar.titlePlaceholderShort')}
                   disabled={savingEvent}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="event-type">Type</Label>
+                <Label htmlFor="event-type">{t('pages.calendar.type')}</Label>
                 <Select
                   value={newEvent.type}
                   onValueChange={(v) => setNewEvent({ ...newEvent, type: v })}
@@ -1010,16 +1012,16 @@ export default function Kalender() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Oppdrag">Oppdrag</SelectItem>
-                    <SelectItem value="Vedlikehold">Vedlikehold</SelectItem>
-                    <SelectItem value="Møte">Møte</SelectItem>
-                    <SelectItem value="Annet">Annet</SelectItem>
+                    <SelectItem value="Oppdrag">{t('pages.calendar.eventTypes.Oppdrag')}</SelectItem>
+                    <SelectItem value="Vedlikehold">{t('pages.calendar.eventTypes.Vedlikehold')}</SelectItem>
+                    <SelectItem value="Møte">{t('pages.calendar.eventTypes.Møte')}</SelectItem>
+                    <SelectItem value="Annet">{t('pages.calendar.eventTypes.Annet')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Dato og tidspunkt</Label>
+                <Label>{t('pages.calendar.dateTime')}</Label>
                 <div className="flex gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -1032,7 +1034,7 @@ export default function Kalender() {
                         disabled={savingEvent}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP", { locale: nb }) : <span>Velg dato</span>}
+                        {selectedDate ? format(selectedDate, "PPP", { locale: nb }) : <span>{t('pages.calendar.pickDate')}</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1058,12 +1060,12 @@ export default function Kalender() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="event-description">Beskrivelse</Label>
+                <Label htmlFor="event-description">{t('pages.calendar.descriptionLabel')}</Label>
                 <Textarea
                   id="event-description"
                   value={newEvent.description}
                   onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  placeholder="Valgfri beskrivelse..."
+                  placeholder={t('pages.calendar.descriptionPlaceholder')}
                   rows={3}
                   disabled={savingEvent}
                 />
