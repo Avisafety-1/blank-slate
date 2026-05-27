@@ -972,5 +972,97 @@
     "authenticate": "Autentiser",
     "loginError": "Biometrisk innlogging feilet.",
     "noPasskeysForEmail": "Ingen passkeys funnet for denne e-postadressen."
+  },
+  "pages": {
+    "missions": { "title": "Oppdrag" },
+    "incidents": {
+      "title": "Hendelser",
+      "searchPlaceholder": "Søk i hendelser...",
+      "loadingIncidents": "Laster hendelser...",
+      "noIncidentsReported": "Ingen hendelser rapportert ennå",
+      "noComments": "Ingen kommentarer ennå",
+      "settings": "Innstillinger",
+      "status": "Status:",
+      "lastAttempt": "Sist forsøk:",
+      "attempt": "Forsøk:",
+      "exportToEccairs": "Eksporter til ECCAIRS",
+      "confirmEccairsSubmit": "Bekreft innsending til ECCAIRS",
+      "eccairsDraftHint": "E2 kan ikke gi direktelenke for OR-utkast. Åpner portal – søk på E2 ID.",
+      "couldNotOpenEccairs": "Kunne ikke åpne i ECCAIRS"
+    },
+    "documents": {
+      "title": "Dokumenter",
+      "newChecklist": "Ny sjekkliste",
+      "newFolder": "Ny mappe",
+      "newDocument": "Nytt dokument"
+    },
+    "calendar": {
+      "monthlyView": "Månedsoversikt",
+      "resourceCalendar": "Ressurskalender",
+      "synchronize": "Synkroniser",
+      "addEntry": "Legg til oppføring",
+      "colorLegend": "Fargeforklaring",
+      "mission": "Oppdrag",
+      "incident": "Hendelse",
+      "document": "Dokument",
+      "maintenance": "Vedlikehold",
+      "news": "Nyhet",
+      "other": "Annet",
+      "titleLabel": "Tittel",
+      "titlePlaceholderShort": "Skriv tittel...",
+      "type": "Type",
+      "dateTime": "Dato og tidspunkt",
+      "pickDate": "Velg dato",
+      "descriptionLabel": "Beskrivelse",
+      "descriptionPlaceholder": "Valgfri beskrivelse...",
+      "titleRequired": "Tittel er påkrevd",
+      "mustBeLoggedIn": "Du må være innlogget",
+      "entrySaved": "Kalenderoppføring lagret",
+      "couldNotSaveEntry": "Kunne ikke lagre oppføring",
+      "confirmMaintenance": "Bekreft vedlikehold",
+      "cancel": "Avbryt",
+      "eventTypes": {
+        "Oppdrag": "Oppdrag",
+        "Vedlikehold": "Vedlikehold",
+        "Møte": "Møte",
+        "Annet": "Annet"
+      }
+    },
+    "map": {
+      "planRoute": "Planlegg flyrute",
+      "checkNotamTitle": "Sjekk NOTAM (åpner ippc.no)",
+      "sensorPermitTitle": "Søknad om flyging med sensor i sensorforbudssoner (NSM)",
+      "clickToPlacePilot": "Klikk på kartet for å plassere pilotposisjon",
+      "removePilot": "Fjern pilotposisjon",
+      "clickOnMap": "Klikk på kartet...",
+      "placePilot": "Plasser pilot",
+      "undo": "Angre",
+      "reset": "Nullstill",
+      "cancel": "Avbryt",
+      "save": "Lagre",
+      "buffer": "Buffer",
+      "soraVolume": "SORA volum",
+      "adjacent": "Tilstøtende",
+      "closeAdjacent": "Lukk tilstøtende område",
+      "trafficDataProvidedBy": "Traffic data provided by"
+    },
+    "stats": {
+      "back": "Tilbake",
+      "loading": "Laster statistikk...",
+      "safeSkyUsage": "SafeSky-bruk",
+      "checklistRate": "Sjekkliste-rate",
+      "avgFlightTime": "Snitt flytid",
+      "incidentsPer100h": "Hendelser/100 flytimer",
+      "flightsPerMonth": "Flyturer per måned",
+      "flightTimePerMonth": "Flytid per måned (timer)",
+      "incidentsPerMonth": "Hendelser per måned",
+      "riskAssessmentsPerMonth": "Risikovurderinger per måned",
+      "newUsersPerMonth": "Nye brukere per måned",
+      "incidentsBySeverity": "Hendelser per alvorlighetsgrad",
+      "missionsByStatus": "Oppdrag per status",
+      "top10CompaniesHours": "Top 10 selskaper – flytimer",
+      "top10CompaniesMissions": "Top 10 selskaper – oppdrag"
+    }
   }
 }
+
