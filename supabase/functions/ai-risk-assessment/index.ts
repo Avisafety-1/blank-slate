@@ -1798,16 +1798,24 @@ serve(async (req) => {
           aiAnalysis.categories.airspace.factors = aiAnalysis.categories.airspace.factors.map((c: string) => scrubAirportDistanceText(c));
         }
         if (!insideAny5km && fiveKmWarnings.length > 0) {
-          const outsideTexts = fiveKmWarnings.map((w: any) => `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» (≈ ${(5 + w.distance / 1000).toFixed(2)} km fra selve flyplassen)`);
+          const guardEn = resolveLang(language) === 'en';
+          const outsideTexts = fiveKmWarnings.map((w: any) => guardEn
+            ? `${w.distance} m outside the 5 km zone boundary around "${w.name}" (≈ ${(5 + w.distance / 1000).toFixed(2)} km from the airport itself)`
+            : `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» (≈ ${(5 + w.distance / 1000).toFixed(2)} km fra selve flyplassen)`);
           aiAnalysis.categories.airspace.factors = [
             ...(Array.isArray(aiAnalysis.categories.airspace.factors) ? aiAnalysis.categories.airspace.factors : []),
-            `Oppdraget er utenfor 5 km-sonen: ${outsideTexts.join('; ')}. Ingen Ninox-godkjenning kreves${lowAltitudeOutside5km ? ' ved maks 120 m AGL' : ''}.`,
+            guardEn
+              ? `Mission is outside the 5 km zone: ${outsideTexts.join('; ')}. No Ninox approval required${lowAltitudeOutside5km ? ' at max 120 m AGL' : ''}.`
+              : `Oppdraget er utenfor 5 km-sonen: ${outsideTexts.join('; ')}. Ingen Ninox-godkjenning kreves${lowAltitudeOutside5km ? ' ved maks 120 m AGL' : ''}.`,
           ];
         }
         if (ctrOverlapIsCautionOnly) {
+          const guardEn = resolveLang(language) === 'en';
           aiAnalysis.categories.airspace.factors = [
             ...(Array.isArray(aiAnalysis.categories.airspace.factors) ? aiAnalysis.categories.airspace.factors : []),
-            `Ruten overlapper kontrollert luftrom (CTR/TIZ), men ligger utenfor 5 km-sonen. Ved maks 120 m AGL er dette 100 % lovlig — ingen ATC-klarering eller tårnkontakt kreves. Behandles kun som aktsomhets­advarsel: vær oppmerksom på bemannet trafikk.`,
+            guardEn
+              ? `Route overlaps controlled airspace (CTR/TIZ), but lies outside the 5 km zone. At max 120 m AGL this is 100% legal — no ATC clearance or tower contact required. Treated only as an awareness warning: watch out for manned traffic.`
+              : `Ruten overlapper kontrollert luftrom (CTR/TIZ), men ligger utenfor 5 km-sonen. Ved maks 120 m AGL er dette 100 % lovlig — ingen ATC-klarering eller tårnkontakt kreves. Behandles kun som aktsomhets­advarsel: vær oppmerksom på bemannet trafikk.`,
           ];
           if (aiAnalysis.categories.airspace.go_decision === 'NO-GO') {
             aiAnalysis.categories.airspace.go_decision = 'BETINGET';
