@@ -138,8 +138,8 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Innholdsidéer</h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-1">Generer idéer med AI eller legg til manuelt.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('pages.marketing.ideasTitle')}</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">{t('pages.marketing.ideasSubtitle')}</p>
       </div>
 
       {/* AI Generate */}
