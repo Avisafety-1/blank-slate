@@ -544,7 +544,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
         <div className="space-y-4">
           <div className="space-y-2" data-tour="incident-mission">
-            <Label>Knytt til oppdrag (valgfritt)</Label>
+            <Label>{t('incidents.linkToMission')}</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -553,16 +553,16 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   className="w-full justify-between font-normal"
                 >
                   {formData.mission_id
-                    ? missions.find(m => m.id === formData.mission_id)?.tittel || "Velg oppdrag..."
-                    : "Velg oppdrag..."}
+                    ? missions.find(m => m.id === formData.mission_id)?.tittel || t('missions.selectCustomer')
+                    : t('missions.selectCustomer')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Søk i oppdrag..." />
+                  <CommandInput placeholder={t('incidents.searchMissions')} />
                   <CommandList>
-                    <CommandEmpty>Ingen oppdrag funnet.</CommandEmpty>
+                    <CommandEmpty>{t('incidents.noMissionsFound')}</CommandEmpty>
                     <CommandGroup>
                       {missions.map((mission) => (
                         <CommandItem
@@ -579,6 +579,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 </Command>
               </PopoverContent>
             </Popover>
+
           </div>
 
           <div className="space-y-4" data-tour="incident-title-desc">
