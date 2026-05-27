@@ -81,6 +81,7 @@ const computeRouteRadiusNm = (
 };
 
 export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialogProps) => {
+  const { t } = useTranslation();
   const { companyId, user } = useAuth();
 
   const [operationType, setOperationType] = useState("BVLOS");
