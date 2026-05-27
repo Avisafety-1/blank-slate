@@ -173,7 +173,7 @@ export const MarketingOverview = () => {
                   )}
                 </div>
                 <span className="text-muted-foreground text-xs flex-shrink-0">
-                  {format(new Date(item.published_at), "d. MMM HH:mm", { locale: nb })}
+                  {format(new Date(item.published_at), "d. MMM HH:mm", { locale: dateLocale })}
                 </span>
               </div>
             ))}
