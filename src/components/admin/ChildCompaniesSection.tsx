@@ -31,6 +31,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { MapPublicationDefaultsCard } from "@/components/admin/MapPublicationDefaultsCard";
+import { MissionTypesSection } from "@/components/admin/MissionTypesSection";
 
 interface ChildCompany {
   id: string;
