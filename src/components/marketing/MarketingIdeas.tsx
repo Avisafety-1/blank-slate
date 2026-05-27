@@ -124,7 +124,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       .eq("id", idea.id);
     queryClient.invalidateQueries({ queryKey: ["marketing-ideas"] });
     queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
-    toast.success("Utkast opprettet");
+    toast.success(t('pages.marketing.draftCreated'));
     onNavigate("drafts");
   };
 
