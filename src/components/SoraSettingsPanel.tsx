@@ -253,7 +253,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       {/* ── Buffermetode (top) ── */}
       <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Buffermetode</Label>
+        <Label className="text-xs text-muted-foreground">{t("soraPanel.bufferMode")}</Label>
         <RadioGroup
           value={settings.bufferMode ?? "corridor"}
           onValueChange={(v) => update({ bufferMode: v as "corridor" | "convexHull" })}
@@ -261,11 +261,11 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         >
           <div className="flex items-center gap-1.5">
             <RadioGroupItem value="corridor" id="mode-corridor" />
-            <Label htmlFor="mode-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+            <Label htmlFor="mode-corridor" className="text-xs cursor-pointer">{t("soraPanel.modeCorridor")}</Label>
           </div>
           <div className="flex items-center gap-1.5">
             <RadioGroupItem value="convexHull" id="mode-hull" />
-            <Label htmlFor="mode-hull" className="text-xs cursor-pointer">Konveks område</Label>
+            <Label htmlFor="mode-hull" className="text-xs cursor-pointer">{t("soraPanel.modeConvex")}</Label>
           </div>
         </RadioGroup>
       </div>
@@ -273,11 +273,11 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       {/* ── Drone selector ── */}
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground flex items-center gap-1">
-          <Plane className="h-3 w-3" /> Velg drone
+          <Plane className="h-3 w-3" /> {t("soraPanel.selectDrone")}
         </Label>
         <Select value={selectedDroneId} onValueChange={(v) => { const drone = drones.find((d) => d.id === v); setSelectedDroneId(v); setManualOverride(false); setManualCdOverride(false); setManualSpeedOverride(false); update({ droneId: v || undefined, droneName: drone ? droneLabel(drone) : undefined }); onDroneSelected?.(v || null); }}>
           <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Velg drone fra flåten" />
+            <SelectValue placeholder={t("soraPanel.selectDronePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {drones.map((d) => (
@@ -289,15 +289,15 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         </Select>
         {selectedDrone && catalogSpecs && (
           <p className="text-[11px] text-muted-foreground">
-            {catalogSpecs.category ?? droneProfile?.aircraft_type} · {droneProfile?.mtow_kg} kg MTOW
+            {catalogSpecs.category ?? droneProfile?.aircraft_type} · {droneProfile?.mtow_kg} kg {t("soraPanel.mtow")}
             {catalogSpecs.characteristic_dimension_m != null && ` · CD ${catalogSpecs.characteristic_dimension_m} m`}
             {catalogSpecs.max_speed_mps != null && ` · V0 ${catalogSpecs.max_speed_mps} m/s`}
-            {catalogSpecs.max_wind_mps != null && ` · Maks vind ${catalogSpecs.max_wind_mps} m/s`}
+            {catalogSpecs.max_wind_mps != null && ` · ${t("soraPanel.maxWind")} ${catalogSpecs.max_wind_mps} m/s`}
           </p>
         )}
         {selectedDrone && !catalogSpecs?.characteristic_dimension_m && (
           <p className="text-[11px] text-amber-600 dark:text-amber-400">
-            CD mangler i dronemodell-katalogen. Kontroller verdien manuelt før tilstøtende område beregnes.
+            {t("soraPanel.cdMissing")}
           </p>
         )}
       </div>
@@ -305,7 +305,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       {/* ── Flyhøyde + Contingency volum høyde ── */}
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Flyhøyde (m AGL)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.flightAltitude")}</Label>
           <Input
             type="number"
             min={0}
@@ -318,7 +318,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Contingency volum høyde (m)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.contingencyHeight")}</Label>
           <Input
             type="number"
             min={0}
@@ -336,51 +336,51 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       {selectedDrone && (
         <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="rounded-md border border-border bg-muted/30">
           <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors">
-            <span className="text-xs font-medium text-foreground">Avanserte oppdragsparametere</span>
+            <span className="text-xs font-medium text-foreground">{t("soraPanel.advancedParams")}</span>
             <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", advancedOpen && "rotate-180")} />
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="space-y-3 p-3 pt-0">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">CD (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.cd")}</Label>
                   <FieldHint>{SORA_HELP.cd}</FieldHint>
                   <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setManualCdOverride(true); setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.v0")}</Label>
                   <FieldHint>{SORA_HELP.v0}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setManualSpeedOverride(true); setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.reactionTime")}</Label>
                   <FieldHint>{SORA_HELP.tr}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={reactionTime} onChange={(e) => setReactionTime(e.target.value)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Pitch/bank-vinkel (°)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.pitchBank")}</Label>
                   <Input type="number" min={1} max={89} step={1} value={pitchBankAngle} onChange={(e) => setPitchBankAngle(e.target.value)} className="h-8 text-sm" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">HAM (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.ham")}</Label>
                   <FieldHint>{SORA_HELP.ham}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={altimetryError} onChange={(e) => setAltimetryError(e.target.value)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">SGNSS (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.sgnss")}</Label>
                   <FieldHint>{SORA_HELP.sgnss}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={gnssError} onChange={(e) => setGnssError(e.target.value)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">SPos (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.spos")}</Label>
                   <FieldHint>{SORA_HELP.spos}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={positionHoldError} onChange={(e) => setPositionHoldError(e.target.value)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">SMap (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.smap")}</Label>
                   <FieldHint>{SORA_HELP.smap}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={mapError} onChange={(e) => setMapError(e.target.value)} className="h-8 text-sm" />
                 </div>
@@ -388,18 +388,18 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Contingency-metode</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.contingencyMethod")}</Label>
                   <Select value={contingencyMethod} onValueChange={(v) => setContingencyMethod(v as ContingencyMethod)}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="parachute">Parachute / FTS</SelectItem>
+                      <SelectItem value="standard">{t("soraPanel.standard")}</SelectItem>
+                      <SelectItem value="parachute">{t("soraPanel.parachute")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {contingencyMethod === "parachute" && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Deployment tP (s)</Label>
+                    <Label className="text-xs text-muted-foreground">{t("soraPanel.deployment")}</Label>
                     <FieldHint>{SORA_HELP.tp}</FieldHint>
                     <Input type="number" min={0} step={0.1} value={deploymentTime} onChange={(e) => setDeploymentTime(e.target.value)} className="h-8 text-sm" />
                   </div>
@@ -408,40 +408,40 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">GRB-metode</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.grbMethod")}</Label>
                   <FieldHint>{SORA_HELP.grb}</FieldHint>
                   <Select value={grbMethod} onValueChange={(v) => setGrbMethod(v as GroundRiskBufferMethod)}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="off">Av</SelectItem>
-                      <SelectItem value="1to1">1:1 rule</SelectItem>
-                      <SelectItem value="ballistic">Ballistic</SelectItem>
-                      <SelectItem value="glide">Glide</SelectItem>
-                      <SelectItem value="drift">Drift / parachute</SelectItem>
+                      <SelectItem value="off">{t("soraPanel.off")}</SelectItem>
+                      <SelectItem value="1to1">{t("soraPanel.rule1to1")}</SelectItem>
+                      <SelectItem value="ballistic">{t("soraPanel.ballistic")}</SelectItem>
+                      <SelectItem value="glide">{t("soraPanel.glide")}</SelectItem>
+                      <SelectItem value="drift">{t("soraPanel.drift")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {grbMethod === "glide" && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Glide ratio</Label>
+                    <Label className="text-xs text-muted-foreground">{t("soraPanel.glideRatio")}</Label>
                     <Input type="number" min={1} step={0.5} value={glideRatio} onChange={(e) => setGlideRatio(e.target.value)} className="h-8 text-sm" />
                   </div>
                 )}
                 {grbMethod === "drift" && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Descent speed (m/s)</Label>
+                    <Label className="text-xs text-muted-foreground">{t("soraPanel.descentSpeed")}</Label>
                     <Input type="number" min={0.1} step={0.1} value={descentSpeed} onChange={(e) => setDescentSpeed(e.target.value)} className="h-8 text-sm" />
                   </div>
                 )}
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Vind-overstyring (m/s, valgfritt)</Label>
+                <Label className="text-xs text-muted-foreground">{t("soraPanel.windOverride")}</Label>
                 <Input
                   type="number"
                   min={0}
                   max={30}
-                  placeholder={catalogSpecs?.max_wind_mps != null ? `Drone maks: ${catalogSpecs.max_wind_mps}` : "—"}
+                  placeholder={catalogSpecs?.max_wind_mps != null ? (t as any)("soraPanel.windOverridePlaceholder", { max: catalogSpecs.max_wind_mps }) : "—"}
                   value={windOverride}
                   onChange={(e) => setWindOverride(e.target.value)}
                   className="h-8 text-sm"
@@ -457,12 +457,12 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
           <div className="flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5 text-primary" />
-            <p className="text-xs font-medium text-foreground">SORA 2.5-beregning</p>
+            <p className="text-xs font-medium text-foreground">{t("soraPanel.soraCalc")}</p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
               <p className="text-lg font-bold text-green-600 dark:text-green-400">{settings.flightGeographyDistance}m</p>
-              <p className="text-[10px] text-muted-foreground">Flight geo</p>
+              <p className="text-[10px] text-muted-foreground">{t("soraPanel.flightGeo")}</p>
             </div>
             <div>
               <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{suggestion.suggested_contingency_buffer_m}m</p>
@@ -476,7 +476,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
           {manualOverride && (
             <div className="flex items-center justify-between gap-2 pt-1">
-              <p className="text-[10px] text-muted-foreground italic">Manuelt overstyrt</p>
+              <p className="text-[10px] text-muted-foreground italic">{t("soraPanel.manuallyOverridden")}</p>
               <Button
                 size="sm"
                 variant="outline"
@@ -492,7 +492,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
                   });
                 }}
               >
-                Tilbakestill til system-beregning
+                {t("soraPanel.resetSystem")}
               </Button>
             </div>
           )}
@@ -502,7 +502,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       {/* ── Manual controls ── */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Flight Geography Area (m)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.flightGeoArea")}</Label>
           <span className="text-xs font-mono text-green-600 dark:text-green-400">{settings.flightGeographyDistance}m</span>
         </div>
         <Slider
@@ -517,7 +517,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Contingency area (m)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.contingencyArea")}</Label>
           <span className="text-xs font-mono text-amber-600 dark:text-amber-400">{settings.contingencyDistance}m</span>
         </div>
         <Slider
@@ -532,7 +532,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Ground risk buffer (m)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.groundRiskBuffer")}</Label>
           <span className="text-xs font-mono text-red-600 dark:text-red-400">{settings.groundRiskDistance}m</span>
         </div>
         <Slider
@@ -547,16 +547,16 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       <div className="flex flex-wrap gap-3 pt-1 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm bg-green-600/40 border border-green-600/60" /> Flight geography area
+          <span className="w-3 h-3 rounded-sm bg-green-600/40 border border-green-600/60" /> {t("soraPanel.legendFlightGeoArea")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/60" /> Flight geography
+          <span className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/60" /> {t("soraPanel.legendFlightGeo")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm bg-amber-500/40 border border-amber-500/60" /> Contingency
+          <span className="w-3 h-3 rounded-sm bg-amber-500/40 border border-amber-500/60" /> {t("soraPanel.legendContingency")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm bg-red-500/40 border border-red-500/60" /> Ground risk
+          <span className="w-3 h-3 rounded-sm bg-red-500/40 border border-red-500/60" /> {t("soraPanel.legendGroundRisk")}
         </span>
       </div>
 
@@ -564,20 +564,20 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         const cells = populationDensityResult?.cells ?? [];
         const ssbCount = cells.filter((c: any) => c.source !== "eurostat").length;
         const eurostatCount = cells.length - ssbCount;
-        let sourceLabel = "Befolkningstetthet";
-        if (ssbCount > 0 && eurostatCount > 0) sourceLabel = "Befolkningstetthet (SSB 250 m + Eurostat 1 km)";
-        else if (ssbCount > 0) sourceLabel = "Befolkningstetthet (SSB 250 m)";
-        else if (eurostatCount > 0) sourceLabel = "Befolkningstetthet (Eurostat 1 km)";
+        let sourceLabel = t("soraPanel.popDensity");
+        if (ssbCount > 0 && eurostatCount > 0) sourceLabel = t("soraPanel.popDensitySsbEurostat");
+        else if (ssbCount > 0) sourceLabel = t("soraPanel.popDensitySsb");
+        else if (eurostatCount > 0) sourceLabel = t("soraPanel.popDensityEurostat");
         return (
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
             <div className="min-w-0">
               <p className="text-xs font-medium">{sourceLabel}</p>
               <p className="text-[11px] text-muted-foreground">
                 {populationDensityLoading
-                  ? "Henter aktuelle ruter rundt hele beregnet område…"
+                  ? t("soraPanel.popDensityLoading")
                   : populationDensityResult?.maxDensityCell
-                    ? `Pådriver: ${(populationDensityResult.maxDensityPerKm2).toLocaleString("nb-NO")} pers/km² · ${cells.length.toLocaleString("nb-NO")} ruter vurdert`
-                    : "Viser befolkede ruter rundt SORA-volumet; tomme felt er normalt 0 registrert befolkning"}
+                    ? (t as any)("soraPanel.popDensityDriver", { density: populationDensityResult.maxDensityPerKm2.toLocaleString("nb-NO"), count: cells.length.toLocaleString("nb-NO") })
+                    : t("soraPanel.popDensityEmpty")}
               </p>
             </div>
             <Switch checked={showPopulationDensity} onCheckedChange={onShowPopulationDensityChange} />
@@ -597,7 +597,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     <Collapsible open={open} onOpenChange={setOpen} className="border-t border-border">
       <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 sm:px-4 hover:bg-muted/50 transition-colors">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">SORA volum</span>
+          <span className="text-sm font-medium text-foreground">{t("soraPanel.soraVolume")}</span>
         </div>
         <div className="flex items-center gap-2">
           <Switch

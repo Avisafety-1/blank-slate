@@ -21,6 +21,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
+import { useTranslation } from "react-i18next";
 
 interface FlightLogbookDialogProps {
   open: boolean;
@@ -57,6 +58,7 @@ interface PersonnelLogEntry {
 }
 
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
+  const { t } = useTranslation();
   const { user, companyId } = useAuth();
   const { isAdmin } = useRoleCheck();
   const queryClient = useQueryClient();
@@ -455,7 +457,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Book className="w-5 h-5 text-primary" />
-              Loggbok - {personName}
+              {t("logbook.title")} - {personName}
             </DialogTitle>
           </DialogHeader>
 
@@ -464,7 +466,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-primary" />
-                <span className="font-medium">Total flytid</span>
+                <span className="font-medium">{t("logbook.totalFlightTime")}</span>
               </div>
               <Badge variant="secondary" className="text-lg px-3 py-1">
                 {formatDuration(Math.round(totalFlytid))}
@@ -472,9 +474,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             </div>
 
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground px-1">
-              <span>Fra loggførte flyturer: {formatDuration(totalMinutes)}</span>
+              <span>{t("logbook.fromLoggedFlights")}: {formatDuration(totalMinutes)}</span>
               {profileFlyvetimer > 0 && (
-                <span>Manuelt lagt til: {formatDuration(Math.round(profileFlyvetimer * 60))}</span>
+                <span>{t("logbook.manuallyAdded")}: {formatDuration(Math.round(profileFlyvetimer * 60))}</span>
               )}
             </div>
 
@@ -487,7 +489,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                 className="flex-1"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Legg til flytimer manuelt
+                {t("logbook.addManualHours")}
               </Button>
               <Button
                 variant="outline"
@@ -496,7 +498,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                 className="flex-1"
               >
                 <Edit className="w-4 h-4 mr-2" />
-                Legg til logginnlegg
+                {t("logbook.addLogEntry")}
               </Button>
               <Button
                 variant="outline"
@@ -506,7 +508,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                 className="flex-1"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                {exporting ? "Eksporterer..." : "Eksporter PDF"}
+                {exporting ? t("logbook.exporting") : t("logbook.exportPdf")}
               </Button>
             </div>
 
