@@ -253,7 +253,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       {/* ── Buffermetode (top) ── */}
       <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Buffermetode</Label>
+        <Label className="text-xs text-muted-foreground">{t("soraPanel.bufferMode")}</Label>
         <RadioGroup
           value={settings.bufferMode ?? "corridor"}
           onValueChange={(v) => update({ bufferMode: v as "corridor" | "convexHull" })}
@@ -261,11 +261,11 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         >
           <div className="flex items-center gap-1.5">
             <RadioGroupItem value="corridor" id="mode-corridor" />
-            <Label htmlFor="mode-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+            <Label htmlFor="mode-corridor" className="text-xs cursor-pointer">{t("soraPanel.modeCorridor")}</Label>
           </div>
           <div className="flex items-center gap-1.5">
             <RadioGroupItem value="convexHull" id="mode-hull" />
-            <Label htmlFor="mode-hull" className="text-xs cursor-pointer">Konveks område</Label>
+            <Label htmlFor="mode-hull" className="text-xs cursor-pointer">{t("soraPanel.modeConvex")}</Label>
           </div>
         </RadioGroup>
       </div>
@@ -273,11 +273,11 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       {/* ── Drone selector ── */}
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground flex items-center gap-1">
-          <Plane className="h-3 w-3" /> Velg drone
+          <Plane className="h-3 w-3" /> {t("soraPanel.selectDrone")}
         </Label>
         <Select value={selectedDroneId} onValueChange={(v) => { const drone = drones.find((d) => d.id === v); setSelectedDroneId(v); setManualOverride(false); setManualCdOverride(false); setManualSpeedOverride(false); update({ droneId: v || undefined, droneName: drone ? droneLabel(drone) : undefined }); onDroneSelected?.(v || null); }}>
           <SelectTrigger className="h-8 text-sm">
-            <SelectValue placeholder="Velg drone fra flåten" />
+            <SelectValue placeholder={t("soraPanel.selectDronePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {drones.map((d) => (
@@ -289,15 +289,15 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         </Select>
         {selectedDrone && catalogSpecs && (
           <p className="text-[11px] text-muted-foreground">
-            {catalogSpecs.category ?? droneProfile?.aircraft_type} · {droneProfile?.mtow_kg} kg MTOW
+            {catalogSpecs.category ?? droneProfile?.aircraft_type} · {droneProfile?.mtow_kg} kg {t("soraPanel.mtow")}
             {catalogSpecs.characteristic_dimension_m != null && ` · CD ${catalogSpecs.characteristic_dimension_m} m`}
             {catalogSpecs.max_speed_mps != null && ` · V0 ${catalogSpecs.max_speed_mps} m/s`}
-            {catalogSpecs.max_wind_mps != null && ` · Maks vind ${catalogSpecs.max_wind_mps} m/s`}
+            {catalogSpecs.max_wind_mps != null && ` · ${t("soraPanel.maxWind")} ${catalogSpecs.max_wind_mps} m/s`}
           </p>
         )}
         {selectedDrone && !catalogSpecs?.characteristic_dimension_m && (
           <p className="text-[11px] text-amber-600 dark:text-amber-400">
-            CD mangler i dronemodell-katalogen. Kontroller verdien manuelt før tilstøtende område beregnes.
+            {t("soraPanel.cdMissing")}
           </p>
         )}
       </div>
@@ -305,7 +305,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       {/* ── Flyhøyde + Contingency volum høyde ── */}
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Flyhøyde (m AGL)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.flightAltitude")}</Label>
           <Input
             type="number"
             min={0}
@@ -318,7 +318,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Contingency volum høyde (m)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.contingencyHeight")}</Label>
           <Input
             type="number"
             min={0}
