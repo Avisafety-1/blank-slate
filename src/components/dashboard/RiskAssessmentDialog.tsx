@@ -217,6 +217,16 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
   }, [currentMissionId]);
 
+  // Auto-set operation type from mission's oppdragstype
+  useEffect(() => {
+    const type = (soraMissionDetails as any)?.oppdragstype;
+    if (!type) return;
+    setPilotInputs(prev => ({
+      ...prev,
+      operationType: type === 'Annet' ? 'other' : type,
+    }));
+  }, [soraMissionDetails?.oppdragstype]);
+
   const fetchMissions = async () => {
     setLoadingMissions(true);
     try {
