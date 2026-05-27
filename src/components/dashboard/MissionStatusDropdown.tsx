@@ -36,6 +36,7 @@ export const MissionStatusDropdown = ({
   longitude,
   tidspunkt,
 }: MissionStatusDropdownProps) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [postFlightDialogOpen, setPostFlightDialogOpen] = useState(false);
