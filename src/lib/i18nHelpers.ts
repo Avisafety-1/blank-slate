@@ -133,3 +133,147 @@ export function translatePersistedRiskText(
     .replace(/rundt «([^»]+)»/g, 'around "$1"')
     .replace(/«([^»]+)»/g, '"$1"');
 }
+
+/**
+ * Display-only oversettere for verdier som er lagret på norsk i databasen.
+ * Endrer ALDRI selve dataverdien — kun visningen. Filtre, joins, sammenligning
+ * mot eksisterende rader fungerer som før.
+ *
+ * Bruksmønster:
+ *   <Badge>{translateMissionStatus(mission.status)}</Badge>
+ *
+ * Returnerer alltid en streng. Ukjente verdier returneres uendret slik at
+ * vi aldri ender opp med tomme labels i UI.
+ */
+
+type DbValueMap = Record<string, { en: string; no?: string }>;
+
+const MISSION_STATUS: DbValueMap = {
+  "Planlagt": { en: "Planned" },
+  "Tildelt": { en: "Assigned" },
+  "Pågående": { en: "Ongoing" },
+  "Pågår": { en: "Ongoing" },
+  "Fullført": { en: "Completed" },
+  "Avlyst": { en: "Cancelled" },
+  "Avbrutt": { en: "Aborted" },
+  "Utkast": { en: "Draft" },
+};
+
+const APPROVAL_STATUS: DbValueMap = {
+  "approved": { en: "Approved", no: "Godkjent" },
+  "pending_approval": { en: "Pending approval", no: "Venter på godkjenning" },
+  "not_approved": { en: "Not approved", no: "Ikke godkjent" },
+  "rejected": { en: "Rejected", no: "Avvist" },
+};
+
+const APPROVAL_STATUS_COMPACT: DbValueMap = {
+  "approved": { en: "Approved", no: "Godkjent" },
+  "pending_approval": { en: "Pending", no: "Venter" },
+  "not_approved": { en: "Not approved", no: "Ikke godkjent" },
+  "rejected": { en: "Rejected", no: "Avvist" },
+};
+
+const INCIDENT_STATUS: DbValueMap = {
+  "Åpen": { en: "Open" },
+  "Under behandling": { en: "In progress" },
+  "Under utredning": { en: "Under investigation" },
+  "Tiltak iverksatt": { en: "Action taken" },
+  "Ny": { en: "New" },
+  "Løst": { en: "Resolved" },
+  "Lukket": { en: "Closed" },
+  "Pågår": { en: "In progress" },
+  "Utført": { en: "Done" },
+  "Forsinket": { en: "Delayed" },
+};
+
+const SEVERITY: DbValueMap = {
+  "Lav": { en: "Low" },
+  "Middels": { en: "Medium" },
+  "Høy": { en: "High" },
+  "Kritisk": { en: "Critical" },
+};
+
+const INCIDENT_CATEGORY: DbValueMap = {
+  "Uønsket hendelse": { en: "Unwanted event" },
+  "Avvik": { en: "Non-conformance" },
+  "Nestenulykke": { en: "Near miss" },
+  "Observasjon": { en: "Observation" },
+};
+
+const DOC_CATEGORY: DbValueMap = {
+  "Prosedyrer": { en: "Procedures" },
+  "Sjekklister": { en: "Checklists" },
+  "Manualer": { en: "Manuals" },
+  "Sertifikater": { en: "Certificates" },
+  "Annet": { en: "Other" },
+};
+
+const SORA_STATUS: DbValueMap = {
+  "Ikke startet": { en: "Not started" },
+  "Under arbeid": { en: "In progress" },
+  "Pågår": { en: "In progress" },
+  "Revidert": { en: "Revised" },
+  "Ferdig": { en: "Done" },
+};
+
+const AI_RISK_RECOMMENDATION: DbValueMap = {
+  "proceed": { en: "Recommended", no: "Anbefalt" },
+  "go": { en: "Recommended", no: "Anbefalt" },
+  "proceed_with_caution": { en: "Caution", no: "Forsiktighet" },
+  "caution": { en: "Caution", no: "Forsiktighet" },
+  "not_recommended": { en: "Not recommended", no: "Ikke anbefalt" },
+  "no-go": { en: "Not recommended", no: "Ikke anbefalt" },
+};
+
+const ROOT_CAUSE: DbValueMap = {
+  "Menneskelig feil": { en: "Human error" },
+  "Teknisk feil": { en: "Technical failure" },
+  "Værforhold": { en: "Weather conditions" },
+  "Organisatorisk": { en: "Organisational" },
+  "Prosedyresvikt": { en: "Procedural failure" },
+  "Ytre påvirkning": { en: "External influence" },
+  "Annet": { en: "Other" },
+  "Ukjent": { en: "Unknown" },
+};
+
+function lookup(
+  map: DbValueMap,
+  value: string | null | undefined,
+  language: AppLanguage,
+): string {
+  if (value == null) return "";
+  const entry = map[value] ?? map[value.toLowerCase?.() ?? value];
+  if (!entry) return value;
+  if (language === "en") return entry.en;
+  return entry.no ?? value;
+}
+
+export const translateMissionStatus = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(MISSION_STATUS, v, lang);
+
+export const translateApprovalStatus = (
+  v: string | null | undefined,
+  opts: { compact?: boolean } = {},
+  lang: AppLanguage = getCurrentLanguage(),
+) => lookup(opts.compact ? APPROVAL_STATUS_COMPACT : APPROVAL_STATUS, v ?? "not_approved", lang);
+
+export const translateIncidentStatus = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(INCIDENT_STATUS, v, lang);
+
+export const translateSeverity = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(SEVERITY, v, lang);
+
+export const translateIncidentCategory = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(INCIDENT_CATEGORY, v, lang);
+
+export const translateDocCategory = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(DOC_CATEGORY, v, lang);
+
+export const translateSoraStatus = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(SORA_STATUS, v, lang);
+
+export const translateAIRiskRecommendation = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(AI_RISK_RECOMMENDATION, v?.toLowerCase(), lang) || v || "";
+
+export const translateRootCause = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(ROOT_CAUSE, v, lang);
