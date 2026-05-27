@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Sparkles, Plus, Trash2, FileEdit, Loader2 } from "lucide-react";
 import type { MarketingSection } from "./MarketingSidebar";
 import { GENERATION_PRESETS } from "./marketingPresets";
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export const MarketingIdeas = ({ onNavigate }: Props) => {
+  const { t } = useTranslation();
   const { companyId, user } = useAuth();
   const queryClient = useQueryClient();
   const [topic, setTopic] = useState("");
@@ -69,7 +71,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["marketing-ideas"] });
       queryClient.invalidateQueries({ queryKey: ["marketing-ideas-count"] });
-      toast.success(`${ideas.length} idéer generert!`);
+      toast.success(t('pages.marketing.ideasGenerated', { count: ideas.length }));
     },
     onError: (e) => toast.error(e.message),
   });
@@ -83,7 +85,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       ai_generated: false,
     });
     if (error) {
-      toast.error("Kunne ikke legge til idé");
+      toast.error(t('pages.marketing.couldNotAddIdea'));
       return;
     }
     setNewTitle("");
@@ -113,7 +115,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       metadata: matchedPreset ? { preset: matchedPreset.id } : {},
     });
     if (error) {
-      toast.error("Kunne ikke opprette utkast");
+      toast.error(t('pages.marketing.couldNotCreateDraft'));
       return;
     }
     await supabase
@@ -122,7 +124,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       .eq("id", idea.id);
     queryClient.invalidateQueries({ queryKey: ["marketing-ideas"] });
     queryClient.invalidateQueries({ queryKey: ["marketing-drafts"] });
-    toast.success("Utkast opprettet");
+    toast.success(t('pages.marketing.draftCreated'));
     onNavigate("drafts");
   };
 
@@ -136,8 +138,8 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Innholdsidéer</h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-1">Generer idéer med AI eller legg til manuelt.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('pages.marketing.ideasTitle')}</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">{t('pages.marketing.ideasSubtitle')}</p>
       </div>
 
       {/* AI Generate */}
@@ -145,17 +147,17 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
         <CardContent className="pt-4 space-y-3">
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
-              placeholder="Tema for idéer (valgfritt)..."
+              placeholder={t('pages.marketing.topicPlaceholder')}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               className="flex-1"
             />
             <Select value={presetFilter} onValueChange={setPresetFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Alle typer" />
+                <SelectValue placeholder={t('pages.marketing.allTypes')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Alle typer</SelectItem>
+                <SelectItem value="all">{t('pages.marketing.allTypes')}</SelectItem>
                 {GENERATION_PRESETS.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
                 ))}
@@ -173,7 +175,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
             ) : (
               <Sparkles className="w-4 h-4" />
             )}
-            Generer idéer
+            {t('pages.marketing.generateIdeas')}
           </Button>
         </CardContent>
       </Card>
@@ -181,14 +183,14 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       {/* Manual add */}
       <div className="flex gap-2">
         <Input
-          placeholder="Legg til idé manuelt..."
+          placeholder={t('pages.marketing.addIdeaPlaceholder')}
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addManual()}
           className="flex-1"
         />
         <Button variant="outline" onClick={addManual} className="gap-1 flex-shrink-0" size="sm">
-          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Legg til</span>
+          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{t('pages.marketing.addLabel')}</span>
         </Button>
       </div>
 
@@ -198,7 +200,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : ideas.length === 0 ? (
-        <p className="text-muted-foreground text-center py-8">Ingen idéer ennå. Generer noen med AI!</p>
+        <p className="text-muted-foreground text-center py-8">{t('pages.marketing.noIdeasYet')}</p>
       ) : (
         <div className="space-y-3">
           {ideas.map((idea) => (
@@ -219,7 +221,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
                         </Badge>
                       )}
                       {idea.status === "drafted" && (
-                        <Badge variant="secondary">Utkast laget</Badge>
+                        <Badge variant="secondary">{t('pages.marketing.draftMade')}</Badge>
                       )}
                     </div>
                     {idea.description && (
@@ -232,7 +234,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => createDraftFromIdea(idea)}
-                        title="Lag utkast"
+                        title={t('pages.marketing.createDraft')}
                       >
                         <FileEdit className="w-4 h-4" />
                       </Button>
@@ -241,7 +243,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
                       variant="ghost"
                       size="sm"
                       onClick={() => deleteIdea(idea.id)}
-                      title="Slett"
+                      title={t('pages.marketing.delete')}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>

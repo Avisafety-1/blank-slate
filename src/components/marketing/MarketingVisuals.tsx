@@ -5,10 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, Download, Loader2, Image, Upload } from "lucide-react";
 import { VisualGeneratorDialog } from "./VisualGeneratorDialog";
 
 export const MarketingVisuals = () => {
+  const { t } = useTranslation();
   const { companyId, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [generatorOpen, setGeneratorOpen] = useState(false);
@@ -41,11 +43,11 @@ export const MarketingVisuals = () => {
     }
     const { error } = await supabase.from("marketing_media").delete().eq("id", id);
     if (error) {
-      toast.error("Kunne ikke slette");
+      toast.error(t('pages.marketing.couldNotDelete'));
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["marketing-media"] });
-    toast.success("Visuell slettet");
+    toast.success(t('pages.marketing.visualDeleted'));
   };
 
   return (

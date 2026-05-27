@@ -1112,7 +1112,32 @@
       "statApproved": "Godkjent",
       "statScheduled": "Planlagt",
       "nextScheduled": "Neste planlagte",
-      "recentlyPublished": "Nylig publisert"
+      "recentlyPublished": "Nylig publisert",
+      "ideasTitle": "Innholdsidéer",
+      "ideasSubtitle": "Generer idéer med AI eller legg til manuelt.",
+      "topicPlaceholder": "Tema for idéer (valgfritt)...",
+      "allTypes": "Alle typer",
+      "generateIdeas": "Generer idéer",
+      "addIdeaPlaceholder": "Legg til idé manuelt...",
+      "addLabel": "Legg til",
+      "noIdeasYet": "Ingen idéer ennå. Generer noen med AI!",
+      "ideasGenerated": "{{count}} idéer generert!",
+      "couldNotAddIdea": "Kunne ikke legge til idé",
+      "couldNotCreateDraft": "Kunne ikke opprette utkast",
+      "draftCreated": "Utkast opprettet",
+      "draftMade": "Utkast laget",
+      "createDraft": "Lag utkast",
+      "delete": "Slett",
+      "visualsTitle": "Visuelle",
+      "uploadLabel": "Last opp",
+      "generateVisual": "Generer visuell",
+      "couldNotDelete": "Kunne ikke slette",
+      "visualDeleted": "Visuell slettet",
+      "couldNotLoadVisuals": "Kunne ikke laste visuelle akkurat nå.",
+      "noVisualsYet": "Ingen visuelle ennå. Generer din første!",
+      "imageUploaded": "Bilde lastet opp",
+      "uploadFailed": "Opplasting feilet",
+      "untitled": "Uten tittel"
     }
   }
 }
