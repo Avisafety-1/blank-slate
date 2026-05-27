@@ -192,23 +192,24 @@ const Statistikk = () => {
                 <GlassCard className="text-center">
                   <Shield className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold text-foreground">{stats.metrics.safeskyRate}%</div>
-                  <div className="text-xs text-muted-foreground">SafeSky-bruk</div>
+                  <div className="text-xs text-muted-foreground">{t('pages.stats.safeSkyUsage')}</div>
                 </GlassCard>
                 <GlassCard className="text-center">
                   <CheckCircle className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold text-foreground">{stats.metrics.checklistRate}%</div>
-                  <div className="text-xs text-muted-foreground">Sjekkliste-rate</div>
+                  <div className="text-xs text-muted-foreground">{t('pages.stats.checklistRate')}</div>
                 </GlassCard>
                 <GlassCard className="text-center">
                   <Clock className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold text-foreground">{stats.metrics.avgFlightMinutes} min</div>
-                  <div className="text-xs text-muted-foreground">Snitt flytid</div>
+                  <div className="text-xs text-muted-foreground">{t('pages.stats.avgFlightTime')}</div>
                 </GlassCard>
                 <GlassCard className="text-center">
                   <Activity className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold text-foreground">{stats.metrics.incidentFrequency}</div>
-                  <div className="text-xs text-muted-foreground">Hendelser/100 flytimer</div>
+                  <div className="text-xs text-muted-foreground">{t('pages.stats.incidentsPer100h')}</div>
                 </GlassCard>
+
               </div>
 
               {/* Charts row 1 */}
