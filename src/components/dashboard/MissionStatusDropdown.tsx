@@ -66,10 +66,10 @@ export const MissionStatusDropdown = ({
       .eq("id", missionId);
 
     if (error) {
-      toast.error("Kunne ikke oppdatere status");
+      toast.error(t('dashboard.missions.couldNotUpdateStatus'));
       console.error(error);
     } else {
-      toast.success(`Status endret til ${payload.status}`);
+      toast.success(t('dashboard.missions.statusChangedTo', { status: translateMissionStatus(payload.status) }));
       onStatusChanged?.();
     }
   };
