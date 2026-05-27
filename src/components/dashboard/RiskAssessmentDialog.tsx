@@ -28,6 +28,7 @@ import { RiskRecommendations } from "./RiskRecommendations";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { SoraResultView } from "./SoraResultView";
+import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 
 interface RiskAssessmentDialogProps {
   open: boolean;
@@ -64,6 +65,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { user, companyId } = useAuth();
+  const { labels: missionTypeLabels } = useCompanyMissionTypes();
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [etaMs, setEtaMs] = useState<number>(45000);
@@ -683,11 +685,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="inspection">{t('riskAssessment.types.inspection', 'Inspeksjon')}</SelectItem>
-                            <SelectItem value="mapping">{t('riskAssessment.types.mapping', 'Kartlegging')}</SelectItem>
-                            <SelectItem value="filming">{t('riskAssessment.types.filming', 'Filming')}</SelectItem>
-                            <SelectItem value="photography">{t('riskAssessment.types.photography', 'Fotografering')}</SelectItem>
-                            <SelectItem value="delivery">{t('riskAssessment.types.delivery', 'Levering')}</SelectItem>
+                            {missionTypeLabels.map((label) => (
+                              <SelectItem key={label} value={label}>{label}</SelectItem>
+                            ))}
                             <SelectItem value="other">{t('common.other', 'Annet')}</SelectItem>
                           </SelectContent>
                         </Select>
