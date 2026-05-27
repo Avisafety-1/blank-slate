@@ -143,11 +143,13 @@ const AuthenticatedLayout = () => {
       <OfflineBanner />
       <IdleTimeoutWarning />
       <main className="flex-1 flex flex-col">
-        <SubscriptionGate>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Outlet />
-          </Suspense>
-        </SubscriptionGate>
+        <MfaGate>
+          <SubscriptionGate>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Outlet />
+            </Suspense>
+          </SubscriptionGate>
+        </MfaGate>
       </main>
     </div>
   );
