@@ -310,8 +310,35 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
       if (error) throw error;
 
-      // Save department visibility
-      await deptVis.saveVisibility();
+      // Resolve target departments and check checklist-document visibility
+      const targetDeptIds = deptVis.hasDepartments
+        ? (deptVis.allSelected
+            ? deptVis.childDepartments.map((d) => d.id)
+            : deptVis.selectedDeptIds)
+        : [];
+
+      if (targetDeptIds.length > 0) {
+        const missing = await checkEquipmentResourceVisibility(equipment.id, targetDeptIds);
+        if (missing.length > 0) {
+          await new Promise<void>((resolve) => {
+            setVisibilityWarning({
+              missing,
+              onContinue: async () => {
+                await deptVis.saveVisibility();
+                resolve();
+              },
+              onCancel: () => {
+                // Skip visibility save, keep equipment update
+                resolve();
+              },
+            });
+          });
+        } else {
+          await deptVis.saveVisibility();
+        }
+      } else {
+        await deptVis.saveVisibility();
+      }
 
       toast.success("Utstyr oppdatert");
       setIsEditing(false);
