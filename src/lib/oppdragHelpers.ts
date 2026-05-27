@@ -16,17 +16,10 @@ export const approvalStatusColors: Record<string, string> = {
 export const getApprovalStatusColor = (status?: string | null) =>
   approvalStatusColors[status || "not_approved"] || approvalStatusColors.not_approved;
 
-export const getApprovalStatusLabel = (status?: string | null, compact = false) => {
-  switch (status) {
-    case "approved":
-      return "Godkjent";
-    case "pending_approval":
-      return compact ? "Venter" : "Venter på godkjenning";
-    case "not_approved":
-    default:
-      return "Ikke godkjent";
-  }
-};
+export const getApprovalStatusLabel = (status?: string | null, compact = false) =>
+  translateApprovalStatus(status, { compact });
+
+
 
 export const shouldShowApprovalBadge = (showApproval: boolean, status?: string | null) =>
   showApproval && !!(status || "not_approved");
