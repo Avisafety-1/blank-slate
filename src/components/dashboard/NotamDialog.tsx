@@ -423,9 +423,9 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     await navigator.clipboard.writeText(clipboardText);
 
     if (isInIframe) {
-      toast.success("E-posttekst kopiert til utklippstavlen (mailto fungerer ikke i preview-modus)");
+      toast.success(t('dashboard.notam.clipboardFallback'));
     } else {
-      toast.success("NOTAM sendt inn – e-postvindu åpnet");
+      toast.success(t('dashboard.notam.submittedSuccess'));
     }
     onSaved?.();
     onOpenChange(false);
