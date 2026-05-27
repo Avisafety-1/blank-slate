@@ -221,7 +221,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
                         </Badge>
                       )}
                       {idea.status === "drafted" && (
-                        <Badge variant="secondary">Utkast laget</Badge>
+                        <Badge variant="secondary">{t('pages.marketing.draftMade')}</Badge>
                       )}
                     </div>
                     {idea.description && (
