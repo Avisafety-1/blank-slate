@@ -115,7 +115,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       metadata: matchedPreset ? { preset: matchedPreset.id } : {},
     });
     if (error) {
-      toast.error("Kunne ikke opprette utkast");
+      toast.error(t('pages.marketing.couldNotCreateDraft'));
       return;
     }
     await supabase
