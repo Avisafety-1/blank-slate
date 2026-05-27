@@ -228,7 +228,10 @@
       "postFlightChecklistDescription": "Dronen(e) på dette oppdraget har en post flight sjekkliste. Vil du utføre den nå eller senere?",
       "executeLater": "Utfør senere",
       "executeNow": "Utfør nå",
-      "postFlightLabel": "Post flight"
+      "postFlightLabel": "Post flight",
+      "approveInNinoxTitle": "Godkjenn i Ninox?",
+      "approveInNinoxDescription": "Bekreft at oppdraget er godkjent i Ninox.",
+      "approve": "Godkjenn"
     },
     "kpi": {
       "title": "Hendelser siste 6 mnd",

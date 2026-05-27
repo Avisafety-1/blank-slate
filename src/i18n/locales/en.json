@@ -226,7 +226,10 @@
       "postFlightChecklistDescription": "The drone(s) on this mission have a post-flight checklist. Do you want to perform it now or later?",
       "executeLater": "Do it later",
       "executeNow": "Do it now",
-      "postFlightLabel": "Post-flight"
+      "postFlightLabel": "Post-flight",
+      "approveInNinoxTitle": "Approve in Ninox?",
+      "approveInNinoxDescription": "Confirm that the mission is approved in Ninox.",
+      "approve": "Approve"
     },
     "kpi": {
       "title": "Incidents last 6 months",
