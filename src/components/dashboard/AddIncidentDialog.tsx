@@ -697,7 +697,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
 
           <div className="space-y-2">
-            <Label>Medvirkende årsak (valgfritt)</Label>
+            <Label>{t('incidents.contributingCauseOptional')}</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -707,9 +707,10 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 >
                   <span className="truncate">
                     {formData.medvirkende_aarsak
-                      ? formData.medvirkende_aarsak.split(", ").length + " valgt"
-                      : "Velg medvirkende årsaker..."}
+                      ? t('incidents.selectedCount', { count: formData.medvirkende_aarsak.split(", ").length })
+                      : t('incidents.selectContributingCauses')}
                   </span>
+
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
