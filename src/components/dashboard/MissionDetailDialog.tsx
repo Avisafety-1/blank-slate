@@ -53,6 +53,7 @@ interface MissionDetailDialogProps {
 }
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
