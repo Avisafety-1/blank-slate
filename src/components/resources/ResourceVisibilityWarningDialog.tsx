@@ -17,6 +17,8 @@ interface Props {
   onContinue: () => void | Promise<void>;
   /** Called when user cancels — saving should be aborted */
   onCancel: () => void;
+  /** Optional label for the parent resource (e.g. "dronen", "utstyret"). Defaults to "dronen". */
+  resourceLabel?: string;
 }
 
 const typeMeta: Record<MissingVisibility["resourceType"], { label: string; Icon: any }> = {
