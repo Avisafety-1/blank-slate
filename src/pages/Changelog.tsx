@@ -353,9 +353,9 @@ const Changelog = () => {
                     <p className="text-xs text-muted-foreground mt-1">{entry.description}</p>
                   )}
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
-                    <span>Opprettet: {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}</span>
+                    <span>{t("changelog.createdLabel")}: {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}</span>
                     {entry.completed_at && (
-                      <span>Utført: {format(new Date(entry.completed_at), "d. MMM yyyy", { locale: nb })}</span>
+                      <span>{t("changelog.completedLabel")}: {format(new Date(entry.completed_at), "d. MMM yyyy", { locale: nb })}</span>
                     )}
                   </div>
                 </div>
