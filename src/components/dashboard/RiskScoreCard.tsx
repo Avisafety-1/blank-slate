@@ -1,10 +1,12 @@
 import { cn } from "@/lib/utils";
+import type { ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { AirRiskAnalysisSection } from "./AirRiskAnalysisSection";
 import { GroundRiskAnalysisSection } from "./GroundRiskAnalysisSection";
 import { OperationClassificationSection } from "./OperationClassificationSection";
+import { getCurrentLanguage, translatePersistedRiskText } from "@/lib/i18nHelpers";
 
 interface CategoryScore {
   score: number | null;
@@ -39,9 +41,9 @@ interface RiskScoreCardProps {
   approvalStatus?: 'approved' | 'not_approved' | null;
   approvalReason?: string | null;
   approvalThreshold?: number | null;
-  airRiskAnalysis?: any;
-  groundRiskAnalysis?: any;
-  operationClassification?: any;
+  airRiskAnalysis?: ComponentProps<typeof AirRiskAnalysisSection>["data"];
+  groundRiskAnalysis?: ComponentProps<typeof GroundRiskAnalysisSection>["data"];
+  operationClassification?: ComponentProps<typeof OperationClassificationSection>["data"];
 }
 
 export const RiskScoreCard = ({ 
@@ -63,6 +65,8 @@ export const RiskScoreCard = ({
   operationClassification
 }: RiskScoreCardProps) => {
   const { t } = useTranslation();
+  const currentLanguage = getCurrentLanguage();
+  const displayRiskText = (value: string) => translatePersistedRiskText(value, currentLanguage);
 
   const getScoreColor = (score: number) => {
     if (score >= 7) return 'bg-green-500';
@@ -247,7 +251,7 @@ export const RiskScoreCard = ({
                 {/* Category details */}
                 {(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors) && (
                   <p className="text-xs text-muted-foreground mt-2 italic break-words">
-                    {category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors}
+                    {displayRiskText(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors || '')}
                   </p>
                 )}
                 
@@ -256,13 +260,13 @@ export const RiskScoreCard = ({
                     {category.factors.map((factor, i) => (
                       <p key={`factor-${i}`} className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
                         <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                        <span className="break-words">{factor}</span>
+                        <span className="break-words">{displayRiskText(factor)}</span>
                       </p>
                     ))}
                     {category.concerns.map((concern, i) => (
                       <p key={`concern-${i}`} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
                         <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                        <span className="break-words">{concern}</span>
+                        <span className="break-words">{displayRiskText(concern)}</span>
                       </p>
                     ))}
                   </div>

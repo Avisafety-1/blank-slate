@@ -104,3 +104,32 @@ export function formatNumber(
   if (!Number.isFinite(value)) return "";
   return new Intl.NumberFormat(getIntlLocale(language), options).format(value);
 }
+
+export function translatePersistedRiskText(
+  value: string | null | undefined,
+  language: AppLanguage = getCurrentLanguage(),
+): string {
+  if (!value || language !== "en") return value || "";
+
+  return value
+    .replace(/Ingen 5 km-soner i nærheten\. Ingen Ninox-godkjenning kreves\./gi, "No 5 km zones nearby. No Ninox approval required.")
+    .replace(/Ingen Ninox-godkjenning kreves/gi, "No Ninox approval required")
+    .replace(/Ingen 5 km-soner i nærheten/gi, "No 5 km zones nearby")
+    .replace(/Oppdraget er innenfor 5 km-sonen rundt/gi, "Mission is inside the 5 km zone around")
+    .replace(/Oppdraget er INNENFOR 5 km-sonen rundt/gi, "Mission is INSIDE the 5 km zone around")
+    .replace(/Oppdraget er UTENFOR alle 5 km-soner/gi, "Mission is OUTSIDE all 5 km zones")
+    .replace(/Oppdraget er UTENFOR 5 km-sonen rundt/gi, "Mission is OUTSIDE the 5 km zone around")
+    .replace(/Oppdraget er utenfor 5 km-sonen/gi, "Mission is outside the 5 km zone")
+    .replace(/5 km-sonens yttergrense/gi, "5 km zone boundary")
+    .replace(/utenfor kontrollert luftrom/gi, "outside controlled airspace")
+    .replace(/Utenfor kontrollert luftrom/gi, "Outside controlled airspace")
+    .replace(/nærmeste avstand til sonegrense/gi, "nearest distance to zone boundary")
+    .replace(/Krever Ninox-godkjenning/gi, "Requires Ninox approval")
+    .replace(/krever Ninox-godkjenning/gi, "requires Ninox approval")
+    .replace(/Maks 120 m AGL/gi, "Max 120 m AGL")
+    .replace(/ved maks 120 m AGL/gi, "at max 120 m AGL")
+    .replace(/når flygingen holdes på maks 120 m AGL/gi, "as long as the flight stays at max 120 m AGL")
+    .replace(/fra selve flyplassen/gi, "from the airport itself")
+    .replace(/rundt «([^»]+)»/g, 'around "$1"')
+    .replace(/«([^»]+)»/g, '"$1"');
+}
