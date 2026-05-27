@@ -1096,8 +1096,26 @@
       "loginRegister": "Logg inn / Registrer deg",
       "couldNotStartPayment": "Kunne ikke starte betaling: ",
       "unknownError": "Ukjent feil"
+    },
+    "marketing": {
+      "sidebarTitle": "Marketing",
+      "overview": "Oversikt",
+      "ideas": "Idéer",
+      "drafts": "Utkast",
+      "visuals": "Visuelt",
+      "newsletter": "Nyhetsbrev",
+      "settings": "Innstillinger",
+      "overviewTitle": "Marketing oversikt",
+      "overviewSubtitle": "Administrer innholdsidéer og utkast for markedsføring.",
+      "statIdeas": "Idéer",
+      "statDrafts": "Utkast",
+      "statApproved": "Godkjent",
+      "statScheduled": "Planlagt",
+      "nextScheduled": "Neste planlagte",
+      "recentlyPublished": "Nylig publisert"
     }
   }
 }
+
 
 
