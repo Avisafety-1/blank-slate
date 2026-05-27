@@ -576,7 +576,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 .eq('mission_id', currentMission.id);
               const requiredSteps = companySettings.require_sora_steps ?? 1;
               if ((count ?? 0) < requiredSteps) {
-                toast.error('Gjennomfør SORA først');
+                toast.error(t('dashboard.missions.completeSoraFirst'));
                 setApprovalConfirmOpen(false);
                 return;
               }
