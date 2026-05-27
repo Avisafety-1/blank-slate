@@ -39,8 +39,16 @@ Added display-only mappers in `src/lib/i18nHelpers.ts` (DB values stay Norwegian
 - Added i18n keys for the post-flight checklist dialog and status-change toast under `dashboard.missions.*`.
 DB stays Norwegian — filters, joins, existing data untouched. Then thread these mappers through Batch 2/4/5 components where the value is rendered.
 
-### Batch 4 — Secondary dialogs and pickers
-`RiskAssessmentTypeDialog`, `NotamDialog`, `MissionDetailDialog`, `AddMissionDialog`, `AddIncidentDialog`, `NewsSection`, `StatusPanel`, `AISearchBar` ("Internt søk (regelverkssøk)"), resource status cards.
+### Batch 4 — Secondary dialogs and pickers ✅ PARTIAL
+Done:
+- `MissionDetailDialog` — "Send til godkjenning?" AlertDialog (title/description/cancel/confirm), "Godkjenn i Ninox?" AlertDialog, and SORA/approver toast errors now via `t('dashboard.missions.*')`. Added `approveInNinoxTitle/Description/approve` keys.
+- `AISearchBar` — "Internt søk", "(regelverkssøk)", regulations placeholder now via `t('dashboard.search.*')`.
+- `NotamDialog` — full pass: title, all field labels (operation type, area, lat/lon, radius, max height, schedule + select items, from/to date pickers + "Velg dato", from/to time UTC, company/contact/phone + note, VHF + note, generated NOTAM, submit disclaimer), action buttons (copy/save/saving/submit/submitting), toasts (copied/saved/couldNotSave/couldNotSubmit/submittedSuccess/clipboardFallback), dynamic contact-availability strings (daily / 24-7 / no-dates) with interpolation, and elevation-loading footnote. New `dashboard.notam.*` namespace added to en.json + no.json.
+- `RiskAssessmentTypeDialog`, `NewsSection`, `StatusPanel` — re-scanned, already fully i18n-ed.
+
+Deferred (large forms — Batch 4B):
+- `AddMissionDialog` — has 21 Norwegian strings (form labels, command-input placeholders "Søk personell/dokumenter/...", "Søk og redning" select item, mission-status SelectItems "Pågående"/"Fullført", default risk_nivå literal). Big form; wants its own pass.
+- `AddIncidentDialog` — has 23 Norwegian strings (severity/status/kategori SelectItems, "Velg hovedårsak", "Søk i oppdrag", "Søk pilot/drone/person", error/success toasts). Big form; wants its own pass.
 
 ### Batch 5 — Main pages outside the dashboard
 `Oppdrag`, `Hendelser`, `Resources`, `Documents`, `Kalender`, `Kart`, `Statistikk`, `SoraProcess`, `Marketing`, admin shells.

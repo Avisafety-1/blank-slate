@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { fetchTerrainElevations } from "@/lib/terrainElevation";
+import { useTranslation } from "react-i18next";
 
 type Mission = any;
 
@@ -80,6 +81,7 @@ const computeRouteRadiusNm = (
 };
 
 export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialogProps) => {
+  const { t } = useTranslation();
   const { companyId, user } = useAuth();
 
   const [operationType, setOperationType] = useState("BVLOS");
@@ -222,15 +224,15 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const contactAvailabilityNote = useMemo(() => {
     if (scheduleType === "daterange") {
       if (startDate && endDate) {
-        return `Telefonnummeret skal være døgnbemannet fra ${formatDateNotam(startDate)} kl. 00:00 til ${formatDateNotam(endDate)} kl. 23:59.`;
+        return t('dashboard.notam.phoneCoverage24h', { from: formatDateNotam(startDate), to: formatDateNotam(endDate) });
       }
-      return "Telefonnummeret skal være døgnbemannet i hele perioden.";
+      return t('dashboard.notam.phoneCoverage24hNoDates');
     }
     // daily
     const sorted = ALL_DAYS.filter((d) => scheduleDays.includes(d));
     if (sorted.length > 0) {
       let dayStr: string;
-      if (sorted.length === 7) dayStr = "alle dager";
+      if (sorted.length === 7) dayStr = t('dashboard.notam.allDays');
       else if (sorted.length >= 2) {
         const indices = sorted.map((d) => ALL_DAYS.indexOf(d));
         const isConsecutive = indices.every((v, i) => i === 0 || v === indices[i - 1] + 1);
@@ -238,10 +240,10 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       } else {
         dayStr = sorted[0];
       }
-      return `Telefonnummeret skal være bemannet ${dayStr} kl. ${timeFrom}-${timeTo}.`;
+      return t('dashboard.notam.phoneCoverageDaily', { days: dayStr, from: timeFrom, to: timeTo });
     }
     return null;
-  }, [scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate]);
+  }, [scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, t]);
 
   // UPPER AMSL = ground elevation (m) -> ft + AGL, rounded up to nearest 50 ft
   const upperAmslFt = useMemo(() => {
@@ -314,7 +316,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     if (upperAmslFt != null) {
       lines.push(`LOWER: GND UPPER: ${upperAmslFt}FT AMSL`);
     } else {
-      lines.push(`LOWER: GND UPPER: ${maxAglFt}FT AGL${elevationLoading ? " (henter terrenghøyde…)" : " (terrenghøyde ikke tilgjengelig)"}`);
+      lines.push(`LOWER: GND UPPER: ${maxAglFt}FT AGL${elevationLoading ? " " + t('dashboard.notam.fetchingElevation') : " " + t('dashboard.notam.elevationUnavailable')}`);
     }
     lines.push(`RADIUS: ${radiusNm}NM.`);
 
@@ -328,7 +330,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
-    toast.success("NOTAM-tekst kopiert");
+    toast.success(t('dashboard.notam.copied'));
   };
 
   const handleSave = async () => {
@@ -357,10 +359,10 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
     setSaving(false);
     if (error) {
-      toast.error("Kunne ikke lagre NOTAM");
+      toast.error(t('dashboard.notam.couldNotSave'));
       console.error(error);
     } else {
-      toast.success("NOTAM lagret");
+      toast.success(t('dashboard.notam.saved'));
       onSaved?.();
       onOpenChange(false);
     }
@@ -393,7 +395,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
     setSubmitting(false);
     if (error) {
-      toast.error("Kunne ikke sende NOTAM");
+      toast.error(t('dashboard.notam.couldNotSubmit'));
       console.error(error);
       return;
     }
@@ -421,9 +423,9 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     await navigator.clipboard.writeText(clipboardText);
 
     if (isInIframe) {
-      toast.success("E-posttekst kopiert til utklippstavlen (mailto fungerer ikke i preview-modus)");
+      toast.success(t('dashboard.notam.clipboardFallback'));
     } else {
-      toast.success("NOTAM sendt inn – e-postvindu åpnet");
+      toast.success(t('dashboard.notam.submittedSuccess'));
     }
     onSaved?.();
     onOpenChange(false);
@@ -433,13 +435,13 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>NOTAM-tekst</DialogTitle>
+          <DialogTitle>{t('dashboard.notam.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Operation type */}
           <div className="space-y-1.5">
-            <Label>Operasjonstype</Label>
+            <Label>{t('dashboard.notam.operationType')}</Label>
             <Select value={operationType} onValueChange={setOperationType}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -452,14 +454,14 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
           {/* Area name */}
           <div className="space-y-1.5">
-            <Label>Områdenavn</Label>
-            <Input value={areaName} onChange={(e) => setAreaName(e.target.value)} placeholder="Rennebu" />
+            <Label>{t('dashboard.notam.areaName')}</Label>
+            <Input value={areaName} onChange={(e) => setAreaName(e.target.value)} placeholder={t('dashboard.notam.areaPlaceholder')} />
           </div>
 
           {/* Coordinates */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Breddegrad (lat)</Label>
+              <Label>{t('dashboard.notam.latitude')}</Label>
               <Input
                 type="number"
                 step="any"
@@ -468,7 +470,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Lengdegrad (lon)</Label>
+              <Label>{t('dashboard.notam.longitude')}</Label>
               <Input
                 type="number"
                 step="any"
@@ -481,7 +483,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           {/* Radius & height */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Radius (NM)</Label>
+              <Label>{t('dashboard.notam.radiusNm')}</Label>
               <Input
                 type="number"
                 step="0.1"
@@ -490,7 +492,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Maks høyde (FT AGL)</Label>
+              <Label>{t('dashboard.notam.maxHeightFt')}</Label>
               <Input
                 type="number"
                 value={maxAglFt}
@@ -501,12 +503,12 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
           {/* Schedule type */}
           <div className="space-y-1.5">
-            <Label>Tidsplan</Label>
+            <Label>{t('dashboard.notam.schedule')}</Label>
             <Select value={scheduleType} onValueChange={(v) => setScheduleType(v as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">Daglig med klokkeslett (telefon bemannet i tidsvindu)</SelectItem>
-                <SelectItem value="daterange">Datoperiode (telefon døgnbemannet)</SelectItem>
+                <SelectItem value="daily">{t('dashboard.notam.scheduleDaily')}</SelectItem>
+                <SelectItem value="daterange">{t('dashboard.notam.scheduleDateRange')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -514,7 +516,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           {/* Date pickers */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Fra dato</Label>
+              <Label>{t('dashboard.notam.fromDate')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -522,7 +524,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
                     className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "dd.MM.yyyy", { locale: nb }) : "Velg dato"}
+                    {startDate ? format(startDate, "dd.MM.yyyy", { locale: nb }) : t('dashboard.notam.selectDate')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -537,7 +539,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               </Popover>
             </div>
             <div className="space-y-1.5">
-              <Label>Til dato</Label>
+              <Label>{t('dashboard.notam.toDate')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -545,7 +547,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
                     className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "dd.MM.yyyy", { locale: nb }) : "Velg dato"}
+                    {endDate ? format(endDate, "dd.MM.yyyy", { locale: nb }) : t('dashboard.notam.selectDate')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -577,11 +579,11 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Fra kl. (UTC)</Label>
+                  <Label>{t('dashboard.notam.fromTimeUtc')}</Label>
                   <Input value={timeFrom} onChange={(e) => setTimeFrom(e.target.value)} placeholder="0800" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Til kl. (UTC)</Label>
+                  <Label>{t('dashboard.notam.toTimeUtc')}</Label>
                   <Input value={timeTo} onChange={(e) => setTimeTo(e.target.value)} placeholder="1600" />
                 </div>
               </div>
@@ -598,57 +600,57 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
           {/* Contact */}
           <div className="space-y-1.5">
-            <Label>Selskap</Label>
+            <Label>{t('dashboard.notam.company')}</Label>
             <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Kontaktperson (direkte)</Label>
+              <Label>{t('dashboard.notam.contactPerson')}</Label>
               <Input value={contactName} onChange={(e) => setContactName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Telefon (direkte linje)</Label>
+              <Label>{t('dashboard.notam.contactPhone')}</Label>
               <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+47 123 45 678" />
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Telefonnummeret skal gå direkte til personen som kan avklare status og stanse flygning. Ikke bruk sentralbord.
+            {t('dashboard.notam.contactPhoneNote')}
           </p>
 
           {/* VHF frequency */}
           <div className="space-y-1.5">
-            <Label>VHF-frekvens (valgfritt)</Label>
+            <Label>{t('dashboard.notam.vhfFrequency')}</Label>
             <Input
               value={vhfFrequency}
               onChange={(e) => setVhfFrequency(e.target.value)}
-              placeholder="f.eks. 123.450 MHz"
+              placeholder={t('dashboard.notam.vhfFrequencyPlaceholder')}
             />
-            <p className="text-xs text-muted-foreground">VHF-frekvens erstatter ikke telefonnummer.</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.notam.vhfFrequencyNote')}</p>
           </div>
 
           {/* Generated NOTAM */}
           <div className="space-y-1.5">
-            <Label>Generert NOTAM-tekst</Label>
+            <Label>{t('dashboard.notam.generatedNotam')}</Label>
             <Textarea value={generatedText} readOnly className="font-mono text-sm min-h-[120px]" />
           </div>
 
           <p className="text-xs text-muted-foreground">
-            NOTAM skal normalt kun sendes inn ved BVLOS eller operasjoner over 120m. «Send inn» åpner din e-postapplikasjon med en ferdig formulert tekst.
+            {t('dashboard.notam.submitDisclaimer')}
           </p>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 justify-end">
             <Button variant="outline" size="sm" onClick={handleCopy}>
               <Copy className="w-4 h-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Kopier</span>
+              <span className="hidden sm:inline">{t('dashboard.notam.copy')}</span>
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving}>
               <Save className="w-4 h-4 mr-1.5" />
-              {saving ? "Lagrer…" : "Lagre"}
+              {saving ? t('dashboard.notam.saving') : t('dashboard.notam.save')}
             </Button>
             <Button size="sm" onClick={handleSubmit} disabled={submitting} variant="default" className="bg-green-600 hover:bg-green-700">
               <Send className="w-4 h-4 mr-1.5" />
-              {submitting ? "Sender…" : "Send inn"}
+              {submitting ? t('dashboard.notam.submitting') : t('dashboard.notam.submit')}
             </Button>
           </div>
         </div>

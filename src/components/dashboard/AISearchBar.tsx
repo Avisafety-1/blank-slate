@@ -309,7 +309,7 @@ export const AISearchBar = () => {
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-muted-foreground" />
               <Label htmlFor="search-mode" className="text-xs text-muted-foreground whitespace-nowrap">
-                Internt søk
+                {t('dashboard.search.internalSearch')}
               </Label>
               <Switch
                 id="search-mode"
@@ -317,7 +317,7 @@ export const AISearchBar = () => {
                 onCheckedChange={handleModeChange}
               />
               <Bot className={`h-4 w-4 ${searchMode === "regulations" ? "text-primary" : "text-muted-foreground"}`} />
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">(regelverkssøk)</Label>
+              <Label className="text-xs text-muted-foreground whitespace-nowrap">{t('dashboard.search.regulationsSearch')}</Label>
             </div>
           </div>
           <div className="flex gap-2">
@@ -328,7 +328,7 @@ export const AISearchBar = () => {
               className="flex-1"
               placeholder={
                 searchMode === "regulations"
-                  ? "Spør om droneregelverk, teori, regler..."
+                  ? t('dashboard.search.regulationsPlaceholder')
                   : t('dashboard.search.placeholder')
               }
             />

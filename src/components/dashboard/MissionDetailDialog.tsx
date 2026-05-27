@@ -40,6 +40,7 @@ import {
   shouldShowApprovalBadge,
   shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
+import { useTranslation } from "react-i18next";
 
 type Mission = any;
 
@@ -52,6 +53,7 @@ interface MissionDetailDialogProps {
 }
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
@@ -558,15 +560,15 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Send til godkjenning?</AlertDialogTitle>
+          <AlertDialogTitle>{t('dashboard.missions.submitForApprovalTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Er du sikker på at du vil sende dette oppdraget til godkjenning?
+            {t('dashboard.missions.submitForApprovalDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('dashboard.missions.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
-            // SORA-sjekk: krev SORA før godkjenning
+            // SORA check: require SORA before approval
             if (companySettings.require_sora_on_missions && !soraApprovalEnabled) {
               const { count } = await supabase
                 .from('mission_risk_assessments')
@@ -574,7 +576,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 .eq('mission_id', currentMission.id);
               const requiredSteps = companySettings.require_sora_steps ?? 1;
               if ((count ?? 0) < requiredSteps) {
-                toast.error('Gjennomfør SORA først');
+                toast.error(t('dashboard.missions.completeSoraFirst'));
                 setApprovalConfirmOpen(false);
                 return;
               }
@@ -586,13 +588,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
             if (approverError) {
               console.error('Error checking approvers:', approverError);
-              toast.error('Kunne ikke sjekke godkjennere');
+              toast.error(t('dashboard.missions.couldNotCheckApprovers'));
               setApprovalConfirmOpen(false);
               return;
             }
             
             if (!approvers || approvers.length === 0) {
-              toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
+              toast.error(t('dashboard.missions.noApproversInCompany'));
               setApprovalConfirmOpen(false);
               return;
             }
@@ -622,7 +624,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               }
             }
           }}>
-            Send til godkjenning
+            {t('dashboard.missions.submitForApprovalConfirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -632,13 +634,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     <AlertDialog open={ninoxConfirmOpen} onOpenChange={setNinoxConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Godkjenn i Ninox?</AlertDialogTitle>
+          <AlertDialogTitle>{t('dashboard.missions.approveInNinoxTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Bekreft at oppdraget er godkjent i Ninox.
+            {t('dashboard.missions.approveInNinoxDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('dashboard.missions.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
             await supabase
               .from('missions')
@@ -648,7 +650,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             setNinoxConfirmOpen(false);
             onMissionUpdated?.();
           }}>
-            Godkjenn
+            {t('dashboard.missions.approve')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

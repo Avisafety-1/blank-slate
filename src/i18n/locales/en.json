@@ -199,7 +199,10 @@
     "search": {
       "placeholder": "Search (missions, incidents, documents, equipment...)",
       "results": "Search results",
-      "couldNotSearch": "Could not perform search"
+      "couldNotSearch": "Could not perform search",
+      "internalSearch": "Internal search",
+      "regulationsSearch": "(regulation search)",
+      "regulationsPlaceholder": "Ask about drone regulations, theory, rules..."
     },
     "missions": {
       "title": "Upcoming missions",
@@ -226,7 +229,10 @@
       "postFlightChecklistDescription": "The drone(s) on this mission have a post-flight checklist. Do you want to perform it now or later?",
       "executeLater": "Do it later",
       "executeNow": "Do it now",
-      "postFlightLabel": "Post-flight"
+      "postFlightLabel": "Post-flight",
+      "approveInNinoxTitle": "Approve in Ninox?",
+      "approveInNinoxDescription": "Confirm that the mission is approved in Ninox.",
+      "approve": "Approve"
     },
     "kpi": {
       "title": "Incidents last 6 months",
@@ -291,6 +297,52 @@
       "title": "Resource status",
       "equipment": "Equipment",
       "personnel": "Personnel"
+    },
+    "notam": {
+      "title": "NOTAM text",
+      "operationType": "Operation type",
+      "areaName": "Area name",
+      "areaPlaceholder": "Rennebu",
+      "latitude": "Latitude (lat)",
+      "longitude": "Longitude (lon)",
+      "radiusNm": "Radius (NM)",
+      "maxHeightFt": "Max height (FT AGL)",
+      "schedule": "Schedule",
+      "scheduleDaily": "Daily with time (phone staffed in time window)",
+      "scheduleDateRange": "Date range (phone staffed 24/7)",
+      "fromDate": "From date",
+      "toDate": "To date",
+      "selectDate": "Pick a date",
+      "fromTimeUtc": "From time (UTC)",
+      "toTimeUtc": "To time (UTC)",
+      "company": "Company",
+      "contactPerson": "Contact person (direct)",
+      "contactPhone": "Phone (direct line)",
+      "contactPhoneNote": "The phone number must go directly to the person who can clarify status and stop the flight. Do not use a switchboard.",
+      "vhfFrequency": "VHF frequency (optional)",
+      "vhfFrequencyPlaceholder": "e.g. 123.450 MHz",
+      "vhfFrequencyNote": "VHF frequency does not replace a phone number.",
+      "generatedNotam": "Generated NOTAM text",
+      "submitDisclaimer": "NOTAM should normally only be submitted for BVLOS or operations above 120 m. \"Submit\" opens your email application with a pre-filled text.",
+      "copy": "Copy",
+      "save": "Save",
+      "saving": "Saving…",
+      "submit": "Submit",
+      "submitting": "Sending…",
+      "copied": "NOTAM text copied",
+      "couldNotSave": "Could not save NOTAM",
+      "saved": "NOTAM saved",
+      "couldNotSubmit": "Could not submit NOTAM",
+      "submittedSuccess": "NOTAM submitted – email window opened",
+      "clipboardFallback": "Email text copied to clipboard (mailto does not work in preview mode)",
+      "emailSubject": "UAS Notam request, {{company}}",
+      "emailBody": "Hi.\n\nWe would like to publish the following NOTAM:\n\n{{notam}}\n\nRegards\n{{name}}{{companySuffix}}",
+      "phoneCoverage24h": "The phone number must be staffed 24/7 from {{from}} 00:00 to {{to}} 23:59.",
+      "phoneCoverage24hNoDates": "The phone number must be staffed 24/7 for the entire period.",
+      "phoneCoverageDaily": "The phone number must be staffed {{days}} at {{from}}-{{to}}.",
+      "allDays": "all days",
+      "fetchingElevation": "(fetching terrain elevation…)",
+      "elevationUnavailable": "(terrain elevation unavailable)"
     }
   },
   "resources": {
