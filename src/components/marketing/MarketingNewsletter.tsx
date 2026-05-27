@@ -704,8 +704,10 @@ const ComposeTab = () => {
 
 /* ─── History ─── */
 const HistoryTab = () => {
+  const { t, i18n } = useTranslation();
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
+  const dateLocale = i18n.language === "en" ? enGB : nb;
 
   useEffect(() => {
     (async () => {
@@ -713,27 +715,27 @@ const HistoryTab = () => {
         const res = await invokeNewsletter("list-broadcasts");
         setBroadcasts(res ?? []);
       } catch (e: any) {
-        toast({ title: "Feil", description: e.message, variant: "destructive" });
+        toast({ title: t("pages.marketing.error"), description: e.message, variant: "destructive" });
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [t]);
 
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
   return (
     <div className="mt-2">
       {broadcasts.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8 text-sm">Ingen sendte nyhetsbrev enda</p>
+        <p className="text-center text-muted-foreground py-8 text-sm">{t("pages.marketing.noBroadcastsYet")}</p>
       ) : (
         <div className="rounded-md border overflow-auto max-h-[500px]">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Emne</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Sendt</TableHead>
+                <TableHead>{t("pages.marketing.subject")}</TableHead>
+                <TableHead>{t("pages.marketing.statusCol")}</TableHead>
+                <TableHead>{t("pages.marketing.sent")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -744,7 +746,7 @@ const HistoryTab = () => {
                     <Badge variant={b.status === "sent" ? "default" : "secondary"} className="text-[10px]">{b.status}</Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {b.sent_at ? format(new Date(b.sent_at), "dd. MMM yyyy HH:mm", { locale: nb }) : "—"}
+                    {b.sent_at ? format(new Date(b.sent_at), "dd. MMM yyyy HH:mm", { locale: dateLocale }) : "—"}
                   </TableCell>
                 </TableRow>
               ))}
