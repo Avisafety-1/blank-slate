@@ -206,17 +206,34 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
               Lim inn
             </Button>
             {isTouchDevice && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleOpenAuthenticatorApp}
-                disabled={verifying}
-                className="w-full"
-              >
-                <Smartphone className="h-4 w-4 mr-2" />
-                Authenticator
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={verifying}
+                    className="w-full"
+                  >
+                    <Smartphone className="h-4 w-4 mr-2" />
+                    Authenticator
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-1" align="end">
+                  <div className="flex flex-col">
+                    {AUTH_APPS.map((app) => (
+                      <button
+                        key={app.name}
+                        type="button"
+                        onClick={() => openAuthenticatorApp(app)}
+                        className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted/50"
+                      >
+                        {app.name}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
 
