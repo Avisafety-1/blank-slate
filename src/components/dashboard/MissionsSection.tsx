@@ -227,7 +227,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         .eq('mission_id', missionId);
       const requiredSteps = companySettings.require_sora_steps ?? 1;
       if ((count ?? 0) < requiredSteps) {
-        toast.error('Gjennomfør SORA først');
+        toast.error(t('dashboard.missions.completeSoraFirst'));
         return;
       }
     }
@@ -237,12 +237,12 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
 
     if (approverError) {
       console.error('Error checking approvers:', approverError);
-      toast.error('Kunne ikke sjekke godkjennere');
+      toast.error(t('dashboard.missions.couldNotCheckApprovers'));
       return;
     }
     
     if (!approvers || approvers.length === 0) {
-      toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
+      toast.error(t('dashboard.missions.noApproversInCompany'));
       return;
     }
     
@@ -252,7 +252,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
       .eq('id', missionId);
 
     if (error) {
-      toast.error('Kunne ikke sende til godkjenning');
+      toast.error(t('dashboard.missions.couldNotSubmitForApproval'));
       return;
     }
 
