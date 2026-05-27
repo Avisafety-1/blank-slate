@@ -217,7 +217,7 @@ export const CalendarWidget = () => {
       if (documents) {
         events.push(...documents.map(d => ({
           type: "Dokument",
-          title: `${d.tittel} utgår`,
+          title: `${d.tittel} ${t('dashboard.calendar.expires')}`,
           date: new Date(d.gyldig_til!),
           color: "text-blue-500",
           sourceId: d.id,
