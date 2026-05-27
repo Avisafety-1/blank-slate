@@ -355,7 +355,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: 'https://login.avisafe.no/auth',
+            emailRedirectTo: 'https://app.avisafe.no/auth',
             data: {
               full_name: fullName,
               new_company_name: newCompanyName.trim(),
