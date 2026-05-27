@@ -92,9 +92,11 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
   const handleOpenAuthenticatorApp = () => {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
     const isAndroid = /Android/i.test(ua);
+    // Android: bruk generisk intent-chooser slik at brukeren får valgt sin egen app
+    // (Microsoft Authenticator, Authy, 1Password osv.) i stedet for å tvinge Google.
     const url = isAndroid
-      ? "intent://#Intent;scheme=otpauth;package=com.google.android.apps.authenticator2;end"
-      : "googleauthenticator://";
+      ? "intent://scan/#Intent;scheme=otpauth;end"
+      : "otpauth://";
 
     let didHide = false;
     const onVisibility = () => {
@@ -111,10 +113,11 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
     window.setTimeout(() => {
       document.removeEventListener("visibilitychange", onVisibility);
       if (!didHide && !document.hidden) {
-        toast("Fant ingen authenticator-app. Bytt til appen manuelt og kom tilbake hit.");
+        toast("Bytt til authenticator-appen manuelt og kom tilbake hit.");
       }
-    }, 800);
+    }, 1200);
   };
+
 
   const handleCancel = async () => {
     await supabase.auth.signOut();
