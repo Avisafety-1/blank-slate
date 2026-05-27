@@ -98,6 +98,9 @@ Deno.serve(async (req) => {
       return json({ error: `File not found in storage: ${storagePath}` }, 404);
     }
 
+    // Synthetic dji_log_id used by the worker when it later inserts into pending_dji_logs
+    const syntheticLogId = `ardu:${storagePath}`;
+
     // Idempotency: same storage_path -> return existing job
     const { data: existing } = await service
       .from("ardupilot_parse_jobs").select("id, status")
@@ -105,7 +108,7 @@ Deno.serve(async (req) => {
     if (existing?.id) {
       // Try fire-and-forget worker anyway (no await)
       triggerWorker(supabaseUrl);
-      return json({ ok: true, job_id: existing.id, status: existing.status, existed: true });
+      return json({ ok: true, job_id: existing.id, status: existing.status, existed: true, synthetic_log_id: syntheticLogId });
     }
 
     const { data: inserted, error: insErr } = await service
@@ -125,7 +128,7 @@ Deno.serve(async (req) => {
 
     triggerWorker(supabaseUrl);
 
-    return json({ ok: true, job_id: inserted.id, status: inserted.status });
+    return json({ ok: true, job_id: inserted.id, status: inserted.status, synthetic_log_id: syntheticLogId });
   } catch (e) {
     console.error("[ardupilot-enqueue] fatal:", e);
     return json({ error: "Internal", details: String(e) }, 500);
@@ -135,7 +138,10 @@ Deno.serve(async (req) => {
 function triggerWorker(supabaseUrl: string) {
   // Fire-and-forget. Not awaited, errors logged only.
   const cronSecret = Deno.env.get("CRON_SHARED_SECRET");
-  if (!cronSecret) return;
+  if (!cronSecret) {
+    console.warn("[ardupilot-enqueue] CRON_SHARED_SECRET missing — cannot trigger worker immediately; cron will pick it up.");
+    return;
+  }
   fetch(`${supabaseUrl}/functions/v1/ardupilot-sync-worker`, {
     method: "POST",
     headers: {
@@ -145,3 +151,4 @@ function triggerWorker(supabaseUrl: string) {
     body: "{}",
   }).catch((err) => console.warn("[ardupilot-enqueue] worker trigger failed:", err?.message ?? err));
 }
+

@@ -689,7 +689,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // Upload one ArduPilot file to Storage and enqueue an async parse job.
   // Mirrors the DJI auto-sync flow: the worker writes the result into
   // pending_dji_logs so it shows up under "Ventende flylogger fra auto-sync".
-  const enqueueArduPilotFile = async (f: File): Promise<{ ok: boolean; error?: string }> => {
+  const enqueueArduPilotFile = async (f: File): Promise<{ ok: boolean; error?: string; syntheticLogId?: string }> => {
     if (!companyId || !user) return { ok: false, error: "Mangler selskap eller bruker" };
     const cleanName = f.name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
     const ts = Date.now();
@@ -711,7 +711,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     });
     if (error) return { ok: false, error: error.message };
     if ((data as any)?.error) return { ok: false, error: (data as any).error };
-    return { ok: true };
+    return { ok: true, syntheticLogId: (data as any)?.synthetic_log_id || `ardu:${storagePath}` };
+  };
+
+  // Poll pending_dji_logs for the ArduPilot result. Resolves when the row exists.
+  const waitForArduPilotPending = async (syntheticLogId: string, timeoutMs = 30000): Promise<boolean> => {
+    if (!companyId) return false;
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const { data } = await supabase
+        .from("pending_dji_logs")
+        .select("id")
+        .eq("company_id", companyId)
+        .eq("dji_log_id", syntheticLogId)
+        .maybeSingle();
+      if (data?.id) return true;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return false;
   };
 
   const handleUpload = async () => {
@@ -725,14 +742,23 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (isArduPilot) {
         const r = await enqueueArduPilotFile(file);
         if (!r.ok) {
-          toast.error(`Kunne ikke legge i kø: ${r.error}`);
-        } else {
-          toast.success('Logg lagt i kø. Den dukker opp under "Ventende flylogger fra auto-sync" når den er ferdig behandlet.', { duration: 7000 });
-          onOpenChange(false);
-          setFile(null);
+          toast.error(`Kunne ikke laste opp ArduPilot-logg: ${r.error}`);
+          return;
         }
+        const toastId = toast.loading('ArduPilot-logg lastet opp. Behandler i bakgrunnen…');
+        const ready = await waitForArduPilotPending(r.syntheticLogId!);
+        toast.dismiss(toastId);
+        if (ready) {
+          toast.success('ArduPilot-logg klar – velg den under "Ventende flylogger" for å fullføre import.', { duration: 7000 });
+          pendingLogsRef.current?.refresh();
+        } else {
+          toast.message('ArduPilot-logg ligger i kø og behandles i bakgrunnen. Den dukker opp under "Ventende flylogger" om kort tid.', { duration: 7000 });
+        }
+        onOpenChange(false);
+        setFile(null);
         return;
       }
+
 
       // DJI sync path (unchanged)
       const buffer = await file.arrayBuffer();
@@ -796,10 +822,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         if (bulkIsArduPilot) {
           const r = await enqueueArduPilotFile(bulkFiles[i]);
           if (!r.ok) throw new Error(r.error || 'Kø-feil');
-          results[i] = { ...results[i], status: 'done', droneModel: 'ArduPilot (i kø)' };
+          results[i] = { ...results[i], status: 'done', droneModel: `ArduPilot · ${bulkFiles[i].name}` };
           setBulkResults([...results]);
           continue;
         }
+
 
         // 1. Upload & parse (DJI) — read into memory first for cloud-picker compatibility
         const bulkBuffer = await bulkFiles[i].arrayBuffer();
@@ -888,8 +915,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     pendingLogsRef.current?.refresh();
 
     const savedCount = results.filter(r => r.status === 'done').length;
-    if (savedCount > 0) toast.success(`${savedCount} av ${bulkFiles.length} logger lagt til behandlingskøen`);
+    const hasArdu = bulkFiles.some(f => { const n = f.name.toLowerCase(); return n.endsWith('.bin') || n.endsWith('.zip'); });
+    if (savedCount > 0) {
+      const suffix = hasArdu ? ' (ArduPilot-logger behandles i bakgrunnen)' : '';
+      toast.success(`${savedCount} av ${bulkFiles.length} logger lagt til behandlingskøen${suffix}`);
+    }
   };
+
 
   // ── Bulk DJI cloud import ──
 
@@ -1292,7 +1324,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       rthTriggered: parsed.rthTriggered || false,
       events: parsed.events || [],
     };
+    // Carry ArduPilot source so titles/notes use the right label
+    if (parsed.source === 'ardupilot' || pendingLog.source_file_type === 'ardupilot') {
+      (data as any).source = 'ardupilot';
+    }
     setResult(data);
+
     
     // Auto-match drone
     if (pendingLog.matched_drone_id) {
@@ -1763,7 +1800,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       await ensureDroneEquipmentHistory();
       await applyDroneSnUpdateIfConfirmed();
       await markPendingLogApproved(matchedLog.id);
-      toast.success(t('dronelog.logUpdated', 'Flylogg oppdatert med DJI-data!'));
+      toast.success(`Flylogg oppdatert med ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-data!`);
       checkFlightAlerts(result);
       // Return to method step so user can continue processing pending logs
       resetState();
