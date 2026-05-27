@@ -503,12 +503,12 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
           {/* Schedule type */}
           <div className="space-y-1.5">
-            <Label>Tidsplan</Label>
+            <Label>{t('dashboard.notam.schedule')}</Label>
             <Select value={scheduleType} onValueChange={(v) => setScheduleType(v as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">Daglig med klokkeslett (telefon bemannet i tidsvindu)</SelectItem>
-                <SelectItem value="daterange">Datoperiode (telefon døgnbemannet)</SelectItem>
+                <SelectItem value="daily">{t('dashboard.notam.scheduleDaily')}</SelectItem>
+                <SelectItem value="daterange">{t('dashboard.notam.scheduleDateRange')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
