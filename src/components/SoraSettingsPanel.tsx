@@ -597,7 +597,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     <Collapsible open={open} onOpenChange={setOpen} className="border-t border-border">
       <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 sm:px-4 hover:bg-muted/50 transition-colors">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">SORA volum</span>
+          <span className="text-sm font-medium text-foreground">{t("soraPanel.soraVolume")}</span>
         </div>
         <div className="flex items-center gap-2">
           <Switch
