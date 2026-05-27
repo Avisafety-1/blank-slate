@@ -26,6 +26,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import type { Tables } from "@/integrations/supabase/types";
+import { useTranslation } from "react-i18next";
+import { translateSeverity, translateIncidentCategory, translateRootCause } from "@/lib/i18nHelpers";
+
 
 interface AddIncidentDialogProps {
   open: boolean;
