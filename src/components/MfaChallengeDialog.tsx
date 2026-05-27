@@ -167,26 +167,29 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={handlePasteFromClipboard}
               disabled={verifying}
               className="w-full"
             >
               <Clipboard className="h-4 w-4 mr-2" />
-              Lim inn kode
+              Lim inn
             </Button>
             {isTouchDevice && (
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={handleOpenAuthenticatorApp}
                 disabled={verifying}
                 className="w-full"
               >
                 <Smartphone className="h-4 w-4 mr-2" />
-                Åpne authenticator-app
+                Authenticator
               </Button>
             )}
           </div>
+
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCancel} className="flex-1" disabled={verifying}>
