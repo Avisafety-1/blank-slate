@@ -593,9 +593,10 @@ const Index = () => {
               </Button>
               <Button 
                 onClick={handleEndFlight}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                disabled={endingFlight}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-60"
               >
-                <Square className="w-4 h-4 mr-1" />
+                {endingFlight ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Square className="w-4 h-4 mr-1" />}
                 {t('actions.endFlight')}
               </Button>
             </div>
