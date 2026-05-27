@@ -81,6 +81,8 @@ const formatMonth = (m: string) => {
 const Statistikk = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, isSuperAdmin, companyName } = useAuth();
+  const { t } = useTranslation();
+
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [excludeAvisafe, setExcludeAvisafe] = useState(true);
