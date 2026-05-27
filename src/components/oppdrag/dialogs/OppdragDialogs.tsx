@@ -233,15 +233,15 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
       <AlertDialog open={props.replaceRouteConfirmOpen} onOpenChange={props.setReplaceRouteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Erstatte eksisterende rute?</AlertDialogTitle>
+            <AlertDialogTitle>{t("oppdragDialogs.replaceRouteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Dette oppdraget har allerede en rute. Vil du erstatte den med koordinatene fra den importerte filen?
+              {t("oppdragDialogs.replaceRouteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={props.onCancelKmlReplace}>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel onClick={props.onCancelKmlReplace}>{t("oppdragDialogs.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={props.onConfirmKmlReplace}>
-              Erstatt rute
+              {t("oppdragDialogs.replaceRoute")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
