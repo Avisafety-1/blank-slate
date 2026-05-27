@@ -996,13 +996,13 @@ export default function Kalender() {
                   id="event-title"
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  placeholder="Skriv tittel..."
+                  placeholder={t('pages.calendar.titlePlaceholderShort')}
                   disabled={savingEvent}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="event-type">Type</Label>
+                <Label htmlFor="event-type">{t('pages.calendar.type')}</Label>
                 <Select
                   value={newEvent.type}
                   onValueChange={(v) => setNewEvent({ ...newEvent, type: v })}
@@ -1012,16 +1012,16 @@ export default function Kalender() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Oppdrag">Oppdrag</SelectItem>
-                    <SelectItem value="Vedlikehold">Vedlikehold</SelectItem>
-                    <SelectItem value="Møte">Møte</SelectItem>
-                    <SelectItem value="Annet">Annet</SelectItem>
+                    <SelectItem value="Oppdrag">{t('pages.calendar.eventTypes.Oppdrag')}</SelectItem>
+                    <SelectItem value="Vedlikehold">{t('pages.calendar.eventTypes.Vedlikehold')}</SelectItem>
+                    <SelectItem value="Møte">{t('pages.calendar.eventTypes.Møte')}</SelectItem>
+                    <SelectItem value="Annet">{t('pages.calendar.eventTypes.Annet')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Dato og tidspunkt</Label>
+                <Label>{t('pages.calendar.dateTime')}</Label>
                 <div className="flex gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -1034,7 +1034,7 @@ export default function Kalender() {
                         disabled={savingEvent}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP", { locale: nb }) : <span>Velg dato</span>}
+                        {selectedDate ? format(selectedDate, "PPP", { locale: nb }) : <span>{t('pages.calendar.pickDate')}</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1060,12 +1060,12 @@ export default function Kalender() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="event-description">Beskrivelse</Label>
+                <Label htmlFor="event-description">{t('pages.calendar.descriptionLabel')}</Label>
                 <Textarea
                   id="event-description"
                   value={newEvent.description}
                   onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  placeholder="Valgfri beskrivelse..."
+                  placeholder={t('pages.calendar.descriptionPlaceholder')}
                   rows={3}
                   disabled={savingEvent}
                 />
