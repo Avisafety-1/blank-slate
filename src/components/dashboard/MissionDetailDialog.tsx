@@ -560,15 +560,15 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Send til godkjenning?</AlertDialogTitle>
+          <AlertDialogTitle>{t('dashboard.missions.submitForApprovalTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Er du sikker på at du vil sende dette oppdraget til godkjenning?
+            {t('dashboard.missions.submitForApprovalDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('dashboard.missions.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
-            // SORA-sjekk: krev SORA før godkjenning
+            // SORA check: require SORA before approval
             if (companySettings.require_sora_on_missions && !soraApprovalEnabled) {
               const { count } = await supabase
                 .from('mission_risk_assessments')
