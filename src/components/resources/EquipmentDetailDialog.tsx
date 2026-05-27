@@ -81,6 +81,11 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
   const [missionsSinceMaintenance, setMissionsSinceMaintenance] = useState(0);
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
+  const [visibilityWarning, setVisibilityWarning] = useState<{
+    missing: MissingVisibility[];
+    onContinue: () => void | Promise<void>;
+    onCancel: () => void;
+  } | null>(null);
   const [formData, setFormData] = useState({
     navn: "",
     type: "",
