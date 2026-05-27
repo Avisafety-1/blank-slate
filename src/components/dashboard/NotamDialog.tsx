@@ -435,7 +435,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>NOTAM-tekst</DialogTitle>
+          <DialogTitle>{t('dashboard.notam.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
