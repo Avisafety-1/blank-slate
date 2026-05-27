@@ -1242,6 +1242,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     variant="outline"
                     onClick={() => setAddEquipmentDialogOpen(true)}
                     className="gap-2 w-full sm:w-auto"
+                    disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
                     Legg til
