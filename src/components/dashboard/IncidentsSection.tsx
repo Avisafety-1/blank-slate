@@ -371,11 +371,11 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
                       )}
                       <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
                         <Badge className={`${severityColors[incident.alvorlighetsgrad as keyof typeof severityColors] || 'bg-gray-500/20'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5`}>
-                          {incident.alvorlighetsgrad}
+                          {translateSeverity(incident.alvorlighetsgrad)}
                         </Badge>
                         {incident.kategori && (
                           <Badge variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5">
-                            {incident.kategori}
+                            {translateIncidentCategory(incident.kategori)}
                           </Badge>
                         )}
                         {incident.hovedaarsak && (
