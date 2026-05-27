@@ -53,7 +53,7 @@ export const MarketingVisuals = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-foreground">Visuelle</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t('pages.marketing.visualsTitle')}</h2>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -63,7 +63,7 @@ export const MarketingVisuals = () => {
             className="gap-1.5 flex-1 sm:flex-none"
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            Last opp
+            {t('pages.marketing.uploadLabel')}
           </Button>
           <input
             id="visuals-upload"
