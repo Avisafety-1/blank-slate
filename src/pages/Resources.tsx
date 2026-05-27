@@ -491,10 +491,10 @@ const Resources = () => {
               <div data-tour="resources-drone-filters" className="flex gap-2 mb-4">
                 <Select value={droneModelFilter} onValueChange={setDroneModelFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Modell" />
+                    <SelectValue placeholder={t('resources.filterModel')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle modeller</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAllModels')}</SelectItem>
                     {uniqueDroneModels.map(m => (
                       <SelectItem key={m} value={m}>{m}</SelectItem>
                     ))}
@@ -502,22 +502,22 @@ const Resources = () => {
                 </Select>
                 <Select value={droneStatusFilter} onValueChange={setDroneStatusFilter}>
                   <SelectTrigger className="h-8 text-xs w-[100px]">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t('resources.filterStatus')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle</SelectItem>
-                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
-                    <SelectItem value="Gul">🟡 Gul</SelectItem>
-                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAll')}</SelectItem>
+                    <SelectItem value="Grønn">🟢 {t('resources.statusGreen')}</SelectItem>
+                    <SelectItem value="Gul">🟡 {t('resources.statusYellow')}</SelectItem>
+                    <SelectItem value="Rød">🔴 {t('resources.statusRed')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={droneSortBy} onValueChange={(v) => setDroneSortBy(v as "default" | "last_flown")}>
                   <SelectTrigger className="h-8 text-xs w-[120px]">
-                    <SelectValue placeholder="Sortering" />
+                    <SelectValue placeholder={t('resources.filterSort')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Standard</SelectItem>
-                    <SelectItem value="last_flown">Sist flydd</SelectItem>
+                    <SelectItem value="default">{t('resources.sortDefault')}</SelectItem>
+                    <SelectItem value="last_flown">{t('resources.sortLastFlown')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
