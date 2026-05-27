@@ -253,7 +253,7 @@ export const CalendarWidget = () => {
       if (equipment) {
         events.push(...equipment.map(e => ({
           type: "Vedlikehold",
-          title: `${e.navn} - vedlikehold`,
+          title: `${e.navn} - ${t('dashboard.calendar.maintenance')}`,
           date: new Date(e.neste_vedlikehold!),
           color: "text-orange-500",
           sourceId: e.id,
