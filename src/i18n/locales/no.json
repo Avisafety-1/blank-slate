@@ -418,6 +418,32 @@
     "createMission": "Opprett oppdrag",
     "unknown": "Ukjent",
     "locationRequired": "Lokasjon er påkrevd",
+    "endTime": "Sluttidspunkt",
+    "missionType": "Oppdragstype",
+    "selectType": "Velg type...",
+    "notSpecified": "Ikke spesifisert",
+    "specifyType": "Spesifiser oppdragstype",
+    "specifyTypePlaceholder": "F.eks. Termografering",
+    "notesPlaceholder": "Skriv merknad... Bruk @ for å tagge personer",
+    "unknownUser": "Ukjent bruker",
+    "selectPersonnelShort": "Velg personell...",
+    "role": "Rolle",
+    "noRole": "Ingen rolle",
+    "documents": "Dokumenter",
+    "linkDocument": "Knytt dokument...",
+    "searchDocuments": "Søk dokumenter...",
+    "noDocumentsFound": "Ingen dokumenter funnet.",
+    "mapPublishing": "Kartpublisering",
+    "missionTypes": {
+      "Inspeksjon": "Inspeksjon",
+      "Kartlegging": "Kartlegging",
+      "Foto/film": "Foto/film",
+      "Søk og redning": "Søk og redning",
+      "Landbruk": "Landbruk",
+      "Bygg/anlegg": "Bygg/anlegg",
+      "Forskning": "Forskning",
+      "Annet": "Annet"
+    },
     "riskLevels": {
       "low": "Lav",
       "medium": "Middels",
@@ -425,6 +451,7 @@
       "critical": "Kritisk"
     }
   },
+
   "incidents": {
     "title": "Hendelser",
     "severity": {
