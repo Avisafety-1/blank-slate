@@ -111,12 +111,12 @@ export const MarketingVisuals = () => {
         </div>
       ) : isError ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>Kunne ikke laste visuelle akkurat nå.</p>
+          <p>{t('pages.marketing.couldNotLoadVisuals')}</p>
         </div>
       ) : media.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Image className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p>Ingen visuelle ennå. Generer din første!</p>
+          <p>{t('pages.marketing.noVisualsYet')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
