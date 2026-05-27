@@ -50,7 +50,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   useEffect(() => {
     if (open && !canAccess('incidents')) {
       onOpenChange(false);
-      toast.error('Hendelsesrapportering krever Grower-planen eller høyere.');
+      toast.error(t('incidents.requiresGrowerPlan'));
     }
   }, [open, canAccess, onOpenChange]);
   const [submitting, setSubmitting] = useState(false);
