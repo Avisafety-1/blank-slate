@@ -18,6 +18,7 @@ import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { NotamDialog } from "@/components/dashboard/NotamDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 type Mission = any;
 
@@ -27,6 +28,8 @@ const Oppdrag = () => {
   const data = useOppdragData();
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
+  const { t } = useTranslation();
+
 
   // Search/filter state
   const [searchQuery, setSearchQuery] = useState("");
