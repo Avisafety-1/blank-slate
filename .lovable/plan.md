@@ -1,46 +1,47 @@
-# Oversettelse av resten av appen (kun UI)
+## Problem
 
-Scope: kun UI-tekster (etiketter, knapper, faner, badges, toasts, dialoger). AI-genererte tekster fra edge-funksjonen er allerede språkbevisste og rører vi ikke.
+The strings under **Ground Risk Class** in the risk assessment UI (population band, calculation, footprint description, iGRC reasoning, GRC calculation method, all four mitigation `reasoning` texts) are still Norwegian on the English UI.
 
-## Batch 1 — AI risikovurdering-resultatet
+They are **not** AI-generated — they are deterministic, hardcoded Norwegian strings built inside the edge function `supabase/functions/ai-risk-assessment/index.ts`, then sent back as data fields the frontend renders verbatim. That's why the system-prompt translation instruction does not affect them, and why frontend `t()` calls cannot fix them (the value, not the label, is Norwegian).
 
-Hardkodet norsk rundt AI-svaret:
+The edge function already receives a `language` parameter from the client, so we can branch on it.
 
-- `RiskAssessmentDialog.tsx` — faneetiketter (Input / Manuell SORA / History / Result), "Foreslått konklusjon", "OPPDRAGSOVERSIKT", "VURDERINGSMETODE", "Overall score", anbefalingsbåndet ("Fly with precautions" osv. — UI-label, ikke AI-tekst), "Lagre kommentarer", "Eksporter til PDF", "Kjør SORA-basert re-vurdering", "Kreves at alle manuelle felt er fylt inn", AI-disclaimer-boksen.
-- `RiskScoreCard.tsx` — "Operasjonskategorisering (Steg 0)", "Specific — SORA", "SORA utført", "Systemberegnet".
-- `AirRiskAnalysisSection.tsx` — "Luftrisikoanalyse (ARC/TMPR)" + statiske labels.
-- `GroundRiskAnalysisSection.tsx` — "Bakkerisikoanalyse (iGRC/fGRC)", "Systemberegnet".
-- `OperationClassificationSection.tsx` — klassifiserings-labels.
-- `RiskRecommendations.tsx` — kun seksjonstittel "Forutsetninger for flyging" (selve anbefalingene kommer fra AI).
+## Fix (backend only — edge function)
 
-## Batch 2 — Dashboard-widgets rundt resultatet
+Introduce a small locale helper inside `ai-risk-assessment/index.ts` and translate exactly these deterministic outputs:
 
-- `MissionsSection.tsx` — gjenværende strenger: "Risiko"-fallback, "Sjekkliste"-badge, "Oppdrag"-fallback, AlertDialog ("Send til godkjenning?", "Avbryt", "Send til godkjenning"), toasts ("Gjennomfør SORA først", "Kunne ikke sjekke godkjennere", "Ingen i selskapet ...", "Kunne ikke sende til godkjenning").
-- `IncidentsSection.tsx` — "Report incident", faneetiketter, "Incidents last 6 months", månedsforkortelser, alvorlighetsbadges, statusbadges, kategori-/årsak-badges.
-- `DocumentSection.tsx` — "Documents"-overskrift, "Expired"-badge, dokumentkategori-labels.
-- `CalendarSection.tsx` / `CalendarWidget.tsx` — ukedager, månedsnavn via `date-fns` locale, "Active flights", "Free flight", "View on map", "Upcoming missions".
-- `ActiveFlightsSection.tsx` — "Start flight", "End flight", "Log flight time / Upload flight log".
+1. `getPopulationBand(densityPerKm2)` — return English bands when `lang === 'en'`:
+   - "Controlled ground area"
+   - "Sparsely populated (<100/km²)"
+   - "Populated (<500/km²)"
+   - "Densely populated (<1500/km²)"
+   - "Gatherings of people (>1500/km²)"
 
-## Batch 3 — DB-verdier som vises i UI
+2. `computePopulationDensity(...)` outputs:
+   - `calculation`: "X people in dimensioning 250 m cell × 16 = Y people/km²"
+   - `footprintDescription`: "Planned route + Flight Geography + Contingency + Ground Risk Buffer (N m from route)."
+   - `driver` text: "near segment P1–P2 (107 m from SSB cell centre)" / "within the operation footprint"
 
-Verdier som "Planlagt/Pågående/Godkjent/Fullført/Avlyst", "Åpen/Under behandling/Lukket", "Lav/Middels/Høy", "Luft/Operativ", "Materiellsvikt/Menneskelig feil/svikt" og dokumentkategorier ("loggbok", "oppdrag", ...) er lagret som rene strenger i DB (og brukt i WHERE-filtre). Vi rører ikke databasen — i stedet:
+3. iGRC block in the main computation:
+   - `population_density_footprint` fallback: "Planned route with operational volume and ground risk buffer."
+   - `grc_calculation_method`: "System-calculated using the fixed SORA iGRC matrix. AI output cannot modify iGRC/fGRC."
+   - `igrc_reasoning`: "System-calculated iGRC=N from the SORA table based on characteristic dimension … m (…), max speed … m/s (…) and dimensioning SSB 250 m population density … people/km² (…)."
+   - `igrc_table_basis`: "Dimension class …, speed class …, population class …"
 
-- Utvider `src/lib/i18nHelpers.ts` med `translateMissionStatus`, `translateApprovalStatus`, `translateIncidentStatus`, `translateSeverity`, `translateIncidentCategory`, `translateRootCause`, `translateDocCategory`.
-- Bruker dem ved visning. DB-verdien forblir norsk så filtre og eksisterende data fortsetter å virke.
+4. Mitigation `reasoning` strings (the four M1A/M1B/M1C/M2 explanations).
 
-## Batch 4 — Sekundære dialoger
+5. The longer SSB explanation paragraph (~line 1560) used elsewhere in the response.
 
-`RiskAssessmentTypeDialog`, `NotamDialog`, `MissionDetailDialog`, `AddMissionDialog`, `AddIncidentDialog`, `NewsSection`, `StatusPanel`, "Internt søk (regelverkssøk)" (`AISearchBar`), resource status-kort.
+6. Numeric formatting: keep `nb-NO` for Norwegian; use `en-GB` (space thousands, dot decimal — matches what's already shown like "9.6 kg") when `lang === 'en'`. Add a `formatNumber(value, decimals, lang)` helper alongside the existing `formatNbNumber`.
 
-## Batch 5 — Sider utenfor dashboardet
+Pass `language` (already destructured at line 355) into `computePopulationDensity` and the iGRC reasoning block. Default to `'no'` when missing so existing Norwegian customers see no change.
 
-Egen runde per side: `Oppdrag`, `Hendelser`, `Resources`, `Documents`, `Kalender`, `Kart`, `Statistikk`, `SoraProcess`, `Marketing`, admin-komponenter.
+## Out of scope
 
-## Arbeidsmetode per batch
+- No frontend changes — `GroundRiskAnalysisSection.tsx` already uses `t()` for labels.
+- No DB / migration / prompt logic changes.
+- Other batches (Dashboard widgets, DB enums, etc.) from the existing plan remain queued.
 
-1. Identifiser hardkodede strenger (også toast/alert/aria).
-2. Legg nye nøkler under tydelig namespace i `no.json` + `en.json` (`risk.result.*`, `dashboard.incidents.*`, `enums.missionStatus.*`).
-3. Erstatt med `t('...')`. DB-verdier oversettes kun ved visning.
-4. Verifiser i preview ved språkbytte.
+## Verification
 
-Si fra om rekkefølgen passer, eller om noe (f.eks. Hendelser eller Dokumenter) skal opp først, så starter jeg Batch 1.
+After deploy, open a risk assessment on the English UI and confirm the Ground Risk section reads in English end-to-end. The Norwegian UI should be unchanged.

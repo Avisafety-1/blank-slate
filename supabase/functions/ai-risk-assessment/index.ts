@@ -104,7 +104,24 @@ const formatNbNumber = (value: number, maximumFractionDigits = 0): string =>
     minimumFractionDigits: maximumFractionDigits,
   });
 
-const derivePopulationDensityBand = (densityPerKm2: number): string => {
+type Lang = 'no' | 'en';
+const resolveLang = (input: unknown): Lang =>
+  String(input ?? 'no').toLowerCase().startsWith('en') ? 'en' : 'no';
+
+const formatLocaleNumber = (value: number, maximumFractionDigits = 0, lang: Lang = 'no'): string =>
+  value.toLocaleString(lang === 'en' ? 'en-GB' : 'nb-NO', {
+    maximumFractionDigits,
+    minimumFractionDigits: maximumFractionDigits,
+  });
+
+const derivePopulationDensityBand = (densityPerKm2: number, lang: Lang = 'no'): string => {
+  if (lang === 'en') {
+    if (densityPerKm2 <= 0) return 'Controlled ground area / uninhabited';
+    if (densityPerKm2 < 100) return 'Sparsely populated (<100/km²)';
+    if (densityPerKm2 < 500) return 'Populated (<500/km²)';
+    if (densityPerKm2 < 1500) return 'Densely populated (<1500/km²)';
+    return 'Gatherings of people / very densely populated (>1500/km²)';
+  }
   if (densityPerKm2 <= 0) return 'Kontrollert bakkeområde / ubebodd';
   if (densityPerKm2 < 100) return 'Tynt befolket (<100/km²)';
   if (densityPerKm2 < 500) return 'Befolket (<500/km²)';
@@ -143,6 +160,7 @@ const buildDeterministicGroundRisk = ({
   populationDensityAverage,
   populationData,
   assignedEquipment,
+  lang = 'no',
 }: {
   characteristicDimensionM: number;
   maxSpeedMps: number;
@@ -151,6 +169,7 @@ const buildDeterministicGroundRisk = ({
   populationDensityAverage: number | null;
   populationData: any | null;
   assignedEquipment: any[];
+  lang?: Lang;
 }) => {
   const dimensionIndex = firstLimitIndex(GRC_DIMENSION_LIMITS, characteristicDimensionM);
   const speedIndex = firstLimitIndex(GRC_SPEED_LIMITS, maxSpeedMps);
@@ -177,38 +196,87 @@ const buildDeterministicGroundRisk = ({
   const fgrc = Math.max(controlledGroundMinimum, igrc + totalReduction);
   const dimensionClass = `≤${GRC_DIMENSION_LIMITS[dimensionIndex]} m`;
   const speedClass = `≤${GRC_SPEED_LIMITS[speedIndex]} m/s`;
-  const populationBand = derivePopulationDensityBand(populationDensityValue);
-  const outsideSoraNote = igrc > 7 ? ' iGRC er over 7 og ligger utenfor ordinær SORA-matrise; dette krever særskilt/sertifisert vurdering.' : '';
+  const populationBand = derivePopulationDensityBand(populationDensityValue, lang);
+
+  const fmt = (v: number, d = 0) => formatLocaleNumber(v, d, lang);
+  const en = lang === 'en';
+
+  const outsideSoraNote = igrc > 7
+    ? (en
+        ? ' iGRC exceeds 7 and is outside the ordinary SORA matrix; this requires a special/certified assessment.'
+        : ' iGRC er over 7 og ligger utenfor ordinær SORA-matrise; dette krever særskilt/sertifisert vurdering.')
+    : '';
+
+  const footprintFallback = en
+    ? 'Planned route with operational volume and ground risk buffer.'
+    : 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.';
+  const grcCalcMethod = en
+    ? 'System-calculated using the fixed SORA iGRC matrix. AI output cannot modify iGRC/fGRC.'
+    : 'Systemberegnet etter fast SORA iGRC-matrise. AI-output kan ikke endre iGRC/fGRC.';
+  const tableBasis = en
+    ? `Dimension class ${dimensionClass}, speed class ${speedClass}, population class ${populationBand}`
+    : `Dimensjonsklasse ${dimensionClass}, hastighetsklasse ${speedClass}, befolkningsklasse ${populationBand}`;
+  const igrcReasoning = en
+    ? `System-calculated iGRC=${igrc} from the SORA table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), max speed ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${outsideSoraNote}`
+    : `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${outsideSoraNote}`;
+
+  const m1aReason = en
+    ? 'Not automatically credited. Sheltering requires documentation that exposed people are actually protected by structures.'
+    : 'Ikke automatisk kreditert. Skjerming krever dokumentasjon på at eksponerte personer faktisk er beskyttet av strukturer.';
+  const m1bReason = en
+    ? 'Not automatically credited. Time/location restrictions must document approx. 90–99% reduction of exposed people.'
+    : 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere ca. 90–99 % reduksjon av eksponerte personer.';
+  const m1cReason = en
+    ? 'Not automatically credited. Standard VLOS, pilot or airspace observer does not provide fGRC reduction without explicitly documented ground-based observation of the overflown area and the ability to alter the flight pattern.'
+    : 'Ikke automatisk kreditert. Vanlig VLOS, pilot eller luftromsobservatør gir ikke fGRC-reduksjon uten eksplisitt dokumentert bakkebasert observasjon av overflyst område og evne til å endre flygemønster.';
+  const m2NoEvidence = en
+    ? 'No documented parachute, MoC 2512 or DVR-based energy/impact reduction found.'
+    : 'Ingen dokumentert fallskjerm, MoC 2512 eller DVR-basert energi-/treffenergidemping funnet.';
+  const m2WithEvidence = parachuteEvidence
+    ? (en
+        ? `Reduction based on documented equipment: ${parachuteEvidence?.navn ?? parachuteEvidence?.type}.`
+        : `Reduksjon basert på dokumentert utstyr: ${parachuteEvidence?.navn ?? parachuteEvidence?.type}.`)
+    : m2NoEvidence;
+
+  const fgrcReasoning = totalReduction < 0
+    ? (en
+        ? `fGRC=${fgrc}: iGRC ${igrc} with documented reduction ${totalReduction}. The M1 limit is enforced so fGRC cannot fall below the controlled-ground-area value ${controlledGroundMinimum}.`
+        : `fGRC=${fgrc}: iGRC ${igrc} med dokumentert reduksjon ${totalReduction}. M1-grensen er håndhevet slik at fGRC ikke kan bli lavere enn kontrollert-bakkeområde-verdien ${controlledGroundMinimum}.`)
+    : (en
+        ? `fGRC=${fgrc}: No documented GRC-reducing mitigations are credited, therefore fGRC equals iGRC. Observer/pilot does not automatically give -1 without explicit ground-based observation of the overflown area.`
+        : `fGRC=${fgrc}: Ingen dokumenterte GRC-reduserende mitigeringer er kreditert, derfor er fGRC lik iGRC. Observatør/pilot gir ikke automatisk -1 uten eksplisitt bakkebasert observasjon av overflyst område.`);
+
+  const defaultSource = en
+    ? 'SSB population on 250 m grid (2025)'
+    : 'SSB befolkning på rutenett 250 m (2025)';
 
   return {
-    characteristic_dimension: `${formatNbNumber(characteristicDimensionM, 2)} m (${dimensionClass})`,
-    max_speed_category: `${formatNbNumber(maxSpeedMps, 1)} m/s (${speedClass})`,
+    characteristic_dimension: `${fmt(characteristicDimensionM, 2)} m (${dimensionClass})`,
+    max_speed_category: `${fmt(maxSpeedMps, 1)} m/s (${speedClass})`,
     drone_weight_kg: weightKg,
     population_density_band: populationBand,
     population_density_value: populationDensityValue,
     population_density_average: populationDensityAverage,
     population_density_calculation: populationData?.calculation ?? null,
     population_density_driver: populationData?.driver ?? null,
-    population_density_source: populationData?.dataSource ?? 'SSB befolkning på rutenett 250 m (2025)',
-    population_density_footprint: populationData?.footprintDescription ?? 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.',
+    population_density_source: populationData?.dataSource ?? defaultSource,
+    population_density_footprint: populationData?.footprintDescription ?? footprintFallback,
     ssb_grid_population: populationData?.maxCellPopulation ?? null,
     ssb_grid_resolution_m: populationData?.gridResolutionM ?? 250,
     igrc,
     fgrc,
     total_reduction: fgrc - igrc,
     controlled_ground_area: populationDensityValue <= 0,
-    grc_calculation_method: 'Systemberegnet etter fast SORA iGRC-matrise. AI-output kan ikke endre iGRC/fGRC.',
-    igrc_table_basis: `Dimensjonsklasse ${dimensionClass}, hastighetsklasse ${speedClass}, befolkningsklasse ${populationBand}`,
-    igrc_reasoning: `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${formatNbNumber(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${formatNbNumber(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${formatNbNumber(populationDensityValue)} personer/km² (${populationBand}).${outsideSoraNote}`,
+    grc_calculation_method: grcCalcMethod,
+    igrc_table_basis: tableBasis,
+    igrc_reasoning: igrcReasoning,
     mitigations: {
-      m1a_sheltering: { applicable: false, robustness: null, reduction: 0, reasoning: 'Ikke automatisk kreditert. Skjerming krever dokumentasjon på at eksponerte personer faktisk er beskyttet av strukturer.' },
-      m1b_operational_restrictions: { applicable: false, robustness: null, reduction: 0, reasoning: 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere ca. 90–99 % reduksjon av eksponerte personer.' },
-      m1c_ground_observation: { applicable: false, robustness: null, reduction: 0, reasoning: 'Ikke automatisk kreditert. Vanlig VLOS, pilot eller luftromsobservatør gir ikke fGRC-reduksjon uten eksplisitt dokumentert bakkebasert observasjon av overflyst område og evne til å endre flygemønster.' },
-      m2_impact_reduction: { applicable: m2Reduction < 0, robustness: m2Reduction === -2 ? 'High' : m2Reduction === -1 ? 'Medium' : null, reduction: m2Reduction, reasoning: m2Reduction < 0 ? `Reduksjon basert på dokumentert utstyr: ${parachuteEvidence?.navn ?? parachuteEvidence?.type}.` : 'Ingen dokumentert fallskjerm, MoC 2512 eller DVR-basert energi-/treffenergidemping funnet.' },
+      m1a_sheltering: { applicable: false, robustness: null, reduction: 0, reasoning: m1aReason },
+      m1b_operational_restrictions: { applicable: false, robustness: null, reduction: 0, reasoning: m1bReason },
+      m1c_ground_observation: { applicable: false, robustness: null, reduction: 0, reasoning: m1cReason },
+      m2_impact_reduction: { applicable: m2Reduction < 0, robustness: m2Reduction === -2 ? 'High' : m2Reduction === -1 ? 'Medium' : null, reduction: m2Reduction, reasoning: m2WithEvidence },
     },
-    fgrc_reasoning: totalReduction < 0
-      ? `fGRC=${fgrc}: iGRC ${igrc} med dokumentert reduksjon ${totalReduction}. M1-grensen er håndhevet slik at fGRC ikke kan bli lavere enn kontrollert-bakkeområde-verdien ${controlledGroundMinimum}.`
-      : `fGRC=${fgrc}: Ingen dokumenterte GRC-reduserende mitigeringer er kreditert, derfor er fGRC lik iGRC. Observatør/pilot gir ikke automatisk -1 uten eksplisitt bakkebasert observasjon av overflyst område.`,
+    fgrc_reasoning: fgrcReasoning,
   };
 };
 
@@ -234,22 +302,30 @@ const distanceToSegmentMeters = (p: RouteCoord, a: RouteCoord, b: RouteCoord): n
   return Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
 };
 
-const nearestRouteDriver = (p: RouteCoord, route: RouteCoord[]): string => {
-  if (route.length === 0) return 'innenfor operasjonens fotavtrykk';
-  if (route.length === 1) return 'nær rutepunkt P1';
-  let best = { distance: Infinity, label: 'innenfor operasjonens fotavtrykk' };
+const nearestRouteDriver = (p: RouteCoord, route: RouteCoord[], lang: Lang = 'no'): string => {
+  const en = lang === 'en';
+  const fallback = en ? 'within the operation footprint' : 'innenfor operasjonens fotavtrykk';
+  const nearPoint = (n: number) => en ? `near route point P${n}` : `nær rutepunkt P${n}`;
+  const nearSeg = (a: number, b: number) => en ? `near segment P${a}–P${b}` : `nær segment P${a}–P${b}`;
+  const suffix = (dist: number) => en
+    ? ` (${dist} m from SSB cell centre)`
+    : ` (${dist} m fra senter av SSB-ruten)`;
+
+  if (route.length === 0) return fallback;
+  if (route.length === 1) return nearPoint(1);
+  let best = { distance: Infinity, label: fallback };
   route.forEach((point, index) => {
     const d = distanceMeters(p, point);
-    if (d < best.distance) best = { distance: d, label: `nær rutepunkt P${index + 1}` };
+    if (d < best.distance) best = { distance: d, label: nearPoint(index + 1) };
   });
   for (let i = 0; i < route.length - 1; i++) {
     const d = distanceToSegmentMeters(p, route[i], route[i + 1]);
-    if (d < best.distance) best = { distance: d, label: `nær segment P${i + 1}–P${i + 2}` };
+    if (d < best.distance) best = { distance: d, label: nearSeg(i + 1, i + 2) };
   }
-  return `${best.label} (${Math.round(best.distance)} m fra senter av SSB-ruten)`;
+  return `${best.label}${suffix(Math.round(best.distance))}`;
 };
 
-async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBufferM: number) {
+async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBufferM: number, lang: Lang = 'no') {
   if (route.length < 2) return null;
 
   const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
@@ -299,7 +375,10 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
   const totalPopulation = overlapping.reduce((sum, cell) => sum + cell.population, 0);
   const maxDensity = maxCell.population * 16;
   const avgDensity = totalPopulation / Math.max(overlapping.length * 0.0625, 0.0625);
-  const driver = nearestRouteDriver(maxCell.centroid, route);
+  const driver = nearestRouteDriver(maxCell.centroid, route, lang);
+
+  const en = lang === 'en';
+  const fmt = (v: number, d = 0) => formatLocaleNumber(v, d, lang);
 
   return {
     maxDensity,
@@ -308,10 +387,16 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
     maxCellPopulation: maxCell.population,
     totalPopulation,
     gridResolutionM: 250,
-    dataSource: 'SSB befolkning på rutenett 250 m (2025)',
-    method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
-    calculation: `${formatNbNumber(maxCell.population)} personer i dimensjonerende 250 m-rute × 16 = ${formatNbNumber(Math.round(maxDensity))} personer/km²`,
-    footprintDescription: `Planlagt rute + Flight Geography + Contingency + Ground Risk Buffer (${formatNbNumber(Math.round(footprintBufferM))} m fra ruten).`,
+    dataSource: en ? 'SSB population on 250 m grid (2025)' : 'SSB befolkning på rutenett 250 m (2025)',
+    method: en
+      ? 'Highest overlapping 250 m cell is multiplied by 16 to obtain people/km².'
+      : 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+    calculation: en
+      ? `${fmt(maxCell.population)} people in dimensioning 250 m cell × 16 = ${fmt(Math.round(maxDensity))} people/km²`
+      : `${fmt(maxCell.population)} personer i dimensjonerende 250 m-rute × 16 = ${fmt(Math.round(maxDensity))} personer/km²`,
+    footprintDescription: en
+      ? `Planned route + Flight Geography + Contingency + Ground Risk Buffer (${fmt(Math.round(footprintBufferM))} m from route).`
+      : `Planlagt rute + Flight Geography + Contingency + Ground Risk Buffer (${fmt(Math.round(footprintBufferM))} m fra ruten).`,
     driver,
     driverCoordinate: maxCell.centroid,
   };
@@ -920,7 +1005,7 @@ serve(async (req) => {
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
         const footprintBufferM = Math.max(fg + contingency + grb, 250);
-        const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM);
+        const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM, resolveLang(language));
 
         if (computed) {
           const maxDensity = computed.maxDensity;
@@ -1543,6 +1628,8 @@ serve(async (req) => {
 
     const deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 0;
     const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
+    const grLang = resolveLang(language);
+    const grEn = grLang === 'en';
     const deterministicGroundRisk = buildDeterministicGroundRisk({
       characteristicDimensionM: deterministicCharacteristicDimensionM,
       maxSpeedMps: deterministicMaxSpeedMps,
@@ -1551,13 +1638,17 @@ serve(async (req) => {
       populationDensityAverage: deterministicPopulationDensityAverage,
       populationData,
       assignedEquipment,
+      lang: grLang,
     });
 
     if (populationData) {
       const populationDensityValue = Math.round(populationData.maxDensity);
       const populationDensityAverage = Number(populationData.avgDensity.toFixed(1));
+      const driverFallback = grEn ? 'within the operation footprint' : 'innenfor operasjonens fotavtrykk';
       const populationDensityDescription = populationData.cellCount > 0
-        ? `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? 'innenfor operasjonens fotavtrykk'}.`
+        ? (grEn
+            ? `We use population density data from Statistics Norway (SSB) to determine the population density within the drone operation footprint. The assessment is based on a 250-metre grid. The cell with the highest population density overlapping the footprint is dimensioning: ${populationData.calculation}. Average population density within the footprint is ${formatLocaleNumber(populationDensityAverage, 1, grLang)} people/km² based on ${formatLocaleNumber(populationData.cellCount, 0, grLang)} overlapping cells. The dimensioning cell is located ${populationData.driver ?? driverFallback}.`
+            : `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? driverFallback}.`)
         : populationData.summary;
 
       aiAnalysis.ground_risk_analysis = {
@@ -1567,8 +1658,8 @@ serve(async (req) => {
         population_density_calculation: populationData.calculation ?? populationData.summary,
         population_density_average: populationDensityAverage,
         population_density_driver: populationData.driver ?? null,
-        population_density_source: populationData.dataSource ?? 'SSB befolkning på rutenett 250 m (2025)',
-        population_density_footprint: populationData.footprintDescription ?? 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.',
+        population_density_source: populationData.dataSource ?? (grEn ? 'SSB population on 250 m grid (2025)' : 'SSB befolkning på rutenett 250 m (2025)'),
+        population_density_footprint: populationData.footprintDescription ?? (grEn ? 'Planned route with operational volume and ground risk buffer.' : 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.'),
         ssb_grid_population: populationData.maxCellPopulation ?? null,
         ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
         population_density_description: populationDensityDescription,
@@ -1577,7 +1668,9 @@ serve(async (req) => {
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
-        population_density_description: 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
+        population_density_description: grEn
+          ? 'SSB 250 m population density was not available. The system uses a conservative fallback to avoid AI variation.'
+          : 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
       };
     }
 
