@@ -1310,7 +1310,7 @@ export const AddMissionDialog = ({
                 onKeyUp={(e) => updateMentionState(e.currentTarget.value, e.currentTarget.selectionStart)}
                 onClick={(e) => updateMentionState(e.currentTarget.value, e.currentTarget.selectionStart)}
                 rows={2}
-                placeholder="Skriv merknad... Bruk @ for å tagge personer"
+                placeholder={t('missions.notesPlaceholder')}
               />
               {mentionQuery !== null && mentionSuggestions.length > 0 && (
                 <div className="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
