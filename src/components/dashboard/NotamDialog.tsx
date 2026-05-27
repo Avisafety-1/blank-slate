@@ -359,10 +359,10 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
     setSaving(false);
     if (error) {
-      toast.error("Kunne ikke lagre NOTAM");
+      toast.error(t('dashboard.notam.couldNotSave'));
       console.error(error);
     } else {
-      toast.success("NOTAM lagret");
+      toast.success(t('dashboard.notam.saved'));
       onSaved?.();
       onOpenChange(false);
     }
