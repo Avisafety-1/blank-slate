@@ -724,7 +724,7 @@ export const CalendarWidget = () => {
         onOpenChange={setCreateDocumentOpen}
         onSuccess={() => {
           fetchRealCalendarEvents();
-          toast.success("Dokument opprettet og lagt til i kalenderen");
+          toast.success(t('dashboard.calendar.documentCreated'));
         }}
         defaultExpiryDate={selectedDate || undefined}
       />
