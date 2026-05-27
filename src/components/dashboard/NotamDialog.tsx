@@ -600,21 +600,21 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
           {/* Contact */}
           <div className="space-y-1.5">
-            <Label>Selskap</Label>
+            <Label>{t('dashboard.notam.company')}</Label>
             <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Kontaktperson (direkte)</Label>
+              <Label>{t('dashboard.notam.contactPerson')}</Label>
               <Input value={contactName} onChange={(e) => setContactName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Telefon (direkte linje)</Label>
+              <Label>{t('dashboard.notam.contactPhone')}</Label>
               <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+47 123 45 678" />
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Telefonnummeret skal gå direkte til personen som kan avklare status og stanse flygning. Ikke bruk sentralbord.
+            {t('dashboard.notam.contactPhoneNote')}
           </p>
 
           {/* VHF frequency */}
