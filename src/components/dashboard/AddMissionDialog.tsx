@@ -1741,7 +1741,7 @@ export const AddMissionDialog = ({
               <CollapsibleTrigger className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors group">
                 <div className="flex items-center gap-2 font-medium text-sm">
                   <Map className="h-4 w-4 text-muted-foreground" />
-                  <span>Kartpublisering</span>
+                  <span>{t('missions.mapPublishing')}</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
