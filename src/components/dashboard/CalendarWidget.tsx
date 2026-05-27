@@ -235,7 +235,7 @@ export const CalendarWidget = () => {
       if (drones) {
         events.push(...drones.map(d => ({
           type: "Vedlikehold",
-          title: `${d.modell} - inspeksjon`,
+          title: `${d.modell} - ${t('dashboard.calendar.inspection')}`,
           date: new Date(d.neste_inspeksjon!),
           color: "text-orange-500",
           sourceId: d.id,
