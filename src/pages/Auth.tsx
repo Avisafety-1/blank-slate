@@ -200,9 +200,8 @@ const Auth = () => {
     checkGoogleUserProfile();
   }, [user, authLoading, t]);
 
-  // Regular redirect for non-OAuth users — with loop guard to avoid
-  // ping-pong between login.avisafe.no and app.avisafe.no when the cross-domain
-  // session has not propagated yet.
+  // Regular redirect for non-OAuth users. Auth lives on app.avisafe.no; the
+  // login.avisafe.no domain is kept only as a 301 fallback at the hosting layer.
   const [showOpenAppFallback, setShowOpenAppFallback] = useState(false);
   useEffect(() => {
     if (authLoading || checkingGoogleUser || showGoogleRegistration || showMfaChallenge) return;
