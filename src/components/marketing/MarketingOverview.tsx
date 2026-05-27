@@ -160,7 +160,7 @@ export const MarketingOverview = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Facebook className="w-4 h-4 text-blue-500" />
-              Nylig publisert
+              {t('pages.marketing.recentlyPublished')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
