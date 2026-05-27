@@ -454,8 +454,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
           {/* Area name */}
           <div className="space-y-1.5">
-            <Label>Områdenavn</Label>
-            <Input value={areaName} onChange={(e) => setAreaName(e.target.value)} placeholder="Rennebu" />
+            <Label>{t('dashboard.notam.areaName')}</Label>
+            <Input value={areaName} onChange={(e) => setAreaName(e.target.value)} placeholder={t('dashboard.notam.areaPlaceholder')} />
           </div>
 
           {/* Coordinates */}
