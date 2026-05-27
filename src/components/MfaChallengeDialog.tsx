@@ -92,9 +92,11 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
   const handleOpenAuthenticatorApp = () => {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
     const isAndroid = /Android/i.test(ua);
+    // Android: bruk generisk intent-chooser slik at brukeren får valgt sin egen app
+    // (Microsoft Authenticator, Authy, 1Password osv.) i stedet for å tvinge Google.
     const url = isAndroid
-      ? "intent://#Intent;scheme=otpauth;package=com.google.android.apps.authenticator2;end"
-      : "googleauthenticator://";
+      ? "intent://scan/#Intent;scheme=otpauth;end"
+      : "otpauth://";
 
     let didHide = false;
     const onVisibility = () => {
@@ -111,10 +113,11 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
     window.setTimeout(() => {
       document.removeEventListener("visibilitychange", onVisibility);
       if (!didHide && !document.hidden) {
-        toast("Fant ingen authenticator-app. Bytt til appen manuelt og kom tilbake hit.");
+        toast("Bytt til authenticator-appen manuelt og kom tilbake hit.");
       }
-    }, 800);
+    }, 1200);
   };
+
 
   const handleCancel = async () => {
     await supabase.auth.signOut();
@@ -164,26 +167,29 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={handlePasteFromClipboard}
               disabled={verifying}
               className="w-full"
             >
               <Clipboard className="h-4 w-4 mr-2" />
-              Lim inn kode
+              Lim inn
             </Button>
             {isTouchDevice && (
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={handleOpenAuthenticatorApp}
                 disabled={verifying}
                 className="w-full"
               >
                 <Smartphone className="h-4 w-4 mr-2" />
-                Åpne authenticator-app
+                Authenticator
               </Button>
             )}
           </div>
+
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCancel} className="flex-1" disabled={verifying}>
