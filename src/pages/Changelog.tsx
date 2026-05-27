@@ -420,49 +420,49 @@ const Changelog = () => {
       <Dialog open={entryDialog.open} onOpenChange={(o) => !o && setEntryDialog({ open: false })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{entryDialog.entry ? "Rediger oppføring" : "Ny oppføring"}</DialogTitle>
+            <DialogTitle>{entryDialog.entry ? t("changelog.dialog.editEntry") : t("changelog.dialog.newEntry")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Tittel</Label>
+              <Label>{t("changelog.dialog.titleField")}</Label>
               <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} />
             </div>
             <div>
-              <Label>Beskrivelse (valgfri)</Label>
+              <Label>{t("changelog.dialog.descriptionOptional")}</Label>
               <Textarea value={formEntryDesc} onChange={(e) => setFormEntryDesc(e.target.value)} rows={3} />
             </div>
             <div>
-              <Label>Status</Label>
+              <Label>{t("changelog.dialog.status")}</Label>
               <Select value={formEntryStatus} onValueChange={setFormEntryStatus}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ikke_startet">Ikke startet</SelectItem>
-                  <SelectItem value="pågår">Pågår</SelectItem>
-                  <SelectItem value="testing">Testing</SelectItem>
-                  <SelectItem value="implementert">Implementert</SelectItem>
+                  <SelectItem value="ikke_startet">{t("changelog.dialog.notStarted")}</SelectItem>
+                  <SelectItem value="pågår">{t("changelog.dialog.inProgress")}</SelectItem>
+                  <SelectItem value="testing">{t("changelog.dialog.testing")}</SelectItem>
+                  <SelectItem value="implementert">{t("changelog.dialog.implemented")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Prioritet</Label>
+              <Label>{t("changelog.dialog.priority")}</Label>
               <Select value={formPriority} onValueChange={setFormPriority}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="high">Høy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Lav</SelectItem>
+                  <SelectItem value="high">{t("changelog.dialog.high")}</SelectItem>
+                  <SelectItem value="medium">{t("changelog.dialog.medium")}</SelectItem>
+                  <SelectItem value="low">{t("changelog.dialog.low")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Utført dato (valgfri)</Label>
+              <Label>{t("changelog.dialog.completedDateOptional")}</Label>
               <Input type="date" value={formCompletedAt} onChange={(e) => setFormCompletedAt(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
             <Button onClick={saveEntry} disabled={!formTitle || saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-              Lagre
+              {t("changelog.dialog.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
