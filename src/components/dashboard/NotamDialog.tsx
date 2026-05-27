@@ -470,7 +470,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Lengdegrad (lon)</Label>
+              <Label>{t('dashboard.notam.longitude')}</Label>
               <Input
                 type="number"
                 step="any"
