@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
+import { useTranslation } from "react-i18next";
+import { translateMissionStatus } from "@/lib/i18nHelpers";
 
 const statuses = ["Planlagt", "Pågående", "Fullført", "Avbrutt"] as const;
 
