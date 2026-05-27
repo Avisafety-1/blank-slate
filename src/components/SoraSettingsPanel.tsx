@@ -336,51 +336,51 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       {selectedDrone && (
         <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="rounded-md border border-border bg-muted/30">
           <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors">
-            <span className="text-xs font-medium text-foreground">Avanserte oppdragsparametere</span>
+            <span className="text-xs font-medium text-foreground">{t("soraPanel.advancedParams")}</span>
             <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", advancedOpen && "rotate-180")} />
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="space-y-3 p-3 pt-0">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">CD (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.cd")}</Label>
                   <FieldHint>{SORA_HELP.cd}</FieldHint>
                   <Input type="number" min={0.1} step={0.1} value={characteristicDimension} onChange={(e) => { setManualCdOverride(true); setCharacteristicDimension(e.target.value); update({ characteristicDimensionM: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">V0 bakkehastighet (m/s)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.v0")}</Label>
                   <FieldHint>{SORA_HELP.v0}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={groundSpeed} onChange={(e) => { setManualSpeedOverride(true); setGroundSpeed(e.target.value); update({ groundSpeedMps: e.target.value === "" ? undefined : Number(e.target.value) }); }} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Reaksjonstid tR (s)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.reactionTime")}</Label>
                   <FieldHint>{SORA_HELP.tr}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={reactionTime} onChange={(e) => setReactionTime(e.target.value)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Pitch/bank-vinkel (°)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.pitchBank")}</Label>
                   <Input type="number" min={1} max={89} step={1} value={pitchBankAngle} onChange={(e) => setPitchBankAngle(e.target.value)} className="h-8 text-sm" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">HAM (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.ham")}</Label>
                   <FieldHint>{SORA_HELP.ham}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={altimetryError} onChange={(e) => setAltimetryError(e.target.value)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">SGNSS (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.sgnss")}</Label>
                   <FieldHint>{SORA_HELP.sgnss}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={gnssError} onChange={(e) => setGnssError(e.target.value)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">SPos (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.spos")}</Label>
                   <FieldHint>{SORA_HELP.spos}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={positionHoldError} onChange={(e) => setPositionHoldError(e.target.value)} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">SMap (m)</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.smap")}</Label>
                   <FieldHint>{SORA_HELP.smap}</FieldHint>
                   <Input type="number" min={0} step={0.1} value={mapError} onChange={(e) => setMapError(e.target.value)} className="h-8 text-sm" />
                 </div>
@@ -388,18 +388,18 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Contingency-metode</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.contingencyMethod")}</Label>
                   <Select value={contingencyMethod} onValueChange={(v) => setContingencyMethod(v as ContingencyMethod)}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="parachute">Parachute / FTS</SelectItem>
+                      <SelectItem value="standard">{t("soraPanel.standard")}</SelectItem>
+                      <SelectItem value="parachute">{t("soraPanel.parachute")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {contingencyMethod === "parachute" && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Deployment tP (s)</Label>
+                    <Label className="text-xs text-muted-foreground">{t("soraPanel.deployment")}</Label>
                     <FieldHint>{SORA_HELP.tp}</FieldHint>
                     <Input type="number" min={0} step={0.1} value={deploymentTime} onChange={(e) => setDeploymentTime(e.target.value)} className="h-8 text-sm" />
                   </div>
@@ -408,40 +408,40 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">GRB-metode</Label>
+                  <Label className="text-xs text-muted-foreground">{t("soraPanel.grbMethod")}</Label>
                   <FieldHint>{SORA_HELP.grb}</FieldHint>
                   <Select value={grbMethod} onValueChange={(v) => setGrbMethod(v as GroundRiskBufferMethod)}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="off">Av</SelectItem>
-                      <SelectItem value="1to1">1:1 rule</SelectItem>
-                      <SelectItem value="ballistic">Ballistic</SelectItem>
-                      <SelectItem value="glide">Glide</SelectItem>
-                      <SelectItem value="drift">Drift / parachute</SelectItem>
+                      <SelectItem value="off">{t("soraPanel.off")}</SelectItem>
+                      <SelectItem value="1to1">{t("soraPanel.rule1to1")}</SelectItem>
+                      <SelectItem value="ballistic">{t("soraPanel.ballistic")}</SelectItem>
+                      <SelectItem value="glide">{t("soraPanel.glide")}</SelectItem>
+                      <SelectItem value="drift">{t("soraPanel.drift")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {grbMethod === "glide" && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Glide ratio</Label>
+                    <Label className="text-xs text-muted-foreground">{t("soraPanel.glideRatio")}</Label>
                     <Input type="number" min={1} step={0.5} value={glideRatio} onChange={(e) => setGlideRatio(e.target.value)} className="h-8 text-sm" />
                   </div>
                 )}
                 {grbMethod === "drift" && (
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Descent speed (m/s)</Label>
+                    <Label className="text-xs text-muted-foreground">{t("soraPanel.descentSpeed")}</Label>
                     <Input type="number" min={0.1} step={0.1} value={descentSpeed} onChange={(e) => setDescentSpeed(e.target.value)} className="h-8 text-sm" />
                   </div>
                 )}
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Vind-overstyring (m/s, valgfritt)</Label>
+                <Label className="text-xs text-muted-foreground">{t("soraPanel.windOverride")}</Label>
                 <Input
                   type="number"
                   min={0}
                   max={30}
-                  placeholder={catalogSpecs?.max_wind_mps != null ? `Drone maks: ${catalogSpecs.max_wind_mps}` : "—"}
+                  placeholder={catalogSpecs?.max_wind_mps != null ? t("soraPanel.windOverridePlaceholder", { max: catalogSpecs.max_wind_mps }) : "—"}
                   value={windOverride}
                   onChange={(e) => setWindOverride(e.target.value)}
                   className="h-8 text-sm"
