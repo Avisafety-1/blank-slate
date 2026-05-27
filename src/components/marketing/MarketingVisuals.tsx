@@ -53,7 +53,7 @@ export const MarketingVisuals = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-foreground">Visuelle</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t('pages.marketing.visualsTitle')}</h2>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -63,7 +63,7 @@ export const MarketingVisuals = () => {
             className="gap-1.5 flex-1 sm:flex-none"
           >
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            Last opp
+            {t('pages.marketing.uploadLabel')}
           </Button>
           <input
             id="visuals-upload"
@@ -89,9 +89,9 @@ export const MarketingVisuals = () => {
                 });
                 if (dbErr) throw dbErr;
                 queryClient.invalidateQueries({ queryKey: ["marketing-media"] });
-                toast.success("Bilde lastet opp");
+                toast.success(t('pages.marketing.imageUploaded'));
               } catch (err: any) {
-                toast.error(err.message || "Opplasting feilet");
+                toast.error(err.message || t('pages.marketing.uploadFailed'));
               } finally {
                 setUploading(false);
                 e.target.value = "";
@@ -100,7 +100,7 @@ export const MarketingVisuals = () => {
           />
           <Button size="sm" onClick={() => setGeneratorOpen(true)} className="gap-1.5 flex-1 sm:flex-none">
             <Plus className="w-4 h-4" />
-            Generer visuell
+            {t('pages.marketing.generateVisual')}
           </Button>
         </div>
       </div>
@@ -111,12 +111,12 @@ export const MarketingVisuals = () => {
         </div>
       ) : isError ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>Kunne ikke laste visuelle akkurat nå.</p>
+          <p>{t('pages.marketing.couldNotLoadVisuals')}</p>
         </div>
       ) : media.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Image className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p>Ingen visuelle ennå. Generer din første!</p>
+          <p>{t('pages.marketing.noVisualsYet')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -148,7 +148,7 @@ export const MarketingVisuals = () => {
                 </div>
               </div>
               <div className="p-3 space-y-1">
-                <p className="text-sm font-medium text-foreground truncate">{item.title || "Uten tittel"}</p>
+                <p className="text-sm font-medium text-foreground truncate">{item.title || t('pages.marketing.untitled')}</p>
                 <div className="flex gap-1.5">
                   <Badge variant="outline" className="text-[10px]">{item.source_type}</Badge>
                   <Badge variant="outline" className="text-[10px]">{item.image_format}</Badge>
