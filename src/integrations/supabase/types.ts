@@ -212,6 +212,84 @@ export type Database = {
         }
         Relationships: []
       }
+      ardupilot_parse_jobs: {
+        Row: {
+          attempts: number
+          company_id: string
+          content_type: string | null
+          created_at: string
+          file_size_bytes: number | null
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          locked_until: string | null
+          original_filename: string | null
+          pending_log_id: string | null
+          scheduled_at: string
+          status: string
+          step_durations: Json | null
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          company_id: string
+          content_type?: string | null
+          created_at?: string
+          file_size_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          locked_until?: string | null
+          original_filename?: string | null
+          pending_log_id?: string | null
+          scheduled_at?: string
+          status?: string
+          step_durations?: Json | null
+          storage_bucket?: string
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          company_id?: string
+          content_type?: string | null
+          created_at?: string
+          file_size_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          locked_until?: string | null
+          original_filename?: string | null
+          pending_log_id?: string | null
+          scheduled_at?: string
+          status?: string
+          step_durations?: Json | null
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ardupilot_parse_jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ardupilot_parse_jobs_pending_log_id_fkey"
+            columns: ["pending_log_id"]
+            isOneToOne: false
+            referencedRelation: "pending_dji_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_email_campaigns: {
         Row: {
           company_id: string | null
@@ -6532,6 +6610,35 @@ export type Database = {
           starts_at: string
         }[]
       }
+      claim_ardupilot_parse_jobs: {
+        Args: { _limit: number }
+        Returns: {
+          attempts: number
+          company_id: string
+          content_type: string | null
+          created_at: string
+          file_size_bytes: number | null
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          locked_until: string | null
+          original_filename: string | null
+          pending_log_id: string | null
+          scheduled_at: string
+          status: string
+          step_durations: Json | null
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ardupilot_parse_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_dji_sync_jobs: {
         Args: { _limit: number }
         Returns: {
@@ -7000,6 +7107,35 @@ export type Database = {
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
       purge_old_flighthub2_positions: { Args: never; Returns: undefined }
+      retry_ardupilot_parse_job: {
+        Args: { _job_id: string }
+        Returns: {
+          attempts: number
+          company_id: string
+          content_type: string | null
+          created_at: string
+          file_size_bytes: number | null
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          locked_until: string | null
+          original_filename: string | null
+          pending_log_id: string | null
+          scheduled_at: string
+          status: string
+          step_durations: Json | null
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ardupilot_parse_jobs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       retry_dji_sync_job: {
         Args: { _job_id: string }
         Returns: {
@@ -7624,6 +7760,7 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: undefined
       }
+      try_parse_uuid: { Args: { _text: string }; Returns: string }
       unlockrows: { Args: { "": string }; Returns: number }
       update_eccairs_credentials: {
         Args: {
