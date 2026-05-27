@@ -1,47 +1,62 @@
-## Problem
+## Why the screenshot still shows Norwegian
 
-The strings under **Ground Risk Class** in the risk assessment UI (population band, calculation, footprint description, iGRC reasoning, GRC calculation method, all four mitigation `reasoning` texts) are still Norwegian on the English UI.
+The edge function `ai-risk-assessment` was redeployed (deploys are automatic on file save). However, every risk assessment is **persisted** in `mission_risk_assessments.ai_analysis` as a JSON blob. The strings you see ("Tynt befolket…", "Systemberegnet iGRC=3 fra SORA-tabellen…", "Ikke automatisk kreditert…") were baked into that row when the assessment was first generated — **before** the edge function was localized.
 
-They are **not** AI-generated — they are deterministic, hardcoded Norwegian strings built inside the edge function `supabase/functions/ai-risk-assessment/index.ts`, then sent back as data fields the frontend renders verbatim. That's why the system-prompt translation instruction does not affect them, and why frontend `t()` calls cannot fix them (the value, not the label, is Norwegian).
+The new code only takes effect when a fresh assessment is produced. Open the mission and click **"Run SORA-based reassessment"** (or generate a new assessment) — the new run will be saved in English.
 
-The edge function already receives a `language` parameter from the client, so we can branch on it.
+### Verification step before any new work
 
-## Fix (backend only — edge function)
+1. Pick any mission.
+2. Run a fresh AI risk assessment on the English UI.
+3. Confirm the Ground Risk section reads end-to-end in English.
 
-Introduce a small locale helper inside `ai-risk-assessment/index.ts` and translate exactly these deterministic outputs:
+If anything is still Norwegian after a fresh run, that string is a residual hardcode we'll patch — but no new code should be written until we know whether step 2 is clean.
 
-1. `getPopulationBand(densityPerKm2)` — return English bands when `lang === 'en'`:
-   - "Controlled ground area"
-   - "Sparsely populated (<100/km²)"
-   - "Populated (<500/km²)"
-   - "Densely populated (<1500/km²)"
-   - "Gatherings of people (>1500/km²)"
+### Optional: backfill / display-time fallback
 
-2. `computePopulationDensity(...)` outputs:
-   - `calculation`: "X people in dimensioning 250 m cell × 16 = Y people/km²"
-   - `footprintDescription`: "Planned route + Flight Geography + Contingency + Ground Risk Buffer (N m from route)."
-   - `driver` text: "near segment P1–P2 (107 m from SSB cell centre)" / "within the operation footprint"
+We have two ways to handle the historical Norwegian rows. Pick one — I will **not** implement anything until you choose:
 
-3. iGRC block in the main computation:
-   - `population_density_footprint` fallback: "Planned route with operational volume and ground risk buffer."
-   - `grc_calculation_method`: "System-calculated using the fixed SORA iGRC matrix. AI output cannot modify iGRC/fGRC."
-   - `igrc_reasoning`: "System-calculated iGRC=N from the SORA table based on characteristic dimension … m (…), max speed … m/s (…) and dimensioning SSB 250 m population density … people/km² (…)."
-   - `igrc_table_basis`: "Dimension class …, speed class …, population class …"
+- **A. Leave history as-is.** Simplest. Old assessments stay in the language they were generated in. Re-run reassessment to refresh. Recommended.
+- **B. Display-time fallback.** Detect a handful of known Norwegian phrases in `GroundRiskAnalysisSection` and translate them on render. Brittle (string-matching), adds frontend logic, but no DB rewrite.
+- **C. One-off backfill script.** Run an admin script that re-generates the deterministic ground-risk block for every existing row in English. Safe but touches data; needs a confirmation gate.
 
-4. Mitigation `reasoning` strings (the four M1A/M1B/M1C/M2 explanations).
+## Plan for translating the rest of the app
 
-5. The longer SSB explanation paragraph (~line 1560) used elsewhere in the response.
+I'll work in the same 5 batches we agreed on earlier, but tightened with concrete acceptance gates. Each batch is a separate implementation pass — we ship it, you verify in the English UI, then we start the next.
 
-6. Numeric formatting: keep `nb-NO` for Norwegian; use `en-GB` (space thousands, dot decimal — matches what's already shown like "9.6 kg") when `lang === 'en'`. Add a `formatNumber(value, decimals, lang)` helper alongside the existing `formatNbNumber`.
+### Batch 2 — Dashboard widgets (next up)
+- `MissionsSection.tsx` — risk/checklist fallbacks, AlertDialog copy, toast strings.
+- `IncidentsSection.tsx` — "Rapporter hendelse", badges, status labels.
+- `DocumentSection.tsx` — section title, "Utløpt" badge, empty state.
+- `CalendarSection.tsx` / `CalendarWidget.tsx` — weekdays + month names via `date-fns` locale switch, "Aktive flyginger", "Fri flyging", "Vis på kart", "Kommende oppdrag".
+- `ActiveFlightsSection.tsx` — labels and live status.
+Locale keys go under `dashboard.*` namespaces in `en.json` + `no.json`.
 
-Pass `language` (already destructured at line 355) into `computePopulationDensity` and the iGRC reasoning block. Default to `'no'` when missing so existing Norwegian customers see no change.
+### Batch 3 — DB-value translation helpers
+Values stored in Norwegian in the DB (mission status, approval status, incident status/severity/category/root cause, document category). Add display-only mappers in `src/lib/i18nHelpers.ts`:
+`translateMissionStatus`, `translateApprovalStatus`, `translateIncidentStatus`, `translateSeverity`, `translateIncidentCategory`, `translateRootCause`, `translateDocCategory`.
+DB stays Norwegian — filters, joins, existing data untouched. Then thread these mappers through Batch 2/4/5 components where the value is rendered.
 
-## Out of scope
+### Batch 4 — Secondary dialogs and pickers
+`RiskAssessmentTypeDialog`, `NotamDialog`, `MissionDetailDialog`, `AddMissionDialog`, `AddIncidentDialog`, `NewsSection`, `StatusPanel`, `AISearchBar` ("Internt søk (regelverkssøk)"), resource status cards.
 
-- No frontend changes — `GroundRiskAnalysisSection.tsx` already uses `t()` for labels.
-- No DB / migration / prompt logic changes.
-- Other batches (Dashboard widgets, DB enums, etc.) from the existing plan remain queued.
+### Batch 5 — Main pages outside the dashboard
+`Oppdrag`, `Hendelser`, `Resources`, `Documents`, `Kalender`, `Kart`, `Statistikk`, `SoraProcess`, `Marketing`, admin shells.
 
-## Verification
+### Working method per batch
+1. Grep the target files for hardcoded Norwegian (`scripts/i18n-scan.ts` already exists — I'll lean on it).
+2. Add keys to `src/i18n/locales/en.json` + `no.json` under a clear namespace.
+3. Replace literals with `t('...')`. No business logic touched.
+4. After each batch you flip to English and spot-check.
 
-After deploy, open a risk assessment on the English UI and confirm the Ground Risk section reads in English end-to-end. The Norwegian UI should be unchanged.
+### Out of scope (explicitly not touched in this round)
+- Backend prompts / AI-generated copy (already handled).
+- Database schemas, RLS, enum values.
+- PDF export templates — separate pass if you want.
+- ECCAIRS / SORA process pages — Batch 5 only.
+
+## Recommended next action
+
+1. Run a fresh AI risk assessment to confirm the edge-function localization is live.
+2. Tell me **A / B / C** for historical assessments.
+3. Say "go" and I'll start Batch 2.
