@@ -472,12 +472,12 @@ const Changelog = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-            <AlertDialogDescription>Denne handlingen kan ikke angres.</AlertDialogDescription>
+            <AlertDialogTitle>{t("changelog.dialog.areYouSure")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("changelog.dialog.cannotUndo")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Slett</AlertDialogAction>
+            <AlertDialogCancel>{t("changelog.dialog.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t("changelog.dialog.delete")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
