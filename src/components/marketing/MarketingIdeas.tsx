@@ -71,7 +71,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["marketing-ideas"] });
       queryClient.invalidateQueries({ queryKey: ["marketing-ideas-count"] });
-      toast.success(`${ideas.length} idéer generert!`);
+      toast.success(t('pages.marketing.ideasGenerated', { count: ideas.length }));
     },
     onError: (e) => toast.error(e.message),
   });
