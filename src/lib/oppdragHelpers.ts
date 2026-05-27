@@ -1,3 +1,5 @@
+import { translateApprovalStatus, translateAIRiskRecommendation } from "@/lib/i18nHelpers";
+
 export const statusColors: Record<string, string> = {
   Planlagt: "bg-blue-500/20 text-blue-900 border-blue-500/30",
   Pågående: "bg-green-500/20 text-green-900 border-green-500/30",
@@ -14,17 +16,10 @@ export const approvalStatusColors: Record<string, string> = {
 export const getApprovalStatusColor = (status?: string | null) =>
   approvalStatusColors[status || "not_approved"] || approvalStatusColors.not_approved;
 
-export const getApprovalStatusLabel = (status?: string | null, compact = false) => {
-  switch (status) {
-    case "approved":
-      return "Godkjent";
-    case "pending_approval":
-      return compact ? "Venter" : "Venter på godkjenning";
-    case "not_approved":
-    default:
-      return "Ikke godkjent";
-  }
-};
+export const getApprovalStatusLabel = (status?: string | null, compact = false) =>
+  translateApprovalStatus(status, { compact });
+
+
 
 export const shouldShowApprovalBadge = (showApproval: boolean, status?: string | null) =>
   showApproval && !!(status || "not_approved");
@@ -86,21 +81,9 @@ export const getAIRiskBadgeColor = (recommendation: string) => {
   }
 };
 
-export const getAIRiskLabel = (recommendation: string) => {
-  switch (recommendation?.toLowerCase()) {
-    case 'proceed':
-    case 'go':
-      return 'Anbefalt';
-    case 'proceed_with_caution':
-    case 'caution':
-      return 'Forsiktighet';
-    case 'not_recommended':
-    case 'no-go':
-      return 'Ikke anbefalt';
-    default:
-      return recommendation || 'Ukjent';
-  }
-};
+export const getAIRiskLabel = (recommendation: string) =>
+  translateAIRiskRecommendation(recommendation) || recommendation || "Ukjent";
+
 
 export const formatAIRiskScore = (score: unknown) => {
   const n = typeof score === "number" ? score : Number(score);

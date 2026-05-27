@@ -31,9 +31,12 @@ I'll work in the same 5 batches we agreed on earlier, but tightened with concret
 - `CalendarSection.tsx` — unused (mock-data legacy), not touched.
 New keys added under `dashboard.missions.*` in both `en.json` and `no.json`.
 
-### Batch 3 — DB-value translation helpers
-Values stored in Norwegian in the DB (mission status, approval status, incident status/severity/category/root cause, document category). Add display-only mappers in `src/lib/i18nHelpers.ts`:
-`translateMissionStatus`, `translateApprovalStatus`, `translateIncidentStatus`, `translateSeverity`, `translateIncidentCategory`, `translateRootCause`, `translateDocCategory`.
+### Batch 3 — DB-value translation helpers ✅ DONE
+Added display-only mappers in `src/lib/i18nHelpers.ts` (DB values stay Norwegian — filters/joins untouched):
+`translateMissionStatus`, `translateApprovalStatus`, `translateIncidentStatus`, `translateSeverity`, `translateIncidentCategory`, `translateDocCategory`, `translateSoraStatus`, `translateAIRiskRecommendation`, `translateRootCause`.
+- Wired existing `getApprovalStatusLabel` and `getAIRiskLabel` in `oppdragHelpers.ts` to the new mappers, so every caller (mission cards, badges, lists, PDF helpers reading these labels) auto-translates.
+- Threaded mappers through `IncidentsSection` (severity/category/status badges, both tabs), `DocumentSection` (category chip), and `MissionStatusDropdown` (badge label, popover items, "Status changed to …" toast, post-flight checklist AlertDialog).
+- Added i18n keys for the post-flight checklist dialog and status-change toast under `dashboard.missions.*`.
 DB stays Norwegian — filters, joins, existing data untouched. Then thread these mappers through Batch 2/4/5 components where the value is rendered.
 
 ### Batch 4 — Secondary dialogs and pickers

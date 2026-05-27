@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
+import { useTranslation } from "react-i18next";
+import { translateMissionStatus } from "@/lib/i18nHelpers";
 
 const statuses = ["Planlagt", "Pågående", "Fullført", "Avbrutt"] as const;
 
@@ -34,6 +36,7 @@ export const MissionStatusDropdown = ({
   longitude,
   tidspunkt,
 }: MissionStatusDropdownProps) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [postFlightDialogOpen, setPostFlightDialogOpen] = useState(false);
@@ -63,10 +66,10 @@ export const MissionStatusDropdown = ({
       .eq("id", missionId);
 
     if (error) {
-      toast.error("Kunne ikke oppdatere status");
+      toast.error(t('dashboard.missions.couldNotUpdateStatus'));
       console.error(error);
     } else {
-      toast.success(`Status endret til ${payload.status}`);
+      toast.success(t('dashboard.missions.statusChangedTo', { status: translateMissionStatus(payload.status) }));
       onStatusChanged?.();
     }
   };
@@ -225,7 +228,7 @@ export const MissionStatusDropdown = ({
             <Badge
               className={`${statusColors[currentStatus] || ""} cursor-pointer hover:opacity-80 transition-opacity ${className}`}
             >
-              {currentStatus}
+              {translateMissionStatus(currentStatus)}
             </Badge>
           </button>
         </PopoverTrigger>
@@ -241,7 +244,7 @@ export const MissionStatusDropdown = ({
             >
               {s === currentStatus && <Check className="w-3.5 h-3.5 mr-2" />}
               {s !== currentStatus && <span className="w-3.5 mr-2" />}
-              {s}
+              {translateMissionStatus(s)}
             </Button>
           ))}
         </PopoverContent>
@@ -251,17 +254,17 @@ export const MissionStatusDropdown = ({
       <AlertDialog open={postFlightDialogOpen} onOpenChange={setPostFlightDialogOpen}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Post flight sjekkliste</AlertDialogTitle>
+            <AlertDialogTitle>{t('dashboard.missions.postFlightChecklistTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Dronen(e) på dette oppdraget har en post flight sjekkliste. Vil du utføre den nå eller senere?
+              {t('dashboard.missions.postFlightChecklistDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button variant="outline" onClick={handleExecuteLater}>
-              Utfør senere
+              {t('dashboard.missions.executeLater')}
             </Button>
             <Button onClick={handleExecuteNow}>
-              Utfør nå
+              {t('dashboard.missions.executeNow')}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -275,7 +278,7 @@ export const MissionStatusDropdown = ({
             if (!open) handleChecklistCancelled();
           }}
           checklistId={postFlightChecklistIds[currentChecklistIndex]}
-          itemName="Post flight"
+          itemName={t('dashboard.missions.postFlightLabel')}
           onComplete={handleChecklistCompleted}
         />
       )}
