@@ -789,18 +789,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setBulkResults([...results]);
 
       try {
-        // 1. Upload & parse — read into memory first for cloud-picker compatibility
+        const bulkFileName = bulkFiles[i].name.toLowerCase();
+        const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && (bulkFileName.endsWith('.bin') || bulkFileName.endsWith('.zip')));
+
+        // ArduPilot → queue path
+        if (bulkIsArduPilot) {
+          const r = await enqueueArduPilotFile(bulkFiles[i]);
+          if (!r.ok) throw new Error(r.error || 'Kø-feil');
+          results[i] = { ...results[i], status: 'done', droneModel: 'ArduPilot (i kø)' };
+          setBulkResults([...results]);
+          continue;
+        }
+
+        // 1. Upload & parse (DJI) — read into memory first for cloud-picker compatibility
         const bulkBuffer = await bulkFiles[i].arrayBuffer();
         const safeBulkFile = new File([bulkBuffer], bulkFiles[i].name, { type: bulkFiles[i].type });
         const formData = new FormData();
         formData.append('file', safeBulkFile);
-        const bulkFileName = bulkFiles[i].name.toLowerCase();
-        const bulkIsArduPilot = logType === 'ardupilot' || (logType === 'auto' && (bulkFileName.endsWith('.bin') || bulkFileName.endsWith('.zip')));
-        const bulkEndpoint = bulkIsArduPilot ? 'process-ardupilot' : 'process-dronelog';
-        if (showDebugPanel && !bulkIsArduPilot) {
-          formData.append('parser', parserOverride);
-        }
-        const { data, error: invokeError } = await supabase.functions.invoke(bulkEndpoint, { body: formData });
+        if (showDebugPanel) formData.append('parser', parserOverride);
+        const { data, error: invokeError } = await supabase.functions.invoke('process-dronelog', { body: formData });
         if (invokeError) throw invokeError;
 
         // 2. SHA-256 dedup check (pending_dji_logs + flight_logs)
