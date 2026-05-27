@@ -84,11 +84,23 @@ const CATEGORIES: { value: DocumentCategory; label: string }[] = [
 
 const formSchema = z.object({
   tittel: z.string().min(1, "Tittel er påkrevd").max(200, "Tittel må være under 200 tegn"),
-  beskrivelse: z.string().max(1000, "Beskrivelse må være under 1000 tegn").optional(),
+  beskrivelse: z.string().max(100000, "Beskrivelse er for lang").optional(),
   kategori: z.enum(["regelverk", "prosedyrer", "sjekklister", "rapporter", "nettsider", "oppdrag", "loggbok", "kml-kmz", "dokumentstyring", "risikovurderinger", "operasjonsmanual", "annet"]),
   gyldig_til: z.date().optional(),
   varsel_dager_for_utløp: z.coerce.number().int().min(0).max(365).optional(),
   nettside_url: z.string().max(500, "URL må være under 500 tegn").optional(),
+}).superRefine((data, ctx) => {
+  // Only enforce 1000-char limit for free-text beskrivelse (sjekklister stores JSON which can exceed 1000 chars)
+  if (data.kategori !== "sjekklister" && data.beskrivelse && data.beskrivelse.length > 1000) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.too_big,
+      maximum: 1000,
+      type: "string",
+      inclusive: true,
+      path: ["beskrivelse"],
+      message: "Beskrivelse må være under 1000 tegn",
+    });
+  }
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -154,8 +166,18 @@ const DocumentCardModal = ({
     }
   }, [document, isOpen]);
 
+  const syncChecklistToForm = (items: ChecklistItem[]) => {
+    const validItems = items.filter(i => i.text.trim() !== "");
+    const serialized = validItems.length > 0 ? JSON.stringify(validItems) : "";
+    form.setValue("beskrivelse", serialized, { shouldValidate: true, shouldDirty: true });
+  };
+
   const handleAddChecklistItem = () => {
-    setChecklistItems(prev => [...prev, { id: crypto.randomUUID(), text: "" }]);
+    setChecklistItems(prev => {
+      const next = [...prev, { id: crypto.randomUUID(), text: "" }];
+      syncChecklistToForm(next);
+      return next;
+    });
   };
 
   const handleMoveChecklistItem = (id: string, direction: 'up' | 'down') => {
@@ -166,18 +188,25 @@ const DocumentCardModal = ({
       if (swapIdx < 0 || swapIdx >= prev.length) return prev;
       const next = [...prev];
       [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      syncChecklistToForm(next);
       return next;
     });
   };
 
   const handleRemoveChecklistItem = (id: string) => {
-    setChecklistItems(prev => prev.filter(item => item.id !== id));
+    setChecklistItems(prev => {
+      const next = prev.filter(item => item.id !== id);
+      syncChecklistToForm(next);
+      return next;
+    });
   };
 
   const handleChecklistItemChange = (id: string, text: string) => {
-    setChecklistItems(prev => prev.map(item => 
-      item.id === id ? { ...item, text } : item
-    ));
+    setChecklistItems(prev => {
+      const next = prev.map(item => item.id === id ? { ...item, text } : item);
+      syncChecklistToForm(next);
+      return next;
+    });
   };
 
   const openUrl = (url: string) => {
@@ -402,7 +431,16 @@ const DocumentCardModal = ({
                   <FormItem>
                     <FormLabel>Kategori</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => {
+                        const prev = field.value;
+                        field.onChange(value);
+                        // Clear stale beskrivelse when toggling sjekklister category to avoid JSON leaking into free-text validation
+                        if (prev === "sjekklister" && value !== "sjekklister") {
+                          form.setValue("beskrivelse", "", { shouldValidate: true });
+                        } else if (prev !== "sjekklister" && value === "sjekklister") {
+                          syncChecklistToForm(checklistItems);
+                        }
+                      }}
                       defaultValue={field.value}
                       disabled={readOnly}
                     >
