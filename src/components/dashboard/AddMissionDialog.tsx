@@ -1233,7 +1233,7 @@ export const AddMissionDialog = ({
               />
             </div>
             <div>
-              <Label htmlFor="slutt_tidspunkt">Sluttidspunkt</Label>
+              <Label htmlFor="slutt_tidspunkt">{t('missions.endTime')}</Label>
               <Input
                 id="slutt_tidspunkt"
                 type="datetime-local"
