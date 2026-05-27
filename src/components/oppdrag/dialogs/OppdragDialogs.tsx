@@ -120,6 +120,7 @@ export interface OppdragDialogsProps {
 }
 
 export const OppdragDialogs = (props: OppdragDialogsProps) => {
+  const { t } = useTranslation();
   return (
     <>
       {/* Add Mission Dialog */}
