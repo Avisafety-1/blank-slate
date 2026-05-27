@@ -2012,7 +2012,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           {isAdmin && !isEditing && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="gap-2">
+                <Button variant="destructive" size="sm" className="gap-2" disabled={isSharedFromParent}>
                   <Trash2 className="w-4 h-4" />
                   Slett
                 </Button>
