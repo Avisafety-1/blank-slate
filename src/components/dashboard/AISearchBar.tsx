@@ -328,7 +328,7 @@ export const AISearchBar = () => {
               className="flex-1"
               placeholder={
                 searchMode === "regulations"
-                  ? "Spør om droneregelverk, teori, regler..."
+                  ? t('dashboard.search.regulationsPlaceholder')
                   : t('dashboard.search.placeholder')
               }
             />
