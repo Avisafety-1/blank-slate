@@ -183,14 +183,14 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       {/* Manual add */}
       <div className="flex gap-2">
         <Input
-          placeholder="Legg til idé manuelt..."
+          placeholder={t('pages.marketing.addIdeaPlaceholder')}
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addManual()}
           className="flex-1"
         />
         <Button variant="outline" onClick={addManual} className="gap-1 flex-shrink-0" size="sm">
-          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Legg til</span>
+          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{t('pages.marketing.addLabel')}</span>
         </Button>
       </div>
 
