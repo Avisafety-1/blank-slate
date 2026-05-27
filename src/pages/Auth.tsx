@@ -200,7 +200,10 @@ const Auth = () => {
     checkGoogleUserProfile();
   }, [user, authLoading, t]);
 
-  // Regular redirect for non-OAuth users
+  // Regular redirect for non-OAuth users — with loop guard to avoid
+  // ping-pong between login.avisafe.no and app.avisafe.no when the cross-domain
+  // session has not propagated yet.
+  const [showOpenAppFallback, setShowOpenAppFallback] = useState(false);
   useEffect(() => {
     if (authLoading || checkingGoogleUser || showGoogleRegistration || showMfaChallenge) return;
 
@@ -208,7 +211,6 @@ const Auth = () => {
                         user?.app_metadata?.providers?.includes('google');
 
     if (!isOAuthUser && user) {
-      // Check MFA requirement before redirecting
       const checkMfaAndRedirect = async () => {
         const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
@@ -216,12 +218,32 @@ const Auth = () => {
           setShowMfaChallenge(true);
           return;
         }
+
+        // Loop guard: if we already redirected once and ended up back here,
+        // do not redirect again — show a manual fallback button instead.
+        const lastRedirect = Number(sessionStorage.getItem('avisafe_redirecting_to_app') || '0');
+        const now = Date.now();
+        if (lastRedirect && now - lastRedirect < 15000) {
+          console.warn('Auth: detected redirect loop to app domain, showing manual fallback');
+          sessionStorage.removeItem('avisafe_redirecting_to_app');
+          setShowOpenAppFallback(true);
+          return;
+        }
+
+        sessionStorage.setItem('avisafe_redirecting_to_app', String(now));
         console.log('Redirecting to app domain');
         redirectToApp('/');
       };
       checkMfaAndRedirect();
     }
   }, [user, authLoading, checkingGoogleUser, showGoogleRegistration, showMfaChallenge]);
+
+  // Clear redirect flag if user reaches Auth fresh without a session
+  useEffect(() => {
+    if (!authLoading && !user) {
+      sessionStorage.removeItem('avisafe_redirecting_to_app');
+    }
+  }, [authLoading, user]);
 
   // Validate registration code when it changes
   useEffect(() => {
