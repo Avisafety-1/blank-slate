@@ -200,7 +200,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : ideas.length === 0 ? (
-        <p className="text-muted-foreground text-center py-8">Ingen idéer ennå. Generer noen med AI!</p>
+        <p className="text-muted-foreground text-center py-8">{t('pages.marketing.noIdeasYet')}</p>
       ) : (
         <div className="space-y-3">
           {ideas.map((idea) => (
