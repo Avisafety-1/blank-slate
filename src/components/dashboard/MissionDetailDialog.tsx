@@ -594,7 +594,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             }
             
             if (!approvers || approvers.length === 0) {
-              toast.error('Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.');
+              toast.error(t('dashboard.missions.noApproversInCompany'));
               setApprovalConfirmOpen(false);
               return;
             }
