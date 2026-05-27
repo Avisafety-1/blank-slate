@@ -647,20 +647,20 @@ const ComposeTab = () => {
 
         {/* Properties panel */}
         <div className="border border-border rounded-lg p-3 bg-card/50 space-y-3 h-fit sticky top-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">Egenskaper</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase">{t("pages.marketing.properties")}</p>
           {selected ? (
             <>
               <Badge variant="secondary" className="text-[10px]">
-                {selected.type === "heading" ? "Overskrift" : selected.type === "text" ? "Tekst" : selected.type === "button" ? "Knapp" : selected.type === "divider" ? "Linje" : selected.type === "image" ? "Bilde" : "Mellomrom"}
+                {selected.type === "heading" ? t("pages.marketing.heading") : selected.type === "text" ? t("pages.marketing.text") : selected.type === "button" ? t("pages.marketing.button") : selected.type === "divider" ? t("pages.marketing.line") : selected.type === "image" ? t("pages.marketing.image") : t("pages.marketing.spacer")}
               </Badge>
               {selected.type === "heading" && (
                 <div>
-                  <Label className="text-xs">Nivå</Label>
+                  <Label className="text-xs">{t("pages.marketing.level")}</Label>
                   <Select value={selected.props.level || "1"} onValueChange={v => updateBlockProps(selected.id, "level", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">H1 — Stor</SelectItem>
-                      <SelectItem value="2">H2 — Medium</SelectItem>
+                      <SelectItem value="1">{t("pages.marketing.levelH1")}</SelectItem>
+                      <SelectItem value="2">{t("pages.marketing.levelH2")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -669,8 +669,8 @@ const ComposeTab = () => {
                 <>
                   <div><Label className="text-xs">URL</Label><Input value={selected.props.url || ""} onChange={e => updateBlockProps(selected.id, "url", e.target.value)} placeholder="https://..." /></div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">Bakgrunn</Label><Input type="color" value={selected.props.bgColor || "#0ea5e9"} onChange={e => updateBlockProps(selected.id, "bgColor", e.target.value)} className="h-8 p-1" /></div>
-                    <div><Label className="text-xs">Tekst</Label><Input type="color" value={selected.props.textColor || "#ffffff"} onChange={e => updateBlockProps(selected.id, "textColor", e.target.value)} className="h-8 p-1" /></div>
+                    <div><Label className="text-xs">{t("pages.marketing.background")}</Label><Input type="color" value={selected.props.bgColor || "#0ea5e9"} onChange={e => updateBlockProps(selected.id, "bgColor", e.target.value)} className="h-8 p-1" /></div>
+                    <div><Label className="text-xs">{t("pages.marketing.textColor")}</Label><Input type="color" value={selected.props.textColor || "#ffffff"} onChange={e => updateBlockProps(selected.id, "textColor", e.target.value)} className="h-8 p-1" /></div>
                   </div>
                 </>
               )}
@@ -682,11 +682,11 @@ const ComposeTab = () => {
                 />
               )}
               {selected.type === "spacer" && (
-                <div><Label className="text-xs">Høyde (px)</Label><Input type="number" value={selected.props.height || "24"} onChange={e => updateBlockProps(selected.id, "height", e.target.value)} /></div>
+                <div><Label className="text-xs">{t("pages.marketing.heightPx")}</Label><Input type="number" value={selected.props.height || "24"} onChange={e => updateBlockProps(selected.id, "height", e.target.value)} /></div>
               )}
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">Velg en blokk for å redigere</p>
+            <p className="text-xs text-muted-foreground">{t("pages.marketing.selectBlockHint")}</p>
           )}
         </div>
       </div>
@@ -695,7 +695,7 @@ const ComposeTab = () => {
       <div className="flex gap-2 pt-2">
         <Button onClick={sendNow} disabled={sending}>
           {sending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
-          Send nå
+          {t("pages.marketing.sendNow")}
         </Button>
       </div>
     </div>
