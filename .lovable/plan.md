@@ -1,48 +1,53 @@
-## Funn frå logger og kode (Breili drift, Dan Asle Nesheim)
+# Plan: Konsolider auth-origin til `app.avisafe.no` (slank versjon)
 
-Eg har sjekka databasen og koden mot dei tre symptoma. Konklusjonar:
+Mål: `app.avisafe.no` blir einaste reelle auth/app-origin. `login.avisafe.no` blir att som teknisk fallback (Lovable Primary-domain 301 → app), så gamle bokmerke og e-postlenker held fram å fungere.
 
-### 1) "Avslutt"-knappen responderte ikkje
-- `handleEndFlight` → `prepareEndFlight()` (i `src/hooks/useFlightTimer.ts`) gjer eit `supabase.from('active_flights').select(...).maybeSingle()` UTAN timeout og UTAN feilhandtering. Viss nettverket er tregt eller tokenet må fornyast (`fetchWithRetry` → `ensureFreshSession`), heng kallet — og knappen viser ingen loading-tilstand, så han ser "død" ut.
-- Ingen `toast.error` blir vist viss `prepareEndFlight` returnerer `null` eller kastar. Brukaren får null tilbakemelding.
-- Det er òg ein "race": viss `state.isActive=true` lokalt, men DB-rada allereie er sletta (anna fane / forrige forsøk), returnerer spørringa null-felt, men dialogen opnar likevel — ikkje feilen Dan såg, men relatert.
+## Filer som blir endra
 
-Til slutt vart turen logga manuelt 27.05 kl. 08:22 UTC via `flight_logs` (`source=manual`, 35 min). Det stadfestar at endFlight til slutt gjekk gjennom, men brukaren måtte vente / prøve fleire gonger.
+### 1. `src/pages/Auth.tsx`
+- Linje 359: `emailRedirectTo: 'https://login.avisafe.no/auth'` → `'https://app.avisafe.no/auth'`
+- Linje 386: same endring
+- Linje 204 og 443: oppdater kommentar-tekst slik at han ikkje lyg om split-domene-oppsettet
+- (Behald `redirectToApp('/')`-kalla — dei er trygge no når begge domena endar på app)
 
-### 2) Flyturen stod framleis "aktiv" på same eining etter avslutting
-- `useFlightTimer.checkActiveFlight()` køyrer berre på mount og når `user` endrar seg. Det er INGEN re-sync ved `visibilitychange`, `online`, eller via Realtime på `active_flights`.
-- Konsekvens: viss `endFlight()` slettar DB-rada men feilar i å rydde localStorage (t.d. dialog stengt før `endFlight` køyrde, offline kø, eller exception), eller om ein annan fane sletta rada, vil eininga halde fram med å vise `isActive=true` til sida blir rerendra/last på nytt. Akkurat dette mønsteret samsvarer med rapporten: "anna eining viste avslutta, denne viste framleis aktiv".
+### 2. `supabase/functions/send-password-reset/index.ts`
+- Linje 52: `redirectTo: 'https://login.avisafe.no/reset-password'` → `'https://app.avisafe.no/reset-password'`
+- Linje 58: `https://login.avisafe.no/reset-password?...` → `https://app.avisafe.no/reset-password?...`
 
-### 3) Login-loop på PC: "Innlogging vellykka" repeterer, login-vindauget blir verande
-- Auth-flyten ligg på `https://login.avisafe.no` og kastar brukaren over til `https://app.avisafe.no` via `redirectToApp()` (i `src/config/domains.ts`). Det er to ulike opphav (origins) → Supabase sin localStorage-sesjon blir IKKJE delt mellom dei.
-- I `src/pages/Auth.tsx` linje 210–224 fyrer ein useEffect `redirectToApp('/')` kvar gong `user` er sett. På `app.avisafe.no` finn `RequireAuth` ingen sesjon → sender brukaren tilbake til `login.avisafe.no/auth` → useEffect ser at `user` framleis er sett → toast "loginSuccess" + redirect igjen → endeleg loop.
-- Reload "fiksar" det fordi `ensureFreshSession` til slutt får synka tokens (eller Supabase-cookie på `.avisafe.no`) inn på app-domenet.
-- Auth-loggane viser òg uvanleg mange `/user`-kall (10+ på under 30s frå ulike AWS-IP-ar) som passar med ein loop.
+### 3. `supabase/functions/webauthn/index.ts`
+- Behald `https://login.avisafe.no` i `ALLOWED_ORIGINS` (linje 20) — då fungerer eksisterande passkeys som er registrerte på login-domenet framleis viss nokon kjem inn der før 301-redirect.
+- Ingen endring nødvendig. Berre dokumenter det.
 
-### Forslag til fiksar
+### 4. `src/components/DomainGuard.tsx`
+- Fjern `redirectToApp('/')`- og `redirectToLogin('/auth')`-kalla i `useEffect` (linje 37–48).
+- Fjern dei to "skal redirecte"-blokkene på linje 65 og 68 som returnerer `null`.
+- Komponenten blir då ein rein pass-through wrapper. Importen av `isLoginDomain/isAppDomain/redirectTo*` blir ståande ubrukt — fjern dei òg.
+- IKKJE fjern `<DomainGuard>`-wrapparen frå `App.tsx`. Det held diffen liten og fasen reversibel.
 
-**A. `useFlightTimer.ts` – robust endFlight**
-1. Legg ein `endingFlight`-state og gjer "Avslutt"-knappen i `Index.tsx` `disabled` + spinner medan han er sann, slik at brukaren får synleg respons.
-2. Pakk `prepareEndFlight` sin DB-spørjing i `Promise.race` med 5 s timeout. Ved timeout: behald lokal data og opne dialog likevel (track frå lokal cache), pluss `toast.warning("Nettverk tregt – brukar lokale data")`.
-3. Vis `toast.error` ved kasta exception i `handleEndFlight`.
+### 5. `src/config/domains.ts`
+- Ingen endring. Konstantar og `redirectToApp`/`getAppUrl` blir framleis brukt frå `Auth.tsx`.
 
-**B. `useFlightTimer.ts` – auto-resync av aktiv flytur**
-1. Re-køyr `checkActiveFlight` ved `document.visibilitychange` (når fana blir synleg igjen) og ved `online`-event.
-2. Lytt til Realtime DELETE på `public.active_flights` filtrert på `profile_id=eq.<user.id>` og rydd lokal state + localStorage automatisk.
+## Kva som IKKJE skal rørast
 
-**C. `Auth.tsx` – stogg redirect-loop**
-1. Sett ein `sessionStorage`-flagg `avisafe_redirecting_to_app` rett før `redirectToApp('/')` og sjekk han ved start av Auth.tsx; viss han er sett OG `user` framleis er på login-domenet etter ≥3 s, tøm flagget men IKKJE redirect igjen — vis i staden ein knapp "Opne app" med direkte lenke til `https://app.avisafe.no/`, slik at brukaren slepp loop.
-2. Vis kun éin `toast.success(loginSuccess)` per påloggingsforsøk (flytt toast inn i sjølve `signInWithPassword`-handlaren, fjern den frå MFA/Google-grenene som dublerer, eller bruk `toast.success(..., { id: 'login' })` for dedup).
-3. Vurder å konfigurere Supabase Auth med cookie på `.avisafe.no` (krever endring i Supabase-prosjektet sine Auth-innstillingar — eg kan ikkje gjere det automatisk, men eg dokumenterer det).
+- Supabase Auth-innstillingar (Site URL, Redirect URLs) — ingen endring.
+- Cookie-domene / `.avisafe.no`-cookie — ikkje innført.
+- `login.avisafe.no` i Lovable Custom Domains — blir verande som Primary-redirect target.
+- Datamodell, RLS, edge-funksjonar utanom dei to over.
+- `EmailTemplateEditor.tsx` linje 616 — det er berre eit `reset_link`-demo i preview, ikkje funksjonelt.
+- App.tsx route-tre.
+- localStorage / session-handtering / `authTabSync`.
 
-**D. Tilbakemelding til Dan**
-Eg lagar eit kort norsk svar du kan sende tilbake som forklarer kva som skjedde og at fiksane er rulla ut.
+## Testpunkter etterpå
 
-### Filer som vil bli endra
-- `src/hooks/useFlightTimer.ts` – timeout, resync, realtime-lytting
-- `src/pages/Index.tsx` – disabled/spinner på Avslutt-knapp, feil-toast
-- `src/pages/Auth.tsx` – loop-vern + dedup toast
+1. **Innlogging frå `app.avisafe.no/auth`**: login med e-post/passord → blir verande på app-domenet, lander på `/` utan loop.
+2. **Innlogging via passkey**: registrering og bruk på `app.avisafe.no` fungerer.
+3. **Registrering / signup**: bekreftings-e-post peikar på `https://app.avisafe.no/auth`; å klikke loggar deg inn og lander på `/`.
+4. **Passord-reset**: e-postlenka peikar på `https://app.avisafe.no/reset-password?token_hash=...&type=recovery`; å klikke lèt deg sette nytt passord.
+5. **`login.avisafe.no` i nettlesar**: blir 301 til `app.avisafe.no` (Lovable Primary). Ingen kvit skjerm.
+6. **Gammal reset-lenke** (sendt før denne endringa, peikar på `login.avisafe.no/reset-password?...`): følgjer 301 → app.avisafe.no/reset-password med samme query → fungerer (`ResetPassword.tsx` les `token_hash`/`type` frå URL-en).
+7. **Uinnlogga brukar på `app.avisafe.no/`**: blir sendt til `/auth` av eksisterande `RequireAuth`/route-logikk, IKKJE til `login.avisafe.no`.
+8. **MFA-flow og Google OAuth**: ingen redirect-loop, loginSuccess-toast vert vist éin gong.
 
-Ingen DB-migrasjonar nødvendige. Realtime på `active_flights` er allereie aktivt (brukt i `useDashboardRealtime`).
+## Rollback
 
-Sei frå viss du vil at eg skal implementere alle tre (A+B+C), eller berre nokre av dei.
+Reverter den eine commit-en. `login.avisafe.no` har vore live heile tida, så ingenting går tapt.

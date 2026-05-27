@@ -200,9 +200,8 @@ const Auth = () => {
     checkGoogleUserProfile();
   }, [user, authLoading, t]);
 
-  // Regular redirect for non-OAuth users — with loop guard to avoid
-  // ping-pong between login.avisafe.no and app.avisafe.no when the cross-domain
-  // session has not propagated yet.
+  // Regular redirect for non-OAuth users. Auth lives on app.avisafe.no; the
+  // login.avisafe.no domain is kept only as a 301 fallback at the hosting layer.
   const [showOpenAppFallback, setShowOpenAppFallback] = useState(false);
   useEffect(() => {
     if (authLoading || checkingGoogleUser || showGoogleRegistration || showMfaChallenge) return;
@@ -356,7 +355,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: 'https://login.avisafe.no/auth',
+            emailRedirectTo: 'https://app.avisafe.no/auth',
             data: {
               full_name: fullName,
               new_company_name: newCompanyName.trim(),
@@ -383,7 +382,7 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: 'https://login.avisafe.no/auth',
+            emailRedirectTo: 'https://app.avisafe.no/auth',
             data: {
               full_name: fullName,
               company_id: validatedCompany!.id
@@ -440,9 +439,8 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // IMPORTANT: For split-domain setup (login.avisafe.no -> app.avisafe.no),
-      // the OAuth callback must land on the APP domain so the session is stored
-      // in the correct origin (localStorage is per-domain).
+      // OAuth callback lands on app.avisafe.no (the canonical auth/app origin)
+      // so the session is stored in the correct origin (localStorage is per-domain).
       const redirectTo = window.location.hostname.includes('lovableproject.com') || window.location.hostname === 'localhost'
         ? `${window.location.origin}/auth`
         : 'https://app.avisafe.no/auth';

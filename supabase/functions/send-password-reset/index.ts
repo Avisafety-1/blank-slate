@@ -49,13 +49,13 @@ serve(async (req: Request): Promise<Response> => {
 
     const { data: company } = await supabase.from('companies').select('navn').eq('id', profile.company_id).single();
 
-    const { data } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://login.avisafe.no/reset-password' } });
+    const { data } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://app.avisafe.no/reset-password' } });
     if (!data?.properties?.action_link) throw new Error("Kunne ikke generere tilbakestillingslenke");
 
     const actionUrl = new URL(data.properties.action_link);
     const tokenHash = actionUrl.searchParams.get("token") || actionUrl.searchParams.get("token_hash");
     if (!tokenHash) throw new Error("Kunne ikke ekstrahere token fra lenke");
-    const resetLink = `https://login.avisafe.no/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`;
+    const resetLink = `https://app.avisafe.no/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`;
 
     const templateResult = await getEmailTemplateWithFallback(profile.company_id, 'password_reset', { user_name: profile.full_name || '', reset_link: resetLink, company_name: company?.navn || 'AviSafe' });
 
