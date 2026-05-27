@@ -681,6 +681,40 @@ const Auth = () => {
     }
   };
 
+  if (showOpenAppFallback) {
+    return (
+      <div className="min-h-screen relative flex items-center justify-center">
+        <div className="fixed inset-0 z-0" style={{
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url(${droneBackground})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center"
+        }} />
+        <div className="relative z-10 w-full max-w-md px-4">
+          <Card className="bg-card/95 backdrop-blur-sm border-border/50">
+            <CardHeader className="text-center space-y-2">
+              <CardTitle>Du er innlogga</CardTitle>
+              <CardDescription>
+                Trykk knappen for å opne appen. (Automatisk vidaresending verkar ikkje på denne nettlesaren.)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button className="w-full" onClick={() => { window.location.href = 'https://app.avisafe.no/'; }}>
+                Opne AviSafe
+              </Button>
+              <Button variant="outline" className="w-full" onClick={async () => {
+                await supabase.auth.signOut();
+                sessionStorage.removeItem('avisafe_redirecting_to_app');
+                setShowOpenAppFallback(false);
+              }}>
+                Logg ut
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen relative flex items-center justify-center">
       {/* Background */}
