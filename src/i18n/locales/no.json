@@ -1262,6 +1262,97 @@
       "portalFailed": "Kunne ikke åpne kundeportal: ",
       "unknownError": "Ukjent feil"
     }
+  },
+  "changelog": {
+    "title": "Driftstatus og endringslogg",
+    "maintenanceDefault": "Drift og vedlikehold pågår",
+    "systemStatus": "Systemstatus",
+    "changelogTitle": "Endringslogg",
+    "addBtn": "Legg til",
+    "search": "Søk...",
+    "sort": {
+      "created": "Opprettet dato",
+      "status": "Status",
+      "completed": "Utført dato"
+    },
+    "noEntries": "Ingen oppføringer ennå",
+    "createdLabel": "Opprettet",
+    "completedLabel": "Utført",
+    "dialog": {
+      "editSystem": "Rediger system",
+      "addSystem": "Legg til system",
+      "name": "Navn",
+      "status": "Status",
+      "descriptionOptional": "Beskrivelse (valgfri)",
+      "operational": "🟢 Operativ",
+      "partial": "🟡 Delvis",
+      "down": "🔴 Nede",
+      "delete": "Slett",
+      "save": "Lagre",
+      "editEntry": "Rediger oppføring",
+      "newEntry": "Ny oppføring",
+      "titleField": "Tittel",
+      "priority": "Prioritet",
+      "completedDateOptional": "Utført dato (valgfri)",
+      "notStarted": "Ikke startet",
+      "inProgress": "Pågår",
+      "testing": "Testing",
+      "implemented": "Implementert",
+      "high": "Høy",
+      "medium": "Medium",
+      "low": "Lav",
+      "areYouSure": "Er du sikker?",
+      "cannotUndo": "Denne handlingen kan ikke angres.",
+      "cancel": "Avbryt"
+    },
+    "entryStatus": {
+      "notStarted": "Ikke startet",
+      "inProgress": "Pågår",
+      "testing": "Testing",
+      "implemented": "Implementert"
+    },
+    "priority": {
+      "high": "Høy",
+      "medium": "Medium",
+      "low": "Lav"
+    },
+    "toast": {
+      "updateFailed": "Kunne ikke oppdatere",
+      "updateMessageFailed": "Kunne ikke oppdatere melding",
+      "saveError": "Feil ved lagring",
+      "systemUpdated": "System oppdatert",
+      "createError": "Feil ved opprettelse",
+      "systemAdded": "System lagt til",
+      "entryUpdated": "Oppføring oppdatert",
+      "entryAdded": "Oppføring lagt til",
+      "deleteFailed": "Kunne ikke slette",
+      "deleted": "Slettet"
+    }
+  },
+  "mapPublication": {
+    "title": "Kartpublisering — standardvalg",
+    "subtitle": "Hvordan planlagte oppdrag som standard vises på AviSafe-kartet.",
+    "publicCompanyName": "Offentlig selskapsnavn",
+    "publicCompanyDesc": "Vises i kart-popup for planlagte oppdrag. Brukes også av alle avdelinger under hovedselskapet.",
+    "publicCompanyDescChild": " Settes på hovedselskapet — endring her påvirker bare denne avdelingen hvis den er rot.",
+    "publicCompanyPlaceholder": "F.eks. Andøya Drone AS",
+    "save": "Lagre",
+    "publishTitle": "Publiser planlagt oppdrag på AviSafe-kart",
+    "publishDesc": "Andre AviSafe-brukere ser planlagte oppdrag fra 24t før start til slutt.",
+    "shareTitle": "Del kontaktinformasjon",
+    "shareDesc": "Vis kontaktdetaljer fra oppdragseier i kart-popup for koordinering.",
+    "shareNameTitle": "Del navn",
+    "shareNameDesc": "Navn på oppdragseier vises i popup.",
+    "sharePhoneTitle": "Del telefon",
+    "sharePhoneDesc": "Telefonnummer vises i popup.",
+    "shareEmailTitle": "Del e-post",
+    "shareEmailDesc": "E-postadresse vises i popup.",
+    "anonTitle": "Anonymisert visning",
+    "anonDesc": "Skjul oppdragstittel, beskrivelse, selskapsnavn og kontaktinfo. Kun geometri og tid vises.",
+    "overrideTitle": "La pilot overstyre disse valgene per oppdrag",
+    "overrideDesc": "Hvis av, blir feltene i oppdragsdialogen låst til selskapets standard.",
+    "saveFailed": "Kunne ikke lagre",
+    "saved": "Lagret"
   }
 }
 

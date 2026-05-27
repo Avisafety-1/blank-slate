@@ -61,18 +61,18 @@ const statusColors: Record<string, string> = {
   red: "bg-status-red",
 };
 
-const entryStatusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  ikke_startet: { label: "Ikke startet", color: "bg-muted text-foreground", icon: <Circle className="w-3 h-3" /> },
-  pågår: { label: "Pågår", color: "bg-status-yellow/20 text-foreground border border-status-yellow/40", icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-  testing: { label: "Testing", color: "bg-blue-500/20 text-foreground border border-blue-500/40", icon: <FlaskConical className="w-3 h-3" /> },
-  implementert: { label: "Implementert", color: "bg-status-green/20 text-foreground border border-status-green/40", icon: <CheckCircle2 className="w-3 h-3" /> },
-};
+const getEntryStatusConfig = (t: (k: string) => string): Record<string, { label: string; color: string; icon: React.ReactNode }> => ({
+  ikke_startet: { label: t("changelog.entryStatus.notStarted"), color: "bg-muted text-foreground", icon: <Circle className="w-3 h-3" /> },
+  pågår: { label: t("changelog.entryStatus.inProgress"), color: "bg-status-yellow/20 text-foreground border border-status-yellow/40", icon: <Loader2 className="w-3 h-3 animate-spin" /> },
+  testing: { label: t("changelog.entryStatus.testing"), color: "bg-blue-500/20 text-foreground border border-blue-500/40", icon: <FlaskConical className="w-3 h-3" /> },
+  implementert: { label: t("changelog.entryStatus.implemented"), color: "bg-status-green/20 text-foreground border border-status-green/40", icon: <CheckCircle2 className="w-3 h-3" /> },
+});
 
-const priorityConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  high: { label: "Høy", color: "bg-destructive/15 text-foreground border border-destructive/40", icon: <ArrowUp className="w-3 h-3" /> },
-  medium: { label: "Medium", color: "bg-status-yellow/15 text-foreground border border-status-yellow/40", icon: <Minus className="w-3 h-3" /> },
-  low: { label: "Lav", color: "bg-muted text-foreground", icon: <ArrowDown className="w-3 h-3" /> },
-};
+const getPriorityConfig = (t: (k: string) => string): Record<string, { label: string; color: string; icon: React.ReactNode }> => ({
+  high: { label: t("changelog.priority.high"), color: "bg-destructive/15 text-foreground border border-destructive/40", icon: <ArrowUp className="w-3 h-3" /> },
+  medium: { label: t("changelog.priority.medium"), color: "bg-status-yellow/15 text-foreground border border-status-yellow/40", icon: <Minus className="w-3 h-3" /> },
+  low: { label: t("changelog.priority.low"), color: "bg-muted text-foreground", icon: <ArrowDown className="w-3 h-3" /> },
+});
 
 const Changelog = () => {
   const { isSuperAdmin } = useAuth();
@@ -122,7 +122,7 @@ const Changelog = () => {
       .from("changelog_maintenance")
       .update({ active: !maintenance.active, updated_at: new Date().toISOString() })
       .eq("id", maintenance.id);
-    if (error) { toast.error("Kunne ikke oppdatere"); return; }
+    if (error) { toast.error(t("changelog.toast.updateFailed")); return; }
     setMaintenance({ ...maintenance, active: !maintenance.active });
   };
 
@@ -132,7 +132,7 @@ const Changelog = () => {
       .from("changelog_maintenance")
       .update({ message: msg, updated_at: new Date().toISOString() })
       .eq("id", maintenance.id);
-    if (error) toast.error("Kunne ikke oppdatere melding");
+    if (error) toast.error(t("changelog.toast.updateMessageFailed"));
     else setMaintenance({ ...maintenance, message: msg });
   };
 
@@ -150,14 +150,14 @@ const Changelog = () => {
       const { error } = await supabase.from("changelog_systems")
         .update({ name: formName, status: formStatus, description: formDescription || null, updated_at: new Date().toISOString() })
         .eq("id", systemDialog.system.id);
-      if (error) toast.error("Feil ved lagring");
-      else toast.success("System oppdatert");
+      if (error) toast.error(t("changelog.toast.saveError"));
+      else toast.success(t("changelog.toast.systemUpdated"));
     } else {
       const maxOrder = systems.reduce((m, s) => Math.max(m, s.sort_order), 0);
       const { error } = await supabase.from("changelog_systems")
         .insert({ name: formName, status: formStatus, description: formDescription || null, sort_order: maxOrder + 1 });
-      if (error) toast.error("Feil ved opprettelse");
-      else toast.success("System lagt til");
+      if (error) toast.error(t("changelog.toast.createError"));
+      else toast.success(t("changelog.toast.systemAdded"));
     }
     setSaving(false);
     setSystemDialog({ open: false });
@@ -181,13 +181,13 @@ const Changelog = () => {
       const { error } = await supabase.from("changelog_entries")
         .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, updated_at: new Date().toISOString() })
         .eq("id", entryDialog.entry.id);
-      if (error) toast.error("Feil ved lagring");
-      else toast.success("Oppføring oppdatert");
+      if (error) toast.error(t("changelog.toast.saveError"));
+      else toast.success(t("changelog.toast.entryUpdated"));
     } else {
       const { error } = await supabase.from("changelog_entries")
         .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt });
-      if (error) toast.error("Feil ved opprettelse");
-      else toast.success("Oppføring lagt til");
+      if (error) toast.error(t("changelog.toast.createError"));
+      else toast.success(t("changelog.toast.entryAdded"));
     }
     setSaving(false);
     setEntryDialog({ open: false });
@@ -199,8 +199,8 @@ const Changelog = () => {
     if (!deleteTarget) return;
     const table = deleteTarget.type === "system" ? "changelog_systems" : "changelog_entries";
     const { error } = await supabase.from(table).delete().eq("id", deleteTarget.id);
-    if (error) toast.error("Kunne ikke slette");
-    else toast.success("Slettet");
+    if (error) toast.error(t("changelog.toast.deleteFailed"));
+    else toast.success(t("changelog.toast.deleted"));
     setDeleteTarget(null);
     fetchAll();
   };
@@ -215,7 +215,7 @@ const Changelog = () => {
 
   return (
     <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
-      <h1 className="text-2xl font-bold">Driftstatus og endringslogg</h1>
+      <h1 className="text-2xl font-bold">{t("changelog.title")}</h1>
 
       {/* Maintenance Banner */}
       {(maintenance?.active || isSuperAdmin) && (
@@ -223,7 +223,7 @@ const Changelog = () => {
           <CardContent className="flex items-center gap-3 py-4">
             {maintenance?.active && <Wrench className="w-5 h-5 text-status-yellow animate-spin" />}
             <span className={`flex-1 font-medium ${maintenance?.active ? "text-foreground" : "text-muted-foreground"}`}>
-              {maintenance?.message || "Drift og vedlikehold pågår"}
+              {maintenance?.message || t("changelog.maintenanceDefault")}
             </span>
             {isSuperAdmin && (
               <div className="flex items-center gap-2">
@@ -246,10 +246,10 @@ const Changelog = () => {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Systemstatus</CardTitle>
+            <CardTitle className="text-lg">{t("changelog.systemStatus")}</CardTitle>
             {isSuperAdmin && (
               <Button variant="ghost" size="sm" onClick={() => openSystemDialog()}>
-                <Plus className="w-4 h-4 mr-1" /> Legg til
+                <Plus className="w-4 h-4 mr-1" /> {t("changelog.addBtn")}
               </Button>
             )}
           </div>
@@ -331,6 +331,8 @@ const Changelog = () => {
             }
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           }).map((entry) => {
+            const entryStatusConfig = getEntryStatusConfig(t);
+            const priorityConfig = getPriorityConfig(t);
             const cfg = entryStatusConfig[entry.status] || entryStatusConfig.ikke_startet;
             const pri = priorityConfig[entry.priority] || priorityConfig.medium;
             return (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Map } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
+  const { t } = useTranslation();
   const [values, setValues] = useState<Defaults>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -82,11 +84,11 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
       .eq("id", companyId) as any);
     setSaving(false);
     if (error) {
-      toast({ title: "Kunne ikke lagre", description: error.message, variant: "destructive" });
+      toast({ title: t("mapPublication.saveFailed"), description: error.message, variant: "destructive" });
       return;
     }
     invalidateCompanySettingsCache();
-    toast({ title: "Lagret" });
+    toast({ title: t("mapPublication.saved") });
   }
 
   if (loading) return null;
@@ -97,27 +99,27 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
       <div className="flex items-center gap-2">
         <Map className="w-4 h-4 text-primary" />
         <div>
-          <div className="font-medium text-sm">Kartpublisering — standardvalg</div>
+          <div className="font-medium text-sm">{t("mapPublication.title")}</div>
           <div className="text-xs text-muted-foreground">
-            Hvordan planlagte oppdrag som standard vises på AviSafe-kartet.
+            {t("mapPublication.subtitle")}
           </div>
         </div>
       </div>
 
       <div className="pt-2 border-t border-border/50 space-y-2">
         <Label htmlFor="public-company-name" className="text-sm font-medium">
-          Offentlig selskapsnavn
+          {t("mapPublication.publicCompanyName")}
         </Label>
         <p className="text-xs text-muted-foreground">
-          Vises i kart-popup for planlagte oppdrag. Brukes også av alle avdelinger under hovedselskapet.
-          {!isRoot && " Settes på hovedselskapet — endring her påvirker bare denne avdelingen hvis den er rot."}
+          {t("mapPublication.publicCompanyDesc")}
+          {!isRoot && t("mapPublication.publicCompanyDescChild")}
         </p>
         <div className="flex gap-2">
           <Input
             id="public-company-name"
             value={nameDraft}
             onChange={(e) => setNameDraft(e.target.value)}
-            placeholder="F.eks. Andøya Drone AS"
+            placeholder={t("mapPublication.publicCompanyPlaceholder")}
             disabled={isDisabled}
           />
           <Button
@@ -126,23 +128,23 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
             disabled={isDisabled || nameDraft === values.public_company_name}
             onClick={() => update({ public_company_name: nameDraft.trim() })}
           >
-            Lagre
+            {t("mapPublication.save")}
           </Button>
         </div>
       </div>
 
       <Row
         id="mp-publish"
-        title="Publiser planlagt oppdrag på AviSafe-kart"
-        desc="Andre AviSafe-brukere ser planlagte oppdrag fra 24t før start til slutt."
+        title={t("mapPublication.publishTitle")}
+        desc={t("mapPublication.publishDesc")}
         checked={values.default_publish_planned_missions}
         disabled={isDisabled}
         onChange={(v) => update({ default_publish_planned_missions: v })}
       />
       <Row
         id="mp-share"
-        title="Del kontaktinformasjon"
-        desc="Vis kontaktdetaljer fra oppdragseier i kart-popup for koordinering."
+        title={t("mapPublication.shareTitle")}
+        desc={t("mapPublication.shareDesc")}
         checked={values.default_share_contact_info}
         disabled={isDisabled}
         onChange={(v) => update({ default_share_contact_info: v })}
@@ -151,24 +153,24 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
         <div className="ml-4 pl-3 border-l-2 border-primary/30 space-y-1">
           <Row
             id="mp-share-name"
-            title="Del navn"
-            desc="Navn på oppdragseier vises i popup."
+            title={t("mapPublication.shareNameTitle")}
+            desc={t("mapPublication.shareNameDesc")}
             checked={values.default_share_contact_name}
             disabled={isDisabled}
             onChange={(v) => update({ default_share_contact_name: v })}
           />
           <Row
             id="mp-share-phone"
-            title="Del telefon"
-            desc="Telefonnummer vises i popup."
+            title={t("mapPublication.sharePhoneTitle")}
+            desc={t("mapPublication.sharePhoneDesc")}
             checked={values.default_share_contact_phone}
             disabled={isDisabled}
             onChange={(v) => update({ default_share_contact_phone: v })}
           />
           <Row
             id="mp-share-email"
-            title="Del e-post"
-            desc="E-postadresse vises i popup."
+            title={t("mapPublication.shareEmailTitle")}
+            desc={t("mapPublication.shareEmailDesc")}
             checked={values.default_share_contact_email}
             disabled={isDisabled}
             onChange={(v) => update({ default_share_contact_email: v })}
@@ -177,16 +179,16 @@ export function MapPublicationDefaultsCard({ companyId, disabled }: Props) {
       )}
       <Row
         id="mp-anon"
-        title="Anonymisert visning"
-        desc="Skjul oppdragstittel, beskrivelse, selskapsnavn og kontaktinfo. Kun geometri og tid vises."
+        title={t("mapPublication.anonTitle")}
+        desc={t("mapPublication.anonDesc")}
         checked={values.default_anonymous_publish}
         disabled={isDisabled}
         onChange={(v) => update({ default_anonymous_publish: v })}
       />
       <Row
         id="mp-allow-override"
-        title="La pilot overstyre disse valgene per oppdrag"
-        desc="Hvis av, blir feltene i oppdragsdialogen låst til selskapets standard."
+        title={t("mapPublication.overrideTitle")}
+        desc={t("mapPublication.overrideDesc")}
         checked={values.allow_pilot_override_publish_settings}
         disabled={isDisabled}
         onChange={(v) => update({ allow_pilot_override_publish_settings: v })}
