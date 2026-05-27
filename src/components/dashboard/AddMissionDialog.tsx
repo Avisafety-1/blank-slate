@@ -35,6 +35,7 @@ import { useTranslation } from "react-i18next";
 import { MissionPublicationSection, PublicationFields } from "@/components/dashboard/MissionPublicationSection";
 import { MissionConflictWarning } from "@/components/dashboard/MissionConflictWarning";
 import { useMissionMapConflicts } from "@/hooks/useMissionMapConflicts";
+import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
