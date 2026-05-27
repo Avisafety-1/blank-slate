@@ -337,17 +337,17 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
           <div className="space-y-5">
             {/* Kart og luftrom */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Kart og luftrom</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("oppdragDialogs.sectionMapAirspace")}</p>
               <div className="space-y-2">
                 {(props.exportPdfMission?.latitude ?? (props.exportPdfMission?.route as any)?.coordinates?.[0]?.lat) && (
                   <label className="flex items-center gap-2 cursor-pointer">
                     <Checkbox checked={props.pdfSections.map} onCheckedChange={v => props.setPdfSections(s => ({ ...s, map: v === true }))} />
-                    <span className="text-sm">Kartutsnitt</span>
+                    <span className="text-sm">{t("oppdragDialogs.mapExtract")}</span>
                   </label>
                 )}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox checked={props.pdfSections.airspaceWarnings} onCheckedChange={v => props.setPdfSections(s => ({ ...s, airspaceWarnings: v === true }))} />
-                  <span className="text-sm">Luftromsadvarsler</span>
+                  <span className="text-sm">{t("oppdragDialogs.airspaceWarnings")}</span>
                 </label>
               </div>
             </div>
