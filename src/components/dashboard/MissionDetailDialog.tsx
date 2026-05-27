@@ -624,7 +624,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               }
             }
           }}>
-            Send til godkjenning
+            {t('dashboard.missions.submitForApprovalConfirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
