@@ -98,10 +98,10 @@ export const MarketingOverview = () => {
   });
 
   const stats = [
-    { label: "Idéer", value: ideaCount, icon: Lightbulb, color: "text-yellow-500" },
-    { label: "Utkast", value: draftCount, icon: FileEdit, color: "text-blue-500" },
-    { label: "Godkjent", value: approvedCount, icon: CheckCircle, color: "text-green-500" },
-    { label: "Planlagt", value: scheduledCount, icon: Clock, color: "text-orange-500" },
+    { label: t('pages.marketing.statIdeas'), value: ideaCount, icon: Lightbulb, color: "text-yellow-500" },
+    { label: t('pages.marketing.statDrafts'), value: draftCount, icon: FileEdit, color: "text-blue-500" },
+    { label: t('pages.marketing.statApproved'), value: approvedCount, icon: CheckCircle, color: "text-green-500" },
+    { label: t('pages.marketing.statScheduled'), value: scheduledCount, icon: Clock, color: "text-orange-500" },
   ];
 
   return (
