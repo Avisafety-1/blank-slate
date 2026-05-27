@@ -619,38 +619,38 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
           {/* VHF frequency */}
           <div className="space-y-1.5">
-            <Label>VHF-frekvens (valgfritt)</Label>
+            <Label>{t('dashboard.notam.vhfFrequency')}</Label>
             <Input
               value={vhfFrequency}
               onChange={(e) => setVhfFrequency(e.target.value)}
-              placeholder="f.eks. 123.450 MHz"
+              placeholder={t('dashboard.notam.vhfFrequencyPlaceholder')}
             />
-            <p className="text-xs text-muted-foreground">VHF-frekvens erstatter ikke telefonnummer.</p>
+            <p className="text-xs text-muted-foreground">{t('dashboard.notam.vhfFrequencyNote')}</p>
           </div>
 
           {/* Generated NOTAM */}
           <div className="space-y-1.5">
-            <Label>Generert NOTAM-tekst</Label>
+            <Label>{t('dashboard.notam.generatedNotam')}</Label>
             <Textarea value={generatedText} readOnly className="font-mono text-sm min-h-[120px]" />
           </div>
 
           <p className="text-xs text-muted-foreground">
-            NOTAM skal normalt kun sendes inn ved BVLOS eller operasjoner over 120m. «Send inn» åpner din e-postapplikasjon med en ferdig formulert tekst.
+            {t('dashboard.notam.submitDisclaimer')}
           </p>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 justify-end">
             <Button variant="outline" size="sm" onClick={handleCopy}>
               <Copy className="w-4 h-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Kopier</span>
+              <span className="hidden sm:inline">{t('dashboard.notam.copy')}</span>
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving}>
               <Save className="w-4 h-4 mr-1.5" />
-              {saving ? "Lagrer…" : "Lagre"}
+              {saving ? t('dashboard.notam.saving') : t('dashboard.notam.save')}
             </Button>
             <Button size="sm" onClick={handleSubmit} disabled={submitting} variant="default" className="bg-green-600 hover:bg-green-700">
               <Send className="w-4 h-4 mr-1.5" />
-              {submitting ? "Sender…" : "Send inn"}
+              {submitting ? t('dashboard.notam.submitting') : t('dashboard.notam.submit')}
             </Button>
           </div>
         </div>
