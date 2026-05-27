@@ -2374,7 +2374,24 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                         <CheckCircle className="w-3 h-3" />Batteri auto-matchet via SN
                       </p>
                     )}
+                    {selectedDroneId && selectedEquipment.some(eqId => {
+                      const eq = equipmentList.find(e => e.id === eqId);
+                      return eq && isBatteryType(eq.type);
+                    }) && (
+                      <div className="flex items-start gap-2 pt-1">
+                        <Checkbox
+                          id="link-battery-to-drone"
+                          checked={linkBatteryToDrone}
+                          onCheckedChange={(v) => setLinkBatteryToDrone(v === true)}
+                          className="mt-0.5"
+                        />
+                        <Label htmlFor="link-battery-to-drone" className="text-[11px] leading-tight cursor-pointer text-muted-foreground">
+                          Knytt batteri til {terminology.vehicleLower} (vises permanent på {terminology.vehicleLower}kortet)
+                        </Label>
+                      </div>
+                    )}
                   </div>
+
                 )}
 
                 {/* Summary */}
