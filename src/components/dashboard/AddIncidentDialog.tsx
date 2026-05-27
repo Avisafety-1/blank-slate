@@ -960,7 +960,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
               <EyeOff className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
               <p className="text-sm text-muted-foreground">
-                Denne rapporten sendes inn anonymt (selskapsinnstilling).
+                {t('incidents.anonymousCompanyNote')}
               </p>
             </div>
           ) : (
@@ -971,9 +971,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 className="mt-0.5"
               />
               <div className="space-y-0.5">
-                <p className="text-sm font-medium">Rapporter anonymt</p>
+                <p className="text-sm font-medium">{t('incidents.reportAnonymously')}</p>
                 <p className="text-xs text-muted-foreground">
-                  Navnet ditt vil ikke vises på rapporten.
+                  {t('incidents.anonymousNote')}
                 </p>
               </div>
             </label>
@@ -987,7 +987,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               onClick={() => onOpenChange(false)}
               className="flex-1"
             >
-              Avbryt
+              {t('actions.cancel')}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -995,11 +995,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               className="flex-1"
               data-tour="incident-submit"
             >
-              {submitting 
-                ? (isEditing ? "Lagrer..." : "Rapporterer...") 
-                : (isEditing ? "Lagre endringer" : "Rapporter")}
+              {submitting
+                ? (isEditing ? t('incidents.saving') : t('incidents.reporting'))
+                : (isEditing ? t('incidents.saveChanges') : t('incidents.report'))}
             </Button>
           </div>
+
         </div>
       </DialogContent>
     </Dialog>
