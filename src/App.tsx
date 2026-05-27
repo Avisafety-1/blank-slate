@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DomainGuard } from "@/components/DomainGuard";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
+import { MfaGate } from "@/components/MfaGate";
 import { Header } from "@/components/Header";
 import { KeyboardDismissButton } from "@/components/KeyboardDismissButton";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -123,11 +124,13 @@ const AuthenticatedLayout = () => {
         <OfflineBanner />
         <IdleTimeoutWarning />
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <SubscriptionGate>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Outlet />
-            </Suspense>
-          </SubscriptionGate>
+          <MfaGate>
+            <SubscriptionGate>
+              <Suspense fallback={<LoadingSpinner />}>
+                <Outlet />
+              </Suspense>
+            </SubscriptionGate>
+          </MfaGate>
         </main>
       </div>
     );
@@ -140,11 +143,13 @@ const AuthenticatedLayout = () => {
       <OfflineBanner />
       <IdleTimeoutWarning />
       <main className="flex-1 flex flex-col">
-        <SubscriptionGate>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Outlet />
-          </Suspense>
-        </SubscriptionGate>
+        <MfaGate>
+          <SubscriptionGate>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Outlet />
+            </Suspense>
+          </SubscriptionGate>
+        </MfaGate>
       </main>
     </div>
   );
