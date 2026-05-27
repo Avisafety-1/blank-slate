@@ -1,31 +1,76 @@
-## Diagnose
+## Mål
+Gjøre listen over oppdragstyper redigerbar per selskap, og bruke samme liste både i:
+- Skjemaet "Legg til/rediger oppdrag" (felt `oppdragstype`)
+- AI risikovurdering (felt "Operasjonstype")
 
-Når mor-avdelingen legger til en sjekkliste (eller annet dokument) på et delt utstyr, lagres bare `equipment.sjekkliste_id` — det er ingen sjekk på om selve sjekkliste-dokumentet er synlig for avdelingen(e). Avdelingen åpner utstyret, klikker «Utfør vedlikehold» → `ChecklistExecutionDialog` får ikke lest dokumentet via RLS → «Kunne ikke laste sjekklisten».
+I dag er begge listene hardkodet (i `AddMissionDialog.tsx` linje 1276–1284 og `RiskAssessmentDialog.tsx` linje 685–691), og de er ikke engang like.
 
-For droner finnes allerede løsningen: `checkDroneResourceVisibility` + `grantMissingVisibility` (i `src/lib/droneVisibilityCheck.ts`) brukt av `DroneDetailDialog` med `ResourceVisibilityWarningDialog`. Vi mangler analog flyt for utstyr.
+## Løsning i hovedtrekk
 
-## Fiks
+1. **Ny tabell `company_mission_types`** i Supabase.
+   - Felter: `company_id`, `label`, `sort_order`, `is_active`.
+   - RLS: SELECT for medlemmer av selskapet og for datterselskaper (via `get_user_visible_company_ids()`); INSERT/UPDATE/DELETE kun admin i eierselskapet.
+   - **Seeding**: engangs-migrasjon legger til dagens fulle hardkodede liste for alle eksisterende selskaper:
+     - Fra oppdragsskjema: Inspeksjon, Kartlegging, Foto/film, Søk og redning, Landbruk, Bygg/anlegg, Forskning.
+     - Fra AI risikovurdering i tillegg: Filming, Levering.
+     - "Annet" er en fast spesialverdi i UI og lagres ikke i tabellen.
+   - Trigger på `INSERT` i `companies` seeder ny selskap med samme standardliste.
 
-### 1. `src/lib/droneVisibilityCheck.ts` — legg til equipment-variant
-Ny funksjon `checkEquipmentResourceVisibility(equipmentId, targetDeptIds)` som ser på utstyrets `sjekkliste_id` (hentes fra `equipment`-raden) og sjekker mot `documents.visible_to_children` + `documents.company_id`. Returnerer samme `MissingVisibility[]`-form (kun `resourceType: "document"` er aktuelt for utstyr i dag). `grantMissingVisibility` håndterer allerede dokumenter via `visible_to_children=true`, så ingen endring der.
+2. **Parent-arv ("Gjelder for alle avdelinger")**
+   - Nytt felt på `companies`: `propagate_mission_types boolean default false`.
+   - Når moderselskap slår dette PÅ:
+     - Datteravdelinger leser fra moderselskapets liste i stedet for sin egen (mønster lik `propagate_currency_requirement` i `useCompanySettings.ts`).
+     - Datteravdelinger får read-only visning av listen i sin egen admin-UI med tydelig banner "Styres av {moderselskap}".
+   - Når PÅ vises også en knapp/checkbox i mor-UI: "Gjelder for alle avdelinger" → setter `propagate_mission_types=true`.
+   - Når AV: hver datteravdeling bruker sin egen liste som før.
+   - Lesehook returnerer alltid effektiv liste (mor sin hvis propagering, ellers egen).
 
-### 2. `src/components/resources/ResourceVisibilityWarningDialog.tsx` — generaliser tekst
-Legg til valgfri prop `resourceLabel?: { singular: string; verb?: string }` (default «dronen» / «deles med»). Brukes kun i `DialogDescription`. Drone-kallene beholder default; utstyr sender `{ singular: "utstyret" }`.
+3. **Ny hook `useCompanyMissionTypes()`**
+   - Henter effektiv liste (med parent-arv-logikk).
+   - Returnerer `{ types: string[], isInherited: boolean, source: 'own'|'parent' }`.
+   - Fallback til hardkodet standardliste hvis tabellen er tom (sikrer at eksisterende selskaper aldri får tom dropdown før migrasjonen kjører).
 
-### 3. `src/components/resources/EquipmentDetailDialog.tsx` — speil drone-flow
-- Importer `checkEquipmentResourceVisibility`, `MissingVisibility`, `ResourceVisibilityWarningDialog`.
-- State: `visibilityWarning` (samme form som i DroneDetailDialog).
-- Helper `getTargetDeptIds()` og `getCurrentEquipmentVisibilityDeptIds()` (les fra `equipment_department_visibility`).
-- I `handleSave`: etter at `equipment` er oppdatert og før `deptVis.saveVisibility()`, kjør `checkEquipmentResourceVisibility(equipment.id, getTargetDeptIds())` når det finnes target-departments. Hvis missing > 0 → vent på brukerens valg via `ResourceVisibilityWarningDialog` (Gjør synlig / Fortsett / Avbryt) før vi kaller `deptVis.saveVisibility()`. Samme mønster som DroneDetailDialog linje 789–816.
-- Render `<ResourceVisibilityWarningDialog>` nederst i JSX, med `departments={deptVis.childDepartments}` og `resourceLabel={{ singular: "utstyret" }}`.
+4. **Admin-UI: ny seksjon "Oppdragstyper"** i selskapsinnstillinger (samme sted som øvrige selskapsinnstillinger). Admin kan:
+   - Legge til, redigere navn, endre rekkefølge (drag eller pilknapper), deaktivere/slette.
+   - I moderselskap: toggle "Gjelder for alle avdelinger".
+   - I datterselskap når propagering er på: read-only liste + banner.
+   - "Annet" vises som fast pseudo-rad nederst (kan ikke fjernes).
 
-### 4. Verifisering
-1. I mor: legg til ny sjekkliste (uten `visible_to_children`) på et utstyr som allerede er delt med en avdeling → ved Lagre vises dialog som tilbyr «Gjør 1 synlig». Velg «Gjør synlig» → sjekkliste-dokument får `visible_to_children=true`.
-2. Bytt til avdelingen → åpne utstyret → «Utfør vedlikehold» → sjekklisten laster (ingen rød feilmelding).
-3. Negativ test: velg «Fortsett uten endring» → sjekkliste forblir usynlig, samme feil reproduseres (forventet).
+5. **Bruk i skjemaer**
+   - `AddMissionDialog.tsx`: hardkodet `<SelectItem>`-liste byttes ut med `.map()` over hookens `types`. "Annet" og "Ikke spesifisert" beholdes som faste items.
+   - `RiskAssessmentDialog.tsx`: hardkodet liste byttes ut tilsvarende. Lagret verdi blir samme label som i oppdrag (norsk tekst, f.eks. "Inspeksjon") i stedet for dagens enum (`inspection`, `mapping`, …). AI-prompten oppdateres til å ta imot fritekst-operasjonstype.
+   - Eksisterende lagrede enum-verdier i risikovurderinger forblir kompatible (vises som-is, vi mapper kun ved nye lagringer).
 
 ## Tekniske detaljer
 
-- Filer: `src/lib/droneVisibilityCheck.ts`, `src/components/resources/ResourceVisibilityWarningDialog.tsx`, `src/components/resources/EquipmentDetailDialog.tsx`.
-- Ingen DB-migrasjon: `grantMissingVisibility` bruker eksisterende `documents.visible_to_children`-felt.
-- Personell og dokumenter ut over `sjekkliste_id` er ikke koblet til utstyr i dagens datamodell, så scope er sjekkliste-dokumentet. Hvis utstyr senere får flere lenkede ressurser (f.eks. drone_documents-analog), kan `checkEquipmentResourceVisibility` utvides.
+**Tabell**
+```sql
+create table public.company_mission_types (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies(id) on delete cascade,
+  label text not null,
+  sort_order int not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (company_id, label)
+);
+alter table public.companies add column propagate_mission_types boolean not null default false;
+```
+Med GRANT til authenticated + service_role, RLS som beskrevet, seed-migrasjon for eksisterende selskaper, og trigger for nye.
+
+**Filer som endres**
+- Migrasjon: ny tabell, nytt selskapsfelt, seed + insert-trigger.
+- Ny: `src/hooks/useCompanyMissionTypes.ts`
+- Ny: `src/components/admin/MissionTypesSection.tsx`
+- Endring: admin-side for selskapsinnstillinger — legge inn `<MissionTypesSection />`.
+- Endring: `src/hooks/useCompanySettings.ts` — inkluder `propagate_mission_types`.
+- Endring: `src/components/dashboard/AddMissionDialog.tsx` (linje 1275–1285).
+- Endring: `src/components/dashboard/RiskAssessmentDialog.tsx` (linje 685–691) + `pilotInputs.operationType` default.
+- Mulig endring: `supabase/functions/ai-risk-assessment` for å akseptere fritekst-operasjonstype.
+
+## Verifisering
+- Admin oppretter ny type "Linjebefaring" → vises i både oppdragsskjema og AI risikovurdering.
+- Eksisterende oppdrag og risikovurderinger beholder lagrede verdier uendret.
+- Moderselskap slår på "Gjelder for alle avdelinger" → datteravdelinger ser samme liste, read-only banner.
+- Moderselskap slår av propagering → datteravdelinger får tilbake egen liste.
+- Sletting av en type fjerner den fra dropdown, men ødelegger ikke historikk.
