@@ -8,16 +8,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { PLANS, ADDONS, type PlanId, type AddonId } from "@/config/subscriptionPlans";
 
 const Priser = () => {
+  const { t } = useTranslation();
   const { user, subscribed, subscriptionLoading, subscriptionPlan, isTrial, stripeExempt } = useAuth();
   const [loading, setLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('grower');
   const [selectedAddons, setSelectedAddons] = useState<AddonId[]>([]);
   const navigate = useNavigate();
 
-  // Allow closing only if user has active subscription, trial, or is stripe exempt
   const canGoBack = subscribed || isTrial || stripeExempt || !user;
 
   const toggleAddon = (id: AddonId) => {
@@ -41,7 +42,7 @@ const Priser = () => {
         window.open(data.url, "_blank");
       }
     } catch (e: any) {
-      toast.error("Kunne ikke starte betaling: " + (e.message || "Ukjent feil"));
+      toast.error(t('pages.pricing.couldNotStartPayment') + (e.message || t('pages.pricing.unknownError')));
     } finally {
       setLoading(false);
     }
@@ -61,15 +62,15 @@ const Priser = () => {
               onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Tilbake
+              {t('pages.pricing.back')}
             </Button>
           )}
           <h1 className="text-3xl font-bold text-foreground">AviSafe Platform</h1>
           <p className="text-muted-foreground">
-            Velg plan og tillegg som passer ditt selskap. Pris per bruker/mnd.
+            {t('pages.pricing.subtitle')}
           </p>
           <div className="inline-flex items-center gap-2 bg-accent/20 text-accent-foreground px-4 py-2 rounded-full text-sm font-medium mt-2">
-            🛰️ SafeSky kartlag og publisering er tilgjengelig på alle abonnementer
+            🛰️ {t('pages.pricing.safeSkyBadge')}
           </div>
         </div>
 
@@ -91,17 +92,17 @@ const Priser = () => {
                 <CardHeader className="text-center pb-2">
                   {plan.highlighted && (
                     <Badge variant="secondary" className="w-fit mx-auto mb-1 text-xs">
-                      Mest populær
+                      {t('pages.pricing.mostPopular')}
                     </Badge>
                   )}
                   {isCurrentPlan && (
                     <Badge className="w-fit mx-auto mb-1 bg-primary/10 text-primary border-primary/20 text-xs">
-                      Din plan
+                      {t('pages.pricing.yourPlan')}
                     </Badge>
                   )}
                   <CardTitle className="text-lg">{plan.name}</CardTitle>
                   <div className="text-3xl font-bold text-foreground">
-                    {plan.price} <span className="text-sm font-normal text-muted-foreground">NOK/bruker/mnd</span>
+                    {plan.price} <span className="text-sm font-normal text-muted-foreground">{t('pages.pricing.perUserMonth')}</span>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -122,7 +123,7 @@ const Priser = () => {
         {/* Addons */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg"><CardTitle className="text-lg">Tilleggsmoduler – 199 NOK/mnd per modul</CardTitle></CardTitle>
+            <CardTitle className="text-lg">{t('pages.pricing.addonsTitle')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -156,15 +157,15 @@ const Priser = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-center sm:text-left">
                 <p className="text-sm text-muted-foreground">
-                  {PLANS.find(p => p.id === selectedPlan)?.name} – {PLANS.find(p => p.id === selectedPlan)?.price} NOK/bruker/mnd
-                  {addonTotal > 0 && ` + ${addonTotal} NOK tillegg/mnd`}
+                  {PLANS.find(p => p.id === selectedPlan)?.name} – {PLANS.find(p => p.id === selectedPlan)?.price} {t('pages.pricing.perUserMonth')}
+                  {addonTotal > 0 && ` ${t('pages.pricing.addonExtra', { amount: addonTotal })}`}
                 </p>
-                <p className="text-xs text-primary font-medium">Inkluderer 5 dagers gratis prøveperiode</p>
+                <p className="text-xs text-primary font-medium">{t('pages.pricing.trialIncluded')}</p>
               </div>
 
               {subscribed ? (
                 <div className="p-3 rounded-md bg-primary/10 border border-primary/20">
-                  <p className="text-sm font-medium text-primary">✓ Du har et aktivt abonnement</p>
+                  <p className="text-sm font-medium text-primary">{t('pages.pricing.activeSubscription')}</p>
                 </div>
               ) : (
                 <Button
@@ -177,7 +178,7 @@ const Priser = () => {
                   ) : (
                     <CreditCard className="h-4 w-4 mr-2" />
                   )}
-                  {user ? "Start abonnement" : "Logg inn for å abonnere"}
+                  {user ? t('pages.pricing.startSubscription') : t('pages.pricing.loginToSubscribe')}
                 </Button>
               )}
             </div>
@@ -186,9 +187,9 @@ const Priser = () => {
 
         {!user && (
           <p className="text-center text-xs text-muted-foreground">
-            Du må ha en konto for å abonnere.{" "}
+            {t('pages.pricing.needAccount')}{" "}
             <button onClick={() => navigate("/auth")} className="underline text-primary">
-              Logg inn / Registrer deg
+              {t('pages.pricing.loginRegister')}
             </button>
           </p>
         )}
