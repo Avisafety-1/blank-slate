@@ -33,7 +33,7 @@ import { OnlineIndicator } from "@/components/OnlineIndicator";
 const Resources = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, loading, companyId } = useAuth();
+  const { user, loading, companyId, isAdmin } = useAuth();
   const terminology = useTerminology();
   const { isOnline } = usePresence();
   const { personnel: personnelWithStatus } = useStatusData();
