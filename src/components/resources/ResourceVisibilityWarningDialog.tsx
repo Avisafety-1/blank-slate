@@ -34,6 +34,7 @@ export const ResourceVisibilityWarningDialog = ({
   departments,
   onContinue,
   onCancel,
+  resourceLabel = "dronen",
 }: Props) => {
   const [working, setWorking] = useState(false);
 
