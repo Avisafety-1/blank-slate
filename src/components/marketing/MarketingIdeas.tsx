@@ -175,7 +175,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
             ) : (
               <Sparkles className="w-4 h-4" />
             )}
-            Generer idéer
+            {t('pages.marketing.generateIdeas')}
           </Button>
         </CardContent>
       </Card>
