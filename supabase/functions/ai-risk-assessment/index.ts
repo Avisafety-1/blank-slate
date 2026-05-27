@@ -1225,6 +1225,8 @@ serve(async (req) => {
     // Normalize airspace warnings (server returns either new schema {z_type,z_name,min_distance,route_inside}
     // or older schema {zone_type,zone_name,distance_meters,is_inside}). Compute deterministic summary.
     const airspaceFacts = (() => {
+      const asLang = resolveLang(language);
+      const asEn = asLang === 'en';
       const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
       const isAtOrBelow120m = Number.isFinite(flightHeightM) && flightHeightM <= 120;
       const fmtDistance = (meters: number) => meters >= 1000
