@@ -1225,6 +1225,8 @@ serve(async (req) => {
     // Normalize airspace warnings (server returns either new schema {z_type,z_name,min_distance,route_inside}
     // or older schema {zone_type,zone_name,distance_meters,is_inside}). Compute deterministic summary.
     const airspaceFacts = (() => {
+      const asLang = resolveLang(language);
+      const asEn = asLang === 'en';
       const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
       const isAtOrBelow120m = Number.isFinite(flightHeightM) && flightHeightM <= 120;
       const fmtDistance = (meters: number) => meters >= 1000
@@ -1257,36 +1259,60 @@ serve(async (req) => {
         // the boundary is a 5 km radius around the airport — 329 m from the
         // boundary means ~5.3 km from the airport itself.
         const distance_kind = 'zone_boundary';
-        let distance_label = `avstand til ${type}-sonens yttergrense`;
+        let distance_label = asEn
+          ? `distance to ${type} zone boundary`
+          : `avstand til ${type}-sonens yttergrense`;
         let description = '';
         if (type === '5KM') {
-          distance_label = 'avstand til 5 km-sonens yttergrense (IKKE avstand til selve flyplassen)';
-          description = inside
-            ? `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`
-            : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» — ${fmtDistance(dist)} utenfor 5 km-sonens yttergrense (≈ ${(5 + dist/1000).toFixed(2)} km fra selve flyplassen). Dette er IKKE «${dist} m fra flyplassen» og IKKE «innenfor 5 km-buffer». Ingen Ninox-godkjenning kreves for denne sonen${isAtOrBelow120m ? ' når flygingen holdes på maks 120 m AGL' : ''}.`;
+          distance_label = asEn
+            ? 'distance to the 5 km zone boundary (NOT distance to the airport itself)'
+            : 'avstand til 5 km-sonens yttergrense (IKKE avstand til selve flyplassen)';
+          if (inside) {
+            description = asEn
+              ? `Mission is INSIDE the 5 km zone around "${name}". Requires Ninox approval. Max 120 m AGL.`
+              : `Oppdraget er INNENFOR 5 km-sonen rundt «${name}». Krever Ninox-godkjenning. Maks 120 m AGL.`;
+          } else {
+            description = asEn
+              ? `Mission is OUTSIDE the 5 km zone around "${name}" — ${fmtDistance(dist)} outside the 5 km zone boundary (≈ ${(5 + dist/1000).toFixed(2)} km from the airport itself). This is NOT "${dist} m from the airport" and NOT "inside the 5 km buffer". No Ninox approval required for this zone${isAtOrBelow120m ? ' as long as the flight stays at max 120 m AGL' : ''}.`
+              : `Oppdraget er UTENFOR 5 km-sonen rundt «${name}» — ${fmtDistance(dist)} utenfor 5 km-sonens yttergrense (≈ ${(5 + dist/1000).toFixed(2)} km fra selve flyplassen). Dette er IKKE «${dist} m fra flyplassen» og IKKE «innenfor 5 km-buffer». Ingen Ninox-godkjenning kreves for denne sonen${isAtOrBelow120m ? ' når flygingen holdes på maks 120 m AGL' : ''}.`;
+          }
         } else if (type === 'CTR' || type === 'TIZ') {
           if (inside) {
             if (!anyInside5km && isAtOrBelow120m) {
-              // CTR/TIZ overlapper, men utenfor 5 km-sonen og maks 120 m AGL:
-              // 100 % lovlig å fly her — ingen ATC-klarering, ingen tårnkontakt.
-              description = `Ruten overlapper ${type}-laget «${name}», men ligger UTENFOR 5 km-sonen rundt tilhørende flyplass. Ved maks 120 m AGL er dette 100 % lovlig å fly — ingen Ninox-godkjenning, ingen ATC-klarering og ingen kontakt med tårnet kreves. Behandles kun som en generell aktsomhets­advarsel: vær oppmerksom på bemannet trafikk i området.`;
+              description = asEn
+                ? `Route overlaps the ${type} layer "${name}", but lies OUTSIDE the 5 km zone around the associated airport. At max 120 m AGL this is 100% legal to fly — no Ninox approval, no ATC clearance and no tower contact required. Treat only as a general awareness warning: watch out for manned traffic in the area.`
+                : `Ruten overlapper ${type}-laget «${name}», men ligger UTENFOR 5 km-sonen rundt tilhørende flyplass. Ved maks 120 m AGL er dette 100 % lovlig å fly — ingen Ninox-godkjenning, ingen ATC-klarering og ingen kontakt med tårnet kreves. Behandles kun som en generell aktsomhets­advarsel: vær oppmerksom på bemannet trafikk i området.`;
             } else if (anyInside5km && isAtOrBelow120m) {
-              description = `Ruten overlapper ${type}-laget «${name}» og ligger innenfor 5 km-sonen til tilhørende flyplass. Krever Ninox-godkjenning. Hold maks 120 m AGL.`;
+              description = asEn
+                ? `Route overlaps the ${type} layer "${name}" and lies inside the 5 km zone of the associated airport. Requires Ninox approval. Stay at max 120 m AGL.`
+                : `Ruten overlapper ${type}-laget «${name}» og ligger innenfor 5 km-sonen til tilhørende flyplass. Krever Ninox-godkjenning. Hold maks 120 m AGL.`;
             } else {
-              description = `Ruten overlapper ${type}-laget «${name}» og planlagt høyde er over 120 m AGL. Avklar krav til klarering/tillatelse før flyging.`;
+              description = asEn
+                ? `Route overlaps the ${type} layer "${name}" and planned altitude exceeds 120 m AGL. Clarify clearance/permission requirements before flight.`
+                : `Ruten overlapper ${type}-laget «${name}» og planlagt høyde er over 120 m AGL. Avklar krav til klarering/tillatelse før flyging.`;
             }
           } else {
-            description = `Oppdraget er UTENFOR ${type} «${name}». Nærmeste avstand til ${type}-sonens yttergrense er ${dist} m. Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
+            description = asEn
+              ? `Mission is OUTSIDE ${type} "${name}". Nearest distance to the ${type} zone boundary is ${dist} m. No ATC clearance required as long as the route stays outside the zone.`
+              : `Oppdraget er UTENFOR ${type} «${name}». Nærmeste avstand til ${type}-sonens yttergrense er ${dist} m. Ingen ATC-klarering kreves så lenge ruten holder seg utenfor sonen.`;
           }
         } else if (type === 'ATZ_5KM') {
-          distance_label = 'avstand til 5 km-sonens yttergrense rundt småflyplassen';
-          description = inside
-            ? `Oppdraget er INNENFOR 5 km-sonen rundt småflyplassen «${name}». Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR (Prior Permission Required). Dette er IKKE en Avinor-aerodrome og krever IKKE Ninox.`
-            : `Oppdraget er UTENFOR 5 km-sonen rundt småflyplassen «${name}» — ${fmtDistance(dist)} utenfor sonegrensen. PPR kreves ikke, men vær oppmerksom på lokal trafikk.`;
+          distance_label = asEn
+            ? 'distance to the 5 km zone boundary around the small airfield'
+            : 'avstand til 5 km-sonens yttergrense rundt småflyplassen';
+          if (inside) {
+            description = asEn
+              ? `Mission is INSIDE the 5 km zone around the small airfield "${name}". Pilot must contact the airfield before flight — check myppr.no for PPR (Prior Permission Required). This is NOT an Avinor aerodrome and does NOT require Ninox.`
+              : `Oppdraget er INNENFOR 5 km-sonen rundt småflyplassen «${name}». Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR (Prior Permission Required). Dette er IKKE en Avinor-aerodrome og krever IKKE Ninox.`;
+          } else {
+            description = asEn
+              ? `Mission is OUTSIDE the 5 km zone around the small airfield "${name}" — ${fmtDistance(dist)} outside the zone boundary. PPR not required, but stay aware of local traffic.`
+              : `Oppdraget er UTENFOR 5 km-sonen rundt småflyplassen «${name}» — ${fmtDistance(dist)} utenfor sonegrensen. PPR kreves ikke, men vær oppmerksom på lokal trafikk.`;
+          }
         } else {
           description = inside
-            ? `Oppdraget er INNENFOR sone ${type} «${name}».`
-            : `Oppdraget er UTENFOR sone ${type} «${name}». Nærmeste avstand til sonegrensen er ${dist} m.`;
+            ? (asEn ? `Mission is INSIDE zone ${type} "${name}".` : `Oppdraget er INNENFOR sone ${type} «${name}».`)
+            : (asEn ? `Mission is OUTSIDE zone ${type} "${name}". Nearest distance to the zone boundary is ${dist} m.` : `Oppdraget er UTENFOR sone ${type} «${name}». Nærmeste avstand til sonegrensen er ${dist} m.`);
         }
         return { type, name, distance: dist, distance_kind, distance_label, inside, severity: w.severity ?? null, description };
       });
@@ -1295,28 +1321,44 @@ serve(async (req) => {
       const requiresNinox = inside5km.length > 0;
       const summaryParts: string[] = [];
       if (requiresNinox) {
-        summaryParts.push(`Oppdraget er innenfor 5 km-sonen rundt ${inside5km.map(w => `«${w.name}»`).join(', ')} og krever Ninox-godkjenning.`);
+        summaryParts.push(asEn
+          ? `Mission is inside the 5 km zone around ${inside5km.map(w => `"${w.name}"`).join(', ')} and requires Ninox approval.`
+          : `Oppdraget er innenfor 5 km-sonen rundt ${inside5km.map(w => `«${w.name}»`).join(', ')} og krever Ninox-godkjenning.`);
       } else {
         const outside5km = mappedWarnings.filter(w => w.type === '5KM' && !w.inside);
         if (outside5km.length > 0) {
-          summaryParts.push(`Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» ≈ ${(5 + w.distance/1000).toFixed(2)} km fra selve flyplassen`).join('; ')}). Ingen Ninox-godkjenning kreves${isAtOrBelow120m ? ' når flygingen holdes på maks 120 m AGL' : ''}.`);
+          summaryParts.push(asEn
+            ? `Mission is OUTSIDE all 5 km zones (${outside5km.map(w => `${w.distance} m outside the 5 km zone boundary around "${w.name}" ≈ ${(5 + w.distance/1000).toFixed(2)} km from the airport itself`).join('; ')}). No Ninox approval required${isAtOrBelow120m ? ' as long as the flight stays at max 120 m AGL' : ''}.`
+            : `Oppdraget er UTENFOR alle 5 km-soner (${outside5km.map(w => `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» ≈ ${(5 + w.distance/1000).toFixed(2)} km fra selve flyplassen`).join('; ')}). Ingen Ninox-godkjenning kreves${isAtOrBelow120m ? ' når flygingen holdes på maks 120 m AGL' : ''}.`);
         } else {
-          summaryParts.push('Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
+          summaryParts.push(asEn
+            ? 'No 5 km zones nearby. No Ninox approval required.'
+            : 'Ingen 5 km-soner i nærheten. Ingen Ninox-godkjenning kreves.');
         }
       }
       if (insideCtr.length > 0) {
-        summaryParts.push(isAtOrBelow120m && !requiresNinox
-          ? `Ruten overlapper kontrollert luftrom (${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}), men ligger utenfor 5 km-sonen. Ved maks 120 m AGL er dette 100 % lovlig — ingen ATC-klarering eller tårnkontakt kreves. Kun en generell aktsomhets­advarsel.`
-          : `Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}. Avklar krav til klarering/tillatelse før flyging.`);
+        if (asEn) {
+          summaryParts.push(isAtOrBelow120m && !requiresNinox
+            ? `Route overlaps controlled airspace (${insideCtr.map(w => `${w.type} "${w.name}"`).join(', ')}), but lies outside the 5 km zone. At max 120 m AGL this is 100% legal — no ATC clearance or tower contact required. Only a general awareness warning.`
+            : `Inside controlled airspace: ${insideCtr.map(w => `${w.type} "${w.name}"`).join(', ')}. Clarify clearance/permission requirements before flight.`);
+        } else {
+          summaryParts.push(isAtOrBelow120m && !requiresNinox
+            ? `Ruten overlapper kontrollert luftrom (${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}), men ligger utenfor 5 km-sonen. Ved maks 120 m AGL er dette 100 % lovlig — ingen ATC-klarering eller tårnkontakt kreves. Kun en generell aktsomhets­advarsel.`
+            : `Innenfor kontrollert luftrom: ${insideCtr.map(w => `${w.type} «${w.name}»`).join(', ')}. Avklar krav til klarering/tillatelse før flyging.`);
+        }
       } else {
         const nearCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && !w.inside);
         if (nearCtr.length > 0) {
-          summaryParts.push(`Utenfor kontrollert luftrom (nærmeste avstand til sonegrense: ${nearCtr.map(w => `${w.type} «${w.name}» ${w.distance} m`).join('; ')}). Ingen ATC-klarering kreves.`);
+          summaryParts.push(asEn
+            ? `Outside controlled airspace (nearest distance to zone boundary: ${nearCtr.map(w => `${w.type} "${w.name}" ${w.distance} m`).join('; ')}). No ATC clearance required.`
+            : `Utenfor kontrollert luftrom (nærmeste avstand til sonegrense: ${nearCtr.map(w => `${w.type} «${w.name}» ${w.distance} m`).join('; ')}). Ingen ATC-klarering kreves.`);
         }
       }
       const insideAtz5km = mappedWarnings.filter(w => w.type === 'ATZ_5KM' && w.inside);
       if (insideAtz5km.length > 0) {
-        summaryParts.push(`Innenfor 5 km-sonen rundt småflyplass(er): ${insideAtz5km.map(w => `«${w.name}»`).join(', ')}. Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR. Krever IKKE Ninox.`);
+        summaryParts.push(asEn
+          ? `Inside the 5 km zone around small airfield(s): ${insideAtz5km.map(w => `"${w.name}"`).join(', ')}. Pilot must contact the airfield before flight — check myppr.no for PPR. Does NOT require Ninox.`
+          : `Innenfor 5 km-sonen rundt småflyplass(er): ${insideAtz5km.map(w => `«${w.name}»`).join(', ')}. Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR. Krever IKKE Ninox.`);
       }
       return {
         warnings: mappedWarnings,
@@ -1756,16 +1798,24 @@ serve(async (req) => {
           aiAnalysis.categories.airspace.factors = aiAnalysis.categories.airspace.factors.map((c: string) => scrubAirportDistanceText(c));
         }
         if (!insideAny5km && fiveKmWarnings.length > 0) {
-          const outsideTexts = fiveKmWarnings.map((w: any) => `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» (≈ ${(5 + w.distance / 1000).toFixed(2)} km fra selve flyplassen)`);
+          const guardEn = resolveLang(language) === 'en';
+          const outsideTexts = fiveKmWarnings.map((w: any) => guardEn
+            ? `${w.distance} m outside the 5 km zone boundary around "${w.name}" (≈ ${(5 + w.distance / 1000).toFixed(2)} km from the airport itself)`
+            : `${w.distance} m utenfor 5 km-sonens yttergrense rundt «${w.name}» (≈ ${(5 + w.distance / 1000).toFixed(2)} km fra selve flyplassen)`);
           aiAnalysis.categories.airspace.factors = [
             ...(Array.isArray(aiAnalysis.categories.airspace.factors) ? aiAnalysis.categories.airspace.factors : []),
-            `Oppdraget er utenfor 5 km-sonen: ${outsideTexts.join('; ')}. Ingen Ninox-godkjenning kreves${lowAltitudeOutside5km ? ' ved maks 120 m AGL' : ''}.`,
+            guardEn
+              ? `Mission is outside the 5 km zone: ${outsideTexts.join('; ')}. No Ninox approval required${lowAltitudeOutside5km ? ' at max 120 m AGL' : ''}.`
+              : `Oppdraget er utenfor 5 km-sonen: ${outsideTexts.join('; ')}. Ingen Ninox-godkjenning kreves${lowAltitudeOutside5km ? ' ved maks 120 m AGL' : ''}.`,
           ];
         }
         if (ctrOverlapIsCautionOnly) {
+          const guardEn = resolveLang(language) === 'en';
           aiAnalysis.categories.airspace.factors = [
             ...(Array.isArray(aiAnalysis.categories.airspace.factors) ? aiAnalysis.categories.airspace.factors : []),
-            `Ruten overlapper kontrollert luftrom (CTR/TIZ), men ligger utenfor 5 km-sonen. Ved maks 120 m AGL er dette 100 % lovlig — ingen ATC-klarering eller tårnkontakt kreves. Behandles kun som aktsomhets­advarsel: vær oppmerksom på bemannet trafikk.`,
+            guardEn
+              ? `Route overlaps controlled airspace (CTR/TIZ), but lies outside the 5 km zone. At max 120 m AGL this is 100% legal — no ATC clearance or tower contact required. Treated only as an awareness warning: watch out for manned traffic.`
+              : `Ruten overlapper kontrollert luftrom (CTR/TIZ), men ligger utenfor 5 km-sonen. Ved maks 120 m AGL er dette 100 % lovlig — ingen ATC-klarering eller tårnkontakt kreves. Behandles kun som aktsomhets­advarsel: vær oppmerksom på bemannet trafikk.`,
           ];
           if (aiAnalysis.categories.airspace.go_decision === 'NO-GO') {
             aiAnalysis.categories.airspace.go_decision = 'BETINGET';
