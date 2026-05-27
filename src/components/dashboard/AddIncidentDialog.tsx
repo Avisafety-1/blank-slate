@@ -805,27 +805,27 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
               {/* Drone */}
               <div className="space-y-1">
-                <Label className="text-sm">Drone</Label>
+                <Label className="text-sm">{t('incidents.drone')}</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                       <span className="truncate">
                         {droneId
-                          ? companyDrones.find(d => d.id === droneId)?.modell || "Ukjent drone"
-                          : "Velg drone..."}
+                          ? companyDrones.find(d => d.id === droneId)?.modell || t('incidents.unknownDrone')
+                          : t('incidents.selectDrone')}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Søk drone..." />
+                      <CommandInput placeholder={t('incidents.searchDrone')} />
                       <CommandList>
-                        <CommandEmpty>Ingen droner funnet.</CommandEmpty>
+                        <CommandEmpty>{t('incidents.noDronesFound')}</CommandEmpty>
                         <CommandGroup>
                           <CommandItem value="__none__" onSelect={() => setDroneId(null)}>
                             <Check className={cn("mr-2 h-4 w-4", !droneId ? "opacity-100" : "opacity-0")} />
-                            Ingen
+                            {t('common.none')}
                           </CommandItem>
                           {companyDrones.map((drone) => (
                             <CommandItem
@@ -843,6 +843,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   </PopoverContent>
                 </Popover>
               </div>
+
 
               {/* Utstyr – multi-select */}
               <div className="space-y-1">
