@@ -751,7 +751,7 @@ const Resources = () => {
                     return true;
                 }).length === 0 && (equipmentSearch || equipmentTypeFilter !== "alle" || equipmentStatusFilter !== "alle") && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen treff med valgte filtre
+                    {t('resources.noResultsFiltered')}
                   </p>
                 )}
                 {equipment.length === 0 && dronetags.length === 0 && !equipmentSearch && equipmentTypeFilter === "alle" && equipmentStatusFilter === "alle" && (
