@@ -291,9 +291,9 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
       <Dialog open={props.exportPdfDialogOpen} onOpenChange={props.setExportPdfDialogOpen}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Eksporter oppdragsrapport</DialogTitle>
+            <DialogTitle>{t("oppdragDialogs.exportTitle")}</DialogTitle>
             <DialogDescription>
-              Velg hvilke seksjoner som skal inkluderes i PDF-rapporten for «{props.exportPdfMission?.tittel}».
+              {t("oppdragDialogs.exportDesc", { title: props.exportPdfMission?.tittel })}
             </DialogDescription>
           </DialogHeader>
 
