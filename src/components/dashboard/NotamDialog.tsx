@@ -224,15 +224,15 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const contactAvailabilityNote = useMemo(() => {
     if (scheduleType === "daterange") {
       if (startDate && endDate) {
-        return `Telefonnummeret skal være døgnbemannet fra ${formatDateNotam(startDate)} kl. 00:00 til ${formatDateNotam(endDate)} kl. 23:59.`;
+        return t('dashboard.notam.phoneCoverage24h', { from: formatDateNotam(startDate), to: formatDateNotam(endDate) });
       }
-      return "Telefonnummeret skal være døgnbemannet i hele perioden.";
+      return t('dashboard.notam.phoneCoverage24hNoDates');
     }
     // daily
     const sorted = ALL_DAYS.filter((d) => scheduleDays.includes(d));
     if (sorted.length > 0) {
       let dayStr: string;
-      if (sorted.length === 7) dayStr = "alle dager";
+      if (sorted.length === 7) dayStr = t('dashboard.notam.allDays');
       else if (sorted.length >= 2) {
         const indices = sorted.map((d) => ALL_DAYS.indexOf(d));
         const isConsecutive = indices.every((v, i) => i === 0 || v === indices[i - 1] + 1);
@@ -240,10 +240,10 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       } else {
         dayStr = sorted[0];
       }
-      return `Telefonnummeret skal være bemannet ${dayStr} kl. ${timeFrom}-${timeTo}.`;
+      return t('dashboard.notam.phoneCoverageDaily', { days: dayStr, from: timeFrom, to: timeTo });
     }
     return null;
-  }, [scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate]);
+  }, [scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, t]);
 
   // UPPER AMSL = ground elevation (m) -> ft + AGL, rounded up to nearest 50 ft
   const upperAmslFt = useMemo(() => {
