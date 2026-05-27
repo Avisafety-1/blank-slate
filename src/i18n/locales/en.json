@@ -518,6 +518,21 @@
     "selectResponsible": "Select responsible...",
     "searchPerson": "Search person...",
     "reportAnonymously": "Report anonymously",
+    "reportAnonymously": "Report anonymously",
+    "anonymousNote": "Your name will not be shown on the report.",
+    "anonymousCompanyNote": "This report is submitted anonymously (company setting).",
+    "resourcesOptional": "Resources (optional)",
+    "unknownDrone": "Unknown drone",
+    "selectDrone": "Select drone...",
+    "selectEquipment": "Select equipment...",
+    "noEquipmentRegisteredShort": "No equipment registered.",
+    "selectedCount": "{{count}} selected",
+    "noResponsible": "No responsible",
+    "addImage": "Add image",
+    "saving": "Saving...",
+    "reporting": "Reporting...",
+    "saveChanges": "Save changes",
+    "report": "Report",
     "statusValues": {
       "Åpen": "Open",
       "Under behandling": "Under investigation",
@@ -525,6 +540,7 @@
       "Lukket": "Closed"
     }
   },
+
 
   "profile": {
     "title": "My profile",
