@@ -254,17 +254,17 @@ export const MissionStatusDropdown = ({
       <AlertDialog open={postFlightDialogOpen} onOpenChange={setPostFlightDialogOpen}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Post flight sjekkliste</AlertDialogTitle>
+            <AlertDialogTitle>{t('dashboard.missions.postFlightChecklistTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Dronen(e) på dette oppdraget har en post flight sjekkliste. Vil du utføre den nå eller senere?
+              {t('dashboard.missions.postFlightChecklistDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button variant="outline" onClick={handleExecuteLater}>
-              Utfør senere
+              {t('dashboard.missions.executeLater')}
             </Button>
             <Button onClick={handleExecuteNow}>
-              Utfør nå
+              {t('dashboard.missions.executeNow')}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
