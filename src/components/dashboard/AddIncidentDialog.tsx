@@ -42,7 +42,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const { companyId } = useAuth();
   const companySettings = useCompanySettings();
   const { canAccess } = usePlanGating();
+  const { t } = useTranslation();
   const globalAnonymous = companySettings.hide_reporter_identity;
+
 
   // Block opening if plan doesn't include incidents
   useEffect(() => {
