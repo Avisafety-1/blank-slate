@@ -58,6 +58,7 @@ interface PersonnelLogEntry {
 }
 
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
+  const { t } = useTranslation();
   const { user, companyId } = useAuth();
   const { isAdmin } = useRoleCheck();
   const queryClient = useQueryClient();
