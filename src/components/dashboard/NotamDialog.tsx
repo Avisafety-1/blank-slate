@@ -483,7 +483,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           {/* Radius & height */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Radius (NM)</Label>
+              <Label>{t('dashboard.notam.radiusNm')}</Label>
               <Input
                 type="number"
                 step="0.1"
