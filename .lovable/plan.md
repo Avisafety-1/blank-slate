@@ -1,52 +1,37 @@
-## Status fra loggene
+## Mål
+Gjøre 2FA-innlogging på mobil enklere ved å støtte autofyll, lim-inn fra utklippstavle, og snarvei til authenticator-app — uten å endre selve MFA-flyten eller backend.
 
-Ja, opplastingen din fungerte. Job `5939e4df…` ble fullført på **7.4 s** (download 810 ms, parser 6251 ms, normalize 25 ms, insert 290 ms), og worker bootet kun **~1 s etter** at `ardupilot-enqueue` kjørte. Fire-and-forget-triggeren fungerer altså allerede, men UX-en signaliserer "lagt i kø, vent" som skaper inntrykk av forsinkelse. Cron-jobben (hver 2. minutt) er bare en backstop hvis fire-and-forget skulle feile.
+## Endringer i `src/components/MfaChallengeDialog.tsx`
 
-## Hva som skal endres
+### OTP-inputfelt
+- Sette `autoComplete="one-time-code"`, `inputMode="numeric"`, `pattern="[0-9]*"` på OTP-feltet/slotsene. Dette aktiverer autofyll-forslag fra iOS Nøkler, Google Password Manager, 1Password, Bitwarden m.fl.
 
-### 1. ArduPilot-spesifikke toasts og oppdragstitler
+### Hjelpetekst
+- Liten muted-tekst under OTP: "Tips: lim inn koden eller bruk autofyll fra passordmanageren din."
 
-- I `UploadDroneLogDialog.tsx`:
-  - Erstatt enkelttoasten "Logg lagt i kø…" med en ArduPilot-spesifikk melding:
-    "ArduPilot-logg lastet opp. Behandling startet – dukker opp under 'Ventende flylogger' om noen sekunder."
-  - Bulk-flyt: skille tekst per filtype (ArduPilot vs DJI) i sluttoppsummeringen og i `droneModel`-feltet (bruk filnavnet i stedet for "ArduPilot (i kø)").
-  - "Flylogg oppdatert med DJI-data!" (linje 1766) → bruk samme `source === 'ardupilot'` mønster som linje 1840 (`ArduPilot`/`DJI`).
-  - Pass på at `result.source` faktisk er satt når en pending log lastes inn fra DB (sett `(result as any).source = 'ardupilot'` hvis `pendingLog.parsed_result.source === 'ardupilot'` eller `source_file_type === 'ardupilot'`). Dette sikrer at oppdragstittel og notater bruker "ArduPilot-flylogg …" i alle tre handlerne (`handleUpdateExisting`, `handleCreateNew`, `handleLinkToMission`).
+### "Lim inn kode"-knapp
+- Vises alltid (over Avbryt/Bekreft).
+- Klikk:
+  1. `await navigator.clipboard.readText()` i try/catch.
+  2. Ved feil/avslag: `toast.error("Kunne ikke lese fra utklippstavlen. Lim inn koden manuelt.")`.
+  3. Ved suksess: regex `/\d{6}/` for å finne første 6-sifrede tall (etter at mellomrom er fjernet). Hvis ingen treff: `toast.error("Fant ingen 6-sifret kode i utklippstavlen.")`.
+  4. Sett `code`-state til de 6 sifrene. Eksisterende `useEffect` auto-verifiserer som før.
 
-- I `PendingDjiLogsSection.tsx`:
-  - Vis "ArduPilot" som type-badge når raden har `source_file_type === 'ardupilot'` eller `parsed_result.source === 'ardupilot'` (i dag står det implisitt DJI).
-  - ArduPilot-spesifikke feilmeldingstekster der `error_code` ikke gir mening for ArduPilot (rate_limit/login_failed/download_failed er DJI-spesifikke).
-  - Selve seksjonstittelen "Ventende flylogger fra auto-sync" beholdes – den dekker begge.
+### "Åpne authenticator-app"-knapp
+- Best-effort. Kun synlig på touch-enheter: `window.matchMedia('(pointer: coarse)').matches`.
+- Klikk: forsøk å åpne kjente schemes via skjult `<a>`/`window.location.href`:
+  - Android (`navigator.userAgent` inneholder `Android`): `intent://#Intent;scheme=otpauth;package=com.google.android.apps.authenticator2;end`
+  - Ellers/iOS: prøv `googleauthenticator://` først.
+- Etter ~800 ms (hvis siden fortsatt er fokusert / dokumentet synlig), vis rolig hint:
+  `toast("Fant ingen authenticator-app. Bytt til appen manuelt og kom tilbake hit.")`.
+- Ingen feilmelding hvis appen faktisk åpner (dokumentet mister fokus → vi hopper over hintet).
 
-### 2. Umiddelbar prosessering ved enkeltopplasting
-
-Fire-and-forget-trigger fungerer allerede (loggene bekrefter det), men gjør den mer robust og synlig for brukeren:
-
-- I `UploadDroneLogDialog.tsx`:
-  - Etter et vellykket `ardupilot-enqueue`-kall, åpne dialogen i en "behandler…"-tilstand i stedet for å lukke. Poll `pending_dji_logs` på `dji_log_id = 'ardu:<storage_path>'` (eller `ardupilot_parse_jobs.id`) hvert 1.5 s i opptil 30 s.
-  - Når raden dukker opp: lukk dialogen, vis toast "ArduPilot-logg klar til behandling – velg den i listen", og kall `pendingLogsRef.current?.refresh()`.
-  - Hvis polling timer ut: vis toast "Loggen ligger i kø og blir behandlet i bakgrunnen (sjekk igjen om kort tid)" og lukk dialogen.
-  - Bulk-flyt beholder dagens fire-and-forget oppførsel uten polling (for å unngå at brukeren venter på N filer i UI).
-
-- I `ardupilot-enqueue/index.ts`:
-  - Behold fire-and-forget, men logg eksplisitt om `CRON_SHARED_SECRET` mangler (`console.warn`) slik at vi ser hvis triggeren stille blir hoppet over.
-  - Returner `{ job_id, status, syntheticLogId }` slik at frontend vet hvilken `pending_dji_logs.dji_log_id` den skal polle på.
-
-### 3. Ikke endringer
-
-- Cron-jobben (hvert 2. minutt) beholdes som backstop – den er ikke det som behandler enkeltopplastinger normalt.
-- Worker-arkitektur, batch size, retry-logikk, RLS og storage-policies forblir uendret.
-- DJI-flyten røres ikke.
-
-## Tekniske detaljer
-
-- Polling-nøkkel: bruk `dji_log_id = 'ardu:' + storage_path` (allerede satt av worker) – matcher entydig.
-- `syntheticLogId` returneres fra `ardupilot-enqueue` for å unngå at frontend må gjenta path-konstruksjonen.
-- Eksisterende `(result as any)?.source === 'ardupilot'`-mønster brukes konsekvent; vi setter `source` på `result` rett etter at det leses fra `pendingLog.parsed_result`.
-- Ingen DB-migrasjoner. Ingen endring i `_shared/ardupilot-normalize.ts`. Ingen endring i `ardupilot-sync-worker`.
+## Det vi *ikke* gjør
+- Ingen backend-endringer.
+- Ingen endring i Supabase MFA-flyten (`mfa.challenge` / `mfa.verify` uberørt).
+- Ingen endring i `TwoFactorSetup.tsx`.
+- Ingen lagring av TOTP-koder eller secrets i appen.
+- Ingen auto-submit før koden er validert som nøyaktig 6 siffer (eksisterende logikk beholdes).
 
 ## Filer som endres
-
-- `src/components/UploadDroneLogDialog.tsx` (toast-tekster, polling etter enqueue, sett `result.source`)
-- `src/components/PendingDjiLogsSection.tsx` (ArduPilot-badge + feilmeldingsmapping)
-- `supabase/functions/ardupilot-enqueue/index.ts` (logge manglende cron-secret, returnere `syntheticLogId`)
+- `src/components/MfaChallengeDialog.tsx` (kun denne).
