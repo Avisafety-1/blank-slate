@@ -52,7 +52,8 @@ export function PersonCompetencyDialog({
   person: initialPerson,
   onCompetencyUpdated,
 }: PersonCompetencyDialogProps) {
-  const { companyId, isAdmin } = useAuth();
+  const { companyId, isAdmin, user } = useAuth();
+  const canEdit = isAdmin || (!!user && !!initialPerson && user.id === initialPerson.id);
   const [person, setPerson] = useState<Person | null>(initialPerson);
   
   const [editingId, setEditingId] = useState<string | null>(null);
