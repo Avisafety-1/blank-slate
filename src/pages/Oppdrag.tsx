@@ -18,6 +18,7 @@ import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { NotamDialog } from "@/components/dashboard/NotamDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 type Mission = any;
 
@@ -27,6 +28,8 @@ const Oppdrag = () => {
   const data = useOppdragData();
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
+  const { t } = useTranslation();
+
 
   // Search/filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -304,7 +307,7 @@ const Oppdrag = () => {
   if (data.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-foreground">Laster...</p>
+        <p className="text-foreground">{t('common.loading')}</p>
       </div>
     );
   }
@@ -325,7 +328,7 @@ const Oppdrag = () => {
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl sm:text-4xl font-bold text-foreground">Oppdrag</h1>
+              <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{t('pages.missions.title')}</h1>
             </div>
 
             <OppdragFilterBar

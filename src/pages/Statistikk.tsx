@@ -24,6 +24,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import droneBackground from "@/assets/drone-background.png";
+import { useTranslation } from "react-i18next";
+
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -79,6 +81,8 @@ const formatMonth = (m: string) => {
 const Statistikk = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, isSuperAdmin, companyName } = useAuth();
+  const { t } = useTranslation();
+
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [excludeAvisafe, setExcludeAvisafe] = useState(true);
@@ -144,7 +148,7 @@ const Statistikk = () => {
             <div className="flex items-center gap-2 min-w-0">
               <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0 flex-shrink-0 sm:h-auto sm:w-auto sm:px-3">
                 <ArrowLeft className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Tilbake</span>
+                <span className="hidden sm:inline">{t('pages.stats.back')}</span>
               </Button>
               <h1 className="text-base sm:text-xl font-bold text-foreground truncate">
                 Plattformstatistikk
@@ -165,7 +169,7 @@ const Statistikk = () => {
 
         <main className="container mx-auto px-4 py-6 space-y-6">
           {loading ? (
-            <div className="text-center py-20 text-muted-foreground">Laster statistikk...</div>
+            <div className="text-center py-20 text-muted-foreground">{t('pages.stats.loading')}</div>
           ) : stats ? (
             <>
               {/* Activity Log */}
@@ -188,29 +192,30 @@ const Statistikk = () => {
                 <GlassCard className="text-center">
                   <Shield className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold text-foreground">{stats.metrics.safeskyRate}%</div>
-                  <div className="text-xs text-muted-foreground">SafeSky-bruk</div>
+                  <div className="text-xs text-muted-foreground">{t('pages.stats.safeSkyUsage')}</div>
                 </GlassCard>
                 <GlassCard className="text-center">
                   <CheckCircle className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold text-foreground">{stats.metrics.checklistRate}%</div>
-                  <div className="text-xs text-muted-foreground">Sjekkliste-rate</div>
+                  <div className="text-xs text-muted-foreground">{t('pages.stats.checklistRate')}</div>
                 </GlassCard>
                 <GlassCard className="text-center">
                   <Clock className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold text-foreground">{stats.metrics.avgFlightMinutes} min</div>
-                  <div className="text-xs text-muted-foreground">Snitt flytid</div>
+                  <div className="text-xs text-muted-foreground">{t('pages.stats.avgFlightTime')}</div>
                 </GlassCard>
                 <GlassCard className="text-center">
                   <Activity className="w-5 h-5 mx-auto mb-1 text-primary" />
                   <div className="text-xl font-bold text-foreground">{stats.metrics.incidentFrequency}</div>
-                  <div className="text-xs text-muted-foreground">Hendelser/100 flytimer</div>
+                  <div className="text-xs text-muted-foreground">{t('pages.stats.incidentsPer100h')}</div>
                 </GlassCard>
+
               </div>
 
               {/* Charts row 1 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Flyturer per måned</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.flightsPerMonth')}</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={stats.trends.flightsPerMonth}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -223,7 +228,7 @@ const Statistikk = () => {
                 </GlassCard>
 
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Flytid per måned (timer)</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.flightTimePerMonth')}</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <LineChart data={stats.trends.flightHoursPerMonth}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -239,7 +244,7 @@ const Statistikk = () => {
               {/* Charts row 2 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Hendelser per måned</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.incidentsPerMonth')}</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={stats.trends.incidentsPerMonth}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -252,7 +257,7 @@ const Statistikk = () => {
                 </GlassCard>
 
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Risikovurderinger per måned</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.riskAssessmentsPerMonth')}</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={stats.trends.riskAssessmentsPerMonth}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -267,7 +272,7 @@ const Statistikk = () => {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Nye brukere per måned</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.newUsersPerMonth')}</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <LineChart data={stats.trends.usersPerMonth}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -283,7 +288,7 @@ const Statistikk = () => {
               {/* Charts row 3 - Pie charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Hendelser per alvorlighetsgrad</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.incidentsBySeverity')}</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
@@ -305,7 +310,7 @@ const Statistikk = () => {
                 </GlassCard>
 
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Oppdrag per status</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.missionsByStatus')}</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
@@ -330,7 +335,7 @@ const Statistikk = () => {
               {/* Charts row 4 - Top companies */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Top 10 selskaper – flytimer</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.top10CompaniesHours')}</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={stats.rankings.topCompaniesByHours} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -343,7 +348,7 @@ const Statistikk = () => {
                 </GlassCard>
 
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Top 10 selskaper – oppdrag</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.top10CompaniesMissions')}</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={stats.rankings.topCompaniesByMissions} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
