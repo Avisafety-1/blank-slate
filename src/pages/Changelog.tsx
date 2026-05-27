@@ -280,12 +280,12 @@ const Changelog = () => {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <CardTitle className="text-lg">Endringslogg</CardTitle>
+            <CardTitle className="text-lg">{t("changelog.changelogTitle")}</CardTitle>
             <div className="flex items-center gap-1 flex-wrap">
               <div className="relative flex-1 min-w-0 sm:flex-none">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Søk..."
+                  placeholder={t("changelog.search")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 w-full sm:w-[160px] text-xs pl-7"
@@ -297,14 +297,14 @@ const Changelog = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="created_at">Opprettet dato</SelectItem>
-                  <SelectItem value="status">Status</SelectItem>
-                  <SelectItem value="completed_at">Utført dato</SelectItem>
+                  <SelectItem value="created_at">{t("changelog.sort.created")}</SelectItem>
+                  <SelectItem value="status">{t("changelog.sort.status")}</SelectItem>
+                  <SelectItem value="completed_at">{t("changelog.sort.completed")}</SelectItem>
                 </SelectContent>
               </Select>
               {isSuperAdmin && (
                 <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => openEntryDialog()}>
-                  <Plus className="w-4 h-4 mr-1" /> Legg til
+                  <Plus className="w-4 h-4 mr-1" /> {t("changelog.addBtn")}
                 </Button>
               )}
             </div>
@@ -312,7 +312,7 @@ const Changelog = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           {entries.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">Ingen oppføringer ennå</p>
+            <p className="text-sm text-muted-foreground text-center py-8">{t("changelog.noEntries")}</p>
           )}
           {[...entries].filter((e) => {
             if (!searchQuery.trim()) return true;
