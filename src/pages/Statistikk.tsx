@@ -169,7 +169,7 @@ const Statistikk = () => {
 
         <main className="container mx-auto px-4 py-6 space-y-6">
           {loading ? (
-            <div className="text-center py-20 text-muted-foreground">Laster statistikk...</div>
+            <div className="text-center py-20 text-muted-foreground">{t('pages.stats.loading')}</div>
           ) : stats ? (
             <>
               {/* Activity Log */}
