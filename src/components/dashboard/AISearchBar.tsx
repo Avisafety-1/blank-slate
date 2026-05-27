@@ -309,7 +309,7 @@ export const AISearchBar = () => {
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-muted-foreground" />
               <Label htmlFor="search-mode" className="text-xs text-muted-foreground whitespace-nowrap">
-                Internt søk
+                {t('dashboard.search.internalSearch')}
               </Label>
               <Switch
                 id="search-mode"
