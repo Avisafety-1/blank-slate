@@ -461,7 +461,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           {/* Coordinates */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Breddegrad (lat)</Label>
+              <Label>{t('dashboard.notam.latitude')}</Label>
               <Input
                 type="number"
                 step="any"
