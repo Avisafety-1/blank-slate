@@ -588,7 +588,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
             if (approverError) {
               console.error('Error checking approvers:', approverError);
-              toast.error('Kunne ikke sjekke godkjennere');
+              toast.error(t('dashboard.missions.couldNotCheckApprovers'));
               setApprovalConfirmOpen(false);
               return;
             }
