@@ -148,7 +148,7 @@ export const MarketingVisuals = () => {
                 </div>
               </div>
               <div className="p-3 space-y-1">
-                <p className="text-sm font-medium text-foreground truncate">{item.title || "Uten tittel"}</p>
+                <p className="text-sm font-medium text-foreground truncate">{item.title || t('pages.marketing.untitled')}</p>
                 <div className="flex gap-1.5">
                   <Badge variant="outline" className="text-[10px]">{item.source_type}</Badge>
                   <Badge variant="outline" className="text-[10px]">{item.image_format}</Badge>
