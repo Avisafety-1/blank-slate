@@ -806,15 +806,17 @@ const Resources = () => {
                   <Users className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-semibold">{t('resources.personnel')}</h2>
                 </div>
-                <Button
-                  data-tour="resources-personnel-add"
-                  onClick={() => setPersonnelDialogOpen(true)}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  {t('resources.addCompetency')}
-                </Button>
+                {isAdmin && (
+                  <Button
+                    data-tour="resources-personnel-add"
+                    onClick={() => setPersonnelDialogOpen(true)}
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {t('resources.addCompetency')}
+                  </Button>
+                )}
               </div>
               
               {/* Search field */}
