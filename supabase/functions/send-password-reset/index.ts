@@ -55,7 +55,7 @@ serve(async (req: Request): Promise<Response> => {
     const actionUrl = new URL(data.properties.action_link);
     const tokenHash = actionUrl.searchParams.get("token") || actionUrl.searchParams.get("token_hash");
     if (!tokenHash) throw new Error("Kunne ikke ekstrahere token fra lenke");
-    const resetLink = `https://login.avisafe.no/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`;
+    const resetLink = `https://app.avisafe.no/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`;
 
     const templateResult = await getEmailTemplateWithFallback(profile.company_id, 'password_reset', { user_name: profile.full_name || '', reset_link: resetLink, company_name: company?.navn || 'AviSafe' });
 
