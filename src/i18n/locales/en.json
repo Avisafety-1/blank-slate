@@ -970,5 +970,97 @@
     "authenticate": "Authenticate",
     "loginError": "Biometric login failed.",
     "noPasskeysForEmail": "No passkeys found for this email address."
+  },
+  "pages": {
+    "missions": { "title": "Missions" },
+    "incidents": {
+      "title": "Incidents",
+      "searchPlaceholder": "Search incidents...",
+      "loadingIncidents": "Loading incidents...",
+      "noIncidentsReported": "No incidents reported yet",
+      "noComments": "No comments yet",
+      "settings": "Settings",
+      "status": "Status:",
+      "lastAttempt": "Last attempt:",
+      "attempt": "Attempt:",
+      "exportToEccairs": "Export to ECCAIRS",
+      "confirmEccairsSubmit": "Confirm submission to ECCAIRS",
+      "eccairsDraftHint": "E2 cannot provide a direct link for OR drafts. Opening portal – search for the E2 ID.",
+      "couldNotOpenEccairs": "Could not open in ECCAIRS"
+    },
+    "documents": {
+      "title": "Documents",
+      "newChecklist": "New checklist",
+      "newFolder": "New folder",
+      "newDocument": "New document"
+    },
+    "calendar": {
+      "monthlyView": "Monthly overview",
+      "resourceCalendar": "Resource calendar",
+      "synchronize": "Synchronize",
+      "addEntry": "Add entry",
+      "colorLegend": "Color legend",
+      "mission": "Mission",
+      "incident": "Incident",
+      "document": "Document",
+      "maintenance": "Maintenance",
+      "news": "News",
+      "other": "Other",
+      "titleLabel": "Title",
+      "titlePlaceholderShort": "Write title...",
+      "type": "Type",
+      "dateTime": "Date and time",
+      "pickDate": "Pick a date",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Optional description...",
+      "titleRequired": "Title is required",
+      "mustBeLoggedIn": "You must be logged in",
+      "entrySaved": "Calendar entry saved",
+      "couldNotSaveEntry": "Could not save entry",
+      "confirmMaintenance": "Confirm maintenance",
+      "cancel": "Cancel",
+      "eventTypes": {
+        "Oppdrag": "Mission",
+        "Vedlikehold": "Maintenance",
+        "Møte": "Meeting",
+        "Annet": "Other"
+      }
+    },
+    "map": {
+      "planRoute": "Plan flight route",
+      "checkNotamTitle": "Check NOTAM (opens ippc.no)",
+      "sensorPermitTitle": "Application for flying with sensor in sensor-restricted zones (NSM)",
+      "clickToPlacePilot": "Click on the map to place pilot position",
+      "removePilot": "Remove pilot position",
+      "clickOnMap": "Click on the map...",
+      "placePilot": "Place pilot",
+      "undo": "Undo",
+      "reset": "Reset",
+      "cancel": "Cancel",
+      "save": "Save",
+      "buffer": "Buffer",
+      "soraVolume": "SORA volume",
+      "adjacent": "Adjacent",
+      "closeAdjacent": "Close adjacent area",
+      "trafficDataProvidedBy": "Traffic data provided by"
+    },
+    "stats": {
+      "back": "Back",
+      "loading": "Loading statistics...",
+      "safeSkyUsage": "SafeSky usage",
+      "checklistRate": "Checklist rate",
+      "avgFlightTime": "Avg flight time",
+      "incidentsPer100h": "Incidents/100 flight hours",
+      "flightsPerMonth": "Flights per month",
+      "flightTimePerMonth": "Flight time per month (hours)",
+      "incidentsPerMonth": "Incidents per month",
+      "riskAssessmentsPerMonth": "Risk assessments per month",
+      "newUsersPerMonth": "New users per month",
+      "incidentsBySeverity": "Incidents by severity",
+      "missionsByStatus": "Missions by status",
+      "top10CompaniesHours": "Top 10 companies – flight hours",
+      "top10CompaniesMissions": "Top 10 companies – missions"
+    }
   }
 }
+
