@@ -302,22 +302,30 @@ const distanceToSegmentMeters = (p: RouteCoord, a: RouteCoord, b: RouteCoord): n
   return Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
 };
 
-const nearestRouteDriver = (p: RouteCoord, route: RouteCoord[]): string => {
-  if (route.length === 0) return 'innenfor operasjonens fotavtrykk';
-  if (route.length === 1) return 'nær rutepunkt P1';
-  let best = { distance: Infinity, label: 'innenfor operasjonens fotavtrykk' };
+const nearestRouteDriver = (p: RouteCoord, route: RouteCoord[], lang: Lang = 'no'): string => {
+  const en = lang === 'en';
+  const fallback = en ? 'within the operation footprint' : 'innenfor operasjonens fotavtrykk';
+  const nearPoint = (n: number) => en ? `near route point P${n}` : `nær rutepunkt P${n}`;
+  const nearSeg = (a: number, b: number) => en ? `near segment P${a}–P${b}` : `nær segment P${a}–P${b}`;
+  const suffix = (dist: number) => en
+    ? ` (${dist} m from SSB cell centre)`
+    : ` (${dist} m fra senter av SSB-ruten)`;
+
+  if (route.length === 0) return fallback;
+  if (route.length === 1) return nearPoint(1);
+  let best = { distance: Infinity, label: fallback };
   route.forEach((point, index) => {
     const d = distanceMeters(p, point);
-    if (d < best.distance) best = { distance: d, label: `nær rutepunkt P${index + 1}` };
+    if (d < best.distance) best = { distance: d, label: nearPoint(index + 1) };
   });
   for (let i = 0; i < route.length - 1; i++) {
     const d = distanceToSegmentMeters(p, route[i], route[i + 1]);
-    if (d < best.distance) best = { distance: d, label: `nær segment P${i + 1}–P${i + 2}` };
+    if (d < best.distance) best = { distance: d, label: nearSeg(i + 1, i + 2) };
   }
-  return `${best.label} (${Math.round(best.distance)} m fra senter av SSB-ruten)`;
+  return `${best.label}${suffix(Math.round(best.distance))}`;
 };
 
-async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBufferM: number) {
+async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBufferM: number, lang: Lang = 'no') {
   if (route.length < 2) return null;
 
   const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
@@ -367,7 +375,10 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
   const totalPopulation = overlapping.reduce((sum, cell) => sum + cell.population, 0);
   const maxDensity = maxCell.population * 16;
   const avgDensity = totalPopulation / Math.max(overlapping.length * 0.0625, 0.0625);
-  const driver = nearestRouteDriver(maxCell.centroid, route);
+  const driver = nearestRouteDriver(maxCell.centroid, route, lang);
+
+  const en = lang === 'en';
+  const fmt = (v: number, d = 0) => formatLocaleNumber(v, d, lang);
 
   return {
     maxDensity,
@@ -376,10 +387,16 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
     maxCellPopulation: maxCell.population,
     totalPopulation,
     gridResolutionM: 250,
-    dataSource: 'SSB befolkning på rutenett 250 m (2025)',
-    method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
-    calculation: `${formatNbNumber(maxCell.population)} personer i dimensjonerende 250 m-rute × 16 = ${formatNbNumber(Math.round(maxDensity))} personer/km²`,
-    footprintDescription: `Planlagt rute + Flight Geography + Contingency + Ground Risk Buffer (${formatNbNumber(Math.round(footprintBufferM))} m fra ruten).`,
+    dataSource: en ? 'SSB population on 250 m grid (2025)' : 'SSB befolkning på rutenett 250 m (2025)',
+    method: en
+      ? 'Highest overlapping 250 m cell is multiplied by 16 to obtain people/km².'
+      : 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+    calculation: en
+      ? `${fmt(maxCell.population)} people in dimensioning 250 m cell × 16 = ${fmt(Math.round(maxDensity))} people/km²`
+      : `${fmt(maxCell.population)} personer i dimensjonerende 250 m-rute × 16 = ${fmt(Math.round(maxDensity))} personer/km²`,
+    footprintDescription: en
+      ? `Planned route + Flight Geography + Contingency + Ground Risk Buffer (${fmt(Math.round(footprintBufferM))} m from route).`
+      : `Planlagt rute + Flight Geography + Contingency + Ground Risk Buffer (${fmt(Math.round(footprintBufferM))} m fra ruten).`,
     driver,
     driverCoordinate: maxCell.centroid,
   };
