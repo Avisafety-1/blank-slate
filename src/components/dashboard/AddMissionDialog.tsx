@@ -1612,7 +1612,7 @@ export const AddMissionDialog = ({
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0">
                 <Command>
-                  <CommandInput placeholder={`Søk ${terminology.vehicleLower}...`} />
+                  <CommandInput placeholder={`${t('common.search') || 'Search'} ${terminology.vehicleLower}...`} />
                   <CommandList>
                     <CommandEmpty>{terminology.noVehicles}.</CommandEmpty>
                     <CommandGroup>
