@@ -462,7 +462,7 @@ export default function KartPage() {
       setIsPlacingPilot(false);
     } else {
       setIsPlacingPilot(true);
-      toast.info("Klikk på kartet for å plassere pilotposisjon");
+      toast.info(t('pages.map.clickToPlacePilot'));
     }
   };
 
@@ -581,7 +581,7 @@ export default function KartPage() {
                     size="sm"
                     onClick={handleOpenNotam}
                     className="h-8 px-1.5 text-[10px]"
-                    title="Sjekk NOTAM (åpner ippc.no)"
+                    title={t('pages.map.checkNotamTitle')}
                   >
                     IPPC
                   </Button>
@@ -591,7 +591,7 @@ export default function KartPage() {
                     size="sm"
                     onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
                     className="h-8 px-1.5 text-[10px]"
-                    title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
+                    title={t('pages.map.sensorPermitTitle')}
                   >
                     Sensor
                   </Button>
@@ -667,7 +667,7 @@ export default function KartPage() {
                     size="sm"
                     onClick={pilotPosition ? handleRemovePilot : handleTogglePilotPlacement}
                     className={cn("h-8 px-2", isPlacingPilot && "animate-pulse")}
-                    title={pilotPosition ? "Fjern pilotposisjon" : isPlacingPilot ? "Klikk på kartet..." : "Plasser pilot"}
+                    title={pilotPosition ? t('pages.map.removePilot') : isPlacingPilot ? t('pages.map.clickOnMap') : t('pages.map.placePilot')}
                   >
                     <MapPin className="h-4 w-4" />
                   </Button>
@@ -794,7 +794,7 @@ export default function KartPage() {
                 size="sm"
                 onClick={handleOpenNotam}
                 className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
-                title="Sjekk NOTAM (åpner ippc.no)"
+                title={t('pages.map.checkNotamTitle')}
               >
                 IPPC
               </Button>
@@ -804,7 +804,7 @@ export default function KartPage() {
                 size="sm"
                 onClick={() => window.open('https://registrering.sensor.nsm.cloudgis.no/', '_blank')}
                 className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
-                title="Søknad om flyging med sensor i sensorforbudssoner (NSM)"
+                title={t('pages.map.sensorPermitTitle')}
               >
                 Sensor
               </Button>
@@ -830,7 +830,7 @@ export default function KartPage() {
                   "h-8 px-2 sm:px-3",
                   isPlacingPilot && "animate-pulse"
                 )}
-                title={pilotPosition ? "Fjern pilotposisjon" : isPlacingPilot ? "Klikk på kartet..." : "Plasser pilot"}
+                title={pilotPosition ? t('pages.map.removePilot') : isPlacingPilot ? t('pages.map.clickOnMap') : t('pages.map.placePilot')}
               >
                 <MapPin className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">
@@ -932,7 +932,7 @@ export default function KartPage() {
                       : adjacentResult.requiredContainment === "Medium"
                         ? "text-amber-600 dark:text-amber-400"
                         : "text-red-600 dark:text-red-400"
-                )}>Tilstøtende</span>
+                )}>{t('pages.map.adjacent')}</span>
                 <Switch
                   checked={showAdjacentArea}
                   onCheckedChange={(checked) => {
@@ -1020,7 +1020,7 @@ export default function KartPage() {
             <button
               onClick={() => setAdjacentOpen(false)}
               className="absolute top-2 right-2 z-10 p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Lukk tilstøtende område"
+              aria-label={t('pages.map.closeAdjacent')}
             >
               <X className="h-4 w-4" />
             </button>
