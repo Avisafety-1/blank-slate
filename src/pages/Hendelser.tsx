@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -142,6 +143,7 @@ const getEccairsStatusClass = (status?: string): string => {
 };
 
 const Hendelser = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading, companyId, parentCompanyId, departmentsEnabled, isAdmin } = useAuth();
@@ -920,7 +922,7 @@ const Hendelser = () => {
       <div className="relative z-10 w-full">
         <main className="container mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2 text-secondary-foreground">Hendelser</h1>
+            <h1 className="text-4xl font-bold mb-2 text-secondary-foreground">{t('pages.incidents.title')}</h1>
           </div>
 
           <GlassCard className="mb-6">
@@ -928,7 +930,7 @@ const Hendelser = () => {
               <div className="relative flex-1" data-tour="hendelser-search">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input 
-                  placeholder="Søk i hendelser..." 
+                  placeholder={t('pages.incidents.searchPlaceholder')} 
                   value={searchQuery} 
                   onChange={e => setSearchQuery(e.target.value)} 
                   className="pl-9" 
@@ -937,7 +939,7 @@ const Hendelser = () => {
               
               <Button onClick={() => setAddDialogOpen(true)} className="gap-2" data-tour="hendelser-add">
                 <Plus className="w-4 h-4" />
-                Legg til hendelse
+                {t('incidents.addIncident', 'Legg til hendelse')}
               </Button>
             </div>
 
@@ -957,14 +959,14 @@ const Hendelser = () => {
 
           {loading ? (
             <GlassCard>
-              <p className="text-center text-muted-foreground py-8">Laster hendelser...</p>
+              <p className="text-center text-muted-foreground py-8">{t('pages.incidents.loadingIncidents')}</p>
             </GlassCard>
           ) : filteredIncidents.length === 0 ? (
             <GlassCard>
               <p className="text-center text-muted-foreground py-8">
                 {searchQuery || selectedStatus !== "Alle" 
-                  ? "Ingen hendelser funnet med valgte filtre" 
-                  : "Ingen hendelser rapportert ennå"}
+                  ? t('incidents.noIncidentsFound', 'Ingen hendelser funnet med valgte filtre') 
+                  : t('pages.incidents.noIncidentsReported')}
               </p>
             </GlassCard>
           ) : (
