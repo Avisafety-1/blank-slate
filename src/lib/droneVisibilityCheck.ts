@@ -35,6 +35,43 @@ export async function checkDroneResourceVisibility(
 
   const missing: MissingVisibility[] = [];
 
+  // 0. Checklist columns directly on the drone (sjekkliste_id, operations_checklist_ids, post_flight_checklist_id)
+  const { data: droneRow } = await (supabase as any)
+    .from("drones")
+    .select("sjekkliste_id, operations_checklist_ids, post_flight_checklist_id")
+    .eq("id", droneId)
+    .maybeSingle();
+
+  const checklistIds = new Set<string>();
+  if (droneRow?.sjekkliste_id) checklistIds.add(droneRow.sjekkliste_id);
+  if (droneRow?.post_flight_checklist_id) checklistIds.add(droneRow.post_flight_checklist_id);
+  for (const id of droneRow?.operations_checklist_ids || []) {
+    if (id) checklistIds.add(id);
+  }
+
+  if (checklistIds.size > 0) {
+    const { data: checklistDocs } = await (supabase as any)
+      .from("documents")
+      .select("id, tittel, company_id, visible_to_children")
+      .in("id", Array.from(checklistIds));
+
+    for (const doc of checklistDocs || []) {
+      const visibleEverywhere = !!doc.visible_to_children;
+      const missingFor = visibleEverywhere
+        ? []
+        : targetDeptIds.filter((d) => d !== doc.company_id);
+      if (missingFor.length > 0) {
+        missing.push({
+          resourceType: "document",
+          resourceId: doc.id,
+          resourceName: doc.tittel || "Uten tittel",
+          resourceCompanyId: doc.company_id,
+          missingDeptIds: missingFor,
+        });
+      }
+    }
+  }
+
   // 1. Documents
   const { data: docLinks } = await (supabase as any)
     .from("drone_documents")
