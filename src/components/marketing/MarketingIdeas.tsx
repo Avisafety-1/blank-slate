@@ -24,6 +24,7 @@ interface Props {
 }
 
 export const MarketingIdeas = ({ onNavigate }: Props) => {
+  const { t } = useTranslation();
   const { companyId, user } = useAuth();
   const queryClient = useQueryClient();
   const [topic, setTopic] = useState("");
