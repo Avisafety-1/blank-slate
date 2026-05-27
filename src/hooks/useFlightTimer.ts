@@ -133,50 +133,51 @@ export const useFlightTimer = () => {
     prevPositionRef.current = null;
   }, []);
 
-  // Check for active flight on mount
-  // DATABASE IS SOURCE OF TRUTH - localStorage is only for performance optimization
-  useEffect(() => {
-    const checkActiveFlight = async () => {
-      if (!user) return;
+  // Check for active flight - DATABASE IS SOURCE OF TRUTH
+  // localStorage is only for performance optimization
+  const checkActiveFlight = useCallback(async () => {
+    if (!user) return;
 
-      // Clean up legacy non-user-specific keys
-      LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
+    // Clean up legacy non-user-specific keys
+    LEGACY_KEYS.forEach(key => localStorage.removeItem(key));
 
-      // User-specific localStorage keys
-      const userStorageKey = getStorageKey(user.id);
-      const userMissionKey = getMissionKey(user.id);
-      const userPublishModeKey = getPublishModeKey(user.id);
-      const userChecklistsKey = getChecklistsKey(user.id);
+    // User-specific localStorage keys
+    const userStorageKey = getStorageKey(user.id);
+    const userMissionKey = getMissionKey(user.id);
+    const userPublishModeKey = getPublishModeKey(user.id);
+    const userChecklistsKey = getChecklistsKey(user.id);
 
-      // DATABASE IS SOURCE OF TRUTH - check database first
-      const { data: dbFlight, error } = await supabase
-        .from('active_flights')
-        .select('*')
-        .eq('profile_id', user.id)
-        .maybeSingle();
+    const { data: dbFlight, error } = await supabase
+      .from('active_flights')
+      .select('*')
+      .eq('profile_id', user.id)
+      .maybeSingle();
 
-      if (error) {
-        console.error('Error checking active flight:', error);
-        return;
+    if (error) {
+      console.error('Error checking active flight:', error);
+      return;
+    }
+
+    if (dbFlight) {
+      const startTime = new Date(dbFlight.start_time);
+      const publishMode = (dbFlight.publish_mode as PublishMode) || 'none';
+      const localChecklists = JSON.parse(localStorage.getItem(userChecklistsKey) || '[]') as string[];
+
+      localStorage.setItem(userStorageKey, startTime.toISOString());
+      if (dbFlight.mission_id) {
+        localStorage.setItem(userMissionKey, dbFlight.mission_id);
+      } else {
+        localStorage.removeItem(userMissionKey);
       }
+      localStorage.setItem(userPublishModeKey, publishMode);
 
-      if (dbFlight) {
-        // Active flight exists in database - sync to localStorage and use it
-        const startTime = new Date(dbFlight.start_time);
-        const publishMode = (dbFlight.publish_mode as PublishMode) || 'none';
-        const localChecklists = JSON.parse(localStorage.getItem(userChecklistsKey) || '[]') as string[];
-
-        // Sync database state to localStorage
-        localStorage.setItem(userStorageKey, startTime.toISOString());
-        if (dbFlight.mission_id) {
-          localStorage.setItem(userMissionKey, dbFlight.mission_id);
-        } else {
-          localStorage.removeItem(userMissionKey);
+      const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
+      setState(prev => {
+        // Only restart GPS if we are newly becoming active
+        if (!prev.isActive && (publishMode === 'live_uav' || publishMode === 'none')) {
+          startGpsWatch();
         }
-        localStorage.setItem(userPublishModeKey, publishMode);
-
-        const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
-        setState({
+        return {
           isActive: true,
           startTime,
           elapsedSeconds: elapsed,
@@ -184,21 +185,22 @@ export const useFlightTimer = () => {
           publishMode,
           completedChecklistIds: localChecklists,
           dronetagDeviceId: dbFlight.dronetag_device_id || null,
-        });
+        };
+      });
+    } else {
+      // NO active flight in database - clear any stale localStorage data
+      localStorage.removeItem(userStorageKey);
+      localStorage.removeItem(userMissionKey);
+      localStorage.removeItem(userPublishModeKey);
+      localStorage.removeItem(userChecklistsKey);
 
-        // Restart GPS watch if in live_uav or none mode
-        if (publishMode === 'live_uav' || publishMode === 'none') {
-          startGpsWatch();
+      setState(prev => {
+        if (prev.isActive) {
+          // We thought we were active but DB says no - stop GPS and notify
+          stopGpsWatch();
+          console.log('useFlightTimer: stale active flight cleared via resync');
         }
-      } else {
-        // NO active flight in database - clear any stale localStorage data
-        localStorage.removeItem(userStorageKey);
-        localStorage.removeItem(userMissionKey);
-        localStorage.removeItem(userPublishModeKey);
-        localStorage.removeItem(userChecklistsKey);
-
-        // Ensure state is reset
-        setState({
+        return {
           isActive: false,
           startTime: null,
           elapsedSeconds: 0,
@@ -206,12 +208,49 @@ export const useFlightTimer = () => {
           publishMode: 'none',
           completedChecklistIds: [],
           dronetagDeviceId: null,
-        });
+        };
+      });
+    }
+  }, [user, startGpsWatch, stopGpsWatch]);
+
+  // Initial check on mount / user change
+  useEffect(() => {
+    checkActiveFlight();
+  }, [checkActiveFlight]);
+
+  // Resync on visibility / online events and via realtime DELETE
+  useEffect(() => {
+    if (!user) return;
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkActiveFlight();
       }
     };
+    const onOnline = () => checkActiveFlight();
 
-    checkActiveFlight();
-  }, [user, startGpsWatch]);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('online', onOnline);
+
+    // Listen for DELETE on our own active_flights row (e.g. another tab/device ended the flight)
+    const channel = supabase
+      .channel(`active_flights_self_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'active_flights', filter: `profile_id=eq.${user.id}` },
+        () => {
+          console.log('useFlightTimer: realtime DELETE on own active_flights, resyncing');
+          checkActiveFlight();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('online', onOnline);
+      supabase.removeChannel(channel);
+    };
+  }, [user, checkActiveFlight]);
 
   // NOTE: Live UAV refresh interval removed - no longer publishing to SafeSky for live_uav mode
   // Backend cron job handles beacon fetching for DroneTag telemetry
