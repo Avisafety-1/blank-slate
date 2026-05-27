@@ -579,11 +579,11 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Fra kl. (UTC)</Label>
+                  <Label>{t('dashboard.notam.fromTimeUtc')}</Label>
                   <Input value={timeFrom} onChange={(e) => setTimeFrom(e.target.value)} placeholder="0800" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Til kl. (UTC)</Label>
+                  <Label>{t('dashboard.notam.toTimeUtc')}</Label>
                   <Input value={timeTo} onChange={(e) => setTimeTo(e.target.value)} placeholder="1600" />
                 </div>
               </div>
