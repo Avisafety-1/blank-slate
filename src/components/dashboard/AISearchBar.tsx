@@ -317,7 +317,7 @@ export const AISearchBar = () => {
                 onCheckedChange={handleModeChange}
               />
               <Bot className={`h-4 w-4 ${searchMode === "regulations" ? "text-primary" : "text-muted-foreground"}`} />
-              <Label className="text-xs text-muted-foreground whitespace-nowrap">(regelverkssøk)</Label>
+              <Label className="text-xs text-muted-foreground whitespace-nowrap">{t('dashboard.search.regulationsSearch')}</Label>
             </div>
           </div>
           <div className="flex gap-2">
