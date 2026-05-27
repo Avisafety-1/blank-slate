@@ -1242,6 +1242,23 @@
       "selectBlockHint": "Select a block to edit",
       "noBroadcastsYet": "No newsletters sent yet",
       "sent": "Sent"
+    },
+    "subscriptionGate": {
+      "expiredTitle": "Subscription expired",
+      "trialTitle": "Try AviSafe free for 5 days",
+      "expiredDescription": "Your subscription is no longer active. Pick a plan to continue.",
+      "trialDescription": "Start your free trial — no payment until after 5 days.",
+      "priceSuffix": "NOK/user/month",
+      "addonPriceSuffix": "NOK/month",
+      "openingCheckout": "Opening checkout…",
+      "renew": "Renew subscription",
+      "startTrial": "Start free trial",
+      "opening": "Opening…",
+      "managePortal": "Manage subscription",
+      "signOut": "Sign out",
+      "checkoutFailed": "Could not start checkout: ",
+      "portalFailed": "Could not open customer portal: ",
+      "unknownError": "Unknown error"
     }
   }
 }

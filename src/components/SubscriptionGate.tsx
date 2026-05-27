@@ -6,10 +6,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CreditCard, Clock, LogOut, Rocket, Settings, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PLANS, ADDONS, type PlanId, type AddonId } from "@/config/subscriptionPlans";
 
 export const SubscriptionGate = ({ children }: { children: React.ReactNode }) => {
   const { user, isApproved, profileLoaded, subscribed, subscriptionLoading, isSuperAdmin, stripeExempt, hadPreviousSubscription, authRefreshing, signOut } = useAuth();
+  const { t } = useTranslation();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('grower');
@@ -31,7 +33,7 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
       if (error) throw error;
       if (data?.url) window.open(data.url, '_blank');
     } catch (e: any) {
-      toast.error('Kunne ikke starte betaling: ' + (e.message || 'Ukjent feil'));
+      toast.error(t('subscriptionGate.checkoutFailed') + (e.message || t('subscriptionGate.unknownError')));
     } finally {
       setCheckoutLoading(false);
     }
@@ -44,7 +46,7 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
       if (error) throw error;
       if (data?.url) window.open(data.url, '_blank');
     } catch (e: any) {
-      toast.error('Kunne ikke åpne kundeportal: ' + (e.message || 'Ukjent feil'));
+      toast.error(t('subscriptionGate.portalFailed') + (e.message || t('subscriptionGate.unknownError')));
     } finally {
       setPortalLoading(false);
     }
@@ -72,12 +74,12 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
             )}
           </div>
           <h2 className="text-xl font-bold">
-            {isReturning ? 'Abonnementet er utløpt' : 'Prøv AviSafe gratis i 5 dager'}
+            {isReturning ? t('subscriptionGate.expiredTitle') : t('subscriptionGate.trialTitle')}
           </h2>
           <p className="text-sm text-muted-foreground">
             {isReturning
-              ? 'Ditt abonnement er ikke lenger aktivt. Velg en plan for å fortsette.'
-              : 'Start din gratis prøveperiode — ingen betaling før etter 5 dager.'}
+              ? t('subscriptionGate.expiredDescription')
+              : t('subscriptionGate.trialDescription')}
           </p>
         </div>
 
@@ -96,7 +98,7 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
                 <CardHeader className="text-center pb-2 pt-4">
                   <CardTitle className="text-base">{plan.name}</CardTitle>
                   <div className="text-2xl font-bold">
-                    {plan.price} <span className="text-xs font-normal text-muted-foreground">NOK/bruker/mnd</span>
+                    {plan.price} <span className="text-xs font-normal text-muted-foreground">{t('subscriptionGate.priceSuffix')}</span>
                   </div>
                 </CardHeader>
                 <CardContent className="pb-4">
@@ -130,7 +132,7 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
                 onCheckedChange={() => toggleAddon(addon.id)}
               />
               <div>
-                <p className="font-medium text-xs"><p className="font-medium text-xs">{addon.name} – {addon.price} NOK/mnd</p></p>
+                <p className="font-medium text-xs">{addon.name} – {addon.price} {t('subscriptionGate.addonPriceSuffix')}</p>
                 <p className="text-xs text-muted-foreground">{addon.description}</p>
               </div>
             </label>
@@ -142,21 +144,21 @@ export const SubscriptionGate = ({ children }: { children: React.ReactNode }) =>
           <Button onClick={handleCheckout} disabled={checkoutLoading} className="w-full max-w-sm" size="lg">
             <CreditCard className="h-4 w-4 mr-2" />
             {checkoutLoading
-              ? 'Åpner betaling…'
+              ? t('subscriptionGate.openingCheckout')
               : isReturning
-                ? 'Forny abonnement'
-                : 'Start gratis prøveperiode'}
+                ? t('subscriptionGate.renew')
+                : t('subscriptionGate.startTrial')}
           </Button>
           {isReturning && (
             <Button variant="outline" onClick={handlePortal} disabled={portalLoading} className="w-full max-w-sm" size="sm">
               <Settings className="h-4 w-4 mr-2" />
-              {portalLoading ? 'Åpner…' : 'Administrer abonnement'}
+              {portalLoading ? t('subscriptionGate.opening') : t('subscriptionGate.managePortal')}
             </Button>
           )}
           <div>
             <Button variant="ghost" size="sm" onClick={signOut} className="text-muted-foreground">
               <LogOut className="h-4 w-4 mr-2" />
-              Logg ut
+              {t('subscriptionGate.signOut')}
             </Button>
           </div>
         </div>
