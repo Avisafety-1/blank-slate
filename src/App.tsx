@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DomainGuard } from "@/components/DomainGuard";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
+import { MfaGate } from "@/components/MfaGate";
 import { Header } from "@/components/Header";
 import { KeyboardDismissButton } from "@/components/KeyboardDismissButton";
 import { OfflineBanner } from "@/components/OfflineBanner";
