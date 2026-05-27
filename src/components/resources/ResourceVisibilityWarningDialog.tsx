@@ -81,8 +81,8 @@ export const ResourceVisibilityWarningDialog = ({
             Manglende synlighet for tilknyttede ressurser
           </DialogTitle>
           <DialogDescription>
-            Følgende ressurser er tilknyttet dronen, men er ikke synlige for alle avdelingene
-            dronen deles med. Du kan gjøre dem synlige automatisk eller fortsette uten endring.
+            Følgende ressurser er tilknyttet {resourceLabel}, men er ikke synlige for alle avdelingene
+            {" "}{resourceLabel} deles med. Du kan gjøre dem synlige automatisk eller fortsette uten endring.
           </DialogDescription>
         </DialogHeader>
 
