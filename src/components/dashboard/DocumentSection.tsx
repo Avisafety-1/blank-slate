@@ -236,7 +236,7 @@ export const DocumentSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       )}
                       <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
                         <span className="px-1.5 sm:px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] sm:text-xs">
-                          {doc.kategori}
+                          {translateDocCategory(doc.kategori)}
                         </span>
                         <span>v{doc.versjon}</span>
                       </div>
