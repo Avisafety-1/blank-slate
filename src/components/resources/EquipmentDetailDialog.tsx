@@ -20,6 +20,8 @@ import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, Sh
 import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
+import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
+import { checkEquipmentResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
 import { getStatusColorClasses, calculateUsageStatus, calculateEquipmentMaintenanceStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
