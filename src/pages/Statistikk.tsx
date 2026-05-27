@@ -24,6 +24,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import droneBackground from "@/assets/drone-background.png";
+import { useTranslation } from "react-i18next";
+
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
