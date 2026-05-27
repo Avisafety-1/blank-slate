@@ -19,6 +19,7 @@ import safeskyLogo from "@/assets/safesky-logo.png";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { pickBestDroneCatalogMatch } from "@/lib/droneCatalog";
+import { useTranslation } from "react-i18next";
 
 interface RoutePlanningState {
   mode: "routePlanning";
@@ -34,6 +35,7 @@ interface RoutePlanningState {
 }
 
 export default function KartPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading, companyId } = useAuth();
