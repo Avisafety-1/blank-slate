@@ -832,10 +832,10 @@ const Resources = () => {
               <div data-tour="resources-personnel-filters" className="flex gap-2 mb-4">
                 <Select value={personnelRoleFilter} onValueChange={setPersonnelRoleFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Rolle" />
+                    <SelectValue placeholder={t('resources.filterRole')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle roller</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAllRoles')}</SelectItem>
                     {uniquePersonnelRoles.map(r => (
                       <SelectItem key={r} value={r}>{r}</SelectItem>
                     ))}
@@ -843,13 +843,13 @@ const Resources = () => {
                 </Select>
                 <Select value={personnelStatusFilter} onValueChange={setPersonnelStatusFilter}>
                   <SelectTrigger className="h-8 text-xs w-[100px]">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t('resources.filterStatus')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle</SelectItem>
-                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
-                    <SelectItem value="Gul">🟡 Gul</SelectItem>
-                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAll')}</SelectItem>
+                    <SelectItem value="Grønn">🟢 {t('resources.statusGreen')}</SelectItem>
+                    <SelectItem value="Gul">🟡 {t('resources.statusYellow')}</SelectItem>
+                    <SelectItem value="Rød">🔴 {t('resources.statusRed')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
