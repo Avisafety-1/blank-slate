@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 
 import { ChevronDown, AlertTriangle, Zap, Plane } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -63,28 +64,25 @@ interface CatalogSpecs {
   standard_takeoff_weight_kg: number | null;
 }
 
-const SORA_HELP = {
-  cd: "Characteristic Dimension: største relevante dimensjon på dronen.",
-  v0: "V0: maksimal bakkehastighet, inkludert vindbidrag.",
-  tr: "tR: tiden fra avvik oppdages til korrigerende handling starter.",
-  ham: "HAM: altimetry error, høydefeil i målingen.",
-  sgnss: "SGNSS: GNSS-feil i horisontal posisjon.",
-  spos: "SPos: position hold error, posisjonsavvik ved hold/automatisering.",
-  smap: "SMap: map error, kart-/geodatafeil.",
-  sr: "SR: reaction distance = V0 × tR.",
-  scm: "SCM: contingency maneuver distance, horisontal manøvreringsavstand.",
-  hr: "HR: vertical reaction, vertikal høydeendring i reaksjonstiden.",
-  hcm: "HCM: vertical maneuver, vertikal høydeendring under manøver.",
-  hcv: "HCV: total contingency volume ceiling, maksimal beregnet høyde.",
-  grb: "GRB/SGRB: Ground Risk Buffer, ekstra bakke-risikobuffer utenfor contingency area.",
-  tp: "tP: deployment time for fallskjerm eller FTS.",
-} as const;
+// Help strings are now driven by t() — see useSoraHelp() inside component.
 
 const FieldHint = ({ children }: { children: string }) => (
   <p className="text-[10px] leading-snug text-muted-foreground">{children}</p>
 );
 
 export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initialDroneId, open: controlledOpen, onOpenChange, showPopulationDensity = true, onShowPopulationDensityChange, populationDensityResult, populationDensityLoading = false }: SoraSettingsPanelProps) {
+  const { t } = useTranslation();
+  const SORA_HELP = {
+    cd: t("soraPanel.helpCd"),
+    v0: t("soraPanel.helpV0"),
+    tr: t("soraPanel.helpTr"),
+    ham: t("soraPanel.helpHam"),
+    sgnss: t("soraPanel.helpSgnss"),
+    spos: t("soraPanel.helpSpos"),
+    smap: t("soraPanel.helpSmap"),
+    grb: t("soraPanel.helpGrb"),
+    tp: t("soraPanel.helpTp"),
+  };
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;

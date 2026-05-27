@@ -1,134 +1,74 @@
-# Plan: Fortsette i18n-migrasjon til engelsk
+# Plan: 80% engelsk-dekning – kritisk brukerflyt først
 
-Infrastrukturen er allerede på plass (`i18next`, `useTranslation`, `getFixedT`, `useTerminology`, scan-script, README med konvensjoner, `pdf`-namespace opprettet). Gjenstår: **191 filer, 1793 linjer** med hardkodet norsk. Vi tar dette i bølger – ikke i én stor PR.
+Vi forlater den filtette bølge-for-bølge tilnærmingen og prioriterer etter **brukerverdi**. Mål: en engelsk bruker skal kunne logge inn, navigere, jobbe med oppdrag/hendelser/dokumenter/SORA, og motta kundevendt output (PDF, e-post, AI-svar) på engelsk. Små admin-paneler og sjeldne dialoger kan stå på norsk inntil videre (fallback `no` fanger dem opp).
 
-## Prinsipper (fra `src/i18n/README.md`)
+## Fase 0 – Fullfør forrige batch (rydding)
 
-- Behold eksisterende nøkler urørt – aldri rename/flytt.
-- `fallbackLng: 'no'` – uoversatte nøkler vises på norsk, aldri tomt.
-- Bruk `useTranslation()` i React, `getFixedT(lang, ns)` utenfor React (PDF, edge functions).
-- Bruk `useTerminology()` for drone/luftfartøy-terminologi.
-- Nytt namespace **kun** når en modul har >~50 strenger eller lever utenfor React.
-- Edge functions: lokale `prompts.no.ts`/`prompts.en.ts` per function – ingen frontend-import.
+Lukker det som ble påbegynt så vi ikke etterlater halvferdige filer:
+- `src/components/oppdrag/dialogs/OppdragDialogs.tsx` – ferdigstille PDF-eksport-dialog, sjekkliste-kobling, risiko-prompt.
+- `src/components/SoraSettingsPanel.tsx` – 14 strenger.
+- `src/components/FlightLogbookDialog.tsx` – 8 strenger.
 
-## Bølger
+Leveres som én batch, så er bordet rent.
 
-Hver bølge = én PR-størrelse, kan leveres uavhengig. Etter hver bølge kjøres `bun scripts/i18n-scan.ts` og preview QA-es på både `no` og `en`.
+## Fase 1 – Kritisk brukerflyt (UI brukeren ser hver dag)
 
-### Bølge 1 – Toppinnhold i `translation` (kjerne-UI)
-Filer fra topp 20 i scan som hører hjemme i hovednamespacet:
-- `src/pages/Status.tsx` (59)
-- `src/components/resources/DroneDetailDialog.tsx` (54)
-- `src/components/UploadDroneLogDialog.tsx` (53)
-- `src/components/ProfileDialog.tsx` (47)
-- `src/components/resources/EquipmentDetailDialog.tsx` (26)
-- `src/components/resources/PersonCompetencyDialog.tsx` (25)
+Rekkefølge etter hvor brukeren først møter appen:
 
-Nøkler legges under eksisterende toppnivå (`profile.*`, `resources.*`, `status.*`).
+1. **Auth-flyt** – `src/pages/Auth.tsx`, `src/pages/ResetPassword.tsx`, `src/components/PasswordRequirements.tsx`, `src/components/MfaChallengeDialog.tsx`, `src/components/PasskeyPromptDialog.tsx`, `SubscriptionGate.tsx`.
+2. **Navigasjon/header** – `src/components/Header.tsx`, `CompanySwitcher.tsx`, `NavLink.tsx`, `PendingApprovalsBadge.tsx`, `OfflineBanner.tsx`, `ForceReloadBanner.tsx`, `IdleTimeoutWarning.tsx`.
+3. **Dashboard** – alle filer under `src/components/dashboard/` (RiskAssessmentDialog, AirspaceWarnings, SoraAnalysisDialog, AddMissionDialog, IncidentDetailDialog, MissionMapPreview, DocumentDetailDialog, DocumentSection) + `src/pages/Index.tsx`.
+4. **Oppdrag** – `src/pages/Oppdrag.tsx`, `src/components/oppdrag/*` (MissionCard, OppdragFilterBar, AirspaceConflictWarning, ChecklistBadges), `src/hooks/useOppdragData.ts`, `LogFlightTimeDialog.tsx`, `StartFlightDialog.tsx`, `UploadDroneLogDialog.tsx`.
+5. **Hendelser** – `src/pages/Hendelser.tsx`, `DeviationReportDialog.tsx`, `IncidentDetailDialog` (om ikke dekket i dashboard).
+6. **Dokumenter** – `src/pages/Documents.tsx`, alle `src/components/documents/*`.
+7. **SORA / Risiko** – `src/pages/SoraProcess.tsx`, `SoraSettingsPanel.tsx` (hvis ikke gjort i fase 0), `RiskAssessmentDialog`, `lib/soraGeometry.ts`-meldinger som vises i UI.
+8. **Brukerinnstillinger** – `ProfileDialog.tsx`, `TwoFactorSetup.tsx`, `PasskeySetup.tsx`, `SignatureDrawerDialog.tsx`.
 
-### Bølge 2 – Admin-modul (eget `admin`-namespace)
-Admin har mye tekst som ikke deles med øvrig UI – kandidat for eget namespace.
-- `src/components/admin/EmailTemplateEditor.tsx` (60)
-- `src/components/admin/ChildCompaniesSection.tsx` (54)
-- `src/components/admin/RevenueCalculator.tsx` (38)
-- `src/components/admin/TrainingCourseEditor.tsx` (31)
-- `src/components/admin/CompanySoraConfigSection.tsx` (30)
-- `src/components/admin/CompanyManagementSection.tsx` (18)
-- `src/pages/Admin.tsx` (20)
-- `src/components/admin/TrainingSection.tsx` (13)
-- Resterende admin-filer fra scan-rapporten
+Nøkler legges under eksisterende toppnivå (`auth.*`, `dashboard.*`, `missions.*`, `incidents.*`, `documents.*`, `sora.*`, `profile.*`). Ingen nye namespaces i denne fasen.
 
-Oppretter `src/i18n/locales/{no,en}/admin.json` og registrerer i `src/i18n/index.ts`.
+## Fase 2 – Kundevendt output
 
-### Bølge 3 – Guided tours (eget `tours`-namespace)
-Tours er selvstendig domene med 100+ strenger samlet.
-- `src/tours/resourcesTour.ts` (39)
-- `src/tours/adminTour.ts` (34)
-- `src/tours/incidentReportTour.ts` (22)
-- `src/tours/missionCreationTour.ts` (18)
-- `src/tours/dashboardWidgetsTour.ts` (14)
-- `src/tours/startFlightTour.ts` (10)
-- + resterende tours
+Dette ser kunden/mottakeren, ikke nødvendigvis brukeren:
 
-Tour-definisjoner kalles utenfor React → bruk `getFixedT('no'|'en', 'tours')`.
+1. **PDF-eksport** – `src/lib/oppdragPdfExport.ts`, `riskAssessmentPdfExport.ts`, `incidentPdfExport.ts`, `userManualPdf.ts`, `flightTrackExport.ts`. Mønster: `getFixedT(language, 'pdf')`. Utvider `src/i18n/locales/{no,en}/pdf.json`.
+2. **E-post** – `src/lib/notifications.ts` + alle edge functions som sender e-post (`send-notification-email`, `send-incident-email`, etc.). Mal-tekster lokaliseres via `language`-param fra frontend.
+3. **AI-svar / prompts** – per edge function: `supabase/functions/<name>/prompts.ts` med `getPrompts(language)`. Prioritet: `ai-risk-assessment`, `ai-search`, `ai-marketing-*`, `eccairs-*`.
+4. **Eksport/print** – `icsExport.ts`, `kmzExport.ts`, `oppdragKmzExport.ts`.
+5. **Offentlige kart-popups** – `lib/mapWeatherPopup.ts`, `mapTrafficPopup.ts`, `mapDataFetchers.ts`.
 
-### Bølge 4 – Dashboard og oppdrag
-- `src/components/dashboard/RiskAssessmentDialog.tsx` (44)
-- `src/components/dashboard/AirspaceWarnings.tsx` (19)
-- `src/components/dashboard/SoraAnalysisDialog.tsx` (18)
-- `src/components/dashboard/AddMissionDialog.tsx` (13)
-- `src/components/dashboard/IncidentDetailDialog.tsx` (12)
-- `src/components/dashboard/MissionMapPreview.tsx` (9)
-- `src/components/dashboard/DocumentDetailDialog.tsx` (14)
-- `src/components/dashboard/DocumentSection.tsx` (13)
-- `src/components/oppdrag/dialogs/OppdragDialogs.tsx` (8)
-- `src/hooks/useOppdragData.ts` (9)
+## Fase 3 – Systemmeldinger
 
-### Bølge 5 – Kart, vær, luftrom
-- `src/lib/mapDataFetchers.ts` (43)
-- `src/lib/mapWeatherPopup.ts` (11)
-- `src/components/OpenAIPMap.tsx` (12)
-- `src/components/DroneWeatherPanel.tsx` (17)
-- `src/components/admin/MapPublicationDefaultsCard.tsx` (8)
-- Andre `map*`-helpers fra scan
+På tvers av alle filer i fase 1+2, men løftes eksplisitt så vi ikke glemmer noe:
 
-Vurder eget `map`-namespace hvis sum > 50 nøkler.
+- **Toast-meldinger** – grep etter `toast.success(`, `toast.error(`, `toast(` i alle berørte filer.
+- **Valideringsmeldinger** – Zod-skjemaer, `setError`, inline form-feil.
+- **Statusbadges** – `StatusBadge.tsx` + alle steder som leser `status`-felt. Bruker eksisterende `translateMissionStatus`, `translateApprovalStatus`, `translateIncidentStatus`, `translateSeverity` i `lib/i18nHelpers.ts` – sikre at de er brukt overalt der status vises.
+- **Globale feilmeldinger** – `ErrorBoundary.tsx`, `NotFound.tsx`, Sentry fallbacks.
 
-### Bølge 6 – SORA, ECCAIRS, incident
-- `src/pages/SoraProcess.tsx` (18)
-- `src/components/SoraSettingsPanel.tsx` (14)
-- `src/config/eccairsFields.ts` (31)
-- `src/lib/eccairsAutoMapping.ts` (19)
-- `src/pages/Hendelser.tsx` (18)
+## Hva vi bevisst utsetter
 
-`sora` og `eccairs` får egne namespaces (regulatorisk terminologi – jf. README).
+- Admin-modul (EmailTemplateEditor, RevenueCalculator, ChildCompaniesSection, etc.) – Lite brukt av sluttbruker.
+- Guided tours – Frivillig onboarding, lav prioritet.
+- Marketing-modul – Internt verktøy for Avisafe-superadmins.
+- Training/kursinnhold.
+- Changelog (allerede gjort i forrige runde) og MapPublicationDefaultsCard (gjort).
 
-### Bølge 7 – PDF/eksport (utvider eksisterende `pdf`-namespace)
-- `src/lib/oppdragPdfExport.ts` (24)
-- `src/lib/riskAssessmentPdfExport.ts` (10)
-- `src/lib/userManualPdf.ts`
-- `src/lib/icsExport.ts`, `src/lib/kmzExport.ts`, `src/lib/oppdragKmzExport.ts`
-- `src/lib/flightTrackExport.ts`
-- `src/lib/incidentPdfExport.ts`
+Disse kan tas senere som en "fase 4 – komplett dekning".
 
-Alle eksport-funksjoner aksepterer `language`-parameter med `getCurrentLanguage()` som default → `getFixedT(language, 'pdf')`.
+## Leveranseform
 
-### Bølge 8 – Marketing, training, dokumenter
-- `src/components/marketing/*` (Settings 18, DraftEditor 13, m.fl.)
-- `src/components/training/TakeCourseDialog.tsx` (17)
-- `src/components/training/AICourseGeneratorDialog.tsx` (14)
-- `src/components/documents/*` (DocumentCardModal 18, FilterBar 9, FolderDetailDialog 9)
+Hver fase deles i 2–4 batcher (avhengig av credits). Etter hver batch:
+- `bun scripts/i18n-scan.ts` for fremdriftsmåling.
+- Manuell QA: bytt språk i Header, klikk gjennom den nylig oversatte flyten.
 
-### Bølge 9 – Resterende dialoger og sider
-- `src/components/LogFlightTimeDialog.tsx` (16)
-- `src/components/StartFlightDialog.tsx` (15)
-- `src/components/FlightHub2SendDialog.tsx` (8)
-- `src/components/FlightLogbookDialog.tsx` (8)
-- `src/components/SubscriptionGate.tsx` (7)
-- `src/pages/{Installer,Kalender,Resources,Changelog}.tsx`
-- Alle filer ≤ ~10 treff som ikke er dekket
-
-### Bølge 10 – Edge functions (AI-prompts)
-For hver function med norsk tekst:
-- Opprett `supabase/functions/<name>/prompts.ts` med `getPrompts(language)` etter mønsteret i `drone-regulations-ai/` og `suggest-course-topics/`.
-- Frontend sender `language: getCurrentLanguage()` i alle `invoke()`-kall.
-- Funksjoner som bør dekkes: `ai-search`, `ai-risk-assessment`, `ai-marketing-*`, `eccairs-*`, alle AI-edge-functions med norsk system-prompt.
-
-### Bølge 11 – Falske positiver og opprydding
-- `src/data/mockData.ts` (42), `src/types/index.ts` (10), `src/lib/i18nHelpers.ts` (17) – sannsynlig kommentarer/seed-data, vurderes manuelt.
-- Endelig scan skal vise <50 treff (kommentarer/dokumentasjon).
+Anbefalt rekkefølge: **Fase 0 → Fase 1 (auth+nav+dashboard) → Fase 2 (PDF+e-post+AI) → Fase 1 resten → Fase 3 opprydding**. Da har en engelsk kunde "en fungerende app" og "engelske rapporter/e-poster" tidlig, før vi finpusser resten.
 
 ## Teknisk
 
-- **Verktøy:** `bun scripts/i18n-scan.ts` etter hver bølge for fremdriftsmåling.
-- **Språkbytte:** allerede implementert via `Header.tsx` + `setLanguage()`. Ingen endring.
-- **QA:** etter hver bølge – bytt språk i preview, klikk gjennom berørt UI på begge språk.
-- **Aviation-terminologi:** alle nye nøkler som omtaler kjøretøy går via `useTerminology()`, ikke direkte `t('drone')`.
-- **Ingen rename av eksisterende nøkler** – nye keys legges til, gamle står.
-- **Ingen tomme placeholder JSON-filer** – nytt namespace opprettes først når bølgen som bruker det leveres.
+- Fortsatt `fallbackLng: 'no'` – uoversatte strenger vises på norsk, aldri tomt.
+- Ingen rename av eksisterende nøkler.
+- Edge functions bruker lokale `prompts.{no,en}.ts` – ingen frontend-import.
+- `useTerminology()` brukes der drone/luftfartøy-terminologi forekommer.
+- `translate*`-helpers i `lib/i18nHelpers.ts` utvides ved behov, ikke duplisert i komponenter.
 
-## Leveranse-rekkefølge (anbefalt)
-
-Bølge 1 → 2 → 3 → 4 → 7 (PDF tidlig, ofte etterspurt av engelske kunder) → 5 → 6 → 8 → 9 → 10 → 11.
-
-Hver bølge er én selvstendig leveranse. Klar til å starte med **Bølge 1** etter godkjenning – eller velg en annen startbølge.
+Klar til å starte med **Fase 0** etter godkjenning.

@@ -354,22 +354,22 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
 
             {/* Oppdragsdetaljer */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Oppdragsdetaljer</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("oppdragDialogs.sectionMissionDetails")}</p>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox checked={props.pdfSections.basicInfo} onCheckedChange={v => props.setPdfSections(s => ({ ...s, basicInfo: v === true }))} />
-                  <span className="text-sm">Grunnleggende informasjon</span>
+                  <span className="text-sm">{t("oppdragDialogs.basicInfo")}</span>
                 </label>
                 {(props.exportPdfMission?.beskrivelse || props.exportPdfMission?.merknader) && (
                   <label className="flex items-center gap-2 cursor-pointer">
                     <Checkbox checked={props.pdfSections.descriptionNotes} onCheckedChange={v => props.setPdfSections(s => ({ ...s, descriptionNotes: v === true }))} />
-                    <span className="text-sm">Beskrivelse & merknader</span>
+                    <span className="text-sm">{t("oppdragDialogs.descriptionNotes")}</span>
                   </label>
                 )}
                 {props.exportPdfMission?.customers && (
                   <label className="flex items-center gap-2 cursor-pointer">
                     <Checkbox checked={props.pdfSections.customerInfo} onCheckedChange={v => props.setPdfSections(s => ({ ...s, customerInfo: v === true }))} />
-                    <span className="text-sm">Kundeinformasjon</span>
+                    <span className="text-sm">{t("oppdragDialogs.customerInfo")}</span>
                   </label>
                 )}
               </div>
@@ -378,24 +378,24 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
             {/* Ressurser */}
             {(props.exportPdfMission?.personnel?.length > 0 || props.exportPdfMission?.drones?.length > 0 || props.exportPdfMission?.equipment?.length > 0) && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Ressurser</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("oppdragDialogs.sectionResources")}</p>
                 <div className="space-y-2">
                   {props.exportPdfMission?.personnel?.length > 0 && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.personnel} onCheckedChange={v => props.setPdfSections(s => ({ ...s, personnel: v === true }))} />
-                      <span className="text-sm">Personell</span>
+                      <span className="text-sm">{t("oppdragDialogs.personnel")}</span>
                     </label>
                   )}
                   {props.exportPdfMission?.drones?.length > 0 && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.drones} onCheckedChange={v => props.setPdfSections(s => ({ ...s, drones: v === true }))} />
-                      <span className="text-sm">Droner/fly</span>
+                      <span className="text-sm">{t("oppdragDialogs.drones")}</span>
                     </label>
                   )}
                   {props.exportPdfMission?.equipment?.length > 0 && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.equipment} onCheckedChange={v => props.setPdfSections(s => ({ ...s, equipment: v === true }))} />
-                      <span className="text-sm">Utstyr</span>
+                      <span className="text-sm">{t("oppdragDialogs.equipment")}</span>
                     </label>
                   )}
                 </div>
@@ -405,18 +405,18 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
             {/* Rute */}
             {((props.exportPdfMission?.route as any)?.coordinates?.length > 0 || props.exportPdfMission?.sora || (props.exportPdfMission?.route as any)?.soraSettings?.enabled || (props.exportPdfMission?.route as any)?.adjacentAreaDocumentation?.enabled) && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Rute</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("oppdragDialogs.sectionRoute")}</p>
                 <div className="space-y-2">
                   {(props.exportPdfMission?.route as any)?.coordinates?.length > 0 && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.routeCoordinates} onCheckedChange={v => props.setPdfSections(s => ({ ...s, routeCoordinates: v === true }))} />
-                      <span className="text-sm">Rutekoordinater</span>
+                      <span className="text-sm">{t("oppdragDialogs.routeCoordinates")}</span>
                     </label>
                   )}
                   {(props.exportPdfMission?.sora || (props.exportPdfMission?.route as any)?.soraSettings?.enabled || (props.exportPdfMission?.route as any)?.adjacentAreaDocumentation?.enabled) && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.sora} onCheckedChange={v => props.setPdfSections(s => ({ ...s, sora: v === true }))} />
-                      <span className="text-sm">SORA-analyse og beregningsgrunnlag</span>
+                      <span className="text-sm">{t("oppdragDialogs.soraSection")}</span>
                     </label>
                   )}
                 </div>
@@ -426,30 +426,30 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
             {/* Vurderinger og logger */}
             {(props.exportPdfMission?.aiRisk || props.exportPdfMission?.incidents?.length > 0 || props.exportPdfMission?.flightLogs?.length > 0) && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Vurderinger og logger</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("oppdragDialogs.sectionAssessments")}</p>
                 <div className="space-y-2">
                   {props.exportPdfMission?.aiRisk && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.riskAssessment} onCheckedChange={v => props.setPdfSections(s => ({ ...s, riskAssessment: v === true }))} />
-                      <span className="text-sm">AI Risikovurdering</span>
+                      <span className="text-sm">{t("oppdragDialogs.aiRiskAssessment")}</span>
                     </label>
                   )}
                   {props.exportPdfMission?.incidents?.length > 0 && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.incidents} onCheckedChange={v => props.setPdfSections(s => ({ ...s, incidents: v === true }))} />
-                      <span className="text-sm">Tilknyttede hendelser</span>
+                      <span className="text-sm">{t("oppdragDialogs.linkedIncidents")}</span>
                     </label>
                   )}
                   {props.exportPdfMission?.flightLogs?.length > 0 && (
                     <label className="flex items-center gap-2 cursor-pointer">
                       <Checkbox checked={props.pdfSections.flightLogs} onCheckedChange={v => props.setPdfSections(s => ({ ...s, flightLogs: v === true }))} />
-                      <span className="text-sm">Flyturer</span>
+                      <span className="text-sm">{t("oppdragDialogs.flights")}</span>
                     </label>
                   )}
                   {props.exportPdfMission?.flightLogs?.length > 0 && props.pdfSections.flightLogs && (
                     <label className="flex items-center gap-2 cursor-pointer pl-6">
                       <Checkbox checked={props.pdfSections.flightLogsDetailed} onCheckedChange={v => props.setPdfSections(s => ({ ...s, flightLogsDetailed: v === true }))} />
-                      <span className="text-sm">Detaljert flylogg-rapport (grafer, app-advarsler, koordinater)</span>
+                      <span className="text-sm">{t("oppdragDialogs.detailedFlightLog")}</span>
                     </label>
                   )}
 
@@ -459,8 +459,8 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
           </div>
 
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => props.setExportPdfDialogOpen(false)}>Avbryt</Button>
-            <Button onClick={props.onConfirmExportPdf}>Eksporter PDF</Button>
+            <Button variant="outline" onClick={() => props.setExportPdfDialogOpen(false)}>{t("oppdragDialogs.cancel")}</Button>
+            <Button onClick={props.onConfirmExportPdf}>{t("oppdragDialogs.exportPdf")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -486,15 +486,15 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-primary" />
-              Tilknytt sjekkliste
+              {t("oppdragDialogs.linkChecklist")}
             </DialogTitle>
             <DialogDescription>
-              {props.checklistMission?.tittel} – velg sjekklister å knytte til oppdraget
+              {t("oppdragDialogs.checklistDesc", { title: props.checklistMission?.tittel })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {props.checklists.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Ingen sjekklister funnet</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("oppdragDialogs.noChecklists")}</p>
             ) : (
               props.checklists.map((cl) => {
                 const isLinked = props.checklistMission?.checklist_ids?.includes(cl.id);
@@ -516,7 +516,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => props.setChecklistPickerOpen(false)}>Ferdig</Button>
+            <Button onClick={() => props.setChecklistPickerOpen(false)}>{t("oppdragDialogs.done")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -542,17 +542,17 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
       <AlertDialog open={props.riskPromptOpen} onOpenChange={props.setRiskPromptOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Risikovurdering</AlertDialogTitle>
+            <AlertDialogTitle>{t("oppdragDialogs.riskTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Oppdraget er opprettet. Ønsker du å utføre en risikovurdering nå, eller fortsette uten?
+              {t("oppdragDialogs.riskDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={props.onSkipRiskAssessment}>
-              Fortsett uten risikovurdering
+              {t("oppdragDialogs.skipRisk")}
             </AlertDialogCancel>
             <AlertDialogAction onClick={props.onPerformRiskAssessment}>
-              Utfør risikovurdering
+              {t("oppdragDialogs.performRisk")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
