@@ -516,7 +516,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           {/* Date pickers */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Fra dato</Label>
+              <Label>{t('dashboard.notam.fromDate')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -524,7 +524,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
                     className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "dd.MM.yyyy", { locale: nb }) : "Velg dato"}
+                    {startDate ? format(startDate, "dd.MM.yyyy", { locale: nb }) : t('dashboard.notam.selectDate')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
