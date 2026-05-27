@@ -84,11 +84,23 @@ const CATEGORIES: { value: DocumentCategory; label: string }[] = [
 
 const formSchema = z.object({
   tittel: z.string().min(1, "Tittel er påkrevd").max(200, "Tittel må være under 200 tegn"),
-  beskrivelse: z.string().max(1000, "Beskrivelse må være under 1000 tegn").optional(),
+  beskrivelse: z.string().max(100000, "Beskrivelse er for lang").optional(),
   kategori: z.enum(["regelverk", "prosedyrer", "sjekklister", "rapporter", "nettsider", "oppdrag", "loggbok", "kml-kmz", "dokumentstyring", "risikovurderinger", "operasjonsmanual", "annet"]),
   gyldig_til: z.date().optional(),
   varsel_dager_for_utløp: z.coerce.number().int().min(0).max(365).optional(),
   nettside_url: z.string().max(500, "URL må være under 500 tegn").optional(),
+}).superRefine((data, ctx) => {
+  // Only enforce 1000-char limit for free-text beskrivelse (sjekklister stores JSON which can exceed 1000 chars)
+  if (data.kategori !== "sjekklister" && data.beskrivelse && data.beskrivelse.length > 1000) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.too_big,
+      maximum: 1000,
+      type: "string",
+      inclusive: true,
+      path: ["beskrivelse"],
+      message: "Beskrivelse må være under 1000 tegn",
+    });
+  }
 });
 
 type FormData = z.infer<typeof formSchema>;
