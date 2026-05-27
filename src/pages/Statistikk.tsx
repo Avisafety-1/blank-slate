@@ -148,7 +148,7 @@ const Statistikk = () => {
             <div className="flex items-center gap-2 min-w-0">
               <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="h-8 w-8 p-0 flex-shrink-0 sm:h-auto sm:w-auto sm:px-3">
                 <ArrowLeft className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Tilbake</span>
+                <span className="hidden sm:inline">{t('pages.stats.back')}</span>
               </Button>
               <h1 className="text-base sm:text-xl font-bold text-foreground truncate">
                 Plattformstatistikk
