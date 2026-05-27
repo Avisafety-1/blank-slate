@@ -147,17 +147,17 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
         <CardContent className="pt-4 space-y-3">
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
-              placeholder="Tema for idéer (valgfritt)..."
+              placeholder={t('pages.marketing.topicPlaceholder')}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               className="flex-1"
             />
             <Select value={presetFilter} onValueChange={setPresetFilter}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Alle typer" />
+                <SelectValue placeholder={t('pages.marketing.allTypes')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Alle typer</SelectItem>
+                <SelectItem value="all">{t('pages.marketing.allTypes')}</SelectItem>
                 {GENERATION_PRESETS.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
                 ))}
