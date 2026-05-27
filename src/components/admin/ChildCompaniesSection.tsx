@@ -2018,6 +2018,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               <SubSection title="Kartpublisering" icon={MapIcon}>
                 <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
               </SubSection>
+
+              <SubSection title="Oppdragstyper" icon={Settings}>
+                <MissionTypesSection companyId={companyId} disabled={savingSettings} />
+              </SubSection>
             </div>
           </CollapsibleContent>
         </GlassCard>
