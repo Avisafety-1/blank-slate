@@ -416,6 +416,32 @@
     "createMission": "Create mission",
     "unknown": "Unknown",
     "locationRequired": "Location is required",
+    "endTime": "End time",
+    "missionType": "Mission type",
+    "selectType": "Select type...",
+    "notSpecified": "Not specified",
+    "specifyType": "Specify mission type",
+    "specifyTypePlaceholder": "E.g. Thermography",
+    "notesPlaceholder": "Write a note... Use @ to tag people",
+    "unknownUser": "Unknown user",
+    "selectPersonnelShort": "Select personnel...",
+    "role": "Role",
+    "noRole": "No role",
+    "documents": "Documents",
+    "linkDocument": "Link document...",
+    "searchDocuments": "Search documents...",
+    "noDocumentsFound": "No documents found.",
+    "mapPublishing": "Map publishing",
+    "missionTypes": {
+      "Inspeksjon": "Inspection",
+      "Kartlegging": "Mapping",
+      "Foto/film": "Photo/Video",
+      "Søk og redning": "Search and rescue",
+      "Landbruk": "Agriculture",
+      "Bygg/anlegg": "Construction",
+      "Forskning": "Research",
+      "Annet": "Other"
+    },
     "riskLevels": {
       "low": "Low",
       "medium": "Medium",
@@ -423,6 +449,7 @@
       "critical": "Critical"
     }
   },
+
   "incidents": {
     "title": "Incidents",
     "severity": {
