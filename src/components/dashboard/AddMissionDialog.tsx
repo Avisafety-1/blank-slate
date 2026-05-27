@@ -1324,7 +1324,7 @@ export const AddMissionDialog = ({
                         insertMention(profile);
                       }}
                     >
-                      <span className="truncate">{profile.full_name || 'Ukjent bruker'}</span>
+                      <span className="truncate">{profile.full_name || t('missions.unknownUser')}</span>
                     </button>
                   ))}
                 </div>
