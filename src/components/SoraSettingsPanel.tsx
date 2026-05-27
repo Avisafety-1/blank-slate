@@ -576,7 +576,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
                 {populationDensityLoading
                   ? t("soraPanel.popDensityLoading")
                   : populationDensityResult?.maxDensityCell
-                    ? t("soraPanel.popDensityDriver", { density: populationDensityResult.maxDensityPerKm2.toLocaleString("nb-NO"), count: cells.length.toLocaleString("nb-NO") })
+                    ? t("soraPanel.popDensityDriver", { defaultValue: "", density: populationDensityResult.maxDensityPerKm2.toLocaleString("nb-NO"), count: cells.length.toLocaleString("nb-NO") })
                     : t("soraPanel.popDensityEmpty")}
               </p>
             </div>
