@@ -608,7 +608,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
           <div className="space-y-4" data-tour="incident-meta">
             <div className="space-y-2">
-              <Label htmlFor="hendelsestidspunkt">Hendelsestidspunkt *</Label>
+              <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
               <Input
                 id="hendelsestidspunkt"
                 type="datetime-local"
@@ -618,7 +618,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="alvorlighetsgrad">Alvorlighetsgrad</Label>
+              <Label htmlFor="alvorlighetsgrad">{t('incidents.severityLabel')}</Label>
               <Select
                 value={formData.alvorlighetsgrad}
                 onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
@@ -627,16 +627,16 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Lav">Lav</SelectItem>
-                  <SelectItem value="Middels">Middels</SelectItem>
-                  <SelectItem value="Høy">Høy</SelectItem>
-                  <SelectItem value="Kritisk">Kritisk</SelectItem>
+                  <SelectItem value="Lav">{translateSeverity('Lav')}</SelectItem>
+                  <SelectItem value="Middels">{translateSeverity('Middels')}</SelectItem>
+                  <SelectItem value="Høy">{translateSeverity('Høy')}</SelectItem>
+                  <SelectItem value="Kritisk">{translateSeverity('Kritisk')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t('missions.status')}</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) => setFormData({ ...formData, status: value })}
@@ -645,10 +645,10 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Åpen">Åpen</SelectItem>
-                  <SelectItem value="Under behandling">Under behandling</SelectItem>
-                  <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
-                  <SelectItem value="Lukket">Lukket</SelectItem>
+                  <SelectItem value="Åpen">{t('incidents.statusValues.Åpen')}</SelectItem>
+                  <SelectItem value="Under behandling">{t('incidents.statusValues.Under behandling')}</SelectItem>
+                  <SelectItem value="Ferdigbehandlet">{t('incidents.statusValues.Ferdigbehandlet')}</SelectItem>
+                  <SelectItem value="Lukket">{t('incidents.statusValues.Lukket')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -656,44 +656,45 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
           <div className="space-y-4" data-tour="incident-classification">
           <div className="space-y-2">
-            <Label htmlFor="kategori">Kategori (valgfritt)</Label>
+            <Label htmlFor="kategori">{t('incidents.categoryOptional')}</Label>
             <Select
               value={formData.kategori}
               onValueChange={(value) => setFormData({ ...formData, kategori: value })}
             >
               <SelectTrigger id="kategori">
-                <SelectValue placeholder="Velg kategori..." />
+                <SelectValue placeholder={t('incidents.selectCategory')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Luft">Luft</SelectItem>
-                <SelectItem value="Bakke">Bakke</SelectItem>
-                <SelectItem value="Luftrom">Luftrom</SelectItem>
-                <SelectItem value="Teknisk">Teknisk</SelectItem>
-                <SelectItem value="Operativ">Operativ</SelectItem>
-                <SelectItem value="Miljø">Miljø</SelectItem>
-                <SelectItem value="Sikkerhet">Sikkerhet</SelectItem>
+                <SelectItem value="Luft">{translateIncidentCategory('Luft')}</SelectItem>
+                <SelectItem value="Bakke">{translateIncidentCategory('Bakke')}</SelectItem>
+                <SelectItem value="Luftrom">{translateIncidentCategory('Luftrom')}</SelectItem>
+                <SelectItem value="Teknisk">{translateIncidentCategory('Teknisk')}</SelectItem>
+                <SelectItem value="Operativ">{translateIncidentCategory('Operativ')}</SelectItem>
+                <SelectItem value="Miljø">{translateIncidentCategory('Miljø')}</SelectItem>
+                <SelectItem value="Sikkerhet">{translateIncidentCategory('Sikkerhet')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="hovedaarsak">Hovedårsak (valgfritt)</Label>
+            <Label htmlFor="hovedaarsak">{t('incidents.rootCauseOptional')}</Label>
             <Select
               value={formData.hovedaarsak}
               onValueChange={(value) => setFormData({ ...formData, hovedaarsak: value })}
             >
               <SelectTrigger id="hovedaarsak">
-                <SelectValue placeholder="Velg hovedårsak..." />
+                <SelectValue placeholder={t('incidents.selectRootCause')} />
               </SelectTrigger>
               <SelectContent>
                 {causeTypes.map((cause) => (
                   <SelectItem key={cause.id} value={cause.navn}>
-                    {cause.navn}
+                    {translateRootCause(cause.navn)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
 
           <div className="space-y-2">
             <Label>Medvirkende årsak (valgfritt)</Label>
