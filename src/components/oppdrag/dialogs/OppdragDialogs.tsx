@@ -12,6 +12,7 @@ import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecut
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClipboardCheck, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdfExport";
 
 type Mission = any;
