@@ -133,7 +133,7 @@ export const MarketingOverview = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Clock className="w-4 h-4 text-orange-500" />
-              Neste planlagte
+              {t('pages.marketing.nextScheduled')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
