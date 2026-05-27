@@ -234,7 +234,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => createDraftFromIdea(idea)}
-                        title="Lag utkast"
+                        title={t('pages.marketing.createDraft')}
                       >
                         <FileEdit className="w-4 h-4" />
                       </Button>
@@ -243,7 +243,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
                       variant="ghost"
                       size="sm"
                       onClick={() => deleteIdea(idea.id)}
-                      title="Slett"
+                      title={t('pages.marketing.delete')}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
