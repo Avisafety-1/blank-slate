@@ -1441,7 +1441,7 @@ export const AddMissionDialog = ({
           </div>
 
           <div>
-            <Label>Personell</Label>
+            <Label>{t('missions.personnel')}</Label>
             <Popover open={openPersonnelPopover} onOpenChange={setOpenPersonnelPopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -1450,20 +1450,20 @@ export const AddMissionDialog = ({
                   aria-expanded={openPersonnelPopover}
                   className="w-full justify-between"
                 >
-                  Velg personell...
+                  {t('missions.selectPersonnelShort')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0">
                 <Command>
-                  <CommandInput placeholder="Søk personell..." />
+                  <CommandInput placeholder={t('missions.searchPersonnel')} />
                   <CommandList>
-                    <CommandEmpty>Ingen personell funnet.</CommandEmpty>
+                    <CommandEmpty>{t('missions.noPersonnelFound')}</CommandEmpty>
                     <CommandGroup>
                       {profiles.map((profile) => (
                         <CommandItem
                           key={profile.id}
-                          value={profile.full_name || "Ukjent"}
+                          value={profile.full_name || t('missions.unknown')}
                           onSelect={() => togglePersonnel(profile.id)}
                         >
                           <Check
@@ -1472,7 +1472,8 @@ export const AddMissionDialog = ({
                               selectedPersonnel.includes(profile.id) ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {profile.full_name || "Ukjent"}
+                          {profile.full_name || t('missions.unknown')}
+
                         </CommandItem>
                       ))}
                     </CommandGroup>
