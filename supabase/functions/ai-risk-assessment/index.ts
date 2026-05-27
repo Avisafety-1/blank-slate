@@ -1005,7 +1005,7 @@ serve(async (req) => {
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
         const footprintBufferM = Math.max(fg + contingency + grb, 250);
-        const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM);
+        const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM, resolveLang(language));
 
         if (computed) {
           const maxDensity = computed.maxDensity;
