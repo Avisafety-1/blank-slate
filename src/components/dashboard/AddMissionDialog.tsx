@@ -1233,7 +1233,7 @@ export const AddMissionDialog = ({
               />
             </div>
             <div>
-              <Label htmlFor="slutt_tidspunkt">Sluttidspunkt</Label>
+              <Label htmlFor="slutt_tidspunkt">{t('missions.endTime')}</Label>
               <Input
                 id="slutt_tidspunkt"
                 type="datetime-local"
@@ -1258,7 +1258,7 @@ export const AddMissionDialog = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="oppdragstype">Oppdragstype</Label>
+              <Label htmlFor="oppdragstype">{t('missions.missionType')}</Label>
               <Select
                 value={formData.oppdragstype || "__none__"}
                 onValueChange={(value) =>
@@ -1270,32 +1270,33 @@ export const AddMissionDialog = ({
                 }
               >
                 <SelectTrigger id="oppdragstype">
-                  <SelectValue placeholder="Velg type..." />
+                  <SelectValue placeholder={t('missions.selectType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Ikke spesifisert</SelectItem>
-                  <SelectItem value="Inspeksjon">Inspeksjon</SelectItem>
-                  <SelectItem value="Kartlegging">Kartlegging</SelectItem>
-                  <SelectItem value="Foto/film">Foto/film</SelectItem>
-                  <SelectItem value="Søk og redning">Søk og redning</SelectItem>
-                  <SelectItem value="Landbruk">Landbruk</SelectItem>
-                  <SelectItem value="Bygg/anlegg">Bygg/anlegg</SelectItem>
-                  <SelectItem value="Forskning">Forskning</SelectItem>
-                  <SelectItem value="Annet">Annet</SelectItem>
+                  <SelectItem value="__none__">{t('missions.notSpecified')}</SelectItem>
+                  <SelectItem value="Inspeksjon">{t('missions.missionTypes.Inspeksjon')}</SelectItem>
+                  <SelectItem value="Kartlegging">{t('missions.missionTypes.Kartlegging')}</SelectItem>
+                  <SelectItem value="Foto/film">{t('missions.missionTypes.Foto/film')}</SelectItem>
+                  <SelectItem value="Søk og redning">{t('missions.missionTypes.Søk og redning')}</SelectItem>
+                  <SelectItem value="Landbruk">{t('missions.missionTypes.Landbruk')}</SelectItem>
+                  <SelectItem value="Bygg/anlegg">{t('missions.missionTypes.Bygg/anlegg')}</SelectItem>
+                  <SelectItem value="Forskning">{t('missions.missionTypes.Forskning')}</SelectItem>
+                  <SelectItem value="Annet">{t('missions.missionTypes.Annet')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {formData.oppdragstype === "Annet" && (
               <div>
-                <Label htmlFor="oppdragstype_annet">Spesifiser oppdragstype</Label>
+                <Label htmlFor="oppdragstype_annet">{t('missions.specifyType')}</Label>
                 <Input
                   id="oppdragstype_annet"
                   value={formData.oppdragstype_annet}
                   onChange={(e) => setFormData({ ...formData, oppdragstype_annet: e.target.value })}
-                  placeholder="F.eks. Termografering"
+                  placeholder={t('missions.specifyTypePlaceholder')}
                 />
               </div>
             )}
+
           </div>
 
           <div>
@@ -1309,7 +1310,7 @@ export const AddMissionDialog = ({
                 onKeyUp={(e) => updateMentionState(e.currentTarget.value, e.currentTarget.selectionStart)}
                 onClick={(e) => updateMentionState(e.currentTarget.value, e.currentTarget.selectionStart)}
                 rows={2}
-                placeholder="Skriv merknad... Bruk @ for å tagge personer"
+                placeholder={t('missions.notesPlaceholder')}
               />
               {mentionQuery !== null && mentionSuggestions.length > 0 && (
                 <div className="absolute z-50 mt-1 w-full max-h-56 overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
@@ -1323,7 +1324,7 @@ export const AddMissionDialog = ({
                         insertMention(profile);
                       }}
                     >
-                      <span className="truncate">{profile.full_name || 'Ukjent bruker'}</span>
+                      <span className="truncate">{profile.full_name || t('missions.unknownUser')}</span>
                     </button>
                   ))}
                 </div>
@@ -1440,7 +1441,7 @@ export const AddMissionDialog = ({
           </div>
 
           <div>
-            <Label>Personell</Label>
+            <Label>{t('missions.personnel')}</Label>
             <Popover open={openPersonnelPopover} onOpenChange={setOpenPersonnelPopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -1449,20 +1450,20 @@ export const AddMissionDialog = ({
                   aria-expanded={openPersonnelPopover}
                   className="w-full justify-between"
                 >
-                  Velg personell...
+                  {t('missions.selectPersonnelShort')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0">
                 <Command>
-                  <CommandInput placeholder="Søk personell..." />
+                  <CommandInput placeholder={t('missions.searchPersonnel')} />
                   <CommandList>
-                    <CommandEmpty>Ingen personell funnet.</CommandEmpty>
+                    <CommandEmpty>{t('missions.noPersonnelFound')}</CommandEmpty>
                     <CommandGroup>
                       {profiles.map((profile) => (
                         <CommandItem
                           key={profile.id}
-                          value={profile.full_name || "Ukjent"}
+                          value={profile.full_name || t('missions.unknown')}
                           onSelect={() => togglePersonnel(profile.id)}
                         >
                           <Check
@@ -1471,7 +1472,8 @@ export const AddMissionDialog = ({
                               selectedPersonnel.includes(profile.id) ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {profile.full_name || "Ukjent"}
+                          {profile.full_name || t('missions.unknown')}
+
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -1497,10 +1499,11 @@ export const AddMissionDialog = ({
                             onValueChange={(val) => setPersonnelRoles(prev => ({ ...prev, [id]: val === "none" ? null : val }))}
                           >
                             <SelectTrigger className="h-6 w-auto min-w-[100px] text-xs border-none bg-background/50 px-1.5 py-0">
-                              <SelectValue placeholder="Rolle" />
+                              <SelectValue placeholder={t('missions.role')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">Ingen rolle</SelectItem>
+                              <SelectItem value="none">{t('missions.noRole')}</SelectItem>
+
                               {companyMissionRoles.map((role) => (
                                 <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
                               ))}
@@ -1609,7 +1612,7 @@ export const AddMissionDialog = ({
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0">
                 <Command>
-                  <CommandInput placeholder={`Søk ${terminology.vehicleLower}...`} />
+                  <CommandInput placeholder={`${t('common.search') || 'Search'} ${terminology.vehicleLower}...`} />
                   <CommandList>
                     <CommandEmpty>{terminology.noVehicles}.</CommandEmpty>
                     <CommandGroup>
@@ -1664,7 +1667,7 @@ export const AddMissionDialog = ({
 
           {/* Documents */}
           <div>
-            <Label>Dokumenter</Label>
+            <Label>{t('missions.documents')}</Label>
             <Popover open={openDocumentPopover} onOpenChange={setOpenDocumentPopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -1673,15 +1676,16 @@ export const AddMissionDialog = ({
                   aria-expanded={openDocumentPopover}
                   className="w-full justify-between"
                 >
-                  Knytt dokument...
+                  {t('missions.linkDocument')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0">
                 <Command>
-                  <CommandInput placeholder="Søk dokumenter..." />
+                  <CommandInput placeholder={t('missions.searchDocuments')} />
                   <CommandList>
-                    <CommandEmpty>Ingen dokumenter funnet.</CommandEmpty>
+                    <CommandEmpty>{t('missions.noDocumentsFound')}</CommandEmpty>
+
                     <CommandGroup>
                       {documents.map((doc) => (
                         <CommandItem
@@ -1737,7 +1741,7 @@ export const AddMissionDialog = ({
               <CollapsibleTrigger className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors group">
                 <div className="flex items-center gap-2 font-medium text-sm">
                   <Map className="h-4 w-4 text-muted-foreground" />
-                  <span>Kartpublisering</span>
+                  <span>{t('missions.mapPublishing')}</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>

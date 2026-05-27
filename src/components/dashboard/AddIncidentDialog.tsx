@@ -26,6 +26,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import type { Tables } from "@/integrations/supabase/types";
+import { useTranslation } from "react-i18next";
+import { translateSeverity, translateIncidentCategory, translateRootCause } from "@/lib/i18nHelpers";
+
 
 interface AddIncidentDialogProps {
   open: boolean;
@@ -39,13 +42,15 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const { companyId } = useAuth();
   const companySettings = useCompanySettings();
   const { canAccess } = usePlanGating();
+  const { t } = useTranslation();
   const globalAnonymous = companySettings.hide_reporter_identity;
+
 
   // Block opening if plan doesn't include incidents
   useEffect(() => {
     if (open && !canAccess('incidents')) {
       onOpenChange(false);
-      toast.error('Hendelsesrapportering krever Grower-planen eller høyere.');
+      toast.error(t('incidents.requiresGrowerPlan'));
     }
   }, [open, canAccess, onOpenChange]);
   const [submitting, setSubmitting] = useState(false);
@@ -334,7 +339,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
   const handleSubmit = async () => {
     if (!formData.tittel || !formData.hendelsestidspunkt) {
-      toast.error("Vennligst fyll ut alle påkrevde felt");
+      toast.error(t('incidents.fillRequiredFields'));
       return;
     }
 
@@ -344,7 +349,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user || !companyId) {
-        toast.error("Du må være logget inn for å rapportere hendelser");
+        toast.error(t('incidents.mustBeLoggedIn'));
         setSubmitting(false);
         return;
       }
@@ -412,7 +417,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           description: `Hendelse: ${formData.tittel} (offline)`,
         });
 
-        toast.success("Hendelse lagret lokalt – synkroniseres når nett er tilbake");
+        toast.success(t('incidents.savedOffline'));
         onOpenChange(false);
         return;
       }
@@ -539,7 +544,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
         <div className="space-y-4">
           <div className="space-y-2" data-tour="incident-mission">
-            <Label>Knytt til oppdrag (valgfritt)</Label>
+            <Label>{t('incidents.linkToMission')}</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -548,16 +553,16 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   className="w-full justify-between font-normal"
                 >
                   {formData.mission_id
-                    ? missions.find(m => m.id === formData.mission_id)?.tittel || "Velg oppdrag..."
-                    : "Velg oppdrag..."}
+                    ? missions.find(m => m.id === formData.mission_id)?.tittel || t('missions.selectCustomer')
+                    : t('missions.selectCustomer')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Søk i oppdrag..." />
+                  <CommandInput placeholder={t('incidents.searchMissions')} />
                   <CommandList>
-                    <CommandEmpty>Ingen oppdrag funnet.</CommandEmpty>
+                    <CommandEmpty>{t('incidents.noMissionsFound')}</CommandEmpty>
                     <CommandGroup>
                       {missions.map((mission) => (
                         <CommandItem
@@ -574,34 +579,36 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 </Command>
               </PopoverContent>
             </Popover>
+
           </div>
 
           <div className="space-y-4" data-tour="incident-title-desc">
             <div className="space-y-2">
-              <Label htmlFor="tittel">Tittel *</Label>
+              <Label htmlFor="tittel">{t('incidents.titleLabel')} *</Label>
               <Input
                 id="tittel"
                 value={formData.tittel}
                 onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
-                placeholder="Kort beskrivelse av hendelsen"
+                placeholder={t('incidents.titlePlaceholder')}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="beskrivelse">Beskrivelse</Label>
+              <Label htmlFor="beskrivelse">{t('incidents.description')}</Label>
               <Textarea
                 id="beskrivelse"
                 value={formData.beskrivelse}
                 onChange={(e) => setFormData({ ...formData, beskrivelse: e.target.value })}
-                placeholder="Detaljert beskrivelse av hendelsen..."
+                placeholder={t('incidents.descriptionPlaceholder')}
                 rows={4}
               />
             </div>
+
           </div>
 
           <div className="space-y-4" data-tour="incident-meta">
             <div className="space-y-2">
-              <Label htmlFor="hendelsestidspunkt">Hendelsestidspunkt *</Label>
+              <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
               <Input
                 id="hendelsestidspunkt"
                 type="datetime-local"
@@ -611,7 +618,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="alvorlighetsgrad">Alvorlighetsgrad</Label>
+              <Label htmlFor="alvorlighetsgrad">{t('incidents.severityLabel')}</Label>
               <Select
                 value={formData.alvorlighetsgrad}
                 onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
@@ -620,16 +627,16 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Lav">Lav</SelectItem>
-                  <SelectItem value="Middels">Middels</SelectItem>
-                  <SelectItem value="Høy">Høy</SelectItem>
-                  <SelectItem value="Kritisk">Kritisk</SelectItem>
+                  <SelectItem value="Lav">{translateSeverity('Lav')}</SelectItem>
+                  <SelectItem value="Middels">{translateSeverity('Middels')}</SelectItem>
+                  <SelectItem value="Høy">{translateSeverity('Høy')}</SelectItem>
+                  <SelectItem value="Kritisk">{translateSeverity('Kritisk')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t('missions.status')}</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) => setFormData({ ...formData, status: value })}
@@ -638,10 +645,10 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Åpen">Åpen</SelectItem>
-                  <SelectItem value="Under behandling">Under behandling</SelectItem>
-                  <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
-                  <SelectItem value="Lukket">Lukket</SelectItem>
+                  <SelectItem value="Åpen">{t('incidents.statusValues.Åpen')}</SelectItem>
+                  <SelectItem value="Under behandling">{t('incidents.statusValues.Under behandling')}</SelectItem>
+                  <SelectItem value="Ferdigbehandlet">{t('incidents.statusValues.Ferdigbehandlet')}</SelectItem>
+                  <SelectItem value="Lukket">{t('incidents.statusValues.Lukket')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -649,47 +656,48 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
           <div className="space-y-4" data-tour="incident-classification">
           <div className="space-y-2">
-            <Label htmlFor="kategori">Kategori (valgfritt)</Label>
+            <Label htmlFor="kategori">{t('incidents.categoryOptional')}</Label>
             <Select
               value={formData.kategori}
               onValueChange={(value) => setFormData({ ...formData, kategori: value })}
             >
               <SelectTrigger id="kategori">
-                <SelectValue placeholder="Velg kategori..." />
+                <SelectValue placeholder={t('incidents.selectCategory')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Luft">Luft</SelectItem>
-                <SelectItem value="Bakke">Bakke</SelectItem>
-                <SelectItem value="Luftrom">Luftrom</SelectItem>
-                <SelectItem value="Teknisk">Teknisk</SelectItem>
-                <SelectItem value="Operativ">Operativ</SelectItem>
-                <SelectItem value="Miljø">Miljø</SelectItem>
-                <SelectItem value="Sikkerhet">Sikkerhet</SelectItem>
+                <SelectItem value="Luft">{translateIncidentCategory('Luft')}</SelectItem>
+                <SelectItem value="Bakke">{translateIncidentCategory('Bakke')}</SelectItem>
+                <SelectItem value="Luftrom">{translateIncidentCategory('Luftrom')}</SelectItem>
+                <SelectItem value="Teknisk">{translateIncidentCategory('Teknisk')}</SelectItem>
+                <SelectItem value="Operativ">{translateIncidentCategory('Operativ')}</SelectItem>
+                <SelectItem value="Miljø">{translateIncidentCategory('Miljø')}</SelectItem>
+                <SelectItem value="Sikkerhet">{translateIncidentCategory('Sikkerhet')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="hovedaarsak">Hovedårsak (valgfritt)</Label>
+            <Label htmlFor="hovedaarsak">{t('incidents.rootCauseOptional')}</Label>
             <Select
               value={formData.hovedaarsak}
               onValueChange={(value) => setFormData({ ...formData, hovedaarsak: value })}
             >
               <SelectTrigger id="hovedaarsak">
-                <SelectValue placeholder="Velg hovedårsak..." />
+                <SelectValue placeholder={t('incidents.selectRootCause')} />
               </SelectTrigger>
               <SelectContent>
                 {causeTypes.map((cause) => (
                   <SelectItem key={cause.id} value={cause.navn}>
-                    {cause.navn}
+                    {translateRootCause(cause.navn)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
+
           <div className="space-y-2">
-            <Label>Medvirkende årsak (valgfritt)</Label>
+            <Label>{t('incidents.contributingCauseOptional')}</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -699,9 +707,10 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 >
                   <span className="truncate">
                     {formData.medvirkende_aarsak
-                      ? formData.medvirkende_aarsak.split(", ").length + " valgt"
-                      : "Velg medvirkende årsaker..."}
+                      ? t('incidents.selectedCount', { count: formData.medvirkende_aarsak.split(", ").length })
+                      : t('incidents.selectContributingCauses')}
                   </span>
+
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -761,12 +770,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="lokasjon">Lokasjon (valgfritt)</Label>
+            <Label htmlFor="lokasjon">{t('incidents.locationOptional')}</Label>
             <Input
               id="lokasjon"
               value={formData.lokasjon}
               onChange={(e) => setFormData({ ...formData, lokasjon: e.target.value })}
-              placeholder="F.eks. Oslo, Hangar A, etc."
+              placeholder={t('incidents.locationPlaceholder')}
             />
           </div>
 
@@ -774,48 +783,49 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen} data-tour="incident-resources">
             <CollapsibleTrigger asChild>
               <Button variant="ghost" className="w-full justify-between px-2 py-1.5 h-auto text-sm font-medium text-muted-foreground hover:text-foreground">
-                Ressurser (valgfritt)
+                {t('incidents.resourcesOptional')}
                 <ChevronDown className={cn("h-4 w-4 transition-transform", resourcesOpen && "rotate-180")} />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-3 pt-2">
               {/* Pilot */}
               <div className="space-y-1">
-                <Label className="text-sm">Pilot</Label>
+                <Label className="text-sm">{t('incidents.pilot')}</Label>
                 <SearchablePersonSelect
                   persons={companyProfiles}
                   value={pilotId}
                   onValueChange={setPilotId}
-                  placeholder="Velg pilot..."
-                  searchPlaceholder="Søk pilot..."
+                  placeholder={t('incidents.selectPilot')}
+                  searchPlaceholder={t('incidents.searchPilot')}
                   allowNone
-                  noneLabel="Ingen"
+                  noneLabel={t('common.none')}
                 />
               </div>
 
+
               {/* Drone */}
               <div className="space-y-1">
-                <Label className="text-sm">Drone</Label>
+                <Label className="text-sm">{t('incidents.drone')}</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                       <span className="truncate">
                         {droneId
-                          ? companyDrones.find(d => d.id === droneId)?.modell || "Ukjent drone"
-                          : "Velg drone..."}
+                          ? companyDrones.find(d => d.id === droneId)?.modell || t('incidents.unknownDrone')
+                          : t('incidents.selectDrone')}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Søk drone..." />
+                      <CommandInput placeholder={t('incidents.searchDrone')} />
                       <CommandList>
-                        <CommandEmpty>Ingen droner funnet.</CommandEmpty>
+                        <CommandEmpty>{t('incidents.noDronesFound')}</CommandEmpty>
                         <CommandGroup>
                           <CommandItem value="__none__" onSelect={() => setDroneId(null)}>
                             <Check className={cn("mr-2 h-4 w-4", !droneId ? "opacity-100" : "opacity-0")} />
-                            Ingen
+                            {t('common.none')}
                           </CommandItem>
                           {companyDrones.map((drone) => (
                             <CommandItem
@@ -834,16 +844,17 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 </Popover>
               </div>
 
+
               {/* Utstyr – multi-select */}
               <div className="space-y-1">
-                <Label className="text-sm">Utstyr</Label>
+                <Label className="text-sm">{t('incidents.equipment')}</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                       <span className="truncate">
                         {equipmentIds.length > 0
-                          ? `${equipmentIds.length} valgt`
-                          : "Velg utstyr..."}
+                          ? t('incidents.selectedCount', { count: equipmentIds.length })
+                          : t('incidents.selectEquipment')}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -863,7 +874,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                         </label>
                       ))}
                       {companyEquipment.length === 0 && (
-                        <p className="text-sm text-muted-foreground px-2 py-1">Ingen utstyr registrert.</p>
+                        <p className="text-sm text-muted-foreground px-2 py-1">{t('incidents.noEquipmentRegisteredShort')}</p>
                       )}
                     </div>
                   </PopoverContent>
@@ -874,7 +885,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                       const eq = companyEquipment.find(e => e.id === eqId);
                       return (
                         <span key={eqId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
-                          {eq?.navn || "Ukjent"}
+                          {eq?.navn || t('missions.unknown')}
                           <button type="button" onClick={() => toggleEquipment(eqId)} className="hover:text-foreground">
                             <X className="h-3 w-3" />
                           </button>
@@ -884,12 +895,13 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   </div>
                 )}
               </div>
+
             </CollapsibleContent>
           </Collapsible>
 
           {/* Bildeopplasting */}
           <div className="space-y-2" data-tour="incident-image">
-            <Label>Bilde (valgfritt)</Label>
+            <Label>{t('incidents.imageOptional')}</Label>
             <input
               ref={fileInputRef}
               type="file"
@@ -901,7 +913,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <div className="relative">
                 <img
                   src={previewUrl}
-                  alt="Forhåndsvisning"
+                  alt={t('incidents.preview')}
                   className="w-full max-h-48 object-cover rounded-md border border-border"
                 />
                 <Button
@@ -922,22 +934,24 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 onClick={() => fileInputRef.current?.click()}
               >
                 <ImagePlus className="h-4 w-4" />
-                Legg til bilde
+                {t('incidents.addImage')}
               </Button>
             )}
+
           </div>
 
           <div className="space-y-2" data-tour="incident-followup">
-            <Label htmlFor="oppfolgingsansvarlig">Oppfølgingsansvarlig (valgfritt)</Label>
+            <Label htmlFor="oppfolgingsansvarlig">{t('incidents.followUpResponsible')}</Label>
             <SearchablePersonSelect
               persons={users}
               value={formData.oppfolgingsansvarlig_id || null}
               onValueChange={(val) => setFormData({ ...formData, oppfolgingsansvarlig_id: val || "" })}
-              placeholder="Velg ansvarlig..."
-              searchPlaceholder="Søk person..."
+              placeholder={t('incidents.selectResponsible')}
+              searchPlaceholder={t('incidents.searchPerson')}
               allowNone
-              noneLabel="Ingen ansvarlig"
+              noneLabel={t('incidents.noResponsible')}
             />
+
           </div>
 
           {/* Anonymitet */}
@@ -946,7 +960,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3">
               <EyeOff className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
               <p className="text-sm text-muted-foreground">
-                Denne rapporten sendes inn anonymt (selskapsinnstilling).
+                {t('incidents.anonymousCompanyNote')}
               </p>
             </div>
           ) : (
@@ -957,9 +971,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 className="mt-0.5"
               />
               <div className="space-y-0.5">
-                <p className="text-sm font-medium">Rapporter anonymt</p>
+                <p className="text-sm font-medium">{t('incidents.reportAnonymously')}</p>
                 <p className="text-xs text-muted-foreground">
-                  Navnet ditt vil ikke vises på rapporten.
+                  {t('incidents.anonymousNote')}
                 </p>
               </div>
             </label>
@@ -973,7 +987,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               onClick={() => onOpenChange(false)}
               className="flex-1"
             >
-              Avbryt
+              {t('actions.cancel')}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -981,11 +995,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               className="flex-1"
               data-tour="incident-submit"
             >
-              {submitting 
-                ? (isEditing ? "Lagrer..." : "Rapporterer...") 
-                : (isEditing ? "Lagre endringer" : "Rapporter")}
+              {submitting
+                ? (isEditing ? t('incidents.saving') : t('incidents.reporting'))
+                : (isEditing ? t('incidents.saveChanges') : t('incidents.report'))}
             </Button>
           </div>
+
         </div>
       </DialogContent>
     </Dialog>
