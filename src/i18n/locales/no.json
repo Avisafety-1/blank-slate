@@ -201,7 +201,10 @@
     "search": {
       "placeholder": "Søk (oppdrag, hendelser, dokumenter, utstyr...)",
       "results": "Søkeresultater",
-      "couldNotSearch": "Kunne ikke utføre søk"
+      "couldNotSearch": "Kunne ikke utføre søk",
+      "internalSearch": "Internt søk",
+      "regulationsSearch": "(regelverkssøk)",
+      "regulationsPlaceholder": "Spør om droneregelverk, teori, regler..."
     },
     "missions": {
       "title": "Kommende oppdrag",

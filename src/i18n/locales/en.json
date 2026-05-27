@@ -199,7 +199,10 @@
     "search": {
       "placeholder": "Search (missions, incidents, documents, equipment...)",
       "results": "Search results",
-      "couldNotSearch": "Could not perform search"
+      "couldNotSearch": "Could not perform search",
+      "internalSearch": "Internal search",
+      "regulationsSearch": "(regulation search)",
+      "regulationsPlaceholder": "Ask about drone regulations, theory, rules..."
     },
     "missions": {
       "title": "Upcoming missions",
