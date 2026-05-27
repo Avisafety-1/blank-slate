@@ -379,38 +379,38 @@ const Changelog = () => {
       <Dialog open={systemDialog.open} onOpenChange={(o) => !o && setSystemDialog({ open: false })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{systemDialog.system ? "Rediger system" : "Legg til system"}</DialogTitle>
+            <DialogTitle>{systemDialog.system ? t("changelog.dialog.editSystem") : t("changelog.dialog.addSystem")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Navn</Label>
+              <Label>{t("changelog.dialog.name")}</Label>
               <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
             </div>
             <div>
-              <Label>Status</Label>
+              <Label>{t("changelog.dialog.status")}</Label>
               <Select value={formStatus} onValueChange={setFormStatus}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="green">🟢 Operativ</SelectItem>
-                  <SelectItem value="yellow">🟡 Delvis</SelectItem>
-                  <SelectItem value="red">🔴 Nede</SelectItem>
+                  <SelectItem value="green">{t("changelog.dialog.operational")}</SelectItem>
+                  <SelectItem value="yellow">{t("changelog.dialog.partial")}</SelectItem>
+                  <SelectItem value="red">{t("changelog.dialog.down")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Beskrivelse (valgfri)</Label>
+              <Label>{t("changelog.dialog.descriptionOptional")}</Label>
               <Input value={formDescription} onChange={(e) => setFormDescription(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
             {systemDialog.system && (
               <Button variant="destructive" size="sm" onClick={() => { setSystemDialog({ open: false }); setDeleteTarget({ type: "system", id: systemDialog.system!.id }); }}>
-                <Trash2 className="w-4 h-4 mr-1" /> Slett
+                <Trash2 className="w-4 h-4 mr-1" /> {t("changelog.dialog.delete")}
               </Button>
             )}
             <Button onClick={saveSystem} disabled={!formName || saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-              Lagre
+              {t("changelog.dialog.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
