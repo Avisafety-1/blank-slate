@@ -1110,7 +1110,32 @@
       "statApproved": "Approved",
       "statScheduled": "Scheduled",
       "nextScheduled": "Next scheduled",
-      "recentlyPublished": "Recently published"
+      "recentlyPublished": "Recently published",
+      "ideasTitle": "Content ideas",
+      "ideasSubtitle": "Generate ideas with AI or add manually.",
+      "topicPlaceholder": "Topic for ideas (optional)...",
+      "allTypes": "All types",
+      "generateIdeas": "Generate ideas",
+      "addIdeaPlaceholder": "Add idea manually...",
+      "addLabel": "Add",
+      "noIdeasYet": "No ideas yet. Generate some with AI!",
+      "ideasGenerated": "{{count}} ideas generated!",
+      "couldNotAddIdea": "Could not add idea",
+      "couldNotCreateDraft": "Could not create draft",
+      "draftCreated": "Draft created",
+      "draftMade": "Draft made",
+      "createDraft": "Create draft",
+      "delete": "Delete",
+      "visualsTitle": "Visuals",
+      "uploadLabel": "Upload",
+      "generateVisual": "Generate visual",
+      "couldNotDelete": "Could not delete",
+      "visualDeleted": "Visual deleted",
+      "couldNotLoadVisuals": "Could not load visuals right now.",
+      "noVisualsYet": "No visuals yet. Generate your first!",
+      "imageUploaded": "Image uploaded",
+      "uploadFailed": "Upload failed",
+      "untitled": "Untitled"
     }
   }
 }
