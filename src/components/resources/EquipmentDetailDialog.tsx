@@ -51,7 +51,10 @@ interface Equipment {
   battery_health_pct?: number | null;
   battery_full_capacity_mah?: number | null;
   battery_max_cell_deviation_v?: number | null;
+  company_id?: string | null;
+  companies?: { navn?: string | null } | null;
 }
+
 
 interface EquipmentDetailDialogProps {
   open: boolean;
