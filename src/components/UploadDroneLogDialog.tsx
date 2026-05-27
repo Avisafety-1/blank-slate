@@ -322,6 +322,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+  const [linkBatteryToDrone, setLinkBatteryToDrone] = useState(true);
+
   const [logToLogbooks, setLogToLogbooks] = useState(true);
   const [logbookOpen, setLogbookOpen] = useState(true);
   const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string; targetLogbooks: string[] }>>({});
@@ -1545,13 +1547,30 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  // ── Ensure drone↔battery link exists in drone_equipment_history ──
+  // ── Ensure drone↔battery link exists in drone_equipment (+history audit) ──
   const ensureDroneEquipmentHistory = async () => {
     if (!companyId || !selectedDroneId || selectedEquipment.length === 0) return;
     const batteryEquipment = equipmentList.filter(
       eq => selectedEquipment.includes(eq.id) && isBatteryType(eq.type)
     );
     if (batteryEquipment.length === 0) return;
+
+    // Permanent link on drone card (only when user opted in)
+    if (linkBatteryToDrone) {
+      try {
+        const rows = batteryEquipment.map(b => ({
+          drone_id: selectedDroneId,
+          equipment_id: b.id,
+        }));
+        await (supabase as any)
+          .from('drone_equipment')
+          .upsert(rows, { onConflict: 'drone_id,equipment_id', ignoreDuplicates: true });
+      } catch (err) {
+        console.error('Failed to link battery to drone:', err);
+      }
+    }
+
+    // Audit history (kept regardless of opt-in)
     for (const bat of batteryEquipment) {
       try {
         const { data: latest } = await supabase
@@ -1576,6 +1595,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
     }
   };
+
 
   const saveFlightEvents = async (flightLogId: string, r: DroneLogResult) => {
     if (!companyId || !r.events || r.events.length === 0) return;
@@ -2354,7 +2374,24 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                         <CheckCircle className="w-3 h-3" />Batteri auto-matchet via SN
                       </p>
                     )}
+                    {selectedDroneId && selectedEquipment.some(eqId => {
+                      const eq = equipmentList.find(e => e.id === eqId);
+                      return eq && isBatteryType(eq.type);
+                    }) && (
+                      <div className="flex items-start gap-2 pt-1">
+                        <Checkbox
+                          id="link-battery-to-drone"
+                          checked={linkBatteryToDrone}
+                          onCheckedChange={(v) => setLinkBatteryToDrone(v === true)}
+                          className="mt-0.5"
+                        />
+                        <Label htmlFor="link-battery-to-drone" className="text-[11px] leading-tight cursor-pointer text-muted-foreground">
+                          Knytt batteri til {terminology.vehicleLower} (vises permanent på {terminology.vehicleLower}kortet)
+                        </Label>
+                      </div>
+                    )}
                   </div>
+
                 )}
 
                 {/* Summary */}

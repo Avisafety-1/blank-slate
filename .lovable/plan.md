@@ -1,42 +1,50 @@
 ## Diagnose
 
-Når en flylogg lastes opp matches den mot oppdrag på to måter i `src/components/UploadDroneLogDialog.tsx`:
+To deler i tilbakemeldingen, samme tema:
 
-1. **SHA-256-duplikat** (samme fil tidligere lastet opp) — linje ~1373–1417. Her er det meningsfullt å foreslå "oppdater eksisterende".
-2. **Dag-match på oppdrag** (ny fil, samme oppdrag) — linje ~1466–1480. Her settes `matchedLog` automatisk til første eksisterende logg for piloten:
-   ```ts
-   if (pilotLogs.length === 1) {
-     setMatchedLog(pilotLogs[0]);
-     setSelectedFlightLogChoice(pilotLogs[0].id);
-   }
-   ```
-3. **Pilot-bytte-effekt** linje 360–374: hvis pilot endres og det finnes nøyaktig én match, auto-velger den også eksisterende logg.
+**A) Batterier bør knyttes permanent til drone via flylogg-import**
+I `UploadDroneLogDialog.tsx` finnes `ensureDroneEquipmentHistory` (linje 1549–1578) som logger "added" til **`drone_equipment_history`** (audit) — men den skriver *aldri* til selve koblingstabellen **`drone_equipment`**. Det er sistnevnte som `DroneDetailDialog` leser for å vise tilknyttet utstyr på dronekortet (linje 422/713) og som `AddEquipmentToDroneDialog` inserter til manuelt. Resultatet: batteriet vises på flyloggen, men dukker aldri opp på dronekortet før noen manuelt kobler det.
 
-Det er punkt 2 og 3 som gir feilen brukeren beskriver: logg #2 for samme DJI-flytur/oppdrag treffer ikke SHA-dup, men dag-matchen pre-velger logg #1 → varigheten "appendes". Brukeren må manuelt klikke "ny flyvning".
+Tabellen har unique-constraint `(drone_id, equipment_id)` — vi kan trygt bruke upsert med `ignoreDuplicates`.
+
+**B) Underavdeling kan ikke redigere utstyr eid av mor-selskap**
+Speilbilde av drone-fiksen som ble gjort i `DroneDetailDialog` (chatlogg #7336–#7337): RLS-UPDATE-policy på `equipment` krever `company_id = get_user_company_id(auth.uid())`, så lagring fra avdeling på et delt utstyr blir stille blokkert. `EquipmentDetailDialog.tsx` har ingen tilsvarende read-only-modus i dag. `Equipment`-interfacet mangler `company_id` og `companies`, men datakilden (`Resources.tsx` linje 231) selecter allerede `*, companies(navn)`, så feltene er tilgjengelige på runtime.
 
 ## Fiks
 
-I `src/components/UploadDroneLogDialog.tsx` skal standard for dag-match-stien være **ny flyvning**, mens eksisterende logger fortsatt vises som valg i radio-gruppen.
+### 1. `src/components/UploadDroneLogDialog.tsx`
+- Ny state: `const [linkBatteryToDrone, setLinkBatteryToDrone] = useState(true);` (default på).
+- I "Utstyr"-seksjonen (linje ~2305): rett under valgt-utstyr-liste, vis en checkbox **kun** når både `selectedDroneId` er satt og minst ett valgt utstyr er batteri-type (`isBatteryType(eq.type)`):
+  > "Knytt batteri til {terminology.vehicleLower} (vises på {terminology.vehicleLower}kortet)"
+- Utvid `ensureDroneEquipmentHistory` (eller lag søsterfunksjon `ensureDroneEquipmentLink`) som — når `linkBatteryToDrone` er true — også gjør:
+  ```ts
+  await supabase.from('drone_equipment').upsert(
+    batteryEquipment.map(b => ({ drone_id: selectedDroneId, equipment_id: b.id })),
+    { onConflict: 'drone_id,equipment_id', ignoreDuplicates: true }
+  );
+  ```
+  Den eksisterende history-skrivingen beholdes (audit-spor).
+- Kalles fra de samme tre stedene som dagens funksjon (linje 1796 / 1870 / 1943).
+- Når brukeren har huket av og batteriet ble linket: kort toast "Batteri knyttet til {terminology.vehicleLower}".
 
-1. **Dag-match (linje 1466–1480):** ikke kall `setMatchedLog(...)`/`setSelectedFlightLogChoice(...)` for å auto-velge en eksisterende logg. Behold `setMatchCandidates(enrichedLogs)` slik at radioknappene listes. Sett eksplisitt `setSelectedFlightLogChoice('__new_flight__')` og `setMatchedLog(null)`. Tilpass toast-meldingene:
-   - 0 pilot-logger: "Oppdraget matcher tidspunktet. Loggen registreres som ny flyvning."
-   - ≥1 pilot-logger: "Oppdraget har eksisterende flyvninger for valgt pilot. Loggen registreres som ny flyvning – velg en eksisterende hvis du vil oppdatere den i stedet."
-
-2. **Pilot-bytte-effekt (linje 360–374):** fjern grenen som auto-velger `pilotMatches[0]` når det finnes nøyaktig én match (`else if (!matchedLog && pilotMatches.length === 1)`). Behold logikken som nullstiller `matchedLog` hvis valgt logg ikke tilhører ny pilot. Standard forblir "ny flyvning".
-
-3. **SHA-256-duplikat (linje ~1373–1417):** beholdes som i dag. Det er samme fil – "oppdater" er fortsatt riktig standard. (Brukeren kan fortsatt manuelt bytte til "ny flyvning" der.)
-
-4. **Radio-default (linje ~2994):** `value={selectedFlightLogChoice || (matchedLog ? matchedLog.id : '__new_flight__')}` faller allerede tilbake til `__new_flight__` når `matchedLog` er null, så ingen UI-endring trengs utover at staten nå starter der.
+### 2. `src/components/resources/EquipmentDetailDialog.tsx`
+Speile drone-fiksen:
+- Utvid `Equipment`-interfacet med `company_id?: string` og `companies?: { navn?: string } | null`.
+- Beregn `const isSharedFromParent = !!equipment.company_id && !!companyId && equipment.company_id !== companyId;`.
+- I `DialogHeader` rett under tittel/loggbok-knapp: vis read-only-banner når `isSharedFromParent`:
+  > "🔒 Dette utstyret er delt fra {equipment.companies?.navn || 'mor-selskapet'} og kan kun redigeres derfra."
+- I footer (linje 958): `disabled={isSharedFromParent}` på Rediger-knappen.
+- Skjul også vedlikeholds-/slett-knapper når delt fra mor (for å unngå stille RLS-feil). Loggbok og sjekkliste-visning forblir tilgjengelig.
 
 ## Verifisering
 
-- Last opp logg #1 for et oppdrag → ny flyvning opprettes (uendret).
-- Last opp logg #2 (annen fil, samme oppdrag, samme pilot) → standard er nå **ny flyvning**; eksisterende logg #1 vises som valgbar radioknapp. Hvis bruker bytter til logg #1 manuelt → oppdaterer logg #1 som før.
-- Last opp samme fil to ganger (SHA-dup) → fortsatt forslag om å oppdatere eksisterende (uendret).
-- Bytt pilot i nedtrekk etter analyse → ingen auto-binding til eksisterende logg.
+1. Last opp DJI-flylogg med drone X og batteri Y: standard nå er huket av → batteri Y dukker opp under "Tilknyttet utstyr" på `DroneDetailDialog` for drone X uten manuell handling.
+2. Hak vekk valget → batteri opprettes/oppdateres som vanlig, men ingen ny `drone_equipment`-rad legges til.
+3. Som admin i underavdeling: åpne et utstyr eid av mor-selskap → banner vises, Rediger er disabled. Sjekk at fra mor-selskap kan utstyret redigeres som før.
+4. Eksisterende `drone_equipment_history`-flow er uendret (audit beholdes).
 
 ## Tekniske detaljer
 
-- Bare `src/components/UploadDroneLogDialog.tsx` endres.
-- Ingen DB- eller skjemaendringer.
-- Ingen endring i lagrings­logikken (`onSubmit`/`saveFlightEvents`); den respekterer allerede `matchedLog === null` som "opprett ny".
+- Påvirkede filer: `src/components/UploadDroneLogDialog.tsx`, `src/components/resources/EquipmentDetailDialog.tsx`.
+- Ingen DB-migrasjon: `drone_equipment` finnes, har riktig unique-constraint og RLS tillater allerede insert fra eier-selskapets brukere (samme tilgang som manuell linking via `AddEquipmentToDroneDialog`).
+- Ingen endring i `DroneDetailDialog` (lese-flow fungerer automatisk når lenker eksisterer).

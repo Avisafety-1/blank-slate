@@ -51,7 +51,10 @@ interface Equipment {
   battery_health_pct?: number | null;
   battery_full_capacity_mah?: number | null;
   battery_max_cell_deviation_v?: number | null;
+  company_id?: string | null;
+  companies?: { navn?: string | null } | null;
 }
+
 
 interface EquipmentDetailDialogProps {
   open: boolean;
@@ -349,19 +352,32 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             <span className="truncate">{isEditing ? "Rediger utstyr" : equipment.navn}</span>
           </DialogTitle>
-          {!isEditing && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              data-tour="equipment-detail-logbok"
-              onClick={() => setShowLogbook(true)}
-              className="w-full mt-2"
-            >
-              <Book className="w-4 h-4 mr-2" />
-              Loggbok
-            </Button>
-          )}
+          {(() => {
+            const isSharedFromParent = !!equipment.company_id && !!companyId && equipment.company_id !== companyId;
+            return (
+              <>
+                {isSharedFromParent && (
+                  <p className="text-xs text-muted-foreground mt-1 rounded-md bg-muted px-2 py-1.5">
+                    🔒 Dette utstyret er delt fra {equipment.companies?.navn || "mor-selskapet"} og kan kun redigeres derfra.
+                  </p>
+                )}
+                {!isEditing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-tour="equipment-detail-logbok"
+                    onClick={() => setShowLogbook(true)}
+                    className="w-full mt-2"
+                  >
+                    <Book className="w-4 h-4 mr-2" />
+                    Loggbok
+                  </Button>
+                )}
+              </>
+            );
+          })()}
         </DialogHeader>
+
 
         <div className="space-y-3 sm:space-y-4">
           {!isEditing ? (
@@ -928,46 +944,54 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         )}
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          {isAdmin && !isEditing && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="gap-2">
-                  <Trash2 className="w-4 h-4" />
-                  Slett
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Dette vil permanent slette utstyret "{equipment.navn}". Denne handlingen kan ikke angres.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Slett
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          
-          <div className="flex gap-2 ml-auto">
-            {!isEditing ? (
-              <Button onClick={() => setIsEditing(true)}>Rediger</Button>
-            ) : (
+          {(() => {
+            const isSharedFromParent = !!equipment.company_id && !!companyId && equipment.company_id !== companyId;
+            return (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
-                  Avbryt
-                </Button>
-                <Button onClick={handleSave} disabled={isSubmitting}>
-                  {isSubmitting ? "Lagrer..." : "Lagre"}
-                </Button>
+                {isAdmin && !isEditing && !isSharedFromParent && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="gap-2">
+                        <Trash2 className="w-4 h-4" />
+                        Slett
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Dette vil permanent slette utstyret "{equipment.navn}". Denne handlingen kan ikke angres.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Slett
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+
+                <div className="flex gap-2 ml-auto">
+                  {!isEditing ? (
+                    <Button onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>Rediger</Button>
+                  ) : (
+                    <>
+                      <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
+                        Avbryt
+                      </Button>
+                      <Button onClick={handleSave} disabled={isSubmitting}>
+                        {isSubmitting ? "Lagrer..." : "Lagre"}
+                      </Button>
+                    </>
+                  )}
+                </div>
               </>
-            )}
-          </div>
+            );
+          })()}
         </DialogFooter>
+
       </DialogContent>
 
       <EquipmentLogbookDialog
