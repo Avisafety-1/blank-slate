@@ -13,6 +13,8 @@ import { CreateChecklistDialog } from "@/components/documents/CreateChecklistDia
 import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
 import FolderGrid from "@/components/documents/FolderGrid";
+import { useTranslation } from "react-i18next";
+
 
 export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "dokumentstyring" | "risikovurderinger" | "operasjonsmanual" | "annet";
 export type DocumentSortOption = "newest" | "oldest" | "expiry" | "alpha_asc" | "alpha_desc";
