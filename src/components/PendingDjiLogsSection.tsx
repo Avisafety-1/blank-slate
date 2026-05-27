@@ -30,8 +30,10 @@ interface PendingDjiLog {
   created_at: string;
   parsed_result: any;
   user_id: string | null;
+  source_file_type?: string | null;
   ownerName?: string | null;
 }
+
 
 interface PendingDjiLogsSectionProps {
   onSelectLog: (log: PendingDjiLog) => void;
@@ -172,14 +174,17 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
       <div className={`space-y-1.5 overflow-y-auto ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px]'}`}>
         {displayedLogs.map(log => {
           const ownerName = log.ownerName;
+          const isArdu = log.source_file_type === 'ardupilot' || log.parsed_result?.source === 'ardupilot';
           // Determine if this log has a recent error (rate-limit cooldown = 2 min)
           const hasError = !!log.error_code;
           const isRateLimited =
+            !isArdu &&
             log.error_code === "rate_limit" &&
             log.last_error_at &&
             (Date.now() - new Date(log.last_error_at).getTime()) < 2 * 60 * 1000;
-          const errorLabel =
-            log.error_code === "rate_limit" ? "DJI begrenser forespørsler – vent litt før du prøver igjen"
+          const errorLabel = isArdu
+            ? (log.error_message || (log.error_code ? "Kunne ikke behandle ArduPilot-loggen" : null))
+            : log.error_code === "rate_limit" ? "DJI begrenser forespørsler – vent litt før du prøver igjen"
             : log.error_code === "parse_error" ? "Loggfilen kan ikke parses (DJI avviste filen)"
             : log.error_code === "login_failed" ? "Innlogging mot DJI feilet"
             : log.error_code === "download_failed" ? "Kunne ikke laste ned loggfilen fra DJI"
@@ -202,8 +207,11 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-medium truncate">
-                    {log.aircraft_name || log.aircraft_sn || "Ukjent drone"}
+                    {log.aircraft_name || log.aircraft_sn || (isArdu ? "ArduPilot-logg" : "Ukjent drone")}
                   </p>
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 shrink-0">
+                    {isArdu ? "ArduPilot" : "DJI"}
+                  </Badge>
                   {log.matched_drone_id && !hasError && (
                     <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
                   )}
@@ -214,6 +222,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                     <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />
                   )}
                 </div>
+
                 <p className="text-[11px] text-muted-foreground">
                   {log.flight_date
                     ? format(new Date(log.flight_date), "dd. MMM yyyy HH:mm", { locale: nb })
