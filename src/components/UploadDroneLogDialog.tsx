@@ -360,16 +360,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   useEffect(() => {
     if (!pilotId || !selectedMissionId || selectedMissionId === '__new__') return;
     if (selectedFlightLogChoice) return;
-    const pilotMatches = matchCandidates.filter(
-      c => c.mission_id === selectedMissionId && (c.pilot_ids || []).includes(pilotId)
-    );
+    // If a currently matched log no longer belongs to the new pilot, clear it.
+    // Default remains "new flight" — never auto-bind to an existing log just because
+    // it matches the day/mission; the user must explicitly opt in to updating.
     if (matchedLog && !(matchedLog.pilot_ids || []).includes(pilotId)) {
-      const nextMatch = pilotMatches[0] || null;
-      setMatchedLog(nextMatch);
-      setSelectedFlightLogChoice(nextMatch?.id || '');
-    } else if (!matchedLog && pilotMatches.length === 1) {
-      setMatchedLog(pilotMatches[0]);
-      setSelectedFlightLogChoice(pilotMatches[0].id);
+      setMatchedLog(null);
+      setSelectedFlightLogChoice('__new_flight__');
     }
   }, [pilotId, selectedMissionId, matchCandidates, matchedLog, selectedFlightLogChoice]);
 
