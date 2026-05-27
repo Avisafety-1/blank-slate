@@ -510,14 +510,16 @@ export function PersonCompetencyDialog({
                 <Book className="w-4 h-4" />
                 Loggbok
               </Button>
-              <Button
-                size="sm"
-                onClick={() => setAddDialogOpen(true)}
-                className="gap-2 w-full sm:w-auto"
-              >
-                <Plus className="w-4 h-4" />
-                Legg til kompetanse
-              </Button>
+              {canEdit && (
+                <Button
+                  size="sm"
+                  onClick={() => setAddDialogOpen(true)}
+                  className="gap-2 w-full sm:w-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  Legg til kompetanse
+                </Button>
+              )}
             </div>
           </DialogHeader>
 
