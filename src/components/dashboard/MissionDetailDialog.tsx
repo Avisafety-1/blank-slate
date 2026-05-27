@@ -634,13 +634,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     <AlertDialog open={ninoxConfirmOpen} onOpenChange={setNinoxConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Godkjenn i Ninox?</AlertDialogTitle>
+          <AlertDialogTitle>{t('dashboard.missions.approveInNinoxTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Bekreft at oppdraget er godkjent i Ninox.
+            {t('dashboard.missions.approveInNinoxDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('dashboard.missions.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
             await supabase
               .from('missions')
@@ -650,7 +650,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             setNinoxConfirmOpen(false);
             onMissionUpdated?.();
           }}>
-            Godkjenn
+            {t('dashboard.missions.approve')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
