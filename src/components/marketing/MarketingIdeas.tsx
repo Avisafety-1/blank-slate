@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Sparkles, Plus, Trash2, FileEdit, Loader2 } from "lucide-react";
 import type { MarketingSection } from "./MarketingSidebar";
 import { GENERATION_PRESETS } from "./marketingPresets";
