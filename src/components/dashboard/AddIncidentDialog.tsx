@@ -339,7 +339,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
   const handleSubmit = async () => {
     if (!formData.tittel || !formData.hendelsestidspunkt) {
-      toast.error("Vennligst fyll ut alle påkrevde felt");
+      toast.error(t('incidents.fillRequiredFields'));
       return;
     }
 
