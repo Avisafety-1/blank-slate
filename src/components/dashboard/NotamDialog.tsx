@@ -441,7 +441,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
         <div className="space-y-4">
           {/* Operation type */}
           <div className="space-y-1.5">
-            <Label>Operasjonstype</Label>
+            <Label>{t('dashboard.notam.operationType')}</Label>
             <Select value={operationType} onValueChange={setOperationType}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
