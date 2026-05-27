@@ -20,6 +20,8 @@ import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, Sh
 import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
+import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
+import { checkEquipmentResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
 import { getStatusColorClasses, calculateUsageStatus, calculateEquipmentMaintenanceStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
 import { Status } from "@/types";
@@ -79,6 +81,11 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
   const [missionsSinceMaintenance, setMissionsSinceMaintenance] = useState(0);
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
+  const [visibilityWarning, setVisibilityWarning] = useState<{
+    missing: MissingVisibility[];
+    onContinue: () => void | Promise<void>;
+    onCancel: () => void;
+  } | null>(null);
   const [formData, setFormData] = useState({
     navn: "",
     type: "",
@@ -303,8 +310,35 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
       if (error) throw error;
 
-      // Save department visibility
-      await deptVis.saveVisibility();
+      // Resolve target departments and check checklist-document visibility
+      const targetDeptIds = deptVis.hasDepartments
+        ? (deptVis.allSelected
+            ? deptVis.childDepartments.map((d) => d.id)
+            : deptVis.selectedDeptIds)
+        : [];
+
+      if (targetDeptIds.length > 0) {
+        const missing = await checkEquipmentResourceVisibility(equipment.id, targetDeptIds);
+        if (missing.length > 0) {
+          await new Promise<void>((resolve) => {
+            setVisibilityWarning({
+              missing,
+              onContinue: async () => {
+                await deptVis.saveVisibility();
+                resolve();
+              },
+              onCancel: () => {
+                // Skip visibility save, keep equipment update
+                resolve();
+              },
+            });
+          });
+        } else {
+          await deptVis.saveVisibility();
+        }
+      } else {
+        await deptVis.saveVisibility();
+      }
 
       toast.success("Utstyr oppdatert");
       setIsEditing(false);
@@ -1033,6 +1067,23 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {visibilityWarning && (
+        <ResourceVisibilityWarningDialog
+          open={!!visibilityWarning}
+          onOpenChange={(o) => { if (!o) setVisibilityWarning(null); }}
+          missing={visibilityWarning.missing}
+          departments={deptVis.childDepartments}
+          resourceLabel="utstyret"
+          onContinue={async () => {
+            await visibilityWarning.onContinue();
+            setVisibilityWarning(null);
+          }}
+          onCancel={() => {
+            visibilityWarning.onCancel();
+            setVisibilityWarning(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 };

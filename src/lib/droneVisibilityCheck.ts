@@ -137,6 +137,52 @@ export async function checkDroneResourceVisibility(
 }
 
 /**
+ * Check whether the checklist document linked to an equipment is visible to the given
+ * target departments. Equipment links only a single checklist document today
+ * (equipment.sjekkliste_id), so the result will contain at most one entry.
+ */
+export async function checkEquipmentResourceVisibility(
+  equipmentId: string,
+  targetDeptIds: string[],
+): Promise<MissingVisibility[]> {
+  if (!equipmentId || targetDeptIds.length === 0) return [];
+
+  const { data: eq } = await (supabase as any)
+    .from("equipment")
+    .select("sjekkliste_id")
+    .eq("id", equipmentId)
+    .maybeSingle();
+
+  const checklistId = eq?.sjekkliste_id;
+  if (!checklistId) return [];
+
+  const { data: doc } = await (supabase as any)
+    .from("documents")
+    .select("id, tittel, company_id, visible_to_children")
+    .eq("id", checklistId)
+    .maybeSingle();
+
+  if (!doc) return [];
+
+  const visibleEverywhere = !!doc.visible_to_children;
+  const missingFor = visibleEverywhere
+    ? []
+    : targetDeptIds.filter((d) => d !== doc.company_id);
+
+  if (missingFor.length === 0) return [];
+
+  return [
+    {
+      resourceType: "document",
+      resourceId: doc.id,
+      resourceName: doc.tittel || "Uten tittel",
+      resourceCompanyId: doc.company_id,
+      missingDeptIds: missingFor,
+    },
+  ];
+}
+
+/**
  * Auto-grant visibility for documents (visible_to_children=true) and equipment
  * (insert equipment_department_visibility rows). Personnel cannot be auto-fixed.
  */

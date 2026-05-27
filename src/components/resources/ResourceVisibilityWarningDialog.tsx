@@ -17,6 +17,8 @@ interface Props {
   onContinue: () => void | Promise<void>;
   /** Called when user cancels — saving should be aborted */
   onCancel: () => void;
+  /** Optional label for the parent resource (e.g. "dronen", "utstyret"). Defaults to "dronen". */
+  resourceLabel?: string;
 }
 
 const typeMeta: Record<MissingVisibility["resourceType"], { label: string; Icon: any }> = {
@@ -32,6 +34,7 @@ export const ResourceVisibilityWarningDialog = ({
   departments,
   onContinue,
   onCancel,
+  resourceLabel = "dronen",
 }: Props) => {
   const [working, setWorking] = useState(false);
 
@@ -78,8 +81,8 @@ export const ResourceVisibilityWarningDialog = ({
             Manglende synlighet for tilknyttede ressurser
           </DialogTitle>
           <DialogDescription>
-            Følgende ressurser er tilknyttet dronen, men er ikke synlige for alle avdelingene
-            dronen deles med. Du kan gjøre dem synlige automatisk eller fortsette uten endring.
+            Følgende ressurser er tilknyttet {resourceLabel}, men er ikke synlige for alle avdelingene
+            {" "}{resourceLabel} deles med. Du kan gjøre dem synlige automatisk eller fortsette uten endring.
           </DialogDescription>
         </DialogHeader>
 
