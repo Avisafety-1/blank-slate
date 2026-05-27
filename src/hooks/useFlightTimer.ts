@@ -450,23 +450,40 @@ export const useFlightTimer = () => {
     let pilotName: string | null = null;
 
     if (user) {
-      const { data: activeFlight } = await supabase
-        .from('active_flights')
-        .select('dronetag_device_id, start_lat, start_lng, pilot_name')
-        .eq('profile_id', user.id)
-        .maybeSingle();
+      try {
+        const queryPromise = supabase
+          .from('active_flights')
+          .select('dronetag_device_id, start_lat, start_lng, pilot_name')
+          .eq('profile_id', user.id)
+          .maybeSingle();
 
-      if (activeFlight?.dronetag_device_id) {
-        dronetagDeviceId = activeFlight.dronetag_device_id;
-        // Fetch flight track from DroneTag positions
-        flightTrack = await fetchFlightTrack(dronetagDeviceId, state.startTime, endTime);
-      }
+        // 5s timeout so the Avslutt-knapp never hangs on a slow/dead network
+        const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: { message: 'timeout' } }), 5000)
+        );
 
-      // Store start position and pilot name for LogFlightTimeDialog to use
-      if (activeFlight?.start_lat && activeFlight?.start_lng) {
-        startPosition = { lat: activeFlight.start_lat, lng: activeFlight.start_lng };
+        const { data: activeFlight, error: afErr } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
+        if (afErr) {
+          console.warn('prepareEndFlight: active_flights lookup failed, continuing with local data', afErr);
+          toast.warning('Treg nettverk – brukar lokale flightdata');
+        } else if (activeFlight) {
+          if (activeFlight.dronetag_device_id) {
+            dronetagDeviceId = activeFlight.dronetag_device_id;
+            try {
+              flightTrack = await fetchFlightTrack(dronetagDeviceId, state.startTime, endTime);
+            } catch (e) {
+              console.warn('prepareEndFlight: fetchFlightTrack failed, continuing', e);
+            }
+          }
+          if (activeFlight.start_lat && activeFlight.start_lng) {
+            startPosition = { lat: activeFlight.start_lat, lng: activeFlight.start_lng };
+          }
+          pilotName = activeFlight.pilot_name || null;
+        }
+      } catch (e) {
+        console.warn('prepareEndFlight: unexpected error, continuing', e);
       }
-      pilotName = activeFlight?.pilot_name || null;
     }
 
     return {
