@@ -492,7 +492,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Maks høyde (FT AGL)</Label>
+              <Label>{t('dashboard.notam.maxHeightFt')}</Label>
               <Input
                 type="number"
                 value={maxAglFt}
