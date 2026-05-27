@@ -564,20 +564,20 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         const cells = populationDensityResult?.cells ?? [];
         const ssbCount = cells.filter((c: any) => c.source !== "eurostat").length;
         const eurostatCount = cells.length - ssbCount;
-        let sourceLabel = "Befolkningstetthet";
-        if (ssbCount > 0 && eurostatCount > 0) sourceLabel = "Befolkningstetthet (SSB 250 m + Eurostat 1 km)";
-        else if (ssbCount > 0) sourceLabel = "Befolkningstetthet (SSB 250 m)";
-        else if (eurostatCount > 0) sourceLabel = "Befolkningstetthet (Eurostat 1 km)";
+        let sourceLabel = t("soraPanel.popDensity");
+        if (ssbCount > 0 && eurostatCount > 0) sourceLabel = t("soraPanel.popDensitySsbEurostat");
+        else if (ssbCount > 0) sourceLabel = t("soraPanel.popDensitySsb");
+        else if (eurostatCount > 0) sourceLabel = t("soraPanel.popDensityEurostat");
         return (
           <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2">
             <div className="min-w-0">
               <p className="text-xs font-medium">{sourceLabel}</p>
               <p className="text-[11px] text-muted-foreground">
                 {populationDensityLoading
-                  ? "Henter aktuelle ruter rundt hele beregnet område…"
+                  ? t("soraPanel.popDensityLoading")
                   : populationDensityResult?.maxDensityCell
-                    ? `Pådriver: ${(populationDensityResult.maxDensityPerKm2).toLocaleString("nb-NO")} pers/km² · ${cells.length.toLocaleString("nb-NO")} ruter vurdert`
-                    : "Viser befolkede ruter rundt SORA-volumet; tomme felt er normalt 0 registrert befolkning"}
+                    ? t("soraPanel.popDensityDriver", { density: populationDensityResult.maxDensityPerKm2.toLocaleString("nb-NO"), count: cells.length.toLocaleString("nb-NO") })
+                    : t("soraPanel.popDensityEmpty")}
               </p>
             </div>
             <Switch checked={showPopulationDensity} onCheckedChange={onShowPopulationDensityChange} />
