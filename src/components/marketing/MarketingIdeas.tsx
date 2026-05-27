@@ -85,7 +85,7 @@ export const MarketingIdeas = ({ onNavigate }: Props) => {
       ai_generated: false,
     });
     if (error) {
-      toast.error("Kunne ikke legge til idé");
+      toast.error(t('pages.marketing.couldNotAddIdea'));
       return;
     }
     setNewTitle("");
