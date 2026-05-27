@@ -17,7 +17,9 @@ import {
   Type, Image, Minus, MousePointerClick, Save, FolderOpen, Copy, ArrowUp, ArrowDown, ImagePlus
 } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enGB } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
+import { getCurrentLanguage } from "@/lib/i18nHelpers";
 
 /* ─── Types ─── */
 interface Contact {
@@ -96,8 +98,8 @@ function blocksToHtml(blocks: EmailBlock[]): string {
 ${inner}
 </td></tr>
 <tr><td style="padding:20px 40px;background:#f9fafb;text-align:center;">
-<p style="font-size:12px;color:#999;margin:0;">Du mottar dette fordi du abonnerer på vårt nyhetsbrev.</p>
-<p style="font-size:12px;color:#999;margin:8px 0 0;"><a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#0ea5e9;">Meld deg av</a></p>
+<p style="font-size:12px;color:#999;margin:0;">${getCurrentLanguage() === "en" ? "You receive this because you subscribe to our newsletter." : "Du mottar dette fordi du abonnerer på vårt nyhetsbrev."}</p>
+<p style="font-size:12px;color:#999;margin:8px 0 0;"><a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#0ea5e9;">${getCurrentLanguage() === "en" ? "Unsubscribe" : "Meld deg av"}</a></p>
 </td></tr>
 </table>
 </td></tr></table>
@@ -169,26 +171,27 @@ const defaultBlocks: EmailBlock[] = [
 
 /* ─── Main component ─── */
 export const MarketingNewsletter = () => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState("subscribers");
   const signupUrl = "https://app.avisafe.no/nyhetsbrev";
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-bold">Nyhetsbrev</h1>
+        <h1 className="text-xl font-bold">{t("pages.marketing.newsletterTitle")}</h1>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Påmeldingslenke:</span>
+          <span className="text-xs text-muted-foreground">{t("pages.marketing.signupLink")}</span>
           <code className="text-xs bg-muted px-2 py-1 rounded select-all">{signupUrl}</code>
-          <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(signupUrl); toast({ title: "Kopiert!" }); }}>
+          <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(signupUrl); toast({ title: t("pages.marketing.copied") }); }}>
             <Copy className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="w-full grid grid-cols-3">
-          <TabsTrigger value="subscribers" className="gap-1"><Users className="w-3.5 h-3.5" /> Abonnenter</TabsTrigger>
-          <TabsTrigger value="compose" className="gap-1"><FileEdit className="w-3.5 h-3.5" /> Skriv</TabsTrigger>
-          <TabsTrigger value="history" className="gap-1"><History className="w-3.5 h-3.5" /> Historikk</TabsTrigger>
+          <TabsTrigger value="subscribers" className="gap-1"><Users className="w-3.5 h-3.5" /> {t("pages.marketing.tabSubscribers")}</TabsTrigger>
+          <TabsTrigger value="compose" className="gap-1"><FileEdit className="w-3.5 h-3.5" /> {t("pages.marketing.tabCompose")}</TabsTrigger>
+          <TabsTrigger value="history" className="gap-1"><History className="w-3.5 h-3.5" /> {t("pages.marketing.tabHistory")}</TabsTrigger>
         </TabsList>
         <TabsContent value="subscribers"><SubscribersTab /></TabsContent>
         <TabsContent value="compose"><ComposeTab /></TabsContent>
@@ -200,6 +203,7 @@ export const MarketingNewsletter = () => {
 
 /* ─── Subscribers ─── */
 const SubscribersTab = () => {
+  const { t } = useTranslation();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
@@ -214,11 +218,11 @@ const SubscribersTab = () => {
       const res = await invokeNewsletter("list-contacts");
       setContacts(res?.data ?? []);
     } catch (e: any) {
-      toast({ title: "Feil", description: e.message, variant: "destructive" });
+      toast({ title: t("pages.marketing.error"), description: e.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -226,21 +230,21 @@ const SubscribersTab = () => {
     if (!email) return;
     try {
       await invokeNewsletter("add-contact", { email, first_name: firstName, last_name: lastName });
-      toast({ title: "Lagt til" });
+      toast({ title: t("pages.marketing.added") });
       setEmail(""); setFirstName(""); setLastName("");
       load();
     } catch (e: any) {
-      toast({ title: "Feil", description: e.message, variant: "destructive" });
+      toast({ title: t("pages.marketing.error"), description: e.message, variant: "destructive" });
     }
   };
 
   const removeContact = async (id: string) => {
     try {
       await invokeNewsletter("remove-contact", { contact_id: id });
-      toast({ title: "Fjernet" });
+      toast({ title: t("pages.marketing.removed") });
       load();
     } catch (e: any) {
-      toast({ title: "Feil", description: e.message, variant: "destructive" });
+      toast({ title: t("pages.marketing.error"), description: e.message, variant: "destructive" });
     }
   };
 
@@ -250,12 +254,12 @@ const SubscribersTab = () => {
     try {
       const res = await invokeNewsletter("import-contacts", { emails });
       const ok = res.imported?.filter((r: any) => r.ok).length ?? 0;
-      toast({ title: `Importert ${ok} av ${emails.length} kontakter` });
+      toast({ title: t("pages.marketing.importedCount", { ok, total: emails.length }) });
       setImportText("");
       setShowImport(false);
       load();
     } catch (e: any) {
-      toast({ title: "Feil", description: e.message, variant: "destructive" });
+      toast({ title: t("pages.marketing.error"), description: e.message, variant: "destructive" });
     }
   };
 
@@ -265,18 +269,18 @@ const SubscribersTab = () => {
   return (
     <div className="space-y-4 mt-2">
       <div className="flex flex-wrap gap-2 items-end">
-        <div className="flex-1 min-w-[150px]"><Label className="text-xs">E-post</Label><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="e@post.no" /></div>
-        <div className="min-w-[100px]"><Label className="text-xs">Fornavn</Label><Input value={firstName} onChange={e => setFirstName(e.target.value)} /></div>
-        <div className="min-w-[100px]"><Label className="text-xs">Etternavn</Label><Input value={lastName} onChange={e => setLastName(e.target.value)} /></div>
-        <Button size="sm" onClick={addContact}><Plus className="w-4 h-4 mr-1" />Legg til</Button>
-        <Button size="sm" variant="outline" onClick={() => setShowImport(!showImport)}><Upload className="w-4 h-4 mr-1" />Importer</Button>
+        <div className="flex-1 min-w-[150px]"><Label className="text-xs">{t("pages.marketing.email")}</Label><Input value={email} onChange={e => setEmail(e.target.value)} placeholder="e@post.no" /></div>
+        <div className="min-w-[100px]"><Label className="text-xs">{t("pages.marketing.firstName")}</Label><Input value={firstName} onChange={e => setFirstName(e.target.value)} /></div>
+        <div className="min-w-[100px]"><Label className="text-xs">{t("pages.marketing.lastName")}</Label><Input value={lastName} onChange={e => setLastName(e.target.value)} /></div>
+        <Button size="sm" onClick={addContact}><Plus className="w-4 h-4 mr-1" />{t("pages.marketing.addContactBtn")}</Button>
+        <Button size="sm" variant="outline" onClick={() => setShowImport(!showImport)}><Upload className="w-4 h-4 mr-1" />{t("pages.marketing.importContactsBtn")}</Button>
       </div>
 
       {showImport && (
         <div className="space-y-2 p-3 border border-border rounded-md bg-muted/30">
-          <Label className="text-xs">Lim inn e-poster (komma-, semikolon- eller linjeskilt)</Label>
+          <Label className="text-xs">{t("pages.marketing.pasteEmailsLabel")}</Label>
           <Textarea value={importText} onChange={e => setImportText(e.target.value)} rows={3} placeholder="a@b.no, c@d.no" />
-          <Button size="sm" onClick={importContacts}>Importer alle</Button>
+          <Button size="sm" onClick={importContacts}>{t("pages.marketing.importAll")}</Button>
         </div>
       )}
 
@@ -284,14 +288,14 @@ const SubscribersTab = () => {
         <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">{subscribed.length} aktive abonnenter{unsubscribed.length > 0 && `, ${unsubscribed.length} avmeldt`}</p>
+          <p className="text-sm text-muted-foreground">{t("pages.marketing.activeSubscribers", { count: subscribed.length })}{unsubscribed.length > 0 && t("pages.marketing.andUnsubscribed", { count: unsubscribed.length })}</p>
           <div className="rounded-md border overflow-auto max-h-[400px]">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>E-post</TableHead>
-                  <TableHead className="hidden sm:table-cell">Navn</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("pages.marketing.email")}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t("pages.marketing.nameCol")}</TableHead>
+                  <TableHead>{t("pages.marketing.statusCol")}</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -302,7 +306,7 @@ const SubscribersTab = () => {
                     <TableCell className="hidden sm:table-cell text-xs">{[c.first_name, c.last_name].filter(Boolean).join(" ") || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={c.unsubscribed ? "secondary" : "default"} className="text-[10px]">
-                        {c.unsubscribed ? "Avmeldt" : "Aktiv"}
+                        {c.unsubscribed ? t("pages.marketing.unsubscribed") : t("pages.marketing.active")}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -313,7 +317,7 @@ const SubscribersTab = () => {
                   </TableRow>
                 ))}
                 {contacts.length === 0 && (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground text-sm py-6">Ingen kontakter enda</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground text-sm py-6">{t("pages.marketing.noContactsYet")}</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -330,6 +334,7 @@ const ImageBlockProps = ({ block, onUpdateProps, onUpdateContent }: {
   onUpdateProps: (key: string, val: string) => void;
   onUpdateContent: (val: string) => void;
 }) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -345,9 +350,9 @@ const ImageBlockProps = ({ block, onUpdateProps, onUpdateContent }: {
       if (upErr) throw upErr;
       const { data: urlData } = supabase.storage.from("marketing-media").getPublicUrl(path);
       onUpdateProps("src", urlData.publicUrl);
-      toast({ title: "Bilde lastet opp!" });
+      toast({ title: t("pages.marketing.imageUploadedShort") });
     } catch (err: any) {
-      toast({ title: "Feil ved opplasting", description: err.message, variant: "destructive" });
+      toast({ title: t("pages.marketing.uploadError"), description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -356,11 +361,10 @@ const ImageBlockProps = ({ block, onUpdateProps, onUpdateContent }: {
 
   const handleMediaSelect = async (mediaIds: string[]) => {
     if (!mediaIds.length) return;
-    // Fetch the URL of the first selected media
     const { data } = await supabase.from("marketing_media").select("file_url").eq("id", mediaIds[0]).single();
     if (data?.file_url) {
       onUpdateProps("src", data.file_url);
-      toast({ title: "Bilde valgt fra biblioteket" });
+      toast({ title: t("pages.marketing.imagePicked") });
     }
   };
 
@@ -372,24 +376,24 @@ const ImageBlockProps = ({ block, onUpdateProps, onUpdateContent }: {
         </div>
       )}
       <div className="space-y-2">
-        <Label className="text-xs">Bilde</Label>
+        <Label className="text-xs">{t("pages.marketing.imageLabel")}</Label>
         <div className="flex gap-1.5">
           <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
             {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
-            Last opp
+            {t("pages.marketing.uploadBtn")}
           </Button>
           <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => setShowMediaPicker(true)}>
-            <ImagePlus className="w-3.5 h-3.5 mr-1" />Bibliotek
+            <ImagePlus className="w-3.5 h-3.5 mr-1" />{t("pages.marketing.library")}
           </Button>
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
       </div>
       <div>
-        <Label className="text-xs">Eller lim inn URL</Label>
+        <Label className="text-xs">{t("pages.marketing.orPasteUrl")}</Label>
         <Input value={block.props.src || ""} onChange={e => onUpdateProps("src", e.target.value)} placeholder="https://..." className="text-xs" />
       </div>
       <div>
-        <Label className="text-xs">Alt-tekst</Label>
+        <Label className="text-xs">{t("pages.marketing.altText")}</Label>
         <Input value={block.content} onChange={e => onUpdateContent(e.target.value)} className="text-xs" />
       </div>
       <MediaLibraryPickerDialog
@@ -403,6 +407,7 @@ const ImageBlockProps = ({ block, onUpdateProps, onUpdateContent }: {
 
 /* ─── Compose (Visual Editor) ─── */
 const ComposeTab = () => {
+  const { t } = useTranslation();
   const [subject, setSubject] = useState("");
   const [blocks, setBlocks] = useState<EmailBlock[]>([...defaultBlocks]);
   const [sending, setSending] = useState(false);
@@ -426,7 +431,7 @@ const ComposeTab = () => {
     const newBlock: EmailBlock = {
       id: crypto.randomUUID(),
       type,
-      content: type === "heading" ? "Overskrift" : type === "text" ? "Tekst her..." : type === "button" ? "Klikk her" : "",
+      content: type === "heading" ? t("pages.marketing.headingTextDefault") : type === "text" ? t("pages.marketing.textDefault") : type === "button" ? t("pages.marketing.buttonDefault") : "",
       props: type === "heading" ? { level: "1" } : type === "button" ? { url: "#", bgColor: "#0ea5e9", textColor: "#ffffff" } : type === "spacer" ? { height: "24" } : {},
     };
     setBlocks(prev => [...prev, newBlock]);
@@ -464,7 +469,7 @@ const ComposeTab = () => {
       subject,
       html_content: html,
     } as any);
-    toast({ title: "Mal lagret!" });
+    toast({ title: t("pages.marketing.templateSaved") });
     setTemplateName("");
     setShowSaveDialog(false);
     loadTemplates();
@@ -475,13 +480,13 @@ const ComposeTab = () => {
     const parsed = htmlToBlocks(tpl.html_content);
     setBlocks(parsed.length > 0 ? parsed : [...defaultBlocks]);
     setSelectedBlock(null);
-    toast({ title: `Mal «${tpl.name}» lastet` });
+    toast({ title: t("pages.marketing.templateLoaded", { name: tpl.name }) });
     setShowLoadDialog(false);
   };
 
   const sendNow = async () => {
     if (!subject) {
-      toast({ title: "Fyll ut emne", variant: "destructive" });
+      toast({ title: t("pages.marketing.fillSubject"), variant: "destructive" });
       return;
     }
     setSending(true);
@@ -489,11 +494,11 @@ const ComposeTab = () => {
       const html = blocksToHtml(blocks);
       const broadcast = await invokeNewsletter("create-broadcast", { subject, html });
       await invokeNewsletter("send-broadcast", { broadcast_id: broadcast.id });
-      toast({ title: "Nyhetsbrev sendt!" });
+      toast({ title: t("pages.marketing.newsletterSent") });
       setSubject("");
       setBlocks([...defaultBlocks]);
     } catch (e: any) {
-      toast({ title: "Feil", description: e.message, variant: "destructive" });
+      toast({ title: t("pages.marketing.error"), description: e.message, variant: "destructive" });
     } finally {
       setSending(false);
     }
@@ -506,46 +511,46 @@ const ComposeTab = () => {
     <div className="space-y-4 mt-2">
       {/* Subject */}
       <div>
-        <Label>Emne</Label>
-        <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Emne for nyhetsbrevet" />
+        <Label>{t("pages.marketing.subject")}</Label>
+        <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder={t("pages.marketing.subjectPlaceholder")} />
       </div>
 
       {/* Toolbar */}
       <div className="flex items-center gap-1 flex-wrap">
-        <span className="text-xs text-muted-foreground mr-1">Legg til:</span>
-        <Button size="sm" variant="outline" onClick={() => addBlock("heading")}><Type className="w-3.5 h-3.5 mr-1" />Overskrift</Button>
-        <Button size="sm" variant="outline" onClick={() => addBlock("text")}><FileEdit className="w-3.5 h-3.5 mr-1" />Tekst</Button>
-        <Button size="sm" variant="outline" onClick={() => addBlock("button")}><MousePointerClick className="w-3.5 h-3.5 mr-1" />Knapp</Button>
-        <Button size="sm" variant="outline" onClick={() => addBlock("image")}><Image className="w-3.5 h-3.5 mr-1" />Bilde</Button>
-        <Button size="sm" variant="outline" onClick={() => addBlock("divider")}><Minus className="w-3.5 h-3.5 mr-1" />Linje</Button>
-        <Button size="sm" variant="outline" onClick={() => addBlock("spacer")}>Mellomrom</Button>
+        <span className="text-xs text-muted-foreground mr-1">{t("pages.marketing.addLabelToolbar")}</span>
+        <Button size="sm" variant="outline" onClick={() => addBlock("heading")}><Type className="w-3.5 h-3.5 mr-1" />{t("pages.marketing.heading")}</Button>
+        <Button size="sm" variant="outline" onClick={() => addBlock("text")}><FileEdit className="w-3.5 h-3.5 mr-1" />{t("pages.marketing.text")}</Button>
+        <Button size="sm" variant="outline" onClick={() => addBlock("button")}><MousePointerClick className="w-3.5 h-3.5 mr-1" />{t("pages.marketing.button")}</Button>
+        <Button size="sm" variant="outline" onClick={() => addBlock("image")}><Image className="w-3.5 h-3.5 mr-1" />{t("pages.marketing.image")}</Button>
+        <Button size="sm" variant="outline" onClick={() => addBlock("divider")}><Minus className="w-3.5 h-3.5 mr-1" />{t("pages.marketing.line")}</Button>
+        <Button size="sm" variant="outline" onClick={() => addBlock("spacer")}>{t("pages.marketing.spacer")}</Button>
         <div className="ml-auto flex gap-1">
           <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="secondary"><Save className="w-3.5 h-3.5 mr-1" />Lagre mal</Button>
+              <Button size="sm" variant="secondary"><Save className="w-3.5 h-3.5 mr-1" />{t("pages.marketing.saveTemplate")}</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Lagre som mal</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t("pages.marketing.saveAsTemplate")}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label>Malnavn</Label><Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="F.eks. Månedlig oppdatering" /></div>
-                <Button onClick={saveTemplate} disabled={!templateName.trim()}>Lagre</Button>
+                <div><Label>{t("pages.marketing.templateName")}</Label><Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder={t("pages.marketing.templateNamePlaceholder")} /></div>
+                <Button onClick={saveTemplate} disabled={!templateName.trim()}>{t("pages.marketing.save")}</Button>
               </div>
             </DialogContent>
           </Dialog>
           <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="secondary"><FolderOpen className="w-3.5 h-3.5 mr-1" />Last mal</Button>
+              <Button size="sm" variant="secondary"><FolderOpen className="w-3.5 h-3.5 mr-1" />{t("pages.marketing.loadTemplate")}</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Velg mal</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{t("pages.marketing.selectTemplate")}</DialogTitle></DialogHeader>
               {templates.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4">Ingen lagrede maler enda.</p>
+                <p className="text-sm text-muted-foreground py-4">{t("pages.marketing.noSavedTemplates")}</p>
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-auto">
-                  {templates.map(t => (
-                    <button key={t.id} className="w-full text-left p-3 rounded-md border border-border hover:bg-accent/10 transition-colors" onClick={() => loadTemplate(t)}>
-                      <p className="text-sm font-medium">{t.name}</p>
-                      <p className="text-xs text-muted-foreground">{t.subject || "Uten emne"}</p>
+                  {templates.map(tpl => (
+                    <button key={tpl.id} className="w-full text-left p-3 rounded-md border border-border hover:bg-accent/10 transition-colors" onClick={() => loadTemplate(tpl)}>
+                      <p className="text-sm font-medium">{tpl.name}</p>
+                      <p className="text-xs text-muted-foreground">{tpl.subject || t("pages.marketing.noSubject")}</p>
                     </button>
                   ))}
                 </div>
@@ -617,7 +622,7 @@ const ComposeTab = () => {
                           <img src={block.props.src} alt={block.content} className="max-w-full h-auto rounded-lg" />
                         ) : (
                           <div className="h-32 bg-muted/50 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
-                            <Image className="w-5 h-5 mr-2" />Velg et bilde
+                            <Image className="w-5 h-5 mr-2" />{t("pages.marketing.chooseImage")}
                           </div>
                         )}
                       </div>
@@ -628,13 +633,13 @@ const ComposeTab = () => {
                   </div>
                 ))}
                 {blocks.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8 text-sm">Legg til blokker for å bygge nyhetsbrevet</p>
+                  <p className="text-center text-muted-foreground py-8 text-sm">{t("pages.marketing.addBlocksHint")}</p>
                 )}
               </div>
               {/* Footer preview */}
               <div className="bg-[#f9fafb] px-10 py-5 text-center">
-                <p className="text-xs text-[#999] m-0">Du mottar dette fordi du abonnerer på vårt nyhetsbrev.</p>
-                <p className="text-xs text-[#999] mt-2"><span className="text-[#0ea5e9] underline cursor-default">Meld deg av</span></p>
+                <p className="text-xs text-[#999] m-0">{t("pages.marketing.footerSubscribed")}</p>
+                <p className="text-xs text-[#999] mt-2"><span className="text-[#0ea5e9] underline cursor-default">{t("pages.marketing.unsubscribe")}</span></p>
               </div>
             </div>
           </div>
