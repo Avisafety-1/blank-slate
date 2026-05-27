@@ -1667,7 +1667,7 @@ export const AddMissionDialog = ({
 
           {/* Documents */}
           <div>
-            <Label>Dokumenter</Label>
+            <Label>{t('missions.documents')}</Label>
             <Popover open={openDocumentPopover} onOpenChange={setOpenDocumentPopover}>
               <PopoverTrigger asChild>
                 <Button
@@ -1676,15 +1676,16 @@ export const AddMissionDialog = ({
                   aria-expanded={openDocumentPopover}
                   className="w-full justify-between"
                 >
-                  Knytt dokument...
+                  {t('missions.linkDocument')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0">
                 <Command>
-                  <CommandInput placeholder="Søk dokumenter..." />
+                  <CommandInput placeholder={t('missions.searchDocuments')} />
                   <CommandList>
-                    <CommandEmpty>Ingen dokumenter funnet.</CommandEmpty>
+                    <CommandEmpty>{t('missions.noDocumentsFound')}</CommandEmpty>
+
                     <CommandGroup>
                       {documents.map((doc) => (
                         <CommandItem
