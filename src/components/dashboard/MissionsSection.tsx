@@ -467,7 +467,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         onOpenChange={(open) => !open && setChecklistMission(null)}
         checklistIds={checklistMission?.checklist_ids || []}
         completedIds={checklistMission?.checklist_completed_ids || []}
-        itemName={checklistMission?.tittel || 'Oppdrag'}
+        itemName={checklistMission?.tittel || t('dashboard.missions.missionFallback')}
         onComplete={handleChecklistCompleted}
       />
 
@@ -481,19 +481,19 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
       <AlertDialog open={!!approvalConfirmMissionId} onOpenChange={(open) => !open && setApprovalConfirmMissionId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Send til godkjenning?</AlertDialogTitle>
+            <AlertDialogTitle>{t('dashboard.missions.submitForApprovalTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil sende dette oppdraget til godkjenning?
+              {t('dashboard.missions.submitForApprovalDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('dashboard.missions.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
               if (!approvalConfirmMissionId) return;
               await submitMissionForApproval(approvalConfirmMissionId);
               setApprovalConfirmMissionId(null);
             }}>
-              Send til godkjenning
+              {t('dashboard.missions.submitForApprovalConfirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
