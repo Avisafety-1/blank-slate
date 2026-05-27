@@ -398,7 +398,7 @@ export const IncidentsSection = ({ abortSignal }: { abortSignal?: AbortSignal })
                       </div>
                     </div>
                     <Badge className={`${statusColors[incident.status as keyof typeof statusColors] || 'bg-gray-500/20'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap`}>
-                      {incident.status}
+                      {translateIncidentStatus(incident.status)}
                     </Badge>
                   </div>
                 </div>
