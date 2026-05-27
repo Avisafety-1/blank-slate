@@ -1258,7 +1258,7 @@ export const AddMissionDialog = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="oppdragstype">Oppdragstype</Label>
+              <Label htmlFor="oppdragstype">{t('missions.missionType')}</Label>
               <Select
                 value={formData.oppdragstype || "__none__"}
                 onValueChange={(value) =>
@@ -1270,32 +1270,33 @@ export const AddMissionDialog = ({
                 }
               >
                 <SelectTrigger id="oppdragstype">
-                  <SelectValue placeholder="Velg type..." />
+                  <SelectValue placeholder={t('missions.selectType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Ikke spesifisert</SelectItem>
-                  <SelectItem value="Inspeksjon">Inspeksjon</SelectItem>
-                  <SelectItem value="Kartlegging">Kartlegging</SelectItem>
-                  <SelectItem value="Foto/film">Foto/film</SelectItem>
-                  <SelectItem value="Søk og redning">Søk og redning</SelectItem>
-                  <SelectItem value="Landbruk">Landbruk</SelectItem>
-                  <SelectItem value="Bygg/anlegg">Bygg/anlegg</SelectItem>
-                  <SelectItem value="Forskning">Forskning</SelectItem>
-                  <SelectItem value="Annet">Annet</SelectItem>
+                  <SelectItem value="__none__">{t('missions.notSpecified')}</SelectItem>
+                  <SelectItem value="Inspeksjon">{t('missions.missionTypes.Inspeksjon')}</SelectItem>
+                  <SelectItem value="Kartlegging">{t('missions.missionTypes.Kartlegging')}</SelectItem>
+                  <SelectItem value="Foto/film">{t('missions.missionTypes.Foto/film')}</SelectItem>
+                  <SelectItem value="Søk og redning">{t('missions.missionTypes.Søk og redning')}</SelectItem>
+                  <SelectItem value="Landbruk">{t('missions.missionTypes.Landbruk')}</SelectItem>
+                  <SelectItem value="Bygg/anlegg">{t('missions.missionTypes.Bygg/anlegg')}</SelectItem>
+                  <SelectItem value="Forskning">{t('missions.missionTypes.Forskning')}</SelectItem>
+                  <SelectItem value="Annet">{t('missions.missionTypes.Annet')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {formData.oppdragstype === "Annet" && (
               <div>
-                <Label htmlFor="oppdragstype_annet">Spesifiser oppdragstype</Label>
+                <Label htmlFor="oppdragstype_annet">{t('missions.specifyType')}</Label>
                 <Input
                   id="oppdragstype_annet"
                   value={formData.oppdragstype_annet}
                   onChange={(e) => setFormData({ ...formData, oppdragstype_annet: e.target.value })}
-                  placeholder="F.eks. Termografering"
+                  placeholder={t('missions.specifyTypePlaceholder')}
                 />
               </div>
             )}
+
           </div>
 
           <div>
