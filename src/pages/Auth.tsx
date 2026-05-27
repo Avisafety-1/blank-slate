@@ -345,7 +345,7 @@ const Auth = () => {
             toast.error(t('auth.accountPendingApproval'));
             return;
           }
-          toast.success(t('auth.loginSuccess'));
+          toast.success(t('auth.loginSuccess'), { id: 'login-success' });
           redirectToApp('/');
         }
       } else if (regMode === 'new') {
@@ -644,7 +644,7 @@ const Auth = () => {
         });
         if (otpError) throw otpError;
 
-        toast.success(t('auth.loginSuccess'));
+        toast.success(t('auth.loginSuccess'), { id: 'login-success' });
         redirectToApp('/');
       }
     } catch (err: any) {
@@ -1060,7 +1060,7 @@ const Auth = () => {
         open={showMfaChallenge}
         onVerified={() => {
           setShowMfaChallenge(false);
-          toast.success(t('auth.loginSuccess'));
+          toast.success(t('auth.loginSuccess'), { id: 'login-success' });
           redirectToApp('/');
         }}
         onCancel={() => {
