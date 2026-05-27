@@ -441,7 +441,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
                   type="number"
                   min={0}
                   max={30}
-                  placeholder={catalogSpecs?.max_wind_mps != null ? t("soraPanel.windOverridePlaceholder", { max: catalogSpecs.max_wind_mps }) : "—"}
+                  placeholder={catalogSpecs?.max_wind_mps != null ? (t as any)("soraPanel.windOverridePlaceholder", { max: catalogSpecs.max_wind_mps }) : "—"}
                   value={windOverride}
                   onChange={(e) => setWindOverride(e.target.value)}
                   className="h-8 text-sm"
