@@ -1242,6 +1242,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     variant="outline"
                     onClick={() => setAddEquipmentDialogOpen(true)}
                     className="gap-2 w-full sm:w-auto"
+                    disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
                     Legg til
@@ -1298,6 +1299,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     variant="outline"
                     onClick={() => setAddEquipmentDialogOpen(true)}
                     className="gap-2 w-full sm:w-auto"
+                    disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
                     Legg til
@@ -1350,6 +1352,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     variant="outline"
                     onClick={() => setAddPersonnelDialogOpen(true)}
                     className="gap-2 w-full sm:w-auto"
+                    disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
                     Legg til
@@ -1403,6 +1406,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     variant="outline"
                     onClick={() => setDocumentPickerOpen(true)}
                     className="gap-2 w-full sm:w-auto"
+                    disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
                     Legg til
@@ -1472,6 +1476,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     variant="outline"
                     onClick={() => setShowAddAccessory(true)}
                     className="gap-2 w-full sm:w-auto"
+                    disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
                     Legg til
@@ -2007,7 +2012,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           {isAdmin && !isEditing && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="gap-2">
+                <Button variant="destructive" size="sm" className="gap-2" disabled={isSharedFromParent}>
                   <Trash2 className="w-4 h-4" />
                   Slett
                 </Button>
