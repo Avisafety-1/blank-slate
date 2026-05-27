@@ -12,6 +12,7 @@ import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecut
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClipboardCheck, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdfExport";
 
 type Mission = any;
@@ -119,6 +120,7 @@ export interface OppdragDialogsProps {
 }
 
 export const OppdragDialogs = (props: OppdragDialogsProps) => {
+  const { t } = useTranslation();
   return (
     <>
       {/* Add Mission Dialog */}
@@ -204,15 +206,15 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
       <AlertDialog open={!!props.deletingMission} onOpenChange={(open) => !open && props.setDeletingMission(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker på at du vil slette gjeldende oppdrag?</AlertDialogTitle>
+            <AlertDialogTitle>{t("oppdragDialogs.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Denne handlingen kan ikke angres. Oppdraget "{props.deletingMission?.tittel}" og alle tilknyttede data vil bli permanent slettet.
+              {t("oppdragDialogs.deleteDesc", { title: props.deletingMission?.tittel })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t("oppdragDialogs.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={props.onDeleteMission} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Slett oppdrag
+              {t("oppdragDialogs.deleteMission")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -231,15 +233,15 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
       <AlertDialog open={props.replaceRouteConfirmOpen} onOpenChange={props.setReplaceRouteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Erstatte eksisterende rute?</AlertDialogTitle>
+            <AlertDialogTitle>{t("oppdragDialogs.replaceRouteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Dette oppdraget har allerede en rute. Vil du erstatte den med koordinatene fra den importerte filen?
+              {t("oppdragDialogs.replaceRouteDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={props.onCancelKmlReplace}>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel onClick={props.onCancelKmlReplace}>{t("oppdragDialogs.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={props.onConfirmKmlReplace}>
-              Erstatt rute
+              {t("oppdragDialogs.replaceRoute")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -251,11 +253,11 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         onOpenChange={props.setDocumentDialogOpen}
         document={props.selectedDocument}
         status={(() => {
-          if (!props.selectedDocument?.gyldig_til) return "Grønn";
+          if (!props.selectedDocument?.gyldig_til) return t("oppdragDialogs.statusGreen");
           const daysUntil = Math.ceil((new Date(props.selectedDocument.gyldig_til).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-          if (daysUntil < 0) return "Rød";
-          if (daysUntil <= (props.selectedDocument.varsel_dager_for_utløp || 30)) return "Gul";
-          return "Grønn";
+          if (daysUntil < 0) return t("oppdragDialogs.statusRed");
+          if (daysUntil <= (props.selectedDocument.varsel_dager_for_utløp || 30)) return t("oppdragDialogs.statusYellow");
+          return t("oppdragDialogs.statusGreen");
         })()}
       />
 
@@ -289,9 +291,9 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
       <Dialog open={props.exportPdfDialogOpen} onOpenChange={props.setExportPdfDialogOpen}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Eksporter oppdragsrapport</DialogTitle>
+            <DialogTitle>{t("oppdragDialogs.exportTitle")}</DialogTitle>
             <DialogDescription>
-              Velg hvilke seksjoner som skal inkluderes i PDF-rapporten for «{props.exportPdfMission?.tittel}».
+              {t("oppdragDialogs.exportDesc", { title: props.exportPdfMission?.tittel })}
             </DialogDescription>
           </DialogHeader>
 
@@ -326,7 +328,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                     props.setPdfSections(update);
                   }}
                 >
-                  {allOn ? 'Fjern alle' : 'Velg alle'}
+                  {allOn ? t("oppdragDialogs.deselectAll") : t("oppdragDialogs.selectAll")}
                 </button>
               );
             })()}
@@ -335,17 +337,17 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
           <div className="space-y-5">
             {/* Kart og luftrom */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Kart og luftrom</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("oppdragDialogs.sectionMapAirspace")}</p>
               <div className="space-y-2">
                 {(props.exportPdfMission?.latitude ?? (props.exportPdfMission?.route as any)?.coordinates?.[0]?.lat) && (
                   <label className="flex items-center gap-2 cursor-pointer">
                     <Checkbox checked={props.pdfSections.map} onCheckedChange={v => props.setPdfSections(s => ({ ...s, map: v === true }))} />
-                    <span className="text-sm">Kartutsnitt</span>
+                    <span className="text-sm">{t("oppdragDialogs.mapExtract")}</span>
                   </label>
                 )}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox checked={props.pdfSections.airspaceWarnings} onCheckedChange={v => props.setPdfSections(s => ({ ...s, airspaceWarnings: v === true }))} />
-                  <span className="text-sm">Luftromsadvarsler</span>
+                  <span className="text-sm">{t("oppdragDialogs.airspaceWarnings")}</span>
                 </label>
               </div>
             </div>

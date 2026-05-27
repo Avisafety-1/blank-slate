@@ -280,12 +280,12 @@ const Changelog = () => {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <CardTitle className="text-lg">Endringslogg</CardTitle>
+            <CardTitle className="text-lg">{t("changelog.changelogTitle")}</CardTitle>
             <div className="flex items-center gap-1 flex-wrap">
               <div className="relative flex-1 min-w-0 sm:flex-none">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Søk..."
+                  placeholder={t("changelog.search")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 w-full sm:w-[160px] text-xs pl-7"
@@ -297,14 +297,14 @@ const Changelog = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="created_at">Opprettet dato</SelectItem>
-                  <SelectItem value="status">Status</SelectItem>
-                  <SelectItem value="completed_at">Utført dato</SelectItem>
+                  <SelectItem value="created_at">{t("changelog.sort.created")}</SelectItem>
+                  <SelectItem value="status">{t("changelog.sort.status")}</SelectItem>
+                  <SelectItem value="completed_at">{t("changelog.sort.completed")}</SelectItem>
                 </SelectContent>
               </Select>
               {isSuperAdmin && (
                 <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => openEntryDialog()}>
-                  <Plus className="w-4 h-4 mr-1" /> Legg til
+                  <Plus className="w-4 h-4 mr-1" /> {t("changelog.addBtn")}
                 </Button>
               )}
             </div>
@@ -312,7 +312,7 @@ const Changelog = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           {entries.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">Ingen oppføringer ennå</p>
+            <p className="text-sm text-muted-foreground text-center py-8">{t("changelog.noEntries")}</p>
           )}
           {[...entries].filter((e) => {
             if (!searchQuery.trim()) return true;
@@ -353,9 +353,9 @@ const Changelog = () => {
                     <p className="text-xs text-muted-foreground mt-1">{entry.description}</p>
                   )}
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
-                    <span>Opprettet: {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}</span>
+                    <span>{t("changelog.createdLabel")}: {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}</span>
                     {entry.completed_at && (
-                      <span>Utført: {format(new Date(entry.completed_at), "d. MMM yyyy", { locale: nb })}</span>
+                      <span>{t("changelog.completedLabel")}: {format(new Date(entry.completed_at), "d. MMM yyyy", { locale: nb })}</span>
                     )}
                   </div>
                 </div>
@@ -379,38 +379,38 @@ const Changelog = () => {
       <Dialog open={systemDialog.open} onOpenChange={(o) => !o && setSystemDialog({ open: false })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{systemDialog.system ? "Rediger system" : "Legg til system"}</DialogTitle>
+            <DialogTitle>{systemDialog.system ? t("changelog.dialog.editSystem") : t("changelog.dialog.addSystem")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Navn</Label>
+              <Label>{t("changelog.dialog.name")}</Label>
               <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
             </div>
             <div>
-              <Label>Status</Label>
+              <Label>{t("changelog.dialog.status")}</Label>
               <Select value={formStatus} onValueChange={setFormStatus}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="green">🟢 Operativ</SelectItem>
-                  <SelectItem value="yellow">🟡 Delvis</SelectItem>
-                  <SelectItem value="red">🔴 Nede</SelectItem>
+                  <SelectItem value="green">{t("changelog.dialog.operational")}</SelectItem>
+                  <SelectItem value="yellow">{t("changelog.dialog.partial")}</SelectItem>
+                  <SelectItem value="red">{t("changelog.dialog.down")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Beskrivelse (valgfri)</Label>
+              <Label>{t("changelog.dialog.descriptionOptional")}</Label>
               <Input value={formDescription} onChange={(e) => setFormDescription(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
             {systemDialog.system && (
               <Button variant="destructive" size="sm" onClick={() => { setSystemDialog({ open: false }); setDeleteTarget({ type: "system", id: systemDialog.system!.id }); }}>
-                <Trash2 className="w-4 h-4 mr-1" /> Slett
+                <Trash2 className="w-4 h-4 mr-1" /> {t("changelog.dialog.delete")}
               </Button>
             )}
             <Button onClick={saveSystem} disabled={!formName || saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-              Lagre
+              {t("changelog.dialog.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -420,49 +420,49 @@ const Changelog = () => {
       <Dialog open={entryDialog.open} onOpenChange={(o) => !o && setEntryDialog({ open: false })}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{entryDialog.entry ? "Rediger oppføring" : "Ny oppføring"}</DialogTitle>
+            <DialogTitle>{entryDialog.entry ? t("changelog.dialog.editEntry") : t("changelog.dialog.newEntry")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Tittel</Label>
+              <Label>{t("changelog.dialog.titleField")}</Label>
               <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} />
             </div>
             <div>
-              <Label>Beskrivelse (valgfri)</Label>
+              <Label>{t("changelog.dialog.descriptionOptional")}</Label>
               <Textarea value={formEntryDesc} onChange={(e) => setFormEntryDesc(e.target.value)} rows={3} />
             </div>
             <div>
-              <Label>Status</Label>
+              <Label>{t("changelog.dialog.status")}</Label>
               <Select value={formEntryStatus} onValueChange={setFormEntryStatus}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ikke_startet">Ikke startet</SelectItem>
-                  <SelectItem value="pågår">Pågår</SelectItem>
-                  <SelectItem value="testing">Testing</SelectItem>
-                  <SelectItem value="implementert">Implementert</SelectItem>
+                  <SelectItem value="ikke_startet">{t("changelog.dialog.notStarted")}</SelectItem>
+                  <SelectItem value="pågår">{t("changelog.dialog.inProgress")}</SelectItem>
+                  <SelectItem value="testing">{t("changelog.dialog.testing")}</SelectItem>
+                  <SelectItem value="implementert">{t("changelog.dialog.implemented")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Prioritet</Label>
+              <Label>{t("changelog.dialog.priority")}</Label>
               <Select value={formPriority} onValueChange={setFormPriority}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="high">Høy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Lav</SelectItem>
+                  <SelectItem value="high">{t("changelog.dialog.high")}</SelectItem>
+                  <SelectItem value="medium">{t("changelog.dialog.medium")}</SelectItem>
+                  <SelectItem value="low">{t("changelog.dialog.low")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Utført dato (valgfri)</Label>
+              <Label>{t("changelog.dialog.completedDateOptional")}</Label>
               <Input type="date" value={formCompletedAt} onChange={(e) => setFormCompletedAt(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
             <Button onClick={saveEntry} disabled={!formTitle || saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-              Lagre
+              {t("changelog.dialog.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -472,12 +472,12 @@ const Changelog = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
-            <AlertDialogDescription>Denne handlingen kan ikke angres.</AlertDialogDescription>
+            <AlertDialogTitle>{t("changelog.dialog.areYouSure")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("changelog.dialog.cannotUndo")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Slett</AlertDialogAction>
+            <AlertDialogCancel>{t("changelog.dialog.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t("changelog.dialog.delete")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
