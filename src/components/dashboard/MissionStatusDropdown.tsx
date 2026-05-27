@@ -244,7 +244,7 @@ export const MissionStatusDropdown = ({
             >
               {s === currentStatus && <Check className="w-3.5 h-3.5 mr-2" />}
               {s !== currentStatus && <span className="w-3.5 mr-2" />}
-              {s}
+              {translateMissionStatus(s)}
             </Button>
           ))}
         </PopoverContent>
