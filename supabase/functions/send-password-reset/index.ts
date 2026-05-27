@@ -49,7 +49,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const { data: company } = await supabase.from('companies').select('navn').eq('id', profile.company_id).single();
 
-    const { data } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://login.avisafe.no/reset-password' } });
+    const { data } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://app.avisafe.no/reset-password' } });
     if (!data?.properties?.action_link) throw new Error("Kunne ikke generere tilbakestillingslenke");
 
     const actionUrl = new URL(data.properties.action_link);
