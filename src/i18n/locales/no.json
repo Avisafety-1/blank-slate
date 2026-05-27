@@ -1244,6 +1244,23 @@
       "selectBlockHint": "Velg en blokk for å redigere",
       "noBroadcastsYet": "Ingen sendte nyhetsbrev enda",
       "sent": "Sendt"
+    },
+    "subscriptionGate": {
+      "expiredTitle": "Abonnementet er utløpt",
+      "trialTitle": "Prøv AviSafe gratis i 5 dager",
+      "expiredDescription": "Ditt abonnement er ikke lenger aktivt. Velg en plan for å fortsette.",
+      "trialDescription": "Start din gratis prøveperiode — ingen betaling før etter 5 dager.",
+      "priceSuffix": "NOK/bruker/mnd",
+      "addonPriceSuffix": "NOK/mnd",
+      "openingCheckout": "Åpner betaling…",
+      "renew": "Forny abonnement",
+      "startTrial": "Start gratis prøveperiode",
+      "opening": "Åpner…",
+      "managePortal": "Administrer abonnement",
+      "signOut": "Logg ut",
+      "checkoutFailed": "Kunne ikke starte betaling: ",
+      "portalFailed": "Kunne ikke åpne kundeportal: ",
+      "unknownError": "Ukjent feil"
     }
   }
 }
