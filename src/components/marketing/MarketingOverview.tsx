@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Lightbulb, FileEdit, CheckCircle, Clock, Facebook, Calendar } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enGB } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 
 export const MarketingOverview = () => {
   const { companyId } = useAuth();
