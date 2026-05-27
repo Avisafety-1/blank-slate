@@ -50,8 +50,9 @@ Deferred (large forms — Batch 4B):
 - `AddMissionDialog` — has 21 Norwegian strings (form labels, command-input placeholders "Søk personell/dokumenter/...", "Søk og redning" select item, mission-status SelectItems "Pågående"/"Fullført", default risk_nivå literal). Big form; wants its own pass.
 - `AddIncidentDialog` — has 23 Norwegian strings (severity/status/kategori SelectItems, "Velg hovedårsak", "Søk i oppdrag", "Søk pilot/drone/person", error/success toasts). Big form; wants its own pass.
 
-### Batch 5 — Main pages outside the dashboard
-`Oppdrag`, `Hendelser`, `Resources`, `Documents`, `Kalender`, `Kart`, `Statistikk`, `SoraProcess`, `Marketing`, admin shells.
+### Batch 5 — Main pages outside the dashboard ✅ MOSTLY DONE
+Done: `Oppdrag`, `Hendelser`, `Documents`, `Kalender`, `Kart`, `Statistikk`, `Priser` (full pass — `pages.pricing.*` namespace added), `Resources` (filter placeholders, status/category/role select items, "no results" fallback — uses `resources.searchVehiclePlaceholder` interpolation with `terminology.vehicleLower`).
+Remaining: `SoraProcess` (616-line static explainer page), `Marketing` shell + sub-sections, admin shells. Static SoraProcess is its own pass — large surface, mostly long-form Norwegian copy.
 
 ### Working method per batch
 1. Grep the target files for hardcoded Norwegian (`scripts/i18n-scan.ts` already exists — I'll lean on it).

@@ -480,7 +480,7 @@ const Resources = () => {
               <div data-tour="resources-drone-search" className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={`Søk etter ${terminology.vehicleLower}modell eller registrering...`}
+                  placeholder={t('resources.searchVehiclePlaceholder', { vehicle: terminology.vehicleLower })}
                   value={droneSearch}
                   onChange={(e) => setDroneSearch(e.target.value)}
                   className="pl-9"
@@ -491,10 +491,10 @@ const Resources = () => {
               <div data-tour="resources-drone-filters" className="flex gap-2 mb-4">
                 <Select value={droneModelFilter} onValueChange={setDroneModelFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Modell" />
+                    <SelectValue placeholder={t('resources.filterModel')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle modeller</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAllModels')}</SelectItem>
                     {uniqueDroneModels.map(m => (
                       <SelectItem key={m} value={m}>{m}</SelectItem>
                     ))}
@@ -502,22 +502,22 @@ const Resources = () => {
                 </Select>
                 <Select value={droneStatusFilter} onValueChange={setDroneStatusFilter}>
                   <SelectTrigger className="h-8 text-xs w-[100px]">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t('resources.filterStatus')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle</SelectItem>
-                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
-                    <SelectItem value="Gul">🟡 Gul</SelectItem>
-                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAll')}</SelectItem>
+                    <SelectItem value="Grønn">🟢 {t('resources.statusGreen')}</SelectItem>
+                    <SelectItem value="Gul">🟡 {t('resources.statusYellow')}</SelectItem>
+                    <SelectItem value="Rød">🔴 {t('resources.statusRed')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={droneSortBy} onValueChange={(v) => setDroneSortBy(v as "default" | "last_flown")}>
                   <SelectTrigger className="h-8 text-xs w-[120px]">
-                    <SelectValue placeholder="Sortering" />
+                    <SelectValue placeholder={t('resources.filterSort')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Standard</SelectItem>
-                    <SelectItem value="last_flown">Sist flydd</SelectItem>
+                    <SelectItem value="default">{t('resources.sortDefault')}</SelectItem>
+                    <SelectItem value="last_flown">{t('resources.sortLastFlown')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -637,10 +637,10 @@ const Resources = () => {
               <div data-tour="resources-equipment-filters" className="flex gap-2 mb-4">
                 <Select value={equipmentTypeFilter} onValueChange={setEquipmentTypeFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Kategori" />
+                    <SelectValue placeholder={t('resources.filterCategory')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle kategorier</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAllCategories')}</SelectItem>
                     {uniqueEquipmentTypes.map(t => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
@@ -649,13 +649,13 @@ const Resources = () => {
                 </Select>
                 <Select value={equipmentStatusFilter} onValueChange={setEquipmentStatusFilter}>
                   <SelectTrigger className="h-8 text-xs w-[100px]">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t('resources.filterStatus')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle</SelectItem>
-                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
-                    <SelectItem value="Gul">🟡 Gul</SelectItem>
-                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAll')}</SelectItem>
+                    <SelectItem value="Grønn">🟢 {t('resources.statusGreen')}</SelectItem>
+                    <SelectItem value="Gul">🟡 {t('resources.statusYellow')}</SelectItem>
+                    <SelectItem value="Rød">🔴 {t('resources.statusRed')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -751,7 +751,7 @@ const Resources = () => {
                     return true;
                 }).length === 0 && (equipmentSearch || equipmentTypeFilter !== "alle" || equipmentStatusFilter !== "alle") && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen treff med valgte filtre
+                    {t('resources.noResultsFiltered')}
                   </p>
                 )}
                 {equipment.length === 0 && dronetags.length === 0 && !equipmentSearch && equipmentTypeFilter === "alle" && equipmentStatusFilter === "alle" && (
@@ -832,10 +832,10 @@ const Resources = () => {
               <div data-tour="resources-personnel-filters" className="flex gap-2 mb-4">
                 <Select value={personnelRoleFilter} onValueChange={setPersonnelRoleFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Rolle" />
+                    <SelectValue placeholder={t('resources.filterRole')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle roller</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAllRoles')}</SelectItem>
                     {uniquePersonnelRoles.map(r => (
                       <SelectItem key={r} value={r}>{r}</SelectItem>
                     ))}
@@ -843,13 +843,13 @@ const Resources = () => {
                 </Select>
                 <Select value={personnelStatusFilter} onValueChange={setPersonnelStatusFilter}>
                   <SelectTrigger className="h-8 text-xs w-[100px]">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t('resources.filterStatus')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle</SelectItem>
-                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
-                    <SelectItem value="Gul">🟡 Gul</SelectItem>
-                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAll')}</SelectItem>
+                    <SelectItem value="Grønn">🟢 {t('resources.statusGreen')}</SelectItem>
+                    <SelectItem value="Gul">🟡 {t('resources.statusYellow')}</SelectItem>
+                    <SelectItem value="Rød">🔴 {t('resources.statusRed')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

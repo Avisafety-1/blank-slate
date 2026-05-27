@@ -361,7 +361,23 @@
     "noCompetencies": "Ingen kompetanser",
     "couldNotLoadDrones": "Kunne ikke hente droner",
     "couldNotLoadEquipment": "Kunne ikke hente utstyr",
-    "couldNotLoadPersonnel": "Kunne ikke hente personell"
+    "couldNotLoadPersonnel": "Kunne ikke hente personell",
+    "searchVehiclePlaceholder": "Søk etter {{vehicle}}modell eller registrering...",
+    "filterModel": "Modell",
+    "filterAllModels": "Alle modeller",
+    "filterStatus": "Status",
+    "filterAll": "Alle",
+    "filterSort": "Sortering",
+    "filterCategory": "Kategori",
+    "filterAllCategories": "Alle kategorier",
+    "filterRole": "Rolle",
+    "filterAllRoles": "Alle roller",
+    "sortDefault": "Standard",
+    "sortLastFlown": "Sist flydd",
+    "statusGreen": "Grønn",
+    "statusYellow": "Gul",
+    "statusRed": "Rød",
+    "noResultsFiltered": "Ingen treff med valgte filtre"
   },
   "missions": {
     "title": "Tittel",
@@ -1062,7 +1078,26 @@
       "missionsByStatus": "Oppdrag per status",
       "top10CompaniesHours": "Top 10 selskaper – flytimer",
       "top10CompaniesMissions": "Top 10 selskaper – oppdrag"
+    },
+    "pricing": {
+      "back": "Tilbake",
+      "subtitle": "Velg plan og tillegg som passer ditt selskap. Pris per bruker/mnd.",
+      "safeSkyBadge": "SafeSky kartlag og publisering er tilgjengelig på alle abonnementer",
+      "mostPopular": "Mest populær",
+      "yourPlan": "Din plan",
+      "perUserMonth": "NOK/bruker/mnd",
+      "addonsTitle": "Tilleggsmoduler – 199 NOK/mnd per modul",
+      "addonExtra": "+ {{amount}} NOK tillegg/mnd",
+      "trialIncluded": "Inkluderer 5 dagers gratis prøveperiode",
+      "activeSubscription": "✓ Du har et aktivt abonnement",
+      "startSubscription": "Start abonnement",
+      "loginToSubscribe": "Logg inn for å abonnere",
+      "needAccount": "Du må ha en konto for å abonnere.",
+      "loginRegister": "Logg inn / Registrer deg",
+      "couldNotStartPayment": "Kunne ikke starte betaling: ",
+      "unknownError": "Ukjent feil"
     }
   }
 }
+
 
