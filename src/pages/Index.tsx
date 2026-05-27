@@ -215,27 +215,40 @@ const Index = () => {
     }
   };
 
+  const [endingFlight, setEndingFlight] = useState(false);
+
   const handleEndFlight = async () => {
     if (!isActive) {
       toast.error(t('flight.noActiveFlightError'));
       return;
     }
-    
-    // Prepare data WITHOUT ending the flight - flight continues running
-    const result = await prepareEndFlight();
-    if (result) {
-      setPrefilledDuration(result.elapsedMinutes);
-      setPendingFlightData({
-        missionId: result.missionId,
-        flightTrack: result.flightTrack,
-        dronetagDeviceId: result.dronetagDeviceId,
-        startPosition: result.startPosition,
-        pilotName: result.pilotName,
-        startTime: result.startTime,
-        publishMode: result.publishMode,
-        completedChecklistIds: result.completedChecklistIds,
-      });
-      setLogFlightDialogOpen(true);
+    if (endingFlight) return;
+    setEndingFlight(true);
+
+    try {
+      // Prepare data WITHOUT ending the flight - flight continues running
+      const result = await prepareEndFlight();
+      if (result) {
+        setPrefilledDuration(result.elapsedMinutes);
+        setPendingFlightData({
+          missionId: result.missionId,
+          flightTrack: result.flightTrack,
+          dronetagDeviceId: result.dronetagDeviceId,
+          startPosition: result.startPosition,
+          pilotName: result.pilotName,
+          startTime: result.startTime,
+          publishMode: result.publishMode,
+          completedChecklistIds: result.completedChecklistIds,
+        });
+        setLogFlightDialogOpen(true);
+      } else {
+        toast.error('Kunne ikkje førebu avslutting av flytur. Prøv igjen.');
+      }
+    } catch (err) {
+      console.error('handleEndFlight failed:', err);
+      toast.error('Feil ved avslutting av flytur. Prøv igjen.');
+    } finally {
+      setEndingFlight(false);
     }
   };
 
