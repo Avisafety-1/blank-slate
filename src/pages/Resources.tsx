@@ -480,7 +480,7 @@ const Resources = () => {
               <div data-tour="resources-drone-search" className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={`Søk etter ${terminology.vehicleLower}modell eller registrering...`}
+                  placeholder={t('resources.searchVehiclePlaceholder', { vehicle: terminology.vehicleLower })}
                   value={droneSearch}
                   onChange={(e) => setDroneSearch(e.target.value)}
                   className="pl-9"
