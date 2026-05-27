@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import type { ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,9 +41,9 @@ interface RiskScoreCardProps {
   approvalStatus?: 'approved' | 'not_approved' | null;
   approvalReason?: string | null;
   approvalThreshold?: number | null;
-  airRiskAnalysis?: any;
-  groundRiskAnalysis?: any;
-  operationClassification?: any;
+  airRiskAnalysis?: ComponentProps<typeof AirRiskAnalysisSection>["data"];
+  groundRiskAnalysis?: ComponentProps<typeof GroundRiskAnalysisSection>["data"];
+  operationClassification?: ComponentProps<typeof OperationClassificationSection>["data"];
 }
 
 export const RiskScoreCard = ({ 
