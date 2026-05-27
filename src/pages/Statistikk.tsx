@@ -215,7 +215,7 @@ const Statistikk = () => {
               {/* Charts row 1 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <GlassCard>
-                  <h3 className="font-semibold mb-4 text-foreground">Flyturer per måned</h3>
+                  <h3 className="font-semibold mb-4 text-foreground">{t('pages.stats.flightsPerMonth')}</h3>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={stats.trends.flightsPerMonth}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
