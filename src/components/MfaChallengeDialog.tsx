@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Shield, Loader2 } from "lucide-react";
+import { Shield, Loader2, Clipboard, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -17,6 +17,15 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
   const { t } = useTranslation();
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+
+  const isTouchDevice = useMemo(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    try {
+      return window.matchMedia("(pointer: coarse)").matches;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const handleVerify = async (codeToVerify = code) => {
     if (codeToVerify.length !== 6 || verifying) return;
@@ -60,6 +69,53 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
     }
   }, [code, verifying]);
 
+  const handlePasteFromClipboard = async () => {
+    if (verifying) return;
+    try {
+      if (!navigator.clipboard?.readText) {
+        toast.error("Kunne ikke lese fra utklippstavlen. Lim inn koden manuelt.");
+        return;
+      }
+      const raw = await navigator.clipboard.readText();
+      const cleaned = (raw || "").replace(/\s+/g, "");
+      const match = cleaned.match(/\d{6}/);
+      if (!match) {
+        toast.error("Fant ingen 6-sifret kode i utklippstavlen.");
+        return;
+      }
+      setCode(match[0]);
+    } catch {
+      toast.error("Kunne ikke lese fra utklippstavlen. Lim inn koden manuelt.");
+    }
+  };
+
+  const handleOpenAuthenticatorApp = () => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isAndroid = /Android/i.test(ua);
+    const url = isAndroid
+      ? "intent://#Intent;scheme=otpauth;package=com.google.android.apps.authenticator2;end"
+      : "googleauthenticator://";
+
+    let didHide = false;
+    const onVisibility = () => {
+      if (document.hidden) didHide = true;
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    try {
+      window.location.href = url;
+    } catch {
+      // ignore — handled by timeout below
+    }
+
+    window.setTimeout(() => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (!didHide && !document.hidden) {
+        toast("Fant ingen authenticator-app. Bytt til appen manuelt og kom tilbake hit.");
+      }
+    }, 800);
+  };
+
   const handleCancel = async () => {
     await supabase.auth.signOut();
     onCancel();
@@ -78,9 +134,17 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 py-4">
           <div className="flex justify-center">
-            <InputOTP maxLength={6} value={code} onChange={setCode} autoFocus>
+            <InputOTP
+              maxLength={6}
+              value={code}
+              onChange={setCode}
+              autoFocus
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              pattern="[0-9]*"
+            >
               <InputOTPGroup>
                 <InputOTPSlot index={0} />
                 <InputOTPSlot index={1} />
@@ -90,6 +154,35 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
                 <InputOTPSlot index={5} />
               </InputOTPGroup>
             </InputOTP>
+          </div>
+
+          <p className="text-xs text-muted-foreground text-center">
+            Tips: lim inn koden eller bruk autofyll fra passordmanageren din.
+          </p>
+
+          <div className={`grid gap-2 ${isTouchDevice ? "grid-cols-2" : "grid-cols-1"}`}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePasteFromClipboard}
+              disabled={verifying}
+              className="w-full"
+            >
+              <Clipboard className="h-4 w-4 mr-2" />
+              Lim inn kode
+            </Button>
+            {isTouchDevice && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleOpenAuthenticatorApp}
+                disabled={verifying}
+                className="w-full"
+              >
+                <Smartphone className="h-4 w-4 mr-2" />
+                Åpne authenticator-app
+              </Button>
+            )}
           </div>
 
           <div className="flex gap-2">
