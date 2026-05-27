@@ -941,16 +941,17 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           <div className="space-y-2" data-tour="incident-followup">
-            <Label htmlFor="oppfolgingsansvarlig">Oppfølgingsansvarlig (valgfritt)</Label>
+            <Label htmlFor="oppfolgingsansvarlig">{t('incidents.followUpResponsible')}</Label>
             <SearchablePersonSelect
               persons={users}
               value={formData.oppfolgingsansvarlig_id || null}
               onValueChange={(val) => setFormData({ ...formData, oppfolgingsansvarlig_id: val || "" })}
-              placeholder="Velg ansvarlig..."
-              searchPlaceholder="Søk person..."
+              placeholder={t('incidents.selectResponsible')}
+              searchPlaceholder={t('incidents.searchPerson')}
               allowNone
-              noneLabel="Ingen ansvarlig"
+              noneLabel={t('incidents.noResponsible')}
             />
+
           </div>
 
           {/* Anonymitet */}
