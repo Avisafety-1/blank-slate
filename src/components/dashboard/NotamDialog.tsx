@@ -330,7 +330,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
-    toast.success("NOTAM-tekst kopiert");
+    toast.success(t('dashboard.notam.copied'));
   };
 
   const handleSave = async () => {
