@@ -146,7 +146,7 @@ export const MarketingOverview = () => {
                   )}
                 </div>
                 <span className="text-orange-600 dark:text-orange-400 text-xs flex-shrink-0">
-                  {formatDistanceToNow(new Date(item.scheduled_at), { addSuffix: true, locale: nb })}
+                  {formatDistanceToNow(new Date(item.scheduled_at), { addSuffix: true, locale: dateLocale })}
                 </span>
               </div>
             ))}
