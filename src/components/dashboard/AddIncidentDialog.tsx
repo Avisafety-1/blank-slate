@@ -417,7 +417,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           description: `Hendelse: ${formData.tittel} (offline)`,
         });
 
-        toast.success("Hendelse lagret lokalt – synkroniseres når nett er tilbake");
+        toast.success(t('incidents.savedOffline'));
         onOpenChange(false);
         return;
       }
