@@ -901,7 +901,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
           {/* Bildeopplasting */}
           <div className="space-y-2" data-tour="incident-image">
-            <Label>Bilde (valgfritt)</Label>
+            <Label>{t('incidents.imageOptional')}</Label>
             <input
               ref={fileInputRef}
               type="file"
@@ -913,7 +913,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <div className="relative">
                 <img
                   src={previewUrl}
-                  alt="Forhåndsvisning"
+                  alt={t('incidents.preview')}
                   className="w-full max-h-48 object-cover rounded-md border border-border"
                 />
                 <Button
@@ -934,9 +934,10 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 onClick={() => fileInputRef.current?.click()}
               >
                 <ImagePlus className="h-4 w-4" />
-                Legg til bilde
+                {t('incidents.addImage')}
               </Button>
             )}
+
           </div>
 
           <div className="space-y-2" data-tour="incident-followup">
