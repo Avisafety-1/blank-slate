@@ -90,12 +90,11 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
 
     try {
       if (abortSignal?.aborted) return;
-      // Show all missions except Fullført/Avlyst — status drives visibility, not time.
+      // Show all missions except Fullført/Avlyst/Avbrutt — status drives visibility, not time.
       const query = (supabase as any)
         .from("missions")
         .select("*, companies:company_id(id, navn)")
-        .neq("status", "Fullført")
-        .neq("status", "Avlyst")
+        .not("status", "in", '("Fullført","Avlyst","Avbrutt")')
         .order("tidspunkt", { ascending: true });
       if (abortSignal) query.abortSignal(abortSignal);
       const { data, error } = await query;
