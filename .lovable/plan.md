@@ -1,27 +1,20 @@
-# Sjekklist-deling: prompt når delt drone har ikke-delte sjekklister
+# UI-gating av kompetanse-redigering for «bruker»
 
-## Problem
-`checkDroneResourceVisibility` i `src/lib/droneVisibilityCheck.ts` ser kun på koblingstabellene `drone_documents`, `drone_equipment` og `drone_personnel`. Sjekklistene som ligger direkte på dronen via `drones.sjekkliste_id`, `drones.operations_checklist_ids[]` og `drones.post_flight_checklist_id` blir aldri sjekket. Resultat: ingen advarsel når man lagrer en delt drone med sjekklister som mangler `visible_to_children=true`. I oppdrag i den delte avdelingen feiler sjekklisten fordi dokumentet ikke er synlig.
+RLS-policyene gir vanlige brukere skrivetilgang gjennom legacy `saksbehandler`-aliaset i `has_role`, men siden ingen nye brukere får legacy-roller er det ikke et reelt problem i drift. Vi rører derfor ikke databasen, kun UI-en, slik at «bruker» ikke får trykket på handlingene i utgangspunktet.
 
-Sjekklister er rader i `documents` med `kategori='sjekklister'` (se `useChecklists.ts`).
+## Endringer
 
-## Endring
+### 1. `src/components/resources/PersonCompetencyDialog.tsx`
+- Hent `user` fra `useAuth()` i tillegg til `isAdmin`.
+- Beregn `canEdit = isAdmin || user?.id === person?.id`.
+- Når `!canEdit`:
+  - Skjul «Legg til kompetanse»-knappen (linje ~518).
+  - Skjul rediger- og slett-ikonene på hver kompetanse-rad.
+- Dialogen forblir lesbar (status, kompetanser, flygetidsstatistikk).
 
-### `src/lib/droneVisibilityCheck.ts`
-Utvid `checkDroneResourceVisibility` med en ekstra seksjon "0. Drone checklist columns":
-1. Hent `drones` med kolonnene `sjekkliste_id`, `operations_checklist_ids`, `post_flight_checklist_id`.
-2. Samle alle ikke-null/ikke-tomme checklist-IDer til ett unikt sett.
-3. Slå opp `documents(id, tittel, company_id, visible_to_children)` for disse ID-ene.
-4. Samme logikk som eksisterende dokument-blokk: hvis `visible_to_children=false`, legg til `MissingVisibility` med `resourceType: "document"` for hver target-dept som ikke er eier-companyen.
-
-Eksisterende `grantMissingVisibility` håndterer dette automatisk (setter `visible_to_children=true`), så ingen endring der.
-
-### Verifisering
-- `DroneDetailDialog.handleSave` (linje 792) bruker allerede `checkDroneResourceVisibility` → vil nå plukke opp sjekklister.
-- `checkVisibilityAfterAdd` (linje 178) brukes ved tillegg av equipment/personnel etter at dronen allerede er delt. Den vil også fange opp sjekklister, men UI-flyten trigger den ikke ved checklist-endringer. Vi kjører checklist-sjekken kun via handleSave-flowen som er der den faktisk endres.
-
-## Filer
-- `src/lib/droneVisibilityCheck.ts`
+### 2. `src/pages/Resources.tsx`
+- Skjul «Legg til kompetanse»-knappen i Personell-seksjonen (linje 809–817) for ikke-administratorer.
 
 ## Ikke i scope
-- Forrige usolgte oppgaver (drone-deling fra child-avdeling, teknisk ansvarlig per avdeling).
+- Ingen migrasjon. `has_role`-legacy-aliasene og RLS-policyene står som de er.
+- Admins (`administrator`/`superadmin`) beholder full tilgang.
