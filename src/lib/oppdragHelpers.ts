@@ -1,3 +1,5 @@
+import { translateApprovalStatus, translateAIRiskRecommendation } from "@/lib/i18nHelpers";
+
 export const statusColors: Record<string, string> = {
   Planlagt: "bg-blue-500/20 text-blue-900 border-blue-500/30",
   Pågående: "bg-green-500/20 text-green-900 border-green-500/30",
