@@ -104,7 +104,24 @@ const formatNbNumber = (value: number, maximumFractionDigits = 0): string =>
     minimumFractionDigits: maximumFractionDigits,
   });
 
-const derivePopulationDensityBand = (densityPerKm2: number): string => {
+type Lang = 'no' | 'en';
+const resolveLang = (input: unknown): Lang =>
+  String(input ?? 'no').toLowerCase().startsWith('en') ? 'en' : 'no';
+
+const formatLocaleNumber = (value: number, maximumFractionDigits = 0, lang: Lang = 'no'): string =>
+  value.toLocaleString(lang === 'en' ? 'en-GB' : 'nb-NO', {
+    maximumFractionDigits,
+    minimumFractionDigits: maximumFractionDigits,
+  });
+
+const derivePopulationDensityBand = (densityPerKm2: number, lang: Lang = 'no'): string => {
+  if (lang === 'en') {
+    if (densityPerKm2 <= 0) return 'Controlled ground area / uninhabited';
+    if (densityPerKm2 < 100) return 'Sparsely populated (<100/km²)';
+    if (densityPerKm2 < 500) return 'Populated (<500/km²)';
+    if (densityPerKm2 < 1500) return 'Densely populated (<1500/km²)';
+    return 'Gatherings of people / very densely populated (>1500/km²)';
+  }
   if (densityPerKm2 <= 0) return 'Kontrollert bakkeområde / ubebodd';
   if (densityPerKm2 < 100) return 'Tynt befolket (<100/km²)';
   if (densityPerKm2 < 500) return 'Befolket (<500/km²)';
