@@ -520,6 +520,21 @@
     "selectResponsible": "Velg ansvarlig...",
     "searchPerson": "Søk person...",
     "reportAnonymously": "Rapporter anonymt",
+    "reportAnonymously": "Rapporter anonymt",
+    "anonymousNote": "Navnet ditt vil ikke vises på rapporten.",
+    "anonymousCompanyNote": "Denne rapporten sendes inn anonymt (selskapsinnstilling).",
+    "resourcesOptional": "Ressurser (valgfritt)",
+    "unknownDrone": "Ukjent drone",
+    "selectDrone": "Velg drone...",
+    "selectEquipment": "Velg utstyr...",
+    "noEquipmentRegisteredShort": "Ingen utstyr registrert.",
+    "selectedCount": "{{count}} valgt",
+    "noResponsible": "Ingen ansvarlig",
+    "addImage": "Legg til bilde",
+    "saving": "Lagrer...",
+    "reporting": "Rapporterer...",
+    "saveChanges": "Lagre endringer",
+    "report": "Rapporter",
     "statusValues": {
       "Åpen": "Åpen",
       "Under behandling": "Under behandling",
@@ -527,6 +542,7 @@
       "Lukket": "Lukket"
     }
   },
+
 
   "profile": {
     "title": "Min profil",
