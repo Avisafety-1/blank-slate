@@ -31,6 +31,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { MapPublicationDefaultsCard } from "@/components/admin/MapPublicationDefaultsCard";
+import { MissionTypesSection } from "@/components/admin/MissionTypesSection";
 
 interface ChildCompany {
   id: string;
@@ -2017,6 +2018,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
               <SubSection title="Kartpublisering" icon={MapIcon}>
                 <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
+              </SubSection>
+
+              <SubSection title="Oppdragstyper" icon={Settings}>
+                <MissionTypesSection companyId={companyId} disabled={savingSettings} />
               </SubSection>
             </div>
           </CollapsibleContent>

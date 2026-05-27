@@ -35,6 +35,7 @@ import { useTranslation } from "react-i18next";
 import { MissionPublicationSection, PublicationFields } from "@/components/dashboard/MissionPublicationSection";
 import { MissionConflictWarning } from "@/components/dashboard/MissionConflictWarning";
 import { useMissionMapConflicts } from "@/hooks/useMissionMapConflicts";
+import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
@@ -124,6 +125,7 @@ export const AddMissionDialog = ({
   const [mentionStart, setMentionStart] = useState<number | null>(null);
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const terminology = useTerminology();
+  const { labels: missionTypeLabels } = useCompanyMissionTypes();
   
   const [formData, setFormData] = useState({
     tittel: initialFormData?.tittel || "",
@@ -1274,13 +1276,11 @@ export const AddMissionDialog = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">{t('missions.notSpecified')}</SelectItem>
-                  <SelectItem value="Inspeksjon">{t('missions.missionTypes.Inspeksjon')}</SelectItem>
-                  <SelectItem value="Kartlegging">{t('missions.missionTypes.Kartlegging')}</SelectItem>
-                  <SelectItem value="Foto/film">{t('missions.missionTypes.Foto/film')}</SelectItem>
-                  <SelectItem value="Søk og redning">{t('missions.missionTypes.Søk og redning')}</SelectItem>
-                  <SelectItem value="Landbruk">{t('missions.missionTypes.Landbruk')}</SelectItem>
-                  <SelectItem value="Bygg/anlegg">{t('missions.missionTypes.Bygg/anlegg')}</SelectItem>
-                  <SelectItem value="Forskning">{t('missions.missionTypes.Forskning')}</SelectItem>
+                  {missionTypeLabels.map((label) => (
+                    <SelectItem key={label} value={label}>
+                      {t(`missions.missionTypes.${label}`, label)}
+                    </SelectItem>
+                  ))}
                   <SelectItem value="Annet">{t('missions.missionTypes.Annet')}</SelectItem>
                 </SelectContent>
               </Select>

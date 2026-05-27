@@ -619,6 +619,7 @@ export type Database = {
           propagate_hide_reporter: boolean
           propagate_mission_approval: boolean
           propagate_mission_roles: boolean
+          propagate_mission_types: boolean
           propagate_prevent_self_approval: boolean
           propagate_sora_approval: boolean
           propagate_sora_buffer_mode: boolean
@@ -689,6 +690,7 @@ export type Database = {
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
           propagate_mission_roles?: boolean
+          propagate_mission_types?: boolean
           propagate_prevent_self_approval?: boolean
           propagate_sora_approval?: boolean
           propagate_sora_buffer_mode?: boolean
@@ -759,6 +761,7 @@ export type Database = {
           propagate_hide_reporter?: boolean
           propagate_mission_approval?: boolean
           propagate_mission_roles?: boolean
+          propagate_mission_types?: boolean
           propagate_prevent_self_approval?: boolean
           propagate_sora_approval?: boolean
           propagate_sora_buffer_mode?: boolean
@@ -909,6 +912,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_mission_roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_mission_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_mission_types_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
