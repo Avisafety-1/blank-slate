@@ -328,7 +328,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                     props.setPdfSections(update);
                   }}
                 >
-                  {allOn ? 'Fjern alle' : 'Velg alle'}
+                  {allOn ? t("oppdragDialogs.deselectAll") : t("oppdragDialogs.selectAll")}
                 </button>
               );
             })()}
