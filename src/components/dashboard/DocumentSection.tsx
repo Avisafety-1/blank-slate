@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { translateDocCategory } from "@/lib/i18nHelpers";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useDashboardRealtimeContext } from "@/contexts/DashboardRealtimeContext";
 
