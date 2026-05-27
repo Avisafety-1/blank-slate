@@ -360,16 +360,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   useEffect(() => {
     if (!pilotId || !selectedMissionId || selectedMissionId === '__new__') return;
     if (selectedFlightLogChoice) return;
-    const pilotMatches = matchCandidates.filter(
-      c => c.mission_id === selectedMissionId && (c.pilot_ids || []).includes(pilotId)
-    );
+    // If a currently matched log no longer belongs to the new pilot, clear it.
+    // Default remains "new flight" — never auto-bind to an existing log just because
+    // it matches the day/mission; the user must explicitly opt in to updating.
     if (matchedLog && !(matchedLog.pilot_ids || []).includes(pilotId)) {
-      const nextMatch = pilotMatches[0] || null;
-      setMatchedLog(nextMatch);
-      setSelectedFlightLogChoice(nextMatch?.id || '');
-    } else if (!matchedLog && pilotMatches.length === 1) {
-      setMatchedLog(pilotMatches[0]);
-      setSelectedFlightLogChoice(pilotMatches[0].id);
+      setMatchedLog(null);
+      setSelectedFlightLogChoice('__new_flight__');
     }
   }, [pilotId, selectedMissionId, matchCandidates, matchedLog, selectedFlightLogChoice]);
 
@@ -1468,14 +1464,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const pilotLogs = pilotId ? enrichedLogs.filter(log => (log.pilot_ids || []).includes(pilotId)) : [];
         console.log('[DroneLog] Found', enrichedLogs.length, 'existing flight logs on matched missions');
         setMatchCandidates(enrichedLogs);
-        if (pilotLogs.length === 1) {
-          setMatchedLog(pilotLogs[0]);
-          setSelectedFlightLogChoice(pilotLogs[0].id);
-          toast.info('Fant eksisterende flytur for valgt pilot på oppdraget.');
-        } else if (pilotLogs.length > 1) {
-          toast.info('Oppdraget har flere eksisterende flyturer for valgt pilot. Velg om du vil oppdatere en eller legge til ny.');
+        // Default to NEW flight even when existing logs match — user can manually pick
+        // an existing log to update from the radio group below.
+        setMatchedLog(null);
+        setSelectedFlightLogChoice('__new_flight__');
+        if (pilotLogs.length > 0) {
+          toast.info('Oppdraget har eksisterende flyvninger for valgt pilot. Loggen registreres som ny flyvning – velg en eksisterende hvis du vil oppdatere den i stedet.');
         } else {
-          toast.info('Oppdraget matcher tidspunktet. Ingen eksisterende flytur for valgt pilot ble valgt.');
+          toast.info('Oppdraget matcher tidspunktet. Loggen registreres som ny flyvning.');
         }
       }
     }
