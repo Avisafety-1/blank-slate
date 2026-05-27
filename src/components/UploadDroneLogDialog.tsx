@@ -1547,13 +1547,30 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  // ── Ensure drone↔battery link exists in drone_equipment_history ──
+  // ── Ensure drone↔battery link exists in drone_equipment (+history audit) ──
   const ensureDroneEquipmentHistory = async () => {
     if (!companyId || !selectedDroneId || selectedEquipment.length === 0) return;
     const batteryEquipment = equipmentList.filter(
       eq => selectedEquipment.includes(eq.id) && isBatteryType(eq.type)
     );
     if (batteryEquipment.length === 0) return;
+
+    // Permanent link on drone card (only when user opted in)
+    if (linkBatteryToDrone) {
+      try {
+        const rows = batteryEquipment.map(b => ({
+          drone_id: selectedDroneId,
+          equipment_id: b.id,
+        }));
+        await (supabase as any)
+          .from('drone_equipment')
+          .upsert(rows, { onConflict: 'drone_id,equipment_id', ignoreDuplicates: true });
+      } catch (err) {
+        console.error('Failed to link battery to drone:', err);
+      }
+    }
+
+    // Audit history (kept regardless of opt-in)
     for (const bat of batteryEquipment) {
       try {
         const { data: latest } = await supabase
@@ -1578,6 +1595,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
     }
   };
+
 
   const saveFlightEvents = async (flightLogId: string, r: DroneLogResult) => {
     if (!companyId || !r.events || r.events.length === 0) return;
