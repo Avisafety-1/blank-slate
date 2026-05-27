@@ -1076,6 +1076,24 @@
       "missionsByStatus": "Missions by status",
       "top10CompaniesHours": "Top 10 companies – flight hours",
       "top10CompaniesMissions": "Top 10 companies – missions"
+    },
+    "pricing": {
+      "back": "Back",
+      "subtitle": "Choose a plan and add-ons that suit your company. Price per user/month.",
+      "safeSkyBadge": "SafeSky map layers and publishing are available on all subscriptions",
+      "mostPopular": "Most popular",
+      "yourPlan": "Your plan",
+      "perUserMonth": "NOK/user/month",
+      "addonsTitle": "Add-on modules – 199 NOK/month per module",
+      "addonExtra": "+ {{amount}} NOK add-ons/month",
+      "trialIncluded": "Includes a 5-day free trial",
+      "activeSubscription": "✓ You have an active subscription",
+      "startSubscription": "Start subscription",
+      "loginToSubscribe": "Log in to subscribe",
+      "needAccount": "You need an account to subscribe.",
+      "loginRegister": "Log in / Sign up",
+      "couldNotStartPayment": "Could not start payment: ",
+      "unknownError": "Unknown error"
     }
   }
 }
