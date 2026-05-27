@@ -457,12 +457,12 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
           <div className="flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5 text-primary" />
-            <p className="text-xs font-medium text-foreground">SORA 2.5-beregning</p>
+            <p className="text-xs font-medium text-foreground">{t("soraPanel.soraCalc")}</p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
               <p className="text-lg font-bold text-green-600 dark:text-green-400">{settings.flightGeographyDistance}m</p>
-              <p className="text-[10px] text-muted-foreground">Flight geo</p>
+              <p className="text-[10px] text-muted-foreground">{t("soraPanel.flightGeo")}</p>
             </div>
             <div>
               <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{suggestion.suggested_contingency_buffer_m}m</p>
@@ -476,7 +476,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
           {manualOverride && (
             <div className="flex items-center justify-between gap-2 pt-1">
-              <p className="text-[10px] text-muted-foreground italic">Manuelt overstyrt</p>
+              <p className="text-[10px] text-muted-foreground italic">{t("soraPanel.manuallyOverridden")}</p>
               <Button
                 size="sm"
                 variant="outline"
@@ -492,7 +492,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
                   });
                 }}
               >
-                Tilbakestill til system-beregning
+                {t("soraPanel.resetSystem")}
               </Button>
             </div>
           )}
@@ -502,7 +502,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       {/* ── Manual controls ── */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Flight Geography Area (m)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.flightGeoArea")}</Label>
           <span className="text-xs font-mono text-green-600 dark:text-green-400">{settings.flightGeographyDistance}m</span>
         </div>
         <Slider
@@ -517,7 +517,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Contingency area (m)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.contingencyArea")}</Label>
           <span className="text-xs font-mono text-amber-600 dark:text-amber-400">{settings.contingencyDistance}m</span>
         </div>
         <Slider
@@ -532,7 +532,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-muted-foreground">Ground risk buffer (m)</Label>
+          <Label className="text-xs text-muted-foreground">{t("soraPanel.groundRiskBuffer")}</Label>
           <span className="text-xs font-mono text-red-600 dark:text-red-400">{settings.groundRiskDistance}m</span>
         </div>
         <Slider
@@ -547,16 +547,16 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       <div className="flex flex-wrap gap-3 pt-1 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm bg-green-600/40 border border-green-600/60" /> Flight geography area
+          <span className="w-3 h-3 rounded-sm bg-green-600/40 border border-green-600/60" /> {t("soraPanel.legendFlightGeoArea")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/60" /> Flight geography
+          <span className="w-3 h-3 rounded-sm bg-green-500/40 border border-green-500/60" /> {t("soraPanel.legendFlightGeo")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm bg-amber-500/40 border border-amber-500/60" /> Contingency
+          <span className="w-3 h-3 rounded-sm bg-amber-500/40 border border-amber-500/60" /> {t("soraPanel.legendContingency")}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-sm bg-red-500/40 border border-red-500/60" /> Ground risk
+          <span className="w-3 h-3 rounded-sm bg-red-500/40 border border-red-500/60" /> {t("soraPanel.legendGroundRisk")}
         </span>
       </div>
 
