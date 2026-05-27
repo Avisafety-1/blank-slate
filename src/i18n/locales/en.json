@@ -219,7 +219,14 @@
       "submitForApprovalTitle": "Submit for approval?",
       "submitForApprovalDescription": "Are you sure you want to submit this mission for approval?",
       "submitForApprovalConfirm": "Submit for approval",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "couldNotUpdateStatus": "Could not update status",
+      "statusChangedTo": "Status changed to {{status}}",
+      "postFlightChecklistTitle": "Post-flight checklist",
+      "postFlightChecklistDescription": "The drone(s) on this mission have a post-flight checklist. Do you want to perform it now or later?",
+      "executeLater": "Do it later",
+      "executeNow": "Do it now",
+      "postFlightLabel": "Post-flight"
     },
     "kpi": {
       "title": "Incidents last 6 months",

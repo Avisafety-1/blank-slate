@@ -221,7 +221,14 @@
       "submitForApprovalTitle": "Send til godkjenning?",
       "submitForApprovalDescription": "Er du sikker på at du vil sende dette oppdraget til godkjenning?",
       "submitForApprovalConfirm": "Send til godkjenning",
-      "cancel": "Avbryt"
+      "cancel": "Avbryt",
+      "couldNotUpdateStatus": "Kunne ikke oppdatere status",
+      "statusChangedTo": "Status endret til {{status}}",
+      "postFlightChecklistTitle": "Post flight sjekkliste",
+      "postFlightChecklistDescription": "Dronen(e) på dette oppdraget har en post flight sjekkliste. Vil du utføre den nå eller senere?",
+      "executeLater": "Utfør senere",
+      "executeNow": "Utfør nå",
+      "postFlightLabel": "Post flight"
     },
     "kpi": {
       "title": "Hendelser siste 6 mnd",
