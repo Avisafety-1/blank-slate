@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Shield, Loader2, Clipboard, Smartphone } from "lucide-react";
 import { toast } from "sonner";
@@ -89,14 +90,42 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
     }
   };
 
-  const handleOpenAuthenticatorApp = () => {
+  // Kjente authenticator-apper. På Android bruker vi pakke-spesifikke intents
+  // UTEN Play Store-fallback (S.browser_fallback_url=about:blank) slik at
+  // brukeren ikke havner i Play Store hvis appen ikke er installert.
+  // På iOS prøver vi appens egne URL-skjema — feiler stille hvis ikke installert.
+  const AUTH_APPS: Array<{ name: string; android: string; ios: string }> = [
+    {
+      name: "Microsoft Authenticator",
+      android: "intent://#Intent;scheme=msauth;package=com.azure.authenticator;S.browser_fallback_url=about%3Ablank;end",
+      ios: "msauth://",
+    },
+    {
+      name: "Google Authenticator",
+      android: "intent://#Intent;package=com.google.android.apps.authenticator2;S.browser_fallback_url=about%3Ablank;end",
+      ios: "googleauthenticator://",
+    },
+    {
+      name: "Authy",
+      android: "intent://#Intent;scheme=authy;package=com.authy.authy;S.browser_fallback_url=about%3Ablank;end",
+      ios: "authy://",
+    },
+    {
+      name: "1Password",
+      android: "intent://#Intent;scheme=onepassword;package=com.agilebits.onepassword;S.browser_fallback_url=about%3Ablank;end",
+      ios: "onepassword://",
+    },
+    {
+      name: "Bitwarden",
+      android: "intent://#Intent;scheme=bitwarden;package=com.x8bit.bitwarden;S.browser_fallback_url=about%3Ablank;end",
+      ios: "bitwarden://",
+    },
+  ];
+
+  const openAuthenticatorApp = (app: { name: string; android: string; ios: string }) => {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
     const isAndroid = /Android/i.test(ua);
-    // Android: bruk generisk intent-chooser slik at brukeren får valgt sin egen app
-    // (Microsoft Authenticator, Authy, 1Password osv.) i stedet for å tvinge Google.
-    const url = isAndroid
-      ? "intent://scan/#Intent;scheme=otpauth;end"
-      : "otpauth://";
+    const url = isAndroid ? app.android : app.ios;
 
     let didHide = false;
     const onVisibility = () => {
@@ -107,16 +136,17 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
     try {
       window.location.href = url;
     } catch {
-      // ignore — handled by timeout below
+      // ignore
     }
 
     window.setTimeout(() => {
       document.removeEventListener("visibilitychange", onVisibility);
       if (!didHide && !document.hidden) {
-        toast("Bytt til authenticator-appen manuelt og kom tilbake hit.");
+        toast(`Kunne ikke åpne ${app.name}. Er den installert?`);
       }
     }, 1200);
   };
+
 
 
   const handleCancel = async () => {
@@ -176,17 +206,34 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
               Lim inn
             </Button>
             {isTouchDevice && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleOpenAuthenticatorApp}
-                disabled={verifying}
-                className="w-full"
-              >
-                <Smartphone className="h-4 w-4 mr-2" />
-                Authenticator
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={verifying}
+                    className="w-full"
+                  >
+                    <Smartphone className="h-4 w-4 mr-2" />
+                    Authenticator
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-1" align="end">
+                  <div className="flex flex-col">
+                    {AUTH_APPS.map((app) => (
+                      <button
+                        key={app.name}
+                        type="button"
+                        onClick={() => openAuthenticatorApp(app)}
+                        className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted/50"
+                      >
+                        {app.name}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
 
