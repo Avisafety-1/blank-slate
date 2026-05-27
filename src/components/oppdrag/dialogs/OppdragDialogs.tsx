@@ -206,15 +206,15 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
       <AlertDialog open={!!props.deletingMission} onOpenChange={(open) => !open && props.setDeletingMission(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker på at du vil slette gjeldende oppdrag?</AlertDialogTitle>
+            <AlertDialogTitle>{t("oppdragDialogs.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Denne handlingen kan ikke angres. Oppdraget "{props.deletingMission?.tittel}" og alle tilknyttede data vil bli permanent slettet.
+              {t("oppdragDialogs.deleteDesc", { title: props.deletingMission?.tittel })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t("oppdragDialogs.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={props.onDeleteMission} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Slett oppdrag
+              {t("oppdragDialogs.deleteMission")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
