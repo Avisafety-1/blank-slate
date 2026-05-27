@@ -847,14 +847,14 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
               {/* Utstyr – multi-select */}
               <div className="space-y-1">
-                <Label className="text-sm">Utstyr</Label>
+                <Label className="text-sm">{t('incidents.equipment')}</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                       <span className="truncate">
                         {equipmentIds.length > 0
-                          ? `${equipmentIds.length} valgt`
-                          : "Velg utstyr..."}
+                          ? t('incidents.selectedCount', { count: equipmentIds.length })
+                          : t('incidents.selectEquipment')}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -874,7 +874,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                         </label>
                       ))}
                       {companyEquipment.length === 0 && (
-                        <p className="text-sm text-muted-foreground px-2 py-1">Ingen utstyr registrert.</p>
+                        <p className="text-sm text-muted-foreground px-2 py-1">{t('incidents.noEquipmentRegisteredShort')}</p>
                       )}
                     </div>
                   </PopoverContent>
@@ -885,7 +885,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                       const eq = companyEquipment.find(e => e.id === eqId);
                       return (
                         <span key={eqId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
-                          {eq?.navn || "Ukjent"}
+                          {eq?.navn || t('missions.unknown')}
                           <button type="button" onClick={() => toggleEquipment(eqId)} className="hover:text-foreground">
                             <X className="h-3 w-3" />
                           </button>
@@ -895,6 +895,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   </div>
                 )}
               </div>
+
             </CollapsibleContent>
           </Collapsible>
 
