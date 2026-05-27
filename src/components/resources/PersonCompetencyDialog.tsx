@@ -52,7 +52,8 @@ export function PersonCompetencyDialog({
   person: initialPerson,
   onCompetencyUpdated,
 }: PersonCompetencyDialogProps) {
-  const { companyId, isAdmin } = useAuth();
+  const { companyId, isAdmin, user } = useAuth();
+  const canEdit = isAdmin || (!!user && !!initialPerson && user.id === initialPerson.id);
   const [person, setPerson] = useState<Person | null>(initialPerson);
   
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -509,14 +510,16 @@ export function PersonCompetencyDialog({
                 <Book className="w-4 h-4" />
                 Loggbok
               </Button>
-              <Button
-                size="sm"
-                onClick={() => setAddDialogOpen(true)}
-                className="gap-2 w-full sm:w-auto"
-              >
-                <Plus className="w-4 h-4" />
-                Legg til kompetanse
-              </Button>
+              {canEdit && (
+                <Button
+                  size="sm"
+                  onClick={() => setAddDialogOpen(true)}
+                  className="gap-2 w-full sm:w-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  Legg til kompetanse
+                </Button>
+              )}
             </div>
           </DialogHeader>
 
@@ -628,14 +631,16 @@ export function PersonCompetencyDialog({
                           <h4 className="font-semibold text-sm sm:text-base break-words">{competency.navn}</h4>
                           <span className="text-xs text-muted-foreground">{competency.type}</span>
                         </div>
-                        <div className="flex gap-0.5 shrink-0">
-                          <Button onClick={() => handleStartEdit(competency)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button onClick={() => handleDeleteClick(competency.id)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        {canEdit && (
+                          <div className="flex gap-0.5 shrink-0">
+                            <Button onClick={() => handleStartEdit(competency)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button onClick={() => handleDeleteClick(competency.id)} variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       {competency.beskrivelse && (
                         <p className="text-xs sm:text-sm text-muted-foreground break-words">{competency.beskrivelse}</p>
