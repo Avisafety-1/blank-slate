@@ -212,7 +212,16 @@
       "newRiskAssessment": "Ny risikovurdering",
       "statusPlanned": "Planlagt",
       "statusOngoing": "Pågående",
-      "statusCompleted": "Fullført"
+      "statusCompleted": "Fullført",
+      "completeSoraFirst": "Gjennomfør SORA først",
+      "couldNotCheckApprovers": "Kunne ikke sjekke godkjennere",
+      "noApproversInCompany": "Ingen i selskapet har rollen som godkjenner. Tildel rollen under Admin-panelet først.",
+      "couldNotSubmitForApproval": "Kunne ikke sende til godkjenning",
+      "missionFallback": "Oppdrag",
+      "submitForApprovalTitle": "Send til godkjenning?",
+      "submitForApprovalDescription": "Er du sikker på at du vil sende dette oppdraget til godkjenning?",
+      "submitForApprovalConfirm": "Send til godkjenning",
+      "cancel": "Avbryt"
     },
     "kpi": {
       "title": "Hendelser siste 6 mnd",

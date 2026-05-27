@@ -217,7 +217,7 @@ export const CalendarWidget = () => {
       if (documents) {
         events.push(...documents.map(d => ({
           type: "Dokument",
-          title: `${d.tittel} utgår`,
+          title: `${d.tittel} ${t('dashboard.calendar.expires')}`,
           date: new Date(d.gyldig_til!),
           color: "text-blue-500",
           sourceId: d.id,
@@ -235,7 +235,7 @@ export const CalendarWidget = () => {
       if (drones) {
         events.push(...drones.map(d => ({
           type: "Vedlikehold",
-          title: `${d.modell} - inspeksjon`,
+          title: `${d.modell} - ${t('dashboard.calendar.inspection')}`,
           date: new Date(d.neste_inspeksjon!),
           color: "text-orange-500",
           sourceId: d.id,
@@ -253,7 +253,7 @@ export const CalendarWidget = () => {
       if (equipment) {
         events.push(...equipment.map(e => ({
           type: "Vedlikehold",
-          title: `${e.navn} - vedlikehold`,
+          title: `${e.navn} - ${t('dashboard.calendar.maintenance')}`,
           date: new Date(e.neste_vedlikehold!),
           color: "text-orange-500",
           sourceId: e.id,
@@ -724,7 +724,7 @@ export const CalendarWidget = () => {
         onOpenChange={setCreateDocumentOpen}
         onSuccess={() => {
           fetchRealCalendarEvents();
-          toast.success("Dokument opprettet og lagt til i kalenderen");
+          toast.success(t('dashboard.calendar.documentCreated'));
         }}
         defaultExpiryDate={selectedDate || undefined}
       />

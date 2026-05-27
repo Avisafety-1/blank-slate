@@ -210,7 +210,16 @@
       "newRiskAssessment": "New risk assessment",
       "statusPlanned": "Planned",
       "statusOngoing": "Ongoing",
-      "statusCompleted": "Completed"
+      "statusCompleted": "Completed",
+      "completeSoraFirst": "Complete SORA first",
+      "couldNotCheckApprovers": "Could not check approvers",
+      "noApproversInCompany": "No one in the company has the approver role. Assign the role in the Admin panel first.",
+      "couldNotSubmitForApproval": "Could not submit for approval",
+      "missionFallback": "Mission",
+      "submitForApprovalTitle": "Submit for approval?",
+      "submitForApprovalDescription": "Are you sure you want to submit this mission for approval?",
+      "submitForApprovalConfirm": "Submit for approval",
+      "cancel": "Cancel"
     },
     "kpi": {
       "title": "Incidents last 6 months",

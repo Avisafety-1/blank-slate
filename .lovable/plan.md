@@ -24,13 +24,12 @@ We have two ways to handle the historical Norwegian rows. Pick one — I will **
 
 I'll work in the same 5 batches we agreed on earlier, but tightened with concrete acceptance gates. Each batch is a separate implementation pass — we ship it, you verify in the English UI, then we start the next.
 
-### Batch 2 — Dashboard widgets (next up)
-- `MissionsSection.tsx` — risk/checklist fallbacks, AlertDialog copy, toast strings.
-- `IncidentsSection.tsx` — "Rapporter hendelse", badges, status labels.
-- `DocumentSection.tsx` — section title, "Utløpt" badge, empty state.
-- `CalendarSection.tsx` / `CalendarWidget.tsx` — weekdays + month names via `date-fns` locale switch, "Aktive flyginger", "Fri flyging", "Vis på kart", "Kommende oppdrag".
-- `ActiveFlightsSection.tsx` — labels and live status.
-Locale keys go under `dashboard.*` namespaces in `en.json` + `no.json`.
+### Batch 2 — Dashboard widgets ✅ DONE
+- `MissionsSection.tsx` — approval toasts ("Gjennomfør SORA først", "Kunne ikke sjekke godkjennere", "Ingen i selskapet har rollen…", "Kunne ikke sende til godkjenning"), checklist `itemName` fallback, and the "Send til godkjenning?" AlertDialog (title, description, cancel, confirm) now go through `t('dashboard.missions.*')`.
+- `CalendarWidget.tsx` — dynamic event titles ("… utgår", "… - inspeksjon", "… - vedlikehold") and the document-created toast now use existing `dashboard.calendar.*` keys.
+- `IncidentsSection.tsx`, `DocumentSection.tsx`, `ActiveFlightsSection.tsx` — scanned, already fully t()-driven; remaining Norwegian literals are DB enum values handled in Batch 3.
+- `CalendarSection.tsx` — unused (mock-data legacy), not touched.
+New keys added under `dashboard.missions.*` in both `en.json` and `no.json`.
 
 ### Batch 3 — DB-value translation helpers
 Values stored in Norwegian in the DB (mission status, approval status, incident status/severity/category/root cause, document category). Add display-only mappers in `src/lib/i18nHelpers.ts`:
