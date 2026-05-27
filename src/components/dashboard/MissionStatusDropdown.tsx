@@ -228,7 +228,7 @@ export const MissionStatusDropdown = ({
             <Badge
               className={`${statusColors[currentStatus] || ""} cursor-pointer hover:opacity-80 transition-opacity ${className}`}
             >
-              {currentStatus}
+              {translateMissionStatus(currentStatus)}
             </Badge>
           </button>
         </PopoverTrigger>
