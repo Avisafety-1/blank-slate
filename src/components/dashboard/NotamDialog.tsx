@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { fetchTerrainElevations } from "@/lib/terrainElevation";
+import { useTranslation } from "react-i18next";
 
 type Mission = any;
 
