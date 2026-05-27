@@ -253,11 +253,11 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         onOpenChange={props.setDocumentDialogOpen}
         document={props.selectedDocument}
         status={(() => {
-          if (!props.selectedDocument?.gyldig_til) return "Grønn";
+          if (!props.selectedDocument?.gyldig_til) return t("oppdragDialogs.statusGreen");
           const daysUntil = Math.ceil((new Date(props.selectedDocument.gyldig_til).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-          if (daysUntil < 0) return "Rød";
-          if (daysUntil <= (props.selectedDocument.varsel_dager_for_utløp || 30)) return "Gul";
-          return "Grønn";
+          if (daysUntil < 0) return t("oppdragDialogs.statusRed");
+          if (daysUntil <= (props.selectedDocument.varsel_dager_for_utløp || 30)) return t("oppdragDialogs.statusYellow");
+          return t("oppdragDialogs.statusGreen");
         })()}
       />
 
