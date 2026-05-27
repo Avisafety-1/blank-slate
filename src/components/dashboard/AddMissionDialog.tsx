@@ -1499,10 +1499,11 @@ export const AddMissionDialog = ({
                             onValueChange={(val) => setPersonnelRoles(prev => ({ ...prev, [id]: val === "none" ? null : val }))}
                           >
                             <SelectTrigger className="h-6 w-auto min-w-[100px] text-xs border-none bg-background/50 px-1.5 py-0">
-                              <SelectValue placeholder="Rolle" />
+                              <SelectValue placeholder={t('missions.role')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">Ingen rolle</SelectItem>
+                              <SelectItem value="none">{t('missions.noRole')}</SelectItem>
+
                               {companyMissionRoles.map((role) => (
                                 <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
                               ))}
