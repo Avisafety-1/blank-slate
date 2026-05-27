@@ -770,12 +770,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="lokasjon">Lokasjon (valgfritt)</Label>
+            <Label htmlFor="lokasjon">{t('incidents.locationOptional')}</Label>
             <Input
               id="lokasjon"
               value={formData.lokasjon}
               onChange={(e) => setFormData({ ...formData, lokasjon: e.target.value })}
-              placeholder="F.eks. Oslo, Hangar A, etc."
+              placeholder={t('incidents.locationPlaceholder')}
             />
           </div>
 
@@ -783,24 +783,25 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen} data-tour="incident-resources">
             <CollapsibleTrigger asChild>
               <Button variant="ghost" className="w-full justify-between px-2 py-1.5 h-auto text-sm font-medium text-muted-foreground hover:text-foreground">
-                Ressurser (valgfritt)
+                {t('incidents.resourcesOptional')}
                 <ChevronDown className={cn("h-4 w-4 transition-transform", resourcesOpen && "rotate-180")} />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-3 pt-2">
               {/* Pilot */}
               <div className="space-y-1">
-                <Label className="text-sm">Pilot</Label>
+                <Label className="text-sm">{t('incidents.pilot')}</Label>
                 <SearchablePersonSelect
                   persons={companyProfiles}
                   value={pilotId}
                   onValueChange={setPilotId}
-                  placeholder="Velg pilot..."
-                  searchPlaceholder="Søk pilot..."
+                  placeholder={t('incidents.selectPilot')}
+                  searchPlaceholder={t('incidents.searchPilot')}
                   allowNone
-                  noneLabel="Ingen"
+                  noneLabel={t('common.none')}
                 />
               </div>
+
 
               {/* Drone */}
               <div className="space-y-1">
