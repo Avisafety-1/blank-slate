@@ -637,10 +637,10 @@ const Resources = () => {
               <div data-tour="resources-equipment-filters" className="flex gap-2 mb-4">
                 <Select value={equipmentTypeFilter} onValueChange={setEquipmentTypeFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Kategori" />
+                    <SelectValue placeholder={t('resources.filterCategory')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle kategorier</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAllCategories')}</SelectItem>
                     {uniqueEquipmentTypes.map(t => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
@@ -649,13 +649,13 @@ const Resources = () => {
                 </Select>
                 <Select value={equipmentStatusFilter} onValueChange={setEquipmentStatusFilter}>
                   <SelectTrigger className="h-8 text-xs w-[100px]">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t('resources.filterStatus')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alle">Alle</SelectItem>
-                    <SelectItem value="Grønn">🟢 Grønn</SelectItem>
-                    <SelectItem value="Gul">🟡 Gul</SelectItem>
-                    <SelectItem value="Rød">🔴 Rød</SelectItem>
+                    <SelectItem value="alle">{t('resources.filterAll')}</SelectItem>
+                    <SelectItem value="Grønn">🟢 {t('resources.statusGreen')}</SelectItem>
+                    <SelectItem value="Gul">🟡 {t('resources.statusYellow')}</SelectItem>
+                    <SelectItem value="Rød">🔴 {t('resources.statusRed')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
