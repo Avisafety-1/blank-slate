@@ -43,11 +43,11 @@ export const MarketingVisuals = () => {
     }
     const { error } = await supabase.from("marketing_media").delete().eq("id", id);
     if (error) {
-      toast.error("Kunne ikke slette");
+      toast.error(t('pages.marketing.couldNotDelete'));
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["marketing-media"] });
-    toast.success("Visuell slettet");
+    toast.success(t('pages.marketing.visualDeleted'));
   };
 
   return (
