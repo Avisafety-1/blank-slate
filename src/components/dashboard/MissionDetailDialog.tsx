@@ -40,6 +40,7 @@ import {
   shouldShowApprovalBadge,
   shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
+import { useTranslation } from "react-i18next";
 
 type Mission = any;
 
