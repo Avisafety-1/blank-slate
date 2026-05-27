@@ -1067,6 +1067,23 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {visibilityWarning && (
+        <ResourceVisibilityWarningDialog
+          open={!!visibilityWarning}
+          onOpenChange={(o) => { if (!o) setVisibilityWarning(null); }}
+          missing={visibilityWarning.missing}
+          departments={deptVis.childDepartments}
+          resourceLabel="utstyret"
+          onContinue={async () => {
+            await visibilityWarning.onContinue();
+            setVisibilityWarning(null);
+          }}
+          onCancel={() => {
+            visibilityWarning.onCancel();
+            setVisibilityWarning(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 };
