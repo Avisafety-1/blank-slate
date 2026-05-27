@@ -1260,6 +1260,97 @@
       "portalFailed": "Could not open customer portal: ",
       "unknownError": "Unknown error"
     }
+  },
+  "changelog": {
+    "title": "System status and changelog",
+    "maintenanceDefault": "Maintenance in progress",
+    "systemStatus": "System status",
+    "changelogTitle": "Changelog",
+    "addBtn": "Add",
+    "search": "Search...",
+    "sort": {
+      "created": "Created date",
+      "status": "Status",
+      "completed": "Completed date"
+    },
+    "noEntries": "No entries yet",
+    "createdLabel": "Created",
+    "completedLabel": "Completed",
+    "dialog": {
+      "editSystem": "Edit system",
+      "addSystem": "Add system",
+      "name": "Name",
+      "status": "Status",
+      "descriptionOptional": "Description (optional)",
+      "operational": "🟢 Operational",
+      "partial": "🟡 Partial",
+      "down": "🔴 Down",
+      "delete": "Delete",
+      "save": "Save",
+      "editEntry": "Edit entry",
+      "newEntry": "New entry",
+      "titleField": "Title",
+      "priority": "Priority",
+      "completedDateOptional": "Completed date (optional)",
+      "notStarted": "Not started",
+      "inProgress": "In progress",
+      "testing": "Testing",
+      "implemented": "Implemented",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "areYouSure": "Are you sure?",
+      "cannotUndo": "This action cannot be undone.",
+      "cancel": "Cancel"
+    },
+    "entryStatus": {
+      "notStarted": "Not started",
+      "inProgress": "In progress",
+      "testing": "Testing",
+      "implemented": "Implemented"
+    },
+    "priority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "toast": {
+      "updateFailed": "Could not update",
+      "updateMessageFailed": "Could not update message",
+      "saveError": "Save error",
+      "systemUpdated": "System updated",
+      "createError": "Could not create",
+      "systemAdded": "System added",
+      "entryUpdated": "Entry updated",
+      "entryAdded": "Entry added",
+      "deleteFailed": "Could not delete",
+      "deleted": "Deleted"
+    }
+  },
+  "mapPublication": {
+    "title": "Map publication — defaults",
+    "subtitle": "How planned missions are shown on the AviSafe map by default.",
+    "publicCompanyName": "Public company name",
+    "publicCompanyDesc": "Shown in map popups for planned missions. Also used by all departments under the parent company.",
+    "publicCompanyDescChild": " Set on the parent company — changes here only affect this department if it is root.",
+    "publicCompanyPlaceholder": "E.g. Andøya Drone AS",
+    "save": "Save",
+    "publishTitle": "Publish planned mission on AviSafe map",
+    "publishDesc": "Other AviSafe users see planned missions from 24h before start until end.",
+    "shareTitle": "Share contact information",
+    "shareDesc": "Show mission owner contact details in map popup for coordination.",
+    "shareNameTitle": "Share name",
+    "shareNameDesc": "Mission owner name is shown in popup.",
+    "sharePhoneTitle": "Share phone",
+    "sharePhoneDesc": "Phone number is shown in popup.",
+    "shareEmailTitle": "Share email",
+    "shareEmailDesc": "Email address is shown in popup.",
+    "anonTitle": "Anonymized view",
+    "anonDesc": "Hide mission title, description, company name and contact info. Only geometry and time are shown.",
+    "overrideTitle": "Allow pilot to override these choices per mission",
+    "overrideDesc": "If off, the fields in the mission dialog are locked to the company default.",
+    "saveFailed": "Could not save",
+    "saved": "Saved"
   }
 }
 
