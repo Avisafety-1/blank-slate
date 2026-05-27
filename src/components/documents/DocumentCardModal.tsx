@@ -166,8 +166,18 @@ const DocumentCardModal = ({
     }
   }, [document, isOpen]);
 
+  const syncChecklistToForm = (items: ChecklistItem[]) => {
+    const validItems = items.filter(i => i.text.trim() !== "");
+    const serialized = validItems.length > 0 ? JSON.stringify(validItems) : "";
+    form.setValue("beskrivelse", serialized, { shouldValidate: true, shouldDirty: true });
+  };
+
   const handleAddChecklistItem = () => {
-    setChecklistItems(prev => [...prev, { id: crypto.randomUUID(), text: "" }]);
+    setChecklistItems(prev => {
+      const next = [...prev, { id: crypto.randomUUID(), text: "" }];
+      syncChecklistToForm(next);
+      return next;
+    });
   };
 
   const handleMoveChecklistItem = (id: string, direction: 'up' | 'down') => {
@@ -178,18 +188,25 @@ const DocumentCardModal = ({
       if (swapIdx < 0 || swapIdx >= prev.length) return prev;
       const next = [...prev];
       [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      syncChecklistToForm(next);
       return next;
     });
   };
 
   const handleRemoveChecklistItem = (id: string) => {
-    setChecklistItems(prev => prev.filter(item => item.id !== id));
+    setChecklistItems(prev => {
+      const next = prev.filter(item => item.id !== id);
+      syncChecklistToForm(next);
+      return next;
+    });
   };
 
   const handleChecklistItemChange = (id: string, text: string) => {
-    setChecklistItems(prev => prev.map(item => 
-      item.id === id ? { ...item, text } : item
-    ));
+    setChecklistItems(prev => {
+      const next = prev.map(item => item.id === id ? { ...item, text } : item);
+      syncChecklistToForm(next);
+      return next;
+    });
   };
 
   const openUrl = (url: string) => {
