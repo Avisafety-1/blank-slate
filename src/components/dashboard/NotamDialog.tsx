@@ -395,7 +395,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
     setSubmitting(false);
     if (error) {
-      toast.error("Kunne ikke sende NOTAM");
+      toast.error(t('dashboard.notam.couldNotSubmit'));
       console.error(error);
       return;
     }
