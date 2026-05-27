@@ -51,8 +51,8 @@ Deferred (large forms — Batch 4B):
 - `AddIncidentDialog` — has 23 Norwegian strings (severity/status/kategori SelectItems, "Velg hovedårsak", "Søk i oppdrag", "Søk pilot/drone/person", error/success toasts). Big form; wants its own pass.
 
 ### Batch 5 — Main pages outside the dashboard ✅ MOSTLY DONE
-Done: `Oppdrag`, `Hendelser`, `Documents`, `Kalender`, `Kart`, `Statistikk`, `Priser` (full pass — `pages.pricing.*` namespace added), `Resources` (filter placeholders, status/category/role select items, "no results" fallback — uses `resources.searchVehiclePlaceholder` interpolation with `terminology.vehicleLower`).
-Remaining: `SoraProcess` (616-line static explainer page), `Marketing` shell + sub-sections, admin shells. Static SoraProcess is its own pass — large surface, mostly long-form Norwegian copy.
+Done: `Oppdrag`, `Hendelser`, `Documents`, `Kalender`, `Kart`, `Statistikk`, `Priser` (full `pages.pricing.*`), `Resources` (filters, status/category/role selects), `MarketingSidebar` + `MarketingOverview` (new `pages.marketing.*` namespace, date-fns locale switched per language).
+Remaining: `SoraProcess` (616-line static explainer page — its own pass), other Marketing sub-views (Ideas/Drafts/Visuals/Newsletter/Settings — superadmin-only, lower priority), admin shells (`/admin` page tabs, EmailTemplateEditor, CompanyManagement etc.). The admin shells are Avisafe-superadmin only, so generally lowest priority unless you want them in English too.
 
 ### Working method per batch
 1. Grep the target files for hardcoded Norwegian (`scripts/i18n-scan.ts` already exists — I'll lean on it).

@@ -1094,7 +1094,25 @@
       "loginRegister": "Log in / Sign up",
       "couldNotStartPayment": "Could not start payment: ",
       "unknownError": "Unknown error"
+    },
+    "marketing": {
+      "sidebarTitle": "Marketing",
+      "overview": "Overview",
+      "ideas": "Ideas",
+      "drafts": "Drafts",
+      "visuals": "Visuals",
+      "newsletter": "Newsletter",
+      "settings": "Settings",
+      "overviewTitle": "Marketing overview",
+      "overviewSubtitle": "Manage content ideas and drafts for marketing.",
+      "statIdeas": "Ideas",
+      "statDrafts": "Drafts",
+      "statApproved": "Approved",
+      "statScheduled": "Scheduled",
+      "nextScheduled": "Next scheduled",
+      "recentlyPublished": "Recently published"
     }
   }
 }
+
 

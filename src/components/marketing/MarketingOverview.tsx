@@ -5,9 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Lightbulb, FileEdit, CheckCircle, Clock, Facebook, Calendar } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enGB } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 
 export const MarketingOverview = () => {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'en' ? enGB : nb;
   const { companyId } = useAuth();
 
   const { data: ideaCount = 0 } = useQuery({
@@ -95,17 +98,17 @@ export const MarketingOverview = () => {
   });
 
   const stats = [
-    { label: "Idéer", value: ideaCount, icon: Lightbulb, color: "text-yellow-500" },
-    { label: "Utkast", value: draftCount, icon: FileEdit, color: "text-blue-500" },
-    { label: "Godkjent", value: approvedCount, icon: CheckCircle, color: "text-green-500" },
-    { label: "Planlagt", value: scheduledCount, icon: Clock, color: "text-orange-500" },
+    { label: t('pages.marketing.statIdeas'), value: ideaCount, icon: Lightbulb, color: "text-yellow-500" },
+    { label: t('pages.marketing.statDrafts'), value: draftCount, icon: FileEdit, color: "text-blue-500" },
+    { label: t('pages.marketing.statApproved'), value: approvedCount, icon: CheckCircle, color: "text-green-500" },
+    { label: t('pages.marketing.statScheduled'), value: scheduledCount, icon: Clock, color: "text-orange-500" },
   ];
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Marketing Oversikt</h1>
-        <p className="text-muted-foreground text-xs sm:text-sm mt-1">Administrer innholdsidéer og utkast for markedsføring.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('pages.marketing.overviewTitle')}</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm mt-1">{t('pages.marketing.overviewSubtitle')}</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -130,7 +133,7 @@ export const MarketingOverview = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Clock className="w-4 h-4 text-orange-500" />
-              Neste planlagte
+              {t('pages.marketing.nextScheduled')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -143,7 +146,7 @@ export const MarketingOverview = () => {
                   )}
                 </div>
                 <span className="text-orange-600 dark:text-orange-400 text-xs flex-shrink-0">
-                  {formatDistanceToNow(new Date(item.scheduled_at), { addSuffix: true, locale: nb })}
+                  {formatDistanceToNow(new Date(item.scheduled_at), { addSuffix: true, locale: dateLocale })}
                 </span>
               </div>
             ))}
@@ -157,7 +160,7 @@ export const MarketingOverview = () => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Facebook className="w-4 h-4 text-blue-500" />
-              Nylig publisert
+              {t('pages.marketing.recentlyPublished')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -170,7 +173,7 @@ export const MarketingOverview = () => {
                   )}
                 </div>
                 <span className="text-muted-foreground text-xs flex-shrink-0">
-                  {format(new Date(item.published_at), "d. MMM HH:mm", { locale: nb })}
+                  {format(new Date(item.published_at), "d. MMM HH:mm", { locale: dateLocale })}
                 </span>
               </div>
             ))}
