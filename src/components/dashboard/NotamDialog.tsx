@@ -316,7 +316,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     if (upperAmslFt != null) {
       lines.push(`LOWER: GND UPPER: ${upperAmslFt}FT AMSL`);
     } else {
-      lines.push(`LOWER: GND UPPER: ${maxAglFt}FT AGL${elevationLoading ? " (henter terrenghøyde…)" : " (terrenghøyde ikke tilgjengelig)"}`);
+      lines.push(`LOWER: GND UPPER: ${maxAglFt}FT AGL${elevationLoading ? " " + t('dashboard.notam.fetchingElevation') : " " + t('dashboard.notam.elevationUnavailable')}`);
     }
     lines.push(`RADIUS: ${radiusNm}NM.`);
 
