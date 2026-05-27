@@ -431,7 +431,16 @@ const DocumentCardModal = ({
                   <FormItem>
                     <FormLabel>Kategori</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => {
+                        const prev = field.value;
+                        field.onChange(value);
+                        // Clear stale beskrivelse when toggling sjekklister category to avoid JSON leaking into free-text validation
+                        if (prev === "sjekklister" && value !== "sjekklister") {
+                          form.setValue("beskrivelse", "", { shouldValidate: true });
+                        } else if (prev !== "sjekklister" && value === "sjekklister") {
+                          syncChecklistToForm(checklistItems);
+                        }
+                      }}
                       defaultValue={field.value}
                       disabled={readOnly}
                     >
