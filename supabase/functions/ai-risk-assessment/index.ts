@@ -1628,6 +1628,8 @@ serve(async (req) => {
 
     const deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 0;
     const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
+    const grLang = resolveLang(language);
+    const grEn = grLang === 'en';
     const deterministicGroundRisk = buildDeterministicGroundRisk({
       characteristicDimensionM: deterministicCharacteristicDimensionM,
       maxSpeedMps: deterministicMaxSpeedMps,
@@ -1636,13 +1638,17 @@ serve(async (req) => {
       populationDensityAverage: deterministicPopulationDensityAverage,
       populationData,
       assignedEquipment,
+      lang: grLang,
     });
 
     if (populationData) {
       const populationDensityValue = Math.round(populationData.maxDensity);
       const populationDensityAverage = Number(populationData.avgDensity.toFixed(1));
+      const driverFallback = grEn ? 'within the operation footprint' : 'innenfor operasjonens fotavtrykk';
       const populationDensityDescription = populationData.cellCount > 0
-        ? `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? 'innenfor operasjonens fotavtrykk'}.`
+        ? (grEn
+            ? `We use population density data from Statistics Norway (SSB) to determine the population density within the drone operation footprint. The assessment is based on a 250-metre grid. The cell with the highest population density overlapping the footprint is dimensioning: ${populationData.calculation}. Average population density within the footprint is ${formatLocaleNumber(populationDensityAverage, 1, grLang)} people/km² based on ${formatLocaleNumber(populationData.cellCount, 0, grLang)} overlapping cells. The dimensioning cell is located ${populationData.driver ?? driverFallback}.`
+            : `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? driverFallback}.`)
         : populationData.summary;
 
       aiAnalysis.ground_risk_analysis = {
@@ -1652,8 +1658,8 @@ serve(async (req) => {
         population_density_calculation: populationData.calculation ?? populationData.summary,
         population_density_average: populationDensityAverage,
         population_density_driver: populationData.driver ?? null,
-        population_density_source: populationData.dataSource ?? 'SSB befolkning på rutenett 250 m (2025)',
-        population_density_footprint: populationData.footprintDescription ?? 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.',
+        population_density_source: populationData.dataSource ?? (grEn ? 'SSB population on 250 m grid (2025)' : 'SSB befolkning på rutenett 250 m (2025)'),
+        population_density_footprint: populationData.footprintDescription ?? (grEn ? 'Planned route with operational volume and ground risk buffer.' : 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.'),
         ssb_grid_population: populationData.maxCellPopulation ?? null,
         ssb_grid_resolution_m: populationData.gridResolutionM ?? 250,
         population_density_description: populationDensityDescription,
@@ -1662,7 +1668,9 @@ serve(async (req) => {
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
-        population_density_description: 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
+        population_density_description: grEn
+          ? 'SSB 250 m population density was not available. The system uses a conservative fallback to avoid AI variation.'
+          : 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
       };
     }
 
