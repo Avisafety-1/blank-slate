@@ -89,9 +89,9 @@ export const MarketingVisuals = () => {
                 });
                 if (dbErr) throw dbErr;
                 queryClient.invalidateQueries({ queryKey: ["marketing-media"] });
-                toast.success("Bilde lastet opp");
+                toast.success(t('pages.marketing.imageUploaded'));
               } catch (err: any) {
-                toast.error(err.message || "Opplasting feilet");
+                toast.error(err.message || t('pages.marketing.uploadFailed'));
               } finally {
                 setUploading(false);
                 e.target.value = "";
@@ -100,7 +100,7 @@ export const MarketingVisuals = () => {
           />
           <Button size="sm" onClick={() => setGeneratorOpen(true)} className="gap-1.5 flex-1 sm:flex-none">
             <Plus className="w-4 h-4" />
-            Generer visuell
+            {t('pages.marketing.generateVisual')}
           </Button>
         </div>
       </div>
