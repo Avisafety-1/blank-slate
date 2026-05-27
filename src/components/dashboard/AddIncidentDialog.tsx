@@ -349,7 +349,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user || !companyId) {
-        toast.error("Du må være logget inn for å rapportere hendelser");
+        toast.error(t('incidents.mustBeLoggedIn'));
         setSubmitting(false);
         return;
       }
