@@ -81,21 +81,9 @@ export const getAIRiskBadgeColor = (recommendation: string) => {
   }
 };
 
-export const getAIRiskLabel = (recommendation: string) => {
-  switch (recommendation?.toLowerCase()) {
-    case 'proceed':
-    case 'go':
-      return 'Anbefalt';
-    case 'proceed_with_caution':
-    case 'caution':
-      return 'Forsiktighet';
-    case 'not_recommended':
-    case 'no-go':
-      return 'Ikke anbefalt';
-    default:
-      return recommendation || 'Ukjent';
-  }
-};
+export const getAIRiskLabel = (recommendation: string) =>
+  translateAIRiskRecommendation(recommendation) || recommendation || "Ukjent";
+
 
 export const formatAIRiskScore = (score: unknown) => {
   const n = typeof score === "number" ? score : Number(score);
