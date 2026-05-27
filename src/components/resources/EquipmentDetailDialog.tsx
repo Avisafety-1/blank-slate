@@ -352,19 +352,32 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             <span className="truncate">{isEditing ? "Rediger utstyr" : equipment.navn}</span>
           </DialogTitle>
-          {!isEditing && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              data-tour="equipment-detail-logbok"
-              onClick={() => setShowLogbook(true)}
-              className="w-full mt-2"
-            >
-              <Book className="w-4 h-4 mr-2" />
-              Loggbok
-            </Button>
-          )}
+          {(() => {
+            const isSharedFromParent = !!equipment.company_id && !!companyId && equipment.company_id !== companyId;
+            return (
+              <>
+                {isSharedFromParent && (
+                  <p className="text-xs text-muted-foreground mt-1 rounded-md bg-muted px-2 py-1.5">
+                    🔒 Dette utstyret er delt fra {equipment.companies?.navn || "mor-selskapet"} og kan kun redigeres derfra.
+                  </p>
+                )}
+                {!isEditing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-tour="equipment-detail-logbok"
+                    onClick={() => setShowLogbook(true)}
+                    className="w-full mt-2"
+                  >
+                    <Book className="w-4 h-4 mr-2" />
+                    Loggbok
+                  </Button>
+                )}
+              </>
+            );
+          })()}
         </DialogHeader>
+
 
         <div className="space-y-3 sm:space-y-4">
           {!isEditing ? (
