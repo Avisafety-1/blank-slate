@@ -9,6 +9,8 @@ import { nb, enGB } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
 
 export const MarketingOverview = () => {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'en' ? enGB : nb;
   const { companyId } = useAuth();
 
   const { data: ideaCount = 0 } = useQuery({
