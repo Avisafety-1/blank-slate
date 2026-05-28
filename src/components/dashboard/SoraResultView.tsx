@@ -155,7 +155,21 @@ const SailMatrixTable = ({ lookup }: { lookup?: SailLookup }) => {
   );
 };
 
+const deriveSailFromLookup = (lookup?: SailLookup): string | null => {
+  if (!lookup) return null;
+  const fgrc = typeof lookup.fgrc_used === 'number' ? lookup.fgrc_used : parseInt(String(lookup.fgrc_used ?? ''), 10);
+  const arcRaw = String(lookup.arc_used ?? '').toLowerCase();
+  const arcMatch = arcRaw.match(/[abcd]/);
+  if (!arcMatch || !Number.isFinite(fgrc)) return null;
+  const row = fgrc <= 2 ? '≤2' : String(Math.min(fgrc, 7));
+  return SAIL_MATRIX[row]?.[arcMatch[0]] ?? null;
+};
+
 export const SoraResultView = ({ data }: SoraResultViewProps) => {
+  const matrixSail = deriveSailFromLookup(data.sail_lookup);
+  const effectiveSail = matrixSail ? `SAIL ${matrixSail}` : data.sail;
+  const effectiveLookupResult = matrixSail ?? data.sail_lookup?.result;
+
   return (
     <div className="space-y-4">
       {data.summary && (
@@ -165,7 +179,7 @@ export const SoraResultView = ({ data }: SoraResultViewProps) => {
       )}
 
       <div className="flex items-center gap-2 flex-wrap">
-        {data.sail && <Badge variant="outline">{data.sail}</Badge>}
+        {effectiveSail && <Badge variant="outline">{effectiveSail}</Badge>}
         {data.residual_risk_level && (
           <Badge variant={riskColor(data.residual_risk_level)}>
             Rest-risiko: {data.residual_risk_level}
@@ -219,7 +233,7 @@ export const SoraResultView = ({ data }: SoraResultViewProps) => {
           <AccordionTrigger>
             <div className="flex items-center gap-2">
               Steg 7: SAIL-oppslag
-              {data.sail && <Badge variant="outline" className="text-[10px]">{data.sail}</Badge>}
+              {effectiveSail && <Badge variant="outline" className="text-[10px]">{effectiveSail}</Badge>}
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pt-2">
@@ -233,12 +247,12 @@ export const SoraResultView = ({ data }: SoraResultViewProps) => {
                 {data.sail_lookup.fgrc_adjustments && (
                   <Field label="Justeringer fra kommentarer" value={data.sail_lookup.fgrc_adjustments} />
                 )}
-                <Field label="SAIL-resultat" value={data.sail_lookup.result} />
+                <Field label="SAIL-resultat" value={effectiveLookupResult} />
               </div>
             )}
             {!data.sail_lookup && (
               <div className="grid grid-cols-2 gap-4">
-                <Field label="SAIL-nivå" value={data.sail} />
+                <Field label="SAIL-nivå" value={effectiveSail} />
                 <Field label="Rest-risiko" value={data.residual_risk_level} />
               </div>
             )}
