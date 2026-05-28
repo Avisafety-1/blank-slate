@@ -155,7 +155,21 @@ const SailMatrixTable = ({ lookup }: { lookup?: SailLookup }) => {
   );
 };
 
+const deriveSailFromLookup = (lookup?: SailLookup): string | null => {
+  if (!lookup) return null;
+  const fgrc = typeof lookup.fgrc_used === 'number' ? lookup.fgrc_used : parseInt(String(lookup.fgrc_used ?? ''), 10);
+  const arcRaw = String(lookup.arc_used ?? '').toLowerCase();
+  const arcMatch = arcRaw.match(/[abcd]/);
+  if (!arcMatch || !Number.isFinite(fgrc)) return null;
+  const row = fgrc <= 2 ? '≤2' : String(Math.min(fgrc, 7));
+  return SAIL_MATRIX[row]?.[arcMatch[0]] ?? null;
+};
+
 export const SoraResultView = ({ data }: SoraResultViewProps) => {
+  const matrixSail = deriveSailFromLookup(data.sail_lookup);
+  const effectiveSail = matrixSail ? `SAIL ${matrixSail}` : data.sail;
+  const effectiveLookupResult = matrixSail ?? data.sail_lookup?.result;
+
   return (
     <div className="space-y-4">
       {data.summary && (
@@ -165,7 +179,7 @@ export const SoraResultView = ({ data }: SoraResultViewProps) => {
       )}
 
       <div className="flex items-center gap-2 flex-wrap">
-        {data.sail && <Badge variant="outline">{data.sail}</Badge>}
+        {effectiveSail && <Badge variant="outline">{effectiveSail}</Badge>}
         {data.residual_risk_level && (
           <Badge variant={riskColor(data.residual_risk_level)}>
             Rest-risiko: {data.residual_risk_level}
