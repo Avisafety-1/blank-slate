@@ -233,7 +233,7 @@ export const SoraResultView = ({ data }: SoraResultViewProps) => {
           <AccordionTrigger>
             <div className="flex items-center gap-2">
               Steg 7: SAIL-oppslag
-              {data.sail && <Badge variant="outline" className="text-[10px]">{data.sail}</Badge>}
+              {effectiveSail && <Badge variant="outline" className="text-[10px]">{effectiveSail}</Badge>}
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pt-2">
@@ -247,12 +247,12 @@ export const SoraResultView = ({ data }: SoraResultViewProps) => {
                 {data.sail_lookup.fgrc_adjustments && (
                   <Field label="Justeringer fra kommentarer" value={data.sail_lookup.fgrc_adjustments} />
                 )}
-                <Field label="SAIL-resultat" value={data.sail_lookup.result} />
+                <Field label="SAIL-resultat" value={effectiveLookupResult} />
               </div>
             )}
             {!data.sail_lookup && (
               <div className="grid grid-cols-2 gap-4">
-                <Field label="SAIL-nivå" value={data.sail} />
+                <Field label="SAIL-nivå" value={effectiveSail} />
                 <Field label="Rest-risiko" value={data.residual_risk_level} />
               </div>
             )}
