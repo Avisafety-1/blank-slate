@@ -563,6 +563,58 @@ serve(async (req) => {
         throw new Error('Invalid SORA AI response format');
       }
 
+      // Deterministic SAIL lookup — override AI's value to keep result consistent with the matrix
+      try {
+        const SAIL_MATRIX: Record<string, Record<string, string>> = {
+          '2': { a: 'I', b: 'II', c: 'IV', d: 'VI' },
+          '3': { a: 'II', b: 'II', c: 'IV', d: 'VI' },
+          '4': { a: 'III', b: 'III', c: 'IV', d: 'VI' },
+          '5': { a: 'IV', b: 'IV', c: 'IV', d: 'VI' },
+          '6': { a: 'V', b: 'V', c: 'V', d: 'VI' },
+          '7': { a: 'VI', b: 'VI', c: 'VI', d: 'VI' },
+        };
+        const parseFgrc = (v: unknown): number | null => {
+          if (typeof v === 'number') return Math.floor(v);
+          if (typeof v === 'string') {
+            const m = v.match(/\d+/);
+            if (m) return parseInt(m[0], 10);
+          }
+          return null;
+        };
+        const parseArc = (v: unknown): string | null => {
+          if (typeof v !== 'string') return null;
+          const m = v.toLowerCase().match(/[abcd]/);
+          return m ? m[0] : null;
+        };
+        const fgrcRaw = parseFgrc(soraAnalysis.sail_lookup?.fgrc_used) ?? parseFgrc(soraAnalysis.fgrc);
+        const arc = parseArc(soraAnalysis.sail_lookup?.arc_used) ?? parseArc(soraAnalysis.arc_residual);
+        if (fgrcRaw !== null && arc) {
+          const rowKey = fgrcRaw <= 2 ? '2' : String(Math.min(fgrcRaw, 7));
+          const computed = SAIL_MATRIX[rowKey]?.[arc];
+          if (computed) {
+            const aiSail = soraAnalysis.sail;
+            soraAnalysis.sail = `SAIL ${computed}`;
+            soraAnalysis.sail_lookup = {
+              ...(soraAnalysis.sail_lookup || {}),
+              fgrc_used: fgrcRaw,
+              arc_used: arc,
+              result: computed,
+            };
+            if (soraAnalysis.containment && typeof soraAnalysis.containment === 'object') {
+              const robustness = (computed === 'I' || computed === 'II')
+                ? 'Low'
+                : (computed === 'III' || computed === 'IV') ? 'Medium' : 'High';
+              soraAnalysis.containment.robustness_level = robustness;
+            }
+            if (aiSail && aiSail !== soraAnalysis.sail) {
+              console.log(`SAIL overridden: AI said "${aiSail}" → matrix says "${soraAnalysis.sail}" (fGRC=${fgrcRaw}, ARC=${arc})`);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('SAIL post-processing failed:', e);
+      }
+
       console.log('SORA analysis complete:', soraAnalysis.sail, soraAnalysis.residual_risk_level);
 
       const soraOverallScore = normalizeRiskScore(soraAnalysis.overall_score) ?? normalizeRiskScore(previousAnalysis.overall_score);
