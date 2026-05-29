@@ -1387,32 +1387,6 @@ const Admin = () => {
                                       )}
                                     </div>
 
-                                    <div className="space-y-1.5 pb-2 border-b border-border">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Rolle</p>
-                                      {canManageRoles ? (
-                                        <Select 
-                                          value={userRole?.role || ""} 
-                                          onValueChange={(value) => assignRole(profile.id, value)}
-                                        >
-                                          <SelectTrigger className="w-full h-9">
-                                            <SelectValue placeholder={t('admin.selectRole')} />
-                                          </SelectTrigger>
-                                          <SelectContent className="z-[1300]">
-                                            {availableRoles.map((role) => (
-                                              <SelectItem key={role.value} value={role.value}>
-                                                {t(role.labelKey)}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <Badge variant="outline" className="text-xs">{userRole?.role ? t(`admin.role_${userRole.role}`, userRole.role) : t('admin.selectRole')}</Badge>
-                                      )}
-                                      {!canManageRoles && (
-                                        <p className="text-xs text-muted-foreground italic">Rolle- og tilgangsstyring krever Professional-planen</p>
-                                      )}
-                                    </div>
-
                                     <div className="space-y-1.5">
                                       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Fjern bruker</p>
                                       <Button
@@ -1425,9 +1399,17 @@ const Admin = () => {
                                         {t('admin.deleteUser')}
                                       </Button>
                                     </div>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                                {!isChildCompany && childCompanies.length > 0 && (
+                                  <Badge variant="outline" className="text-[10px] w-fit">
+                                    {getDepartmentName(profile)}
+                                  </Badge>
+                                )}
+                              </div>
+
                             ) : (
                               <>
                                 <div className="flex items-center gap-2">
