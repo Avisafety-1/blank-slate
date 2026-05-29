@@ -33,19 +33,37 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub;
 
     const serviceClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const { data: profile } = await serviceClient
+    const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
-      .select('full_name, email, company_id, company:companies!profiles_company_id_fkey(name, parent_company_id, parent:companies!companies_parent_company_id_fkey(name))')
+      .select('full_name, email, company_id')
       .eq('id', userId)
       .single();
+    if (profileError) {
+      console.error('Profile fetch error:', profileError);
+    }
 
     const senderName = profile?.full_name || 'Ukjent bruker';
-    const senderEmail = profile?.email || 'ukjent';
+    const senderEmail = profile?.email || '';
 
-    const company: any = (profile as any)?.company;
-    const companyName = company?.name || 'Ukjent selskap';
-    const parentName = company?.parent?.name;
-    const companyLabel = parentName ? `${parentName} › ${companyName}` : companyName;
+    let companyLabel = 'Ukjent selskap';
+    if (profile?.company_id) {
+      const { data: company } = await serviceClient
+        .from('companies')
+        .select('navn, parent_company_id')
+        .eq('id', profile.company_id)
+        .maybeSingle();
+      if (company) {
+        companyLabel = company.navn || 'Ukjent selskap';
+        if (company.parent_company_id) {
+          const { data: parent } = await serviceClient
+            .from('companies')
+            .select('navn')
+            .eq('id', company.parent_company_id)
+            .maybeSingle();
+          if (parent?.navn) companyLabel = `${parent.navn} › ${company.navn}`;
+        }
+      }
+    }
 
     const { subject, message, imageUrl, missionId } = await req.json();
 
@@ -103,7 +121,7 @@ Deno.serve(async (req) => {
       to: 'support@avisafe.no',
       subject: sanitizeSubject(`Tilbakemelding: ${subject.trim()}`),
       html: htmlBody,
-      replyTo: senderEmail,
+      replyTo: senderEmail && senderEmail.includes('@') ? senderEmail : undefined,
     });
 
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
