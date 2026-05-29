@@ -1193,9 +1193,11 @@ const Admin = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowEmailList(prev => !prev)}
+                        className="px-2 sm:px-3"
                       >
-                        <Mail className="w-4 h-4 mr-1.5" />
-                        {showEmailList ? 'Skjul mailliste' : 'Vis mailliste'}
+                        <Mail className="w-4 h-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">{showEmailList ? 'Skjul mailliste' : 'Vis mailliste'}</span>
+                        <span className="sm:hidden">{showEmailList ? 'Skjul' : 'Vis'}</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -1211,9 +1213,11 @@ const Admin = () => {
                           navigator.clipboard.writeText(emails.join(', '));
                           toast.success(`${emails.length} e-postadresser kopiert`);
                         }}
+                        className="px-2 sm:px-3"
                       >
-                        <Copy className="w-4 h-4 mr-1.5" />
-                        Kopier mailliste
+                        <Copy className="w-4 h-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Kopier mailliste</span>
+                        <span className="sm:hidden">Kopier</span>
                       </Button>
                     </div>
                   </div>
