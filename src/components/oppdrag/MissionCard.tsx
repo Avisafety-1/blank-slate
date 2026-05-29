@@ -821,6 +821,11 @@ export const MissionCard = ({
                       </Button>
                     </>
                   )}
+                  {!(log.flight_track?.positions?.length > 0) && (
+                    <span className="text-xs text-muted-foreground italic">
+                      Ingen posisjonsdata – analyse og ruteeksport er ikke tilgjengelig
+                    </span>
+                  )}
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
                       <Radio className="h-3 w-3 mr-1" />
