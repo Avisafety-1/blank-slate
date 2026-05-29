@@ -1076,15 +1076,30 @@ export const ProfileDialog = () => {
                 </Card>
 
                 {/* Feedback Dialog */}
-                <Dialog open={feedbackOpen} onOpenChange={(open) => {
+                <Dialog open={feedbackOpen} onOpenChange={async (open) => {
                   setFeedbackOpen(open);
                   if (!open) {
                     setFeedbackSubject("");
                     setFeedbackMessage("");
+                    setFeedbackMissionId("none");
                     setFeedbackImage(null);
                     if (feedbackImagePreview) {
                       URL.revokeObjectURL(feedbackImagePreview);
                       setFeedbackImagePreview(null);
+                    }
+                  } else if (!feedbackMissionsLoaded && profile?.company_id) {
+                    try {
+                      const { data } = await supabase
+                        .from("missions")
+                        .select("id, tittel, tidspunkt")
+                        .eq("company_id", profile.company_id)
+                        .order("tidspunkt", { ascending: false })
+                        .limit(50);
+                      setFeedbackMissions(data || []);
+                    } catch (e) {
+                      console.error("Could not load missions for feedback", e);
+                    } finally {
+                      setFeedbackMissionsLoaded(true);
                     }
                   }
                 }}>
