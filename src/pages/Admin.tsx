@@ -1231,49 +1231,63 @@ const Admin = () => {
                         >
                           <div className="flex-1 min-w-0">
                             {isCompactAdmin ? (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button className="text-left w-full group">
-                                    <p className="font-medium text-sm truncate group-hover:text-primary transition-colors flex items-center gap-1">
-                                      {profile.full_name || t('common.notSpecified')}
-                                      <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
-                                    </p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {profile.email || t('admin.noEmail')}
-                                    </p>
-                                  </button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-64 p-3 space-y-3" align="start">
-                                  <div>
-                                    <p className="font-medium text-sm">{profile.full_name || t('common.notSpecified')}</p>
-                                    <p className="text-xs text-muted-foreground">{profile.email || t('admin.noEmail')}</p>
-                                    {!isChildCompany && childCompanies.length > 0 && (
-                                      <Badge variant="outline" className="text-xs mt-1">{getDepartmentName(profile)}</Badge>
-                                    )}
-                                  </div>
-                                  <div className="space-y-3">
-                                    {!isChildCompany && childCompanies.length > 0 && (
-                                      <div className="space-y-1.5 pb-2 border-b border-border">
-                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Avdeling</p>
-                                        <Select 
-                                          value={profile.company_id || companyId || ""} 
-                                          onValueChange={(value) => changeDepartment(profile.id, value)}
-                                        >
-                                          <SelectTrigger className="w-full h-9">
-                                            <SelectValue placeholder="Avdeling" />
-                                          </SelectTrigger>
-                                          <SelectContent className="z-[1300]">
-                                            <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
-                                            {childCompanies.map((c) => (
-                                              <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    )}
-
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="font-medium text-sm truncate">
+                                    {profile.full_name || t('common.notSpecified')}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {profile.email || t('admin.noEmail')}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {!isChildCompany && childCompanies.length > 0 && (
+                                    <Select
+                                      value={profile.company_id || companyId || ""}
+                                      onValueChange={(value) => changeDepartment(profile.id, value)}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs flex-1 min-w-[140px]">
+                                        <SelectValue placeholder="Avdeling" />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-[1300]">
+                                        <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
+                                        {childCompanies.map((c) => (
+                                          <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                  {canManageRoles ? (
+                                    <Select
+                                      value={userRole?.role || ""}
+                                      onValueChange={(value) => assignRole(profile.id, value)}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs flex-1 min-w-[120px]">
+                                        <SelectValue placeholder={t('admin.selectRole')} />
+                                      </SelectTrigger>
+                                      <SelectContent className="z-[1300]">
+                                        {availableRoles.map((role) => (
+                                          <SelectItem key={role.value} value={role.value}>
+                                            {t(role.labelKey)}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Badge variant="outline" className="text-xs">{userRole?.role ? t(`admin.role_${userRole.role}`, userRole.role) : t('admin.selectRole')}</Badge>
+                                  )}
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button size="sm" variant="outline" className="h-8 text-xs gap-1">
+                                        Flere valg
+                                        <ChevronRight className="h-3 w-3" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 p-3 space-y-3" align="end">
+                                      <div className="space-y-3">
                                     <div className="space-y-2 pb-2 border-b border-border">
                                       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tilganger</p>
+
                                       <div className="space-y-2 rounded-md border border-border p-2">
                                         <div className="flex items-center justify-between">
                                           <span className="text-xs text-muted-foreground">Under opplæring</span>
@@ -1373,32 +1387,6 @@ const Admin = () => {
                                       )}
                                     </div>
 
-                                    <div className="space-y-1.5 pb-2 border-b border-border">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Rolle</p>
-                                      {canManageRoles ? (
-                                        <Select 
-                                          value={userRole?.role || ""} 
-                                          onValueChange={(value) => assignRole(profile.id, value)}
-                                        >
-                                          <SelectTrigger className="w-full h-9">
-                                            <SelectValue placeholder={t('admin.selectRole')} />
-                                          </SelectTrigger>
-                                          <SelectContent className="z-[1300]">
-                                            {availableRoles.map((role) => (
-                                              <SelectItem key={role.value} value={role.value}>
-                                                {t(role.labelKey)}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <Badge variant="outline" className="text-xs">{userRole?.role ? t(`admin.role_${userRole.role}`, userRole.role) : t('admin.selectRole')}</Badge>
-                                      )}
-                                      {!canManageRoles && (
-                                        <p className="text-xs text-muted-foreground italic">Rolle- og tilgangsstyring krever Professional-planen</p>
-                                      )}
-                                    </div>
-
                                     <div className="space-y-1.5">
                                       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Fjern bruker</p>
                                       <Button
@@ -1411,9 +1399,17 @@ const Admin = () => {
                                         {t('admin.deleteUser')}
                                       </Button>
                                     </div>
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                                {!isChildCompany && childCompanies.length > 0 && (
+                                  <Badge variant="outline" className="text-[10px] w-fit">
+                                    {getDepartmentName(profile)}
+                                  </Badge>
+                                )}
+                              </div>
+
                             ) : (
                               <>
                                 <div className="flex items-center gap-2">
