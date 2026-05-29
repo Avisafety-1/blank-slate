@@ -1160,22 +1160,87 @@ export const ProfileDialog = () => {
                       </div>
                       <div className="space-y-2">
                         <Label>Oppdrag (valgfritt)</Label>
-                        <Select value={feedbackMissionId} onValueChange={setFeedbackMissionId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Ingen" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-72">
-                            <SelectItem value="none">Ingen</SelectItem>
-                            {feedbackMissions.map((m) => {
-                              const date = m.tidspunkt ? new Date(m.tidspunkt).toLocaleDateString("nb-NO") : "";
-                              return (
-                                <SelectItem key={m.id} value={m.id}>
-                                  {m.tittel}{date ? ` — ${date}` : ""}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                        {(() => {
+                          const selected = feedbackMissions.find((m) => m.id === feedbackMissionId);
+                          const selectedLabel = feedbackMissionId === "none" || !selected
+                            ? "Ingen"
+                            : `${selected.tittel}${selected.tidspunkt ? ` — ${new Date(selected.tidspunkt).toLocaleDateString("nb-NO")}` : ""}`;
+                          return (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                  <span className="truncate">{selectedLabel}</span>
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                <div className="flex items-center border-b border-border px-3">
+                                  <Search className="h-4 w-4 opacity-50 mr-2" />
+                                  <Input
+                                    value={feedbackMissionSearch}
+                                    onChange={(e) => setFeedbackMissionSearch(e.target.value)}
+                                    placeholder="Søk oppdrag..."
+                                    className="h-9 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+                                  />
+                                </div>
+                                <div className="max-h-64 overflow-y-auto py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setFeedbackMissionId("none")}
+                                    className={cn(
+                                      "w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 text-left",
+                                      feedbackMissionId === "none" && "bg-muted/50"
+                                    )}
+                                  >
+                                    <Check className={cn("h-4 w-4", feedbackMissionId === "none" ? "opacity-100" : "opacity-0")} />
+                                    Ingen
+                                  </button>
+                                  {feedbackMissions.map((m) => {
+                                    const date = m.tidspunkt ? new Date(m.tidspunkt).toLocaleDateString("nb-NO") : "";
+                                    const isSel = feedbackMissionId === m.id;
+                                    return (
+                                      <button
+                                        key={m.id}
+                                        type="button"
+                                        onClick={() => setFeedbackMissionId(m.id)}
+                                        className={cn(
+                                          "w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 text-left",
+                                          isSel && "bg-muted/50"
+                                        )}
+                                      >
+                                        <Check className={cn("h-4 w-4 shrink-0", isSel ? "opacity-100" : "opacity-0")} />
+                                        <span className="truncate">
+                                          {m.tittel}{date ? ` — ${date}` : ""}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                  {!feedbackMissionLoading && feedbackMissions.length === 0 && (
+                                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                                      Ingen oppdrag funnet
+                                    </div>
+                                  )}
+                                  {feedbackMissionLoading && (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
+                                      <Loader2 className="h-3 w-3 animate-spin" /> Laster...
+                                    </div>
+                                  )}
+                                  {feedbackMissionHasMore && !feedbackMissionLoading && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        loadFeedbackMissions(feedbackMissionSearch, feedbackMissions.length, true)
+                                      }
+                                      className="w-full px-3 py-2 text-sm text-primary hover:bg-muted/50 text-center"
+                                    >
+                                      Last flere
+                                    </button>
+                                  )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          );
+                        })()}
                       </div>
                       <div className="space-y-2">
                         <Label>Vedlegg (valgfritt)</Label>
