@@ -35,14 +35,19 @@ Deno.serve(async (req) => {
     const serviceClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const { data: profile } = await serviceClient
       .from('profiles')
-      .select('full_name, email, company_id')
+      .select('full_name, email, company_id, company:companies!profiles_company_id_fkey(name, parent_company_id, parent:companies!companies_parent_company_id_fkey(name))')
       .eq('id', userId)
       .single();
 
     const senderName = profile?.full_name || 'Ukjent bruker';
     const senderEmail = profile?.email || 'ukjent';
 
-    const { subject, message, imageUrl } = await req.json();
+    const company: any = (profile as any)?.company;
+    const companyName = company?.name || 'Ukjent selskap';
+    const parentName = company?.parent?.name;
+    const companyLabel = parentName ? `${parentName} › ${companyName}` : companyName;
+
+    const { subject, message, imageUrl, missionId } = await req.json();
 
     if (!subject || typeof subject !== 'string' || subject.trim().length === 0) {
       return new Response(JSON.stringify({ error: 'Overskrift er påkrevd' }), { status: 400, headers: corsHeaders });
@@ -57,6 +62,21 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Melding kan ikke være lengre enn 5000 tegn' }), { status: 400, headers: corsHeaders });
     }
 
+    let missionLine = '';
+    if (missionId && typeof missionId === 'string' && profile?.company_id) {
+      const { data: mission } = await serviceClient
+        .from('missions')
+        .select('tittel, tidspunkt, lokasjon')
+        .eq('id', missionId)
+        .eq('company_id', profile.company_id)
+        .maybeSingle();
+      if (mission) {
+        const date = mission.tidspunkt ? new Date(mission.tidspunkt).toLocaleString('nb-NO') : '';
+        const loc = mission.lokasjon ? ` — ${mission.lokasjon}` : '';
+        missionLine = `<p><strong>Oppdrag:</strong> ${mission.tittel}${date ? ` (${date})` : ''}${loc}</p>`;
+      }
+    }
+
     const imageSection = imageUrl
       ? `<p><strong>Vedlagt bilde:</strong></p><img src="${imageUrl}" alt="Vedlegg" style="max-width: 100%; max-height: 600px; border-radius: 8px; border: 1px solid #e5e7eb;" />`
       : '';
@@ -66,6 +86,8 @@ Deno.serve(async (req) => {
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
   <h2 style="color: #1a56db;">Tilbakemelding fra AviSafe</h2>
   <p><strong>Fra:</strong> ${senderName} (${senderEmail})</p>
+  <p><strong>Selskap/avdeling:</strong> ${companyLabel}</p>
+  ${missionLine}
   <p><strong>Emne:</strong> ${subject.trim()}</p>
   <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;">
   <div style="white-space: pre-wrap;">${message.trim()}</div>

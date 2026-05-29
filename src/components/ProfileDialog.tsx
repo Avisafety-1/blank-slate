@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -164,8 +165,11 @@ export const ProfileDialog = () => {
    const [feedbackSubject, setFeedbackSubject] = useState("");
    const [feedbackMessage, setFeedbackMessage] = useState("");
    const [feedbackSending, setFeedbackSending] = useState(false);
-   const [feedbackImage, setFeedbackImage] = useState<File | null>(null);
-   const [feedbackImagePreview, setFeedbackImagePreview] = useState<string | null>(null);
+  const [feedbackImage, setFeedbackImage] = useState<File | null>(null);
+  const [feedbackImagePreview, setFeedbackImagePreview] = useState<string | null>(null);
+  const [feedbackMissionId, setFeedbackMissionId] = useState<string>("none");
+  const [feedbackMissions, setFeedbackMissions] = useState<Array<{ id: string; tittel: string; tidspunkt: string | null }>>([]);
+  const [feedbackMissionsLoaded, setFeedbackMissionsLoaded] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
@@ -1072,15 +1076,30 @@ export const ProfileDialog = () => {
                 </Card>
 
                 {/* Feedback Dialog */}
-                <Dialog open={feedbackOpen} onOpenChange={(open) => {
+                <Dialog open={feedbackOpen} onOpenChange={async (open) => {
                   setFeedbackOpen(open);
                   if (!open) {
                     setFeedbackSubject("");
                     setFeedbackMessage("");
+                    setFeedbackMissionId("none");
                     setFeedbackImage(null);
                     if (feedbackImagePreview) {
                       URL.revokeObjectURL(feedbackImagePreview);
                       setFeedbackImagePreview(null);
+                    }
+                  } else if (!feedbackMissionsLoaded && profile?.company_id) {
+                    try {
+                      const { data } = await supabase
+                        .from("missions")
+                        .select("id, tittel, tidspunkt")
+                        .eq("company_id", profile.company_id)
+                        .order("tidspunkt", { ascending: false })
+                        .limit(50);
+                      setFeedbackMissions(data || []);
+                    } catch (e) {
+                      console.error("Could not load missions for feedback", e);
+                    } finally {
+                      setFeedbackMissionsLoaded(true);
                     }
                   }
                 }}>
@@ -1107,6 +1126,25 @@ export const ProfileDialog = () => {
                           rows={5}
                           maxLength={5000}
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Oppdrag (valgfritt)</Label>
+                        <Select value={feedbackMissionId} onValueChange={setFeedbackMissionId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Ingen" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            <SelectItem value="none">Ingen</SelectItem>
+                            {feedbackMissions.map((m) => {
+                              const date = m.tidspunkt ? new Date(m.tidspunkt).toLocaleDateString("nb-NO") : "";
+                              return (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.tittel}{date ? ` — ${date}` : ""}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label>Vedlegg (valgfritt)</Label>
@@ -1190,13 +1228,19 @@ export const ProfileDialog = () => {
                                 imageUrl = urlData.publicUrl;
                               }
                               const { error } = await supabase.functions.invoke('send-feedback', {
-                                body: { subject: feedbackSubject.trim(), message: feedbackMessage.trim(), imageUrl },
+                                body: {
+                                  subject: feedbackSubject.trim(),
+                                  message: feedbackMessage.trim(),
+                                  imageUrl,
+                                  missionId: feedbackMissionId !== "none" ? feedbackMissionId : undefined,
+                                },
                               });
                               if (error) throw error;
                               toast.success("Tilbakemelding sendt! Takk for innspillet.");
                               setFeedbackOpen(false);
                               setFeedbackSubject("");
                               setFeedbackMessage("");
+                              setFeedbackMissionId("none");
                               setFeedbackImage(null);
                               if (feedbackImagePreview) {
                                 URL.revokeObjectURL(feedbackImagePreview);
