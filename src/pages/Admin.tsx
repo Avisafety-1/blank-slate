@@ -1215,9 +1215,8 @@ const Admin = () => {
                         }}
                         className="px-2 sm:px-3"
                       >
-                        <Copy className="w-4 h-4 sm:mr-1.5" />
-                        <span className="hidden sm:inline">Kopier mailliste</span>
-                        <span className="sm:hidden">Kopier</span>
+                        <Copy className="w-4 h-4" />
+                        <span className="hidden sm:inline ml-1.5">Kopier mailliste</span>
                       </Button>
                     </div>
                   </div>
