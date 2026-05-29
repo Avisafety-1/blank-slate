@@ -126,6 +126,8 @@ export const AddMissionDialog = ({
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const terminology = useTerminology();
   const { labels: missionTypeLabels, types: missionTypes } = useCompanyMissionTypes();
+  const prevOppdragstypeRef = useRef<string | null>(null);
+  
   
   const [formData, setFormData] = useState({
     tittel: initialFormData?.tittel || "",
@@ -291,6 +293,21 @@ export const AddMissionDialog = ({
       }
     }
   }, [open, mission, initialFormData, initialRouteData, initialSelectedPersonnel, initialSelectedEquipment, initialSelectedDrones, initialSelectedCustomer]);
+
+  // Auto-attach default document when oppdragstype changes (create mode only)
+  useEffect(() => {
+    if (mission) return; // edit mode: don't auto-add
+    const current = formData.oppdragstype || "";
+    if (prevOppdragstypeRef.current === current) return;
+    prevOppdragstypeRef.current = current;
+    if (!current) return;
+    const matchType = missionTypes.find((t) => t.label === current);
+    const defaultDocId = (matchType as any)?.default_document_id as string | null | undefined;
+    if (!defaultDocId) return;
+    setSelectedDocuments((prev) => (prev.includes(defaultDocId) ? prev : [...prev, defaultDocId]));
+  }, [formData.oppdragstype, missionTypes, mission]);
+
+
 
   const fetchProfiles = async () => {
     const { data: { user } } = await supabase.auth.getUser();
