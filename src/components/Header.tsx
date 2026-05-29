@@ -158,52 +158,88 @@ export const Header = () => {
               />
             )}
             
-            {/* Mobile Navigation - Hamburger Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            {/* Mobile Navigation - Hamburger Menu (Sheet for ghost-click stability on DJI RC Pro / Android 10) */}
+            <Sheet>
+              <SheetTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 min-w-7 p-0" data-tour="mobile-nav-trigger">
                   <Menu className="w-3.5 h-3.5" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="bg-card/95 border-glass z-[1150]"
-                onInteractOutside={(e) => {
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                className="w-72 bg-card/95 border-glass z-[1150] p-4 pt-10 flex flex-col gap-1"
+                onPointerDownOutside={(e) => {
                   if (document.body.getAttribute('data-tour-id') === 'system-overview') e.preventDefault();
                 }}
                 onEscapeKeyDown={(e) => {
                   if (document.body.getAttribute('data-tour-id') === 'system-overview') e.preventDefault();
                 }}
               >
-                {canShowModule('missions') && <DropdownMenuItem data-tour="nav-missions" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</DropdownMenuItem>}
-                {canShowModule('map') && <DropdownMenuItem data-tour="nav-map" onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>}
-                {canShowModule('documents') && <DropdownMenuItem data-tour="nav-documents" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>}
-                {canShowModule('calendar') && <DropdownMenuItem data-tour="nav-calendar" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>}
-                {canShowModule('incidents') && <DropdownMenuItem data-tour="nav-incidents" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</DropdownMenuItem>}
-                {canShowModule('status') && <DropdownMenuItem data-tour="nav-status" onClick={() => navigate("/status")}>{t('nav.status')}</DropdownMenuItem>}
-                {canShowModule('resources') && <DropdownMenuItem data-tour="nav-resources" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</DropdownMenuItem>}
-                {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
-                  <DropdownMenuItem onClick={() => navigate("/statistikk")}>
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    Plattformstatistikk
-                  </DropdownMenuItem>
+                {canShowModule('missions') && (
+                  <SheetClose asChild>
+                    <Button data-tour="nav-missions" variant="ghost" className="justify-start" onClick={() => navigate("/oppdrag")}>{t('nav.missions')}</Button>
+                  </SheetClose>
+                )}
+                {canShowModule('map') && (
+                  <SheetClose asChild>
+                    <Button data-tour="nav-map" variant="ghost" className="justify-start" onClick={() => navigate("/kart")}>{t('nav.map')}</Button>
+                  </SheetClose>
+                )}
+                {canShowModule('documents') && (
+                  <SheetClose asChild>
+                    <Button data-tour="nav-documents" variant="ghost" className="justify-start" onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</Button>
+                  </SheetClose>
+                )}
+                {canShowModule('calendar') && (
+                  <SheetClose asChild>
+                    <Button data-tour="nav-calendar" variant="ghost" className="justify-start" onClick={() => navigate("/kalender")}>{t('nav.calendar')}</Button>
+                  </SheetClose>
+                )}
+                {canShowModule('incidents') && (
+                  <SheetClose asChild>
+                    <Button data-tour="nav-incidents" variant="ghost" className="justify-start" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>
+                  </SheetClose>
+                )}
+                {canShowModule('status') && (
+                  <SheetClose asChild>
+                    <Button data-tour="nav-status" variant="ghost" className="justify-start" onClick={() => navigate("/status")}>{t('nav.status')}</Button>
+                  </SheetClose>
+                )}
+                {canShowModule('resources') && (
+                  <SheetClose asChild>
+                    <Button data-tour="nav-resources" variant="ghost" className="justify-start" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>
+                  </SheetClose>
                 )}
                 {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
-                  <DropdownMenuItem onClick={() => navigate("/marketing")}>
-                    <Megaphone className="w-4 h-4 mr-2" />
-                    Marketing
-                  </DropdownMenuItem>
+                  <SheetClose asChild>
+                    <Button variant="ghost" className="justify-start" onClick={() => navigate("/statistikk")}>
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      Plattformstatistikk
+                    </Button>
+                  </SheetClose>
                 )}
-                <DropdownMenuItem data-tour="nav-changelog" onClick={() => navigate("/changelog")}>
-                  <Activity className="w-4 h-4 mr-2" />
-                  Driftstatus
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/installer")}>
-                   <Download className="w-4 h-4 mr-2" />
-                   {t('nav.installApp', 'Installer app')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
+                  <SheetClose asChild>
+                    <Button variant="ghost" className="justify-start" onClick={() => navigate("/marketing")}>
+                      <Megaphone className="w-4 h-4 mr-2" />
+                      Marketing
+                    </Button>
+                  </SheetClose>
+                )}
+                <SheetClose asChild>
+                  <Button data-tour="nav-changelog" variant="ghost" className="justify-start" onClick={() => navigate("/changelog")}>
+                    <Activity className="w-4 h-4 mr-2" />
+                    Driftstatus
+                  </Button>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Button variant="ghost" className="justify-start" onClick={() => navigate("/installer")}>
+                    <Download className="w-4 h-4 mr-2" />
+                    {t('nav.installApp', 'Installer app')}
+                  </Button>
+                </SheetClose>
+              </SheetContent>
+            </Sheet>
             
             {/* Language toggle - Mobile */}
             <LanguageToggleButton size="xs" />
