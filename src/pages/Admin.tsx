@@ -1424,7 +1424,7 @@ const Admin = () => {
                             )}
                           </div>
                           
-                          {!isMobile && (
+                          {!isCompactAdmin && (
                             <div className="flex items-center gap-2 flex-wrap justify-end">
                               <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
                                 <Switch
