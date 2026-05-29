@@ -531,6 +531,44 @@ export const ProfileDialog = () => {
     }
   };
 
+  const loadFeedbackMissions = async (search: string, offset: number, append: boolean) => {
+    if (!profile?.company_id) return;
+    setFeedbackMissionLoading(true);
+    try {
+      let q = supabase
+        .from("missions")
+        .select("id, tittel, tidspunkt")
+        .eq("company_id", profile.company_id)
+        .order("tidspunkt", { ascending: false, nullsFirst: false })
+        .range(offset, offset + FEEDBACK_MISSIONS_PAGE - 1);
+      const term = search.trim();
+      if (term) {
+        q = q.or(`tittel.ilike.%${term}%,lokasjon.ilike.%${term}%`);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = data || [];
+      setFeedbackMissions((prev) => (append ? [...prev, ...rows] : rows));
+      setFeedbackMissionHasMore(rows.length === FEEDBACK_MISSIONS_PAGE);
+    } catch (e) {
+      console.error("Could not load missions for feedback", e);
+      if (!append) setFeedbackMissions([]);
+      setFeedbackMissionHasMore(false);
+    } finally {
+      setFeedbackMissionLoading(false);
+    }
+  };
+
+  // Debounced search for mission picker in feedback dialog
+  useEffect(() => {
+    if (!feedbackOpen) return;
+    const t = setTimeout(() => {
+      loadFeedbackMissions(feedbackMissionSearch, 0, false);
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedbackMissionSearch, feedbackOpen, profile?.company_id]);
+
   const handlePasswordReset = async () => {
     if (!user?.email) return;
 
