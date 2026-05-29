@@ -1424,11 +1424,6 @@ const Admin = () => {
                                   <p className="font-medium text-sm sm:text-base truncate">
                                     {profile.full_name || t('common.notSpecified')}
                                   </p>
-                                  {!isChildCompany && childCompanies.length > 0 && (
-                                    <Badge variant="outline" className="text-xs flex-shrink-0">
-                                      {getDepartmentName(profile)}
-                                    </Badge>
-                                  )}
                                 </div>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {profile.email || t('admin.noEmail')}
