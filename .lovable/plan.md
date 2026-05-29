@@ -1,35 +1,25 @@
-## Problem
+## Mål
+Når en bruker sender tilbakemelding via "Gi tilbakemelding" i profilmenyen, skal e-posten til support inneholde:
+- Hvilket selskap/avdeling brukeren tilhører
+- Et valgfritt oppdrag som referanse (valgt fra dropdown)
 
-På DJI RC Pro (≈1024×768 landscape) og lignende små tablet-formater er viewport bredere enn 768 px, så `useIsMobile()` returnerer `false`. Da rendres desktop-raden for hver bruker i "Godkjente brukere" — en wide flex-wrap rad med 4–5 toggle-pillsboks + avdelingsvelger + rollevelger + slett-knapp. Det er ikke nok horisontal plass, så pillsene wrapper i et rotete 2-kolonners mønster (se skjermbilde).
+## Endringer
 
-## Løsning
+### 1. `src/components/ProfileDialog.tsx` — Feedback-dialogen
+- Legg til ny state `feedbackMissionId` (string | undefined).
+- Hent brukerens oppdrag når dialogen åpnes: spørring mot `missions` filtrert på brukerens `company_id`, sortert på `planned_start` desc, begrenset til de siste ~50. Vises kun for valg, ingen RLS-endringer (eksisterende policies tillater allerede tilgang).
+- Ny `Select`-kontroll i dialogen, plassert mellom "Melding" og bildevedlegg, med label "Oppdrag (valgfritt)" og placeholder "Ingen". Hvert item viser oppdragsnavn + dato.
+- Send `missionId` med i `supabase.functions.invoke('send-feedback', { body: {..., missionId } })`.
+- Nullstill `feedbackMissionId` ved lukking/sending, samme mønster som de andre feltene.
 
-Bruk det eksisterende kompakte mobil-layoutet (navn → popover med alle innstillinger) også for "medium" skjermer opp til `lg` (1280 px). Det fungerer godt på DJI RC Pro samtidig som ekte desktop beholder dagens brede rad.
+### 2. `supabase/functions/send-feedback/index.ts` — E-postinnhold
+- Utvid `profiles`-select til også å hente selskapets navn via join: `company:companies(name, parent_company_id, parent:companies!parent_company_id(name))` slik at vi får både avdelingsnavn og evt. morsselskap.
+- Hvis `missionId` er sendt med: hent `id, name, planned_start, location_name` fra `missions` med service-client (begrenset til samme `company_id` som brukerens profil for sikkerhet).
+- Bygg ut HTML-malen med to nye linjer rett under "Fra:":
+  - `Selskap/avdeling:` viser "Morsselskap › Avdeling" hvis parent finnes, ellers bare selskapsnavn.
+  - `Oppdrag:` viser oppdragsnavn + dato hvis valgt, ellers utelates linjen.
 
-### Endring (kun `src/pages/Admin.tsx`)
-
-1. Legg til en bredde-sjekk ved siden av eksisterende `useIsMobile()`:
-   ```ts
-   const [isCompactAdmin, setIsCompactAdmin] = useState(false);
-   useEffect(() => {
-     const mq = window.matchMedia('(max-width: 1279px)');
-     const update = () => setIsCompactAdmin(mq.matches);
-     update();
-     mq.addEventListener('change', update);
-     return () => mq.removeEventListener('change', update);
-   }, []);
-   ```
-2. I "Godkjente brukere"-listen (linje ~1217–1587):
-   - Erstatt `{isMobile ? (...popover...) : (...desktop navn...)}` med `{isCompactAdmin ? ... : ...}`.
-   - Erstatt `{!isMobile && (...desktop pills/select/delete...)}` med `{!isCompactAdmin && (...)}`.
-3. Ingen logikkendringer; popover-innholdet og desktop-raden er uendret.
-
-### Hva som IKKE endres
-
-- Andre `isMobile`-bruk i Admin.tsx (kommentar-felt, andre seksjoner) beholdes som før.
-- Ingen endringer i datalag, RLS, edge functions, eller andre faner.
-- Header/hamburger-fix fra forrige iterasjon røres ikke.
-
-## Resultat
-
-På DJI RC Pro vises hver bruker som én ryddig linje med navn + e-post; trykk åpner popover med alle toggles, avdeling, rolle og slett — samme polert mobil-UX som på telefon. På desktop ≥1280 px ser raden ut som i dag.
+## Tekniske detaljer
+- Ingen DB-migrasjoner, ingen nye policies — bruker eksisterende `missions`/`companies` lesetilgang.
+- Mission-listen i klienten cacches i lokal state, hentes lazy første gang dialogen åpnes (unngår unødvendig query ved hver innlogging).
+- Edge-funksjonen validerer at valgt mission tilhører brukerens `company_id` før den tas med i e-posten (forhindrer at en manipulert klient inkluderer fremmede oppdragsnavn i mailen).
