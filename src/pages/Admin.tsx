@@ -104,6 +104,14 @@ const Admin = () => {
   const canManageRoles = canAccess('access_control');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [isCompactAdmin, setIsCompactAdmin] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1279px)');
+    const update = () => setIsCompactAdmin(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
   const { t } = useTranslation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
@@ -1222,7 +1230,7 @@ const Admin = () => {
                           className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            {isMobile ? (
+                            {isCompactAdmin ? (
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button className="text-left w-full group">
@@ -1416,7 +1424,7 @@ const Admin = () => {
                             )}
                           </div>
                           
-                          {!isMobile && (
+                          {!isCompactAdmin && (
                             <div className="flex items-center gap-2 flex-wrap justify-end">
                               <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
                                 <Switch
