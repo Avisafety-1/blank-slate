@@ -165,8 +165,11 @@ export const ProfileDialog = () => {
    const [feedbackSubject, setFeedbackSubject] = useState("");
    const [feedbackMessage, setFeedbackMessage] = useState("");
    const [feedbackSending, setFeedbackSending] = useState(false);
-   const [feedbackImage, setFeedbackImage] = useState<File | null>(null);
-   const [feedbackImagePreview, setFeedbackImagePreview] = useState<string | null>(null);
+  const [feedbackImage, setFeedbackImage] = useState<File | null>(null);
+  const [feedbackImagePreview, setFeedbackImagePreview] = useState<string | null>(null);
+  const [feedbackMissionId, setFeedbackMissionId] = useState<string>("none");
+  const [feedbackMissions, setFeedbackMissions] = useState<Array<{ id: string; tittel: string; tidspunkt: string | null }>>([]);
+  const [feedbackMissionsLoaded, setFeedbackMissionsLoaded] = useState(false);
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
