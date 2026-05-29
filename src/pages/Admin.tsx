@@ -746,6 +746,11 @@ const Admin = () => {
 
   const pendingUsers = profiles.filter((p) => !p.approved);
   const approvedUsers = profiles.filter((p) => p.approved);
+  const filteredApprovedUsers = approvedUsers.filter((p) => {
+    if (!userSearchQuery.trim()) return true;
+    const q = userSearchQuery.toLowerCase();
+    return (p.full_name || '').toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q);
+  });
 
   // Helper to get department name for a profile
   const getDepartmentName = (profile: Profile) => {
