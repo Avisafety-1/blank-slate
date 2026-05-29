@@ -1176,12 +1176,19 @@ const Admin = () => {
                 <CardHeader className="pb-3 sm:pb-6">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <CardTitle className="text-base sm:text-lg">{t('admin.approvedUsers')} ({approvedUsers.length})</CardTitle>
+                      <CardTitle className="text-base sm:text-lg">{t('admin.approvedUsers')} ({filteredApprovedUsers.length}{approvedUsers.length !== filteredApprovedUsers.length ? ` / ${approvedUsers.length}` : ''})</CardTitle>
                       <CardDescription className="text-xs sm:text-sm">
                         {t('admin.manageRoles')}
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2" data-tour="admin-approved-actions">
+                      <Input
+                        type="text"
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                        placeholder="Søk på navn..."
+                        className="w-[180px] h-9 text-sm"
+                      />
                       <Button
                         variant="outline"
                         size="sm"
