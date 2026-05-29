@@ -1,28 +1,23 @@
 ## Problem
 
-Hamburgermenyen bruker nå `Sheet` (Radix Dialog). To problemer:
+I split-view (når man har valgt en pending logg til behandling) er venstre kolonne i `UploadDroneLogDialog` satt til `flex flex-col` uten `min-h-0`/scroll. Når listen "Ventende flylogger fra auto-sync" vokser, presses innholdet utenfor dialogens høyde og scrolling fungerer ikke — kun høyre panel (som har egen `ScrollArea`) er scrollbar.
 
-1. **Skjermen blir sort:** `SheetOverlay` har `bg-black/80` som dekker hele appen, og selve panelet bruker `bg-card/95` (mørk card-token). Sammen blir alt nesten svart.
-2. **Menyknappene fungerer ikke:** Hver knapp er pakket i `<SheetClose asChild>` rundt en `<Button onClick={navigate(...)}>`. På iPad/DJI ser vi at Sheet'en lukkes (unmount) før React-event-handleren rekker å trigge `navigate`, så navigeringen sluker.
+Uten split-view har dialogen `max-h-[90vh] overflow-y-auto`, så hele dialogen scroller. Men i split-view byttes klassen til `h-[95vh] flex flex-col` uten overflow, og venstre kolonne arver dette uten egen scroll.
 
-## Fiks – `src/components/Header.tsx`
+## Fiks – `src/components/UploadDroneLogDialog.tsx` (linje ~3164–3306)
 
-Beholder Sheet-design (sidepanel), men:
+1. **Venstre kolonne får intern scroll.** Endre den ytre containeren slik at den fyller dialogen og scroller når innholdet blir for høyt:
+   - Legg `min-h-0` på venstre `<div>` (linje 3166), slik at flex-barnet faktisk kan krympe under content-høyde.
+   - Splitt venstre kolonne i to deler:
+     - **Sticky topp (ikke-scrollbar):** "Velg metode"-tekst, kort-grid (Last opp fil / DJI-konto), evt. "Sync nå"-knapp og sync-feedback. Disse blir alltid synlige.
+     - **Scrollbar bunn:** wrapper rundt `<PendingDjiLogsSection>` med `flex-1 min-h-0 overflow-y-auto pr-1` (eller en `<ScrollArea className="flex-1 min-h-0">`). Da scroller selve loggfil-listen mens valgknappene øverst blir værende.
 
-1. **Kontrollert open-state:** legg til `const [navOpen, setNavOpen] = useState(false)` og bruk `<Sheet open={navOpen} onOpenChange={setNavOpen}>`.
-2. **Transparent overlay:** rendre Sheet via `SheetPortal` + `<SheetOverlay className="bg-transparent backdrop-blur-none" />` + `SheetPrimitive.Content` direkte – eller enklere: send en `className` på en wrapper. Konkret bruker vi `SheetPortal`/`SheetOverlay` som allerede eksporteres fra `@/components/ui/sheet`, og rendrer panelet manuelt så vi får styre overlay-bakgrunnen lokalt (`bg-transparent`). Resten av appen forblir synlig.
-3. **Solid og lesbart panel:** bytt `bg-card/95` → `bg-popover text-popover-foreground border-l border-border shadow-2xl`.
-4. **Ingen `SheetClose`-wrapping rundt knappene.** I stedet:
-   ```tsx
-   <Button onClick={() => { setNavOpen(false); navigate("/oppdrag"); }}>
-   ```
-   – `setNavOpen(false)` kjøres synkront, deretter `navigate` (begge skjer i samme handler, ingen race-condition med unmount).
+2. **Ingen endringer i ikke-split-modus.** Klassetoggle på linje 3166 beholdes (`w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0` kun når split-view er aktiv).
+
+3. **Høyre panel** rører vi ikke — `ScrollArea` der fungerer som det skal.
 
 ## Resultat
 
-- Sidepanelet kommer fortsatt inn fra høyre.
-- Bakgrunnen blir ikke mørklagt – dashbordet vises klart bak.
-- Klikk på menyknapper navigerer og lukker panelet pålitelig på iPad/DJI RC Pro.
-- Lukkes også ved klikk utenfor (Radix sin default `onPointerDownOutside` på den transparente overlayen) og med X-knappen.
-
-Ingen endringer i `sheet.tsx` (delt komponent) – kun lokal håndtering i `Header.tsx`.
+- Når mange loggfiler ligger i auto-sync-listen, scroller venstre liste internt i stedet for å pushe dialogen utover viewport.
+- Kortene "Last opp fil"/"DJI-konto" og "Sync nå" forblir synlige som faste handlinger på toppen av venstre kolonne.
+- Behandling av en valgt logg (høyre panel) er upåvirket.
