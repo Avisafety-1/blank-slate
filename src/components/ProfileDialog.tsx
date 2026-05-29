@@ -1228,13 +1228,19 @@ export const ProfileDialog = () => {
                                 imageUrl = urlData.publicUrl;
                               }
                               const { error } = await supabase.functions.invoke('send-feedback', {
-                                body: { subject: feedbackSubject.trim(), message: feedbackMessage.trim(), imageUrl },
+                                body: {
+                                  subject: feedbackSubject.trim(),
+                                  message: feedbackMessage.trim(),
+                                  imageUrl,
+                                  missionId: feedbackMissionId !== "none" ? feedbackMissionId : undefined,
+                                },
                               });
                               if (error) throw error;
                               toast.success("Tilbakemelding sendt! Takk for innspillet.");
                               setFeedbackOpen(false);
                               setFeedbackSubject("");
                               setFeedbackMessage("");
+                              setFeedbackMissionId("none");
                               setFeedbackImage(null);
                               if (feedbackImagePreview) {
                                 URL.revokeObjectURL(feedbackImagePreview);
