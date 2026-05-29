@@ -412,6 +412,11 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                         </Button>
                       </div>
                     )}
+                    {!(log.flight_track?.positions?.length > 0) && (
+                      <span className="text-xs text-muted-foreground italic">
+                        Ingen posisjonsdata
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
