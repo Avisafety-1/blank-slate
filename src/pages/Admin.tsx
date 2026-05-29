@@ -116,6 +116,7 @@ const Admin = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [courseUnlockedModules, setCourseUnlockedModules] = useState<UnlockedModuleAccess>({});
+  const [userSearchQuery, setUserSearchQuery] = useState("");
   
   const [loadingData, setLoadingData] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
@@ -745,6 +746,11 @@ const Admin = () => {
 
   const pendingUsers = profiles.filter((p) => !p.approved);
   const approvedUsers = profiles.filter((p) => p.approved);
+  const filteredApprovedUsers = approvedUsers.filter((p) => {
+    if (!userSearchQuery.trim()) return true;
+    const q = userSearchQuery.toLowerCase();
+    return (p.full_name || '').toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q);
+  });
 
   // Helper to get department name for a profile
   const getDepartmentName = (profile: Profile) => {
@@ -1170,12 +1176,19 @@ const Admin = () => {
                 <CardHeader className="pb-3 sm:pb-6">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <CardTitle className="text-base sm:text-lg">{t('admin.approvedUsers')} ({approvedUsers.length})</CardTitle>
+                      <CardTitle className="text-base sm:text-lg">{t('admin.approvedUsers')} ({filteredApprovedUsers.length}{approvedUsers.length !== filteredApprovedUsers.length ? ` / ${approvedUsers.length}` : ''})</CardTitle>
                       <CardDescription className="text-xs sm:text-sm">
                         {t('admin.manageRoles')}
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2" data-tour="admin-approved-actions">
+                      <Input
+                        type="text"
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                        placeholder="Søk på navn..."
+                        className="w-[180px] h-9 text-sm"
+                      />
                       <Button
                         variant="outline"
                         size="sm"
@@ -1222,7 +1235,7 @@ const Admin = () => {
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6">
                   <div className="space-y-2">
-                    {approvedUsers.map((profile) => {
+                    {filteredApprovedUsers.map((profile) => {
                       const userRole = userRoles.find((r) => r.user_id === profile.id);
                       return (
                         <div 
@@ -1403,11 +1416,6 @@ const Admin = () => {
                                     </PopoverContent>
                                   </Popover>
                                 </div>
-                                {!isChildCompany && childCompanies.length > 0 && (
-                                  <Badge variant="outline" className="text-[10px] w-fit">
-                                    {getDepartmentName(profile)}
-                                  </Badge>
-                                )}
                               </div>
 
                             ) : (
@@ -1416,11 +1424,6 @@ const Admin = () => {
                                   <p className="font-medium text-sm sm:text-base truncate">
                                     {profile.full_name || t('common.notSpecified')}
                                   </p>
-                                  {!isChildCompany && childCompanies.length > 0 && (
-                                    <Badge variant="outline" className="text-xs flex-shrink-0">
-                                      {getDepartmentName(profile)}
-                                    </Badge>
-                                  )}
                                 </div>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {profile.email || t('admin.noEmail')}
