@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetTrigger, SheetContent, SheetClose } from "@/components/ui/sheet";
 import { ProfileDialog } from "@/components/ProfileDialog";
 import { StartTourButton } from "@/components/guided-tour/StartTourButton";
 import { PendingApprovalsBadge } from "@/components/PendingApprovalsBadge";
