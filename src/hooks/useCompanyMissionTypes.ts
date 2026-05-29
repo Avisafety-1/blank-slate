@@ -8,6 +8,7 @@ export interface CompanyMissionType {
   label: string;
   sort_order: number;
   is_active: boolean;
+  default_document_id: string | null;
 }
 
 export const DEFAULT_MISSION_TYPES = [
