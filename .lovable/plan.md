@@ -1,25 +1,25 @@
 ## Mål
-Når en bruker sender tilbakemelding via "Gi tilbakemelding" i profilmenyen, skal e-posten til support inneholde:
-- Hvilket selskap/avdeling brukeren tilhører
-- Et valgfritt oppdrag som referanse (valgt fra dropdown)
 
-## Endringer
+Rydde opp i visningen av "Godkjente brukere" på admin-siden slik at den ser bra ut i det smale formatet som vises på DJI RC Pro-kontrolleren (tablet-bredde rundt 768–1024 px). Navnet skal alltid være synlig, og datafeltene/bryterne skal være ryddig organisert i stedet for å flyte i flere rader.
 
-### 1. `src/components/ProfileDialog.tsx` — Feedback-dialogen
-- Legg til ny state `feedbackMissionId` (string | undefined).
-- Hent brukerens oppdrag når dialogen åpnes: spørring mot `missions` filtrert på brukerens `company_id`, sortert på `planned_start` desc, begrenset til de siste ~50. Vises kun for valg, ingen RLS-endringer (eksisterende policies tillater allerede tilgang).
-- Ny `Select`-kontroll i dialogen, plassert mellom "Melding" og bildevedlegg, med label "Oppdrag (valgfritt)" og placeholder "Ingen". Hvert item viser oppdragsnavn + dato.
-- Send `missionId` med i `supabase.functions.invoke('send-feedback', { body: {..., missionId } })`.
-- Nullstill `feedbackMissionId` ved lukking/sending, samme mønster som de andre feltene.
+## Hva som er problemet
 
-### 2. `supabase/functions/send-feedback/index.ts` — E-postinnhold
-- Utvid `profiles`-select til også å hente selskapets navn via join: `company:companies(name, parent_company_id, parent:companies!parent_company_id(name))` slik at vi får både avdelingsnavn og evt. morsselskap.
-- Hvis `missionId` er sendt med: hent `id, name, planned_start, location_name` fra `missions` med service-client (begrenset til samme `company_id` som brukerens profil for sikkerhet).
-- Bygg ut HTML-malen med to nye linjer rett under "Fra:":
-  - `Selskap/avdeling:` viser "Morsselskap › Avdeling" hvis parent finnes, ellers bare selskapsnavn.
-  - `Oppdrag:` viser oppdragsnavn + dato hvis valgt, ellers utelates linjen.
+På smal/tablet-bredde brukes den brede desktop-layouten, der navn legges i en flex-rad sammen med 4–5 brytere, avdelingsvelger, rollevelger og slett-knapp. Bryterne wrapper rotete, dekker delvis brukerens navn, og kolonnene står ikke på linje mellom rader.
 
-## Tekniske detaljer
-- Ingen DB-migrasjoner, ingen nye policies — bruker eksisterende `missions`/`companies` lesetilgang.
-- Mission-listen i klienten cacches i lokal state, hentes lazy første gang dialogen åpnes (unngår unødvendig query ved hver innlogging).
-- Edge-funksjonen validerer at valgt mission tilhører brukerens `company_id` før den tas med i e-posten (forhindrer at en manipulert klient inkluderer fremmede oppdragsnavn i mailen).
+## Endring
+
+Kun i `src/pages/Admin.tsx`, listen "Godkjente brukere":
+
+1. La den eksisterende "kompakt"-visningen (popover med detaljer bak navn) brukes på et bredere område, slik at DJI RC Pro-formatet (~1024 px) får den ryddige varianten. Justere `isCompactAdmin`-bryterpunktet oppover, f.eks. til `max-width: 1439px`, så desktop-grid kun brukes på faktiske store skjermer.
+2. I selve rad-renderingen for kompakt-visning: sørge for at navn + e-post + avdelings-badge alltid står som tydelig venstrekolonne, og at en liten "Detaljer"-knapp åpner popoveren med brytere/rolle/slett — i stedet for at noen brytere prøver å vises inline.
+3. I popover-innholdet: gruppere bryterne med små overskrifter ("Tilganger", "Avdeling", "Rolle", "Fjern bruker") slik at det ikke ser ut som en blandet liste.
+4. Sørge for at slett-knappen ikke står inline ved siden av navnet i kompakt-modus (den hører hjemme i popoveren), så ingenting skyver navnet ut av syne.
+
+Ingen endringer i logikk, datahenting, edge-funksjoner eller andre filer.
+
+## Verifisering
+
+Bekrefte i preview på 768–1024 px bredde at:
+- Navn og e-post er fullt synlig på alle rader.
+- Detaljer/brytere ligger bak en knapp/popover, ikke wrapper rotete.
+- Bredere skjerm (>1440 px) fortsatt får den eksisterende brede raden uendret.
