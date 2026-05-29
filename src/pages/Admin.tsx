@@ -1235,7 +1235,7 @@ const Admin = () => {
                 </CardHeader>
                 <CardContent className="px-2 sm:px-6">
                   <div className="space-y-2">
-                    {approvedUsers.map((profile) => {
+                    {filteredApprovedUsers.map((profile) => {
                       const userRole = userRoles.find((r) => r.user_id === profile.id);
                       return (
                         <div 
