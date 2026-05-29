@@ -1,23 +1,28 @@
 ## Problem
 
-I split-view (når man har valgt en pending logg til behandling) er venstre kolonne i `UploadDroneLogDialog` satt til `flex flex-col` uten `min-h-0`/scroll. Når listen "Ventende flylogger fra auto-sync" vokser, presses innholdet utenfor dialogens høyde og scrolling fungerer ikke — kun høyre panel (som har egen `ScrollArea`) er scrollbar.
+I `src/components/admin/MissionTypesSection.tsx` (linje 60–71) lastes dokumentene som kan velges som standard-dokument for en oppdragstype slik:
 
-Uten split-view har dialogen `max-h-[90vh] overflow-y-auto`, så hele dialogen scroller. Men i split-view byttes klassen til `h-[95vh] flex flex-col` uten overflow, og venstre kolonne arver dette uten egen scroll.
+```ts
+supabase.from("documents")
+  .select("id, tittel, kategori")
+  .eq("company_id", source)
+  .not("fil_url", "is", null)
+  .order("tittel")
+```
 
-## Fiks – `src/components/UploadDroneLogDialog.tsx` (linje ~3164–3306)
+`.not("fil_url", "is", null)` filtrerer bort alle dokumenter som ikke har en opplastet fil — typisk **lenke-dokumenter** (`nettside_url`) som er fullt gyldige dokumenter i systemet. Derfor mangler de i picker-listen.
 
-1. **Venstre kolonne får intern scroll.** Endre den ytre containeren slik at den fyller dialogen og scroller når innholdet blir for høyt:
-   - Legg `min-h-0` på venstre `<div>` (linje 3166), slik at flex-barnet faktisk kan krympe under content-høyde.
-   - Splitt venstre kolonne i to deler:
-     - **Sticky topp (ikke-scrollbar):** "Velg metode"-tekst, kort-grid (Last opp fil / DJI-konto), evt. "Sync nå"-knapp og sync-feedback. Disse blir alltid synlige.
-     - **Scrollbar bunn:** wrapper rundt `<PendingDjiLogsSection>` med `flex-1 min-h-0 overflow-y-auto pr-1` (eller en `<ScrollArea className="flex-1 min-h-0">`). Da scroller selve loggfil-listen mens valgknappene øverst blir værende.
+## Fiks
 
-2. **Ingen endringer i ikke-split-modus.** Klassetoggle på linje 3166 beholdes (`w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0` kun når split-view er aktiv).
+`src/components/admin/MissionTypesSection.tsx`:
 
-3. **Høyre panel** rører vi ikke — `ScrollArea` der fungerer som det skal.
+1. Fjern `.not("fil_url", "is", null)`-filteret slik at både fil-baserte og lenke-baserte dokumenter vises.
+2. Utvid `select` til også å hente `nettside_url` (og `fil_url`) så vi senere kan vise et lite ikon i listen som indikerer type (fil vs. lenke) — valgfritt, men nyttig for brukeren.
+3. Behold sortering på `tittel` og `company_id`-scoping (eierskap).
+4. Oppdater `DocOption`-typen tilsvarende.
+
+Ingen DB- eller RLS-endringer nødvendig — dokumentene ligger allerede i `documents`-tabellen med korrekt company-scoping.
 
 ## Resultat
 
-- Når mange loggfiler ligger i auto-sync-listen, scroller venstre liste internt i stedet for å pushe dialogen utover viewport.
-- Kortene "Last opp fil"/"DJI-konto" og "Sync nå" forblir synlige som faste handlinger på toppen av venstre kolonne.
-- Behandling av en valgt logg (høyre panel) er upåvirket.
+Alle dokumenter for selskapet (både fil- og lenke-dokumenter) dukker opp i dialogen «Tilknytt dokument til oppdragstype».
