@@ -272,8 +272,6 @@ export const Header = () => {
             </Sheet>
 
             {isNorconsult && (
-
-            {isNorconsult && (
               <StartTourButton className="h-7 w-7 min-w-7 p-0" />
             )}
             
