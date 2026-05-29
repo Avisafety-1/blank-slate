@@ -241,6 +241,19 @@ export const Header = () => {
                     <Download className="w-4 h-4 mr-2" />
                     {t('nav.installApp', 'Installer app')}
                   </Button>
+                  <div className="my-2 border-t border-border" />
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    onClick={() => {
+                      setNavOpen(false);
+                      handleLanguageChange(currentLang === 'en' ? 'no' : 'en');
+                    }}
+                    disabled={isSwitchingLang}
+                  >
+                    <Globe className="w-4 h-4 mr-2" />
+                    {currentLang === 'en' ? 'Norsk' : 'English'}
+                  </Button>
                   <div className="mt-auto pt-4 border-t border-border text-center text-xs text-muted-foreground space-y-1">
                     <div>© AviSafe AS</div>
                     <div>
@@ -257,11 +270,6 @@ export const Header = () => {
                 </SheetPrimitive.Content>
               </SheetPortal>
             </Sheet>
-
-
-            
-            {/* Language toggle - Mobile */}
-            <LanguageToggleButton size="xs" />
 
             {isNorconsult && (
               <StartTourButton className="h-7 w-7 min-w-7 p-0" />
