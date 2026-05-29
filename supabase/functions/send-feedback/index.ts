@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
       to: 'support@avisafe.no',
       subject: sanitizeSubject(`Tilbakemelding: ${subject.trim()}`),
       html: htmlBody,
-      replyTo: senderEmail,
+      replyTo: senderEmail && senderEmail.includes('@') ? senderEmail : undefined,
     });
 
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
