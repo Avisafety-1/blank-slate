@@ -125,7 +125,7 @@ export const AddMissionDialog = ({
   const [mentionStart, setMentionStart] = useState<number | null>(null);
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const terminology = useTerminology();
-  const { labels: missionTypeLabels } = useCompanyMissionTypes();
+  const { labels: missionTypeLabels, types: missionTypes } = useCompanyMissionTypes();
   
   const [formData, setFormData] = useState({
     tittel: initialFormData?.tittel || "",
@@ -853,9 +853,19 @@ export const AddMissionDialog = ({
           if (dronesError) throw dronesError;
         }
 
+        // Auto-attach default document for the selected mission type (only on create)
+        let effectiveSelectedDocs = selectedDocuments;
+        if (formData.oppdragstype) {
+          const matchType = missionTypes.find((t) => t.label === formData.oppdragstype);
+          const defaultDocId = matchType?.default_document_id;
+          if (defaultDocId && !effectiveSelectedDocs.includes(defaultDocId)) {
+            effectiveSelectedDocs = [...effectiveSelectedDocs, defaultDocId];
+          }
+        }
+
         // Insert mission documents
-        if (selectedDocuments.length > 0) {
-          const documentsData = selectedDocuments.map(documentId => ({
+        if (effectiveSelectedDocs.length > 0) {
+          const documentsData = effectiveSelectedDocs.map(documentId => ({
             mission_id: createdMission.id,
             document_id: documentId,
           }));

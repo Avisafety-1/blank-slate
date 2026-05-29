@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2, ArrowUp, ArrowDown, Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Lock, Paperclip, X, FileText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +22,12 @@ interface Props {
   disabled?: boolean;
 }
 
+interface DocOption {
+  id: string;
+  tittel: string;
+  kategori: string;
+}
+
 export function MissionTypesSection({ companyId, disabled }: Props) {
   const { parentCompanyId } = useAuth();
   const { types, isInherited, effectiveCompanyId, reload } = useCompanyMissionTypes();
@@ -22,6 +36,11 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
   const [hasChildren, setHasChildren] = useState(false);
   const [parentName, setParentName] = useState<string>("");
   const [saving, setSaving] = useState(false);
+
+  // Document picker state
+  const [docs, setDocs] = useState<DocOption[]>([]);
+  const [pickerOpenFor, setPickerOpenFor] = useState<CompanyMissionType | null>(null);
+  const [pickerSearch, setPickerSearch] = useState("");
 
   const isReadOnly = !!disabled || isInherited;
   const ownsList = effectiveCompanyId === companyId;
@@ -37,6 +56,25 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
         .then(({ data }: any) => setParentName(data?.name || ""));
     }
   }, [companyId, parentCompanyId, isInherited]);
+
+  // Load documents available for tilknytning (from the owning company of the list)
+  useEffect(() => {
+    const source = effectiveCompanyId;
+    if (!source) return;
+    (supabase
+      .from("documents")
+      .select("id, tittel, kategori")
+      .eq("company_id", source)
+      .not("fil_url", "is", null)
+      .order("tittel") as any)
+      .then(({ data }: any) => setDocs((data || []) as DocOption[]));
+  }, [effectiveCompanyId]);
+
+  const docsById = useMemo(() => {
+    const map = new Map<string, DocOption>();
+    docs.forEach((d) => map.set(d.id, d));
+    return map;
+  }, [docs]);
 
   const handleAdd = async () => {
     const label = newLabel.trim();
@@ -115,6 +153,24 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     toast({ title: checked ? "Gjelder nå for alle avdelinger" : "Avdelinger bruker egen liste" });
   };
 
+  const setDefaultDocument = async (typeId: string, docId: string | null) => {
+    const { error } = await (supabase
+      .from("company_mission_types")
+      .update({ default_document_id: docId } as any)
+      .eq("id", typeId) as any);
+    if (error) {
+      toast({ title: "Kunne ikke lagre dokument", description: error.message, variant: "destructive" });
+      return;
+    }
+    await reload();
+  };
+
+  const filteredDocs = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    if (!q) return docs;
+    return docs.filter((d) => d.tittel.toLowerCase().includes(q) || d.kategori.toLowerCase().includes(q));
+  }, [docs, pickerSearch]);
+
   return (
     <div className="space-y-4">
       {isInherited && (
@@ -128,54 +184,103 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
       <p className="text-sm text-muted-foreground">
         Listen brukes i både «Legg til oppdrag» og i AI-risikovurdering. «Annet» er alltid tilgjengelig som fritekstvalg.
+        Tilknytt et dokument til en oppdragstype så blir det automatisk lagt til på nye oppdrag av den typen.
       </p>
 
       <div className="space-y-2">
-        {(isInherited ? types : types).map((t, i) => (
-          <div key={t.id} className="flex items-center gap-2 rounded-md border p-2">
-            <div className="flex flex-col">
+        {types.map((t, i) => {
+          const linkedDoc = t.default_document_id ? docsById.get(t.default_document_id) : null;
+          return (
+            <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
+              <div className="flex flex-col">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-5 w-5"
+                  onClick={() => handleMove(i, -1)}
+                  disabled={isReadOnly || i === 0}
+                >
+                  <ArrowUp className="h-3 w-3" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-5 w-5"
+                  onClick={() => handleMove(i, 1)}
+                  disabled={isReadOnly || i === types.length - 1}
+                >
+                  <ArrowDown className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="flex-1 text-sm min-w-[100px]">{t.label}</div>
+
+              {/* Document link */}
+              {linkedDoc ? (
+                <Badge
+                  variant="secondary"
+                  className="gap-1 max-w-[180px] cursor-pointer hover:bg-secondary/80"
+                  onClick={() => !isReadOnly && setPickerOpenFor(t)}
+                  title={linkedDoc.tittel}
+                >
+                  <FileText className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{linkedDoc.tittel}</span>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      className="ml-1 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDefaultDocument(t.id, null);
+                      }}
+                      aria-label="Fjern dokument"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ) : t.default_document_id ? (
+                // Dokument-ID lagret, men ikke funnet i listen (kanskje slettet eller annet selskap)
+                <Badge variant="outline" className="gap-1 text-muted-foreground">
+                  <FileText className="h-3 w-3" />
+                  <span className="text-xs">Ukjent dokument</span>
+                </Badge>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => setPickerOpenFor(t)}
+                  disabled={isReadOnly}
+                >
+                  <Paperclip className="h-3 w-3" />
+                  <span className="hidden sm:inline">Tilknytt dokument</span>
+                  <span className="sm:hidden">Dok.</span>
+                </Button>
+              )}
+
+              <div className="flex items-center gap-2">
+                <Label htmlFor={`active-${t.id}`} className="text-xs text-muted-foreground">
+                  Aktiv
+                </Label>
+                <Switch
+                  id={`active-${t.id}`}
+                  checked={t.is_active}
+                  onCheckedChange={() => handleToggleActive(t)}
+                  disabled={isReadOnly}
+                />
+              </div>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-5 w-5"
-                onClick={() => handleMove(i, -1)}
-                disabled={isReadOnly || i === 0}
-              >
-                <ArrowUp className="h-3 w-3" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-5 w-5"
-                onClick={() => handleMove(i, 1)}
-                disabled={isReadOnly || i === types.length - 1}
-              >
-                <ArrowDown className="h-3 w-3" />
-              </Button>
-            </div>
-            <div className="flex-1 text-sm">{t.label}</div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor={`active-${t.id}`} className="text-xs text-muted-foreground">
-                Aktiv
-              </Label>
-              <Switch
-                id={`active-${t.id}`}
-                checked={t.is_active}
-                onCheckedChange={() => handleToggleActive(t)}
+                onClick={() => handleDelete(t.id)}
                 disabled={isReadOnly}
-              />
+                className="text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => handleDelete(t.id)}
-              disabled={isReadOnly}
-              className="text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
+          );
+        })}
         <div className="flex items-center gap-2 rounded-md border border-dashed p-2 text-sm text-muted-foreground">
           <div className="flex-1">Annet (fast valg – kan ikke fjernes)</div>
         </div>
@@ -220,6 +325,99 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           />
         </div>
       )}
+
+      {/* Document picker dialog */}
+      <Dialog
+        open={!!pickerOpenFor}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPickerOpenFor(null);
+            setPickerSearch("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5" />
+              Tilknytt dokument til «{pickerOpenFor?.label}»
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Søk etter dokument..."
+              value={pickerSearch}
+              onChange={(e) => setPickerSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          <div className="flex-1 min-h-[200px] max-h-[400px] border rounded-lg overflow-y-auto">
+            {filteredDocs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm">
+                <FileText className="h-8 w-8 mb-2" />
+                <p>Ingen dokumenter funnet</p>
+              </div>
+            ) : (
+              <div className="p-2 space-y-1">
+                {filteredDocs.map((doc) => {
+                  const isSelected = pickerOpenFor?.default_document_id === doc.id;
+                  return (
+                    <button
+                      key={doc.id}
+                      type="button"
+                      onClick={async () => {
+                        if (!pickerOpenFor) return;
+                        await setDefaultDocument(pickerOpenFor.id, doc.id);
+                        setPickerOpenFor(null);
+                        setPickerSearch("");
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                        isSelected
+                          ? "bg-primary/10 border border-primary/30"
+                          : "hover:bg-muted/50 border border-transparent"
+                      }`}
+                    >
+                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{doc.tittel}</p>
+                        <p className="text-xs text-muted-foreground">{doc.kategori}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            {pickerOpenFor?.default_document_id && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (!pickerOpenFor) return;
+                  await setDefaultDocument(pickerOpenFor.id, null);
+                  setPickerOpenFor(null);
+                  setPickerSearch("");
+                }}
+              >
+                Fjern tilknytning
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPickerOpenFor(null);
+                setPickerSearch("");
+              }}
+            >
+              Avbryt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -923,6 +923,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          default_document_id: string | null
           id: string
           is_active: boolean
           label: string
@@ -931,6 +932,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          default_document_id?: string | null
           id?: string
           is_active?: boolean
           label: string
@@ -939,6 +941,7 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          default_document_id?: string | null
           id?: string
           is_active?: boolean
           label?: string
@@ -950,6 +953,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_mission_types_default_document_id_fkey"
+            columns: ["default_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
