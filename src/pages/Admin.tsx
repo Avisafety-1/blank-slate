@@ -106,7 +106,7 @@ const Admin = () => {
   const isMobile = useIsMobile();
   const [isCompactAdmin, setIsCompactAdmin] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1279px)');
+    const mq = window.matchMedia('(max-width: 1439px)');
     const update = () => setIsCompactAdmin(mq.matches);
     update();
     mq.addEventListener('change', update);
