@@ -126,6 +126,8 @@ export const AddMissionDialog = ({
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const terminology = useTerminology();
   const { labels: missionTypeLabels, types: missionTypes } = useCompanyMissionTypes();
+  const prevOppdragstypeRef = useRef<string | null>(null);
+  
   
   const [formData, setFormData] = useState({
     tittel: initialFormData?.tittel || "",
