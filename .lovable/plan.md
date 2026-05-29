@@ -1,25 +1,27 @@
 ## Mål
 
-Rydde opp i visningen av "Godkjente brukere" på admin-siden slik at den ser bra ut i det smale formatet som vises på DJI RC Pro-kontrolleren (tablet-bredde rundt 768–1024 px). Navnet skal alltid være synlig, og datafeltene/bryterne skal være ryddig organisert i stedet for å flyte i flere rader.
+I admin-listen «Oppdragstyper» skal hver type kunne ha et tilknyttet dokument fra selskapets dokumentbibliotek. Når en bruker oppretter et oppdrag med den typen, blir dokumentet automatisk lagt til på oppdragskortet (samme mekanisme som `mission_documents` bruker i dag).
 
-## Hva som er problemet
+## Endringer
 
-På smal/tablet-bredde brukes den brede desktop-layouten, der navn legges i en flex-rad sammen med 4–5 brytere, avdelingsvelger, rollevelger og slett-knapp. Bryterne wrapper rotete, dekker delvis brukerens navn, og kolonnene står ikke på linje mellom rader.
+### 1) Database (migrering)
+- `company_mission_types` får ny kolonne `default_document_id uuid null` med FK mot `documents(id) ON DELETE SET NULL`.
+- Ingen endringer i RLS – arves fra eksisterende policy.
 
-## Endring
+### 2) Admin-UI – `src/components/admin/MissionTypesSection.tsx`
+- I hver rad i listen, ved siden av Aktiv-bryteren, legges en kompakt dokument-velger:
+  - Hvis ingen valgt: liten knapp «Tilknytt dokument» (paperclip-ikon).
+  - Hvis valgt: viser dokumenttittel som chip + lite kryss for å fjerne tilknytningen.
+- Klikk på knappen åpner en enkel popover/dialog med søkbar liste over selskapets `documents` (samme scoping som dokumentmodulen bruker). Bruker velger ett dokument → lagres til `default_document_id`.
+- Read-only når listen er arvet fra moderselskap.
+- Hook `useCompanyMissionTypes` utvides til å returnere `default_document_id` (+ tittel via join) slik at UI kan vise det.
 
-Kun i `src/pages/Admin.tsx`, listen "Godkjente brukere":
+### 3) Auto-tilknytning ved oppretting – `src/components/dashboard/AddMissionDialog.tsx`
+- Etter at oppdraget er lagret og eventuelle brukervalgte dokumenter er knyttet, slå opp valgt `mission_type` i `types`-listen.
+- Hvis typen har `default_document_id`, kall `supabase.from("mission_documents").insert({ mission_id, document_id })` (idempotent: hopp over hvis allerede tilstede fra brukerens egne valg).
+- Gjelder kun ved oppretting (ikke ved redigering av eksisterende oppdrag, for å unngå at fjernede dokumenter dukker opp igjen).
 
-1. La den eksisterende "kompakt"-visningen (popover med detaljer bak navn) brukes på et bredere område, slik at DJI RC Pro-formatet (~1024 px) får den ryddige varianten. Justere `isCompactAdmin`-bryterpunktet oppover, f.eks. til `max-width: 1439px`, så desktop-grid kun brukes på faktiske store skjermer.
-2. I selve rad-renderingen for kompakt-visning: sørge for at navn + e-post + avdelings-badge alltid står som tydelig venstrekolonne, og at en liten "Detaljer"-knapp åpner popoveren med brytere/rolle/slett — i stedet for at noen brytere prøver å vises inline.
-3. I popover-innholdet: gruppere bryterne med små overskrifter ("Tilganger", "Avdeling", "Rolle", "Fjern bruker") slik at det ikke ser ut som en blandet liste.
-4. Sørge for at slett-knappen ikke står inline ved siden av navnet i kompakt-modus (den hører hjemme i popoveren), så ingenting skyver navnet ut av syne.
-
-Ingen endringer i logikk, datahenting, edge-funksjoner eller andre filer.
-
-## Verifisering
-
-Bekrefte i preview på 768–1024 px bredde at:
-- Navn og e-post er fullt synlig på alle rader.
-- Detaljer/brytere ligger bak en knapp/popover, ikke wrapper rotete.
-- Bredere skjerm (>1440 px) fortsatt får den eksisterende brede raden uendret.
+## Tekniske detaljer
+- Endringen er ren frontend + en kolonne. Ingen edge functions.
+- Standardtyper som ennå ikke finnes i `company_mission_types` (kun finnes via `DEFAULT_MISSION_TYPES`) kan ikke ha tilknyttet dokument før admin har lagret en eksplisitt rad. Hvis vi vil støtte det også for defaults, må vi først seede default-radene for selskapet – dette anbefales gjort *lazy* første gang admin åpner dokumentvelgeren for en default-type (insert rad med samme label).
+- Memory `mem://features/admin/editable-mission-types` oppdateres etter implementasjon.
