@@ -1,4 +1,4 @@
-import { LogOut, Settings, Menu, Download, BarChart3, Activity, Megaphone, Globe } from "lucide-react";
+import { LogOut, Settings, Menu, Download, BarChart3, Activity, Megaphone, Globe, Map, ClipboardList, Boxes, FileText, Calendar, AlertTriangle, Gauge } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
 
 import { Button } from "@/components/ui/button";
