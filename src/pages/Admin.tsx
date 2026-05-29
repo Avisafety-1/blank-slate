@@ -1230,7 +1230,7 @@ const Admin = () => {
                           className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
                         >
                           <div className="flex-1 min-w-0">
-                            {isMobile ? (
+                            {isCompactAdmin ? (
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <button className="text-left w-full group">
