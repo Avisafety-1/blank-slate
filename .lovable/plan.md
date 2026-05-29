@@ -1,16 +1,31 @@
-## Problem
+## Årsak
 
-Når en oppdragstype (f.eks. «Inspeksjon») har et standard-dokument tilknyttet via selskapsinnstillinger (`company_mission_types.default_document_id`), legges dokumentet i dag bare ved på serversiden i `mission_documents` etter at oppdraget er **lagret**. I selve "Legg til oppdrag"-dialogen vises ingenting i Dokumenter-feltet når man velger oppdragstype, så brukeren tror tilknytningen ikke fungerer.
+Jeg slo opp den aktuelle flyturen i databasen (`flight_logs.id = d8f7dcd8-…`, mission «DJI-flylogg 01.09.2025 20:54»):
 
-## Fiks – `src/components/dashboard/AddMissionDialog.tsx`
+- `flight_track = { "positions": [] }` — altså **null punkter**.
+- Notater: «Importert fra DJI-flylogg. Maks hastighet: 0.9 m/s, **Min batteri: N/A**».
+- Lokasjon på oppdraget: «Ukjent» (fordi `result.startPosition` var null).
+- Varighet: 2 min, maks fart 0.9 m/s.
 
-1. Legg til en `useEffect` som lytter på `formData.oppdragstype` (kun i create-modus — `if (!mission)`):
-   - Slå opp `missionTypes.find(t => t.label === formData.oppdragstype)`.
-   - Hvis `default_document_id` finnes og ikke allerede er i `selectedDocuments`, kall `setSelectedDocuments(prev => [...prev, defaultDocId])`.
-   - Bruk en `useRef` til å huske forrige oppdragstype så vi bare reagerer på faktiske endringer (ikke initiell mount når feltet er tomt eller forhåndsutfylt).
-2. Ingen auto-fjerning: hvis brukeren bytter oppdragstype igjen, lar vi tidligere dokumenter ligge så brukeren kan fjerne dem manuelt via eksisterende X-knapp.
-3. Server-side auto-attach (linje 856–864) beholdes som sikkerhetsnett for tilfeller der `selectedDocuments` skulle mangle dokumentet ved create (idempotent dedupering finnes allerede via `!effectiveSelectedDocs.includes(defaultDocId)`).
+Knappene «Analyser / GPX / KMZ» rendres i `MissionCard.tsx` (linje 784) og `MissionDetailDialog.tsx` (linje 375) kun når `log.flight_track?.positions?.length > 0`. Når posisjonslista er tom finnes det ingenting å analysere eller eksportere — derfor mangler knappene.
 
-## Resultat
+Hvorfor er posisjonslista tom? Det importerte filopplastet er en gyldig DJI-logg (parsing satte tittel, varighet og maks fart), men selve loggen inneholdt **ingen brukbare GPS-punkter**. Typiske grunner:
+- Innendørs flyging eller flyging uten GPS-fix (DJI Mini-serien lagrer da posisjoner som 0/null, og parseren filtrerer dem bort).
+- Veldig kort flyging (her bare 2 min, maks 0.9 m/s) — sannsynligvis en test-/sjekk-flyging ved bakken hvor GPS-lås aldri ble etablert.
+- Loggfiltype uten `OSD.latitude/longitude`-kolonner (f.eks. DJI Fly tekstlogg fra eldre fastvare).
 
-Velger man oppdragstype «Inspeksjon», dukker det tilknyttede dokumentet umiddelbart opp som en chip i Dokumenter-feltet i create-dialogen, og det lagres som forventet når oppdraget opprettes.
+I databasen finnes 9 av 472 flyloggene uten posisjoner — de fleste er manuelt loggførte (uten DJI-import), men denne ene er en faktisk DJI-import uten GPS-data.
+
+## Foreslått UX-forbedring
+
+Selve atferden er korrekt — vi kan ikke vise rute uten punkter — men i dag er det ingenting som forklarer hvorfor knappene mangler, så det føles som en bug. Jeg foreslår å vise et lite hint på flyturraden når `flight_track?.positions` er tom (eller null), slik at brukeren ser at det er forventet:
+
+- I `src/components/oppdrag/MissionCard.tsx` (rundt linje 784) og `src/components/dashboard/MissionDetailDialog.tsx` (rundt linje 375): legg til en `else`-gren som rendrer en liten muted-tekst, f.eks. `Ingen posisjonsdata — analyse og ruteeksport utilgjengelig` med samme typografi som de eksisterende knappene.
+- Ingen DB-/RLS-endringer. Ingen endringer i import-/parser-logikk.
+
+## Hva som ikke endres
+
+- Vi forsøker ikke å «redde» eksisterende logger uten posisjoner — kildedataene finnes ikke.
+- DJI-parseren endres ikke nå. Hvis du sender meg én av råfilene som ga tom posisjonsliste, kan jeg verifisere om det er filtype/parser-grunn og evt. utvide parseren i en egen runde.
+
+Vil du at jeg legger inn hint-teksten?
