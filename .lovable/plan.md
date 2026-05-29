@@ -1,32 +1,35 @@
-# Hamburgermeny – fiks for DJI RC Pro (Android 10 / Chrome 70)
-
 ## Problem
-På DJI RC Pro lukker `DropdownMenu` seg umiddelbart når den åpnes, og brukeren navigeres til `/oppdrag` (første menyvalg) når man trykker på hamburgerikonet på sider som `/kart` eller `/oppdrag`. På dashbordet skjer det ikke fordi det første menypunktet "Oppdrag" treffer en nøytral del av dashboardet under fingertuppen.
 
-## Årsak
-Dette er en klassisk "ghost click" på eldre WebView (Chrome 70 / Android 10, jf. memory `dji-rc-plus-compatibility`):
-1. `touchstart`/`touchend` på trigger åpner Radix DropdownMenu.
-2. ~300 ms senere fyrer den syntetiske `click`-eventen på samme skjermkoordinat.
-3. Da har dropdown-innholdet allerede åpnet seg under fingeren, og første `DropdownMenuItem` ("Oppdrag") mottar klikket → `navigate("/oppdrag")` + meny lukkes.
-4. På dashbordet ligger ingen klikkbar Radix-item under fingeren ennå når det skjer (timing/layout), så menyen virker stabil.
+På DJI RC Pro (≈1024×768 landscape) og lignende små tablet-formater er viewport bredere enn 768 px, så `useIsMobile()` returnerer `false`. Da rendres desktop-raden for hver bruker i "Godkjente brukere" — en wide flex-wrap rad med 4–5 toggle-pillsboks + avdelingsvelger + rollevelger + slett-knapp. Det er ikke nok horisontal plass, så pillsene wrapper i et rotete 2-kolonners mønster (se skjermbilde).
 
 ## Løsning
-Bytt mobil-hamburgermenyen i `src/components/Header.tsx` fra `DropdownMenu` til `Sheet` (side-drawer, basert på Radix Dialog). Sheet:
-- Bruker modal overlay → ghost-click på menypunktet rett under trigger forhindres av overlayet/animasjonen.
-- Er allerede installert i `src/components/ui/sheet.tsx`.
-- Fungerer stabilt på eldre Android WebView.
 
-### Endringer (kun `src/components/Header.tsx`)
-1. Fjern `DropdownMenu`/`DropdownMenuContent`/`DropdownMenuItem`/`DropdownMenuTrigger`-imports for mobilmenyen (behold for evt. andre menyer hvis brukt – sjekkes).
-2. Importer `Sheet, SheetTrigger, SheetContent, SheetClose` fra `@/components/ui/sheet`.
-3. Kontrollert state: `const [navOpen, setNavOpen] = useState(false)`.
-4. Erstatt mobilmenyen med en `Sheet` (side="right", w-72). Hver nav-knapp blir en `SheetClose asChild` + `Button variant="ghost"` som kaller `navigate(...)` og lukker arket.
-5. Behold `data-tour="mobile-nav-trigger"` og `data-tour="nav-*"` attributtene så guided tour fortsatt virker.
-6. Beholder den eksisterende tour-pause-logikken (ikke lukk ved outside click hvis `system-overview`-tour er aktiv) via `onPointerDownOutside`/`onEscapeKeyDown`-prevent på `SheetContent`.
+Bruk det eksisterende kompakte mobil-layoutet (navn → popover med alle innstillinger) også for "medium" skjermer opp til `lg` (1280 px). Det fungerer godt på DJI RC Pro samtidig som ekte desktop beholder dagens brede rad.
 
-Ingen endringer i desktop-navigasjonen, ingen endringer i andre filer.
+### Endring (kun `src/pages/Admin.tsx`)
 
-## Verifisering
-- Test i preview på mobil-bredde at meny åpner og lukker uten å navigere.
-- Bekreft at "Driftstatus", "Installer app", "Admin"-osv. fortsatt fungerer.
-- Bekreft at guided tour fortsatt finner `mobile-nav-trigger` og `nav-*` selectors.
+1. Legg til en bredde-sjekk ved siden av eksisterende `useIsMobile()`:
+   ```ts
+   const [isCompactAdmin, setIsCompactAdmin] = useState(false);
+   useEffect(() => {
+     const mq = window.matchMedia('(max-width: 1279px)');
+     const update = () => setIsCompactAdmin(mq.matches);
+     update();
+     mq.addEventListener('change', update);
+     return () => mq.removeEventListener('change', update);
+   }, []);
+   ```
+2. I "Godkjente brukere"-listen (linje ~1217–1587):
+   - Erstatt `{isMobile ? (...popover...) : (...desktop navn...)}` med `{isCompactAdmin ? ... : ...}`.
+   - Erstatt `{!isMobile && (...desktop pills/select/delete...)}` med `{!isCompactAdmin && (...)}`.
+3. Ingen logikkendringer; popover-innholdet og desktop-raden er uendret.
+
+### Hva som IKKE endres
+
+- Andre `isMobile`-bruk i Admin.tsx (kommentar-felt, andre seksjoner) beholdes som før.
+- Ingen endringer i datalag, RLS, edge functions, eller andre faner.
+- Header/hamburger-fix fra forrige iterasjon røres ikke.
+
+## Resultat
+
+På DJI RC Pro vises hver bruker som én ryddig linje med navn + e-post; trykk åpner popover med alle toggles, avdeling, rolle og slett — samme polert mobil-UX som på telefon. På desktop ≥1280 px ser raden ut som i dag.
