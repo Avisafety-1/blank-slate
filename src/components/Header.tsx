@@ -88,6 +88,7 @@ export const Header = () => {
   };
 
   const [isSwitchingLang, setIsSwitchingLang] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const currentLang = getCurrentLanguage();
 
   const handleLanguageChange = async (target: 'no' | 'en') => {
