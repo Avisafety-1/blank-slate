@@ -26,7 +26,10 @@ interface DocOption {
   id: string;
   tittel: string;
   kategori: string;
+  fil_url: string | null;
+  nettside_url: string | null;
 }
+
 
 export function MissionTypesSection({ companyId, disabled }: Props) {
   const { parentCompanyId } = useAuth();
