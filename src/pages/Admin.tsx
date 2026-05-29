@@ -104,6 +104,14 @@ const Admin = () => {
   const canManageRoles = canAccess('access_control');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [isCompactAdmin, setIsCompactAdmin] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1279px)');
+    const update = () => setIsCompactAdmin(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
   const { t } = useTranslation();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
