@@ -66,12 +66,12 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     if (!source) return;
     (supabase
       .from("documents")
-      .select("id, tittel, kategori")
+      .select("id, tittel, kategori, fil_url, nettside_url")
       .eq("company_id", source)
-      .not("fil_url", "is", null)
       .order("tittel") as any)
       .then(({ data }: any) => setDocs((data || []) as DocOption[]));
   }, [effectiveCompanyId]);
+
 
   const docsById = useMemo(() => {
     const map = new Map<string, DocOption>();
