@@ -26,7 +26,10 @@ interface DocOption {
   id: string;
   tittel: string;
   kategori: string;
+  fil_url: string | null;
+  nettside_url: string | null;
 }
+
 
 export function MissionTypesSection({ companyId, disabled }: Props) {
   const { parentCompanyId } = useAuth();
@@ -63,12 +66,12 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     if (!source) return;
     (supabase
       .from("documents")
-      .select("id, tittel, kategori")
+      .select("id, tittel, kategori, fil_url, nettside_url")
       .eq("company_id", source)
-      .not("fil_url", "is", null)
       .order("tittel") as any)
       .then(({ data }: any) => setDocs((data || []) as DocOption[]));
   }, [effectiveCompanyId]);
+
 
   const docsById = useMemo(() => {
     const map = new Map<string, DocOption>();
