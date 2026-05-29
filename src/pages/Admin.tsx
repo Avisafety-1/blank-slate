@@ -116,6 +116,7 @@ const Admin = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [courseUnlockedModules, setCourseUnlockedModules] = useState<UnlockedModuleAccess>({});
+  const [userSearchQuery, setUserSearchQuery] = useState("");
   
   const [loadingData, setLoadingData] = useState(true);
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false);
