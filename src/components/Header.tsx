@@ -1,4 +1,4 @@
-import { LogOut, Settings, Menu, Download, BarChart3, Activity, Megaphone, Globe } from "lucide-react";
+import { LogOut, Settings, Menu, Download, BarChart3, Activity, Megaphone, Globe, Map, ClipboardList, Boxes, FileText, Calendar, AlertTriangle, Gauge } from "lucide-react";
 import avisafeLogo from "@/assets/avisafe-logo-text.png";
 
 import { Button } from "@/components/ui/button";
@@ -178,26 +178,47 @@ export const Header = () => {
                     if (document.body.getAttribute('data-tour-id') === 'system-overview') e.preventDefault();
                   }}
                 >
-                  {canShowModule('missions') && (
-                    <Button data-tour="nav-missions" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/oppdrag"); }}>{t('nav.missions')}</Button>
-                  )}
                   {canShowModule('map') && (
-                    <Button data-tour="nav-map" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/kart"); }}>{t('nav.map')}</Button>
+                    <Button data-tour="nav-map" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/kart"); }}>
+                      <Map className="w-4 h-4 mr-2" />
+                      {t('nav.map')}
+                    </Button>
                   )}
-                  {canShowModule('documents') && (
-                    <Button data-tour="nav-documents" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/dokumenter"); }}>{t('nav.documents')}</Button>
-                  )}
-                  {canShowModule('calendar') && (
-                    <Button data-tour="nav-calendar" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/kalender"); }}>{t('nav.calendar')}</Button>
-                  )}
-                  {canShowModule('incidents') && (
-                    <Button data-tour="nav-incidents" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/hendelser"); }}>{t('nav.incidents')}</Button>
-                  )}
-                  {canShowModule('status') && (
-                    <Button data-tour="nav-status" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/status"); }}>{t('nav.status')}</Button>
+                  {canShowModule('missions') && (
+                    <Button data-tour="nav-missions" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/oppdrag"); }}>
+                      <ClipboardList className="w-4 h-4 mr-2" />
+                      {t('nav.missions')}
+                    </Button>
                   )}
                   {canShowModule('resources') && (
-                    <Button data-tour="nav-resources" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/ressurser"); }}>{t('nav.resources')}</Button>
+                    <Button data-tour="nav-resources" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/ressurser"); }}>
+                      <Boxes className="w-4 h-4 mr-2" />
+                      {t('nav.resources')}
+                    </Button>
+                  )}
+                  {canShowModule('documents') && (
+                    <Button data-tour="nav-documents" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/dokumenter"); }}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      {t('nav.documents')}
+                    </Button>
+                  )}
+                  {canShowModule('calendar') && (
+                    <Button data-tour="nav-calendar" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/kalender"); }}>
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {t('nav.calendar')}
+                    </Button>
+                  )}
+                  {canShowModule('incidents') && (
+                    <Button data-tour="nav-incidents" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/hendelser"); }}>
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      {t('nav.incidents')}
+                    </Button>
+                  )}
+                  {canShowModule('status') && (
+                    <Button data-tour="nav-status" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/status"); }}>
+                      <Gauge className="w-4 h-4 mr-2" />
+                      {t('nav.status')}
+                    </Button>
                   )}
                   {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
                     <Button variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/statistikk"); }}>
@@ -211,6 +232,7 @@ export const Header = () => {
                       Marketing
                     </Button>
                   )}
+                  <div className="my-2 border-t border-border" />
                   <Button data-tour="nav-changelog" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/changelog"); }}>
                     <Activity className="w-4 h-4 mr-2" />
                     Driftstatus
@@ -219,6 +241,15 @@ export const Header = () => {
                     <Download className="w-4 h-4 mr-2" />
                     {t('nav.installApp', 'Installer app')}
                   </Button>
+                  <div className="mt-auto pt-4 border-t border-border text-center text-xs text-muted-foreground space-y-1">
+                    <div>© AviSafe AS</div>
+                    <div>
+                      <a href="mailto:kontakt@avisafe.no" className="hover:text-primary">kontakt@avisafe.no</a>
+                    </div>
+                    <div>
+                      <a href="https://avisafe.no" target="_blank" rel="noopener noreferrer" className="hover:text-primary">avisafe.no</a>
+                    </div>
+                  </div>
                   <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring">
                     <span aria-hidden className="text-lg leading-none">×</span>
                     <span className="sr-only">Lukk</span>
@@ -226,6 +257,7 @@ export const Header = () => {
                 </SheetPrimitive.Content>
               </SheetPortal>
             </Sheet>
+
 
             
             {/* Language toggle - Mobile */}
