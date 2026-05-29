@@ -1416,11 +1416,6 @@ const Admin = () => {
                                     </PopoverContent>
                                   </Popover>
                                 </div>
-                                {!isChildCompany && childCompanies.length > 0 && (
-                                  <Badge variant="outline" className="text-[10px] w-fit">
-                                    {getDepartmentName(profile)}
-                                  </Badge>
-                                )}
                               </div>
 
                             ) : (
