@@ -1128,6 +1128,25 @@ export const ProfileDialog = () => {
                         />
                       </div>
                       <div className="space-y-2">
+                        <Label>Oppdrag (valgfritt)</Label>
+                        <Select value={feedbackMissionId} onValueChange={setFeedbackMissionId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Ingen" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            <SelectItem value="none">Ingen</SelectItem>
+                            {feedbackMissions.map((m) => {
+                              const date = m.tidspunkt ? new Date(m.tidspunkt).toLocaleDateString("nb-NO") : "";
+                              return (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.tittel}{date ? ` — ${date}` : ""}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
                         <Label>Vedlegg (valgfritt)</Label>
                         {feedbackImagePreview ? (
                           <div className="relative inline-block">
