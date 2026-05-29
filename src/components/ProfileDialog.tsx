@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { StartTourButton } from "@/components/guided-tour/StartTourButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -169,7 +171,10 @@ export const ProfileDialog = () => {
   const [feedbackImagePreview, setFeedbackImagePreview] = useState<string | null>(null);
   const [feedbackMissionId, setFeedbackMissionId] = useState<string>("none");
   const [feedbackMissions, setFeedbackMissions] = useState<Array<{ id: string; tittel: string; tidspunkt: string | null }>>([]);
-  const [feedbackMissionsLoaded, setFeedbackMissionsLoaded] = useState(false);
+  const [feedbackMissionSearch, setFeedbackMissionSearch] = useState("");
+  const [feedbackMissionLoading, setFeedbackMissionLoading] = useState(false);
+  const [feedbackMissionHasMore, setFeedbackMissionHasMore] = useState(false);
+  const FEEDBACK_MISSIONS_PAGE = 10;
   const [appVersion, setAppVersion] = useState<string>(localStorage.getItem('avisafe_app_version') || '–');
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
@@ -525,6 +530,44 @@ export const ProfileDialog = () => {
       toast.error(t('profile.couldNotUpdateProfile'));
     }
   };
+
+  const loadFeedbackMissions = async (search: string, offset: number, append: boolean) => {
+    if (!profile?.company_id) return;
+    setFeedbackMissionLoading(true);
+    try {
+      let q = supabase
+        .from("missions")
+        .select("id, tittel, tidspunkt")
+        .eq("company_id", profile.company_id)
+        .order("tidspunkt", { ascending: false, nullsFirst: false })
+        .range(offset, offset + FEEDBACK_MISSIONS_PAGE - 1);
+      const term = search.trim();
+      if (term) {
+        q = q.or(`tittel.ilike.%${term}%,lokasjon.ilike.%${term}%`);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      const rows = data || [];
+      setFeedbackMissions((prev) => (append ? [...prev, ...rows] : rows));
+      setFeedbackMissionHasMore(rows.length === FEEDBACK_MISSIONS_PAGE);
+    } catch (e) {
+      console.error("Could not load missions for feedback", e);
+      if (!append) setFeedbackMissions([]);
+      setFeedbackMissionHasMore(false);
+    } finally {
+      setFeedbackMissionLoading(false);
+    }
+  };
+
+  // Debounced search for mission picker in feedback dialog
+  useEffect(() => {
+    if (!feedbackOpen) return;
+    const t = setTimeout(() => {
+      loadFeedbackMissions(feedbackMissionSearch, 0, false);
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedbackMissionSearch, feedbackOpen, profile?.company_id]);
 
   const handlePasswordReset = async () => {
     if (!user?.email) return;
@@ -1076,30 +1119,17 @@ export const ProfileDialog = () => {
                 </Card>
 
                 {/* Feedback Dialog */}
-                <Dialog open={feedbackOpen} onOpenChange={async (open) => {
+                <Dialog open={feedbackOpen} onOpenChange={(open) => {
                   setFeedbackOpen(open);
                   if (!open) {
                     setFeedbackSubject("");
                     setFeedbackMessage("");
                     setFeedbackMissionId("none");
+                    setFeedbackMissionSearch("");
                     setFeedbackImage(null);
                     if (feedbackImagePreview) {
                       URL.revokeObjectURL(feedbackImagePreview);
                       setFeedbackImagePreview(null);
-                    }
-                  } else if (!feedbackMissionsLoaded && profile?.company_id) {
-                    try {
-                      const { data } = await supabase
-                        .from("missions")
-                        .select("id, tittel, tidspunkt")
-                        .eq("company_id", profile.company_id)
-                        .order("tidspunkt", { ascending: false })
-                        .limit(50);
-                      setFeedbackMissions(data || []);
-                    } catch (e) {
-                      console.error("Could not load missions for feedback", e);
-                    } finally {
-                      setFeedbackMissionsLoaded(true);
                     }
                   }
                 }}>
@@ -1129,22 +1159,87 @@ export const ProfileDialog = () => {
                       </div>
                       <div className="space-y-2">
                         <Label>Oppdrag (valgfritt)</Label>
-                        <Select value={feedbackMissionId} onValueChange={setFeedbackMissionId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Ingen" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-72">
-                            <SelectItem value="none">Ingen</SelectItem>
-                            {feedbackMissions.map((m) => {
-                              const date = m.tidspunkt ? new Date(m.tidspunkt).toLocaleDateString("nb-NO") : "";
-                              return (
-                                <SelectItem key={m.id} value={m.id}>
-                                  {m.tittel}{date ? ` — ${date}` : ""}
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                        {(() => {
+                          const selected = feedbackMissions.find((m) => m.id === feedbackMissionId);
+                          const selectedLabel = feedbackMissionId === "none" || !selected
+                            ? "Ingen"
+                            : `${selected.tittel}${selected.tidspunkt ? ` — ${new Date(selected.tidspunkt).toLocaleDateString("nb-NO")}` : ""}`;
+                          return (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                  <span className="truncate">{selectedLabel}</span>
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                <div className="flex items-center border-b border-border px-3">
+                                  <Search className="h-4 w-4 opacity-50 mr-2" />
+                                  <Input
+                                    value={feedbackMissionSearch}
+                                    onChange={(e) => setFeedbackMissionSearch(e.target.value)}
+                                    placeholder="Søk oppdrag..."
+                                    className="h-9 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+                                  />
+                                </div>
+                                <div className="max-h-64 overflow-y-auto py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setFeedbackMissionId("none")}
+                                    className={cn(
+                                      "w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 text-left",
+                                      feedbackMissionId === "none" && "bg-muted/50"
+                                    )}
+                                  >
+                                    <Check className={cn("h-4 w-4", feedbackMissionId === "none" ? "opacity-100" : "opacity-0")} />
+                                    Ingen
+                                  </button>
+                                  {feedbackMissions.map((m) => {
+                                    const date = m.tidspunkt ? new Date(m.tidspunkt).toLocaleDateString("nb-NO") : "";
+                                    const isSel = feedbackMissionId === m.id;
+                                    return (
+                                      <button
+                                        key={m.id}
+                                        type="button"
+                                        onClick={() => setFeedbackMissionId(m.id)}
+                                        className={cn(
+                                          "w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50 text-left",
+                                          isSel && "bg-muted/50"
+                                        )}
+                                      >
+                                        <Check className={cn("h-4 w-4 shrink-0", isSel ? "opacity-100" : "opacity-0")} />
+                                        <span className="truncate">
+                                          {m.tittel}{date ? ` — ${date}` : ""}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                  {!feedbackMissionLoading && feedbackMissions.length === 0 && (
+                                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                                      Ingen oppdrag funnet
+                                    </div>
+                                  )}
+                                  {feedbackMissionLoading && (
+                                    <div className="px-3 py-2 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
+                                      <Loader2 className="h-3 w-3 animate-spin" /> Laster...
+                                    </div>
+                                  )}
+                                  {feedbackMissionHasMore && !feedbackMissionLoading && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        loadFeedbackMissions(feedbackMissionSearch, feedbackMissions.length, true)
+                                      }
+                                      className="w-full px-3 py-2 text-sm text-primary hover:bg-muted/50 text-center"
+                                    >
+                                      Last flere
+                                    </button>
+                                  )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          );
+                        })()}
                       </div>
                       <div className="space-y-2">
                         <Label>Vedlegg (valgfritt)</Label>
