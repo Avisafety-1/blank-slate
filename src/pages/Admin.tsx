@@ -1251,10 +1251,10 @@ const Admin = () => {
                                       <Badge variant="outline" className="text-xs mt-1">{getDepartmentName(profile)}</Badge>
                                     )}
                                   </div>
-                                  <div className="space-y-2">
+                                  <div className="space-y-3">
                                     {!isChildCompany && childCompanies.length > 0 && (
-                                      <div>
-                                        <span className="text-xs text-muted-foreground block mb-1">Avdeling</span>
+                                      <div className="space-y-1.5 pb-2 border-b border-border">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Avdeling</p>
                                         <Select 
                                           value={profile.company_id || companyId || ""} 
                                           onValueChange={(value) => changeDepartment(profile.id, value)}
@@ -1271,105 +1271,110 @@ const Admin = () => {
                                         </Select>
                                       </div>
                                     )}
-                                    <div className="space-y-2 rounded-md border border-border p-2">
+
+                                    <div className="space-y-2 pb-2 border-b border-border">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tilganger</p>
+                                      <div className="space-y-2 rounded-md border border-border p-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-muted-foreground">Under opplæring</span>
+                                          <Switch
+                                            checked={profile.under_training === true}
+                                            onCheckedChange={() => toggleUnderTraining(profile.id, profile.under_training === true)}
+                                            className="scale-75"
+                                            disabled={!canManageRoles}
+                                          />
+                                        </div>
+                                        {profile.under_training && (
+                                          <TrainingModulePicker
+                                            selected={getManualTrainingModules(profile)}
+                                            lockedModules={getCourseUnlockedModules(profile)}
+                                            onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
+                                            onOpenAllModules={() => openAllModulesForUser(profile.id)}
+                                            disabled={!canManageRoles}
+                                          />
+                                        )}
+                                      </div>
                                       <div className="flex items-center justify-between">
-                                        <span className="text-xs text-muted-foreground">Under opplæring</span>
+                                        <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
                                         <Switch
-                                          checked={profile.under_training === true}
-                                          onCheckedChange={() => toggleUnderTraining(profile.id, profile.under_training === true)}
+                                          checked={profile.is_technical_responsible === true}
+                                          onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
                                           className="scale-75"
                                           disabled={!canManageRoles}
                                         />
                                       </div>
-                                      {profile.under_training && (
-                                        <TrainingModulePicker
-                                          selected={getManualTrainingModules(profile)}
-                                          lockedModules={getCourseUnlockedModules(profile)}
-                                          onChange={(modules) => updateTrainingModuleAccess(profile.id, modules)}
-                                          onOpenAllModules={() => openAllModulesForUser(profile.id)}
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
+                                        <Switch
+                                          checked={profile.can_approve_missions === true}
+                                          onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
+                                          className="scale-75"
                                           disabled={!canManageRoles}
                                         />
+                                      </div>
+                                      {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Godkjenner for avdelinger</span>
+                                          <DepartmentChecklist
+                                            departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                            selectedIds={profile.approval_company_ids?.filter(id => id !== 'all') || []}
+                                            allSelected={profile.approval_company_ids?.includes('all') || false}
+                                            onToggleAll={(checked) => {
+                                              if (checked) updateApprovalScope(profile.id, ['all']);
+                                              else updateApprovalScope(profile.id, [companyId || '']);
+                                            }}
+                                            onToggle={(id, checked) => {
+                                              const current = profile.approval_company_ids?.filter(i => i !== 'all') || [];
+                                              const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                              updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                            }}
+                                          />
+                                        </div>
+                                      )}
+                                      {eccairsEnabled && (
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs text-muted-foreground">ECCAIRS-tilgang</span>
+                                          <Switch
+                                            checked={profile.can_access_eccairs === true}
+                                            onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
+                                            className="scale-75"
+                                            disabled={!canManageRoles}
+                                          />
+                                        </div>
+                                      )}
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs text-muted-foreground">Oppfølgingsansvarlig (hendelser)</span>
+                                        <Switch
+                                          checked={profile.can_be_incident_responsible === true}
+                                          onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
+                                          className="scale-75"
+                                          disabled={!canManageRoles}
+                                        />
+                                      </div>
+                                      {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
+                                        <div>
+                                          <span className="text-xs text-muted-foreground block mb-1">Ansvarlig for avdelinger</span>
+                                          <DepartmentChecklist
+                                            departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                            selectedIds={profile.incident_responsible_company_ids?.filter(id => id !== 'all') || []}
+                                            allSelected={profile.incident_responsible_company_ids?.includes('all') || false}
+                                            onToggleAll={(checked) => {
+                                              if (checked) updateIncidentScope(profile.id, ['all']);
+                                              else updateIncidentScope(profile.id, [companyId || '']);
+                                            }}
+                                            onToggle={(id, checked) => {
+                                              const current = profile.incident_responsible_company_ids?.filter(i => i !== 'all') || [];
+                                              const newIds = checked ? [...current, id] : current.filter(i => i !== id);
+                                              updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
+                                            }}
+                                            allLabel="Alle avdelinger"
+                                          />
+                                        </div>
                                       )}
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
-                                      <Switch
-                                        checked={profile.is_technical_responsible === true}
-                                        onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
-                                        className="scale-75"
-                                        disabled={!canManageRoles}
-                                      />
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
-                                      <Switch
-                                        checked={profile.can_approve_missions === true}
-                                        onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
-                                        className="scale-75"
-                                        disabled={!canManageRoles}
-                                      />
-                                    </div>
-                                    {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
-                                      <div>
-                                        <span className="text-xs text-muted-foreground block mb-1">Godkjenner for avdelinger</span>
-                                        <DepartmentChecklist
-                                          departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
-                                          selectedIds={profile.approval_company_ids?.filter(id => id !== 'all') || []}
-                                          allSelected={profile.approval_company_ids?.includes('all') || false}
-                                          onToggleAll={(checked) => {
-                                            if (checked) updateApprovalScope(profile.id, ['all']);
-                                            else updateApprovalScope(profile.id, [companyId || '']);
-                                          }}
-                                          onToggle={(id, checked) => {
-                                            const current = profile.approval_company_ids?.filter(i => i !== 'all') || [];
-                                            const newIds = checked ? [...current, id] : current.filter(i => i !== id);
-                                            updateApprovalScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                          }}
-                                        />
-                                      </div>
-                                    )}
-                                    {eccairsEnabled && (
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-xs text-muted-foreground">ECCAIRS-tilgang</span>
-                                        <Switch
-                                          checked={profile.can_access_eccairs === true}
-                                          onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
-                                          className="scale-75"
-                                          disabled={!canManageRoles}
-                                        />
-                                      </div>
-                                    )}
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground">Oppfølgingsansvarlig (hendelser)</span>
-                                      <Switch
-                                        checked={profile.can_be_incident_responsible === true}
-                                        onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
-                                        className="scale-75"
-                                        disabled={!canManageRoles}
-                                      />
-                                    </div>
-                                    {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
-                                      <div>
-                                        <span className="text-xs text-muted-foreground block mb-1">Ansvarlig for avdelinger</span>
-                                        <DepartmentChecklist
-                                          departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
-                                          selectedIds={profile.incident_responsible_company_ids?.filter(id => id !== 'all') || []}
-                                          allSelected={profile.incident_responsible_company_ids?.includes('all') || false}
-                                          onToggleAll={(checked) => {
-                                            if (checked) updateIncidentScope(profile.id, ['all']);
-                                            else updateIncidentScope(profile.id, [companyId || '']);
-                                          }}
-                                          onToggle={(id, checked) => {
-                                            const current = profile.incident_responsible_company_ids?.filter(i => i !== 'all') || [];
-                                            const newIds = checked ? [...current, id] : current.filter(i => i !== id);
-                                            updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
-                                          }}
-                                          allLabel="Alle avdelinger"
-                                        />
-                                      </div>
-                                    )}
-                                    <div>
-                                      <span className="text-xs text-muted-foreground block mb-1">{t('admin.selectRole')}</span>
+
+                                    <div className="space-y-1.5 pb-2 border-b border-border">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Rolle</p>
                                       {canManageRoles ? (
                                         <Select 
                                           value={userRole?.role || ""} 
@@ -1389,19 +1394,23 @@ const Admin = () => {
                                       ) : (
                                         <Badge variant="outline" className="text-xs">{userRole?.role ? t(`admin.role_${userRole.role}`, userRole.role) : t('admin.selectRole')}</Badge>
                                       )}
+                                      {!canManageRoles && (
+                                        <p className="text-xs text-muted-foreground italic">Rolle- og tilgangsstyring krever Professional-planen</p>
+                                      )}
                                     </div>
-                                    {!canManageRoles && (
-                                      <p className="text-xs text-muted-foreground italic">Rolle- og tilgangsstyring krever Professional-planen</p>
-                                    )}
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => deleteUser(profile.id, profile.full_name)}
-                                      className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10 justify-start"
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      {t('admin.deleteUser')}
-                                    </Button>
+
+                                    <div className="space-y-1.5">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Fjern bruker</p>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => deleteUser(profile.id, profile.full_name)}
+                                        className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10 justify-start"
+                                      >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        {t('admin.deleteUser')}
+                                      </Button>
+                                    </div>
                                   </div>
                                 </PopoverContent>
                               </Popover>
