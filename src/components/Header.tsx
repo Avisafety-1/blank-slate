@@ -271,10 +271,7 @@ export const Header = () => {
               </SheetPortal>
             </Sheet>
 
-
-            
-            {/* Language toggle - Mobile */}
-            <LanguageToggleButton size="xs" />
+            {isNorconsult && (
 
             {isNorconsult && (
               <StartTourButton className="h-7 w-7 min-w-7 p-0" />
