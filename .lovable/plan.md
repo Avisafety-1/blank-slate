@@ -1,27 +1,28 @@
-## Mål
+## Problem
 
-I admin-listen «Oppdragstyper» skal hver type kunne ha et tilknyttet dokument fra selskapets dokumentbibliotek. Når en bruker oppretter et oppdrag med den typen, blir dokumentet automatisk lagt til på oppdragskortet (samme mekanisme som `mission_documents` bruker i dag).
+Hamburgermenyen bruker nå `Sheet` (Radix Dialog). To problemer:
 
-## Endringer
+1. **Skjermen blir sort:** `SheetOverlay` har `bg-black/80` som dekker hele appen, og selve panelet bruker `bg-card/95` (mørk card-token). Sammen blir alt nesten svart.
+2. **Menyknappene fungerer ikke:** Hver knapp er pakket i `<SheetClose asChild>` rundt en `<Button onClick={navigate(...)}>`. På iPad/DJI ser vi at Sheet'en lukkes (unmount) før React-event-handleren rekker å trigge `navigate`, så navigeringen sluker.
 
-### 1) Database (migrering)
-- `company_mission_types` får ny kolonne `default_document_id uuid null` med FK mot `documents(id) ON DELETE SET NULL`.
-- Ingen endringer i RLS – arves fra eksisterende policy.
+## Fiks – `src/components/Header.tsx`
 
-### 2) Admin-UI – `src/components/admin/MissionTypesSection.tsx`
-- I hver rad i listen, ved siden av Aktiv-bryteren, legges en kompakt dokument-velger:
-  - Hvis ingen valgt: liten knapp «Tilknytt dokument» (paperclip-ikon).
-  - Hvis valgt: viser dokumenttittel som chip + lite kryss for å fjerne tilknytningen.
-- Klikk på knappen åpner en enkel popover/dialog med søkbar liste over selskapets `documents` (samme scoping som dokumentmodulen bruker). Bruker velger ett dokument → lagres til `default_document_id`.
-- Read-only når listen er arvet fra moderselskap.
-- Hook `useCompanyMissionTypes` utvides til å returnere `default_document_id` (+ tittel via join) slik at UI kan vise det.
+Beholder Sheet-design (sidepanel), men:
 
-### 3) Auto-tilknytning ved oppretting – `src/components/dashboard/AddMissionDialog.tsx`
-- Etter at oppdraget er lagret og eventuelle brukervalgte dokumenter er knyttet, slå opp valgt `mission_type` i `types`-listen.
-- Hvis typen har `default_document_id`, kall `supabase.from("mission_documents").insert({ mission_id, document_id })` (idempotent: hopp over hvis allerede tilstede fra brukerens egne valg).
-- Gjelder kun ved oppretting (ikke ved redigering av eksisterende oppdrag, for å unngå at fjernede dokumenter dukker opp igjen).
+1. **Kontrollert open-state:** legg til `const [navOpen, setNavOpen] = useState(false)` og bruk `<Sheet open={navOpen} onOpenChange={setNavOpen}>`.
+2. **Transparent overlay:** rendre Sheet via `SheetPortal` + `<SheetOverlay className="bg-transparent backdrop-blur-none" />` + `SheetPrimitive.Content` direkte – eller enklere: send en `className` på en wrapper. Konkret bruker vi `SheetPortal`/`SheetOverlay` som allerede eksporteres fra `@/components/ui/sheet`, og rendrer panelet manuelt så vi får styre overlay-bakgrunnen lokalt (`bg-transparent`). Resten av appen forblir synlig.
+3. **Solid og lesbart panel:** bytt `bg-card/95` → `bg-popover text-popover-foreground border-l border-border shadow-2xl`.
+4. **Ingen `SheetClose`-wrapping rundt knappene.** I stedet:
+   ```tsx
+   <Button onClick={() => { setNavOpen(false); navigate("/oppdrag"); }}>
+   ```
+   – `setNavOpen(false)` kjøres synkront, deretter `navigate` (begge skjer i samme handler, ingen race-condition med unmount).
 
-## Tekniske detaljer
-- Endringen er ren frontend + en kolonne. Ingen edge functions.
-- Standardtyper som ennå ikke finnes i `company_mission_types` (kun finnes via `DEFAULT_MISSION_TYPES`) kan ikke ha tilknyttet dokument før admin har lagret en eksplisitt rad. Hvis vi vil støtte det også for defaults, må vi først seede default-radene for selskapet – dette anbefales gjort *lazy* første gang admin åpner dokumentvelgeren for en default-type (insert rad med samme label).
-- Memory `mem://features/admin/editable-mission-types` oppdateres etter implementasjon.
+## Resultat
+
+- Sidepanelet kommer fortsatt inn fra høyre.
+- Bakgrunnen blir ikke mørklagt – dashbordet vises klart bak.
+- Klikk på menyknapper navigerer og lukker panelet pålitelig på iPad/DJI RC Pro.
+- Lukkes også ved klikk utenfor (Radix sin default `onPointerDownOutside` på den transparente overlayen) og med X-knappen.
+
+Ingen endringer i `sheet.tsx` (delt komponent) – kun lokal håndtering i `Header.tsx`.
