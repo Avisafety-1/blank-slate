@@ -1119,19 +1119,18 @@ export const ProfileDialog = () => {
                 </Card>
 
                 {/* Feedback Dialog */}
-                <Dialog open={feedbackOpen} onOpenChange={async (open) => {
+                <Dialog open={feedbackOpen} onOpenChange={(open) => {
                   setFeedbackOpen(open);
                   if (!open) {
                     setFeedbackSubject("");
                     setFeedbackMessage("");
                     setFeedbackMissionId("none");
+                    setFeedbackMissionSearch("");
                     setFeedbackImage(null);
                     if (feedbackImagePreview) {
                       URL.revokeObjectURL(feedbackImagePreview);
                       setFeedbackImagePreview(null);
                     }
-                  } else if (profile?.company_id) {
-                    loadFeedbackMissions("", 0, false);
                   }
                 }}>
                   <DialogContent className="max-w-md">
