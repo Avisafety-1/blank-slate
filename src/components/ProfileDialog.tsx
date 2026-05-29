@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { StartTourButton } from "@/components/guided-tour/StartTourButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
