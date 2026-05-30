@@ -295,7 +295,9 @@ Deno.serve(async (req) => {
             const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
 
             let suffix = '01';
-            if (variable === 'drone_registration') {
+            if (variable === 'none') {
+              suffix = '';
+            } else if (variable === 'drone_registration') {
               const { data: missionDrone } = await supabase
                 .from('mission_drones')
                 .select('drone_id')
