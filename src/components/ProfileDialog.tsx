@@ -475,7 +475,6 @@ export const ProfileDialog = () => {
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(fileName, avatarFile, {
-        upsert: true,
         contentType: avatarFile.type || `image/${fileExt}`,
       });
 
