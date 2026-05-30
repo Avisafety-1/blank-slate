@@ -1,53 +1,46 @@
-# Kartlag: Eiendomsgrenser
+# Fiks eiendomsgrenser-laget + matrikkelnummer
 
-Legge til et nytt valgbart kartlag som viser eiendomsgrenser fra Kartverket (Matrikkelen) i hovedkartet.
+## Problem
 
-## Datakilde
-
-Kartverket sin åpne WMS for matrikkelen:
-- URL: `https://wms.geonorge.no/skwms1/wms.matrikkelen-eiendomskart`
-- Lag: `teig`, `teiggrense`, `teigpunkt`, `grensepunkt`
-- Format: `image/png`, transparent, versjon `1.3.0`
-- Åpne data, ingen API-nøkkel.
-- Dekker kun Norge (skjules naturlig utenfor).
+Endepunktet `wms.matrikkelen-eiendomskart` finnes ikke (returnerer `Unable to access file`), så laget viser ingenting. Riktig Kartverket-endepunkt er `wms.matrikkel` med andre lagnavn.
 
 ## Endring
 
-Fil: `src/components/OpenAIPMap.tsx`
+Fil: `src/components/OpenAIPMap.tsx` (rundt linje 730, der `eiendomsgrenserLayer` defineres)
 
-1. Definere WMS-laget sammen med øvrige WMS-lag (rundt linje 690):
-   ```ts
-   const eiendomsgrenserLayer = L.tileLayer.wms(
-     "https://wms.geonorge.no/skwms1/wms.matrikkelen-eiendomskart?",
-     {
-       layers: "teig,teiggrense,grensepunkt",
-       format: "image/png",
-       transparent: true,
-       opacity: 0.8,
-       attribution: "© Kartverket – Matrikkelen",
-       version: "1.3.0",
-       minZoom: 13,
-       tiled: true,
-     } as any
-   );
-   ```
-   Min-zoom 13 fordi grensene er meningsløse på lavere zoom og laget blir tungt.
+Bytt ut WMS-konfigurasjonen til:
 
-2. Registrere som toggle i `layerConfigs` under gruppen `Infrastruktur` (etter `kraftledninger`, ca. linje 766):
-   ```ts
-   layerConfigs.push({
-     id: "eiendomsgrenser",
-     name: "Eiendomsgrenser",
-     layer: eiendomsgrenserLayer,
-     enabled: false,
-     icon: "mapPin",
-     group: "Infrastruktur",
-   });
-   ```
-   Av som standard for å ikke endre dagens kartopplevelse.
+```ts
+const eiendomsgrenserLayer = L.tileLayer.wms(
+  "https://wms.geonorge.no/skwms1/wms.matrikkel?",
+  {
+    layers: "eiendomsgrense,grensepunkt,eiendoms_id",
+    format: "image/png",
+    transparent: true,
+    opacity: 0.9,
+    attribution: "© Kartverket – Matrikkelen",
+    version: "1.3.0",
+    minZoom: 14,
+    tiled: true,
+  } as any
+);
+```
+
+Endringer fra forrige forsøk:
+- URL: `wms.matrikkel` (eksisterer) i stedet for `wms.matrikkelen-eiendomskart` (404).
+- Lag: `eiendomsgrense` (grenser), `grensepunkt` (hjørnepunkter), `eiendoms_id` (gnr/bnr-etikett — det brukeren etterspør).
+- `minZoom: 14` — `eiendoms_id` rendres kun på høyere zoom, og laget blir uleselig zoomet ut.
+
+## GetFeatureInfo ved klikk (gnr/bnr-popup)
+
+Legg til klikk-håndtering for laget i `handleMapClick` (samme mønster som dagens Tensio-håndtering, ca. linje 861):
+
+- Når laget er aktivt og kartet klikkes, kall `GetFeatureInfo` mot samme WMS med `query_layers=eiendomsgrense`, `info_format=application/json`, og vis matrikkelinfo (kommunenr, gnr, bnr, festenr) i en `L.popup`.
+- Bruk eksisterende `formatFeatureInfoPopup` for konsistent visning.
+- Skjer kun når `eiendomsgrenserLayer` er på kartet og ingen høyere-prioritets klikkhandler (route planning, weather, Tensio) tar over.
 
 ## Avgrensninger
 
-- Klikk for å hente eiendomsinfo (GetFeatureInfo / matrikkelnummer-popup) er ikke en del av denne endringen — kan legges til senere ved behov.
-- Kun Norge. Hvis vi senere trenger andre land kan vi legge til tilsvarende kilder per land.
-- Ingen endringer i hamburgermeny / opplæringstour fra forrige melding.
+- Kun Norge (Kartverket dekker bare Norge).
+- Ingen DB- eller backend-endringer.
+- Ingen endringer på øvrige kartlag.
