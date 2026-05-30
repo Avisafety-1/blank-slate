@@ -39,6 +39,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
+import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DeviationReportsSection } from "@/components/dashboard/DeviationReportsSection";
 import { MissionSoraRouteDocumentation } from "@/components/dashboard/MissionSoraRouteDocumentation";
 import {
