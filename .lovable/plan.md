@@ -1,19 +1,20 @@
-## Problem
-Når en ventende logg har et langt navn (typisk ArduPilot, f.eks. "ArduCopter V3.6.12 (23a69308)"), strekker raden seg bredere enn kortet og hele dialogen får venstre/høyre scroll. På kontoer med kun DJI-logger oppstår ikke dette fordi navnene er kortere.
+Jeg fant at selve ArduPilot-navnet allerede er forsøkt trunkert, men skjermbildet viser fortsatt at andre elementer i samme område kan presse dialogen bredere: header/toggle-linjen, hjelpeteksten og selve pending-logg-wrapperen mangler flere `min-w-0`/wrapping-begrensninger. I tillegg kan `overflow-x-hidden` på dialogen alene skjule noe visuelt, men ikke alltid stoppe intern sidelengs scroll på mobil.
 
-## Årsak
-I `src/components/PendingDjiLogsSection.tsx` (linje 208) brukes `truncate` på dronenavnet, men flex-foreldren mangler `min-w-0`. Uten det vil `truncate` ikke kunne krympe teksten, og raden vokser i stedet for å kuttes med "…".
+Plan:
+1. Stramme inn `PendingDjiLogsSection`:
+   - Gi hovedcontaineren `min-w-0 w-full overflow-x-hidden`.
+   - Endre headeren slik teksten, badge og “Kun mine”-toggle kan wrappe på små skjermer i stedet for å presse bredden.
+   - Gi hjelpetekst og loggliste eksplisitt `min-w-0 max-w-full`.
+   - Sørge for at hver loggrad og alle tekstlinjer (`dato`, `eier`, feilmelding) truncates/wrapper uten å øke bredden.
 
-## Endringer
+2. Stramme inn `UploadDroneLogDialog` rundt metodevisningen:
+   - Legge `min-w-0 max-w-full overflow-x-hidden` på method-step wrappers.
+   - Gjøre kort-grid og pending-wrapper trygge på mobil med `min-w-0`.
+   - Sikre at DJI-kortets e-post og auto-sync-tekst ikke kan utvide kortet.
 
-**1. `src/components/PendingDjiLogsSection.tsx`**
-- Legg til `min-w-0` på den indre flex-raden (linje 208) som inneholder navn + badges.
-- Sikre at `<p className="truncate">` også har `min-w-0` (via klassen `flex-1 min-w-0`) slik at lange ord/identifikatorer faktisk kuttes.
+3. Beholde funksjonalitet uendret:
+   - Ingen endring i sync, ArduPilot/DJI-logikk eller dataflyt.
+   - Kun CSS/Tailwind-klasser for mobil layout og overflow.
 
-**2. `src/components/UploadDroneLogDialog.tsx`** (forsvar i dybden)
-- Legg til `overflow-x-hidden` på `DialogContent` (linje 3154) slik at evt. andre fremtidige lange tekster ikke kan trigge horisontal scroll i dialogen.
-
-## Effekt
-- Lange ArduPilot-navn kuttes med "…" og raden holder seg innenfor kortet.
-- Dialogen kan ikke scrolles horisontalt lenger.
-- Ingen funksjonell endring — kun layout/CSS.
+Teknisk detalj:
+- Rotårsaken er sannsynligvis flere flex/grid-barn som mangler `min-w-0`, ikke bare ArduPilot-teksten. På mobile nettlesere kan disse barna beholde sin intrinsic width og dermed gjøre dialoginnholdet bredere enn viewporten.
