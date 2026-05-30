@@ -649,11 +649,36 @@ Deno.serve(async (req) => {
       const altitudeAmsl = Math.round(maxTerrain + flightAltitude);
       console.log(`UAV beacon AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m = ${altitudeAmsl}m`);
 
+      // Look up test mode for this mission's company (with parent propagate fallback)
+      let beaconTestMode = false;
+      try {
+        const { data: bc } = await supabase
+          .from('companies')
+          .select('parent_company_id, safesky_callsign_test_mode')
+          .eq('id', (mission as any).company_id)
+          .single();
+        beaconTestMode = !!(bc as any)?.safesky_callsign_test_mode;
+        if ((bc as any)?.parent_company_id) {
+          const { data: bp } = await supabase
+            .from('companies')
+            .select('safesky_callsign_test_mode, safesky_callsign_propagate')
+            .eq('id', (bc as any).parent_company_id)
+            .single();
+          if ((bp as any)?.safesky_callsign_propagate) {
+            beaconTestMode = !!(bp as any)?.safesky_callsign_test_mode;
+          }
+        }
+      } catch (_e) { /* keep default */ }
+
       const beaconId = `AVS_${missionId.substring(0, 8)}`;
+      const beaconAltitude = beaconTestMode ? 0 : altitudeAmsl;
+      if (beaconTestMode) {
+        console.log(`[TEST MODE] UAV beacon altitude forced to 0 (was ${altitudeAmsl}m AMSL)`);
+      }
       const payload = [
         {
           id: beaconId,
-          altitude: altitudeAmsl,
+          altitude: beaconAltitude,
           latitude: latitude,
           longitude: longitude
         }
