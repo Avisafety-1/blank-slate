@@ -265,27 +265,32 @@ Deno.serve(async (req) => {
 
           // Dynamic callsign: configurable prefix + variable suffix (counter or drone reg.nr)
           let callSign = 'avisafe01';
+          let testMode = false;
           try {
             const { data: company } = await supabase
               .from('companies')
-              .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable')
+              .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode')
               .eq('id', mission.company_id)
               .single();
 
             let companyName = company?.navn || 'avisafe';
             let prefix = company?.safesky_callsign_prefix as string | null | undefined;
             let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
+            testMode = !!(company as any)?.safesky_callsign_test_mode;
 
             if (company?.parent_company_id) {
               const { data: parentCompany } = await supabase
                 .from('companies')
-                .select('navn, safesky_callsign_prefix, safesky_callsign_variable')
+                .select('navn, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode, safesky_callsign_propagate')
                 .eq('id', company.parent_company_id)
                 .single();
               if (parentCompany?.navn) companyName = parentCompany.navn;
               if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
               if ((!company?.safesky_callsign_variable) && parentCompany?.safesky_callsign_variable) {
                 variable = parentCompany.safesky_callsign_variable;
+              }
+              if ((parentCompany as any)?.safesky_callsign_propagate) {
+                testMode = !!(parentCompany as any)?.safesky_callsign_test_mode;
               }
             }
 
@@ -344,6 +349,10 @@ Deno.serve(async (req) => {
           const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
           console.log(`Cron AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
 
+          const cronPublishedAltitude = testMode ? 0 : maxAltitudeAmsl;
+          if (testMode) {
+            console.log(`[TEST MODE] Cron callsign=${callSign} max_altitude forced to 0 (was ${maxAltitudeAmsl}m AMSL)`);
+          }
           const payload: GeoJSONFeatureCollection = {
             type: "FeatureCollection",
             features: [{
@@ -352,8 +361,8 @@ Deno.serve(async (req) => {
                 id: advisoryId,
                 call_sign: callSign,
                 last_update: Math.floor(Date.now() / 1000),
-                max_altitude: maxAltitudeAmsl,
-                remarks: "Drone operation - planned route"
+                max_altitude: cronPublishedAltitude,
+                remarks: testMode ? "[TEST] Drone operation - planned route" : "Drone operation - planned route"
               },
               geometry: {
                 type: "Polygon",

@@ -192,6 +192,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     safesky_callsign_propagate: boolean;
     safesky_callsign_prefix: string | null;
     safesky_callsign_variable: 'counter' | 'drone_registration' | 'none';
+    safesky_callsign_test_mode: boolean;
     // parent SORA defaults
     default_buffer_mode: "corridor" | "convexHull";
     default_flight_geography_m: number;
@@ -217,6 +218,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [callsignPrefix, setCallsignPrefix] = useState("");
   const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration' | 'none'>('counter');
   const [callsignPropagate, setCallsignPropagate] = useState(false);
+  const [callsignTestMode, setCallsignTestMode] = useState(false);
   const [savingCallsign, setSavingCallsign] = useState(false);
   const callsignEditing = useRef(false);
 
@@ -421,7 +423,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const { data } = await (supabase as any)
       .from("companies")
-      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement")
+      .select("navn, parent_company_id, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, flighthub2_base_url, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, safesky_callsign_test_mode, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement")
       .eq("id", companyId)
       .single();
     if (data) {
@@ -467,7 +469,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, safesky_callsign_test_mode, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
@@ -540,6 +542,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             safesky_callsign_propagate: parent.safesky_callsign_propagate ?? false,
             safesky_callsign_prefix: parent.safesky_callsign_prefix ?? null,
             safesky_callsign_variable: ((parent.safesky_callsign_variable as 'counter' | 'drone_registration' | 'none') || 'counter'),
+            safesky_callsign_test_mode: (parent as any).safesky_callsign_test_mode ?? false,
             default_buffer_mode: (parentSora?.default_buffer_mode as "corridor" | "convexHull") || "corridor",
             default_flight_geography_m: parentSora?.default_flight_geography_m ?? 0,
             default_flight_altitude_m: parentSora?.default_flight_altitude_m ?? 30,
@@ -559,6 +562,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
         setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration' | 'none') || 'counter');
         setCallsignPropagate((data as any).safesky_callsign_propagate ?? false);
+        setCallsignTestMode((data as any).safesky_callsign_test_mode ?? false);
       }
 
       // Check if FH2 credentials exist (own or inherited via parent)
@@ -922,6 +926,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       safesky_callsign_prefix: callsignPrefix.trim() || null,
       safesky_callsign_variable: callsignVariable,
       safesky_callsign_propagate: callsignPropagate,
+      safesky_callsign_test_mode: callsignTestMode,
     };
     const { error } = await supabase.from("companies").update(payload).eq("id", companyId);
     if (error) {
@@ -935,6 +940,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .update({
           safesky_callsign_prefix: payload.safesky_callsign_prefix,
           safesky_callsign_variable: payload.safesky_callsign_variable,
+          safesky_callsign_test_mode: payload.safesky_callsign_test_mode,
         } as any)
         .eq("parent_company_id", companyId);
     }
@@ -1781,6 +1787,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   const callsignLocked = isChildDept && !!inherited?.safesky_callsign_propagate;
                   const csPrefix = callsignLocked ? (inherited!.safesky_callsign_prefix ?? "") : callsignPrefix;
                   const csVariable = callsignLocked ? inherited!.safesky_callsign_variable : callsignVariable;
+                  const csTestMode = callsignLocked ? !!inherited!.safesky_callsign_test_mode : callsignTestMode;
                   return (
                     <div className="space-y-3">
                       {callsignLocked && (
@@ -1831,6 +1838,20 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                           {((csPrefix.trim() || parentCompanyName || 'avisafe').replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe')
                             + (csVariable === 'drone_registration' ? 'LNABCD' : csVariable === 'none' ? '' : '01')}
                         </span>
+                      </div>
+                      <div className="border-t pt-2 flex items-center justify-between gap-3">
+                        <Label htmlFor="callsign-test-mode" className="flex-1 cursor-pointer pr-4">
+                          <div className="font-medium text-sm">Test-modus</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            All trafikk publiseres til SafeSky med høyde 0 ft og status «on ground». Bruk for testing uten å vise drone i lufta.
+                          </div>
+                        </Label>
+                        <Switch
+                          id="callsign-test-mode"
+                          checked={csTestMode}
+                          onCheckedChange={(c) => { callsignEditing.current = true; setCallsignTestMode(c); }}
+                          disabled={callsignLocked || savingCallsign}
+                        />
                       </div>
                       {!isChildDept && (
                         <div className="border-t pt-2 flex items-center justify-between">

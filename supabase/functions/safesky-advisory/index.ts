@@ -449,28 +449,34 @@ Deno.serve(async (req) => {
 
       // Dynamic callsign: configurable prefix + variable suffix (counter or drone reg.nr)
       let callSign = 'avisafe01';
+      let testMode = false;
       try {
         const { data: company } = await supabase
           .from('companies')
-          .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable')
+          .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode')
           .eq('id', mission.company_id)
           .single();
 
         let companyName = company?.navn || 'avisafe';
         let prefix = company?.safesky_callsign_prefix as string | null | undefined;
         let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
+        testMode = !!(company as any)?.safesky_callsign_test_mode;
 
         // If this is a child company, fall back to parent for name + callsign settings
         if (company?.parent_company_id) {
           const { data: parentCompany } = await supabase
             .from('companies')
-            .select('navn, safesky_callsign_prefix, safesky_callsign_variable')
+            .select('navn, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode, safesky_callsign_propagate')
             .eq('id', company.parent_company_id)
             .single();
           if (parentCompany?.navn) companyName = parentCompany.navn;
           if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
           if ((!company?.safesky_callsign_variable) && parentCompany?.safesky_callsign_variable) {
             variable = parentCompany.safesky_callsign_variable;
+          }
+          // When parent propagates callsign settings, parent's test_mode wins
+          if ((parentCompany as any)?.safesky_callsign_propagate) {
+            testMode = !!(parentCompany as any)?.safesky_callsign_test_mode;
           }
         }
 
@@ -542,6 +548,11 @@ Deno.serve(async (req) => {
       // SafeSky-side remarks should also be capped to be safe
       remarks = remarks.slice(0, 200);
 
+      const publishedAltitude = testMode ? 0 : maxAltitudeAmsl;
+      if (testMode) {
+        console.log(`[TEST MODE] Advisory callsign=${callSign} max_altitude forced to 0 (was ${maxAltitudeAmsl}m AMSL)`);
+      }
+
       const payload: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [{
@@ -550,8 +561,8 @@ Deno.serve(async (req) => {
             id: advisoryId,
             call_sign: callSign,
             last_update: Math.floor(Date.now() / 1000),
-            max_altitude: maxAltitudeAmsl,
-            remarks
+            max_altitude: publishedAltitude,
+            remarks: testMode ? `[TEST] ${remarks}` : remarks
           },
           geometry: {
             type: "Polygon",
@@ -601,7 +612,7 @@ Deno.serve(async (req) => {
 
       const { data: mission, error: missionError } = await supabase
         .from('missions')
-        .select('id, tittel, route, latitude, longitude')
+        .select('id, tittel, route, latitude, longitude, company_id')
         .eq('id', missionId)
         .single();
 
@@ -638,11 +649,36 @@ Deno.serve(async (req) => {
       const altitudeAmsl = Math.round(maxTerrain + flightAltitude);
       console.log(`UAV beacon AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m = ${altitudeAmsl}m`);
 
+      // Look up test mode for this mission's company (with parent propagate fallback)
+      let beaconTestMode = false;
+      try {
+        const { data: bc } = await supabase
+          .from('companies')
+          .select('parent_company_id, safesky_callsign_test_mode')
+          .eq('id', (mission as any).company_id)
+          .single();
+        beaconTestMode = !!(bc as any)?.safesky_callsign_test_mode;
+        if ((bc as any)?.parent_company_id) {
+          const { data: bp } = await supabase
+            .from('companies')
+            .select('safesky_callsign_test_mode, safesky_callsign_propagate')
+            .eq('id', (bc as any).parent_company_id)
+            .single();
+          if ((bp as any)?.safesky_callsign_propagate) {
+            beaconTestMode = !!(bp as any)?.safesky_callsign_test_mode;
+          }
+        }
+      } catch (_e) { /* keep default */ }
+
       const beaconId = `AVS_${missionId.substring(0, 8)}`;
+      const beaconAltitude = beaconTestMode ? 0 : altitudeAmsl;
+      if (beaconTestMode) {
+        console.log(`[TEST MODE] UAV beacon altitude forced to 0 (was ${altitudeAmsl}m AMSL)`);
+      }
       const payload = [
         {
           id: beaconId,
-          altitude: altitudeAmsl,
+          altitude: beaconAltitude,
           latitude: latitude,
           longitude: longitude
         }
