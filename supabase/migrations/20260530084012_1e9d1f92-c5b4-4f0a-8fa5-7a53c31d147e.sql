@@ -1,0 +1,1 @@
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS safesky_callsign_test_mode boolean NOT NULL DEFAULT false;
