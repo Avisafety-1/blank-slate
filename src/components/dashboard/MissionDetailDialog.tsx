@@ -23,6 +23,8 @@ import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
 import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
+import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
+import { Upload } from "lucide-react";
 import { NotamDialog } from "./NotamDialog";
 import { DeviationReportsSection } from "./DeviationReportsSection";
 import { MissionSoraRouteDocumentation } from "./MissionSoraRouteDocumentation";
