@@ -539,7 +539,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
             safesky_callsign_propagate: parent.safesky_callsign_propagate ?? false,
             safesky_callsign_prefix: parent.safesky_callsign_prefix ?? null,
-            safesky_callsign_variable: ((parent.safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter'),
+            safesky_callsign_variable: ((parent.safesky_callsign_variable as 'counter' | 'drone_registration' | 'none') || 'counter'),
             default_buffer_mode: (parentSora?.default_buffer_mode as "corridor" | "convexHull") || "corridor",
             default_flight_geography_m: parentSora?.default_flight_geography_m ?? 0,
             default_flight_altitude_m: parentSora?.default_flight_altitude_m ?? 30,
