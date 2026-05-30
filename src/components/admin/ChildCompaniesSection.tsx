@@ -557,7 +557,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
       if (!callsignEditing.current) {
         setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
-        setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter');
+        setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration' | 'none') || 'counter');
         setCallsignPropagate((data as any).safesky_callsign_propagate ?? false);
       }
 
