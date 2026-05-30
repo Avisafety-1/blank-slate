@@ -326,7 +326,10 @@ Deno.serve(async (req) => {
               suffix = String(index > 0 ? index : 1).padStart(2, '0');
             }
 
-            callSign = sanitized + suffix;
+            // Cap total to 10 chars (SafeSky callsign limit); trim prefix so prefix+suffix fits.
+            const maxLen = 10;
+            const trimmedPrefix = sanitized.slice(0, Math.max(1, maxLen - suffix.length));
+            callSign = (trimmedPrefix + suffix).slice(0, maxLen);
             console.log(`Cron callsign: ${callSign} (prefix=${prefix || companyName}, variable=${variable}, suffix=${suffix})`);
           } catch (err) {
             console.warn('Cron callsign generation failed, using fallback:', err);
