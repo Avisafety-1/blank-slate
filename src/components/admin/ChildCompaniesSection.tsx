@@ -1839,6 +1839,20 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                             + (csVariable === 'drone_registration' ? 'LNABCD' : csVariable === 'none' ? '' : '01')}
                         </span>
                       </div>
+                      <div className="border-t pt-2 flex items-center justify-between gap-3">
+                        <Label htmlFor="callsign-test-mode" className="flex-1 cursor-pointer pr-4">
+                          <div className="font-medium text-sm">Test-modus</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            All trafikk publiseres til SafeSky med høyde 0 ft og status «on ground». Bruk for testing uten å vise drone i lufta.
+                          </div>
+                        </Label>
+                        <Switch
+                          id="callsign-test-mode"
+                          checked={csTestMode}
+                          onCheckedChange={(c) => { callsignEditing.current = true; setCallsignTestMode(c); }}
+                          disabled={callsignLocked || savingCallsign}
+                        />
+                      </div>
                       {!isChildDept && (
                         <div className="border-t pt-2 flex items-center justify-between">
                           <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
