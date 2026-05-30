@@ -1,49 +1,29 @@
-## Endring i mobil-menyen (`src/components/Header.tsx`, sheet-innholdet ca. linje 181–221)
+# Fiks plassering av lukk-kryss (X) på dialoger
 
-Kun mobil-menyen (hamburger-sheet) endres — desktop-nav (top bar) skal ikke røres siden brukeren ikke nevner den.
+## Problem
+På iPhone (Safari/Chrome med notch) legger lukk-krysset seg langt nede i dialogen og overlapper "Vis alle"-chip, blyant/søppelbøtte-knapper og andre handlinger i header-området. Synlig i begge skjermbildene fra brukeren.
 
-### 1. Ny rekkefølge
-1. Kart
-2. Oppdrag
-3. Ressurser
-4. Dokumenter
-5. Kalender
-6. Hendelser
-7. Status
-8. Plattformstatistikk (superadmin Avisafe)
-9. Marketing (superadmin Avisafe)
-10. — separator —
-11. Driftstatus
-12. Installer app
-
-### 2. Ikoner på alle menyvalg
-Lucide-ikoner, klasse `w-4 h-4 mr-2`:
-- Kart → `Map`
-- Oppdrag → `ClipboardList`
-- Ressurser → `Boxes`
-- Dokumenter → `FileText`
-- Kalender → `Calendar`
-- Hendelser → `AlertTriangle`
-- Status → `Gauge`
-- Plattformstatistikk → `BarChart3` (allerede)
-- Marketing → `Megaphone` (allerede)
-- Driftstatus → `Activity` (allerede)
-- Installer app → `Download` (allerede)
-
-### 3. Horisontal skillelinje
-Legg inn `<div className="my-2 border-t border-border" />` rett over Driftstatus-knappen, slik at Driftstatus + Installer app skiller seg fra resten.
-
-### 4. Footer i sheet-en
-Etter siste knapp og før `SheetPrimitive.Close`, legg til en `mt-auto`-blokk (sheet er allerede `flex flex-col`) med liten, muted typografi:
+## Årsak
+I `src/components/ui/dialog.tsx` linje 98 brukes:
 
 ```
-© AviSafe AS
-kontakt@avisafe.no  (mailto-link)
-avisafe.no          (https://avisafe.no, åpner i ny fane)
+top-[max(1rem,env(safe-area-inset-top,1rem))]
 ```
 
-Sentrert, `text-xs text-muted-foreground`, lenker bruker `hover:text-primary`. En tynn `border-t` over footeren.
+`env(safe-area-inset-top)` er ment for elementer som ligger inntil viewportens topp (f.eks. fullskjerm-headers). Dialogen er sentrert i viewporten, men `position: absolute` på X-en er relativ til dialogboksen — likevel evaluerer nettleseren `env()` mot device safe-area (~47px på iPhone med notch). Resultat: X-en dyttes ~47px ned i dialog-innholdet i stedet for å sitte i hjørnet.
 
-### Det som ikke endres
-- Desktop-navigasjon, dropdown-menyer, alle ruter, tilganger og `canShowModule`-betingelser beholdes uendret — kun rekkefølge, ikon-tillegg, separator og footer.
-- Ingen oversettelsesnøkler endres (Driftstatus/Installer app er allerede hardkodet/oversatt slik de er i dag).
+## Endring
+Bytt til en enkel, fast posisjon i øvre høyre hjørne av dialogen:
+
+```
+top-4
+```
+
+(matcher `right-4` som allerede er fast). Da ligger X-en alltid 16px fra dialogens topp/høyre, uavhengig av device — som er korrekt fordi safe-area gjelder viewport, ikke en sentrert modal.
+
+## Filer
+- `src/components/ui/dialog.tsx` (én linje)
+
+## Ikke berørt
+- `sheet.tsx`, `alert-dialog.tsx` (bruker allerede `top-4`).
+- Ingen logikk- eller layout-endringer i dialoger som bruker komponenten.
