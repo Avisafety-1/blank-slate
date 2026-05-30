@@ -8,6 +8,7 @@ import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
+import { EiendomsgrenserLegend } from "@/components/EiendomsgrenserLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
@@ -1511,6 +1512,7 @@ export function OpenAIPMap({
         />
       ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
+      {layers.find(l => l.id === "eiendomsgrenser")?.enabled && <EiendomsgrenserLegend />}
     </div>
   );
 }
