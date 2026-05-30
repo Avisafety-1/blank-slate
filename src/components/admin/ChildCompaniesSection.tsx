@@ -1787,6 +1787,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   const callsignLocked = isChildDept && !!inherited?.safesky_callsign_propagate;
                   const csPrefix = callsignLocked ? (inherited!.safesky_callsign_prefix ?? "") : callsignPrefix;
                   const csVariable = callsignLocked ? inherited!.safesky_callsign_variable : callsignVariable;
+                  const csTestMode = callsignLocked ? !!inherited!.safesky_callsign_test_mode : callsignTestMode;
                   return (
                     <div className="space-y-3">
                       {callsignLocked && (
