@@ -972,6 +972,10 @@ export const MissionCard = ({
         text: mission.notam_text,
       } : null}
     />
+    <UploadDroneLogDialog
+      open={uploadLogOpen}
+      onOpenChange={setUploadLogOpen}
+    />
     </>
   );
 };
