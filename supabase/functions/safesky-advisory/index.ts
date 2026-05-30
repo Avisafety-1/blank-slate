@@ -598,11 +598,12 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ 
-          success: true, action, advisoryId, areaKm2, maxAltitudeAmsl, terrainElevation: maxTerrain,
-          message: `Advisory ${action === 'publish_advisory' ? 'published' : 'refreshed'} successfully (${maxAltitudeAmsl}m AMSL)`
+          success: true, action, advisoryId, areaKm2, maxAltitudeAmsl: effectiveMaxAltitude, terrainElevation: maxTerrain, testMode,
+          message: `Advisory ${action === 'publish_advisory' ? 'published' : 'refreshed'} successfully (${effectiveMaxAltitude}m AMSL${testMode ? ' — TEST MODE' : ''})`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+
     }
 
 
