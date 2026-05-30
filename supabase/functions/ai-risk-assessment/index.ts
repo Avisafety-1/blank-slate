@@ -1554,7 +1554,10 @@ serve(async (req) => {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
+      max_completion_tokens: 16000,
+      response_format: { type: 'json_object' },
     });
+
 
     let aiResponse: Response | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -1612,14 +1615,32 @@ serve(async (req) => {
 
     // Parse JSON from AI response (remove markdown if present)
     aiContent = aiContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
+
     let aiAnalysis;
     try {
       aiAnalysis = JSON.parse(aiContent);
     } catch (e) {
-      console.error('Failed to parse AI response:', aiContent);
-      throw new Error('Invalid AI response format');
+      // Fallback: try to extract the largest balanced JSON object
+      const start = aiContent.indexOf('{');
+      const end = aiContent.lastIndexOf('}');
+      if (start !== -1 && end > start) {
+        let candidate = aiContent.substring(start, end + 1)
+          .replace(/,\s*}/g, '}')
+          .replace(/,\s*]/g, ']')
+          .replace(/[\x00-\x1F\x7F]/g, '');
+        try {
+          aiAnalysis = JSON.parse(candidate);
+        } catch (e2) {
+          const finishReason = aiData.choices?.[0]?.finish_reason;
+          console.error('Failed to parse AI response (finish_reason=' + finishReason + '):', aiContent);
+          throw new Error('Invalid AI response format' + (finishReason === 'length' ? ' (truncated)' : ''));
+        }
+      } else {
+        console.error('Failed to parse AI response:', aiContent);
+        throw new Error('Invalid AI response format');
+      }
     }
+
 
     // Safety net: strip leaked internal field/variable names from any narrative text
     // (the model occasionally quotes camelCase/dot-notation tokens from the prompt).
