@@ -215,7 +215,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [savingRole, setSavingRole] = useState(false);
   // SafeSky callsign state
   const [callsignPrefix, setCallsignPrefix] = useState("");
-  const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration'>('counter');
+  const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration' | 'none'>('counter');
   const [callsignPropagate, setCallsignPropagate] = useState(false);
   const [savingCallsign, setSavingCallsign] = useState(false);
   const callsignEditing = useRef(false);
