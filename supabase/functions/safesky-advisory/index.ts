@@ -548,11 +548,54 @@ Deno.serve(async (req) => {
       // SafeSky-side remarks should also be capped to be safe
       remarks = remarks.slice(0, 200);
 
-      const publishedAltitude = testMode ? 0 : maxAltitudeAmsl;
+      // ===== TEST MODE: skip advisory entirely, publish only /v1/uav GROUNDED =====
       if (testMode) {
-        console.log(`[TEST MODE] Advisory callsign=${callSign} max_altitude forced to 0 (was ${maxAltitudeAmsl}m AMSL)`);
+        const pts = polygonCoordinates.slice(0, -1);
+        const centerLon = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+        const centerLat = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+
+        const uavPayload = [{
+          id: advisoryId,
+          latitude: centerLat,
+          longitude: centerLon,
+          altitude: 0,
+          status: "GROUNDED",
+          last_update: Math.floor(Date.now() / 1000),
+          ground_speed: 0,
+          course: 0,
+          call_sign: callSign,
+        }];
+
+        console.log(`[TEST MODE] Skipping /v1/advisory. Posting /v1/uav GROUNDED only for ${callSign}`);
+        const uavBody = JSON.stringify(uavPayload);
+        const uavAuth = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, uavBody);
+        const uavResp = await fetch(SAFESKY_UAV_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...uavAuth },
+          body: uavBody,
+        });
+        const uavText = await uavResp.text();
+        console.log(`[TEST MODE] /v1/uav GROUNDED response: ${uavResp.status} - ${uavText}`);
+
+        if (!uavResp.ok) {
+          return new Response(
+            JSON.stringify({ error: 'SafeSky /v1/uav (test mode) error', status: uavResp.status, details: uavText }),
+            { status: uavResp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true, action, advisoryId, areaKm2,
+            maxAltitudeAmsl: 0, terrainElevation: maxTerrain,
+            testMode: true,
+            message: `Test mode: GROUNDED beacon published (advisory skipped)`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
+      // ===== Normal mode: publish advisory polygon =====
       const payload: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [{
@@ -561,8 +604,8 @@ Deno.serve(async (req) => {
             id: advisoryId,
             call_sign: callSign,
             last_update: Math.floor(Date.now() / 1000),
-            max_altitude: publishedAltitude,
-            remarks: testMode ? `[TEST] ${remarks}` : remarks
+            max_altitude: maxAltitudeAmsl,
+            remarks: remarks
           },
           geometry: {
             type: "Polygon",
@@ -590,41 +633,6 @@ Deno.serve(async (req) => {
             hint: response.status === 401 || response.status === 403 ? 'HMAC authentication may be required for /v1/advisory' : undefined }),
           { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
-      }
-
-      // In test mode, ALSO publish a /v1/uav beacon with status=GROUNDED so SafeSky
-      // displays the track as "on ground" instead of AIRBORNE (advisory has no status field).
-      if (testMode) {
-        try {
-          // Centroid of polygon (skip closing vertex)
-          const pts = polygonCoordinates.slice(0, -1);
-          const centerLon = pts.reduce((s, p) => s + p[0], 0) / pts.length;
-          const centerLat = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-
-          const uavPayload = [{
-            id: advisoryId,
-            latitude: centerLat,
-            longitude: centerLon,
-            altitude: 0,
-            status: "GROUNDED",
-            last_update: Math.floor(Date.now() / 1000),
-            ground_speed: 0,
-            course: 0,
-            call_sign: callSign,
-          }];
-
-          const uavBody = JSON.stringify(uavPayload);
-          const uavAuth = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, uavBody);
-          const uavResp = await fetch(SAFESKY_UAV_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...uavAuth },
-            body: uavBody,
-          });
-          const uavText = await uavResp.text();
-          console.log(`[TEST MODE] /v1/uav GROUNDED beacon response: ${uavResp.status} - ${uavText}`);
-        } catch (e) {
-          console.error('[TEST MODE] Failed to publish GROUNDED beacon:', e);
-        }
       }
 
       return new Response(
