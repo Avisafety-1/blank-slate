@@ -3161,9 +3161,9 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
 
         {/* ── Step: Method selection ── */}
          {step === 'method' && (
-          <div className={selectedPendingLogId && result ? 'flex gap-6 h-full flex-1 min-h-0' : ''}>
+          <div className={`min-w-0 max-w-full overflow-x-hidden ${selectedPendingLogId && result ? 'flex gap-6 h-full flex-1 min-h-0' : ''}`}>
             {/* Left panel: method + pending logs */}
-            <div className={`space-y-3 ${selectedPendingLogId && result ? 'w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto pr-1' : ''}`}>
+            <div className={`space-y-3 min-w-0 max-w-full ${selectedPendingLogId && result ? 'w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto pr-1' : ''}`}>
 
             <p className="text-sm text-muted-foreground">
               {t('dronelog.chooseMethod', 'Velg hvordan du vil importere flyloggen:')}
