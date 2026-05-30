@@ -289,10 +289,10 @@ Deno.serve(async (req) => {
               }
             }
 
-            // Preserve user-defined prefix casing; only strip invalid SafeSky characters.
+            // Preserve user-defined prefix casing and allow underscore/hyphen.
             // Fall back to lowercased company name when no prefix is set.
             const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
-            const sanitized = rawPrefix.replace(/[^a-zA-Z0-9]/g, '') || 'avisafe';
+            const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
 
             let suffix = '01';
             if (variable === 'drone_registration') {
