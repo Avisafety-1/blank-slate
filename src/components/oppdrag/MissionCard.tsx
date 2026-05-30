@@ -39,6 +39,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
+import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DeviationReportsSection } from "@/components/dashboard/DeviationReportsSection";
 import { MissionSoraRouteDocumentation } from "@/components/dashboard/MissionSoraRouteDocumentation";
 import {
@@ -122,6 +123,7 @@ export const MissionCard = ({
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [uploadLogOpen, setUploadLogOpen] = useState(false);
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
   const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
@@ -822,9 +824,22 @@ export const MissionCard = ({
                     </>
                   )}
                   {!(log.flight_track?.positions?.length > 0) && (
-                    <span className="text-xs text-muted-foreground italic">
-                      Ingen posisjonsdata – analyse og ruteeksport er ikke tilgjengelig
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground italic">
+                        {log.source === 'manual'
+                          ? 'Manuelt registrert flytid – ingen loggfil parset.'
+                          : 'Ingen posisjonsdata – analyse og ruteeksport er ikke tilgjengelig.'}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1"
+                        onClick={() => setUploadLogOpen(true)}
+                      >
+                        <Upload className="h-3 w-3" />
+                        Last opp DJI/ArduPilot-logg
+                      </Button>
+                    </div>
                   )}
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
@@ -956,6 +971,10 @@ export const MissionCard = ({
         radiusNm: mission.notam_radius_nm ?? 0.5,
         text: mission.notam_text,
       } : null}
+    />
+    <UploadDroneLogDialog
+      open={uploadLogOpen}
+      onOpenChange={setUploadLogOpen}
     />
     </>
   );
