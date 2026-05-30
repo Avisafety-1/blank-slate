@@ -416,9 +416,22 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                       </div>
                     )}
                     {!(log.flight_track?.positions?.length > 0) && (
-                      <span className="text-xs text-muted-foreground italic">
-                        Ingen posisjonsdata
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-muted-foreground italic">
+                          {log.source === 'manual'
+                            ? 'Manuelt registrert flytid – ingen loggfil parset.'
+                            : 'Ingen posisjonsdata.'}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-xs gap-1"
+                          onClick={() => setUploadLogOpen(true)}
+                        >
+                          <Upload className="h-3 w-3" />
+                          Last opp DJI/ArduPilot-logg
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
