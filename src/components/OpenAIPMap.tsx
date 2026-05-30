@@ -727,17 +727,17 @@ export function OpenAIPMap({
     // NVE Kraftledninger
     const kraftledningerLayer = L.layerGroup();
 
-    // Kartverket Matrikkelen — eiendomsgrenser
+    // Kartverket Matrikkelen — eiendomsgrenser (gnr/bnr)
     const eiendomsgrenserLayer = L.tileLayer.wms(
-      "https://wms.geonorge.no/skwms1/wms.matrikkelen-eiendomskart?",
+      "https://wms.geonorge.no/skwms1/wms.matrikkel?",
       {
-        layers: "teig,teiggrense,grensepunkt",
+        layers: "eiendomsgrense,grensepunkt,eiendoms_id",
         format: "image/png",
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.9,
         attribution: "© Kartverket – Matrikkelen",
         version: "1.3.0",
-        minZoom: 13,
+        minZoom: 14,
         tiled: true,
       } as any
     );
