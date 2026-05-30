@@ -1,38 +1,57 @@
 ## Problem
 
-For support@avisafe.no (og potensielt andre):
-- Du velger bilde, ser preview, trykker «Lagre», får grønn «Profil oppdatert».
-- Men `profiles.avatar_url` er fortsatt `NULL` og ingen fil finnes i `storage.avatars/{user.id}/`.
+Opplasting til `storage.avatars/{uid}/*.jpeg` feiler med 403 «new row violates row-level security policy», selv om filnavnet starter med innlogget brukers UUID.
 
 ## Rotårsak
 
-I `src/components/ProfileDialog.tsx` (`uploadAvatar` / `handleSaveProfile`, linje 468–532) håndteres opplastings­feil for mykt:
+INSERT/UPDATE/DELETE-policyene for `avatars`-bucketen er definert mot rolle `public` i stedet for `authenticated`. På Storage-objekter forventes `auth.uid()`-baserte sjekker å kjøre i `authenticated`-rollen. Når policyen ligger på `public` matcher den ikke det aktuelle JWT-tilfellet i Storage-laget, og INSERT avvises før WITH CHECK-uttrykket gir mening. Dette er nøyaktig samme mønster Lovable-knowledgebasen flagger: «Ensure policies are explicitly set TO authenticated».
 
-1. `uploadAvatar()` fanger feil internt, viser `toast.error(...)` og returnerer `null`.
-2. `handleSaveProfile()` ser at `newAvatarUrl` er `null`, men **fortsetter** og oppdaterer profilen uten avatar.
-3. Til slutt vises `toast.success('Profil oppdatert')` som overlapper/erstatter den røde toasten visuelt — så det «ser ut til å fungere».
+## Endring
 
-Bucket og RLS er korrekte (bucket `avatars` er public, INSERT/UPDATE-policy matcher `auth.uid()::text = foldername[1]`, ingen mime/size-grenser). Feilen kommer fra selve upload-kallet og blir effektivt skjult.
+Én Supabase-migrasjon som dropper og gjenoppretter de tre eksisterende `avatars`-policyene med korrekt rolle og presis logikk. Ingen kodeendringer.
 
-## Endringer
+```sql
+-- Re-create avatars policies scoped to authenticated
+DROP POLICY IF EXISTS "Users can upload their own avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own avatar" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own avatar" ON storage.objects;
 
-Kun frontend, i `src/components/ProfileDialog.tsx`:
+CREATE POLICY "Users can upload their own avatar"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'avatars'
+  AND (storage.foldername(name))[1] = (auth.uid())::text
+);
 
-1. **Kast feil ut av `uploadAvatar`** i stedet for å returnere `null`. Behold logging, men la `handleSaveProfile` bestemme hva som skjer.
-2. **I `handleSaveProfile`**: pakk avatar-opplastingen i egen try, og hvis den feiler:
-   - vis tydelig feiltoast med faktisk feilmelding (`error.message`)
-   - **abort** — ikke kjør profil-UPDATE, ikke vis grønn success-toast, ikke nullstill `avatarFile` (så brukeren kan prøve igjen uten å velge på nytt).
-3. **Sanitér filnavn**: bruk lowercase ext, fallback til `png` hvis mangler, og rens filnavn for spesialtegn — unngår at f.eks. `Skjermbilde 2024-…png` eller manglende ext gir 400 fra Storage.
-4. **Cache-busting**: legg `?v={Date.now()}` på `avatarUrl` som lagres i `profiles.avatar_url`, så nytt bilde vises umiddelbart selv om nettleseren har cachet gammel public URL.
-5. **Console-logging** av faktisk Storage-feil (status, message, name) så vi kan diagnostisere videre hvis det fortsatt feiler etter fix.
+CREATE POLICY "Users can update their own avatar"
+ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'avatars'
+  AND (storage.foldername(name))[1] = (auth.uid())::text
+)
+WITH CHECK (
+  bucket_id = 'avatars'
+  AND (storage.foldername(name))[1] = (auth.uid())::text
+);
 
-## Hvordan vi verifiserer
+CREATE POLICY "Users can delete their own avatar"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'avatars'
+  AND (storage.foldername(name))[1] = (auth.uid())::text
+);
+```
 
-- Last opp en PNG på nytt på `support@avisafe.no` etter fix.
-- Forventet: grønn «Profil oppdatert» **kun** hvis filen faktisk lå i `storage.avatars/{uid}/...` og `profiles.avatar_url` ble satt.
-- Hvis det feiler, får du nå en tydelig rød toast med årsak (f.eks. «new row violates row-level security», «Payload too large», nettverksfeil) — som forteller oss neste steg.
+SELECT trengs ikke — bucketen er public, så `getPublicUrl` fungerer uten egen policy.
+
+## Verifikasjon
+
+Etter migrasjon: last opp profilbilde for support@avisafe.no.
+- Forventet: filen havner i `avatars/6ac7537b-…/…jpeg`, `profiles.avatar_url` settes, grønn toast.
+- Hvis det fortsatt feiler får du nå tydelig feiltoast (fra forrige fix) med faktisk årsak.
 
 ## Ikke endret
 
-- Ingen DB-/RLS-/bucket-endringer (de er allerede korrekte).
-- Ingen endringer i andre profil-felter eller lagringsflyt utenom avatar.
+- Bucket-config (`avatars` er fortsatt public, ingen mime/size-grense).
+- Andre buckets sine policyer.
+- Frontend-koden (allerede fikset i forrige runde).
