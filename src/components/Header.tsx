@@ -254,6 +254,8 @@ export const Header = () => {
                     <Globe className="w-4 h-4 mr-2" />
                     {currentLang === 'en' ? 'Norsk' : 'English'}
                   </Button>
+                  <div className="my-2 border-t border-border" />
+                  <StartTourButton variant="default" className="justify-start w-full" />
                   <div className="mt-auto pt-4 border-t border-border text-center text-xs text-muted-foreground space-y-1">
                     <div>© AviSafe AS</div>
                     <div>
