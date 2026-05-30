@@ -632,6 +632,7 @@ export type Database = {
           require_sora_steps: number
           safesky_callsign_prefix: string | null
           safesky_callsign_propagate: boolean
+          safesky_callsign_test_mode: boolean
           safesky_callsign_variable: string
           selskapstype: string | null
           show_all_airspace_warnings: boolean
@@ -703,6 +704,7 @@ export type Database = {
           require_sora_steps?: number
           safesky_callsign_prefix?: string | null
           safesky_callsign_propagate?: boolean
+          safesky_callsign_test_mode?: boolean
           safesky_callsign_variable?: string
           selskapstype?: string | null
           show_all_airspace_warnings?: boolean
@@ -774,6 +776,7 @@ export type Database = {
           require_sora_steps?: number
           safesky_callsign_prefix?: string | null
           safesky_callsign_propagate?: boolean
+          safesky_callsign_test_mode?: boolean
           safesky_callsign_variable?: string
           selskapstype?: string | null
           show_all_airspace_warnings?: boolean
