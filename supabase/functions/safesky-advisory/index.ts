@@ -592,6 +592,41 @@ Deno.serve(async (req) => {
         );
       }
 
+      // In test mode, ALSO publish a /v1/uav beacon with status=GROUNDED so SafeSky
+      // displays the track as "on ground" instead of AIRBORNE (advisory has no status field).
+      if (testMode) {
+        try {
+          // Centroid of polygon (skip closing vertex)
+          const pts = polygonCoordinates.slice(0, -1);
+          const centerLon = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+          const centerLat = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+
+          const uavPayload = [{
+            id: advisoryId,
+            latitude: centerLat,
+            longitude: centerLon,
+            altitude: 0,
+            status: "GROUNDED",
+            last_update: Math.floor(Date.now() / 1000),
+            ground_speed: 0,
+            course: 0,
+            call_sign: callSign,
+          }];
+
+          const uavBody = JSON.stringify(uavPayload);
+          const uavAuth = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, uavBody);
+          const uavResp = await fetch(SAFESKY_UAV_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...uavAuth },
+            body: uavBody,
+          });
+          const uavText = await uavResp.text();
+          console.log(`[TEST MODE] /v1/uav GROUNDED beacon response: ${uavResp.status} - ${uavText}`);
+        } catch (e) {
+          console.error('[TEST MODE] Failed to publish GROUNDED beacon:', e);
+        }
+      }
+
       return new Response(
         JSON.stringify({ 
           success: true, action, advisoryId, areaKm2, maxAltitudeAmsl, terrainElevation: maxTerrain,
@@ -600,6 +635,7 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
 
     // --- UAV beacon (single point for live position from mission) ---
     if (action === 'publish' || action === 'refresh') {
