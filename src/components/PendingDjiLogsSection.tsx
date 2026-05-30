@@ -205,8 +205,8 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
             >
               <Plane className="w-4 h-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-medium truncate">
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="text-xs font-medium truncate min-w-0 flex-1">
                     {log.aircraft_name || log.aircraft_sn || (isArdu ? "ArduPilot-logg" : "Ukjent drone")}
                   </p>
                   <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 shrink-0">
