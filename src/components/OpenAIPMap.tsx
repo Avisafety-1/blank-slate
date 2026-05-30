@@ -779,6 +779,7 @@ export function OpenAIPMap({
     // Infrastruktur
     layerConfigs.push({ id: "luftfartshindre", name: "Luftfartshindre", layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: "Infrastruktur" });
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger", layer: kraftledningerLayer, enabled: false, icon: "zap", group: "Infrastruktur" });
+    layerConfigs.push({ id: "eiendomsgrenser", name: "Eiendomsgrenser", layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: "Infrastruktur" });
     if (tensioLuftnettLayer) {
       layerConfigs.push({ id: "tensio_luftnett", name: "Luftnett Tensio", layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: "Infrastruktur" });
     }
