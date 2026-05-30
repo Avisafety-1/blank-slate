@@ -1,27 +1,38 @@
-## Legend for Eiendomsgrenser-laget
+## Mål
 
-Når brukeren slår på kartlaget "Eiendomsgrenser" på `/kart`, vis en liten legend/info-boks på kartet som forklarer at gnr/bnr kan brukes for å slå opp eier på Kartverkets eiendomsregister.
+Legge til en "Test-modus" toggle under SafeSky callsign-innstillingene. Når aktivert publiseres alle SafeSky-posisjoner med høyde 0 ft AMSL og status `GROUNDED`, slik at man kan teste integrasjonen uten å vise drone som flygende i lufta.
 
-### Endringer
+## Endringer
 
-1. **Ny komponent `src/components/EiendomsgrenserLegend.tsx`**
-   - Følger samme mønster som `ArealbrukLegend.tsx` og `TettstederLegend.tsx` (absolutt posisjonert, `bg-background/95 backdrop-blur-sm`, `z-[1000]`).
-   - Innhold:
-     - Tittel: "Eiendomsgrenser (Matrikkelen)"
-     - Tekst: "Bruk gnr/bnr (klikk i kartet for å se nummer) til å slå opp eier på Kartverkets eiendomsregister."
-     - Lenke-knapp til `https://eiendomsregisteret.kartverket.no/` (åpner i ny fane, `rel="noopener noreferrer"`).
-   - Responsiv:
-     - Mobil (`<sm`): full bredde nederst (`left-2 right-2 bottom-4`), kompakt tekst (`text-[10px]`), wrap.
-     - Desktop (`sm:`): plassert nede til venstre (`sm:left-4 sm:right-auto sm:w-auto sm:max-w-xs`), litt større tekst (`sm:text-xs`).
-   - Bruker semantiske tokens (`text-foreground`, `text-muted-foreground`, `text-primary` for lenken).
+### 1. Database (migrasjon)
+- `companies.safesky_callsign_test_mode boolean NOT NULL DEFAULT false`
+- Inkluder kolonnen i eksisterende propagasjons-trigger for callsign-innstillinger (samme som `safesky_callsign_prefix`/`_variable` propageres til underavdelinger når `safesky_callsign_propagate = true`).
 
-2. **`src/components/OpenAIPMap.tsx`**
-   - Importer `EiendomsgrenserLegend`.
-   - Spor om laget er aktivt via eksisterende `activeLayers` state (samme mønster som `ArealbrukLegend`/`TettstederLegend` allerede bruker for sine lag).
-   - Render `<EiendomsgrenserLegend />` betinget når `eiendomsgrenser`-laget er på.
-   - Hvis flere legends kan være synlige samtidig, juster `bottom-`/`left-` offsets så de ikke overlapper (sjekkes når jeg ser eksisterende plasseringer).
+### 2. UI (`src/components/admin/ChildCompaniesSection.tsx`)
+- Ny `Switch` "Test-modus (publiser 0 ft / on ground)" i `SafeSky callsign`-seksjonen, plassert over propager-toggle.
+- Liten beskrivelse: "All trafikk publiseres med høyde 0 og status GROUNDED. Bruk for å teste uten å vise drone i lufta."
+- Disabled når seksjonen er låst av forelder.
+- Inngår i `safesky_callsign_propagate`-låsen for barneavdelinger (arver fra forelder når propagering er på).
+- Inkludert i save-payload sammen med eksisterende callsign-felt.
 
-### Ingen andre endringer
+### 3. Edge functions
 
-- WMS-laget, klikk-popup (GetFeatureInfo) og lag-registrering forblir uendret.
-- Ingen DB-, backend- eller andre kartlag-endringer.
+`supabase/functions/safesky-advisory/index.ts`:
+- Last `safesky_callsign_test_mode` sammen med callsign-prefix/variable (med samme parent-fallback).
+- Når `testMode === true`:
+  - `publish_point_advisory` / `refresh_point_advisory`: `max_altitude = 0`.
+  - `publish_advisory` / `refresh_advisory`: `max_altitude = 0`.
+  - `publish_live_uav`: `altitude = 0`, `status = "GROUNDED"` (status er allerede hardkodet GROUNDED, men logges eksplisitt som test).
+  - `publish` / `refresh` UAV-beacon: `altitude = 0`.
+- Log linje `[TEST MODE] callsign=… altitude forced to 0` for sporbarhet.
+
+`supabase/functions/safesky-cron-refresh/index.ts`:
+- Samme lookup av `safesky_callsign_test_mode` med parent-fallback.
+- Sett `max_altitude = 0` på advisory-payloaden når aktivert.
+
+### 4. Memory
+- Oppdater `mem://integrations/safesky/unified-implementation` med en kort note om test-modus (alle posisjoner publiseres som 0 ft / GROUNDED når togglet er på).
+
+## Ikke i scope
+- Egen "test"-API-nøkkel/sandkasse-bytte — vi bruker fortsatt samme nøkler. Test-modus handler kun om hva som rapporteres (høyde + status), ikke hvilken miljø-nøkkel som brukes.
+- Skjule advisory fra SafeSky helt — den publiseres fremdeles, bare med 0 ft.
