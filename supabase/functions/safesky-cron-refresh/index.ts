@@ -391,6 +391,38 @@ Deno.serve(async (req) => {
             advisoryResults.push({ flightId: flight.id, success: false, error: `API error: ${response.status}` });
           } else {
             advisoryResults.push({ flightId: flight.id, success: true });
+
+            // Test mode: also publish a /v1/uav beacon with status=GROUNDED
+            // so the track is shown as "on ground" in SafeSky (advisory has no status field).
+            if (testMode) {
+              try {
+                const pts = polygonCoordinates.slice(0, -1);
+                const centerLon = pts.reduce((s: number, p: number[]) => s + p[0], 0) / pts.length;
+                const centerLat = pts.reduce((s: number, p: number[]) => s + p[1], 0) / pts.length;
+                const uavPayload = [{
+                  id: advisoryId,
+                  latitude: centerLat,
+                  longitude: centerLon,
+                  altitude: 0,
+                  status: "GROUNDED",
+                  last_update: Math.floor(Date.now() / 1000),
+                  ground_speed: 0,
+                  course: 0,
+                  call_sign: callSign,
+                }];
+                const uavBody = JSON.stringify(uavPayload);
+                const uavAuth = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, uavBody);
+                const uavResp = await fetch(SAFESKY_UAV_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', ...uavAuth },
+                  body: uavBody,
+                });
+                const uavText = await uavResp.text();
+                console.log(`[TEST MODE] Cron /v1/uav GROUNDED for ${missionId}: ${uavResp.status} - ${uavText}`);
+              } catch (e) {
+                console.error(`[TEST MODE] Cron failed to publish GROUNDED beacon for ${missionId}:`, e);
+              }
+            }
           }
 
         } catch (err) {
