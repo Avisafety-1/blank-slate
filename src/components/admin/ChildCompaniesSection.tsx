@@ -1808,8 +1808,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
                         <RadioGroup
                           value={csVariable}
-                          onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration'); }}
-                          className="flex flex-col sm:flex-row gap-2"
+                          onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration' | 'none'); }}
+                          className="flex flex-col sm:flex-row gap-2 flex-wrap"
                           disabled={callsignLocked}
                         >
                           <div className="flex items-center gap-1.5">
@@ -1820,12 +1820,16 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                             <RadioGroupItem value="drone_registration" id="cs-drone" disabled={callsignLocked} />
                             <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
                           </div>
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="none" id="cs-none" disabled={callsignLocked} />
+                            <Label htmlFor="cs-none" className="text-xs cursor-pointer">Ingen suffiks</Label>
+                          </div>
                         </RadioGroup>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Forhåndsvisning: <span className="font-mono text-foreground">
-                          {((csPrefix.trim() || parentCompanyName || 'avisafe').toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
-                            + (csVariable === 'drone_registration' ? 'LNABCD' : '01')}
+                          {((csPrefix.trim() || parentCompanyName || 'avisafe').replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe')
+                            + (csVariable === 'drone_registration' ? 'LNABCD' : csVariable === 'none' ? '' : '01')}
                         </span>
                       </div>
                       {!isChildDept && (
