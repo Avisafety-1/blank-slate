@@ -1,38 +1,41 @@
 ## Mål
-
-Legge til en "Test-modus" toggle under SafeSky callsign-innstillingene. Når aktivert publiseres alle SafeSky-posisjoner med høyde 0 ft AMSL og status `GROUNDED`, slik at man kan teste integrasjonen uten å vise drone som flygende i lufta.
+I test-modus skal vi **ikke** publisere noen advisory-polygon. Vi publiserer kun en `/v1/uav`-beacon med `status: "GROUNDED"` og `altitude: 0`. Da tester vi om SafeSky faktisk viser grounded tracks på live-kartet.
 
 ## Endringer
 
-### 1. Database (migrasjon)
-- `companies.safesky_callsign_test_mode boolean NOT NULL DEFAULT false`
-- Inkluder kolonnen i eksisterende propagasjons-trigger for callsign-innstillinger (samme som `safesky_callsign_prefix`/`_variable` propageres til underavdelinger når `safesky_callsign_propagate = true`).
-
-### 2. UI (`src/components/admin/ChildCompaniesSection.tsx`)
-- Ny `Switch` "Test-modus (publiser 0 ft / on ground)" i `SafeSky callsign`-seksjonen, plassert over propager-toggle.
-- Liten beskrivelse: "All trafikk publiseres med høyde 0 og status GROUNDED. Bruk for å teste uten å vise drone i lufta."
-- Disabled når seksjonen er låst av forelder.
-- Inngår i `safesky_callsign_propagate`-låsen for barneavdelinger (arver fra forelder når propagering er på).
-- Inkludert i save-payload sammen med eksisterende callsign-felt.
-
-### 3. Edge functions
-
-`supabase/functions/safesky-advisory/index.ts`:
-- Last `safesky_callsign_test_mode` sammen med callsign-prefix/variable (med samme parent-fallback).
+### `supabase/functions/safesky-advisory/index.ts` (action `publish_advisory` / `refresh_advisory`)
+- Behold all eksisterende validering (mission, route, area, terrain, callsign-oppslag, testMode-oppslag).
 - Når `testMode === true`:
-  - `publish_point_advisory` / `refresh_point_advisory`: `max_altitude = 0`.
-  - `publish_advisory` / `refresh_advisory`: `max_altitude = 0`.
-  - `publish_live_uav`: `altitude = 0`, `status = "GROUNDED"` (status er allerede hardkodet GROUNDED, men logges eksplisitt som test).
-  - `publish` / `refresh` UAV-beacon: `altitude = 0`.
-- Log linje `[TEST MODE] callsign=… altitude forced to 0` for sporbarhet.
+  - **Hopp over** POST til `/v1/advisory` helt.
+  - POST **kun** til `/v1/uav` med:
+    - `id`: `advisoryId` (samme `AVS_<missionId>`-format vi bruker i dag, slik at refresh oppdaterer samme beacon)
+    - `latitude`/`longitude`: centroid av polygonet
+    - `altitude: 0`
+    - `status: "GROUNDED"`
+    - `ground_speed: 0`, `course: 0`
+    - `last_update`: now (sek)
+    - `call_sign`: callSign (med samme test-prefiks-håndtering som før)
+  - Returner samme suksess-respons-shape som før (`success, action, advisoryId, areaKm2, maxAltitudeAmsl: 0, terrainElevation`), slik at fronten ikke trenger endringer. `message` blir f.eks. `"Test mode: GROUNDED beacon published (advisory skipped)"`.
+- Når `testMode === false`: uendret oppførsel (advisory som før, ingen /uav-beacon).
 
-`supabase/functions/safesky-cron-refresh/index.ts`:
-- Samme lookup av `safesky_callsign_test_mode` med parent-fallback.
-- Sett `max_altitude = 0` på advisory-payloaden når aktivert.
+### `supabase/functions/safesky-cron-refresh/index.ts`
+- I løkken som refresher polygon-advisories: når `testMode === true` for det aktuelle flight/company:
+  - **Skipp** advisory-POST.
+  - Send i stedet `/v1/uav` GROUNDED-beacon med samme `advisoryId` (refresh-effekt).
+  - Tell det som suksess i `advisoryResults`.
+- Når `testMode === false`: uendret.
 
-### 4. Memory
-- Oppdater `mem://integrations/safesky/unified-implementation` med en kort note om test-modus (alle posisjoner publiseres som 0 ft / GROUNDED når togglet er på).
+### Ingen DB-endringer
+- Kolonner og trigger er allerede på plass.
 
-## Ikke i scope
-- Egen "test"-API-nøkkel/sandkasse-bytte — vi bruker fortsatt samme nøkler. Test-modus handler kun om hva som rapporteres (høyde + status), ikke hvilken miljø-nøkkel som brukes.
-- Skjule advisory fra SafeSky helt — den publiseres fremdeles, bare med 0 ft.
+### Ingen UI-endringer
+- Test-modus-toggelen og response-håndteringen i `ChildCompaniesSection.tsx` / kart-laget forblir uendret.
+
+## Verifikasjon
+1. Etter deploy: aktiver test-modus, publiser en mission. Sjekk edge-logs at advisory IKKE postes, kun `/v1/uav` GROUNDED.
+2. Sjekk `live.safesky.app` for å se om GROUNDED-tracket vises. Hvis ikke, bekrefter det at SafeSky filtrerer GROUNDED fra public live-kart — da vet vi at "test-modus skjuler track" er en gyldig bivirkning.
+3. Verifiser at refresh-cron heller ikke poster advisory mens test-modus er på.
+
+## Risiko / merknader
+- Hvis et flight bytter test-modus av/på midt i et oppdrag, vil den gamle advisorien fortsatt ligge ute til den utløper hos SafeSky (vi rydder ikke aktivt). Akseptabelt for test-bruk.
+- GROUNDED-beacons har egen lifecycle hos SafeSky; vi refresher hvert minutt via cron, så den holdes i live.
