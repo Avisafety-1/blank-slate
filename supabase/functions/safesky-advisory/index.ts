@@ -548,52 +548,12 @@ Deno.serve(async (req) => {
       // SafeSky-side remarks should also be capped to be safe
       remarks = remarks.slice(0, 200);
 
-      // ===== TEST MODE: skip advisory entirely, publish only /v1/uav GROUNDED =====
+      // ===== TEST MODE: publish advisory polygon with max_altitude = 0 =====
+      const effectiveMaxAltitude = testMode ? 0 : maxAltitudeAmsl;
       if (testMode) {
-        const pts = polygonCoordinates.slice(0, -1);
-        const centerLon = pts.reduce((s, p) => s + p[0], 0) / pts.length;
-        const centerLat = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-
-        const uavPayload = [{
-          id: advisoryId,
-          latitude: centerLat,
-          longitude: centerLon,
-          altitude: 0,
-          status: "GROUNDED",
-          last_update: Math.floor(Date.now() / 1000),
-          ground_speed: 0,
-          course: 0,
-          call_sign: callSign,
-        }];
-
-        console.log(`[TEST MODE] Skipping /v1/advisory. Posting /v1/uav GROUNDED only for ${callSign}`);
-        const uavBody = JSON.stringify(uavPayload);
-        const uavAuth = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, uavBody);
-        const uavResp = await fetch(SAFESKY_UAV_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...uavAuth },
-          body: uavBody,
-        });
-        const uavText = await uavResp.text();
-        console.log(`[TEST MODE] /v1/uav GROUNDED response: ${uavResp.status} - ${uavText}`);
-
-        if (!uavResp.ok) {
-          return new Response(
-            JSON.stringify({ error: 'SafeSky /v1/uav (test mode) error', status: uavResp.status, details: uavText }),
-            { status: uavResp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        return new Response(
-          JSON.stringify({
-            success: true, action, advisoryId, areaKm2,
-            maxAltitudeAmsl: 0, terrainElevation: maxTerrain,
-            testMode: true,
-            message: `Test mode: GROUNDED beacon published (advisory skipped)`
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        console.log(`[TEST MODE] Publishing advisory with max_altitude=0 (was ${maxAltitudeAmsl}m AMSL)`);
       }
+
 
       // ===== Normal mode: publish advisory polygon =====
       const payload: GeoJSONFeatureCollection = {
@@ -604,7 +564,8 @@ Deno.serve(async (req) => {
             id: advisoryId,
             call_sign: callSign,
             last_update: Math.floor(Date.now() / 1000),
-            max_altitude: maxAltitudeAmsl,
+            max_altitude: effectiveMaxAltitude,
+
             remarks: remarks
           },
           geometry: {
@@ -637,11 +598,12 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ 
-          success: true, action, advisoryId, areaKm2, maxAltitudeAmsl, terrainElevation: maxTerrain,
-          message: `Advisory ${action === 'publish_advisory' ? 'published' : 'refreshed'} successfully (${maxAltitudeAmsl}m AMSL)`
+          success: true, action, advisoryId, areaKm2, maxAltitudeAmsl: effectiveMaxAltitude, terrainElevation: maxTerrain, testMode,
+          message: `Advisory ${action === 'publish_advisory' ? 'published' : 'refreshed'} successfully (${effectiveMaxAltitude}m AMSL${testMode ? ' — TEST MODE' : ''})`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+
     }
 
 
