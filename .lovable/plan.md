@@ -1,29 +1,19 @@
-# Fiks plassering av lukk-kryss (X) på dialoger
-
 ## Problem
-På iPhone (Safari/Chrome med notch) legger lukk-krysset seg langt nede i dialogen og overlapper "Vis alle"-chip, blyant/søppelbøtte-knapper og andre handlinger i header-området. Synlig i begge skjermbildene fra brukeren.
+Når en ventende logg har et langt navn (typisk ArduPilot, f.eks. "ArduCopter V3.6.12 (23a69308)"), strekker raden seg bredere enn kortet og hele dialogen får venstre/høyre scroll. På kontoer med kun DJI-logger oppstår ikke dette fordi navnene er kortere.
 
 ## Årsak
-I `src/components/ui/dialog.tsx` linje 98 brukes:
+I `src/components/PendingDjiLogsSection.tsx` (linje 208) brukes `truncate` på dronenavnet, men flex-foreldren mangler `min-w-0`. Uten det vil `truncate` ikke kunne krympe teksten, og raden vokser i stedet for å kuttes med "…".
 
-```
-top-[max(1rem,env(safe-area-inset-top,1rem))]
-```
+## Endringer
 
-`env(safe-area-inset-top)` er ment for elementer som ligger inntil viewportens topp (f.eks. fullskjerm-headers). Dialogen er sentrert i viewporten, men `position: absolute` på X-en er relativ til dialogboksen — likevel evaluerer nettleseren `env()` mot device safe-area (~47px på iPhone med notch). Resultat: X-en dyttes ~47px ned i dialog-innholdet i stedet for å sitte i hjørnet.
+**1. `src/components/PendingDjiLogsSection.tsx`**
+- Legg til `min-w-0` på den indre flex-raden (linje 208) som inneholder navn + badges.
+- Sikre at `<p className="truncate">` også har `min-w-0` (via klassen `flex-1 min-w-0`) slik at lange ord/identifikatorer faktisk kuttes.
 
-## Endring
-Bytt til en enkel, fast posisjon i øvre høyre hjørne av dialogen:
+**2. `src/components/UploadDroneLogDialog.tsx`** (forsvar i dybden)
+- Legg til `overflow-x-hidden` på `DialogContent` (linje 3154) slik at evt. andre fremtidige lange tekster ikke kan trigge horisontal scroll i dialogen.
 
-```
-top-4
-```
-
-(matcher `right-4` som allerede er fast). Da ligger X-en alltid 16px fra dialogens topp/høyre, uavhengig av device — som er korrekt fordi safe-area gjelder viewport, ikke en sentrert modal.
-
-## Filer
-- `src/components/ui/dialog.tsx` (én linje)
-
-## Ikke berørt
-- `sheet.tsx`, `alert-dialog.tsx` (bruker allerede `top-4`).
-- Ingen logikk- eller layout-endringer i dialoger som bruker komponenten.
+## Effekt
+- Lange ArduPilot-navn kuttes med "…" og raden holder seg innenfor kortet.
+- Dialogen kan ikke scrolles horisontalt lenger.
+- Ingen funksjonell endring — kun layout/CSS.
