@@ -564,7 +564,8 @@ Deno.serve(async (req) => {
             id: advisoryId,
             call_sign: callSign,
             last_update: Math.floor(Date.now() / 1000),
-            max_altitude: maxAltitudeAmsl,
+            max_altitude: effectiveMaxAltitude,
+
             remarks: remarks
           },
           geometry: {
