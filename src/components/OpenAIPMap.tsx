@@ -727,6 +727,21 @@ export function OpenAIPMap({
     // NVE Kraftledninger
     const kraftledningerLayer = L.layerGroup();
 
+    // Kartverket Matrikkelen — eiendomsgrenser
+    const eiendomsgrenserLayer = L.tileLayer.wms(
+      "https://wms.geonorge.no/skwms1/wms.matrikkelen-eiendomskart?",
+      {
+        layers: "teig,teiggrense,grensepunkt",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.8,
+        attribution: "© Kartverket – Matrikkelen",
+        version: "1.3.0",
+        minZoom: 13,
+        tiled: true,
+      } as any
+    );
+
     // NAIS skipstrafikk
     if (!map.getPane('naisPane')) {
       map.createPane('naisPane');
@@ -764,6 +779,7 @@ export function OpenAIPMap({
     // Infrastruktur
     layerConfigs.push({ id: "luftfartshindre", name: "Luftfartshindre", layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: "Infrastruktur" });
     layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger", layer: kraftledningerLayer, enabled: false, icon: "zap", group: "Infrastruktur" });
+    layerConfigs.push({ id: "eiendomsgrenser", name: "Eiendomsgrenser", layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: "Infrastruktur" });
     if (tensioLuftnettLayer) {
       layerConfigs.push({ id: "tensio_luftnett", name: "Luftnett Tensio", layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: "Infrastruktur" });
     }
