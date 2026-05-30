@@ -548,6 +548,11 @@ Deno.serve(async (req) => {
       // SafeSky-side remarks should also be capped to be safe
       remarks = remarks.slice(0, 200);
 
+      const publishedAltitude = testMode ? 0 : maxAltitudeAmsl;
+      if (testMode) {
+        console.log(`[TEST MODE] Advisory callsign=${callSign} max_altitude forced to 0 (was ${maxAltitudeAmsl}m AMSL)`);
+      }
+
       const payload: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [{
@@ -556,8 +561,8 @@ Deno.serve(async (req) => {
             id: advisoryId,
             call_sign: callSign,
             last_update: Math.floor(Date.now() / 1000),
-            max_altitude: maxAltitudeAmsl,
-            remarks
+            max_altitude: publishedAltitude,
+            remarks: testMode ? `[TEST] ${remarks}` : remarks
           },
           geometry: {
             type: "Polygon",
