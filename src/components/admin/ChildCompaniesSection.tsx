@@ -218,6 +218,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [callsignPrefix, setCallsignPrefix] = useState("");
   const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration' | 'none'>('counter');
   const [callsignPropagate, setCallsignPropagate] = useState(false);
+  const [callsignTestMode, setCallsignTestMode] = useState(false);
   const [savingCallsign, setSavingCallsign] = useState(false);
   const callsignEditing = useRef(false);
 
