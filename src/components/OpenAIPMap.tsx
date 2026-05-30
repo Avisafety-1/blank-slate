@@ -727,6 +727,21 @@ export function OpenAIPMap({
     // NVE Kraftledninger
     const kraftledningerLayer = L.layerGroup();
 
+    // Kartverket Matrikkelen — eiendomsgrenser
+    const eiendomsgrenserLayer = L.tileLayer.wms(
+      "https://wms.geonorge.no/skwms1/wms.matrikkelen-eiendomskart?",
+      {
+        layers: "teig,teiggrense,grensepunkt",
+        format: "image/png",
+        transparent: true,
+        opacity: 0.8,
+        attribution: "© Kartverket – Matrikkelen",
+        version: "1.3.0",
+        minZoom: 13,
+        tiled: true,
+      } as any
+    );
+
     // NAIS skipstrafikk
     if (!map.getPane('naisPane')) {
       map.createPane('naisPane');
