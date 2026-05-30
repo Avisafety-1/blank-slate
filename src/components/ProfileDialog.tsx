@@ -465,29 +465,38 @@ export const ProfileDialog = () => {
     }
   };
 
-  const uploadAvatar = async (): Promise<string | null> => {
-    if (!avatarFile || !user) return null;
+  const uploadAvatar = async (): Promise<string> => {
+    if (!avatarFile || !user) throw new Error('No file or user');
 
-    try {
-      const fileExt = avatarFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    const rawExt = (avatarFile.name.split('.').pop() || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const fileExt = rawExt || (avatarFile.type === 'image/jpeg' ? 'jpg' : 'png');
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, avatarFile, { upsert: true });
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, avatarFile, {
+        upsert: true,
+        contentType: avatarFile.type || `image/${fileExt}`,
+      });
 
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      return urlData.publicUrl;
-    } catch (error) {
-      console.error("Error uploading avatar:", error);
-      toast.error(t('profile.couldNotUploadPhoto'));
-      return null;
+    if (uploadError) {
+      console.error('Avatar upload failed:', {
+        name: (uploadError as any)?.name,
+        message: uploadError.message,
+        status: (uploadError as any)?.statusCode,
+        fileName,
+        fileType: avatarFile.type,
+        fileSize: avatarFile.size,
+      });
+      throw uploadError;
     }
+
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    // Cache-bust so the browser doesn't show an old cached image
+    return `${urlData.publicUrl}?v=${Date.now()}`;
   };
 
   const handleSaveProfile = async () => {
@@ -496,11 +505,16 @@ export const ProfileDialog = () => {
     try {
       let avatarUrl = editedProfile.avatar_url;
 
-      // Upload avatar if changed
+      // Upload avatar if changed — abort save if upload fails
       if (avatarFile) {
-        const newAvatarUrl = await uploadAvatar();
-        if (newAvatarUrl) {
-          avatarUrl = newAvatarUrl;
+        try {
+          avatarUrl = await uploadAvatar();
+        } catch (uploadError: any) {
+          toast.error(
+            `${t('profile.couldNotUploadPhoto')}: ${uploadError?.message || 'Ukjent feil'}`
+          );
+          // Don't clear avatarFile — user can retry without re-selecting
+          return;
         }
       }
 
@@ -530,6 +544,7 @@ export const ProfileDialog = () => {
       toast.error(t('profile.couldNotUpdateProfile'));
     }
   };
+
 
   const loadFeedbackMissions = async (search: string, offset: number, append: boolean) => {
     if (!profile?.company_id) return;

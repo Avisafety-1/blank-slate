@@ -1,41 +1,38 @@
-## Mål
-I test-modus skal vi **ikke** publisere noen advisory-polygon. Vi publiserer kun en `/v1/uav`-beacon med `status: "GROUNDED"` og `altitude: 0`. Da tester vi om SafeSky faktisk viser grounded tracks på live-kartet.
+## Problem
+
+For support@avisafe.no (og potensielt andre):
+- Du velger bilde, ser preview, trykker «Lagre», får grønn «Profil oppdatert».
+- Men `profiles.avatar_url` er fortsatt `NULL` og ingen fil finnes i `storage.avatars/{user.id}/`.
+
+## Rotårsak
+
+I `src/components/ProfileDialog.tsx` (`uploadAvatar` / `handleSaveProfile`, linje 468–532) håndteres opplastings­feil for mykt:
+
+1. `uploadAvatar()` fanger feil internt, viser `toast.error(...)` og returnerer `null`.
+2. `handleSaveProfile()` ser at `newAvatarUrl` er `null`, men **fortsetter** og oppdaterer profilen uten avatar.
+3. Til slutt vises `toast.success('Profil oppdatert')` som overlapper/erstatter den røde toasten visuelt — så det «ser ut til å fungere».
+
+Bucket og RLS er korrekte (bucket `avatars` er public, INSERT/UPDATE-policy matcher `auth.uid()::text = foldername[1]`, ingen mime/size-grenser). Feilen kommer fra selve upload-kallet og blir effektivt skjult.
 
 ## Endringer
 
-### `supabase/functions/safesky-advisory/index.ts` (action `publish_advisory` / `refresh_advisory`)
-- Behold all eksisterende validering (mission, route, area, terrain, callsign-oppslag, testMode-oppslag).
-- Når `testMode === true`:
-  - **Hopp over** POST til `/v1/advisory` helt.
-  - POST **kun** til `/v1/uav` med:
-    - `id`: `advisoryId` (samme `AVS_<missionId>`-format vi bruker i dag, slik at refresh oppdaterer samme beacon)
-    - `latitude`/`longitude`: centroid av polygonet
-    - `altitude: 0`
-    - `status: "GROUNDED"`
-    - `ground_speed: 0`, `course: 0`
-    - `last_update`: now (sek)
-    - `call_sign`: callSign (med samme test-prefiks-håndtering som før)
-  - Returner samme suksess-respons-shape som før (`success, action, advisoryId, areaKm2, maxAltitudeAmsl: 0, terrainElevation`), slik at fronten ikke trenger endringer. `message` blir f.eks. `"Test mode: GROUNDED beacon published (advisory skipped)"`.
-- Når `testMode === false`: uendret oppførsel (advisory som før, ingen /uav-beacon).
+Kun frontend, i `src/components/ProfileDialog.tsx`:
 
-### `supabase/functions/safesky-cron-refresh/index.ts`
-- I løkken som refresher polygon-advisories: når `testMode === true` for det aktuelle flight/company:
-  - **Skipp** advisory-POST.
-  - Send i stedet `/v1/uav` GROUNDED-beacon med samme `advisoryId` (refresh-effekt).
-  - Tell det som suksess i `advisoryResults`.
-- Når `testMode === false`: uendret.
+1. **Kast feil ut av `uploadAvatar`** i stedet for å returnere `null`. Behold logging, men la `handleSaveProfile` bestemme hva som skjer.
+2. **I `handleSaveProfile`**: pakk avatar-opplastingen i egen try, og hvis den feiler:
+   - vis tydelig feiltoast med faktisk feilmelding (`error.message`)
+   - **abort** — ikke kjør profil-UPDATE, ikke vis grønn success-toast, ikke nullstill `avatarFile` (så brukeren kan prøve igjen uten å velge på nytt).
+3. **Sanitér filnavn**: bruk lowercase ext, fallback til `png` hvis mangler, og rens filnavn for spesialtegn — unngår at f.eks. `Skjermbilde 2024-…png` eller manglende ext gir 400 fra Storage.
+4. **Cache-busting**: legg `?v={Date.now()}` på `avatarUrl` som lagres i `profiles.avatar_url`, så nytt bilde vises umiddelbart selv om nettleseren har cachet gammel public URL.
+5. **Console-logging** av faktisk Storage-feil (status, message, name) så vi kan diagnostisere videre hvis det fortsatt feiler etter fix.
 
-### Ingen DB-endringer
-- Kolonner og trigger er allerede på plass.
+## Hvordan vi verifiserer
 
-### Ingen UI-endringer
-- Test-modus-toggelen og response-håndteringen i `ChildCompaniesSection.tsx` / kart-laget forblir uendret.
+- Last opp en PNG på nytt på `support@avisafe.no` etter fix.
+- Forventet: grønn «Profil oppdatert» **kun** hvis filen faktisk lå i `storage.avatars/{uid}/...` og `profiles.avatar_url` ble satt.
+- Hvis det feiler, får du nå en tydelig rød toast med årsak (f.eks. «new row violates row-level security», «Payload too large», nettverksfeil) — som forteller oss neste steg.
 
-## Verifikasjon
-1. Etter deploy: aktiver test-modus, publiser en mission. Sjekk edge-logs at advisory IKKE postes, kun `/v1/uav` GROUNDED.
-2. Sjekk `live.safesky.app` for å se om GROUNDED-tracket vises. Hvis ikke, bekrefter det at SafeSky filtrerer GROUNDED fra public live-kart — da vet vi at "test-modus skjuler track" er en gyldig bivirkning.
-3. Verifiser at refresh-cron heller ikke poster advisory mens test-modus er på.
+## Ikke endret
 
-## Risiko / merknader
-- Hvis et flight bytter test-modus av/på midt i et oppdrag, vil den gamle advisorien fortsatt ligge ute til den utløper hos SafeSky (vi rydder ikke aktivt). Akseptabelt for test-bruk.
-- GROUNDED-beacons har egen lifecycle hos SafeSky; vi refresher hvert minutt via cron, så den holdes i live.
+- Ingen DB-/RLS-/bucket-endringer (de er allerede korrekte).
+- Ingen endringer i andre profil-felter eller lagringsflyt utenom avatar.
