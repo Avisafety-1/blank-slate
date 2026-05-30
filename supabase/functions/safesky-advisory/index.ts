@@ -494,7 +494,7 @@ Deno.serve(async (req) => {
               .eq('id', missionDrone.drone_id)
               .single();
             const reg = drone?.registration_number || drone?.serienummer || '';
-            const cleaned = reg.replace(/[^a-z0-9]/gi, '');
+            const cleaned = reg.replace(/[^a-zA-Z0-9_-]/g, '');
             suffix = cleaned || '01';
           }
         } else {
