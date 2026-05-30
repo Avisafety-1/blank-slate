@@ -1,46 +1,27 @@
-# Fiks eiendomsgrenser-laget + matrikkelnummer
+## Legend for Eiendomsgrenser-laget
 
-## Problem
+Når brukeren slår på kartlaget "Eiendomsgrenser" på `/kart`, vis en liten legend/info-boks på kartet som forklarer at gnr/bnr kan brukes for å slå opp eier på Kartverkets eiendomsregister.
 
-Endepunktet `wms.matrikkelen-eiendomskart` finnes ikke (returnerer `Unable to access file`), så laget viser ingenting. Riktig Kartverket-endepunkt er `wms.matrikkel` med andre lagnavn.
+### Endringer
 
-## Endring
+1. **Ny komponent `src/components/EiendomsgrenserLegend.tsx`**
+   - Følger samme mønster som `ArealbrukLegend.tsx` og `TettstederLegend.tsx` (absolutt posisjonert, `bg-background/95 backdrop-blur-sm`, `z-[1000]`).
+   - Innhold:
+     - Tittel: "Eiendomsgrenser (Matrikkelen)"
+     - Tekst: "Bruk gnr/bnr (klikk i kartet for å se nummer) til å slå opp eier på Kartverkets eiendomsregister."
+     - Lenke-knapp til `https://eiendomsregisteret.kartverket.no/` (åpner i ny fane, `rel="noopener noreferrer"`).
+   - Responsiv:
+     - Mobil (`<sm`): full bredde nederst (`left-2 right-2 bottom-4`), kompakt tekst (`text-[10px]`), wrap.
+     - Desktop (`sm:`): plassert nede til venstre (`sm:left-4 sm:right-auto sm:w-auto sm:max-w-xs`), litt større tekst (`sm:text-xs`).
+   - Bruker semantiske tokens (`text-foreground`, `text-muted-foreground`, `text-primary` for lenken).
 
-Fil: `src/components/OpenAIPMap.tsx` (rundt linje 730, der `eiendomsgrenserLayer` defineres)
+2. **`src/components/OpenAIPMap.tsx`**
+   - Importer `EiendomsgrenserLegend`.
+   - Spor om laget er aktivt via eksisterende `activeLayers` state (samme mønster som `ArealbrukLegend`/`TettstederLegend` allerede bruker for sine lag).
+   - Render `<EiendomsgrenserLegend />` betinget når `eiendomsgrenser`-laget er på.
+   - Hvis flere legends kan være synlige samtidig, juster `bottom-`/`left-` offsets så de ikke overlapper (sjekkes når jeg ser eksisterende plasseringer).
 
-Bytt ut WMS-konfigurasjonen til:
+### Ingen andre endringer
 
-```ts
-const eiendomsgrenserLayer = L.tileLayer.wms(
-  "https://wms.geonorge.no/skwms1/wms.matrikkel?",
-  {
-    layers: "eiendomsgrense,grensepunkt,eiendoms_id",
-    format: "image/png",
-    transparent: true,
-    opacity: 0.9,
-    attribution: "© Kartverket – Matrikkelen",
-    version: "1.3.0",
-    minZoom: 14,
-    tiled: true,
-  } as any
-);
-```
-
-Endringer fra forrige forsøk:
-- URL: `wms.matrikkel` (eksisterer) i stedet for `wms.matrikkelen-eiendomskart` (404).
-- Lag: `eiendomsgrense` (grenser), `grensepunkt` (hjørnepunkter), `eiendoms_id` (gnr/bnr-etikett — det brukeren etterspør).
-- `minZoom: 14` — `eiendoms_id` rendres kun på høyere zoom, og laget blir uleselig zoomet ut.
-
-## GetFeatureInfo ved klikk (gnr/bnr-popup)
-
-Legg til klikk-håndtering for laget i `handleMapClick` (samme mønster som dagens Tensio-håndtering, ca. linje 861):
-
-- Når laget er aktivt og kartet klikkes, kall `GetFeatureInfo` mot samme WMS med `query_layers=eiendomsgrense`, `info_format=application/json`, og vis matrikkelinfo (kommunenr, gnr, bnr, festenr) i en `L.popup`.
-- Bruk eksisterende `formatFeatureInfoPopup` for konsistent visning.
-- Skjer kun når `eiendomsgrenserLayer` er på kartet og ingen høyere-prioritets klikkhandler (route planning, weather, Tensio) tar over.
-
-## Avgrensninger
-
-- Kun Norge (Kartverket dekker bare Norge).
-- Ingen DB- eller backend-endringer.
-- Ingen endringer på øvrige kartlag.
+- WMS-laget, klikk-popup (GetFeatureInfo) og lag-registrering forblir uendret.
+- Ingen DB-, backend- eller andre kartlag-endringer.
