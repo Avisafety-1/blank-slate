@@ -1512,6 +1512,7 @@ export function OpenAIPMap({
         />
       ) : null}
       {layers.find(l => l.id === "tettsteder")?.enabled && <TettstederLegend />}
+      {layers.find(l => l.id === "eiendomsgrenser")?.enabled && <EiendomsgrenserLegend />}
     </div>
   );
 }
