@@ -15,9 +15,10 @@ import { useAuth } from "@/contexts/AuthContext";
 interface Props {
   variant?: "icon" | "default";
   className?: string;
+  onBeforeStart?: () => void;
 }
 
-export const StartTourButton = ({ variant = "icon", className }: Props) => {
+export const StartTourButton = ({ variant = "icon", className, onBeforeStart }: Props) => {
   const { start, isCompleted, resetAll } = useGuidedTour();
   const { isAdmin, isSuperAdmin } = useAuth();
   const visibleTours = tourList.filter((t) => t.id !== "admin" || isAdmin || isSuperAdmin);
