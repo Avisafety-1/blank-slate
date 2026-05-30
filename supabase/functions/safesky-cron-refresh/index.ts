@@ -349,41 +349,13 @@ Deno.serve(async (req) => {
           const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
           console.log(`Cron AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
 
-          // ===== TEST MODE: skip advisory, post only /v1/uav GROUNDED =====
+          // ===== TEST MODE: publish advisory with max_altitude = 0 =====
+          const effectiveMaxAltitude = testMode ? 0 : maxAltitudeAmsl;
           if (testMode) {
-            const pts = polygonCoordinates.slice(0, -1);
-            const centerLon = pts.reduce((s: number, p: number[]) => s + p[0], 0) / pts.length;
-            const centerLat = pts.reduce((s: number, p: number[]) => s + p[1], 0) / pts.length;
-            const uavPayload = [{
-              id: advisoryId,
-              latitude: centerLat,
-              longitude: centerLon,
-              altitude: 0,
-              status: "GROUNDED",
-              last_update: Math.floor(Date.now() / 1000),
-              ground_speed: 0,
-              course: 0,
-              call_sign: callSign,
-            }];
-            console.log(`[TEST MODE] Cron skipping advisory for ${missionId}, posting /v1/uav GROUNDED only`);
-            const uavBody = JSON.stringify(uavPayload);
-            const uavAuth = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, uavBody);
-            const uavResp = await fetch(SAFESKY_UAV_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...uavAuth },
-              body: uavBody,
-            });
-            const uavText = await uavResp.text();
-            console.log(`[TEST MODE] Cron /v1/uav GROUNDED for ${missionId}: ${uavResp.status} - ${uavText}`);
-            if (uavResp.ok) {
-              advisoryResults.push({ flightId: flight.id, success: true });
-            } else {
-              advisoryResults.push({ flightId: flight.id, success: false, error: `UAV API error: ${uavResp.status}` });
-            }
-            continue;
+            console.log(`[TEST MODE] Cron refreshing advisory for ${missionId} with max_altitude=0 (was ${maxAltitudeAmsl}m)`);
           }
 
-          // ===== Normal mode: refresh advisory polygon =====
+          // ===== Refresh advisory polygon =====
           const payload: GeoJSONFeatureCollection = {
             type: "FeatureCollection",
             features: [{
@@ -392,8 +364,9 @@ Deno.serve(async (req) => {
                 id: advisoryId,
                 call_sign: callSign,
                 last_update: Math.floor(Date.now() / 1000),
-                max_altitude: maxAltitudeAmsl,
-                remarks: "Drone operation - planned route"
+                max_altitude: effectiveMaxAltitude,
+                remarks: testMode ? "TEST MODE - Drone operation (test, 0m)" : "Drone operation - planned route"
+
               },
               geometry: {
                 type: "Polygon",
