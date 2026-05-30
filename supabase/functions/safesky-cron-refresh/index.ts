@@ -265,27 +265,32 @@ Deno.serve(async (req) => {
 
           // Dynamic callsign: configurable prefix + variable suffix (counter or drone reg.nr)
           let callSign = 'avisafe01';
+          let testMode = false;
           try {
             const { data: company } = await supabase
               .from('companies')
-              .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable')
+              .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode')
               .eq('id', mission.company_id)
               .single();
 
             let companyName = company?.navn || 'avisafe';
             let prefix = company?.safesky_callsign_prefix as string | null | undefined;
             let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
+            testMode = !!(company as any)?.safesky_callsign_test_mode;
 
             if (company?.parent_company_id) {
               const { data: parentCompany } = await supabase
                 .from('companies')
-                .select('navn, safesky_callsign_prefix, safesky_callsign_variable')
+                .select('navn, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode, safesky_callsign_propagate')
                 .eq('id', company.parent_company_id)
                 .single();
               if (parentCompany?.navn) companyName = parentCompany.navn;
               if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
               if ((!company?.safesky_callsign_variable) && parentCompany?.safesky_callsign_variable) {
                 variable = parentCompany.safesky_callsign_variable;
+              }
+              if ((parentCompany as any)?.safesky_callsign_propagate) {
+                testMode = !!(parentCompany as any)?.safesky_callsign_test_mode;
               }
             }
 
