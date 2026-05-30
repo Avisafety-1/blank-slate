@@ -895,6 +895,41 @@ export function OpenAIPMap({
             console.warn("Kunne ikke hente Tensio objektinformasjon:", fallbackErr);
           }
         }
+      } else if (map.hasLayer(eiendomsgrenserLayer)) {
+        try {
+          const size = map.getSize();
+          const point = map.latLngToContainerPoint(e.latlng);
+          const bounds = map.getBounds();
+          const sw = bounds.getSouthWest();
+          const ne = bounds.getNorthEast();
+          const params = new URLSearchParams({
+            service: "WMS",
+            version: "1.3.0",
+            request: "GetFeatureInfo",
+            layers: "eiendomsgrense",
+            query_layers: "eiendomsgrense",
+            crs: "CRS:84",
+            bbox: `${sw.lng},${sw.lat},${ne.lng},${ne.lat}`,
+            width: String(size.x),
+            height: String(size.y),
+            i: String(Math.round(point.x)),
+            j: String(Math.round(point.y)),
+            info_format: "application/json",
+          });
+          const url = `https://wms.geonorge.no/skwms1/wms.matrikkel?${params.toString()}`;
+          const response = await fetch(url);
+          if (!response.ok) return;
+          const data = await response.json();
+          const feature = data?.features?.find((f: any) => f?.properties && Object.keys(f.properties).length > 0);
+          if (feature?.properties) {
+            L.popup({ maxWidth: 320 })
+              .setLatLng(e.latlng)
+              .setContent(formatFeatureInfoPopup("Eiendom (matrikkel)", feature.properties))
+              .openOn(map);
+          }
+        } catch (err) {
+          console.warn("Kunne ikke hente matrikkelinfo:", err);
+        }
       }
     };
 
