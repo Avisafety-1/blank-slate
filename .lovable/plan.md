@@ -1,57 +1,77 @@
-## Problem
+Jeg fant dette:
 
-Opplasting til `storage.avatars/{uid}/*.jpeg` feiler med 403 «new row violates row-level security policy», selv om filnavnet starter med innlogget brukers UUID.
+1. Eksakt upload-path i `ProfileDialog.tsx`
+   - Koden bruker:
+     ```ts
+     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+     supabase.storage.from('avatars').upload(fileName, avatarFile, ...)
+     ```
+   - Faktisk path er altså:
+     ```text
+     {user.id}/{timestamp}.{ext}
+     ```
+   - Den er ikke `avatars/{user.id}/...`; `avatars` er bucket-navnet, ikke en del av `name` i `storage.objects`.
 
-## Rotårsak
+2. `upsert: true`
+   - Ja, upload bruker fortsatt:
+     ```ts
+     upsert: true
+     ```
+   - Siden filnavnet allerede er unikt med `user.id/timestamp.ext`, er dette unødvendig.
+   - Dette gir også request-headeren `x-upsert: true`, som kan trigge Storage til en upsert-flyt i stedet for ren insert.
 
-INSERT/UPDATE/DELETE-policyene for `avatars`-bucketen er definert mot rolle `public` i stedet for `authenticated`. På Storage-objekter forventes `auth.uid()`-baserte sjekker å kjøre i `authenticated`-rollen. Når policyen ligger på `public` matcher den ikke det aktuelle JWT-tilfellet i Storage-laget, og INSERT avvises før WITH CHECK-uttrykket gir mening. Dette er nøyaktig samme mønster Lovable-knowledgebasen flagger: «Ensure policies are explicitly set TO authenticated».
+3. Gjeldende Storage-policyer for `avatars`
+   - Live policyene er:
+     ```text
+     INSERT: Users can upload their own avatar
+       TO authenticated
+       WITH CHECK bucket_id = 'avatars'
+       AND storage.foldername(name)[1] = auth.uid()::text
 
-## Endring
+     UPDATE: Users can update their own avatar
+       TO authenticated
+       USING/WITH CHECK bucket_id = 'avatars'
+       AND storage.foldername(name)[1] = auth.uid()::text
 
-Én Supabase-migrasjon som dropper og gjenoppretter de tre eksisterende `avatars`-policyene med korrekt rolle og presis logikk. Ingen kodeendringer.
+     DELETE: Users can delete their own avatar
+       TO authenticated
+       USING bucket_id = 'avatars'
+       AND storage.foldername(name)[1] = auth.uid()::text
+     ```
+   - Det finnes ingen restriktive Storage-policyer som blokkerer dette.
+   - Bucketen `avatars` er public, uten filstørrelse- eller MIME-begrensning.
 
-```sql
--- Re-create avatars policies scoped to authenticated
-DROP POLICY IF EXISTS "Users can upload their own avatar" ON storage.objects;
-DROP POLICY IF EXISTS "Users can update their own avatar" ON storage.objects;
-DROP POLICY IF EXISTS "Users can delete their own avatar" ON storage.objects;
+4. Bruker-ID for `support@avisafe.no`
+   - `support@avisafe.no` har profile ID:
+     ```text
+     6ac7537b-be5e-4256-b4b6-c181143e39e9
+     ```
+   - Feilloggen viste upload-path:
+     ```text
+     6ac7537b-be5e-4256-b4b6-c181143e39e9/1780157195519.jpeg
+     ```
+   - `storage.foldername(...) [1]` gir:
+     ```text
+     6ac7537b-be5e-4256-b4b6-c181143e39e9
+     ```
+   - Pathen matcher altså policyen og riktig bruker-ID.
 
-CREATE POLICY "Users can upload their own avatar"
-ON storage.objects FOR INSERT TO authenticated
-WITH CHECK (
-  bucket_id = 'avatars'
-  AND (storage.foldername(name))[1] = (auth.uid())::text
-);
+Konklusjon:
+- RLS-policyene og path-strukturen matcher.
+- Det konkrete avviket jeg finner er at frontend fortsatt sender `upsert: true` selv om filnavnet er unikt.
 
-CREATE POLICY "Users can update their own avatar"
-ON storage.objects FOR UPDATE TO authenticated
-USING (
-  bucket_id = 'avatars'
-  AND (storage.foldername(name))[1] = (auth.uid())::text
-)
-WITH CHECK (
-  bucket_id = 'avatars'
-  AND (storage.foldername(name))[1] = (auth.uid())::text
-);
+Plan for minste nødvendige endring:
 
-CREATE POLICY "Users can delete their own avatar"
-ON storage.objects FOR DELETE TO authenticated
-USING (
-  bucket_id = 'avatars'
-  AND (storage.foldername(name))[1] = (auth.uid())::text
-);
-```
+1. Endre kun `ProfileDialog.tsx`
+   - Fjern `upsert: true` fra `.upload(...)` for avatarer.
+   - Behold pathen `${user.id}/${Date.now()}.${fileExt}`.
+   - Behold eksisterende `contentType`.
 
-SELECT trengs ikke — bucketen er public, så `getPublicUrl` fungerer uten egen policy.
+2. Ikke endre Storage-policyer nå
+   - INSERT/UPDATE/DELETE-policyene matcher faktisk upload-path.
+   - Å åpne policyene bredere er ikke nødvendig og ville redusere sikkerheten.
 
-## Verifikasjon
-
-Etter migrasjon: last opp profilbilde for support@avisafe.no.
-- Forventet: filen havner i `avatars/6ac7537b-…/…jpeg`, `profiles.avatar_url` settes, grønn toast.
-- Hvis det fortsatt feiler får du nå tydelig feiltoast (fra forrige fix) med faktisk årsak.
-
-## Ikke endret
-
-- Bucket-config (`avatars` er fortsatt public, ingen mime/size-grense).
-- Andre buckets sine policyer.
-- Frontend-koden (allerede fikset i forrige runde).
+3. Verifisering etter endringen
+   - Bekrefte at koden ikke lenger sender `x-upsert: true`.
+   - Be deg prøve opplasting igjen for `support@avisafe.no`.
+   - Hvis det fortsatt feiler, undersøker vi neste lag: Supabase Storage sin interne upsert/owner-håndtering eller en session-token mismatch i klienten.
