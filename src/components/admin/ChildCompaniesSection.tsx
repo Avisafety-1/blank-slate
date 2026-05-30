@@ -191,7 +191,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
     safesky_callsign_propagate: boolean;
     safesky_callsign_prefix: string | null;
-    safesky_callsign_variable: 'counter' | 'drone_registration';
+    safesky_callsign_variable: 'counter' | 'drone_registration' | 'none';
     // parent SORA defaults
     default_buffer_mode: "corridor" | "convexHull";
     default_flight_geography_m: number;
