@@ -8,6 +8,7 @@ import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { ArealbrukLegend } from "@/components/ArealbrukLegend";
 import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
+import { EiendomsgrenserLegend } from "@/components/EiendomsgrenserLegend";
 import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
