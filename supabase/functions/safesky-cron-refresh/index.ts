@@ -349,6 +349,10 @@ Deno.serve(async (req) => {
           const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
           console.log(`Cron AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
 
+          const cronPublishedAltitude = testMode ? 0 : maxAltitudeAmsl;
+          if (testMode) {
+            console.log(`[TEST MODE] Cron callsign=${callSign} max_altitude forced to 0 (was ${maxAltitudeAmsl}m AMSL)`);
+          }
           const payload: GeoJSONFeatureCollection = {
             type: "FeatureCollection",
             features: [{
@@ -357,8 +361,8 @@ Deno.serve(async (req) => {
                 id: advisoryId,
                 call_sign: callSign,
                 last_update: Math.floor(Date.now() / 1000),
-                max_altitude: maxAltitudeAmsl,
-                remarks: "Drone operation - planned route"
+                max_altitude: cronPublishedAltitude,
+                remarks: testMode ? "[TEST] Drone operation - planned route" : "Drone operation - planned route"
               },
               geometry: {
                 type: "Polygon",
