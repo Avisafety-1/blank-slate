@@ -822,9 +822,22 @@ export const MissionCard = ({
                     </>
                   )}
                   {!(log.flight_track?.positions?.length > 0) && (
-                    <span className="text-xs text-muted-foreground italic">
-                      Ingen posisjonsdata – analyse og ruteeksport er ikke tilgjengelig
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground italic">
+                        {log.source === 'manual'
+                          ? 'Manuelt registrert flytid – ingen loggfil parset.'
+                          : 'Ingen posisjonsdata – analyse og ruteeksport er ikke tilgjengelig.'}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs gap-1"
+                        onClick={() => setUploadLogOpen(true)}
+                      >
+                        <Upload className="h-3 w-3" />
+                        Last opp DJI/ArduPilot-logg
+                      </Button>
+                    </div>
                   )}
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
