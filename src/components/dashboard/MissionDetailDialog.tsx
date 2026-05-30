@@ -709,6 +709,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         });
       }}
     />
+    <UploadDroneLogDialog
+      open={uploadLogOpen}
+      onOpenChange={setUploadLogOpen}
+    />
     </>
   );
 };
