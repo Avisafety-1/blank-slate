@@ -80,6 +80,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [missionFlightLogs, setMissionFlightLogs] = useState<any[] | null>(null);
   const [notamDialogOpen, setNotamDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [uploadLogOpen, setUploadLogOpen] = useState(false);
 
   // Reset cached warnings when mission changes
   useEffect(() => {
