@@ -44,6 +44,7 @@ export const StartTourButton = ({ variant = "icon", className, onBeforeStart }: 
           <DropdownMenuItem
             key={t.id}
             onClick={() => {
+              onBeforeStart?.();
               // Notify any open dialogs (e.g. ProfileDialog) so they close themselves.
               window.dispatchEvent(new CustomEvent('avisafe:tour-starting'));
               // Fallback: dispatch Escape for non-listening dialogs.
