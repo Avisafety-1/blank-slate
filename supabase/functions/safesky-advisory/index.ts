@@ -520,9 +520,7 @@ Deno.serve(async (req) => {
         }
 
         // Cap total to 10 chars (SafeSky callsign limit); trim prefix so prefix+suffix fits.
-        const maxLen = 10;
-        const trimmedPrefix = sanitized.slice(0, Math.max(1, maxLen - suffix.length));
-        callSign = (trimmedPrefix + suffix).slice(0, maxLen);
+        callSign = sanitized + suffix;
         console.log(`Generated callsign: ${callSign} (prefix=${prefix || companyName}, variable=${variable}, suffix=${suffix})`);
       } catch (err) {
         console.warn('Callsign generation failed, using fallback:', err);
