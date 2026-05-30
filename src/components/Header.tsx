@@ -255,7 +255,7 @@ export const Header = () => {
                     {currentLang === 'en' ? 'Norsk' : 'English'}
                   </Button>
                   <div className="my-2 border-t border-border" />
-                  <StartTourButton variant="default" className="justify-start w-full" />
+                  <StartTourButton variant="default" className="justify-start w-full" onBeforeStart={() => setNavOpen(false)} />
                   <div className="mt-auto pt-4 border-t border-border text-center text-xs text-muted-foreground space-y-1">
                     <div>© AviSafe AS</div>
                     <div>
