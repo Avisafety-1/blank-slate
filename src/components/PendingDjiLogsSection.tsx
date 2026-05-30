@@ -153,25 +153,25 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
   const displayedLogs = logs;
 
   return (
-    <div className={`space-y-2 ${expanded ? 'flex-1 flex flex-col min-h-0' : ''}`}>
-      <div className="flex items-center gap-2 flex-wrap">
-        <Clock className="w-4 h-4 text-primary" />
-        <p className="text-sm font-medium">Ventende flylogger fra auto-sync</p>
-        <Badge variant="secondary" className="text-xs">{displayedLogs.length}{hasMore ? "+" : ""}</Badge>
-        <div className="flex items-center gap-1.5 ml-auto">
+    <div className={`space-y-2 min-w-0 w-full max-w-full overflow-x-hidden ${expanded ? 'flex-1 flex flex-col min-h-0' : ''}`}>
+      <div className="flex items-center gap-2 flex-wrap min-w-0">
+        <Clock className="w-4 h-4 text-primary shrink-0" />
+        <p className="text-sm font-medium min-w-0 break-words">Ventende flylogger fra auto-sync</p>
+        <Badge variant="secondary" className="text-xs shrink-0">{displayedLogs.length}{hasMore ? "+" : ""}</Badge>
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
           <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} />
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground -mt-1">
+      <p className="text-[11px] text-muted-foreground -mt-1 break-words">
         Finner du ikke riktig logg? Enkelte loggtyper støttes ikke av auto-sync og må lastes opp manuelt.
       </p>
       {displayedLogs.length === 0 && (
-        <p className="text-xs text-muted-foreground py-1">
+        <p className="text-xs text-muted-foreground py-1 break-words">
           {onlyMine ? "Ingen ventende logger på deg. Skru av «Kun mine» for å se andres." : "Ingen logger til behandling"}
         </p>
       )}
-      <div className={`space-y-1.5 overflow-y-auto ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px]'}`}>
+      <div className={`space-y-1.5 overflow-y-auto overflow-x-hidden min-w-0 max-w-full ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px]'}`}>
         {displayedLogs.map(log => {
           const ownerName = log.ownerName;
           const isArdu = log.source_file_type === 'ardupilot' || log.parsed_result?.source === 'ardupilot';
@@ -223,7 +223,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                   )}
                 </div>
 
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground truncate">
                   {log.flight_date
                     ? format(new Date(log.flight_date), "dd. MMM yyyy HH:mm", { locale: nb })
                     : "Ukjent dato"}
@@ -233,10 +233,10 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                   {log.max_height_m ? ` · ${Math.round(log.max_height_m)}m` : ""}
                 </p>
                 {ownerName && (
-                  <p className="text-[11px] text-muted-foreground">{ownerName}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{ownerName}</p>
                 )}
                 {errorLabel && (
-                  <p className={`text-[11px] mt-0.5 ${isRateLimited ? "text-yellow-600" : "text-destructive"}`}>
+                  <p className={`text-[11px] mt-0.5 break-words ${isRateLimited ? "text-yellow-600" : "text-destructive"}`}>
                     {errorLabel}
                   </p>
                 )}
