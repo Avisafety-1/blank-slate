@@ -1554,7 +1554,10 @@ serve(async (req) => {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
+      max_completion_tokens: 16000,
+      response_format: { type: 'json_object' },
     });
+
 
     let aiResponse: Response | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
