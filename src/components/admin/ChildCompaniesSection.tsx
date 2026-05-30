@@ -191,7 +191,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
     safesky_callsign_propagate: boolean;
     safesky_callsign_prefix: string | null;
-    safesky_callsign_variable: 'counter' | 'drone_registration';
+    safesky_callsign_variable: 'counter' | 'drone_registration' | 'none';
     // parent SORA defaults
     default_buffer_mode: "corridor" | "convexHull";
     default_flight_geography_m: number;
@@ -215,7 +215,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
   const [savingRole, setSavingRole] = useState(false);
   // SafeSky callsign state
   const [callsignPrefix, setCallsignPrefix] = useState("");
-  const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration'>('counter');
+  const [callsignVariable, setCallsignVariable] = useState<'counter' | 'drone_registration' | 'none'>('counter');
   const [callsignPropagate, setCallsignPropagate] = useState(false);
   const [savingCallsign, setSavingCallsign] = useState(false);
   const callsignEditing = useRef(false);
@@ -539,7 +539,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
             safesky_callsign_propagate: parent.safesky_callsign_propagate ?? false,
             safesky_callsign_prefix: parent.safesky_callsign_prefix ?? null,
-            safesky_callsign_variable: ((parent.safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter'),
+            safesky_callsign_variable: ((parent.safesky_callsign_variable as 'counter' | 'drone_registration' | 'none') || 'counter'),
             default_buffer_mode: (parentSora?.default_buffer_mode as "corridor" | "convexHull") || "corridor",
             default_flight_geography_m: parentSora?.default_flight_geography_m ?? 0,
             default_flight_altitude_m: parentSora?.default_flight_altitude_m ?? 30,
@@ -557,7 +557,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setFh2BaseUrl((data as any).flighthub2_base_url || "");
       if (!callsignEditing.current) {
         setCallsignPrefix((data as any).safesky_callsign_prefix ?? "");
-        setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration') || 'counter');
+        setCallsignVariable(((data as any).safesky_callsign_variable as 'counter' | 'drone_registration' | 'none') || 'counter');
         setCallsignPropagate((data as any).safesky_callsign_propagate ?? false);
       }
 
@@ -1808,8 +1808,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
                         <RadioGroup
                           value={csVariable}
-                          onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration'); }}
-                          className="flex flex-col sm:flex-row gap-2"
+                          onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration' | 'none'); }}
+                          className="flex flex-col sm:flex-row gap-2 flex-wrap"
                           disabled={callsignLocked}
                         >
                           <div className="flex items-center gap-1.5">
@@ -1820,12 +1820,16 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                             <RadioGroupItem value="drone_registration" id="cs-drone" disabled={callsignLocked} />
                             <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
                           </div>
+                          <div className="flex items-center gap-1.5">
+                            <RadioGroupItem value="none" id="cs-none" disabled={callsignLocked} />
+                            <Label htmlFor="cs-none" className="text-xs cursor-pointer">Ingen suffiks</Label>
+                          </div>
                         </RadioGroup>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Forhåndsvisning: <span className="font-mono text-foreground">
-                          {((csPrefix.trim() || parentCompanyName || 'avisafe').toLowerCase().replace(/[^a-z0-9]/g, '') || 'avisafe')
-                            + (csVariable === 'drone_registration' ? 'LNABCD' : '01')}
+                          {((csPrefix.trim() || parentCompanyName || 'avisafe').replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe')
+                            + (csVariable === 'drone_registration' ? 'LNABCD' : csVariable === 'none' ? '' : '01')}
                         </span>
                       </div>
                       {!isChildDept && (

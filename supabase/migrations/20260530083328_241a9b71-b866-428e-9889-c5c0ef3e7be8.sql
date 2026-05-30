@@ -1,0 +1,2 @@
+ALTER TABLE public.companies DROP CONSTRAINT IF EXISTS companies_safesky_callsign_variable_check;
+ALTER TABLE public.companies ADD CONSTRAINT companies_safesky_callsign_variable_check CHECK (safesky_callsign_variable IN ('counter','drone_registration','none'));
