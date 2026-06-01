@@ -1,77 +1,15 @@
-Jeg fant dette:
+## Problem
+Mobilnavigasjonen (Sheet i `src/components/Header.tsx`, linje 172-273) bruker `h-full flex flex-col` uten `overflow-y-auto`. På DJI RC Pro-kontrolleren er skjermen så lav at menyinnholdet (Kart, Oppdrag, Ressurser, Dokumenter, Kalender, Hendelser, Status, evt. superadmin-lenker, Driftstatus, Installer, språkbytte, Start tour, footer) blir høyere enn viewport, og innholdet blir kuttet uten mulighet for å scrolle.
 
-1. Eksakt upload-path i `ProfileDialog.tsx`
-   - Koden bruker:
-     ```ts
-     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-     supabase.storage.from('avatars').upload(fileName, avatarFile, ...)
-     ```
-   - Faktisk path er altså:
-     ```text
-     {user.id}/{timestamp}.{ext}
-     ```
-   - Den er ikke `avatars/{user.id}/...`; `avatars` er bucket-navnet, ikke en del av `name` i `storage.objects`.
+## Endring
+Én målrettet UI-endring i `src/components/Header.tsx` på `SheetPrimitive.Content` (linje 172-173):
 
-2. `upsert: true`
-   - Ja, upload bruker fortsatt:
-     ```ts
-     upsert: true
-     ```
-   - Siden filnavnet allerede er unikt med `user.id/timestamp.ext`, er dette unødvendig.
-   - Dette gir også request-headeren `x-upsert: true`, som kan trigge Storage til en upsert-flyt i stedet for ren insert.
+1. Legg til `overflow-y-auto overscroll-contain` på selve panelet så hele menyen blir scrollbar når den er høyere enn skjermen.
+2. Fjern `mt-auto` fra footer-div (linje 259) — `mt-auto` krever at containeren har ledig plass, og når innholdet overskrider høyden hindrer det riktig scroll-oppførsel. Footer får i stedet en vanlig `pt-4 mt-4` slik at den følger med innholdet og scroller med.
+3. Behold `pt-10` (plass til lukkeknapp øverst) og legg til litt `pb-4` for pusterom nederst.
 
-3. Gjeldende Storage-policyer for `avatars`
-   - Live policyene er:
-     ```text
-     INSERT: Users can upload their own avatar
-       TO authenticated
-       WITH CHECK bucket_id = 'avatars'
-       AND storage.foldername(name)[1] = auth.uid()::text
+Ingen logikk-, rute- eller komponentstruktur-endringer. Kun klassesetting på to elementer i Sheet-panelet.
 
-     UPDATE: Users can update their own avatar
-       TO authenticated
-       USING/WITH CHECK bucket_id = 'avatars'
-       AND storage.foldername(name)[1] = auth.uid()::text
-
-     DELETE: Users can delete their own avatar
-       TO authenticated
-       USING bucket_id = 'avatars'
-       AND storage.foldername(name)[1] = auth.uid()::text
-     ```
-   - Det finnes ingen restriktive Storage-policyer som blokkerer dette.
-   - Bucketen `avatars` er public, uten filstørrelse- eller MIME-begrensning.
-
-4. Bruker-ID for `support@avisafe.no`
-   - `support@avisafe.no` har profile ID:
-     ```text
-     6ac7537b-be5e-4256-b4b6-c181143e39e9
-     ```
-   - Feilloggen viste upload-path:
-     ```text
-     6ac7537b-be5e-4256-b4b6-c181143e39e9/1780157195519.jpeg
-     ```
-   - `storage.foldername(...) [1]` gir:
-     ```text
-     6ac7537b-be5e-4256-b4b6-c181143e39e9
-     ```
-   - Pathen matcher altså policyen og riktig bruker-ID.
-
-Konklusjon:
-- RLS-policyene og path-strukturen matcher.
-- Det konkrete avviket jeg finner er at frontend fortsatt sender `upsert: true` selv om filnavnet er unikt.
-
-Plan for minste nødvendige endring:
-
-1. Endre kun `ProfileDialog.tsx`
-   - Fjern `upsert: true` fra `.upload(...)` for avatarer.
-   - Behold pathen `${user.id}/${Date.now()}.${fileExt}`.
-   - Behold eksisterende `contentType`.
-
-2. Ikke endre Storage-policyer nå
-   - INSERT/UPDATE/DELETE-policyene matcher faktisk upload-path.
-   - Å åpne policyene bredere er ikke nødvendig og ville redusere sikkerheten.
-
-3. Verifisering etter endringen
-   - Bekrefte at koden ikke lenger sender `x-upsert: true`.
-   - Be deg prøve opplasting igjen for `support@avisafe.no`.
-   - Hvis det fortsatt feiler, undersøker vi neste lag: Supabase Storage sin interne upsert/owner-håndtering eller en session-token mismatch i klienten.
+## Verifisering
+- Sjekk i preview på 360×571 (DJI RC Pro-lignende) at hamburgermenyen kan scrolles og at alle elementer inkludert footer er tilgjengelige.
+- Sjekk på desktop og standard mobil at oppførselen er uendret når innholdet får plass.

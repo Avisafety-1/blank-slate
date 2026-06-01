@@ -170,7 +170,7 @@ export const Header = () => {
               <SheetPortal>
                 <SheetOverlay className="bg-transparent" />
                 <SheetPrimitive.Content
-                  className="fixed inset-y-0 right-0 z-[1200] h-full w-72 sm:max-w-sm border-l border-border bg-popover text-popover-foreground p-4 pt-10 shadow-2xl flex flex-col gap-1 transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right data-[state=closed]:duration-300 data-[state=open]:duration-300"
+                  className="fixed inset-y-0 right-0 z-[1200] h-full w-72 sm:max-w-sm border-l border-border bg-popover text-popover-foreground p-4 pt-10 pb-4 shadow-2xl flex flex-col gap-1 overflow-y-auto overscroll-contain transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right data-[state=closed]:duration-300 data-[state=open]:duration-300"
                   onPointerDownOutside={(e) => {
                     if (document.body.getAttribute('data-tour-id') === 'system-overview') e.preventDefault();
                   }}
