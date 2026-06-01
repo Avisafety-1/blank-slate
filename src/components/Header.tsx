@@ -256,7 +256,7 @@ export const Header = () => {
                   </Button>
                   <div className="my-2 border-t border-border" />
                   <StartTourButton variant="default" className="justify-start w-full" onBeforeStart={() => setNavOpen(false)} />
-                  <div className="mt-auto pt-4 border-t border-border text-center text-xs text-muted-foreground space-y-1">
+                  <div className="mt-4 pt-4 border-t border-border text-center text-xs text-muted-foreground space-y-1">
                     <div>© AviSafe AS</div>
                     <div>
                       <a href="mailto:kontakt@avisafe.no" className="hover:text-primary">kontakt@avisafe.no</a>
