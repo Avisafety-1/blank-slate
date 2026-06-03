@@ -2116,6 +2116,18 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         flyvetimer={drone?.flyvetimer || 0}
       />
 
+      {drone && (
+        <MoveDroneDialog
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          drone={drone as any}
+          onTransferred={() => {
+            onDroneUpdated();
+            onOpenChange(false);
+          }}
+        />
+      )}
+
       {drone?.sjekkliste_id && (
         <ChecklistExecutionDialog
           open={checklistDialogOpen}
