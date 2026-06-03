@@ -892,16 +892,31 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             <span className="truncate">{isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}</span>
           </DialogTitle>
           {!isEditing && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              data-tour="drone-detail-logbok"
-              onClick={() => setLogbookOpen(true)}
-              className="w-full mt-2"
-            >
-              <Book className="w-4 h-4 mr-2" />
-              Loggbok
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                data-tour="drone-detail-logbok"
+                onClick={() => setLogbookOpen(true)}
+                className="flex-1"
+              >
+                <Book className="w-4 h-4 mr-2" />
+                Loggbok
+              </Button>
+              {isAdmin && !isSharedFromParent && drone?.company_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMoveOpen(true)}
+                  className="flex-1"
+                >
+                  Flytt til annen avdeling
+                </Button>
+              )}
+            </div>
+          )}
+          {false && (
+            <Button variant="outline" size="sm" />
           )}
           {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
             <p className="text-xs text-muted-foreground mt-1">
