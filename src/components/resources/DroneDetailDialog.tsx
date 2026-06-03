@@ -915,9 +915,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               )}
             </div>
           )}
-          {false && (
-            <Button variant="outline" size="sm" />
-          )}
           {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
             <p className="text-xs text-muted-foreground mt-1">
               ⚠️ Status påvirket av: {affectedItems.join(", ")}
