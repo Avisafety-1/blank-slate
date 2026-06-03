@@ -2105,6 +2105,61 @@ export type Database = {
         }
         Relationships: []
       }
+      drone_transfers: {
+        Row: {
+          drone_id: string
+          from_company_id: string
+          id: string
+          moved_resources: Json
+          note: string | null
+          to_company_id: string
+          transferred_at: string
+          transferred_by: string | null
+        }
+        Insert: {
+          drone_id: string
+          from_company_id: string
+          id?: string
+          moved_resources?: Json
+          note?: string | null
+          to_company_id: string
+          transferred_at?: string
+          transferred_by?: string | null
+        }
+        Update: {
+          drone_id?: string
+          from_company_id?: string
+          id?: string
+          moved_resources?: Json
+          note?: string | null
+          to_company_id?: string
+          transferred_at?: string
+          transferred_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_transfers_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_transfers_from_company_id_fkey"
+            columns: ["from_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_transfers_to_company_id_fkey"
+            columns: ["to_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drones: {
         Row: {
           aktiv: boolean
@@ -7810,6 +7865,15 @@ export type Database = {
       touch_fh2_webhook_received: {
         Args: { p_company_id: string }
         Returns: undefined
+      }
+      transfer_drone: {
+        Args: {
+          _actions: Json
+          _drone_id: string
+          _note: string
+          _to_company_id: string
+        }
+        Returns: string
       }
       try_parse_uuid: { Args: { _text: string }; Returns: string }
       unlockrows: { Args: { "": string }; Returns: number }

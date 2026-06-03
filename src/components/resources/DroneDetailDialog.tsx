@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
+import { MoveDroneDialog } from "./MoveDroneDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -105,6 +106,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [linkedDocuments, setLinkedDocuments] = useState<any[]>([]);
   const [documentPickerOpen, setDocumentPickerOpen] = useState(false);
@@ -890,16 +892,28 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             <span className="truncate">{isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}</span>
           </DialogTitle>
           {!isEditing && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              data-tour="drone-detail-logbok"
-              onClick={() => setLogbookOpen(true)}
-              className="w-full mt-2"
-            >
-              <Book className="w-4 h-4 mr-2" />
-              Loggbok
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                data-tour="drone-detail-logbok"
+                onClick={() => setLogbookOpen(true)}
+                className="flex-1"
+              >
+                <Book className="w-4 h-4 mr-2" />
+                Loggbok
+              </Button>
+              {isAdmin && !isSharedFromParent && drone?.company_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMoveOpen(true)}
+                  className="flex-1"
+                >
+                  Flytt til annen avdeling
+                </Button>
+              )}
+            </div>
           )}
           {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
             <p className="text-xs text-muted-foreground mt-1">
@@ -2101,6 +2115,18 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         droneModell={drone?.modell || ""}
         flyvetimer={drone?.flyvetimer || 0}
       />
+
+      {drone && (
+        <MoveDroneDialog
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          drone={drone as any}
+          onTransferred={() => {
+            onDroneUpdated();
+            onOpenChange(false);
+          }}
+        />
+      )}
 
       {drone?.sjekkliste_id && (
         <ChecklistExecutionDialog
