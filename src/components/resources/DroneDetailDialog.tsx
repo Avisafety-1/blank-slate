@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
 import { AddPersonnelToDroneDialog } from "./AddPersonnelToDroneDialog";
 import { DroneLogbookDialog } from "./DroneLogbookDialog";
+import { MoveDroneDialog } from "./MoveDroneDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
 import { useTerminology } from "@/hooks/useTerminology";
