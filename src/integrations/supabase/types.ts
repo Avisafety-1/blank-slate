@@ -2895,6 +2895,97 @@ export type Database = {
         }
         Relationships: []
       }
+      fh2_airspace_feed_config: {
+        Row: {
+          api_key_encrypted: string | null
+          api_key_prefix: string | null
+          company_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          last_request_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          api_key_prefix?: string | null
+          company_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_request_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          api_key_prefix?: string | null
+          company_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_request_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fh2_airspace_feed_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fh2_airspace_feed_log: {
+        Row: {
+          body_preview: string | null
+          company_id: string | null
+          created_at: string
+          headers: Json | null
+          id: number
+          matched_key: boolean
+          method: string
+          path: string
+          query: string | null
+          remote_ip: string | null
+          status_returned: number | null
+        }
+        Insert: {
+          body_preview?: string | null
+          company_id?: string | null
+          created_at?: string
+          headers?: Json | null
+          id?: number
+          matched_key?: boolean
+          method: string
+          path: string
+          query?: string | null
+          remote_ip?: string | null
+          status_returned?: number | null
+        }
+        Update: {
+          body_preview?: string | null
+          company_id?: string | null
+          created_at?: string
+          headers?: Json | null
+          id?: number
+          matched_key?: boolean
+          method?: string
+          path?: string
+          query?: string | null
+          remote_ip?: string | null
+          status_returned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fh2_airspace_feed_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fh2_credential_audit: {
         Row: {
           action: string
@@ -7158,6 +7249,10 @@ export type Database = {
       is_avisafe_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
+      lookup_fh2_feed_company: {
+        Args: { p_enc_key: string; p_key: string }
+        Returns: string
+      }
       match_manual_chunks: {
         Args: {
           p_manual_id: string
@@ -7267,6 +7362,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_fh2_feed_key: {
+        Args: { p_company_id: string; p_enc_key: string; p_key: string }
+        Returns: undefined
       }
       save_fh2_token: {
         Args: { p_company_id: string; p_key: string; p_token: string }
@@ -7861,6 +7960,10 @@ export type Database = {
       st_wrapx: {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
+      }
+      touch_fh2_feed_request: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
       touch_fh2_webhook_received: {
         Args: { p_company_id: string }
