@@ -243,26 +243,44 @@ Deno.serve(async (req) => {
       if (secretsErr) throw secretsErr;
       const rows = (secretRows ?? []) as Array<{ company_id: string; secret: string }>;
 
-      let triedCandidates: { name: string; sig: string; stringToSign: string }[] = [];
+      let triedSummary: { variant: string; secretForm: string; encoding: string; sig: string }[] = [];
+      let lastStringToSign = "";
       let canonical = "";
+      let matchedInfo: { variant: string; secretForm: string; encoding: string } | null = null;
+
       for (const row of rows) {
-        const { candidates } = await buildSignatures(
+        const { candidates, canonicalRequest } = await buildAllCandidates(
           row.secret, req.method, rawPath, url, req, parts, bodyText,
         );
-        const hit = candidates.find((c) =>
-          constantTimeEqual(c.sig.toLowerCase(), parts.signature.toLowerCase())
-        );
+        canonical = canonicalRequest;
+        // base64 er case-sensitiv; hex tåler case-insensitiv sammenligning
+        const recv = parts.signature;
+        const recvLower = recv.toLowerCase();
+        const hit = candidates.find((c) => {
+          if (c.encoding === "hex") return constantTimeEqual(c.sig.toLowerCase(), recvLower);
+          return constantTimeEqual(c.sig, recv);
+        });
         if (hit) {
           companyId = row.company_id;
           matched = true;
           failureReason = "ok";
+          matchedInfo = { variant: hit.variant, secretForm: hit.secretForm, encoding: hit.encoding };
+          diagnostic = JSON.stringify({
+            reason: "ok",
+            matched: matchedInfo,
+            secret_prefix: row.secret.slice(0, 4),
+            secret_length: row.secret.length,
+          }).slice(0, 1900);
           break;
         }
-        // Behold siste forsøk for diagnostikk
-        triedCandidates = candidates.map((c) => ({
-          name: c.name, sig: c.sig, stringToSign: c.stringToSign,
+        // Behold kompakt diagnostikk fra siste forsøk
+        triedSummary = candidates.map((c) => ({
+          variant: c.variant,
+          secretForm: c.secretForm,
+          encoding: c.encoding,
+          sig: c.sig.slice(0, 24),
         }));
-        canonical = candidates[0]?.canonical ?? "";
+        lastStringToSign = candidates[0]?.stringToSign ?? "";
       }
 
       if (!matched) {
@@ -279,14 +297,18 @@ Deno.serve(async (req) => {
           diagnostic = JSON.stringify({
             reason: "signature_mismatch",
             tried_secrets_count: rows.length,
+            tried_candidates_count: triedSummary.length,
             received_signature: parts.signature,
+            received_signature_length: parts.signature.length,
             received_credential_prefix: parts.keyId.slice(0, 6),
             received_credential_length: parts.keyId.length,
-            tried_variants: triedCandidates,
-            canonicalRequest: canonical,
+            sample_string_to_sign: lastStringToSign.slice(0, 300),
+            canonicalRequest: canonical.slice(0, 500),
+            tried: triedSummary,
           }).slice(0, 1900);
         }
       }
+
     } catch (e) {
       console.error("verify error", e);
       failureReason = "verify_exception";
