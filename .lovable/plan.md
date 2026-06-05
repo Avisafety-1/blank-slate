@@ -1,72 +1,78 @@
-## Problem
+## Bakgrunn
 
-Vi har blandet sammen to forskjellige FH2-funksjoner:
+DJI FlightHub 2 kalte `-feed/v1/uav` to ganger etter forrige deploy (se `fh2_airspace_feed_log` id 2 og 3). Authorization-headeren er:
 
-- **Airspace Management** (push fra DJI → oss): DJI sender drone-tracks fra organisasjonens egne droner til vår webhook via HMAC-signert POST. Dette har vi implementert i `flighthub2-airspace-webhook` og det fungerer.
-- **Third-Party Airspace Data Configuration** (pull fra DJI ← oss): Skjermbildet du viser. Her henter FH2 **sivil flytrafikk** fra vår URL for å vise annen lufttrafikk i FH2-kartet. Dette er en helt annen kontrakt — DJI kaller GET med en API-key, ikke HMAC-signert POST.
+```
+SS-HMAC Credential=…, SignedHeaders=…, Signature=…
+```
 
-Vi gjenbruker i dag `flighthub2-airspace-webhook` til å svare på `GET /v1/uav` med tom liste. Det er en gjetning som "går igjennom" Verify, men vi vet ikke:
-- Hvilken path DJI faktisk treffer
-- Hvilke query-parametre (lat/lng/radius? bbox? zoom?)
-- Hvilket auth-headerformat (Bearer? X-API-Key? query-param?)
-- Hvilket JSON-format svaret må ha for at trafikk skal vises i FH2
+Dette er FH2 sin AWS-SigV4-lignende HMAC-protokoll, ikke en plain Bearer-token. Dagens `extractKey()` ser kun etter `Bearer`, `x-api-key`, `apikey` og query-parametre — derfor 401. Det er ingen feil med deploy eller URL; bare auth-parsing som mangler.
 
-Derfor ser Tensio ingen sivil trafikk i FH2 — vi sender bare `[]`.
+`-webhook` ga 200 på `/v1/uav` fordi den funksjonen har en åpen fallback — det er ikke en ekte verifisering og må ikke brukes som feed-endepunkt i FH2.
 
-## Løsning: Logge-først, bygge etterpå
+## Mål
 
-### Steg 1 — Ny edge function `flighthub2-airspace-feed`
+Få Verify mot `https://pmucsvrypogtttrajqxq.functions.supabase.co/flighthub2-airspace-feed` til å returnere 200 med en gyldig (men foreløpig tom) trafikkfeed, slik at Tensio kan ferdigstille koblingen og vi etterpå kan bygge SafeSky/BarentsWatch → DJI mapping.
 
-Separat funksjon (ikke gjenbruke webhook). `verify_jwt = false`. Aksepterer **alle** metoder og paths under funksjonsroten.
+## Trinn
 
-Oppførsel:
-1. Logger hver request fullstendig til ny tabell `fh2_airspace_feed_log` (metode, full path, query-string, alle headers, body, remote IP, timestamp).
-2. Henter API-key fra: `Authorization: Bearer …`, `X-API-Key`, eller query-param `api_key` / `apikey` / `key` — sjekker hver kandidat mot lagret nøkkel (konstanttidssjekk).
-3. Hvis nøkkel matcher → returnerer `200 OK` med både `{"status":"ok"}` og en tom array-versjon avhengig av path (vi prøver begge varianter inntil vi vet hva DJI forventer).
-4. Hvis nøkkel mangler/feil → `401` (logges også).
-5. Health-endepunkt: `GET /` og `GET /health` returnerer `OK` uten auth-krav, slik at vi kan teste at funksjonen lever.
+### 1. Diagnose-trinn (én ekstra Verify)
 
-### Steg 2 — Database
+Midlertidig logge **full** Authorization-header (i stedet for masket) til `fh2_airspace_feed_log` slik at vi ser nøyaktig hva DJI sender:
 
-Ny tabell `public.fh2_airspace_feed_log`:
-- `company_id` (nullable inntil vi vet hvordan vi mapper)
-- `method`, `path`, `query`, `headers` (jsonb), `body_preview` (text, første 2000 tegn), `remote_ip`, `status_returned`, `matched_key` (bool), `created_at`
-- RLS: kun admin/superadmin i selskap kan lese egne rader; service_role full tilgang.
+```
+SS-HMAC Credential=<keyId>/<date>/<region>/<service>/ss_request,
+        SignedHeaders=host;x-ss-date;…,
+        Signature=<hex>
+```
 
-Ny tabell `public.fh2_airspace_feed_config`:
-- `company_id` (unique), `enabled`, `api_key_encrypted` (pgp_sym_encrypt med `FH2_ENCRYPTION_KEY`), `created_at`, `updated_at`, `last_request_at`.
-- RLS: admin i selskapet kan lese/oppdatere.
-- RPC `save_fh2_feed_key(p_company_id, p_key, p_enc_key)` og `get_fh2_feed_key_by_lookup(p_key_candidate, p_enc_key) returns company_id` for å slå opp uten å eksponere alle nøkler.
+Be Tensio trykke Verify én gang til, lese ut én rad, og deretter re-maskere headeren igjen.
 
-### Steg 3 — UI
+### 2. Parse SS-HMAC
 
-I `FH2AirspaceWebhookSection` (eller ny seksjon `FH2AirspaceFeedSection`):
-- Vis funksjons-URL: `https://pmucsvrypogtttrajqxq.functions.supabase.co/flighthub2-airspace-feed`
-- Generér tilfeldig API-key (32–48 tegn), vis én gang, lagres kryptert.
-- Toggle: Aktiver feed.
-- Liste over de siste 20 loggrad-radene (metode + path + status + tid) så Tensio ser hva DJI faktisk spør om når de trykker Verify.
+Implementere parser i `flighthub2-airspace-feed/index.ts`:
 
-### Steg 4 — Verifiser med DJI
+- Plukk ut `Credential`, `SignedHeaders`, `Signature` fra Authorization-headeren.
+- Første del av `Credential` (før første `/`) er **keyId** — det er den nøkkelen Tensio limte inn i FH2.
+- Bruk `lookup_fh2_feed_company` med keyId for å finne `company_id` og hente lagret secret.
 
-Etter at Tensio limer inn URL + API-key og trykker **Verify**:
-1. Vi leser `fh2_airspace_feed_log` og ser eksakt request-format.
-2. Da bygger vi riktig JSON-feed (sannsynligvis liste over fartøy med `lat`, `lon`, `alt`, `callsign`, `course`, `speed`, `type`, `timestamp`) som henter fra `safesky_traffic_cache` / `barentswatch_ais` filtrert til radius rundt forespurt punkt.
+### 3. Verifiser HMAC
 
-### Steg 5 — Bygg riktig feed (oppfølgings-PR)
+Bygg canonical request etter samme oppskrift som AWS SigV4 (eller DJI sin variant — bekreftes via headere fra trinn 1):
 
-Når vi vet kontrakten:
-- Mapper sivil trafikk (SafeSky + evt. Avinor) inn i DJIs format.
-- Cache 5–15 s per (lat,lng,radius)-celle for å unngå rate-limits.
-- Behold den nye loggetabellen for fremtidig debugging, men logg bare avviste / sjeldne requests.
+```
+method \n
+canonical_path \n
+canonical_query \n
+canonical_headers \n
+signed_headers \n
+hashed_payload
+```
 
-## Hva som IKKE endres
+Signer med stored secret, sammenlign konstant-tid mot `Signature`. Match → `matched_key = true`, status 200.
 
-- `flighthub2-airspace-webhook` (push-mottak fra DJI) er korrekt og rørt ikke.
-- `flighthub2-proxy` (vår klient mot FH2 OpenAPI v0.1) er ikke berørt.
-- Eksisterende posisjonslagring (`flighthub2_positions`) brukes som før.
+### 4. Returner tom feed på riktig format
+
+Beholde dagens svar:
+
+```json
+{ "code": 0, "message": "success", "data": [] }
+```
+
+Hvis FH2 forventer noe annet (vises i feilmelding etter Verify), justeres svaret.
+
+### 5. Etter Verify = grønn
+
+Bytte ut tom `data: []` med faktisk mapping fra SafeSky-beacons + BarentsWatch ADS-B innenfor `lat/lng/radius` fra query — dette gjør vi i en oppfølgende loop.
 
 ## Teknisk
 
-- `verify_jwt = false` settes i `supabase/config.toml` for `flighthub2-airspace-feed`.
-- Krypteringsnøkkel: bruker eksisterende `FH2_ENCRYPTION_KEY` — ingen ny secret nødvendig.
-- Loggetabellen får automatisk `DELETE` etter 14 dager via en `cron` cleanup-jobb (samme mønster som `audit_log`).
+- Fil: `supabase/functions/flighthub2-airspace-feed/index.ts`
+- Hjelpemigrasjon (kun hvis nødvendig): utvide `lookup_fh2_feed_company` til å returnere både `company_id` og dekryptert secret i én call, eller legge til ny RPC `get_fh2_feed_secret(p_key_id)` (SECURITY DEFINER, dekrypterer via `pgp_sym_decrypt` med `FH2_ENCRYPTION_KEY`).
+- HMAC: bruk Web Crypto (`crypto.subtle.importKey` + `sign("HMAC", …)`).
+- Logging: behold full request-logging i `fh2_airspace_feed_log` (med masket Authorization etter trinn 1).
+- Ingen frontend-endringer.
+
+## Avhengighet
+
+Trinn 2–4 krever én Verify-runde etter trinn 1 for å bekrefte eksakt canonical-request-format. Uten det blir HMAC-verifiseringen gjettverk.
