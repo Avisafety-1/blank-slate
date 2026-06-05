@@ -63,16 +63,48 @@ async function sha256Hex(s: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function hmacSha256Hex(secret: string, msg: string): Promise<string> {
+function bytesToHex(b: Uint8Array): string {
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+function bytesToBase64(b: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s);
+}
+
+function tryBase64Decode(s: string): Uint8Array | null {
+  try {
+    let t = s.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = t.length % 4;
+    if (pad) t += "=".repeat(4 - pad);
+    if (!/^[A-Za-z0-9+/]+=*$/.test(t)) return null;
+    const bin = atob(t);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+function tryHexDecode(s: string): Uint8Array | null {
+  if (!/^[0-9a-fA-F]+$/.test(s) || s.length % 2 !== 0) return null;
+  const out = new Uint8Array(s.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.substr(i * 2, 2), 16);
+  return out;
+}
+
+async function hmacSha256(keyBytes: Uint8Array, msg: string): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret),
+    keyBytes,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return new Uint8Array(sig);
 }
 
 function canonicalQuery(url: URL): string {
@@ -91,15 +123,23 @@ function constantTimeEqual(a: string, b: string): boolean {
   return r === 0;
 }
 
-async function buildSignatures(
-  secret: string,
+interface Candidate {
+  variant: string;
+  secretForm: "raw" | "base64" | "hex";
+  encoding: "hex" | "base64" | "base64nopad";
+  sig: string;
+  stringToSign: string;
+}
+
+async function buildAllCandidates(
+  secretStr: string,
   method: string,
   path: string,
   url: URL,
   req: Request,
   parts: SsHmacParts,
   bodyText: string | null,
-): Promise<{ candidates: { name: string; sig: string; stringToSign: string; canonical: string }[] }> {
+): Promise<{ candidates: Candidate[]; canonicalRequest: string }> {
   const cq = canonicalQuery(url);
   const payloadHash = await sha256Hex(bodyText ?? "");
   const xSsDate = req.headers.get("x-ss-date") ?? "";
@@ -121,8 +161,7 @@ async function buildSignatures(
   ].join("\n");
   const crHash = await sha256Hex(canonicalRequest);
 
-  // Prøv flere varianter — DJIs nøyaktige string-to-sign er udokumentert.
-  const variants = [
+  const variants: { name: string; s: string }[] = [
     { name: "alg|date|nonce|crHash", s: `${alg}\n${xSsDate}\n${xSsNonce}\n${crHash}` },
     { name: "alg|date|crHash", s: `${alg}\n${xSsDate}\n${crHash}` },
     { name: "alg|date|nonce|cr", s: `${alg}\n${xSsDate}\n${xSsNonce}\n${canonicalRequest}` },
@@ -130,16 +169,26 @@ async function buildSignatures(
     { name: "alg|credential|date|nonce|crHash", s: `${alg}\n${parts.credential}\n${xSsDate}\n${xSsNonce}\n${crHash}` },
   ];
 
-  const candidates = [];
-  for (const v of variants) {
-    candidates.push({
-      name: v.name,
-      sig: await hmacSha256Hex(secret, v.s),
-      stringToSign: v.s,
-      canonical: canonicalRequest,
-    });
+  const secretForms: { form: "raw" | "base64" | "hex"; bytes: Uint8Array | null }[] = [
+    { form: "raw", bytes: new TextEncoder().encode(secretStr) },
+    { form: "base64", bytes: tryBase64Decode(secretStr) },
+    { form: "hex", bytes: tryHexDecode(secretStr) },
+  ];
+
+  const candidates: Candidate[] = [];
+  for (const sf of secretForms) {
+    if (!sf.bytes) continue;
+    for (const v of variants) {
+      const macBytes = await hmacSha256(sf.bytes, v.s);
+      const hex = bytesToHex(macBytes);
+      const b64 = bytesToBase64(macBytes);
+      const b64nopad = b64.replace(/=+$/, "");
+      candidates.push({ variant: v.name, secretForm: sf.form, encoding: "hex", sig: hex, stringToSign: v.s });
+      candidates.push({ variant: v.name, secretForm: sf.form, encoding: "base64", sig: b64, stringToSign: v.s });
+      candidates.push({ variant: v.name, secretForm: sf.form, encoding: "base64nopad", sig: b64nopad, stringToSign: v.s });
+    }
   }
-  return { candidates };
+  return { candidates, canonicalRequest };
 }
 
 Deno.serve(async (req) => {
