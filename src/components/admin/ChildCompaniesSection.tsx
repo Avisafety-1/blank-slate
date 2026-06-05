@@ -2166,6 +2166,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
                   {/* FH2 Airspace Management webhook (real-time live positions) */}
                   <FH2AirspaceWebhookSection />
+
+                  {/* FH2 Third-Party Airspace Data feed (sivil trafikk pull fra DJI) */}
+                  <FH2AirspaceFeedSection />
                 </div>
               )}
             </div>
