@@ -187,25 +187,16 @@ Deno.serve(async (req) => {
   if (parts && ENC_KEY) {
     failureReason = "no_match_for_credential";
     try {
-      // keyId i Credential == den genererte api-nøkkelen (vi bruker den
-      // som BÅDE id og HMAC-secret siden DJI bare har ett "API Key"-felt).
       const { data: cid } = await supabase.rpc("lookup_fh2_feed_company", {
         p_key: parts.keyId,
         p_enc_key: ENC_KEY,
       });
       if (cid) {
         companyId = cid as string;
-        const secret = parts.keyId; // samme som det DJI signerte med
+        const secret = parts.keyId;
         const { candidates } = await buildSignatures(
-          secret,
-          req.method,
-          rawPath,
-          url,
-          req,
-          parts,
-          bodyText,
+          secret, req.method, rawPath, url, req, parts, bodyText,
         );
-        // Sjekk om noen variant matcher
         const hit = candidates.find((c) =>
           constantTimeEqual(c.sig.toLowerCase(), parts.signature.toLowerCase())
         );
@@ -214,26 +205,53 @@ Deno.serve(async (req) => {
           failureReason = "ok";
         } else {
           failureReason = "signature_mismatch";
-          // Logg diagnostikk så vi kan finne riktig kanonisk format
           diagnostic = JSON.stringify({
+            reason: "signature_mismatch",
             received_signature: parts.signature,
             tried: candidates.map((c) => ({
-              name: c.name,
-              computed: c.sig,
-              stringToSign: c.stringToSign,
+              name: c.name, computed: c.sig, stringToSign: c.stringToSign,
             })),
             canonicalRequest: candidates[0].canonical,
           }).slice(0, 1900);
         }
+      } else {
+        let activeCount = 0;
+        let anyPrefixes: string[] = [];
+        try {
+          const { data: cfgRows } = await supabase
+            .from("fh2_airspace_feed_config")
+            .select("api_key_prefix, enabled")
+            .eq("enabled", true);
+          activeCount = cfgRows?.length ?? 0;
+          anyPrefixes = (cfgRows ?? [])
+            .map((r: { api_key_prefix: string | null }) => r.api_key_prefix ?? "")
+            .filter(Boolean).slice(0, 5);
+        } catch { /* noop */ }
+        diagnostic = JSON.stringify({
+          reason: "no_match_for_credential",
+          hint: activeCount === 0
+            ? "Ingen aktive feed-nøkler lagret. Gå til Admin → Mitt selskap → FlightHub 2 Airspace Data og trykk Generér, lim deretter nøkkelen inn i FH2 som API Key."
+            : "Credential matcher ingen lagret nøkkel. Pass på at nøkkelen i FH2 er nøyaktig den som ble vist da du trykket Generér.",
+          received_credential_prefix: parts.keyId.slice(0, 6),
+          received_credential_length: parts.keyId.length,
+          active_feed_configs: activeCount,
+          known_prefixes: anyPrefixes,
+        }).slice(0, 1900);
       }
     } catch (e) {
       console.error("verify error", e);
       failureReason = "verify_exception";
+      diagnostic = JSON.stringify({ reason: "verify_exception", error: String(e) }).slice(0, 1900);
     }
   } else if (!parts) {
     failureReason = "auth_parse_failed";
+    diagnostic = JSON.stringify({
+      reason: "auth_parse_failed",
+      received_auth_header: auth ? auth.slice(0, 80) : null,
+    }).slice(0, 1900);
   } else if (!ENC_KEY) {
     failureReason = "missing_enc_key";
+    diagnostic = JSON.stringify({ reason: "missing_enc_key" });
   }
 
   const status = matched ? 200 : 401;
