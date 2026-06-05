@@ -903,16 +903,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <Book className="w-4 h-4 mr-2" />
                 Loggbok
               </Button>
-              {isAdmin && !isSharedFromParent && drone?.company_id && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setMoveOpen(true)}
-                  className="flex-1"
-                >
-                  Flytt til annen avdeling
-                </Button>
-              )}
             </div>
           )}
           {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
@@ -2019,6 +2009,25 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               onToggleAll={deptVis.handleToggleAll}
               allLabel="Alle avdelinger"
             />
+          </div>
+        )}
+
+        {isEditing && isAdmin && !isSharedFromParent && drone?.company_id && (
+          <div className="border-t border-border pt-3">
+            <Label className="text-sm font-medium mb-2 block">Flytt drone</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMoveOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <ArrowRightLeft className="w-4 h-4 mr-2" />
+              Flytt til annen avdeling
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              Flytt drona til en annen avdeling i samme hierarki. Velg hva som skal følge med.
+            </p>
           </div>
         )}
 
