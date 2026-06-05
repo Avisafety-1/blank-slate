@@ -1,42 +1,39 @@
-## Problem
+## Rotårsak
 
-Verification feiler fordi:
+FH2 signerer HMAC mot URL-en de fikk: `https://pmucsvrypogtttrajqxq.functions.supabase.co/flighthub2-airspace-feed`.
+Det betyr at i kanonisk request bruker FH2:
+- `host: pmucsvrypogtttrajqxq.functions.supabase.co`
 
-1. **Encoding-mismatch:** FH2 sender `Signature` som **base64** (`UzfRoPecDk7BgCYuNxBUhUMQ44xUOYdjCfSrDvnrOfw=`, 44 tegn med padding = 32 bytes SHA-256). Edge-funksjonen vår genererer kandidatene i **hex** (64 tegn). De vil aldri matche, uansett om secret eller string-to-sign er korrekt.
-2. **Secret-tolkning ukjent:** Vi vet ikke om FH2 bruker API-nøkkelen som rå ASCII, base64-dekodet, eller hex-dekodet bytes.
+Men Supabase sin edge-proxy omskriver host-headeren før forespørselen når vår funksjon, så vi leser `host: edge-runtime.supabase.com` og putter feil host inn i kanonisk request. Det gir signaturen vår en helt annen hash enn FH2 sin.
 
-Loggen viser at vår lagrede nøkkel (40 tegn, prefix `QjrMVl`) brukes mot FH2-keyId `yoyK4RAaP4ta1uTgDsrucg/v1`. FH2 bekrefter at det kun finnes ÉN nøkkel å lime inn, så denne nøkkelen ER HMAC-secret.
-
-## Endringer
+## Endring
 
 ### `supabase/functions/flighthub2-airspace-feed/index.ts`
 
-**1. Sammenlign både base64 og hex**
-- I `verify()`-loopen: for hver kandidat, beregn både hex og base64 (med og uten padding) av HMAC-resultatet, og sammenlign mot `parts.signature` i begge formater.
-- Behold constant-time compare.
+**1. Overstyr host-verdien i kanonisk request**
 
-**2. Prøv secret i flere former**
-For hver aktiv `(company_id, secret)` fra `get_active_fh2_feed_secrets`, prøv HMAC med secret-bytene tolket som:
-- (a) UTF-8/ASCII bytes av strengen (slik vi gjør nå)
-- (b) base64-dekodet til bytes (hvis strengen er gyldig base64)
-- (c) hex-dekodet til bytes (hvis strengen er gyldig hex)
+I `buildAllCandidates`, når vi bygger `canonicalHeaders`, erstatt verdien for header `host` med den offentlige hostnavnet FH2 ringte. Vi henter denne fra (i prioritert rekkefølge):
+- `x-forwarded-host` header (hvis Supabase setter den)
+- ellers den hardkodede public hostname `<SUPABASE_PROJECT_REF>.functions.supabase.co`, der `SUPABASE_PROJECT_REF` leses fra env-variabel (alt. utledet fra `SUPABASE_URL`).
 
-Det gir 3 secret-varianter × 5 string-to-sign-varianter × 2 encodings = inntil 30 kandidater per request. Første match → 200.
+Andre signed headers (`x-ss-date`, `x-ss-nonce`) er allerede uendret av Supabase.
 
-**3. Bedre logging i `diagnostic`**
-- Hvilken (secret-form, variant, encoding)-kombinasjon som matchet — eller alle som ble prøvd ved mismatch.
-- Behold `tried_variants` men legg til `encoding` (`hex`/`base64`) og `secret_form` (`raw`/`base64`/`hex`) per kandidat.
-- Aldri logg selve secret-en, kun prefix/lengde.
+**2. Behold de 30 kandidatene (raw/base64/hex × 5 varianter × hex/base64/base64nopad)**
+
+Når host nå er korrekt, vil én av variantene matche hvis secret-tolkningen er riktig.
+
+**3. Logging**
+
+Legg til `canonical_host_used` i diagnostic så vi ser hvilken host vi signerte mot ved evt. ny mismatch.
 
 ### Verifisering
 
-Etter deploy: be brukeren trykke "Verify" i FH2 igjen. Tre mulige utfall:
-- **200 success** → vi fant riktig kombinasjon. Lås da kombinasjonen i koden og fjern de andre forsøkene i en oppfølging.
-- **Mismatch fortsatt** → loggen viser alle 30 kandidater. Da må vi enten få tilgang til FH2-dokumentasjonen for nøyaktig string-to-sign-spec, eller sammenligne med deres referanseimplementasjon.
-- **Andre feil (timestamp, nonce, etc.)** → adresseres separat.
+Trykk Verify i FH2 igjen. Forventer 200. Hvis fortsatt mismatch:
+- Logg vil vise hvilken host vi brukte og de første 24 tegnene av kandidat-signaturene
+- Vi vet da om host er problemet eller om secret-format / string-to-sign-variant fortsatt er feil
 
-## Det jeg IKKE endrer nå
+## Det jeg IKKE endrer
 
-- Ingen DB-migrering (RPC `get_active_fh2_feed_secrets` står som den er).
-- Ingen UI-endring (fortsatt ett felt for API-nøkkel — bekreftet riktig).
-- Ingen endring i hvordan nøkkelen lagres/krypteres.
+- Ingen DB-migrering
+- Ingen UI-endring
+- Ingen endring i path-håndtering (path er allerede riktig)
