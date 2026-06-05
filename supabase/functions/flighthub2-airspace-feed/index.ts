@@ -146,9 +146,17 @@ async function buildAllCandidates(
   const xSsNonce = req.headers.get("x-ss-nonce") ?? "";
   const alg = req.headers.get("x-ss-alg") ?? "SS-HMAC-SHA256-V1";
 
+  // Supabase omskriver host-headeren til "edge-runtime.supabase.com" før requesten når oss.
+  // FH2 signerer mot den offentlige funksjons-hostnamen, så vi må overstyre den.
+  const projectRef = (Deno.env.get("SUPABASE_URL") ?? "").match(/https?:\/\/([^.]+)\./)?.[1] ?? "";
+  const publicHost = req.headers.get("x-forwarded-host") ?? `${projectRef}.functions.supabase.co`;
   const canonicalHeaders = parts.signedHeaders
-    .map((h) => `${h}:${(req.headers.get(h) ?? "").trim()}\n`)
+    .map((h) => {
+      const value = h === "host" ? publicHost : (req.headers.get(h) ?? "").trim();
+      return `${h}:${value}\n`;
+    })
     .join("");
+
   const signedHeadersStr = parts.signedHeaders.join(";");
 
   const canonicalRequest = [
