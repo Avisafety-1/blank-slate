@@ -1,27 +1,29 @@
-## Problem
+## Flytt "Flytt til annen avdeling"-knapp til redigeringsmenyen
 
-`public.get_user_visible_company_ids(uuid)` returnerer `uuid[]` (array), ikke en tabell. Migrasjonen brukte:
+### Bakgrunn
+Knappen "Flytt til annen avdeling" ligger i dag i DroneDetailDialog-headeren (ved siden av "Loggbok"), synlig selv når brukeren ikke er i redigeringsmodus. Brukeren ønsker den flyttet inn i redigeringsmenyen, rett under seksjonen "Synlighet for avdelinger".
 
-```sql
-_from_company_id NOT IN (
-  SELECT company_id FROM public.get_user_visible_company_ids(_caller)
-)
-```
+### Endringer
 
-Det er ingen kolonne `company_id` på en array — derav feilen.
+**Fil:** `src/components/resources/DroneDetailDialog.tsx`
 
-## Fiks
+1. **Fjern knappen fra header-området** (linje 906–915)
+   - Fjern `Button` med tekst "Flytt til annen avdeling" fra `!isEditing`-blokken i `DialogHeader`.
+   - Behold "Loggbok"-knappen alene.
 
-Én ny migrasjon: `CREATE OR REPLACE FUNCTION public.transfer_drone(...)` identisk med forrige versjon, men admin-sjekken endres til array-syntaks:
+2. **Legg til knappen i redigeringsmodus** (etter linje 2023)
+   - Etter `DepartmentChecklist`-seksjonen (`isEditing && isAdmin && deptVis.hasDepartments`), legg til en ny seksjon:
+   - Vis kun når `isAdmin && !isSharedFromParent && drone?.company_id`
+   - Styling: `border-t border-border pt-3` med en `Button variant="outline"` som åpner `MoveDroneDialog`
+   - Plassering: rett før `<DialogFooter>`
 
-```sql
-IF NOT _is_superadmin THEN
-  IF NOT _is_admin
-     OR NOT (_from_company_id = ANY (public.get_user_visible_company_ids(_caller)))
-  THEN
-    RAISE EXCEPTION 'Only admins of the source department can transfer this drone';
-  END IF;
-END IF;
-```
+### Rettigheter
+Samme betingelser beholdes:
+- `isAdmin` (admin/superadmin)
+- `!isSharedFromParent` (ikke delt fra mor-selskap)
+- `drone?.company_id` (drone har tilhørighet)
 
-Alt annet i RPC-en beholdes ordrett. Ingen UI-/kodeendringer.
+### Verifisering
+- Åpne dronekort → bekreft at "Flytt til annen avdeling" er borte fra header
+- Klikk "Rediger" → bekreft at knappen vises under "Synlighet for avdelinger"
+- Klikk knappen → bekreft at `MoveDroneDialog` åpnes som før
