@@ -47,15 +47,13 @@ function extractKey(req: Request, url: URL): string | null {
 function headersToObject(req: Request): Record<string, string> {
   const out: Record<string, string> = {};
   req.headers.forEach((v, k) => {
-    // Maskér Authorization for å unngå klartekst-nøkler i loggen
-    if (k.toLowerCase() === "authorization") {
-      out[k] = v.length > 12 ? `${v.slice(0, 10)}…(${v.length})` : "***";
-    } else {
-      out[k] = v;
-    }
+    // DIAGNOSE: logg full Authorization midlertidig for å se SS-HMAC-formatet
+    // som DJI FH2 sender. Re-maskeres etter at vi har bekreftet kontrakten.
+    out[k] = v;
   });
   return out;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
