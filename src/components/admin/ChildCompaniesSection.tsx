@@ -20,6 +20,7 @@ import {
 import { CompanyManagementDialog } from "./CompanyManagementDialog";
 import { FH2DevicesSection } from "./FH2DevicesSection";
 import { FH2AirspaceWebhookSection } from "./FH2AirspaceWebhookSection";
+import { FH2AirspaceFeedSection } from "./FH2AirspaceFeedSection";
 import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle, Lock, Radio, Shield, Map as MapIcon } from "lucide-react";
 import { DeviationCategoryTreeEditor } from "./DeviationCategoryTreeEditor";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -2166,6 +2167,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
                   {/* FH2 Airspace Management webhook (real-time live positions) */}
                   <FH2AirspaceWebhookSection />
+
+                  {/* FH2 Third-Party Airspace Data feed (sivil trafikk pull fra DJI) */}
+                  <FH2AirspaceFeedSection />
                 </div>
               )}
             </div>
