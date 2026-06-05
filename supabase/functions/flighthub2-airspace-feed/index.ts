@@ -185,58 +185,58 @@ Deno.serve(async (req) => {
   let failureReason = "no_auth";
 
   if (parts && ENC_KEY) {
-    failureReason = "no_match_for_credential";
+    failureReason = "no_active_secrets";
     try {
-      const { data: cid } = await supabase.rpc("lookup_fh2_feed_company", {
-        p_key: parts.keyId,
-        p_enc_key: ENC_KEY,
-      });
-      if (cid) {
-        companyId = cid as string;
-        const secret = parts.keyId;
+      const { data: secretRows, error: secretsErr } = await supabase.rpc(
+        "get_active_fh2_feed_secrets",
+        { p_enc_key: ENC_KEY },
+      );
+      if (secretsErr) throw secretsErr;
+      const rows = (secretRows ?? []) as Array<{ company_id: string; secret: string }>;
+
+      let triedCandidates: { name: string; sig: string; stringToSign: string }[] = [];
+      let canonical = "";
+      for (const row of rows) {
         const { candidates } = await buildSignatures(
-          secret, req.method, rawPath, url, req, parts, bodyText,
+          row.secret, req.method, rawPath, url, req, parts, bodyText,
         );
         const hit = candidates.find((c) =>
           constantTimeEqual(c.sig.toLowerCase(), parts.signature.toLowerCase())
         );
         if (hit) {
+          companyId = row.company_id;
           matched = true;
           failureReason = "ok";
+          break;
+        }
+        // Behold siste forsøk for diagnostikk
+        triedCandidates = candidates.map((c) => ({
+          name: c.name, sig: c.sig, stringToSign: c.stringToSign,
+        }));
+        canonical = candidates[0]?.canonical ?? "";
+      }
+
+      if (!matched) {
+        if (rows.length === 0) {
+          failureReason = "no_active_secrets";
+          diagnostic = JSON.stringify({
+            reason: "no_active_secrets",
+            hint: "Ingen aktive feed-nøkler lagret. Gå til Admin → Mitt selskap → FlightHub 2 Airspace Data og trykk Generér.",
+            received_credential_prefix: parts.keyId.slice(0, 6),
+            received_credential_length: parts.keyId.length,
+          }).slice(0, 1900);
         } else {
           failureReason = "signature_mismatch";
           diagnostic = JSON.stringify({
             reason: "signature_mismatch",
+            tried_secrets_count: rows.length,
             received_signature: parts.signature,
-            tried: candidates.map((c) => ({
-              name: c.name, computed: c.sig, stringToSign: c.stringToSign,
-            })),
-            canonicalRequest: candidates[0].canonical,
+            received_credential_prefix: parts.keyId.slice(0, 6),
+            received_credential_length: parts.keyId.length,
+            tried_variants: triedCandidates,
+            canonicalRequest: canonical,
           }).slice(0, 1900);
         }
-      } else {
-        let activeCount = 0;
-        let anyPrefixes: string[] = [];
-        try {
-          const { data: cfgRows } = await supabase
-            .from("fh2_airspace_feed_config")
-            .select("api_key_prefix, enabled")
-            .eq("enabled", true);
-          activeCount = cfgRows?.length ?? 0;
-          anyPrefixes = (cfgRows ?? [])
-            .map((r: { api_key_prefix: string | null }) => r.api_key_prefix ?? "")
-            .filter(Boolean).slice(0, 5);
-        } catch { /* noop */ }
-        diagnostic = JSON.stringify({
-          reason: "no_match_for_credential",
-          hint: activeCount === 0
-            ? "Ingen aktive feed-nøkler lagret. Gå til Admin → Mitt selskap → FlightHub 2 Airspace Data og trykk Generér, lim deretter nøkkelen inn i FH2 som API Key."
-            : "Credential matcher ingen lagret nøkkel. Pass på at nøkkelen i FH2 er nøyaktig den som ble vist da du trykket Generér.",
-          received_credential_prefix: parts.keyId.slice(0, 6),
-          received_credential_length: parts.keyId.length,
-          active_feed_configs: activeCount,
-          known_prefixes: anyPrefixes,
-        }).slice(0, 1900);
       }
     } catch (e) {
       console.error("verify error", e);

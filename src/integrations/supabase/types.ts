@@ -7008,6 +7008,13 @@ export type Database = {
         Returns: boolean
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
+      get_active_fh2_feed_secrets: {
+        Args: { p_enc_key: string }
+        Returns: {
+          company_id: string
+          secret: string
+        }[]
+      }
       get_ai_risk_eta_ms: { Args: never; Returns: number }
       get_caa_zones_geojson: {
         Args: { p_layer_id: string }
