@@ -1,11 +1,7 @@
 // FlightHub 2 "Third-Party Airspace Data" feed (pull-modell).
-// DJI FlightHub 2 kaller dette endepunktet med en API-nøkkel for å hente
-// sanntids sivil flytrafikk. Vi vet ikke ennå hvilken path/queryformat
-// DJI bruker — derfor logger denne funksjonen ALT, slik at vi kan
-// se nøyaktig hva som etterspørres etter Verify-knappen er trykket.
-//
-// Etter at vi har bekreftet kontrakten i fh2_airspace_feed_log,
-// erstattes "tom liste"-svaret med en ekte SafeSky/BarentsWatch-feed.
+// DJI FH2 kaller dette endepunktet med SS-HMAC-SHA256-V1 signatur
+// (AWS-SigV4-variant). Vi parser Authorization, slår opp selskapets
+// secret via keyId i Credential, og verifiserer signaturen.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -17,6 +13,77 @@ const corsHeaders = {
 
 const ENC_KEY = Deno.env.get("FH2_ENCRYPTION_KEY") ?? "";
 
+function headersToObject(req: Request, maskAuth: boolean): Record<string, string> {
+  const out: Record<string, string> = {};
+  req.headers.forEach((v, k) => {
+    if (maskAuth && k.toLowerCase() === "authorization") {
+      // Behold scheme + Credential + SignedHeaders, masker Signature
+      out[k] = v.replace(/Signature=[^,\s]+/i, "Signature=***");
+    } else {
+      out[k] = v;
+    }
+  });
+  return out;
+}
+
+interface SsHmacParts {
+  scheme: string;
+  credential: string; // raw, f.eks. "abc123/v1"
+  keyId: string; // "abc123"
+  signedHeaders: string[]; // ["host","x-ss-date","x-ss-nonce"]
+  signature: string; // hex
+}
+
+function parseAuthorization(auth: string | null): SsHmacParts | null {
+  if (!auth) return null;
+  const m = auth.match(/^(\S+)\s+(.*)$/);
+  if (!m) return null;
+  const scheme = m[1];
+  const rest = m[2];
+  const params: Record<string, string> = {};
+  for (const part of rest.split(",")) {
+    const p = part.trim();
+    const eq = p.indexOf("=");
+    if (eq < 0) continue;
+    params[p.slice(0, eq).trim().toLowerCase()] = p.slice(eq + 1).trim();
+  }
+  const credential = params["credential"] ?? "";
+  const signedHeaders = (params["signedheaders"] ?? "")
+    .split(";")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  const signature = params["signature"] ?? "";
+  const keyId = credential.split("/")[0] ?? "";
+  if (!keyId || !signature) return null;
+  return { scheme, credential, keyId, signedHeaders, signature };
+}
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hmacSha256Hex(secret: string, msg: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function canonicalQuery(url: URL): string {
+  const pairs: [string, string][] = [];
+  for (const [k, v] of url.searchParams.entries()) {
+    pairs.push([encodeURIComponent(k), encodeURIComponent(v)]);
+  }
+  pairs.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : 1));
+  return pairs.map(([k, v]) => `${k}=${v}`).join("&");
+}
+
 function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let r = 0;
@@ -24,36 +91,56 @@ function constantTimeEqual(a: string, b: string): boolean {
   return r === 0;
 }
 
-function extractKey(req: Request, url: URL): string | null {
-  const auth = req.headers.get("authorization") ?? "";
-  if (auth.toLowerCase().startsWith("bearer ")) {
-    return auth.slice(7).trim();
+async function buildSignatures(
+  secret: string,
+  method: string,
+  path: string,
+  url: URL,
+  req: Request,
+  parts: SsHmacParts,
+  bodyText: string | null,
+): Promise<{ candidates: { name: string; sig: string; stringToSign: string; canonical: string }[] }> {
+  const cq = canonicalQuery(url);
+  const payloadHash = await sha256Hex(bodyText ?? "");
+  const xSsDate = req.headers.get("x-ss-date") ?? "";
+  const xSsNonce = req.headers.get("x-ss-nonce") ?? "";
+  const alg = req.headers.get("x-ss-alg") ?? "SS-HMAC-SHA256-V1";
+
+  const canonicalHeaders = parts.signedHeaders
+    .map((h) => `${h}:${(req.headers.get(h) ?? "").trim()}\n`)
+    .join("");
+  const signedHeadersStr = parts.signedHeaders.join(";");
+
+  const canonicalRequest = [
+    method.toUpperCase(),
+    path,
+    cq,
+    canonicalHeaders,
+    signedHeadersStr,
+    payloadHash,
+  ].join("\n");
+  const crHash = await sha256Hex(canonicalRequest);
+
+  // Prøv flere varianter — DJIs nøyaktige string-to-sign er udokumentert.
+  const variants = [
+    { name: "alg|date|nonce|crHash", s: `${alg}\n${xSsDate}\n${xSsNonce}\n${crHash}` },
+    { name: "alg|date|crHash", s: `${alg}\n${xSsDate}\n${crHash}` },
+    { name: "alg|date|nonce|cr", s: `${alg}\n${xSsDate}\n${xSsNonce}\n${canonicalRequest}` },
+    { name: "date|nonce|crHash", s: `${xSsDate}\n${xSsNonce}\n${crHash}` },
+    { name: "alg|credential|date|nonce|crHash", s: `${alg}\n${parts.credential}\n${xSsDate}\n${xSsNonce}\n${crHash}` },
+  ];
+
+  const candidates = [];
+  for (const v of variants) {
+    candidates.push({
+      name: v.name,
+      sig: await hmacSha256Hex(secret, v.s),
+      stringToSign: v.s,
+      canonical: canonicalRequest,
+    });
   }
-  const xKey =
-    req.headers.get("x-api-key") ??
-    req.headers.get("api-key") ??
-    req.headers.get("apikey") ??
-    req.headers.get("x-auth-token");
-  if (xKey) return xKey.trim();
-  const q =
-    url.searchParams.get("api_key") ??
-    url.searchParams.get("apikey") ??
-    url.searchParams.get("key") ??
-    url.searchParams.get("token");
-  if (q) return q.trim();
-  return null;
+  return { candidates };
 }
-
-function headersToObject(req: Request): Record<string, string> {
-  const out: Record<string, string> = {};
-  req.headers.forEach((v, k) => {
-    // DIAGNOSE: logg full Authorization midlertidig for å se SS-HMAC-formatet
-    // som DJI FH2 sender. Re-maskeres etter at vi har bekreftet kontrakten.
-    out[k] = v;
-  });
-  return out;
-}
-
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -61,37 +148,25 @@ Deno.serve(async (req) => {
   }
 
   const url = new URL(req.url);
-  // Stripp funksjons-prefiks (/flighthub2-airspace-feed) slik at "path"
-  // viser hva DJI faktisk kaller (f.eks. "/v1/uav" eller "/")
   const fnPrefix = "/flighthub2-airspace-feed";
-  const path = url.pathname.startsWith(fnPrefix)
+  const internalPath = url.pathname.startsWith(fnPrefix)
     ? (url.pathname.slice(fnPrefix.length) || "/")
     : url.pathname;
+  const rawPath = url.pathname; // bevart for HMAC-kanonisering
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Health check (uten auth) — for å bekrefte at funksjonen lever
-  if (req.method === "GET" && (path === "/" || path === "/health")) {
-    await supabase.from("fh2_airspace_feed_log").insert({
-      method: req.method,
-      path,
-      query: url.search || null,
-      headers: headersToObject(req),
-      body_preview: null,
-      remote_ip: req.headers.get("x-forwarded-for"),
-      status_returned: 200,
-      matched_key: false,
-    });
+  // Health check (uten auth)
+  if (req.method === "GET" && (internalPath === "/" || internalPath === "/health")) {
     return new Response("OK", {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "text/plain" },
     });
   }
 
-  // Les body for logging
   let bodyText: string | null = null;
   try {
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -101,37 +176,76 @@ Deno.serve(async (req) => {
     bodyText = null;
   }
 
-  const key = extractKey(req, url);
+  const auth = req.headers.get("authorization");
+  const parts = parseAuthorization(auth);
+
   let companyId: string | null = null;
   let matched = false;
+  let diagnostic: string | null = null;
+  let failureReason = "no_auth";
 
-  if (key && ENC_KEY) {
+  if (parts && ENC_KEY) {
+    failureReason = "no_match_for_credential";
     try {
-      const { data } = await supabase.rpc("lookup_fh2_feed_company", {
-        p_key: key,
+      // keyId i Credential == den genererte api-nøkkelen (vi bruker den
+      // som BÅDE id og HMAC-secret siden DJI bare har ett "API Key"-felt).
+      const { data: cid } = await supabase.rpc("lookup_fh2_feed_company", {
+        p_key: parts.keyId,
         p_enc_key: ENC_KEY,
       });
-      if (data) {
-        companyId = data as string;
-        matched = true;
+      if (cid) {
+        companyId = cid as string;
+        const secret = parts.keyId; // samme som det DJI signerte med
+        const { candidates } = await buildSignatures(
+          secret,
+          req.method,
+          rawPath,
+          url,
+          req,
+          parts,
+          bodyText,
+        );
+        // Sjekk om noen variant matcher
+        const hit = candidates.find((c) =>
+          constantTimeEqual(c.sig.toLowerCase(), parts.signature.toLowerCase())
+        );
+        if (hit) {
+          matched = true;
+          failureReason = "ok";
+        } else {
+          failureReason = "signature_mismatch";
+          // Logg diagnostikk så vi kan finne riktig kanonisk format
+          diagnostic = JSON.stringify({
+            received_signature: parts.signature,
+            tried: candidates.map((c) => ({
+              name: c.name,
+              computed: c.sig,
+              stringToSign: c.stringToSign,
+            })),
+            canonicalRequest: candidates[0].canonical,
+          }).slice(0, 1900);
+        }
       }
     } catch (e) {
-      console.error("lookup_fh2_feed_company error", e);
+      console.error("verify error", e);
+      failureReason = "verify_exception";
     }
+  } else if (!parts) {
+    failureReason = "auth_parse_failed";
+  } else if (!ENC_KEY) {
+    failureReason = "missing_enc_key";
   }
 
-  // Bestem responsstatus
-  const status = matched ? 200 : (key ? 401 : 401);
+  const status = matched ? 200 : 401;
 
-  // Logg ALT — også uten match — så Tensio kan se hva DJI sendte
   try {
     await supabase.from("fh2_airspace_feed_log").insert({
       company_id: companyId,
       method: req.method,
-      path,
+      path: internalPath,
       query: url.search || null,
-      headers: headersToObject(req),
-      body_preview: bodyText ? bodyText.slice(0, 2000) : null,
+      headers: headersToObject(req, true),
+      body_preview: diagnostic ?? (bodyText ? bodyText.slice(0, 2000) : `reason=${failureReason}`),
       remote_ip: req.headers.get("x-forwarded-for"),
       status_returned: status,
       matched_key: matched,
@@ -142,7 +256,7 @@ Deno.serve(async (req) => {
 
   if (!matched) {
     return new Response(
-      JSON.stringify({ code: 401, message: "invalid_or_missing_api_key" }),
+      JSON.stringify({ code: 401, message: `invalid_signature:${failureReason}` }),
       {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -150,20 +264,18 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Oppdater last_request_at
   try {
     await supabase.rpc("touch_fh2_feed_request", { p_company_id: companyId });
   } catch {
     /* noop */
   }
 
-  // Inntil vi vet eksakt format, returnér tom feed.
-  // Vi sender BÅDE en flat array OG et standard "code/data"-objekt;
-  // mange DJI-endepunkter forventer { code:0, data:[...] }.
-  // DJI godtar typisk en av disse — vi raffinerer etter første ekte request.
-  const empty = { code: 0, message: "success", data: [] };
-  return new Response(JSON.stringify(empty), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  // DJI forventer { code:0, message:"success", data:[] }
+  return new Response(
+    JSON.stringify({ code: 0, message: "success", data: [] }),
+    {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
 });
