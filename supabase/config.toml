@@ -219,6 +219,9 @@ verify_jwt = false
 [functions.flighthub2-airspace-feed]
 verify_jwt = false
 
+[functions.flighthub2-airspace-feed-config]
+verify_jwt = false
+
 [functions.ssb-population]
 verify_jwt = false
 
