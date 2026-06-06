@@ -1,39 +1,51 @@
-## Rotårsak
+# Fiks: «Kan ikke knytte dokument til drone etter flytting»
 
-FH2 signerer HMAC mot URL-en de fikk: `https://pmucsvrypogtttrajqxq.functions.supabase.co/flighthub2-airspace-feed`.
-Det betyr at i kanonisk request bruker FH2:
-- `host: pmucsvrypogtttrajqxq.functions.supabase.co`
+## Årsak
 
-Men Supabase sin edge-proxy omskriver host-headeren før forespørselen når vår funksjon, så vi leser `host: edge-runtime.supabase.com` og putter feil host inn i kanonisk request. Det gir signaturen vår en helt annen hash enn FH2 sin.
+Ikke et storage-problem — selve filen ligger trygt i `documents`-bucketen.
+
+To ting kombinerer seg i `public.transfer_drone(...)`:
+
+1. **`drone_documents` har en `company_id`-kolonne** med RLS-policy:
+   `company_id = (select company_id from profiles where id = auth.uid())`
+2. **`transfer_drone` oppdaterer aldri `drone_documents.company_id`** når drona flyttes. Den oppdaterer drones, drone_log_entries, drone_inspections og drone_equipment_history — men link-raden mellom drone og dokument blir værende med kildeavdelingens `company_id`.
+
+Resultat for bruker i målavdelingen:
+- Dokumentet selv flyttes (vises i `/dokumenter`).
+- Link-raden i `drone_documents` er **usynlig** for dem (feil company_id).
+- Når de prøver å re-tilknytte dokumentet, insertes ny rad med target `company_id` → bryter `UNIQUE (drone_id, document_id)` → feilmelding.
+
+(`drone_equipment`, `drone_personnel`, `mission_drones` har ingen `company_id`-kolonne, så de er upåvirket.)
 
 ## Endring
 
-### `supabase/functions/flighthub2-airspace-feed/index.ts`
+Én migration som patcher `public.transfer_drone(...)`: legg til ett ekstra UPDATE rett etter de andre kaskade-oppdateringene (mellom dagens linje 117 og 119):
 
-**1. Overstyr host-verdien i kanonisk request**
+```sql
+UPDATE public.drone_documents
+   SET company_id = _to_company_id
+ WHERE drone_id = _drone_id;
+```
 
-I `buildAllCandidates`, når vi bygger `canonicalHeaders`, erstatt verdien for header `host` med den offentlige hostnavnet FH2 ringte. Vi henter denne fra (i prioritert rekkefølge):
-- `x-forwarded-host` header (hvis Supabase setter den)
-- ellers den hardkodede public hostname `<SUPABASE_PROJECT_REF>.functions.supabase.co`, der `SUPABASE_PROJECT_REF` leses fra env-variabel (alt. utledet fra `SUPABASE_URL`).
+Dette gjelder uansett action — `move`/`share` beholder linken (nå synlig i målavdelingen), og `leave` sletter raden senere i samme funksjon, så den ekstra oppdateringen er trygg.
 
-Andre signed headers (`x-ss-date`, `x-ss-nonce`) er allerede uendret av Supabase.
+Ingen frontend-, RLS- eller storage-policy-endringer.
 
-**2. Behold de 30 kandidatene (raw/base64/hex × 5 varianter × hex/base64/base64nopad)**
+## Backfill av eksisterende skjeve rader (engangs)
 
-Når host nå er korrekt, vil én av variantene matche hvis secret-tolkningen er riktig.
+For droner som allerede er flyttet før fiksen, finnes det `drone_documents`-rader hvor `company_id` ≠ dronens nåværende `company_id`. Disse må rettes opp engang, ellers ser brukerne fortsatt samme feil for tidligere flyttede droner:
 
-**3. Logging**
+```sql
+UPDATE public.drone_documents dd
+   SET company_id = d.company_id
+  FROM public.drones d
+ WHERE dd.drone_id = d.id
+   AND dd.company_id <> d.company_id;
+```
 
-Legg til `canonical_host_used` i diagnostic så vi ser hvilken host vi signerte mot ved evt. ny mismatch.
+## Verifisering
 
-### Verifisering
-
-Trykk Verify i FH2 igjen. Forventer 200. Hvis fortsatt mismatch:
-- Logg vil vise hvilken host vi brukte og de første 24 tegnene av kandidat-signaturene
-- Vi vet da om host er problemet eller om secret-format / string-to-sign-variant fortsatt er feil
-
-## Det jeg IKKE endrer
-
-- Ingen DB-migrering
-- Ingen UI-endring
-- Ingen endring i path-håndtering (path er allerede riktig)
+1. Flytt en drone med tilknyttet dokument, velg «Flytt med».
+2. Bytt til målavdelingen — dokumentet skal allerede vises som tilknyttet drona (uten å måtte re-tilknytte).
+3. Prøv å fjerne og legge til igjen — ingen unique-feil.
+4. SQL-sjekk: `select count(*) from drone_documents dd join drones d on d.id=dd.drone_id where dd.company_id <> d.company_id;` skal være 0.
