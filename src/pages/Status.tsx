@@ -2198,11 +2198,16 @@ const Status = () => {
                           <TableHead>Pilot</TableHead>
                           <TableHead>Kategori</TableHead>
                           <TableHead>Kommentar</TableHead>
+                          <TableHead className="text-right">Handlinger</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {pageRows.map((r) => (
-                          <TableRow key={r.id} className={r.mission_id ? "cursor-pointer" : ""} onClick={() => r.mission_id && navigate(`/oppdrag?id=${r.mission_id}`)}>
+                          <TableRow
+                            key={r.id}
+                            className={r.mission_id ? "cursor-pointer hover:bg-muted/50" : ""}
+                            onClick={() => r.mission_id && openMissionFromDeviation(r.mission_id)}
+                          >
                             <TableCell className="whitespace-nowrap">{format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb })}</TableCell>
                             <TableCell>{r.reporter_name || "Ukjent"}</TableCell>
                             <TableCell>
@@ -2216,6 +2221,22 @@ const Status = () => {
                               </div>
                             </TableCell>
                             <TableCell className="text-muted-foreground italic">{r.comment || "—"}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!r.mission_id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!r.mission_id) return;
+                                  setIncidentMissionId(r.mission_id);
+                                  setIncidentDialogOpen(true);
+                                }}
+                              >
+                                <AlertCircle className="w-4 h-4 mr-1" />
+                                Opprett hendelse
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
