@@ -21,7 +21,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon, ChevronRight, ChevronLeft, AlertCircle, Sparkles, ChevronDown, RefreshCw } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon, ChevronRight, ChevronLeft, AlertCircle, Sparkles, ChevronDown, RefreshCw, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
