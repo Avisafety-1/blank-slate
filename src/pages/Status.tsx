@@ -1586,9 +1586,9 @@ const Status = () => {
                 size="default"
                 onClick={runAiAnalysis}
                 disabled={aiLoading || loading}
-                className="gap-2 w-full sm:w-auto"
+                className="gap-2 w-full sm:w-auto disabled:opacity-100 disabled:bg-background disabled:text-foreground"
               >
-                <Sparkles className="w-4 h-4" />
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 {aiLoading ? "Analyserer..." : "Behandle med AI"}
               </Button>
               <DropdownMenu>
