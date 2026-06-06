@@ -963,12 +963,20 @@ The operation may be performed in the Open category IF:
 - No drops from the drone
 - No transport of dangerous goods
 
-Subcategories:
-| Subcategory | C marking | Max weight | Distance from uninvolved persons |
-|---|---|---|---|
-| A1 | C0/C1 | C0: <250g, C1: <900g | May overfly, not crowds |
-| A2 | C2 | <4 kg | Min 30m (5m low-speed) |
-| A3 | C3/C4 | C3: <25kg, C4: <25kg | 150m from residential/industrial/recreational |
+Subcategories (per EU 2019/947 / Norwegian CAA drone poster):
+| Subcategory | Allowed C marking | Unmarked allowed | Weight | Distance from uninvolved persons |
+|---|---|---|---|---|
+| A1 | C0, C1 | <250 g (max 19 m/s) | C0 <250 g · C1 <900 g | Avoid overflying uninvolved persons; never over crowds |
+| A2 | C2 (ONLY C2) | None allowed unmarked | C2 <4 kg | Min 30 m from uninvolved (5 m in low-speed mode 3 m/s); 1:1 rule applies |
+| A3 | C3, C4 | <25 kg | C3/C4 <25 kg | Min 150 m from residential/commercial/industrial/recreational areas; no uninvolved persons in the area |
+
+**HARD RULES FOR C MARKING → SUBCATEGORY (follow strictly, no exceptions):**
+- A **C2-marked drone can NEVER be operated in A1**. C2 belongs in A2 (or A3 if A2 distance requirements cannot be met).
+- C0 and C1 are the **only** class markings allowed in A1.
+- C3 and C4 (or unmarked <25 kg) are the only markings allowed in A3.
+- Claims like "new regulations allow C2 in A1" are FALSE and must NEVER be used as justification.
+- Always derive subcategory from C marking **first**, then distance requirements. Do not "downgrade" a C2 drone to A1 because population density is low — choose A2 or A3.
+- For a C2 drone in an area without uninvolved persons: choose A3 (150 m from buildings) or A2 (30 m / 5 m from uninvolved). Never A1.
 
 #### Standard Scenario (STS)
 | STS | C class | VLOS/BVLOS | Area | Max distance | Max altitude |
