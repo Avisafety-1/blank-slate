@@ -18,6 +18,7 @@ import { IdleTimeoutWarning } from "@/components/IdleTimeoutWarning";
 import { ForceReloadBanner } from "@/components/ForceReloadBanner";
 import { GuidedTourProvider } from "@/components/guided-tour/GuidedTourProvider";
 import { useForceReload } from "@/hooks/useForceReload";
+import { recordAuthRouteVisit } from "@/lib/authLoopGuard";
 import { PlanRestricted } from "@/components/PlanRestricted";
 import { TrainingModuleRestricted } from "@/components/TrainingModuleRestricted";
 import LoadingSpinner from "@/components/LoadingSpinner";
