@@ -90,6 +90,9 @@ verify_jwt = false
 [functions.platform-statistics-ai]
 verify_jwt = false
 
+[functions.company-status-ai]
+verify_jwt = false
+
 [functions.terrain-elevation]
 verify_jwt = false
 

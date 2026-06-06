@@ -21,7 +21,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon, ChevronRight, ChevronLeft, AlertCircle } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon, ChevronRight, ChevronLeft, AlertCircle, Sparkles, ChevronDown, RefreshCw } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -135,6 +136,123 @@ const Status = () => {
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [incidentMissionId, setIncidentMissionId] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const runAiAnalysis = async () => {
+    setAiLoading(true);
+    setAiText("");
+    setAiOpen(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) throw new Error("Ingen aktiv sesjon");
+
+      const periodLabel =
+        timePeriod === "month" ? "Siste måned" :
+        timePeriod === "quarter" ? "Siste kvartal" :
+        timePeriod === "year" ? "Siste år" :
+        timePeriod === "custom" && customDateFrom && customDateTo
+          ? `${format(customDateFrom, "dd.MM.yyyy")} – ${format(customDateTo, "dd.MM.yyyy")}`
+          : "Ukjent";
+
+      const payload = {
+        companyName: parentCompanyName ? `${parentCompanyName} / ${authCompanyName}` : authCompanyName,
+        periodLabel,
+        kpi: kpiData,
+        missions: {
+          byMonth: missionsByMonth,
+          byStatus: missionsByStatus,
+          byRisk: missionsByRisk,
+        },
+        incidents: {
+          byMonth: incidentsByMonth,
+          byMainCause: incidentsByMainCause,
+          byContributingCause: incidentsByContributingCause,
+          bySeverity: incidentsBySeverity,
+          daysSinceLastSevere,
+        },
+        resources: {
+          droneStatus,
+          equipmentStatus,
+          flightHoursByDrone,
+        },
+        operationTypes: operationTypeStats,
+        expiringDocuments: expiringDocs,
+        flightLogsCount,
+        deviationReports: {
+          enabled: companySettings.deviation_report_enabled,
+          total: deviationReports.length,
+          byCategory: deviationReports.reduce<Record<string, number>>((acc, r) => {
+            const key = (r.category_path?.[0]) || "Ukategorisert";
+            acc[key] = (acc[key] ?? 0) + 1;
+            return acc;
+          }, {}),
+        },
+      };
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/company-status-ai`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ payload }),
+        }
+      );
+
+      if (!resp.ok || !resp.body) {
+        let msg = "AI-analyse feilet";
+        try { const j = await resp.json(); msg = j.error || msg; } catch {}
+        if (resp.status === 429) msg = "Forespørselsgrense nådd. Prøv igjen om litt.";
+        if (resp.status === 402) msg = "AI-kreditter brukt opp. Legg til kreditter i workspace.";
+        toast.error(msg);
+        setAiText(msg);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let assembled = "";
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") { streamDone = true; break; }
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) { assembled += content; setAiText(assembled); }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+    } catch (err) {
+      console.error("AI analysis error:", err);
+      const msg = err instanceof Error ? err.message : "Ukjent feil";
+      toast.error(msg);
+      setAiText(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const openMissionFromDeviation = async (missionId: string) => {
     const { data, error } = await supabase
@@ -1437,7 +1555,17 @@ const Status = () => {
               </div>
             )}
             
-            <div className="lg:ml-auto">
+            <div className="lg:ml-auto flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                size="default"
+                onClick={runAiAnalysis}
+                disabled={aiLoading || loading}
+                className="gap-2 w-full sm:w-auto"
+              >
+                <Sparkles className="w-4 h-4" />
+                {aiLoading ? "Analyserer..." : "Behandle med AI"}
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="default" size="default" className="gap-2 w-full sm:w-auto">
@@ -1463,6 +1591,32 @@ const Status = () => {
             </div>
           </div>
         </div>
+
+          {(aiOpen || aiText) && (
+            <Collapsible open={aiOpen} onOpenChange={setAiOpen}>
+              <GlassCard className="p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <CollapsibleTrigger className="flex items-center gap-2 font-semibold text-foreground flex-1 text-left">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    AI-analyse for ledelsen
+                    <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${aiOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  {aiText && !aiLoading && (
+                    <Button size="sm" variant="ghost" onClick={runAiAnalysis} title="Generer på nytt">
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <CollapsibleContent>
+                  <div className="mt-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                    {aiText || (aiLoading ? "Genererer analyse..." : "")}
+                    {aiLoading && aiText && <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />}
+                  </div>
+                </CollapsibleContent>
+              </GlassCard>
+            </Collapsible>
+          )}
+
           <ToggleGroup
             type="single"
             value={activeView}
@@ -1476,6 +1630,7 @@ const Status = () => {
               Avvik
             </ToggleGroupItem>
           </ToggleGroup>
+
 
         {activeView === "operational" && (<>
 
