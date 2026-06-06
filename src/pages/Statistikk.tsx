@@ -6,8 +6,10 @@ import { GlassCard } from "@/components/GlassCard";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, Users, Plane, Clock, AlertTriangle, Package, Target, Shield, CheckCircle, Activity, BarChart3 } from "lucide-react";
+import { ArrowLeft, Building2, Users, Plane, Clock, AlertTriangle, Package, Target, Shield, CheckCircle, Activity, BarChart3, Sparkles, ChevronDown, RefreshCw } from "lucide-react";
 import { PlatformActivityLog } from "@/components/admin/PlatformActivityLog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
@@ -86,6 +88,9 @@ const Statistikk = () => {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [excludeAvisafe, setExcludeAvisafe] = useState(true);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   const canAccess = isSuperAdmin && companyName?.toLowerCase() === "avisafe";
 
@@ -127,6 +132,83 @@ const Statistikk = () => {
     }
   };
 
+  const runAiAnalysis = async () => {
+    setAiLoading(true);
+    setAiText("");
+    setAiOpen(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) throw new Error("Ingen aktiv sesjon");
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/platform-statistics-ai`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ exclude_avisafe: excludeAvisafe }),
+        }
+      );
+
+      if (!resp.ok || !resp.body) {
+        let msg = "AI-analyse feilet";
+        try {
+          const j = await resp.json();
+          msg = j.error || msg;
+        } catch { /* ignore */ }
+        if (resp.status === 429) msg = "Forespørselsgrense nådd. Prøv igjen om litt.";
+        if (resp.status === 402) msg = "AI-kreditter brukt opp. Legg til kreditter i workspace.";
+        toast.error(msg);
+        setAiText(msg);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let assembled = "";
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") { streamDone = true; break; }
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assembled += content;
+              setAiText(assembled);
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+    } catch (err) {
+      console.error("AI analysis error:", err);
+      const msg = err instanceof Error ? err.message : "Ukjent feil";
+      toast.error(msg);
+      setAiText(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   if (authLoading || (!canAccess && !authLoading)) {
     return null;
   }
@@ -154,7 +236,7 @@ const Statistikk = () => {
                 Plattformstatistikk
               </h1>
             </div>
-            <div className="flex items-center gap-2 pl-10 sm:pl-0">
+            <div className="flex items-center gap-2 pl-10 sm:pl-0 flex-wrap">
               <Switch
                 id="exclude-avisafe"
                 checked={excludeAvisafe}
@@ -163,6 +245,16 @@ const Statistikk = () => {
               <Label htmlFor="exclude-avisafe" className="text-xs sm:text-sm cursor-pointer whitespace-nowrap">
                 Ekskluder Avisafe
               </Label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={runAiAnalysis}
+                disabled={aiLoading || loading}
+                className="ml-1"
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                {aiLoading ? "Analyserer..." : "Behandle med AI"}
+              </Button>
             </div>
           </div>
         </header>
@@ -172,8 +264,35 @@ const Statistikk = () => {
             <div className="text-center py-20 text-muted-foreground">{t('pages.stats.loading')}</div>
           ) : stats ? (
             <>
+              {/* AI Analysis */}
+              {(aiOpen || aiText) && (
+                <Collapsible open={aiOpen} onOpenChange={setAiOpen}>
+                  <GlassCard>
+                    <div className="flex items-center justify-between gap-2">
+                      <CollapsibleTrigger className="flex items-center gap-2 font-semibold text-foreground flex-1 text-left">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        AI-analyse for ledelsen
+                        <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${aiOpen ? "rotate-180" : ""}`} />
+                      </CollapsibleTrigger>
+                      {aiText && !aiLoading && (
+                        <Button size="sm" variant="ghost" onClick={runAiAnalysis} title="Generer på nytt">
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <CollapsibleContent>
+                      <div className="mt-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                        {aiText || (aiLoading ? "Genererer analyse..." : "")}
+                        {aiLoading && aiText && <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />}
+                      </div>
+                    </CollapsibleContent>
+                  </GlassCard>
+                </Collapsible>
+              )}
+
               {/* Activity Log */}
               <PlatformActivityLog excludeAvisafe={excludeAvisafe} />
+
 
               {/* KPI Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
