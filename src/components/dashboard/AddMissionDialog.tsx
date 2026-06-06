@@ -180,6 +180,59 @@ export const AddMissionDialog = ({
       .slice(0, 6);
   }, [mentionQuery, profiles]);
 
+  // Autofyll pilot + drone-ressurser fra innlogget bruker (kun ved oppretting)
+  const autofillFromCurrentUser = async (fields: {
+    personnel: boolean;
+    drones: boolean;
+    equipment: boolean;
+    documents: boolean;
+  }) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (fields.personnel) {
+        setSelectedPersonnel((prev) => (prev.includes(user.id) ? prev : [...prev, user.id]));
+      }
+
+      if (!fields.drones && !fields.equipment && !fields.documents) return;
+
+      const { data: dpRows } = await (supabase as any)
+        .from("drone_personnel")
+        .select("drone_id")
+        .eq("profile_id", user.id);
+      const droneIds = Array.from(new Set((dpRows || []).map((r: any) => r.drone_id).filter(Boolean)));
+      if (droneIds.length === 0) return;
+
+      const [eqRes, docRes] = await Promise.all([
+        fields.equipment
+          ? (supabase as any).from("drone_equipment").select("equipment_id").in("drone_id", droneIds)
+          : Promise.resolve({ data: [] }),
+        fields.documents
+          ? (supabase as any).from("drone_documents").select("document_id").in("drone_id", droneIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      if (fields.drones) {
+        setSelectedDrones((prev) => Array.from(new Set([...prev, ...droneIds])) as string[]);
+      }
+      if (fields.equipment) {
+        const eqIds = (eqRes.data || []).map((r: any) => r.equipment_id).filter(Boolean);
+        if (eqIds.length > 0) {
+          setSelectedEquipment((prev) => Array.from(new Set([...prev, ...eqIds])) as string[]);
+        }
+      }
+      if (fields.documents) {
+        const docIds = (docRes.data || []).map((r: any) => r.document_id).filter(Boolean);
+        if (docIds.length > 0) {
+          setSelectedDocuments((prev) => Array.from(new Set([...prev, ...docIds])) as string[]);
+        }
+      }
+    } catch (e) {
+      console.error("autofillFromCurrentUser failed", e);
+    }
+  };
+
   useEffect(() => {
     if (open) {
       fetchProfiles();
@@ -251,6 +304,14 @@ export const AddMissionDialog = ({
         if (initialSelectedCustomer) setSelectedCustomer(initialSelectedCustomer);
         if (initialSelectedDocuments) setSelectedDocuments(initialSelectedDocuments);
 
+        // Autofyll pilot + drone-ressurser for felter som ikke kom via initial-props
+        autofillFromCurrentUser({
+          personnel: !initialSelectedPersonnel || initialSelectedPersonnel.length === 0,
+          drones: !initialSelectedDrones || initialSelectedDrones.length === 0,
+          equipment: !initialSelectedEquipment || initialSelectedEquipment.length === 0,
+          documents: !initialSelectedDocuments || initialSelectedDocuments.length === 0,
+        });
+
         // Auto-fill location from first route point via reverse geocoding
         if (!autoLokasjon && firstCoord) {
           fetch(`https://ws.geonorge.no/adresser/v1/punktsok?lat=${firstCoord.lat}&lon=${firstCoord.lng}&radius=500&treffPerSide=1`)
@@ -290,6 +351,8 @@ export const AddMissionDialog = ({
         setSelectedDocuments([]);
         setSelectedCustomer("");
         setRouteData(null);
+        // Autofyll pilot + drone-ressurser for blanke nye oppdrag
+        autofillFromCurrentUser({ personnel: true, drones: true, equipment: true, documents: true });
       }
     }
   }, [open, mission, initialFormData, initialRouteData, initialSelectedPersonnel, initialSelectedEquipment, initialSelectedDrones, initialSelectedCustomer]);
