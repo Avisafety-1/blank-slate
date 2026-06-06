@@ -1505,7 +1505,7 @@ const Status = () => {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 w-full">
+          <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 w-full bg-background/70 backdrop-blur-sm rounded-lg px-4 py-3 border border-border/30">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground whitespace-nowrap">Periode:</span>
               <Select value={timePeriod} onValueChange={(value: "month" | "quarter" | "year" | "custom") => setTimePeriod(value)}>
