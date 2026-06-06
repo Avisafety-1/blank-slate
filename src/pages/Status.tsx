@@ -1494,7 +1494,7 @@ const Status = () => {
       <div className="relative z-10 w-full">
       <main className="container mx-auto px-4 py-8 space-y-8">
         <div className="flex flex-col gap-4">
-          <div>
+          <div className="bg-background/70 backdrop-blur-sm rounded-lg px-4 py-3 border border-border/30">
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Statistikk</h1>
             {authCompanyName && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -1504,6 +1504,7 @@ const Status = () => {
               </p>
             )}
           </div>
+
           <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 w-full">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground whitespace-nowrap">Periode:</span>
