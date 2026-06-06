@@ -143,6 +143,38 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         }
         if (defaultMissionId) {
           updates.mission_id = defaultMissionId;
+          // Auto-fill resources + datetime/location from mission
+          (async () => {
+            try {
+              const [mRes, pRes, dRes, eRes] = await Promise.all([
+                supabase.from("missions").select("tidspunkt, lokasjon").eq("id", defaultMissionId).maybeSingle(),
+                supabase.from("mission_personnel").select("profile_id").eq("mission_id", defaultMissionId),
+                supabase.from("mission_drones").select("drone_id").eq("mission_id", defaultMissionId),
+                supabase.from("mission_equipment").select("equipment_id").eq("mission_id", defaultMissionId),
+              ]);
+              if (mRes.data?.tidspunkt) {
+                const md = new Date(mRes.data.tidspunkt);
+                const y = md.getFullYear();
+                const mo = String(md.getMonth() + 1).padStart(2, '0');
+                const d = String(md.getDate()).padStart(2, '0');
+                const h = String(md.getHours()).padStart(2, '0');
+                const mi = String(md.getMinutes()).padStart(2, '0');
+                setFormData(prev => ({
+                  ...prev,
+                  hendelsestidspunkt: `${y}-${mo}-${d}T${h}:${mi}`,
+                  lokasjon: mRes.data?.lokasjon || prev.lokasjon,
+                }));
+              }
+              if (pRes.data?.length) setPilotId(pRes.data[0].profile_id);
+              if (dRes.data?.length) setDroneId(dRes.data[0].drone_id);
+              if (eRes.data?.length) setEquipmentIds(eRes.data.map(e => e.equipment_id));
+              if (pRes.data?.length || dRes.data?.length || eRes.data?.length) {
+                setResourcesOpen(true);
+              }
+            } catch (e) {
+              console.error("Error auto-filling from defaultMissionId:", e);
+            }
+          })();
         }
         if (Object.keys(updates).length > 0) {
           setFormData(prev => ({ ...prev, ...updates }));
