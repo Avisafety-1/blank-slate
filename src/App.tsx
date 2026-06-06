@@ -87,6 +87,12 @@ const AuthenticatedLayout = () => {
   if (profileLoaded) hasLoadedOnceRef.current = true;
   const everLoaded = hasLoadedOnceRef.current;
 
+  // Loop guard: record every transition between authenticated routes and /auth.
+  // If we oscillate too fast, forceFullSignOut() is called inside the helper.
+  useEffect(() => {
+    recordAuthRouteVisit(location.pathname === '/auth' ? 'auth' : 'app');
+  }, [location.pathname]);
+
   // Prefetch common lazy-loaded pages after initial render
   useEffect(() => {
     const timer = setTimeout(() => {
