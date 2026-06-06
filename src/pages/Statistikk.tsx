@@ -236,7 +236,7 @@ const Statistikk = () => {
                 Plattformstatistikk
               </h1>
             </div>
-            <div className="flex items-center gap-2 pl-10 sm:pl-0">
+            <div className="flex items-center gap-2 pl-10 sm:pl-0 flex-wrap">
               <Switch
                 id="exclude-avisafe"
                 checked={excludeAvisafe}
@@ -245,6 +245,16 @@ const Statistikk = () => {
               <Label htmlFor="exclude-avisafe" className="text-xs sm:text-sm cursor-pointer whitespace-nowrap">
                 Ekskluder Avisafe
               </Label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={runAiAnalysis}
+                disabled={aiLoading || loading}
+                className="ml-1"
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                {aiLoading ? "Analyserer..." : "Behandle med AI"}
+              </Button>
             </div>
           </div>
         </header>
@@ -254,8 +264,35 @@ const Statistikk = () => {
             <div className="text-center py-20 text-muted-foreground">{t('pages.stats.loading')}</div>
           ) : stats ? (
             <>
+              {/* AI Analysis */}
+              {(aiOpen || aiText) && (
+                <Collapsible open={aiOpen} onOpenChange={setAiOpen}>
+                  <GlassCard>
+                    <div className="flex items-center justify-between gap-2">
+                      <CollapsibleTrigger className="flex items-center gap-2 font-semibold text-foreground flex-1 text-left">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        AI-analyse for ledelsen
+                        <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${aiOpen ? "rotate-180" : ""}`} />
+                      </CollapsibleTrigger>
+                      {aiText && !aiLoading && (
+                        <Button size="sm" variant="ghost" onClick={runAiAnalysis} title="Generer på nytt">
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <CollapsibleContent>
+                      <div className="mt-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                        {aiText || (aiLoading ? "Genererer analyse..." : "")}
+                        {aiLoading && aiText && <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />}
+                      </div>
+                    </CollapsibleContent>
+                  </GlassCard>
+                </Collapsible>
+              )}
+
               {/* Activity Log */}
               <PlatformActivityLog excludeAvisafe={excludeAvisafe} />
+
 
               {/* KPI Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
