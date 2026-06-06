@@ -78,7 +78,7 @@ const COLORS = {
 const Status = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, companyId } = useAuth();
+  const { user, companyId, companyName: authCompanyName, parentCompanyName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [timePeriod, setTimePeriod] = useState<"month" | "quarter" | "year" | "custom">("year");
   const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined);
