@@ -21,7 +21,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon, ChevronRight, ChevronLeft } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Package, Download, CalendarIcon, ChevronRight, ChevronLeft, AlertCircle } from "lucide-react";
+import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
+import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, subMonths, startOfMonth, endOfMonth, startOfYear, parseISO, isValid } from "date-fns";
@@ -129,6 +131,24 @@ const Status = () => {
   const [deviationDrillPath, setDeviationDrillPath] = useState<string[]>([]);
   const [deviationPage, setDeviationPage] = useState(1);
   const [companySettings, setCompanySettings] = useState<{ deviation_report_enabled: boolean }>({ deviation_report_enabled: false });
+  const [missionDialogOpen, setMissionDialogOpen] = useState(false);
+  const [selectedMission, setSelectedMission] = useState<any>(null);
+  const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  const [incidentMissionId, setIncidentMissionId] = useState<string | null>(null);
+
+  const openMissionFromDeviation = async (missionId: string) => {
+    const { data, error } = await supabase
+      .from("missions")
+      .select("*, companies:company_id(id, navn)")
+      .eq("id", missionId)
+      .maybeSingle();
+    if (error || !data) {
+      toast.error("Kunne ikke åpne oppdraget");
+      return;
+    }
+    setSelectedMission(data);
+    setMissionDialogOpen(true);
+  };
 
   useEffect(() => {
     if (!user) {
@@ -2178,11 +2198,16 @@ const Status = () => {
                           <TableHead>Pilot</TableHead>
                           <TableHead>Kategori</TableHead>
                           <TableHead>Kommentar</TableHead>
+                          <TableHead className="text-right">Handlinger</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {pageRows.map((r) => (
-                          <TableRow key={r.id} className={r.mission_id ? "cursor-pointer" : ""} onClick={() => r.mission_id && navigate(`/oppdrag?id=${r.mission_id}`)}>
+                          <TableRow
+                            key={r.id}
+                            className={r.mission_id ? "cursor-pointer hover:bg-muted/50" : ""}
+                            onClick={() => r.mission_id && openMissionFromDeviation(r.mission_id)}
+                          >
                             <TableCell className="whitespace-nowrap">{format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb })}</TableCell>
                             <TableCell>{r.reporter_name || "Ukjent"}</TableCell>
                             <TableCell>
@@ -2196,6 +2221,22 @@ const Status = () => {
                               </div>
                             </TableCell>
                             <TableCell className="text-muted-foreground italic">{r.comment || "—"}</TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!r.mission_id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!r.mission_id) return;
+                                  setIncidentMissionId(r.mission_id);
+                                  setIncidentDialogOpen(true);
+                                }}
+                              >
+                                <AlertCircle className="w-4 h-4 mr-1" />
+                                Opprett hendelse
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -2215,6 +2256,18 @@ const Status = () => {
         })()}
       </main>
       </div>
+
+      <MissionDetailDialog
+        open={missionDialogOpen}
+        onOpenChange={setMissionDialogOpen}
+        mission={selectedMission}
+        onMissionUpdated={fetchDeviationStatistics}
+      />
+      <AddIncidentDialog
+        open={incidentDialogOpen}
+        onOpenChange={setIncidentDialogOpen}
+        defaultMissionId={incidentMissionId ?? undefined}
+      />
     </div>
   );
 };
