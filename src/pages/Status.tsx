@@ -157,9 +157,34 @@ const Status = () => {
           ? `${format(customDateFrom, "dd.MM.yyyy")} – ${format(customDateTo, "dd.MM.yyyy")}`
           : "Ukjent";
 
+      // Hent flåtestørrelse (anonyme antall) for normalisering av risiko
+      const visibleIds = await supabase
+        .rpc("get_user_visible_company_ids", { _user_id: user!.id });
+      const ids = (visibleIds.data as string[] | null) ?? (companyId ? [companyId] : []);
+
+      const [droneCountRes, equipmentCountRes, personnelCountRes] = await Promise.all([
+        supabase.from("drones").select("id", { count: "exact", head: true }).in("company_id", ids).eq("aktiv", true),
+        supabase.from("equipment").select("id", { count: "exact", head: true }).in("company_id", ids).eq("aktiv", true),
+        supabase.from("profiles").select("id", { count: "exact", head: true }).in("company_id", ids).eq("approved", true),
+      ]);
+
+      const sumByStatus = (arr: any[]) => {
+        const out = { Grønn: 0, Gul: 0, Rød: 0 };
+        for (const r of arr || []) {
+          if (r?.name && r.name in out) (out as any)[r.name] = r.value || 0;
+        }
+        return out;
+      };
+
+      const resourceCounts = {
+        drones: { total: droneCountRes.count ?? 0, ...sumByStatus(droneStatus) },
+        equipment: { total: equipmentCountRes.count ?? 0, ...sumByStatus(equipmentStatus) },
+        personnel: { total: personnelCountRes.count ?? 0 },
+      };
+
       const payload = {
-        companyName: parentCompanyName ? `${parentCompanyName} / ${authCompanyName}` : authCompanyName,
         periodLabel,
+        resourceCounts,
         kpi: kpiData,
         missions: {
           byMonth: missionsByMonth,
