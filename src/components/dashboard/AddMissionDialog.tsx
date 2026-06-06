@@ -251,6 +251,14 @@ export const AddMissionDialog = ({
         if (initialSelectedCustomer) setSelectedCustomer(initialSelectedCustomer);
         if (initialSelectedDocuments) setSelectedDocuments(initialSelectedDocuments);
 
+        // Autofyll pilot + drone-ressurser for felter som ikke kom via initial-props
+        autofillFromCurrentUser({
+          personnel: !initialSelectedPersonnel || initialSelectedPersonnel.length === 0,
+          drones: !initialSelectedDrones || initialSelectedDrones.length === 0,
+          equipment: !initialSelectedEquipment || initialSelectedEquipment.length === 0,
+          documents: !initialSelectedDocuments || initialSelectedDocuments.length === 0,
+        });
+
         // Auto-fill location from first route point via reverse geocoding
         if (!autoLokasjon && firstCoord) {
           fetch(`https://ws.geonorge.no/adresser/v1/punktsok?lat=${firstCoord.lat}&lon=${firstCoord.lng}&radius=500&treffPerSide=1`)
@@ -290,6 +298,8 @@ export const AddMissionDialog = ({
         setSelectedDocuments([]);
         setSelectedCustomer("");
         setRouteData(null);
+        // Autofyll pilot + drone-ressurser for blanke nye oppdrag
+        autofillFromCurrentUser({ personnel: true, drones: true, equipment: true, documents: true });
       }
     }
   }, [open, mission, initialFormData, initialRouteData, initialSelectedPersonnel, initialSelectedEquipment, initialSelectedDrones, initialSelectedCustomer]);
