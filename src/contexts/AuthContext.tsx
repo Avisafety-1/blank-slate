@@ -679,6 +679,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('refreshAuthState failed:', reason, error);
       if (!navigator.onLine) {
         applyCachedProfile(userId);
+      } else if (isPermanentAuthError(error)) {
+        // Refresh token / JWT permanently invalid → break out of any retry loop
+        forceFullSignOut('refreshAuthState-permanent');
+        return;
       }
       setAuthRefreshing(false);
       setAuthInitialized(true);
