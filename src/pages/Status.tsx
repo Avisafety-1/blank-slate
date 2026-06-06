@@ -2256,6 +2256,18 @@ const Status = () => {
         })()}
       </main>
       </div>
+
+      <MissionDetailDialog
+        open={missionDialogOpen}
+        onOpenChange={setMissionDialogOpen}
+        mission={selectedMission}
+        onMissionUpdated={fetchDeviationStatistics}
+      />
+      <AddIncidentDialog
+        open={incidentDialogOpen}
+        onOpenChange={setIncidentDialogOpen}
+        defaultMissionId={incidentMissionId ?? undefined}
+      />
     </div>
   );
 };
