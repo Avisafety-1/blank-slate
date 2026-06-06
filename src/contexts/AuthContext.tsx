@@ -895,6 +895,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Transient null session during token refresh — DO NOT reset state.
           // This is the key fix: a null session mid-refresh is NOT a real sign-out.
           if (!session && user && navigator.onLine) {
+            // Track repeated transient nulls — if Supabase pingpongs (>2 within
+            // 3s) we treat the session as permanently broken and hard-sign-out
+            // to break the blinking dashboard <-> login loop.
+            const now = Date.now();
+            transientNullTimestampsRef.current = [
+              ...transientNullTimestampsRef.current.filter((t) => now - t < 3_000),
+              now,
+            ];
+            if (transientNullTimestampsRef.current.length > 2) {
+              console.warn('AuthContext: too many transient null sessions — forcing sign-out');
+              transientNullTimestampsRef.current = [];
+              forceFullSignOut('transient-null-storm');
+              return;
+            }
             console.log('AuthContext: Ignoring transient null session during token refresh (user still set)');
             return;
           }
