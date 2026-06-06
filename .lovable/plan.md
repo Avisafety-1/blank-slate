@@ -1,51 +1,38 @@
 ## Mål
-På `/status` → "Avvik"-fanen, i tabellen "Detaljer" nederst:
-1. Klikk på en avviksrad åpner oppdraget i samme popup som brukes fra dashbordet (`MissionDetailDialog`), i stedet for å navigere bort til `/oppdrag?id=…`.
-2. Legge til en knapp "Opprett hendelse" på hver avviksrad. Den åpner `AddIncidentDialog` med oppdraget forhåndsvalgt (samme dialog som brukes fra dashbordet, der oppdragsvalg auto-fyller pilot/drone/utstyr).
+Gi superadmin på `/statistikk` en knapp "Behandle med AI" som leverer en lederrettet analyse: trender, røde flagg, anbefalt fokus (opplæring, kurs, prosess), og prioriterte tiltak. Resultatet vises i en ekspanderbar seksjon øverst på siden.
 
-## Endringer (én fil)
-**`src/pages/Status.tsx`**
+## Endringer
 
-1. Import:
-   - `MissionDetailDialog` fra `@/components/dashboard/MissionDetailDialog`
-   - `AddIncidentDialog` fra `@/components/dashboard/AddIncidentDialog`
-   - Et ikon, f.eks. `AlertCircle` fra `lucide-react`
+### 1. Ny edge function: `supabase/functions/platform-statistics-ai/index.ts`
+- `verify_jwt = true`, superadmin-sjekk via `user_roles`.
+- Input: `{ exclude_avisafe: boolean }`.
+- Henter samme aggregater som `platform-statistics` (gjenbruker dataformen som frontend allerede mottar), pluss:
+  - Topp 10 nyeste hendelser (alvorlighet, kategori, beskrivelse uten PII, dato, selskap-tag hvis ikke ekskludert).
+  - Avvik fra `mission_deviation_reports` siste 6 mnd (kategori, antall pr kategori, trend siste 3 mnd vs forrige 3 mnd).
+- Kaller Lovable AI Gateway (`google/gemini-3-flash-preview`, streaming SSE) med systemprompt på norsk:
+  - Rolle: "Sikkerhets- og driftsanalytiker for droneoperasjon".
+  - Krav: Identifiser trender (opp/ned), risikoområder, sammenhenger (f.eks. høy hendelsesfrekvens i selskap med lav checklist-rate), og foreslå konkrete tiltak (opplæring, kurs, sjekkliste-forbedring, utstyrsbytte) prioritert som Høy/Medium/Lav.
+  - Format: Kort sammendrag (3-4 setninger) + seksjoner: "Trender", "Risikoområder", "Anbefalt fokus", "Konkrete tiltak".
+- Returnerer SSE-stream direkte til klient. Håndterer 429/402 med klare feilmeldinger.
 
-2. Ny state:
-   ```ts
-   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
-   const [selectedMission, setSelectedMission] = useState<any>(null);
-   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
-   const [incidentMissionId, setIncidentMissionId] = useState<string | null>(null);
-   ```
+### 2. UI-endringer i `src/pages/Statistikk.tsx`
+- Ny knapp "Behandle med AI" (Sparkles-ikon) i headeren ved siden av "Ekskluder Avisafe"-toggle.
+- Ved klikk:
+  - Toggler en ny `<Collapsible>` rett under headeren (over PlatformActivityLog).
+  - Trigger streaming-kall til `platform-statistics-ai` første gang den åpnes (eller via "Generer på nytt"-knapp).
+  - Viser token-for-token tekst i en `GlassCard` med markdown-rendering (gjenbruk eksisterende lettvekts-renderer om finnes, ellers enkel `whitespace-pre-wrap`).
+  - Loading-spinner mens første token mangler; viser feilmelding ved 429/402.
+- Knappen er disabled mens stream pågår.
 
-3. Hjelper for å åpne mission-popup: når brukeren klikker en rad med `mission_id`, hent oppdraget fra `missions` (samme select-felt som `MissionsSection` bruker for sin `mission`-prop), sett `selectedMission` og åpne dialogen. Hvis henting feiler/ingen mission_id, ikke gjør noe.
+### 3. `supabase/config.toml`
+- Legg til `[functions.platform-statistics-ai] verify_jwt = true`.
 
-4. Tabellrad (linje 2184–2199):
-   - Legge til en ny `<TableHead>` "Handlinger" i headeren.
-   - I raden: endre `onClick` til å kalle den nye åpne-popup-funksjonen i stedet for `navigate(...)`.
-   - Ny `<TableCell>` med en knapp `Opprett hendelse` (variant `outline`, size `sm`, med `AlertCircle`-ikon). `onClick` stopper propagering og setter `incidentMissionId = r.mission_id` + åpner `AddIncidentDialog`. Knappen er disabled hvis `!r.mission_id`.
-
-5. Etter `</GlassCard>`-listen i deviation-view, render:
-   ```tsx
-   <MissionDetailDialog
-     open={missionDialogOpen}
-     onOpenChange={setMissionDialogOpen}
-     mission={selectedMission}
-     onMissionUpdated={fetchDeviationStatistics}
-   />
-   <AddIncidentDialog
-     open={incidentDialogOpen}
-     onOpenChange={setIncidentDialogOpen}
-     defaultMissionId={incidentMissionId ?? undefined}
-   />
-   ```
-
-## Ikke berørt
-- Ingen endringer i `MissionDetailDialog`, `AddIncidentDialog` eller i database/RLS — `AddIncidentDialog` har allerede `defaultMissionId`-prop som auto-fyller pilot/drone/utstyr fra valgt oppdrag.
-- Operational-fanen og resten av Status.tsx forblir uendret.
+## Tekniske detaljer
+- Ingen DB-migrasjoner.
+- Ingen nye secrets (LOVABLE_API_KEY er auto-provisjonert).
+- Bruker `streamChat`-mønster fra AI Gateway-knowledge (line-by-line SSE-parsing).
+- All data som sendes til AI er aggregert/anonymisert — ingen personnavn eller fritekst med PII.
 
 ## Verifisering
-- Åpne `/status` → toggle "Avvik" → klikk en rad med oppdrag → MissionDetailDialog åpnes.
-- Klikk "Opprett hendelse" på en rad → AddIncidentDialog åpnes med oppdrag valgt og pilot/drone/utstyr forhåndsutfylt.
-- Rader uten `mission_id` har deaktivert knapp og åpner ikke popup.
+- Logg inn som Avisafe superadmin, åpne `/statistikk`, klikk "Behandle med AI", bekreft at analysen streames inn og at seksjonen kan kollapses/åpnes på nytt uten å re-trigge kallet.
+- Test toggle "Ekskluder Avisafe" påvirker datagrunnlaget AI får.
