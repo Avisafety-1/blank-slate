@@ -73,6 +73,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const excludeAvisafe = body?.exclude_avisafe !== false;
+    const anonymizeCompanies = body?.anonymize_companies !== false;
     const excludeCompanyId = excludeAvisafe ? AVISAFE_COMPANY_ID : null;
 
     // Aggregated platform statistics (same RPC as the page)
@@ -94,7 +95,6 @@ Deno.serve(async (req) => {
     if (excludeCompanyId) incidentsQuery = incidentsQuery.neq("company_id", excludeCompanyId);
     const { data: incidents } = await incidentsQuery;
 
-    // Aggregate incidents by category and severity, plus trend last 3 vs prior 3 months
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
     const incCatCount: Record<string, number> = {};
@@ -132,12 +132,51 @@ Deno.serve(async (req) => {
       if (dt >= threeMonthsAgo) devLast3++; else devPrior3++;
     }
 
+    // Plattform-flåtestørrelse (anonyme antall for normalisering)
+    const droneCountQ = admin.from("drones").select("id", { count: "exact", head: true }).eq("aktiv", true);
+    const equipmentCountQ = admin.from("equipment").select("id", { count: "exact", head: true }).eq("aktiv", true);
+    const personnelCountQ = admin.from("profiles").select("id", { count: "exact", head: true }).eq("approved", true);
+    const companyCountQ = admin.from("companies").select("id", { count: "exact", head: true });
+    const [drC, eqC, peC, coC] = await Promise.all([
+      excludeCompanyId ? droneCountQ.neq("company_id", excludeCompanyId) : droneCountQ,
+      excludeCompanyId ? equipmentCountQ.neq("company_id", excludeCompanyId) : equipmentCountQ,
+      excludeCompanyId ? personnelCountQ.neq("company_id", excludeCompanyId) : personnelCountQ,
+      excludeCompanyId ? companyCountQ.neq("id", excludeCompanyId) : companyCountQ,
+    ]);
+
+    const resourceCounts = {
+      companies: coC.count ?? 0,
+      drones: drC.count ?? 0,
+      equipment: eqC.count ?? 0,
+      personnel: peC.count ?? 0,
+    };
+
+    // Anonymiser eventuelle selskapsnavn i rankings
+    let rankings: any = stats?.rankings;
+    if (anonymizeCompanies && rankings) {
+      const anonymizeArr = (arr: any[]) =>
+        (arr || []).map((r, idx) => {
+          const { company_name, name, navn, company_id, id, ...rest } = r || {};
+          return { ...rest, label: `Selskap ${idx + 1}` };
+        });
+      if (Array.isArray(rankings)) {
+        rankings = anonymizeArr(rankings);
+      } else if (typeof rankings === "object") {
+        const next: Record<string, any> = {};
+        for (const [k, v] of Object.entries(rankings)) {
+          next[k] = Array.isArray(v) ? anonymizeArr(v as any[]) : v;
+        }
+        rankings = next;
+      }
+    }
+
     const dataContext = {
+      resourceCounts,
       kpis: stats?.kpis,
       metrics: stats?.metrics,
       trends: stats?.trends,
       distributions: stats?.distributions,
-      topCompanies: stats?.rankings,
+      topCompanies: rankings,
       incidents: {
         total_6mo: (incidents ?? []).length,
         last_3mo: incLast3,
@@ -153,18 +192,43 @@ Deno.serve(async (req) => {
       },
     };
 
-    const systemPrompt = `Du er en erfaren sikkerhets- og driftsanalytiker for droneoperasjoner. \
-Du analyserer aggregert plattformdata for en leder, og leverer en kort, handlingsrettet vurdering på norsk. \
-Vær konkret, unngå generelle floskler, og baser deg KUN på dataene du får. \
-Format (markdown):
-**Sammendrag** (3-4 setninger om hovedinntrykket)
-**Trender** (kulepunkter, marker opp/ned med pil)
-**Risikoområder** (hva som peker seg ut negativt)
-**Anbefalt fokus** (opplæring, kurs, sjekklister, prosesser)
-**Konkrete tiltak** (prioritert som Høy / Medium / Lav, hvert tiltak 1 setning)`;
+    const systemPrompt = `Du er en erfaren, vennlig sikkerhets- og driftsrådgiver for droneoperasjoner. \
+Du skriver en leservennlig vurdering til en leder på norsk - varm i tonen, men direkte og konkret. \
+Baser deg KUN på dataene du får. Du nevner ALDRI personnavn, e-postadresser eller identifiserende detaljer om enkeltpersoner eller enkeltselskaper.
 
-    const userPrompt = `Analyser denne plattformdataen og gi meg en lederrettet vurdering. \
-Eksklusjon av Avisafe-data: ${excludeAvisafe ? "ja" : "nei"}.\n\nDATA (JSON):\n${JSON.stringify(dataContext, null, 2)}`;
+VIKTIG om vurdering av tall:
+- Bruk \`resourceCounts\` (antall droner, utstyr, piloter, selskaper) til å normalisere risiko. Hendelser/avvik må alltid ses opp mot flåtestørrelse.
+- Regn ut og kommenter rater der det gir mening.
+- Vær eksplisitt på flåtestørrelse i Nøkkeltall-seksjonen.
+
+Bruk denne EKSAKTE strukturen i markdown:
+
+**Sammendrag**
+(3-4 setninger)
+
+**Nøkkeltall (plattform)**
+- Selskaper: <total>
+- Droner: <total>
+- Utstyr: <total>
+- Piloter/personell: <total>
+
+**Trender**
+(kulepunkter med ↑/↓ og prosent når mulig)
+
+**Risikoområder**
+(rangert etter alvorlighet, normalisert mot flåtestørrelse)
+
+**Anbefalt fokus**
+(opplæring, kurs, sjekklister, prosesser, utstyr)
+
+**Konkrete tiltak**
+1. [Høy] ...
+2. [Medium] ...
+3. [Lav] ...
+
+Maks 450 ord totalt.`;
+
+    const userPrompt = `Eksklusjon av Avisafe-data: ${excludeAvisafe ? "ja" : "nei"}.\n\nDATA (JSON):\n${JSON.stringify(dataContext)}`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -179,6 +243,9 @@ Eksklusjon av Avisafe-data: ${excludeAvisafe ? "ja" : "nei"}.\n\nDATA (JSON):\n$
           { role: "user", content: userPrompt },
         ],
         stream: true,
+        temperature: 0,
+        top_p: 0.1,
+        seed: 42,
       }),
     });
 
