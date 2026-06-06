@@ -6,8 +6,10 @@ import { GlassCard } from "@/components/GlassCard";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, Users, Plane, Clock, AlertTriangle, Package, Target, Shield, CheckCircle, Activity, BarChart3 } from "lucide-react";
+import { ArrowLeft, Building2, Users, Plane, Clock, AlertTriangle, Package, Target, Shield, CheckCircle, Activity, BarChart3, Sparkles, ChevronDown, RefreshCw } from "lucide-react";
 import { PlatformActivityLog } from "@/components/admin/PlatformActivityLog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
