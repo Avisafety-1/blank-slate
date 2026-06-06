@@ -109,7 +109,13 @@ export const FH2AirspaceFeedSection = () => {
   };
 
   return (
-    <div className="space-y-4 rounded-lg border border-border/50 bg-card/50 p-4 backdrop-blur-sm">
+    <div className="relative space-y-4 rounded-lg border-2 border-destructive/50 bg-destructive/10 p-4 backdrop-blur-sm">
+      <Alert variant="destructive" className="bg-destructive/20 border-destructive">
+        <AlertTitle className="font-bold uppercase tracking-wide">Under utvikling!</AlertTitle>
+        <AlertDescription>
+          Denne funksjonen er ikke produksjonsklar og kan endre seg eller slutte å virke uten varsel.
+        </AlertDescription>
+      </Alert>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 text-base font-semibold">

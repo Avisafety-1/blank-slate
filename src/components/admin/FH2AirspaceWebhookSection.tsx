@@ -136,7 +136,13 @@ export const FH2AirspaceWebhookSection = () => {
   };
 
   return (
-    <div className="space-y-4 rounded-lg border border-border/50 bg-card/50 p-4">
+    <div className="relative space-y-4 rounded-lg border-2 border-destructive/50 bg-destructive/10 p-4">
+      <Alert variant="destructive" className="bg-destructive/20 border-destructive">
+        <AlertTitle className="font-bold uppercase tracking-wide">Under utvikling!</AlertTitle>
+        <AlertDescription>
+          Denne funksjonen er ikke produksjonsklar og kan endre seg eller slutte å virke uten varsel.
+        </AlertDescription>
+      </Alert>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="text-base font-semibold flex items-center gap-2">
