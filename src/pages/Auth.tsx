@@ -160,10 +160,11 @@ const Auth = () => {
             .maybeSingle();
           
           if (retryErr || !retryProfile) {
-            console.warn('Profile check failed twice, redirecting to app domain');
+            console.warn('Profile check failed twice — staying on login to avoid redirect loop');
             googleProfileCheckedRef.current = false; // allow future retry
             setCheckingGoogleUser(false);
-            redirectToApp('/');
+            toast.error(t('auth.profileCheckFailed', { defaultValue: 'Klarte ikke å verifisere kontoen din. Logg inn på nytt.' }));
+            try { await supabase.auth.signOut(); } catch {}
             return;
           }
           profile = retryProfile;
