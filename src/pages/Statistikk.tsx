@@ -88,6 +88,9 @@ const Statistikk = () => {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [excludeAvisafe, setExcludeAvisafe] = useState(true);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   const canAccess = isSuperAdmin && companyName?.toLowerCase() === "avisafe";
 
