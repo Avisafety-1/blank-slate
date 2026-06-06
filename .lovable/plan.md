@@ -1,50 +1,39 @@
-## Hvorfor blinker det
+## Problem
 
-Når brukeren returnerer til en fane der både access-token og refresh-token er utløpt, ender appen i en oscillasjon mellom dashbord (`/`) og login (`/auth`). Det skjer fordi flere lag forsøker å "redde" sesjonen i stedet for å logge brukeren ut én gang:
+AI Risikovurdering konkluderte at en C2-merket DJI Matrice 4TD kan opereres i A1 ("Nye regelverk tillater også C2-droner i A1 hvis det ikke er over folkemengder"). Det er feil. Per EU-regelverket og vedlagt tabell:
 
-1. `supabase.auth.getSession()` returnerer fortsatt et lagret session-objekt fra localStorage — Supabase sjekker ikke utløp her.
-2. `AuthContext.applyCachedProfile()` setter `user` + `isApproved=true` fra cache → `Index` rendrer dashbord.
-3. `refreshAuthState()` kjører i bakgrunnen. PostgREST svarer 401. `fetchWithRetry` kaller `ensureFreshSession()` → `supabase.auth.refreshSession()` → feiler med `refresh_token_not_found` / `invalid_grant`, men **uten å logge ut** — bare `console.warn`.
-4. Supabase kan emitte `SIGNED_OUT` like etter → `resetAuthState()` setter `user=null` → `Index` redirecter til `/auth`.
-5. På `/auth` finner Google-OAuth-effekten en restsesjon (eller en annen fane broadcaster en gammel session via BroadcastChannel) → `redirectToApp('/')` → tilbake til dashbord.
-6. Steg 2 gjentar seg → blink hvert 0,5–1 sekund.
+- **A1**: kun C0 (eller umerket <250 g) og C1
+- **A2**: C2 (min. 30 m fra utenforstående, 5 m i lavhastighetsmodus)
+- **A3**: C3 / C4 (eller umerket <25 kg), 150 m fra bolig/nærings/industri/rekreasjon
 
-I tillegg behandler `else`-grenen i `onAuthStateChange` "null session + user fortsatt satt" som "transient refresh" og bevarer state — det er riktig under en ekte token-rotasjon, men feil når refresh faktisk har slått feil permanent.
+C2 hører **aldri** hjemme i A1.
 
-## Hva vi endrer
+## Endringer
 
-### 1. `src/integrations/supabase/client.ts` — `ensureFreshSession`
-- Klassifiser feilen fra `refreshSession()`. Hvis meldingen/koden indikerer permanent feil (`refresh_token_not_found`, `invalid_grant`, `Invalid Refresh Token`, `Refresh Token Not Found`, HTTP 400/401 fra `/token`), kaller vi en ny eksportert helper `forceFullSignOut()` i stedet for å bare kaste videre.
-- `forceFullSignOut()`:
-  - Fjerner alle `sb-*-auth-token`-nøkler + `avisafe_session_cache` + `avisafe_query_cache` fra localStorage.
-  - Kaller `supabase.auth.signOut({ scope: 'local' })`.
-  - Broadcaster `SIGNED_OUT` til andre faner.
-  - Hvis vi ikke allerede er på `/auth`, gjør `window.location.replace('/auth?expired=1')` — hard navigasjon dropper alle in-flight queries/timers og forhindrer at React-state restaurerer dashbordet.
+Fil: `supabase/functions/ai-risk-assessment/prompts.ts`
 
-### 2. `src/contexts/AuthContext.tsx`
-- I oppstartsblokken `supabase.auth.getSession().then(...)`: hvis `isTokenStale(session)` og påfølgende `refreshSession()` kaster (eller returnerer `error`), kall `forceFullSignOut()` i stedet for å fortsette med `refreshAuthState`. Det stopper hele kjeden i steg 2–3.
-- I `refreshAuthState` sin `catch`-blokk: hvis feilen er en 401/JWT-feil og vi er online, kall `forceFullSignOut()`.
-- I `else`-grenen i `onAuthStateChange` (linje 887–908): behold "ignorer transient null", men legg til en teller — hvis vi får >2 null-session-eventer innen 3 sekunder, betrakt det som permanent og kall `forceFullSignOut()`. Det bryter loopen hvis Supabase pingponger.
-- Fjern auto-redirect-til-`/`-logikken fra `Auth.tsx` (linje 150) ved feilende profilsjekk — den driver punkt 5 i loopen. Når profilsjekken feiler permanent skal vi vise login-skjemaet, ikke redirecte tilbake til app.
+### 1. Skjerpe underkategori-tabellen (norsk, ~linje 412–417 og engelsk ~linje 958–963)
 
-### 3. `src/pages/Auth.tsx`
-- Les `?expired=1` fra URL ved mount og vis en vennlig toast: *"Du ble logget ut fordi økten utløp. Logg inn på nytt."*
-- I `checkGoogleUserProfile`: ikke kall `redirectToApp('/')` ved profil-feil to ganger på rad — vis heller en feilmelding. Dette dreper ping-pong-redirecten.
+Erstatt dagens kompakte tabell med en eksplisitt mapping som matcher Luftfartstilsynets droneplakat, og legg til en hardregel rett etter tabellen:
 
-### 4. `src/hooks/useIdleTimeout.ts`
-- I `handleLogout`: etter `signOut()`, gjør også `window.location.replace('/auth?expired=1')` slik at vi ikke er avhengige av at en `useEffect` redirecter — sluttresultatet er deterministisk og en gang.
+```
+| Underkategori | Tillatte C-merkinger | Umerket tillatt | Vekt | Avstand fra utenforstående |
+| A1 | C0, C1 | <250 g (maks 19 m/s) | C0: <250 g · C1: <900 g | Unngå overflyging; aldri over folkemengder |
+| A2 | C2 | (ingen — kun C2) | C2: <4 kg | Min 30 m (5 m i lavhastighetsmodus 3 m/s); 1:1-regelen gjelder |
+| A3 | C3, C4 | <25 kg | C3/C4: <25 kg | Min 150 m fra bolig-/nærings-/industri-/rekreasjonsområder; ingen utenforstående i området |
+```
 
-### 5. Loopdetektor (sikkerhetsnett) — ny fil `src/lib/authLoopGuard.ts`
-- Holder en liten ring-buffer i `sessionStorage` med tidsstempler for hver overgang `/` ↔ `/auth`. Hvis >4 overganger innen 4 sekunder, kall `forceFullSignOut()` og vis toast: *"Vi oppdaget en innloggingsløkke og logget deg helt ut. Logg inn på nytt."*
-- Hooken brukes i `AuthenticatedLayout` (registrerer dashbord-trykk) og `Auth.tsx` (registrerer login-trykk).
+**HARDREGLER FOR C-MERKING → UNDERKATEGORI (må følges strengt):**
+- En C2-merket drone kan IKKE opereres i A1. C2 hører til A2 (eller A3 hvis kravene til A2 ikke kan oppfylles).
+- C0/C1 er de eneste klassemerkene som er tillatt i A1.
+- C3/C4 er de eneste klassemerkene som er tillatt i A3 (eller umerket <25 kg).
+- "Nye regelverk tillater C2 i A1" er FEIL og må aldri brukes som begrunnelse.
+- Hvis dronen er C2-merket og operasjonen ikke kan oppfylle A2-avstandskravene (30 m / 5 m i lav hastighet), velg A3 — ikke A1.
+- Underkategori utledes alltid fra C-merking først, deretter avstandskrav. Ikke "nedgrader" en C2 til A1 fordi befolkningstettheten er lav.
 
-## Tekniske detaljer
+### 2. Speile samme oppdatering i engelsk seksjon
+Samme tabell og samme hardregler oversatt til engelsk i den engelske prompt-blokken.
 
-- "Permanent feil" matches case-insensitiv på `message`, `error_description`, `code` og `status` (400/401) — samme mønster som eksisterende `isMissingAuthUserError`.
-- `forceFullSignOut()` er idempotent (guard via modul-lokal boolean) slik at flere samtidige 401-er kun trigger én utlogging/redirect.
-- BroadcastChannel `SIGNED_OUT`-meldingen som allerede sendes fra `AuthContext` håndteres uendret i andre faner.
-- Ingen DB- eller backendendringer.
-
-## Hva brukeren vil oppleve
-
-I stedet for blinkende skjerm: ett kort hopp til login med en gul toast som forklarer at økten utløp. Ingen restaurert dashbord-flash, ingen videre redirect.
+### 3. Påvirkning
+- Kun prompt-tekst endres. Ingen kodelogikk, ingen schema-endringer, ingen DB-migreringer.
+- Resultat: AI vil for en C2-merket M4TD korrekt foreslå A2 (med 30/5 m-krav) eller A3 (150 m), aldri A1.
