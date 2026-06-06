@@ -1,51 +1,45 @@
-# Fiks: «Kan ikke knytte dokument til drone etter flytting»
+# Autofyll pilot + drone-ressurser ved nytt oppdrag
 
-## Årsak
+## Mål
 
-Ikke et storage-problem — selve filen ligger trygt i `documents`-bucketen.
+Når et nytt oppdrag opprettes (fra `/oppdrag`, `/kart` eller andre innganger via `AddMissionDialog`), skal følgende skje automatisk i opprett-modus (ikke ved redigering, og kun når feltene er tomme):
 
-To ting kombinerer seg i `public.transfer_drone(...)`:
+1. **Pilot**: Innlogget bruker legges til i `selectedPersonnel` (rolle står tom — brukeren velger selv).
+2. **Droner**: Alle droner brukeren er tilknyttet via `drone_personnel` legges til i `selectedDrones`.
+3. **Utstyr**: Alt utstyr koblet til disse dronene via `drone_equipment` legges til i `selectedEquipment`.
+4. **Dokumenter**: Alle dokumenter koblet til disse dronene via `drone_documents` legges til i `selectedDocuments`.
 
-1. **`drone_documents` har en `company_id`-kolonne** med RLS-policy:
-   `company_id = (select company_id from profiles where id = auth.uid())`
-2. **`transfer_drone` oppdaterer aldri `drone_documents.company_id`** når drona flyttes. Den oppdaterer drones, drone_log_entries, drone_inspections og drone_equipment_history — men link-raden mellom drone og dokument blir værende med kildeavdelingens `company_id`.
+## Hvor
 
-Resultat for bruker i målavdelingen:
-- Dokumentet selv flyttes (vises i `/dokumenter`).
-- Link-raden i `drone_documents` er **usynlig** for dem (feil company_id).
-- Når de prøver å re-tilknytte dokumentet, insertes ny rad med target `company_id` → bryter `UNIQUE (drone_id, document_id)` → feilmelding.
-
-(`drone_equipment`, `drone_personnel`, `mission_drones` har ingen `company_id`-kolonne, så de er upåvirket.)
+Kun `src/components/dashboard/AddMissionDialog.tsx`. Ingen DB-endringer, ingen RLS, ingen endring i `Oppdrag.tsx` / `Kart.tsx` — disse bruker allerede samme dialog.
 
 ## Endring
 
-Én migration som patcher `public.transfer_drone(...)`: legg til ett ekstra UPDATE rett etter de andre kaskade-oppdateringene (mellom dagens linje 117 og 119):
+I `useEffect`-en som kjører når `open` blir true (rundt linje 183–295), i grenen som behandler **opprettelse uten initialdata** (`else`-blokken ved linje 271), legg til en ny async-funksjon `autofillFromCurrentUser()` som:
 
-```sql
-UPDATE public.drone_documents
-   SET company_id = _to_company_id
- WHERE drone_id = _drone_id;
-```
+1. Henter `auth.getUser()`.
+2. Henter brukerens profil-id (allerede tilgjengelig fra `user.id`).
+3. Setter `selectedPersonnel = [user.id]`.
+4. Spør `drone_personnel` etter `drone_id` der `profile_id = user.id`.
+5. Hvis treff: setter `selectedDrones` til alle disse ID-ene, og parallelt:
+   - `drone_equipment.equipment_id` for disse `drone_id`-ene → `selectedEquipment`
+   - `drone_documents.document_id` for disse `drone_id`-ene → `selectedDocuments`
+6. Bruker dedupliserte sett (Set) for å unngå duplikater.
 
-Dette gjelder uansett action — `move`/`share` beholder linken (nå synlig i målavdelingen), og `leave` sletter raden senere i samme funksjon, så den ekstra oppdateringen er trygg.
+Samme autofyll-logikk må også gjelde grenen `else if (initialFormData || initialRouteData)` (linje 226) — der bruker kommer tilbake fra rute-planlegger uten å ha valgt personell/drone manuelt. Bare fyll inn felt som ikke allerede er satt via `initial*`-props.
 
-Ingen frontend-, RLS- eller storage-policy-endringer.
+Skal IKKE kjøre når `mission` er satt (redigeringsmodus).
 
-## Backfill av eksisterende skjeve rader (engangs)
+## Tekniske detaljer
 
-For droner som allerede er flyttet før fiksen, finnes det `drone_documents`-rader hvor `company_id` ≠ dronens nåværende `company_id`. Disse må rettes opp engang, ellers ser brukerne fortsatt samme feil for tidligere flyttede droner:
-
-```sql
-UPDATE public.drone_documents dd
-   SET company_id = d.company_id
-  FROM public.drones d
- WHERE dd.drone_id = d.id
-   AND dd.company_id <> d.company_id;
-```
+- Alle queries respekterer RLS — brukeren ser uansett bare egne ressurser. `drones`-listen som brukes i UI er allerede begrenset av `aktiv = true`. Vi bør filtrere autofylte droner mot den allerede hentede `drones`-state (etter `fetchDrones`) for å unngå å auto-attache inaktive droner. Enkleste rekkefølge: gjør `fetchDrones`/`fetchEquipment`/`fetchDocuments` først, vent på dem, og kjør så autofyll mot resultatene.
+- Bruk `Promise.all` for parallell-henting.
+- Ingen toast — autofyll skal være stille. Brukeren ser bare at felt allerede er fylt ut og kan fjerne/endre fritt før lagring.
 
 ## Verifisering
 
-1. Flytt en drone med tilknyttet dokument, velg «Flytt med».
-2. Bytt til målavdelingen — dokumentet skal allerede vises som tilknyttet drona (uten å måtte re-tilknytte).
-3. Prøv å fjerne og legge til igjen — ingen unique-feil.
-4. SQL-sjekk: `select count(*) from drone_documents dd join drones d on d.id=dd.drone_id where dd.company_id <> d.company_id;` skal være 0.
+1. Logg inn som bruker tilknyttet én drone med utstyr og dokumenter → opprett nytt oppdrag fra `/oppdrag`: pilot, drone, utstyr og dokumenter er forhåndsutfylt.
+2. Samme fra `/kart` (via route planner): autofyll skjer på samme måte.
+3. Rediger eksisterende oppdrag: ingen autofyll, eksisterende valg beholdes uendret.
+4. Bruker uten drone-tilknytning: kun pilot fylles ut.
+5. Fjerne en autofylt drone manuelt før lagring → fjerning fungerer som vanlig.
