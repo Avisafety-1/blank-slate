@@ -945,7 +945,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (isTokenStale(session)) {
               console.log('AuthContext: Token stale at startup, forcing refresh before init');
               try {
-                const { data: refreshed } = await supabase.auth.refreshSession();
+                const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+                if (refreshError) {
+                  if (isPermanentAuthError(refreshError)) {
+                    forceFullSignOut('startup-refresh-permanent');
+                    return;
+                  }
+                  throw refreshError;
+                }
                 if (refreshed.session) {
                   session = refreshed.session;
                   setSession(session);
@@ -954,6 +961,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
               } catch (refreshErr) {
                 console.warn('AuthContext: Startup token refresh failed', refreshErr);
+                if (isPermanentAuthError(refreshErr)) {
+                  forceFullSignOut('startup-refresh-permanent');
+                  return;
+                }
               }
             }
 
