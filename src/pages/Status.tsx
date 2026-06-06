@@ -131,6 +131,24 @@ const Status = () => {
   const [deviationDrillPath, setDeviationDrillPath] = useState<string[]>([]);
   const [deviationPage, setDeviationPage] = useState(1);
   const [companySettings, setCompanySettings] = useState<{ deviation_report_enabled: boolean }>({ deviation_report_enabled: false });
+  const [missionDialogOpen, setMissionDialogOpen] = useState(false);
+  const [selectedMission, setSelectedMission] = useState<any>(null);
+  const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  const [incidentMissionId, setIncidentMissionId] = useState<string | null>(null);
+
+  const openMissionFromDeviation = async (missionId: string) => {
+    const { data, error } = await supabase
+      .from("missions")
+      .select("*, companies:company_id(id, navn)")
+      .eq("id", missionId)
+      .maybeSingle();
+    if (error || !data) {
+      toast.error("Kunne ikke åpne oppdraget");
+      return;
+    }
+    setSelectedMission(data);
+    setMissionDialogOpen(true);
+  };
 
   useEffect(() => {
     if (!user) {
