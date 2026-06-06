@@ -1555,7 +1555,17 @@ const Status = () => {
               </div>
             )}
             
-            <div className="lg:ml-auto">
+            <div className="lg:ml-auto flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                size="default"
+                onClick={runAiAnalysis}
+                disabled={aiLoading || loading}
+                className="gap-2 w-full sm:w-auto"
+              >
+                <Sparkles className="w-4 h-4" />
+                {aiLoading ? "Analyserer..." : "Behandle med AI"}
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="default" size="default" className="gap-2 w-full sm:w-auto">
@@ -1581,6 +1591,32 @@ const Status = () => {
             </div>
           </div>
         </div>
+
+          {(aiOpen || aiText) && (
+            <Collapsible open={aiOpen} onOpenChange={setAiOpen}>
+              <GlassCard className="p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <CollapsibleTrigger className="flex items-center gap-2 font-semibold text-foreground flex-1 text-left">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    AI-analyse for ledelsen
+                    <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${aiOpen ? "rotate-180" : ""}`} />
+                  </CollapsibleTrigger>
+                  {aiText && !aiLoading && (
+                    <Button size="sm" variant="ghost" onClick={runAiAnalysis} title="Generer på nytt">
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <CollapsibleContent>
+                  <div className="mt-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                    {aiText || (aiLoading ? "Genererer analyse..." : "")}
+                    {aiLoading && aiText && <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />}
+                  </div>
+                </CollapsibleContent>
+              </GlassCard>
+            </Collapsible>
+          )}
+
           <ToggleGroup
             type="single"
             value={activeView}
@@ -1594,6 +1630,7 @@ const Status = () => {
               Avvik
             </ToggleGroupItem>
           </ToggleGroup>
+
 
         {activeView === "operational" && (<>
 
