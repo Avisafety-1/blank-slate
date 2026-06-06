@@ -193,6 +193,7 @@ const App = () => {
         <ErrorBoundary>
           <AuthProvider>
             <BrowserRouter>
+              <RouteWatcher />
               <GuidedTourProvider>
               <ForceReloadBanner />
               <Toaster />
