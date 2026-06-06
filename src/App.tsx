@@ -18,6 +18,7 @@ import { IdleTimeoutWarning } from "@/components/IdleTimeoutWarning";
 import { ForceReloadBanner } from "@/components/ForceReloadBanner";
 import { GuidedTourProvider } from "@/components/guided-tour/GuidedTourProvider";
 import { useForceReload } from "@/hooks/useForceReload";
+import { recordAuthRouteVisit } from "@/lib/authLoopGuard";
 import { PlanRestricted } from "@/components/PlanRestricted";
 import { TrainingModuleRestricted } from "@/components/TrainingModuleRestricted";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -166,6 +167,16 @@ const QueryWrapper = persister
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 
+// Tracks all route changes (including /auth) so the auth loop guard can
+// detect dashboard <-> login oscillation and force a hard sign-out.
+const RouteWatcher = () => {
+  const location = useLocation();
+  useEffect(() => {
+    recordAuthRouteVisit(location.pathname === '/auth' ? 'auth' : 'app');
+  }, [location.pathname]);
+  return null;
+};
+
 const App = () => {
   useEffect(() => {
     const isDji = /dji/i.test(navigator.userAgent);
@@ -182,6 +193,7 @@ const App = () => {
         <ErrorBoundary>
           <AuthProvider>
             <BrowserRouter>
+              <RouteWatcher />
               <GuidedTourProvider>
               <ForceReloadBanner />
               <Toaster />

@@ -59,6 +59,22 @@ const Auth = () => {
   const isDevEnv = isDevelopment();
   const googleProfileCheckedRef = useRef(false);
 
+  // Show "session expired" toast when redirected here by forceFullSignOut / idle timeout
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('expired') === '1') {
+        toast.info(t('auth.sessionExpired', { defaultValue: 'Du ble logget ut fordi økten utløp. Logg inn på nytt.' }));
+        params.delete('expired');
+        const newSearch = params.toString();
+        const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '');
+        window.history.replaceState(null, '', newUrl);
+      }
+    } catch {
+      // ignore
+    }
+  }, [t]);
+
   // Handle email confirmation messages from URL hash
   useEffect(() => {
     const hash = window.location.hash;
@@ -144,10 +160,11 @@ const Auth = () => {
             .maybeSingle();
           
           if (retryErr || !retryProfile) {
-            console.warn('Profile check failed twice, redirecting to app domain');
+            console.warn('Profile check failed twice — staying on login to avoid redirect loop');
             googleProfileCheckedRef.current = false; // allow future retry
             setCheckingGoogleUser(false);
-            redirectToApp('/');
+            toast.error(t('auth.profileCheckFailed', { defaultValue: 'Klarte ikke å verifisere kontoen din. Logg inn på nytt.' }));
+            try { await supabase.auth.signOut(); } catch {}
             return;
           }
           profile = retryProfile;

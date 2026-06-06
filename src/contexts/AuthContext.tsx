@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
 import { broadcastSession, broadcastSignOut, onTabMessage, type TabSyncMessage } from "@/lib/authTabSync";
+import { forceFullSignOut, isPermanentAuthError } from "@/lib/forceSignOut";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
 import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 
@@ -167,6 +168,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
   // Flag to suppress onAuthStateChange echoes caused by cross-tab setSession
   const ignoreNextAuthEventRef = useRef(false);
+  // Track repeated transient-null events — if Supabase pingpongs, force sign-out
+  const transientNullTimestampsRef = useRef<number[]>([]);
   // Hydrate i18n from profiles.preferred_language only once per session,
   // so a mid-session user toggle is never overwritten by a later profile fetch.
   const i18nHydratedRef = useRef(false);
@@ -678,6 +681,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('refreshAuthState failed:', reason, error);
       if (!navigator.onLine) {
         applyCachedProfile(userId);
+      } else if (isPermanentAuthError(error)) {
+        // Refresh token / JWT permanently invalid → break out of any retry loop
+        forceFullSignOut('refreshAuthState-permanent');
+        return;
       }
       setAuthRefreshing(false);
       setAuthInitialized(true);
@@ -888,6 +895,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Transient null session during token refresh — DO NOT reset state.
           // This is the key fix: a null session mid-refresh is NOT a real sign-out.
           if (!session && user && navigator.onLine) {
+            // Track repeated transient nulls — if Supabase pingpongs (>2 within
+            // 3s) we treat the session as permanently broken and hard-sign-out
+            // to break the blinking dashboard <-> login loop.
+            const now = Date.now();
+            transientNullTimestampsRef.current = [
+              ...transientNullTimestampsRef.current.filter((t) => now - t < 3_000),
+              now,
+            ];
+            if (transientNullTimestampsRef.current.length > 2) {
+              console.warn('AuthContext: too many transient null sessions — forcing sign-out');
+              transientNullTimestampsRef.current = [];
+              forceFullSignOut('transient-null-storm');
+              return;
+            }
             console.log('AuthContext: Ignoring transient null session during token refresh (user still set)');
             return;
           }
@@ -924,7 +945,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (isTokenStale(session)) {
               console.log('AuthContext: Token stale at startup, forcing refresh before init');
               try {
-                const { data: refreshed } = await supabase.auth.refreshSession();
+                const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+                if (refreshError) {
+                  if (isPermanentAuthError(refreshError)) {
+                    forceFullSignOut('startup-refresh-permanent');
+                    return;
+                  }
+                  throw refreshError;
+                }
                 if (refreshed.session) {
                   session = refreshed.session;
                   setSession(session);
@@ -933,6 +961,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
               } catch (refreshErr) {
                 console.warn('AuthContext: Startup token refresh failed', refreshErr);
+                if (isPermanentAuthError(refreshErr)) {
+                  forceFullSignOut('startup-refresh-permanent');
+                  return;
+                }
               }
             }
 
