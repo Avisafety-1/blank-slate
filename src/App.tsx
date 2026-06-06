@@ -167,6 +167,16 @@ const QueryWrapper = persister
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 
+// Tracks all route changes (including /auth) so the auth loop guard can
+// detect dashboard <-> login oscillation and force a hard sign-out.
+const RouteWatcher = () => {
+  const location = useLocation();
+  useEffect(() => {
+    recordAuthRouteVisit(location.pathname === '/auth' ? 'auth' : 'app');
+  }, [location.pathname]);
+  return null;
+};
+
 const App = () => {
   useEffect(() => {
     const isDji = /dji/i.test(navigator.userAgent);
