@@ -40,6 +40,9 @@ export async function ensureFreshSession(): Promise<void> {
     .then(({ data, error }) => {
       if (error) {
         console.warn('ensureFreshSession: refresh failed', error.message);
+        if (isPermanentAuthError(error)) {
+          forceFullSignOut('refresh-permanent-failure');
+        }
         throw error;
       }
       console.log('ensureFreshSession: token refreshed successfully');
@@ -47,6 +50,12 @@ export async function ensureFreshSession(): Promise<void> {
       if (data.session) {
         broadcastSession(data.session);
       }
+    })
+    .catch((err) => {
+      if (isPermanentAuthError(err)) {
+        forceFullSignOut('refresh-permanent-failure');
+      }
+      throw err;
     })
     .finally(() => {
       activeRefreshPromise = null;
