@@ -150,7 +150,7 @@ const Statistikk = () => {
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ exclude_avisafe: excludeAvisafe }),
+          body: JSON.stringify({ exclude_avisafe: excludeAvisafe, anonymize_companies: true }),
         }
       );
 
