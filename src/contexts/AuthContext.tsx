@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
 import { broadcastSession, broadcastSignOut, onTabMessage, type TabSyncMessage } from "@/lib/authTabSync";
+import { forceFullSignOut, isPermanentAuthError } from "@/lib/forceSignOut";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
 import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 
