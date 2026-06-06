@@ -35,7 +35,19 @@ export function useIdleTimeout() {
   const handleLogout = useCallback(async () => {
     clearAllTimers();
     setShowWarning(false);
-    await signOut();
+    try {
+      await signOut();
+    } finally {
+      // Hard navigation guarantees we land on the login page exactly once and
+      // tears down all in-flight queries/timers (prevents login-loop blink).
+      try {
+        if (window.location.pathname !== '/auth') {
+          window.location.replace('/auth?expired=1');
+        }
+      } catch {
+        // ignore
+      }
+    }
   }, [signOut, clearAllTimers]);
 
   const startCountdown = useCallback(() => {
