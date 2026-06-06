@@ -7,6 +7,7 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 import { isRefreshLockedByOtherTab, setRefreshLock, broadcastSession } from '@/lib/authTabSync';
 import { safeAuthStorage } from '@/lib/safeStorage';
+import { forceFullSignOut, isPermanentAuthError } from '@/lib/forceSignOut';
 
 // --- Deduplicated session refresh ---
 let activeRefreshPromise: Promise<void> | null = null;
