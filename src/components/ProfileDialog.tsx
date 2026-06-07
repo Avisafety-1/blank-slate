@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search, Brain, Radio, FileText, Building2, Users } from "lucide-react";
+import { statusColors, getApprovalStatusColor, getApprovalStatusLabel, getSoraBadgeColor, getAIRiskBadgeColor, getNotamBadgeColor, shouldShowSoraBadge } from "@/lib/oppdragHelpers";
+import { format } from "date-fns";
+import { nb } from "date-fns/locale";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -349,12 +353,17 @@ export const ProfileDialog = () => {
 
         const { data: pendingMissions } = await pendingQuery;
 
-        // Fetch AI risk assessments for pending missions
+        // Fetch AI risk assessments + related data for pending missions
         const missionIds = (pendingMissions || []).map((m: any) => m.id);
         let riskMap: Record<string, any> = {};
         let personnelMap: Record<string, string[]> = {};
+        let personnelDetailsMap: Record<string, Array<{ id: string; name: string; roleName: string | null }>> = {};
+        let soraMap: Record<string, any> = {};
+        let documentCountsMap: Record<string, number> = {};
+        let companyNameMap: Record<string, string> = {};
         if (missionIds.length > 0) {
-          const [riskResult, personnelResult] = await Promise.all([
+          const companyIds = Array.from(new Set((pendingMissions || []).map((m: any) => m.company_id).filter(Boolean)));
+          const [riskResult, personnelResult, soraResult, docsResult, companiesResult] = await Promise.all([
             supabase
               .from("mission_risk_assessments")
               .select("*")
@@ -362,8 +371,19 @@ export const ProfileDialog = () => {
               .order("created_at", { ascending: false }),
             supabase
               .from("mission_personnel")
-              .select("mission_id, profile_id")
+              .select("mission_id, profile_id, profiles(id, full_name), role_id, company_mission_roles(name)")
               .in("mission_id", missionIds),
+            supabase
+              .from("mission_sora")
+              .select("mission_id, sora_status")
+              .in("mission_id", missionIds),
+            supabase
+              .from("mission_documents")
+              .select("mission_id")
+              .in("mission_id", missionIds),
+            companyIds.length > 0
+              ? supabase.from("companies").select("id, navn").in("id", companyIds)
+              : Promise.resolve({ data: [] as any[] }),
           ]);
 
           if (riskResult.data) {
@@ -378,6 +398,30 @@ export const ProfileDialog = () => {
             for (const p of personnelResult.data as any[]) {
               if (!personnelMap[p.mission_id]) personnelMap[p.mission_id] = [];
               if (p.profile_id) personnelMap[p.mission_id].push(p.profile_id);
+              if (!personnelDetailsMap[p.mission_id]) personnelDetailsMap[p.mission_id] = [];
+              personnelDetailsMap[p.mission_id].push({
+                id: p.profile_id,
+                name: p.profiles?.full_name || "Ukjent",
+                roleName: p.company_mission_roles?.name || null,
+              });
+            }
+          }
+
+          if (soraResult.data) {
+            for (const s of soraResult.data as any[]) {
+              if (!soraMap[s.mission_id]) soraMap[s.mission_id] = s;
+            }
+          }
+
+          if (docsResult.data) {
+            for (const d of docsResult.data as any[]) {
+              documentCountsMap[d.mission_id] = (documentCountsMap[d.mission_id] || 0) + 1;
+            }
+          }
+
+          if (companiesResult.data) {
+            for (const c of companiesResult.data as any[]) {
+              companyNameMap[c.id] = c.navn;
             }
           }
         }
@@ -387,8 +431,13 @@ export const ProfileDialog = () => {
             ...m,
             aiRisk: riskMap[m.id] || null,
             personnel_profile_ids: personnelMap[m.id] || [],
+            personnel_details: personnelDetailsMap[m.id] || [],
+            sora: soraMap[m.id] || null,
+            documentCount: documentCountsMap[m.id] || 0,
+            company_name: companyNameMap[m.company_id] || null,
           }))
         );
+
       } else {
         setPendingApprovalMissions([]);
       }
@@ -2113,29 +2162,90 @@ export const ProfileDialog = () => {
                             return (
                             <div
                               key={mission.id}
-                              className="p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden min-w-0"
+                              className="w-full p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
                               onClick={() => {
                                 setSelectedMission(mission);
                                 setMissionDetailOpen(true);
                               }}
                             >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <p className="font-medium break-words">{mission.tittel}</p>
-                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                                    {mission.lokasjon && (
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="h-3 w-3" />
-                                        {mission.lokasjon}
+                              {/* Header: title + avdeling */}
+                              <div className="flex items-start gap-2">
+                                <p className="font-semibold text-base break-words flex-1 min-w-0">{mission.tittel}</p>
+                                {mission.company_name && (
+                                  <Badge variant="outline" className="shrink-0 gap-1 border-primary/30 text-primary text-[10px]">
+                                    <Building2 className="h-3 w-3" />
+                                    {mission.company_name}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {/* Badge row */}
+                              <div className="flex flex-wrap gap-1.5">
+                                <Badge variant="outline" className={`${statusColors[mission.status] || ''} text-[10px] px-1.5 py-0.5`}>
+                                  {mission.status}
+                                </Badge>
+                                <Badge variant="outline" className={`${getApprovalStatusColor(mission.approval_status || 'pending_approval')} text-[10px] px-1.5 py-0.5`}>
+                                  {getApprovalStatusLabel(mission.approval_status || 'pending_approval', true)}
+                                </Badge>
+                                {shouldShowSoraBadge(mission.sora) && (
+                                  <Badge variant="outline" className={`${getSoraBadgeColor(mission.sora?.sora_status)} text-[10px] px-1.5 py-0.5`}>
+                                    SORA: {mission.sora.sora_status}
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className={`${mission.aiRisk ? getAIRiskBadgeColor(mission.aiRisk.recommendation) : 'bg-gray-500/20 text-gray-900 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
+                                  <Brain className="w-3 h-3 mr-1" />
+                                  {mission.aiRisk ? Number(mission.aiRisk.overall_score).toFixed(1) : 'Risiko'}
+                                </Badge>
+                                {mission.checklist_ids?.length > 0 && (
+                                  <Badge variant="outline" className={`${mission.checklist_ids.every((id: string) => mission.checklist_completed_ids?.includes(id)) ? 'bg-green-500/20 text-green-900 border-green-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
+                                    <ClipboardCheck className="w-3 h-3 mr-1" />
+                                    Sjekkliste
+                                  </Badge>
+                                )}
+                                {mission.notam_text && (
+                                  <Badge variant="outline" className={`${getNotamBadgeColor(!!mission.notam_submitted_at)} text-[10px] px-1.5 py-0.5`}>
+                                    <Radio className="w-3 h-3 mr-1" />
+                                    NOTAM
+                                  </Badge>
+                                )}
+                                {mission.documentCount > 0 && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
+                                    <FileText className="w-3 h-3 mr-1" />
+                                    {mission.documentCount}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {/* Meta row */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
+                                {mission.lokasjon && (
+                                  <span className="flex items-start gap-1 min-w-0">
+                                    <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                    <span className="truncate">{mission.lokasjon}</span>
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                                  {format(new Date(mission.tidspunkt), "dd. MMM yyyy HH:mm", { locale: nb })}
+                                </span>
+                                {Array.isArray(mission.personnel_details) && mission.personnel_details.length > 0 && (() => {
+                                  const sorted = [...mission.personnel_details].sort((a: any, b: any) => {
+                                    const aPilot = /pilot|pic|fjernpilot/i.test(a.roleName || '') ? 0 : 1;
+                                    const bPilot = /pilot|pic|fjernpilot/i.test(b.roleName || '') ? 0 : 1;
+                                    return aPilot - bPilot;
+                                  });
+                                  const first = sorted[0];
+                                  const extra = sorted.length - 1;
+                                  return (
+                                    <span className="flex items-center gap-1 min-w-0" title={sorted.map((p: any) => `${p.name}${p.roleName ? ` (${p.roleName})` : ''}`).join(', ')}>
+                                      <Users className="h-3.5 w-3.5 shrink-0" />
+                                      <span className="truncate">
+                                        {first.roleName ? `${first.roleName}: ` : ''}{first.name}
+                                        {extra > 0 && ` +${extra}`}
                                       </span>
-                                    )}
-                                    <span className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      {new Date(mission.tidspunkt).toLocaleDateString("no-NO", { day: "2-digit", month: "short", year: "numeric" })}
                                     </span>
-                                  </div>
-                                  <Badge className="mt-1 text-xs" variant="outline">{mission.status}</Badge>
-                                </div>
+                                  );
+                                })()}
                               </div>
                               {/* Comment section */}
                               {commentingMissionId === mission.id && (
