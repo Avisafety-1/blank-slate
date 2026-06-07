@@ -2162,29 +2162,90 @@ export const ProfileDialog = () => {
                             return (
                             <div
                               key={mission.id}
-                              className="p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden min-w-0"
+                              className="w-full p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
                               onClick={() => {
                                 setSelectedMission(mission);
                                 setMissionDetailOpen(true);
                               }}
                             >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <p className="font-medium break-words">{mission.tittel}</p>
-                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                                    {mission.lokasjon && (
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="h-3 w-3" />
-                                        {mission.lokasjon}
+                              {/* Header: title + avdeling */}
+                              <div className="flex items-start gap-2">
+                                <p className="font-semibold text-base break-words flex-1 min-w-0">{mission.tittel}</p>
+                                {mission.company_name && (
+                                  <Badge variant="outline" className="shrink-0 gap-1 border-primary/30 text-primary text-[10px]">
+                                    <Building2 className="h-3 w-3" />
+                                    {mission.company_name}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {/* Badge row */}
+                              <div className="flex flex-wrap gap-1.5">
+                                <Badge variant="outline" className={`${statusColors[mission.status] || ''} text-[10px] px-1.5 py-0.5`}>
+                                  {mission.status}
+                                </Badge>
+                                <Badge variant="outline" className={`${getApprovalStatusColor(mission.approval_status || 'pending_approval')} text-[10px] px-1.5 py-0.5`}>
+                                  {getApprovalStatusLabel(mission.approval_status || 'pending_approval', true)}
+                                </Badge>
+                                {shouldShowSoraBadge(mission.sora) && (
+                                  <Badge variant="outline" className={`${getSoraBadgeColor(mission.sora?.sora_status)} text-[10px] px-1.5 py-0.5`}>
+                                    SORA: {mission.sora.sora_status}
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className={`${mission.aiRisk ? getAIRiskBadgeColor(mission.aiRisk.recommendation) : 'bg-gray-500/20 text-gray-900 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
+                                  <Brain className="w-3 h-3 mr-1" />
+                                  {mission.aiRisk ? Number(mission.aiRisk.overall_score).toFixed(1) : 'Risiko'}
+                                </Badge>
+                                {mission.checklist_ids?.length > 0 && (
+                                  <Badge variant="outline" className={`${mission.checklist_ids.every((id: string) => mission.checklist_completed_ids?.includes(id)) ? 'bg-green-500/20 text-green-900 border-green-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
+                                    <ClipboardCheck className="w-3 h-3 mr-1" />
+                                    Sjekkliste
+                                  </Badge>
+                                )}
+                                {mission.notam_text && (
+                                  <Badge variant="outline" className={`${getNotamBadgeColor(!!mission.notam_submitted_at)} text-[10px] px-1.5 py-0.5`}>
+                                    <Radio className="w-3 h-3 mr-1" />
+                                    NOTAM
+                                  </Badge>
+                                )}
+                                {mission.documentCount > 0 && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
+                                    <FileText className="w-3 h-3 mr-1" />
+                                    {mission.documentCount}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {/* Meta row */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
+                                {mission.lokasjon && (
+                                  <span className="flex items-start gap-1 min-w-0">
+                                    <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                    <span className="truncate">{mission.lokasjon}</span>
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                                  {format(new Date(mission.tidspunkt), "dd. MMM yyyy HH:mm", { locale: nb })}
+                                </span>
+                                {Array.isArray(mission.personnel_details) && mission.personnel_details.length > 0 && (() => {
+                                  const sorted = [...mission.personnel_details].sort((a: any, b: any) => {
+                                    const aPilot = /pilot|pic|fjernpilot/i.test(a.roleName || '') ? 0 : 1;
+                                    const bPilot = /pilot|pic|fjernpilot/i.test(b.roleName || '') ? 0 : 1;
+                                    return aPilot - bPilot;
+                                  });
+                                  const first = sorted[0];
+                                  const extra = sorted.length - 1;
+                                  return (
+                                    <span className="flex items-center gap-1 min-w-0" title={sorted.map((p: any) => `${p.name}${p.roleName ? ` (${p.roleName})` : ''}`).join(', ')}>
+                                      <Users className="h-3.5 w-3.5 shrink-0" />
+                                      <span className="truncate">
+                                        {first.roleName ? `${first.roleName}: ` : ''}{first.name}
+                                        {extra > 0 && ` +${extra}`}
                                       </span>
-                                    )}
-                                    <span className="flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      {new Date(mission.tidspunkt).toLocaleDateString("no-NO", { day: "2-digit", month: "short", year: "numeric" })}
                                     </span>
-                                  </div>
-                                  <Badge className="mt-1 text-xs" variant="outline">{mission.status}</Badge>
-                                </div>
+                                  );
+                                })()}
                               </div>
                               {/* Comment section */}
                               {commentingMissionId === mission.id && (
