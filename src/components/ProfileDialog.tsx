@@ -2294,9 +2294,9 @@ export const ProfileDialog = () => {
                                     </Button>
                                   </div>
                                 </div>
-                              ) : (
+                              ) : commentingMissionId === mission.id ? null : (
                                 <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                                  <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(commentingMissionId === mission.id ? null : mission.id); setMissionComment(""); }}>
+                                  <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(mission.id); setMissionComment(""); }}>
                                     <MessageSquare className="h-4 w-4 mr-1" />
                                     Kommentar
                                   </Button>
@@ -2306,6 +2306,7 @@ export const ProfileDialog = () => {
                                   </Button>
                                 </div>
                               )}
+
 
                               {/* Display existing comments */}
                               {Array.isArray(mission.approver_comments) && mission.approver_comments.length > 0 && (
