@@ -349,12 +349,17 @@ export const ProfileDialog = () => {
 
         const { data: pendingMissions } = await pendingQuery;
 
-        // Fetch AI risk assessments for pending missions
+        // Fetch AI risk assessments + related data for pending missions
         const missionIds = (pendingMissions || []).map((m: any) => m.id);
         let riskMap: Record<string, any> = {};
         let personnelMap: Record<string, string[]> = {};
+        let personnelDetailsMap: Record<string, Array<{ id: string; name: string; roleName: string | null }>> = {};
+        let soraMap: Record<string, any> = {};
+        let documentCountsMap: Record<string, number> = {};
+        let companyNameMap: Record<string, string> = {};
         if (missionIds.length > 0) {
-          const [riskResult, personnelResult] = await Promise.all([
+          const companyIds = Array.from(new Set((pendingMissions || []).map((m: any) => m.company_id).filter(Boolean)));
+          const [riskResult, personnelResult, soraResult, docsResult, companiesResult] = await Promise.all([
             supabase
               .from("mission_risk_assessments")
               .select("*")
@@ -362,8 +367,19 @@ export const ProfileDialog = () => {
               .order("created_at", { ascending: false }),
             supabase
               .from("mission_personnel")
-              .select("mission_id, profile_id")
+              .select("mission_id, profile_id, profiles(id, full_name), role_id, company_mission_roles(name)")
               .in("mission_id", missionIds),
+            supabase
+              .from("mission_sora")
+              .select("mission_id, sora_status")
+              .in("mission_id", missionIds),
+            supabase
+              .from("mission_documents")
+              .select("mission_id")
+              .in("mission_id", missionIds),
+            companyIds.length > 0
+              ? supabase.from("companies").select("id, navn").in("id", companyIds)
+              : Promise.resolve({ data: [] as any[] }),
           ]);
 
           if (riskResult.data) {
@@ -378,6 +394,30 @@ export const ProfileDialog = () => {
             for (const p of personnelResult.data as any[]) {
               if (!personnelMap[p.mission_id]) personnelMap[p.mission_id] = [];
               if (p.profile_id) personnelMap[p.mission_id].push(p.profile_id);
+              if (!personnelDetailsMap[p.mission_id]) personnelDetailsMap[p.mission_id] = [];
+              personnelDetailsMap[p.mission_id].push({
+                id: p.profile_id,
+                name: p.profiles?.full_name || "Ukjent",
+                roleName: p.company_mission_roles?.name || null,
+              });
+            }
+          }
+
+          if (soraResult.data) {
+            for (const s of soraResult.data as any[]) {
+              if (!soraMap[s.mission_id]) soraMap[s.mission_id] = s;
+            }
+          }
+
+          if (docsResult.data) {
+            for (const d of docsResult.data as any[]) {
+              documentCountsMap[d.mission_id] = (documentCountsMap[d.mission_id] || 0) + 1;
+            }
+          }
+
+          if (companiesResult.data) {
+            for (const c of companiesResult.data as any[]) {
+              companyNameMap[c.id] = c.navn;
             }
           }
         }
@@ -387,8 +427,13 @@ export const ProfileDialog = () => {
             ...m,
             aiRisk: riskMap[m.id] || null,
             personnel_profile_ids: personnelMap[m.id] || [],
+            personnel_details: personnelDetailsMap[m.id] || [],
+            sora: soraMap[m.id] || null,
+            documentCount: documentCountsMap[m.id] || 0,
+            company_name: companyNameMap[m.company_id] || null,
           }))
         );
+
       } else {
         setPendingApprovalMissions([]);
       }
