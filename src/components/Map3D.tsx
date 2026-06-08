@@ -1,11 +1,10 @@
 /**
- * Map3D — DIAGNOSTIC MINIMAL VERSION
+ * Map3D — DIAGNOSTIC MINIMAL VERSION (on-screen panel)
  *
- * Stripped to bare-minimum MapLibre setup to identify why the 3D map renders blank.
- * Once we have console output, we re-enable terrain → buildings → AviSafe layers in steps.
+ * Renders state directly on screen so we don't depend on console capture.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl, { Map as MlMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -15,23 +14,84 @@ interface Map3DProps {
   onMissionClick?: (mission: any) => void;
 }
 
+type Diag = {
+  effectRan: boolean;
+  containerSize: string;
+  containerSizeAfterResize: string;
+  maplibreVersion: string;
+  webgl1: string;
+  webgl2: string;
+  ctorStatus: string;
+  loadEvent: boolean;
+  idleEvent: boolean;
+  styledata: number;
+  osmTilesLoaded: boolean;
+  errors: string[];
+  contextLost: boolean;
+  contextRestored: boolean;
+};
+
+const initial: Diag = {
+  effectRan: false,
+  containerSize: "?",
+  containerSizeAfterResize: "?",
+  maplibreVersion: "?",
+  webgl1: "?",
+  webgl2: "?",
+  ctorStatus: "not run",
+  loadEvent: false,
+  idleEvent: false,
+  styledata: 0,
+  osmTilesLoaded: false,
+  errors: [],
+  contextLost: false,
+  contextRestored: false,
+};
+
+function probeWebGL() {
+  const c = document.createElement("canvas");
+  let gl1 = "no";
+  let gl2 = "no";
+  try {
+    const ctx1 = c.getContext("webgl") || (c as any).getContext("experimental-webgl");
+    gl1 = ctx1 ? "yes" : "no";
+  } catch (e: any) {
+    gl1 = "throw: " + (e?.message ?? e);
+  }
+  try {
+    const ctx2 = c.getContext("webgl2");
+    gl2 = ctx2 ? "yes" : "no";
+  } catch (e: any) {
+    gl2 = "throw: " + (e?.message ?? e);
+  }
+  return { gl1, gl2 };
+}
+
 export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
+  const [diag, setDiag] = useState<Diag>(initial);
+  const diagRef = useRef<Diag>(initial);
+  const update = (patch: Partial<Diag>) => {
+    diagRef.current = { ...diagRef.current, ...patch };
+    setDiag(diagRef.current);
+  };
 
   useEffect(() => {
     const el = containerRef.current;
-    console.log(
-      "[Map3D] mount, container =", el,
-      "size =", el?.clientWidth, "x", el?.clientHeight,
-      "maplibre version =", (maplibregl as any).version,
-    );
+    const { gl1, gl2 } = probeWebGL();
+    update({
+      effectRan: true,
+      maplibreVersion: String((maplibregl as any).version ?? "unknown"),
+      webgl1: gl1,
+      webgl2: gl2,
+      containerSize: el ? `${el.clientWidth} x ${el.clientHeight}` : "no-el",
+    });
+    console.log("[Map3D] mount", { el, gl1, gl2, version: (maplibregl as any).version });
+
     if (!el) {
-      console.error("[Map3D] no container ref");
+      update({ ctorStatus: "no container ref" });
       return;
-    }
-    if (el.clientWidth === 0 || el.clientHeight === 0) {
-      console.warn("[Map3D] container has zero size — map will not render visibly");
     }
 
     let map: MlMap;
@@ -53,7 +113,6 @@ export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
             },
           },
           layers: [
-            // Magenta background = "MapLibre canvas is alive but no tiles loaded"
             { id: "bg", type: "background", paint: { "background-color": "#ff00ff" } },
             { id: "osm", type: "raster", source: "osm" },
           ],
@@ -64,45 +123,67 @@ export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
         bearing: 0,
       });
       mapRef.current = map;
-      console.log("[Map3D] Map constructor returned OK");
-    } catch (err) {
-      console.error("[Map3D] Map constructor THREW", err);
+      update({ ctorStatus: "OK" });
+      console.log("[Map3D] ctorStatus OK");
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      update({ ctorStatus: "THREW: " + msg, errors: [...diagRef.current.errors, msg] });
+      console.error("[Map3D] ctorStatus threw", err);
       return;
     }
 
-    map.on("load",      () => console.log("[Map3D] event: load"));
-    map.on("idle",      () => console.log("[Map3D] event: idle (first paint done)"));
-    map.on("styledata", () => console.log("[Map3D] event: styledata"));
-    map.on("error", (e: any) => {
-      console.error("[Map3D] event: ERROR", {
-        message: e?.error?.message,
-        status: e?.error?.status,
-        url: e?.error?.url,
-        raw: e,
+    // WebGL context lost/restored
+    const canvas = map.getCanvas?.();
+    if (canvas) {
+      canvas.addEventListener("webglcontextlost", (e) => {
+        e.preventDefault();
+        update({ contextLost: true });
+        console.error("[Map3D] webglcontextlost");
       });
+      canvas.addEventListener("webglcontextrestored", () => {
+        update({ contextRestored: true });
+        console.log("[Map3D] webglcontextrestored");
+      });
+    }
+
+    map.on("load", () => {
+      update({ loadEvent: true });
+      console.log("[Map3D] load");
+    });
+    map.on("idle", () => {
+      if (!diagRef.current.idleEvent) update({ idleEvent: true });
+    });
+    map.on("styledata", () => {
+      update({ styledata: diagRef.current.styledata + 1 });
+    });
+    map.on("error", (e: any) => {
+      const msg = e?.error?.message ?? String(e?.error ?? "unknown error");
+      update({ errors: [...diagRef.current.errors, msg].slice(-5) });
+      console.error("[Map3D] error event", e);
     });
     map.on("sourcedata", (e: any) => {
-      if (e.sourceId === "osm" && e.isSourceLoaded) {
-        console.log("[Map3D] event: OSM tiles loaded");
+      if (e.sourceId === "osm" && e.isSourceLoaded && !diagRef.current.osmTilesLoaded) {
+        update({ osmTilesLoaded: true });
       }
     });
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-    /* ----------------------------------------------------------------------
-     * Everything below intentionally disabled for diagnostics.
-     * Re-enable in order: terrain → hillshade → 3D buildings → AviSafe layers.
-     * --------------------------------------------------------------------- */
-    // map.on("load", () => addTerrain(map));
-    // map.on("load", () => addBuildings(map));
-    // map.on("load", () => addOperationalLayers(map));
+    // Resize after a tick to handle late layout
+    const t = window.setTimeout(() => {
+      try {
+        map.resize();
+        update({
+          containerSizeAfterResize: el ? `${el.clientWidth} x ${el.clientHeight}` : "no-el",
+        });
+      } catch (err: any) {
+        console.error("[Map3D] resize threw", err);
+      }
+    }, 300);
 
     return () => {
-      try {
-        map.remove();
-      } catch {
-        /* noop */
-      }
+      window.clearTimeout(t);
+      try { map.remove(); } catch { /* noop */ }
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,8 +192,26 @@ export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
   return (
     <div className="absolute inset-0">
       <div ref={containerRef} className="absolute inset-0" style={{ background: "#222" }} />
-      <div className="absolute top-3 left-3 z-[500] bg-card/90 border border-border rounded px-2 py-1 text-xs font-mono">
-        Map3D: diagnostic mode — check console
+      <div
+        className="absolute top-14 left-3 z-[700] bg-black/85 text-white border border-white/20 rounded px-3 py-2 text-xs font-mono leading-relaxed shadow-xl max-w-[92vw]"
+        style={{ whiteSpace: "pre-wrap" }}
+      >
+        {`Map3D diag
+effectRan:       ${diag.effectRan}
+container:       ${diag.containerSize}
+container@300ms: ${diag.containerSizeAfterResize}
+maplibre:        ${diag.maplibreVersion}
+webgl1:          ${diag.webgl1}
+webgl2:          ${diag.webgl2}
+ctorStatus:     ${diag.ctorStatus}
+load event:      ${diag.loadEvent}
+idle event:      ${diag.idleEvent}
+styledata count: ${diag.styledata}
+osm tiles ok:    ${diag.osmTilesLoaded}
+ctx lost:        ${diag.contextLost}
+ctx restored:    ${diag.contextRestored}
+errors:
+${diag.errors.length ? diag.errors.map((e) => "  - " + e).join("\n") : "  (none)"}`}
       </div>
     </div>
   );
