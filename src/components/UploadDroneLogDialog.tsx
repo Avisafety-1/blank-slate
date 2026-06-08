@@ -3629,8 +3629,25 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 </div>
                 <div className="space-y-2">
                   <Label>{t('dronelog.djiPassword', 'DJI passord')}</Label>
-                  <Input type="password" value={djiPassword} onChange={e => setDjiPassword(e.target.value)} placeholder="••••••••" />
+                  <div className="relative">
+                    <Input
+                      type={showDjiPassword ? "text" : "password"}
+                      value={djiPassword}
+                      onChange={e => setDjiPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDjiPassword(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                      aria-label={showDjiPassword ? "Skjul passord" : "Vis passord"}
+                    >
+                      {showDjiPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
+
 
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
