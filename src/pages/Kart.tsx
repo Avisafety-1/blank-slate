@@ -289,7 +289,7 @@ export default function KartPage() {
     try {
       const parsed = await parseKmlOrKmz(file);
       setCurrentRoute(parsed);
-      toast.success(`KML importert: ${parsed.coordinates.length} punkter · ${(parsed.totalDistance / 1000).toFixed(2)} km`);
+      toast.success(`KML importert: ${parsed.coordinates.length} punkter · ${parsed.totalDistance.toFixed(2)} km`);
     } catch (err: any) {
       toast.error(err?.message || 'Import feilet');
     } finally {
