@@ -1,8 +1,6 @@
 /**
- * Map3D — minimal OSM verification build.
- * Fix: maplibre adds class `maplibregl-map { position: relative }` which
- * overrides Tailwind `absolute inset-0` on the container, collapsing it to
- * height 0. Use explicit width/height: 100% instead.
+ * Map3D — OSM raster + AWS Terrarium DEM terrain (free, no API key).
+ * Step 2: terrain enabled with hillshade + pitch.
  */
 
 import { useEffect, useRef } from "react";
@@ -15,7 +13,7 @@ interface Map3DProps {
   onMissionClick?: (mission: any) => void;
 }
 
-export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
+export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
 
@@ -40,16 +38,43 @@ export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
               tileSize: 256,
               attribution: "© OpenStreetMap contributors",
             },
+            terrainSource: {
+              type: "raster-dem",
+              tiles: [
+                "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+              ],
+              tileSize: 256,
+              encoding: "terrarium",
+              maxzoom: 14,
+              attribution: "© Mapzen / AWS Terrain Tiles",
+            },
+            hillshadeSource: {
+              type: "raster-dem",
+              tiles: [
+                "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+              ],
+              tileSize: 256,
+              encoding: "terrarium",
+              maxzoom: 14,
+            },
           },
           layers: [
             { id: "bg", type: "background", paint: { "background-color": "#cfe2f3" } },
             { id: "osm", type: "raster", source: "osm" },
+            {
+              id: "hillshade",
+              type: "hillshade",
+              source: "hillshadeSource",
+              paint: { "hillshade-exaggeration": 0.4 },
+            },
           ],
+          terrain: { source: "terrainSource", exaggeration: 1.3 },
         },
         center: initialCenter ? [initialCenter[1], initialCenter[0]] : [10.7522, 59.9139],
         zoom: initialZoom,
-        pitch: 0,
-        bearing: 0,
+        pitch: 60,
+        bearing: -20,
+        maxPitch: 85,
       });
       mapRef.current = map;
     } catch (err) {
@@ -57,7 +82,11 @@ export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
       return;
     }
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+    map.addControl(
+      new maplibregl.TerrainControl({ source: "terrainSource", exaggeration: 1.3 }),
+      "top-right"
+    );
 
     const t = window.setTimeout(() => { try { map!.resize(); } catch {} }, 300);
 
