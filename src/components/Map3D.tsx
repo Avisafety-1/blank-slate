@@ -367,9 +367,61 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
     }
   }, [zonesEnabled]);
 
-  // Popup-click handler (felles for fill/extrusion/point)
+  // Hent AIP-luftrom (én gang, globalt — samme strategi som 2D)
+  const applyAipData = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const src = map.getSource("aip") as GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({
+      type: "FeatureCollection",
+      features: aipEnabled ? aipFeaturesRef.current : [],
+    });
+  }, [aipEnabled]);
+
+  const fetchAip = useCallback(async () => {
+    if (aipFetchedRef.current) return;
+    aipFetchedRef.current = true;
+    try {
+      const { data, error } = await supabase
+        .from("aip_restriction_zones")
+        .select("zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry")
+        .in("zone_type", AIP_ZONE_TYPES)
+        .eq("is_official", true);
+      if (error || !data) {
+        if (error) console.error("[Map3D] aip fetch error", error);
+        aipFetchedRef.current = false;
+        return;
+      }
+      const features: any[] = [];
+      data.forEach((z: any) => {
+        if (!z?.geometry) return;
+        features.push({
+          type: "Feature",
+          geometry: z.geometry,
+          properties: {
+            zone_id: z.zone_id,
+            zone_type: z.zone_type,
+            name: z.name ?? "",
+            upper_limit: z.upper_limit ?? null,
+            lower_limit: z.lower_limit ?? null,
+            remarks: z.remarks ?? null,
+            lower_limit_m: parseAipLimitToMeters(z.lower_limit),
+            upper_limit_m: parseAipLimitToMeters(z.upper_limit),
+          },
+        });
+      });
+      aipFeaturesRef.current = features;
+      applyAipData();
+    } catch (err) {
+      console.error("[Map3D] aip fetch failed", err);
+      aipFetchedRef.current = false;
+    }
+  }, [applyAipData]);
+
+  // Popup-click handler (felles for soner og AIP-luftrom)
   const installClickHandlers = useCallback((map: MlMap) => {
-    const showPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
+    const showZonePopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
       if (!f) return;
       const p: any = f.properties || {};
@@ -383,11 +435,25 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
         .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)
         .addTo(map);
     };
+    const showAipPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const html = buildAipZonePopupHtml(f.properties || {});
+      new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
+        .setLngLat(e.lngLat)
+        .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)
+        .addTo(map);
+    };
     const setCursor = (cursor: string) => () => {
       map.getCanvas().style.cursor = cursor;
     };
     ["zones-fill", "zones-extrusion", "zones-point"].forEach((layerId) => {
-      map.on("click", layerId, showPopup);
+      map.on("click", layerId, showZonePopup);
+      map.on("mouseenter", layerId, setCursor("pointer"));
+      map.on("mouseleave", layerId, setCursor(""));
+    });
+    ["aip-fill", "aip-extrusion"].forEach((layerId) => {
+      map.on("click", layerId, showAipPopup);
       map.on("mouseenter", layerId, setCursor("pointer"));
       map.on("mouseleave", layerId, setCursor(""));
     });
@@ -423,8 +489,10 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
 
     map.on("load", () => {
       addZoneLayers(map!, extrudeRef.current);
+      addAipLayers(map!, extrudeRef.current);
       installClickHandlers(map!);
       refreshZones();
+      fetchAip();
     });
 
     const debouncedRefresh = () => {
@@ -444,7 +512,7 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Bytt grunnkart uten å bygge kartet på nytt — gjenoppretter sonelagene
+  // Bytt grunnkart uten å bygge kartet på nytt — gjenoppretter sone- og AIP-lagene
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -452,41 +520,54 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
       map.setStyle(buildStyle(base));
       map.once("idle", () => {
         addZoneLayers(map, extrudeRef.current);
+        addAipLayers(map, extrudeRef.current);
         installClickHandlers(map);
         refreshZones();
+        applyAipData();
       });
     } catch (err) {
       console.error("[Map3D] setStyle failed", err);
     }
-  }, [base, refreshZones, installClickHandlers]);
+  }, [base, refreshZones, installClickHandlers, applyAipData]);
 
   // Toggle 3D-sylindere vs flat fill — fjern og legg til lag på nytt
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     try {
-      ["zones-fill", "zones-extrusion", "zones-outline", "zones-point"].forEach((id) => {
+      [
+        "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
+        "aip-fill", "aip-extrusion", "aip-outline",
+      ].forEach((id) => {
         if (map.getLayer(id)) map.removeLayer(id);
       });
       if (map.getSource("zones")) map.removeSource("zones");
+      if (map.getSource("aip")) map.removeSource("aip");
       addZoneLayers(map, extrude);
+      addAipLayers(map, extrude);
       installClickHandlers(map);
       refreshZones();
+      applyAipData();
     } catch (err) {
       console.error("[Map3D] toggle extrude failed", err);
     }
-  }, [extrude, installClickHandlers, refreshZones]);
+  }, [extrude, installClickHandlers, refreshZones, applyAipData]);
 
   // Toggle zones (data)
   useEffect(() => {
     refreshZones();
   }, [zonesEnabled, refreshZones]);
 
-
+  // Toggle AIP-luftrom (data)
+  useEffect(() => {
+    applyAipData();
+  }, [aipEnabled, applyAipData]);
 
   const cycleBase = () => {
     setBase((b) => (b === "osm" ? "satellite" : b === "satellite" ? "topo" : "osm"));
   };
+
+
 
   return (
     <div className="absolute inset-0">
