@@ -171,7 +171,6 @@ function addZoneLayers(map: MlMap, extrude: boolean) {
   });
 
   if (extrude) {
-    // 3D-sylindere: base = lower_limit_m, høyde = upper_limit_m (med kategori-aware fallback).
     map.addLayer({
       id: "zones-extrusion",
       type: "fill-extrusion",
@@ -189,7 +188,6 @@ function addZoneLayers(map: MlMap, extrude: boolean) {
       },
     });
   } else {
-    // Flat fill (bakkenivå)
     map.addLayer({
       id: "zones-fill",
       type: "fill",
@@ -215,6 +213,73 @@ function addZoneLayers(map: MlMap, extrude: boolean) {
     },
   });
 }
+
+// ---- OpenAIP luftrom (CTR, TIZ, P, R, D, RMZ, TMZ) ----
+function aipColorExpression(): any {
+  const expr: any[] = ["match", ["get", "zone_type"]];
+  Object.entries(AIP_ZONE_STYLES).forEach(([k, v]) => {
+    expr.push(k, v.color);
+  });
+  expr.push("#888888");
+  return expr;
+}
+
+function aipOpacityExpression(base: number): any {
+  const expr: any[] = ["match", ["get", "zone_type"]];
+  Object.entries(AIP_ZONE_STYLES).forEach(([k, v]) => {
+    expr.push(k, v.fillOpacity * base);
+  });
+  expr.push(0.15 * base);
+  return expr;
+}
+
+function addAipLayers(map: MlMap, extrude: boolean) {
+  if (map.getSource("aip")) return;
+  map.addSource("aip", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+
+  map.addLayer({
+    id: "aip-outline",
+    type: "line",
+    source: "aip",
+    paint: {
+      "line-color": aipColorExpression(),
+      "line-width": 1.5,
+      "line-opacity": 0.8,
+    },
+  });
+
+  if (extrude) {
+    map.addLayer({
+      id: "aip-extrusion",
+      type: "fill-extrusion",
+      source: "aip",
+      paint: {
+        "fill-extrusion-color": aipColorExpression(),
+        "fill-extrusion-base": ["coalesce", ["get", "lower_limit_m"], 0],
+        "fill-extrusion-height": [
+          "max",
+          80,
+          ["coalesce", ["get", "upper_limit_m"], 1500],
+        ],
+        "fill-extrusion-opacity": aipOpacityExpression(1.6), // litt mer markant enn flat fill
+      },
+    });
+  } else {
+    map.addLayer({
+      id: "aip-fill",
+      type: "fill",
+      source: "aip",
+      paint: {
+        "fill-color": aipColorExpression(),
+        "fill-opacity": aipOpacityExpression(1),
+      },
+    });
+  }
+}
+
 
 export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
