@@ -286,7 +286,24 @@ export const ProfileDialog = () => {
         if (companyData) {
           setCompany(companyData);
           setPreventSelfApproval((companyData as any).prevent_self_approval === true);
+      }
+
+      // Fetch company names for role-scope badges (approver / incident responsible)
+      const scopeIds = Array.from(new Set([
+        ...((profileData as any)?.approval_company_ids || []),
+        ...((profileData as any)?.incident_responsible_company_ids || []),
+      ].filter((id: string) => id && id !== 'all')));
+      if (scopeIds.length > 0) {
+        const { data: scopeCompanies } = await supabase
+          .from("companies")
+          .select("id, navn")
+          .in("id", scopeIds as string[]);
+        if (scopeCompanies) {
+          const map: Record<string, string> = {};
+          scopeCompanies.forEach((c: any) => { map[c.id] = c.navn; });
+          setCompanyNameMap(map);
         }
+      }
       }
 
       // Fetch user's role (for display in profile, admin status comes from AuthContext)
