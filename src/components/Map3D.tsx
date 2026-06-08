@@ -697,6 +697,8 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       window.clearTimeout(t);
       if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
       if (safeskyPollRef.current) window.clearInterval(safeskyPollRef.current);
+      safeskyModelLayerRef.current?.destroy();
+      safeskyModelLayerRef.current = null;
       try { map?.remove(); } catch {}
       mapRef.current = null;
     };
