@@ -621,6 +621,18 @@ export function OpenAIPMap({
     if (zoomEl) { zoomEl.style.marginTop = '260px'; }
     leafletMapRef.current = map;
 
+    // Notify parent (Kart) of viewport changes so 2D/3D can stay in sync.
+    if (onViewChange) {
+      const emitView = () => {
+        try {
+          const c = map.getCenter();
+          onViewChange([c.lat, c.lng], map.getZoom());
+        } catch {}
+      };
+      map.on('moveend', emitView);
+      map.on('zoomend', emitView);
+    }
+
     // Create panes
     const paneConfig: Record<string, string> = {
       safeskyPane: '750', liveFlightPane: '720', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
