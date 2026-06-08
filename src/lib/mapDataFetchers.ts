@@ -9,6 +9,35 @@ import airportIcon from "@/assets/airport-icon.png";
 import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
 
+// ---- Avinor RPAS 5km dedupe ----
+// Modul-lokal cache av sentroider for de ~50 Avinor-flyplassene som tegnes
+// av fetchRpasData. Brukes av CAA "flyplasser" + AIP "ATZ"-rendering for å
+// hoppe over duplikate 5km-sirkler rundt samme lufthavn (f.eks. Notodden
+// sjøflyplass vs ENNO Notodden lufthavn). Avinor-popupen er mer informativ,
+// så den vinner alltid.
+const AVINOR_RPAS_DEDUPE_KM = 3;
+let avinorRpasCenters: Array<{ lat: number; lng: number }> = [];
+
+export function setAvinorRpasCenters(centers: Array<{ lat: number; lng: number }>) {
+  avinorRpasCenters = centers;
+}
+
+export function isCoveredByAvinorRpas(lat: number, lng: number): boolean {
+  if (!avinorRpasCenters.length) return false;
+  const R = 6371; // km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  for (const c of avinorRpasCenters) {
+    const dLat = toRad(c.lat - lat);
+    const dLng = toRad(c.lng - lng);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat)) * Math.cos(toRad(c.lat)) * Math.sin(dLng / 2) ** 2;
+    const d = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+    if (d <= AVINOR_RPAS_DEDUPE_KM) return true;
+  }
+  return false;
+}
+
 interface FetchParams {
   layer: L.LayerGroup;
   mode: string;
