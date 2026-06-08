@@ -1,21 +1,42 @@
-# Stable lanes for overlapping events in resource calendar
+# Fix: feilmeldinger fra `process-dronelog` blir aldri lest
 
-I `ResourceTimeline.tsx` (Kalender → Ressurskalender) renderes alle hendelser i en rad med `position:absolute; top:1`. Overlappende oppdrag legger seg dermed oppå hverandre (jf. screenshot: «SAR61 demo» og «DEMO – Søk savnet person» på samme batteri/personell).
+## Problem
+`supabase.functions.invoke()` setter `data = null` når edge-funksjonen returnerer non-2xx (401/403/429/5xx). Responsen ligger på `error.context` (en `Response`). I `callDronelogAction` (`src/components/UploadDroneLogDialog.tsx` ~L173) leses `upstreamStatus`/`reason`/`retryAfter`/`remaining` fra `data` — som alltid er `null` ved feil. Dermed faller alle DJI-feil i `getDjiLoginErrorMessage` til "ukjent feil", og brukeren ser bare den generiske "Edge Function returned a non-2xx status code".
 
-## Endring
-- For hver `ResourceRow` (innenfor uka som rendres): kjør en enkel **lane-tildeling** på `visibleEvents`. Sorter etter `start` (sekundært etter `end`); for hver hendelse, plasser den i første eksisterende lane der forrige hendelse slutter ≤ den nye starter, ellers åpne en ny lane. Returnerer `{ event, lane }[]` + `laneCount`.
-- I `renderEventBlock`: ta inn `lane` og bruk `top: 4 + lane * 30` (px) i stedet for `top-1`. Behold høyde `h-7` (28 px) + 2 px luft.
-- I rad-containeren: bytt `min-h-[36px]` til dynamisk `style={{ minHeight: 8 + laneCount * 30 }}` så rad vokser vertikalt etter behov.
-- Lane-tildelingen kjøres i `renderSection` per rad (memoisering ikke nødvendig — datamengden er liten, og raden re-rendres uansett ved ukeskift).
+## Endring (kun frontend)
+`callDronelogAction` skrives om til å lese feilbody fra `error.context`:
 
-## Hva som IKKE endres
-- Ingen endring i datamodell, RLS, eller spørringer.
-- Konflikt-ringen (`ring-amber-400`) og tooltipet beholdes uendret — den brukes fortsatt for visuell varsling.
-- Månedsoversikt og andre kalendervisninger berøres ikke.
+```ts
+if (error) {
+  let body: any = null;
+  try {
+    const ctx = (error as any).context;
+    if (ctx && typeof ctx.json === 'function') {
+      body = await ctx.clone().json().catch(() => null);
+    }
+  } catch { /* ignore */ }
+  body = body ?? (data as any) ?? {};
+  const err: any = new Error(body.error || error.message || 'Request failed');
+  err.upstreamStatus = body.upstreamStatus ?? (error as any)?.context?.status ?? 0;
+  err.retryAfter = body.retryAfter;
+  err.remaining = body.remaining;
+  err.reason = body.reason;
+  err.details = body.details;
+  throw err;
+}
+```
+
+Slik at både `upstreamStatus` og `reason` fra edge-funksjonen kommer riktig ut. `getDjiLoginErrorMessage` fungerer da som tiltenkt:
+- 429 → "For mange innloggingsforsøk mot DJI. Vent X sekunder…"
+- 401 + `reason=invalid_credentials` → "Feil DJI-e-post eller passord…"
+- 401 + `reason=api_key_invalid` → "DroneLog API-nøkkelen mangler…"
+
+## Sekundær fallback
+Hvis serveren skulle sende 401 uten `reason` (gammel cache/edge cold start), legges en fallback i `getDjiLoginErrorMessage`: når `reason` mangler og `upstreamStatus === 401` → vis "Feil DJI-e-post eller passord". `upstreamStatus === 429` uten reason → behandle som rate-limit.
 
 ## Filer
-- `src/components/dashboard/ResourceTimeline.tsx` (kun denne)
+- `src/components/UploadDroneLogDialog.tsx` — `callDronelogAction` + fallback i `getDjiLoginErrorMessage`.
 
 ## Verifisering
-- Sjekke samme uke som i screenshot: «SAR61 demo» og «DEMO – Søk savnet person» skal nå ligge i hver sin sub-rad under samme batteri/personell, uten å skjule hverandre.
-- Rader uten overlapp skal se ut som før (samme høyde).
+- 429 fra DJI-login (allerede reprodusert i edge-loggene) skal nå vise gul rate-limit-toast med nedtelling, ikke generisk feil.
+- Test med feil DJI-passord → rød "Feil DJI-e-post eller passord".
