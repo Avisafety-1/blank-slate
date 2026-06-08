@@ -1106,12 +1106,23 @@ Deno.serve(async (req) => {
         });
         const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
         if (!res.ok) {
-          console.error(`[process-dronelog] dji-auto-login upstream=${res.status}`);
-          // If credentials are invalid, delete them
-          if (res.status === 401 || res.status === 403 || res.status === 500) {
+          const upstreamMsg = String(data?.message || "").slice(0, 200);
+          const classified = classifyDjiLoginError(res.status, upstreamMsg);
+          const retryAfter = res.headers.get("Retry-After") || null;
+          console.error(`[process-dronelog] dji-auto-login upstream=${res.status} reason=${classified.reason} msg="${upstreamMsg}"`);
+          // Only delete saved credentials when DJI explicitly rejects the password.
+          // Do NOT delete on rate-limit or transient upstream errors.
+          if (classified.reason === "invalid_credentials" || classified.reason === "account_locked") {
             await serviceClient.from("dji_credentials").delete().eq("user_id", authUser.id);
           }
-          return new Response(JSON.stringify({ error: data.message || "Auto-login failed", upstreamStatus: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          const status = classified.reason === "rate_limited" ? 429 : 502;
+          return new Response(JSON.stringify({
+            error: classified.error,
+            reason: classified.reason,
+            details: data,
+            upstreamStatus: res.status,
+            retryAfter: classified.reason === "rate_limited" ? retryAfter : undefined,
+          }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         // Update stored accountId if needed
