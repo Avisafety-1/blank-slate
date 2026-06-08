@@ -1057,33 +1057,52 @@ export default function KartPage() {
           </a>
         </div>
         
-        <OpenAIPMap 
-          onMissionClick={handleMissionClick}
-          mode={isRoutePlanning ? "routePlanning" : "view"}
-          existingRoute={routePlanningState?.existingRoute}
-          onRouteChange={handleRouteChange}
-          initialCenter={routePlanningState?.initialCenter}
-          controlledRoute={currentRoute}
-          onStartRoutePlanning={handleStartRoutePlanning}
-          onPilotPositionChange={handlePilotPositionChange}
-          pilotPosition={pilotPosition}
-          pilotVlosRadiusM={vlosRadiusM}
-          pilotAlosCalculation={alosInfo?.alosCalculation}
-          isPlacingPilot={isPlacingPilot}
-          focusFlightId={focusFlightId}
-          onFocusFlightHandled={() => setFocusFlightId(null)}
-          soraSettings={soraSettings}
-          adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
-          populationDensityCells={mergedDensityCells}
-          populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
-          routeHintOffsetClass={
-            isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
-              ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
-              : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
-                ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
-                : undefined
-          }
-        />
+        {/* 2D / 3D toggle (skjult i route planning) */}
+        {!isRoutePlanning && (
+          <button
+            onClick={() => setIs3D((v) => !v)}
+            className="absolute top-3 right-3 z-[600] shadow-lg bg-card hover:bg-accent border border-border rounded-md h-10 px-3 flex items-center gap-1.5 text-sm font-semibold"
+            aria-label={is3D ? "Bytt til 2D-kart" : "Bytt til 3D-kart"}
+            title={is3D ? "Bytt til 2D-kart" : "Bytt til 3D-kart (eksperimentell)"}
+          >
+            <Box className="h-4 w-4" />
+            {is3D ? "2D" : "3D"}
+          </button>
+        )}
+
+        {is3D && !isRoutePlanning ? (
+          <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
+            <Map3D onMissionClick={handleMissionClick} />
+          </Suspense>
+        ) : (
+          <OpenAIPMap
+            onMissionClick={handleMissionClick}
+            mode={isRoutePlanning ? "routePlanning" : "view"}
+            existingRoute={routePlanningState?.existingRoute}
+            onRouteChange={handleRouteChange}
+            initialCenter={routePlanningState?.initialCenter}
+            controlledRoute={currentRoute}
+            onStartRoutePlanning={handleStartRoutePlanning}
+            onPilotPositionChange={handlePilotPositionChange}
+            pilotPosition={pilotPosition}
+            pilotVlosRadiusM={vlosRadiusM}
+            pilotAlosCalculation={alosInfo?.alosCalculation}
+            isPlacingPilot={isPlacingPilot}
+            focusFlightId={focusFlightId}
+            onFocusFlightHandled={() => setFocusFlightId(null)}
+            soraSettings={soraSettings}
+            adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
+            populationDensityCells={mergedDensityCells}
+            populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
+            routeHintOffsetClass={
+              isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
+                ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
+                : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
+                  ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
+                  : undefined
+            }
+          />
+        )}
       </div>
 
       {/* Mission Detail Dialog */}
