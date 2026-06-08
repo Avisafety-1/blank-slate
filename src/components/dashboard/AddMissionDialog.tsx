@@ -656,44 +656,18 @@ export const AddMissionDialog = ({
       if (mission) {
         // UPDATE mode
         // Sjekk om status endres til Fullført - da henter vi og lagrer værdata
-        let weatherSnapshot = null;
+        let weatherSnapshot: any = null;
         const statusChangingToFullført = formData.status === "Fullført" && mission.status !== "Fullført";
-        
-        if (statusChangingToFullført && (formData.latitude || formData.longitude)) {
+
+        if (statusChangingToFullført) {
           const lat = formData.latitude || (routeData?.coordinates?.[0]?.lat);
           const lng = formData.longitude || (routeData?.coordinates?.[0]?.lng);
-          
-          if (lat && lng) {
-            // Sjekk om oppdragets tidspunkt er mer enn 24 timer gammelt
-            const missionTime = new Date(formData.tidspunkt);
-            const hoursAgo = (Date.now() - missionTime.getTime()) / (1000 * 60 * 60);
-            
-            if (hoursAgo > 24) {
-              // Historisk oppdrag – ikke hent nåværende vær
-              weatherSnapshot = {
-                captured_at: new Date().toISOString(),
-                unavailable: true,
-                reason: 'historical',
-              };
-            } else {
-              try {
-                const { data: weatherData } = await supabase.functions.invoke('drone-weather', {
-                  body: { lat, lon: lng }
-                });
-                
-                if (weatherData) {
-                  weatherSnapshot = {
-                    captured_at: new Date().toISOString(),
-                    current: weatherData.current,
-                    warnings: weatherData.warnings || [],
-                    drone_flight_recommendation: weatherData.drone_flight_recommendation
-                  };
-                }
-              } catch (weatherErr) {
-                console.error('Could not fetch weather for snapshot:', weatherErr);
-              }
-            }
-          }
+          weatherSnapshot = await buildMissionWeatherSnapshot({
+            flightDate: new Date(formData.tidspunkt),
+            latitude: lat ?? null,
+            longitude: lng ?? null,
+            source: 'add_dialog',
+          });
         }
 
         const updateData: any = {
