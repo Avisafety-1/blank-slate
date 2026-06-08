@@ -284,18 +284,25 @@ function addAipLayers(map: MlMap, extrude: boolean) {
 }
 
 
-export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
+export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const fetchTimerRef = useRef<number | null>(null);
-  const [base, setBase] = useState<BaseLayer>("osm");
+  const [base, setBase] = useState<BaseLayer>("satellite");
   const [zonesEnabled, setZonesEnabled] = useState(true);
   const [aipEnabled, setAipEnabled] = useState(true);
+  const [trafficEnabled, setTrafficEnabled] = useState(true);
   const [extrude, setExtrude] = useState(true);
   const extrudeRef = useRef(extrude);
   extrudeRef.current = extrude;
   const aipFetchedRef = useRef(false);
   const aipFeaturesRef = useRef<any[]>([]);
+  const trafficEnabledRef = useRef(trafficEnabled);
+  trafficEnabledRef.current = trafficEnabled;
+  const safeskyIconsLoadedRef = useRef<Set<string>>(new Set());
+  const safeskyPollRef = useRef<number | null>(null);
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
 
   // Hent og oppdater dronesoner basert på viewport
   const refreshZones = useCallback(async () => {
