@@ -154,6 +154,22 @@ export async function fetchRpasData(params: GeoJsonFetchParams) {
       } : undefined,
     });
 
+    // Bygg dedupe-cache med sentroider for hver Avinor-sone, slik at CAA
+    // "flyplasser" + AIP "ATZ" kan hoppe over duplikate 5 km-sirkler for
+    // de samme lufthavnene (se isCoveredByAvinorRpas).
+    try {
+      const centers: Array<{ lat: number; lng: number }> = [];
+      geoJsonLayer.eachLayer((l: any) => {
+        try {
+          const c = l.getBounds?.().getCenter();
+          if (c && Number.isFinite(c.lat) && Number.isFinite(c.lng)) {
+            centers.push({ lat: c.lat, lng: c.lng });
+          }
+        } catch { /* ignore */ }
+      });
+      setAvinorRpasCenters(centers);
+    } catch { /* ignore */ }
+
     if (geoJsonRef) {
       geoJsonRef.current = geoJsonLayer;
     }
