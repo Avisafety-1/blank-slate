@@ -148,6 +148,7 @@ export const ProfileDialog = () => {
   const [missionComment, setMissionComment] = useState("");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  const [companyNameMap, setCompanyNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const isAdmin = authIsAdmin;
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
@@ -285,7 +286,24 @@ export const ProfileDialog = () => {
         if (companyData) {
           setCompany(companyData);
           setPreventSelfApproval((companyData as any).prevent_self_approval === true);
+      }
+
+      // Fetch company names for role-scope badges (approver / incident responsible)
+      const scopeIds = Array.from(new Set([
+        ...((profileData as any)?.approval_company_ids || []),
+        ...((profileData as any)?.incident_responsible_company_ids || []),
+      ].filter((id: string) => id && id !== 'all')));
+      if (scopeIds.length > 0) {
+        const { data: scopeCompanies } = await supabase
+          .from("companies")
+          .select("id, navn")
+          .in("id", scopeIds as string[]);
+        if (scopeCompanies) {
+          const map: Record<string, string> = {};
+          scopeCompanies.forEach((c: any) => { map[c.id] = c.navn; });
+          setCompanyNameMap(map);
         }
+      }
       }
 
       // Fetch user's role (for display in profile, admin status comes from AuthContext)
@@ -1119,7 +1137,7 @@ export const ProfileDialog = () => {
 
                       <div className="space-y-2">
                         <Label>{t('profile.role')}</Label>
-                        <div className="py-1">
+                        <div className="py-1 flex flex-wrap gap-2">
                           {userRole ? (
                             <Badge variant={getRoleBadgeVariant(userRole)}>
                               {getRoleDisplayName(userRole)}
@@ -1127,6 +1145,48 @@ export const ProfileDialog = () => {
                           ) : (
                             <p className="text-sm text-muted-foreground">{t('common.noRole')}</p>
                           )}
+                          {(() => {
+                            const formatScope = (ids: string[] | null | undefined): string => {
+                              if (!ids || ids.length === 0) return '';
+                              if (ids.includes('all')) return ' (Alle avdelinger)';
+                              const names = ids.map(id => companyNameMap[id]).filter(Boolean);
+                              return names.length > 0 ? ` (${names.join(', ')})` : '';
+                            };
+                            const extras: Array<{ key: string; label: string; className: string }> = [];
+                            if ((profile as any)?.can_approve_missions) {
+                              extras.push({
+                                key: 'approver',
+                                label: `Godkjenner oppdrag${formatScope((profile as any)?.approval_company_ids)}`,
+                                className: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300 hover:bg-emerald-500/20',
+                              });
+                            }
+                            if ((profile as any)?.can_be_incident_responsible) {
+                              extras.push({
+                                key: 'incident',
+                                label: `Oppfølgingsansvarlig hendelser${formatScope((profile as any)?.incident_responsible_company_ids)}`,
+                                className: 'bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300 hover:bg-amber-500/20',
+                              });
+                            }
+                            if ((profile as any)?.can_access_eccairs) {
+                              extras.push({
+                                key: 'eccairs',
+                                label: 'ECCAIRS-tilgang',
+                                className: 'bg-violet-500/15 text-violet-700 border-violet-500/30 dark:text-violet-300 hover:bg-violet-500/20',
+                              });
+                            }
+                            if ((profile as any)?.is_technical_responsible) {
+                              extras.push({
+                                key: 'technical',
+                                label: 'Teknisk ansvarlig',
+                                className: 'bg-cyan-500/15 text-cyan-700 border-cyan-500/30 dark:text-cyan-300 hover:bg-cyan-500/20',
+                              });
+                            }
+                            return extras.map(b => (
+                              <Badge key={b.key} variant="outline" className={b.className}>
+                                {b.label}
+                              </Badge>
+                            ));
+                          })()}
                         </div>
                       </div>
 
