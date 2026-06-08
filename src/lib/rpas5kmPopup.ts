@@ -82,6 +82,7 @@ export function buildRpas5kmPopupHtml(properties: Record<string, any> | null | u
   const fallbackHtml = !textBlocks.length && !kontakt
     ? `<div style="margin-top:6px;font-size:12px;color:#6b7280;">
          For å fly innenfor 5 km fra lufthavner i Norge må operatøren ta kontakt før flyvning.
+         Bruk <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a> for å sende forespørsel.
        </div>`
     : "";
 

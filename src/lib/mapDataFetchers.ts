@@ -9,6 +9,35 @@ import airportIcon from "@/assets/airport-icon.png";
 import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
 
+// ---- Avinor RPAS 5km dedupe ----
+// Modul-lokal cache av sentroider for de ~50 Avinor-flyplassene som tegnes
+// av fetchRpasData. Brukes av CAA "flyplasser" + AIP "ATZ"-rendering for å
+// hoppe over duplikate 5km-sirkler rundt samme lufthavn (f.eks. Notodden
+// sjøflyplass vs ENNO Notodden lufthavn). Avinor-popupen er mer informativ,
+// så den vinner alltid.
+const AVINOR_RPAS_DEDUPE_KM = 3;
+let avinorRpasCenters: Array<{ lat: number; lng: number }> = [];
+
+export function setAvinorRpasCenters(centers: Array<{ lat: number; lng: number }>) {
+  avinorRpasCenters = centers;
+}
+
+export function isCoveredByAvinorRpas(lat: number, lng: number): boolean {
+  if (!avinorRpasCenters.length) return false;
+  const R = 6371; // km
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  for (const c of avinorRpasCenters) {
+    const dLat = toRad(c.lat - lat);
+    const dLng = toRad(c.lng - lng);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat)) * Math.cos(toRad(c.lat)) * Math.sin(dLng / 2) ** 2;
+    const d = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+    if (d <= AVINOR_RPAS_DEDUPE_KM) return true;
+  }
+  return false;
+}
+
 interface FetchParams {
   layer: L.LayerGroup;
   mode: string;
@@ -125,6 +154,22 @@ export async function fetchRpasData(params: GeoJsonFetchParams) {
       } : undefined,
     });
 
+    // Bygg dedupe-cache med sentroider for hver Avinor-sone, slik at CAA
+    // "flyplasser" + AIP "ATZ" kan hoppe over duplikate 5 km-sirkler for
+    // de samme lufthavnene (se isCoveredByAvinorRpas).
+    try {
+      const centers: Array<{ lat: number; lng: number }> = [];
+      geoJsonLayer.eachLayer((l: any) => {
+        try {
+          const c = l.getBounds?.().getCenter();
+          if (c && Number.isFinite(c.lat) && Number.isFinite(c.lng)) {
+            centers.push({ lat: c.lat, lng: c.lng });
+          }
+        } catch { /* ignore */ }
+      });
+      setAvinorRpasCenters(centers);
+    } catch { /* ignore */ }
+
     if (geoJsonRef) {
       geoJsonRef.current = geoJsonLayer;
     }
@@ -211,6 +256,8 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
         if (zone.zone_type === 'ATZ') {
           const tmpGeo = L.geoJSON(geojsonFeature as any);
           const center = tmpGeo.getBounds().getCenter();
+          // Dedupe: hopp over hvis Avinor RPAS allerede dekker denne lufthavnen
+          if (isCoveredByAvinorRpas(center.lat, center.lng)) continue;
           const displayName = zone.name || zone.zone_id || 'Ukjent småflyplass';
           let popup = `<strong>${label}</strong><br/>`;
           popup += `<strong>${displayName}</strong><br/>`;
@@ -1034,6 +1081,10 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
           try {
             const tmp = L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: {} } as any);
             const center = tmp.getBounds().getCenter();
+            // Dedupe: Avinor RPAS 5km-soner har autoritativ NINOX-info for
+            // de ~50 Avinor-lufthavnene. Hopp over CAA-sirkelen for samme
+            // flyplass slik at vi ikke får dobbel sirkel (f.eks. Notodden).
+            if (isCoveredByAvinorRpas(center.lat, center.lng)) return null;
             const circle = L.circle(center, {
               radius: 5000,
               color: '#f59e0b',
