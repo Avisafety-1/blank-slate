@@ -26,6 +26,9 @@ import {
   buildAipZonePopupHtml,
   parseAipLimitToMeters,
 } from "@/lib/aipPopups";
+import { createSafeSkyModelLayer, SafeSkyModelLayer, SafeSkyBeacon } from "@/lib/safeskyModelLayer";
+
+const SAFESKY_MODEL_URL = "/models/dji_matrice_t300/scene.gltf";
 
 interface Map3DProps {
   initialCenter?: [number, number];
@@ -301,6 +304,7 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
   trafficEnabledRef.current = trafficEnabled;
   const safeskyIconsLoadedRef = useRef<Set<string>>(new Set());
   const safeskyPollRef = useRef<number | null>(null);
+  const safeskyModelLayerRef = useRef<SafeSkyModelLayer | null>(null);
   const onViewChangeRef = useRef(onViewChange);
   onViewChangeRef.current = onViewChange;
 
@@ -529,33 +533,35 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
   }, []);
 
   const addSafeSkyLayer = useCallback((map: MlMap) => {
-    if (map.getSource("safesky")) return;
-    map.addSource("safesky", {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] },
-    });
-    map.addLayer({
-      id: "safesky-beacons",
-      type: "symbol",
-      source: "safesky",
-      layout: {
-        "icon-image": ["concat", "safesky-", ["coalesce", ["get", "beacon_type"], "UNKNOWN"]],
-        "icon-size": 0.85,
-        "icon-rotate": ["coalesce", ["get", "course"], 0],
-        "icon-rotation-alignment": "map",
-        "icon-pitch-alignment": "viewport",
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
-      },
-      paint: {
-        "icon-opacity": [
-          "case",
-          [">", ["coalesce", ["get", "altitude"], 0], 610],
-          0.55,
-          1.0,
-        ],
-      },
-    });
+    if (!map.getSource("safesky")) {
+      map.addSource("safesky", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+    }
+    // Usynlig circle-lag — kun for click/hover (popup-deteksjon).
+    if (!map.getLayer("safesky-beacons")) {
+      map.addLayer({
+        id: "safesky-beacons",
+        type: "circle",
+        source: "safesky",
+        paint: {
+          "circle-radius": 18,
+          "circle-color": "#000000",
+          "circle-opacity": 0.001, // praktisk talt usynlig, men klikkbar
+        },
+      });
+    }
+    // Ekte 3D-modeller (Matrice) — custom three.js-lag oppå.
+    if (!map.getLayer("safesky-3d-models")) {
+      const modelLayer = createSafeSkyModelLayer(SAFESKY_MODEL_URL);
+      safeskyModelLayerRef.current = modelLayer;
+      try {
+        map.addLayer(modelLayer as any);
+      } catch (err) {
+        console.error("[Map3D] addLayer safesky-3d-models failed", err);
+      }
+    }
   }, []);
 
   const refreshSafeSky = useCallback(async () => {
