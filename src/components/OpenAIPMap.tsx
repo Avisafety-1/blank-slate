@@ -138,6 +138,8 @@ interface OpenAIPMapProps {
   plannedMissionsWindowHours?: number;
   /** Optional button rendered in the right-side stack, directly above the Kartlag button. */
   stackSlotAboveLayers?: React.ReactNode;
+  /** Notifies parent of viewport changes (center + zoom) so 2D/3D can stay in sync. */
+  onViewChange?: (center: [number, number], zoom: number) => void;
 }
 
 export function OpenAIPMap({ 
