@@ -102,26 +102,8 @@ export function zoneSource(layerId: string | null | undefined): 'caa' | 'dk' | '
 
 /**
  * Konservativ default-høyde (meter AGL) når upper_limit_m mangler i 3D-rendering.
- * Verdiene reflekterer typisk droneflyvnings-kontekst — vi vil ikke at "alt blir kjempehøyt".
+ * Felles 120 m fallback — typisk drone-grense.
  */
-export function defaultUpperLimitM(layerId: string | null | undefined): number {
-  switch (layerId) {
-    case 'fengsler':
-    case 'ambassader':
-      return 150;
-    case 'flyplasser':
-      return 150;
-    case 'fareomrader':
-      return 300;
-    case 'restriksjoner':
-      return 300;
-    case 'notam_soner':
-      return 300;
-    case 'rod':
-    case 'orange':
-    case 'bla':
-      return 150;
-    default:
-      return 120;
-  }
+export function defaultUpperLimitM(_layerId: string | null | undefined): number {
+  return 120;
 }
