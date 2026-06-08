@@ -614,6 +614,18 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
       >
         <Box className="h-5 w-5" />
       </Button>
+
+      {/* AIP-luftrom-toggle (CTR/TIZ/P/R/D/RMZ/TMZ) */}
+      <Button
+        variant={aipEnabled ? "default" : "secondary"}
+        size="icon"
+        onClick={() => setAipEnabled((v) => !v)}
+        className={`absolute top-[12.5rem] right-4 z-[1100] shadow-lg ${aipEnabled ? "" : "bg-card hover:bg-accent"}`}
+        title={aipEnabled ? "Skjul luftrom (CTR/TIZ/P/R/D)" : "Vis luftrom (CTR/TIZ/P/R/D)"}
+        aria-label="Luftrom"
+      >
+        <Plane className="h-5 w-5" />
+      </Button>
     </div>
   );
 }
