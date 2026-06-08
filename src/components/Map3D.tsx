@@ -21,7 +21,7 @@ type Diag = {
   maplibreVersion: string;
   webgl1: string;
   webgl2: string;
-  constructor: string;
+  ctorStatus: string;
   loadEvent: boolean;
   idleEvent: boolean;
   styledata: number;
@@ -38,7 +38,7 @@ const initial: Diag = {
   maplibreVersion: "?",
   webgl1: "?",
   webgl2: "?",
-  constructor: "not run",
+  ctorStatus: "not run",
   loadEvent: false,
   idleEvent: false,
   styledata: 0,
@@ -90,7 +90,7 @@ export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
     console.log("[Map3D] mount", { el, gl1, gl2, version: (maplibregl as any).version });
 
     if (!el) {
-      update({ constructor: "no container ref" });
+      update({ ctorStatus: "no container ref" });
       return;
     }
 
@@ -123,12 +123,12 @@ export default function Map3D({ initialCenter, initialZoom = 11 }: Map3DProps) {
         bearing: 0,
       });
       mapRef.current = map;
-      update({ constructor: "OK" });
-      console.log("[Map3D] constructor OK");
+      update({ ctorStatus: "OK" });
+      console.log("[Map3D] ctorStatus OK");
     } catch (err: any) {
       const msg = err?.message ?? String(err);
-      update({ constructor: "THREW: " + msg, errors: [...diagRef.current.errors, msg] });
-      console.error("[Map3D] constructor threw", err);
+      update({ ctorStatus: "THREW: " + msg, errors: [...diagRef.current.errors, msg] });
+      console.error("[Map3D] ctorStatus threw", err);
       return;
     }
 
@@ -203,7 +203,7 @@ container@300ms: ${diag.containerSizeAfterResize}
 maplibre:        ${diag.maplibreVersion}
 webgl1:          ${diag.webgl1}
 webgl2:          ${diag.webgl2}
-constructor:     ${diag.constructor}
+ctorStatus:     ${diag.ctorStatus}
 load event:      ${diag.loadEvent}
 idle event:      ${diag.idleEvent}
 styledata count: ${diag.styledata}
