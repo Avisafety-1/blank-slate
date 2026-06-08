@@ -715,6 +715,13 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
         const flightDate = flightStartTime || new Date();
 
+        const weatherSnapshot = await buildMissionWeatherSnapshot({
+          flightDate,
+          latitude: lat ?? null,
+          longitude: lng ?? null,
+          source: 'flight_timer',
+        });
+
         // Create auto-generated mission
         const { data: newMission, error: missionError } = await supabase
           .from('missions')
@@ -730,6 +737,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             beskrivelse: `Automatisk generert fra flytur.\nPilot: ${pilotName || personnel.find(p => p.id === formData.pilotId)?.full_name || 'Ukjent'}`,
             company_id: companyId,
             user_id: user.id,
+            weather_data_snapshot: weatherSnapshot,
           })
           .select('id')
           .single();
