@@ -94,6 +94,11 @@ function buildStyle(base: BaseLayer): StyleSpecification {
       base: baseSource,
       terrainSource: TERRAIN_SOURCE,
       hillshadeSource: TERRAIN_SOURCE,
+      // OpenFreeMap (free, no API key) — gir bl.a. building-layer for 3D-bygninger
+      openmaptiles: {
+        type: "vector" as const,
+        url: "https://tiles.openfreemap.org/planet",
+      },
     },
     layers: [
       { id: "bg", type: "background", paint: { "background-color": "#cfe2f3" } },
@@ -103,6 +108,27 @@ function buildStyle(base: BaseLayer): StyleSpecification {
         type: "hillshade",
         source: "hillshadeSource",
         paint: { "hillshade-exaggeration": 0.4 },
+      },
+      {
+        id: "3d-buildings",
+        type: "fill-extrusion",
+        source: "openmaptiles",
+        "source-layer": "building",
+        minzoom: 14,
+        paint: {
+          "fill-extrusion-color": [
+            "interpolate",
+            ["linear"],
+            ["coalesce", ["get", "render_height"], ["get", "height"], 8],
+            0, "#d6d6d6",
+            50, "#b8b8b8",
+            150, "#9a9a9a",
+            300, "#7c7c7c",
+          ],
+          "fill-extrusion-height": ["coalesce", ["get", "render_height"], ["get", "height"], 8],
+          "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], ["get", "min_height"], 0],
+          "fill-extrusion-opacity": 0.85,
+        },
       },
     ],
     terrain: { source: "terrainSource", exaggeration: 1.3 },
