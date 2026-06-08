@@ -83,37 +83,53 @@ export async function fetchNsmData(params: GeoJsonFetchParams) {
 export async function fetchRpasData(params: GeoJsonFetchParams) {
   const { layer, mode, geoJsonRef, setGeoJsonInteractivity, modeRef } = params;
   try {
-    const url = "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson";
-    const response = await fetch(url);
-    if (!response.ok) return;
-    
-    const geojson = await response.json();
-    const geoJsonLayer = L.geoJSON(geojson, {
-      interactive: mode !== 'routePlanning',
-      pane: 'rpasPane',
+    // Hent fra vår egen tabell — synces fra Avinors Dronerestriksjonsomraader_gdb
+    // og inneholder kontakt + godkjenningstekst pr. lufthavn.
+    const { data, error } = await supabase
+      .from("rpas_5km_zones")
+      .select("name, geometry, properties");
+    if (error || !data) {
+      console.error("Kunne ikke hente RPAS 5km soner:", error);
+      return;
+    }
+
+    const { buildRpas5kmPopupHtml } = await import("@/lib/rpas5kmPopup");
+
+    const features = data
+      .filter((row: any) => row.geometry)
+      .map((row: any) => ({
+        type: "Feature" as const,
+        geometry: row.geometry,
+        properties: { ...(row.properties || {}), __name: row.name },
+      }));
+    const geojson = { type: "FeatureCollection" as const, features };
+
+    const geoJsonLayer = L.geoJSON(geojson as any, {
+      interactive: mode !== "routePlanning",
+      pane: "rpasPane",
       style: {
-        color: '#f97316',
+        color: "#f97316",
         weight: 2,
-        fillColor: '#f97316',
+        fillColor: "#f97316",
         fillOpacity: 0.2,
       },
-      onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
-        if (feature.properties) {
-          const name = feature.properties.navn || feature.properties.name || 'Ukjent';
-          layer.bindPopup(`<strong>RPAS 5km sone</strong><br/>${name}`);
-        }
-        attachHoverPromotion(layer, {
-          paneName: 'rpasPane',
-          baseStyle: { color: '#f97316', weight: 2, fillColor: '#f97316', fillOpacity: 0.2 },
+      onEachFeature: mode !== "routePlanning" ? (feature, lyr) => {
+        const props = feature.properties || {};
+        const popupProps = { ...props };
+        if (!popupProps.NAVN && popupProps.__name) popupProps.NAVN = popupProps.__name;
+        lyr.bindPopup(buildRpas5kmPopupHtml(popupProps), { maxWidth: 340 });
+        attachHoverPromotion(lyr, {
+          paneName: "rpasPane",
+          baseStyle: { color: "#f97316", weight: 2, fillColor: "#f97316", fillOpacity: 0.2 },
         });
-      } : undefined
+      } : undefined,
     });
 
     if (geoJsonRef) {
       geoJsonRef.current = geoJsonLayer;
     }
     setGeoJsonInteractivity(geoJsonLayer, modeRef.current !== "routePlanning");
-    
+
     layer.clearLayers();
     layer.addLayer(geoJsonLayer);
   } catch (err) {

@@ -25,9 +25,11 @@ const LAYER_SOURCES: Record<string, LayerConfig> = {
     nameField: ['navn', 'name', 'NAVN', 'NAME', 'omradenavn', 'OMRADENAVN']
   },
   rpas_5km_zones: {
-    url: 'https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson',
+    // Avinor "Dronerestriksjonsomraader_gdb" — same kilde som experience.arcgis.com Dronekart.
+    // Inneholder ICAO, KONTAKTDETALJER2, TEKST1..6 osv. som vises i popup.
+    url: 'https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/Dronerestriksjonsomraader_gdb/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson',
     table: 'rpas_5km_zones',
-    nameField: ['navn', 'name', 'NAVN', 'NAME', 'lufthavn', 'LUFTHAVN']
+    nameField: ['NAVN', 'navn', 'name', 'NAME', 'lufthavn', 'LUFTHAVN']
   },
 };
 

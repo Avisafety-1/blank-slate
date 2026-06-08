@@ -754,17 +754,25 @@ async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
       }).addTo(zonesLayer);
     }
 
-    // RPAS 5km zones (orange)
-    const rpasResponse = await fetch(
-      "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_AVIGIS1/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
-    );
-    if (rpasResponse.ok) {
-      const rpasData = await rpasResponse.json();
-      L.geoJSON(rpasData, {
+    // RPAS 5km zones (orange) — Avinor Dronerestriksjonsomraader_gdb via egen tabell
+    const { data: rpasZones } = await supabase
+      .from("rpas_5km_zones")
+      .select("name, geometry, properties");
+    if (rpasZones?.length) {
+      const { buildRpas5kmPopupHtml } = await import("@/lib/rpas5kmPopup");
+      const features = rpasZones
+        .filter((r: any) => r.geometry)
+        .map((r: any) => ({
+          type: "Feature" as const,
+          geometry: r.geometry,
+          properties: { ...(r.properties || {}), __name: r.name },
+        }));
+      L.geoJSON({ type: "FeatureCollection", features } as any, {
         style: { color: "#f97316", weight: 2, fillColor: "#f97316", fillOpacity: 0.15 },
         onEachFeature: (feature, layer) => {
-          const name = feature.properties?.navn || feature.properties?.name || "RPAS 5km sone";
-          layer.bindPopup(`<strong>RPAS 5km</strong><br/>${name}`);
+          const props = { ...(feature.properties || {}) };
+          if (!props.NAVN && props.__name) props.NAVN = props.__name;
+          layer.bindPopup(buildRpas5kmPopupHtml(props), { maxWidth: 340 });
         },
       }).addTo(zonesLayer);
     }
