@@ -179,6 +179,7 @@ async function callDronelogAction(action: string, payload: Record<string, unknow
     err.upstreamStatus = (data as any)?.upstreamStatus || 0;
     err.retryAfter = (data as any)?.retryAfter;
     err.remaining = (data as any)?.remaining;
+    err.reason = (data as any)?.reason;
     throw err;
   }
   return data;
@@ -199,6 +200,40 @@ const getDronelogErrorMessage = (error: any): { message: string; type: 'warning'
     return { message: 'Ugyldig eller utløpt DroneLog API-nøkkel. Kontakt administrator.', type: 'error' };
   }
   return { message: error?.message || 'Ukjent feil', type: 'error' };
+};
+
+/**
+ * Oversetter klassifisert feil fra `dji-login` / `dji-auto-login` til norsk toast.
+ * Server returnerer `reason` ∈ rate_limited | api_key_invalid | invalid_credentials |
+ * account_locked | upstream_error | unknown.
+ */
+const getDjiLoginErrorMessage = (error: any): { message: string; type: 'warning' | 'error'; cooldownSeconds?: number } => {
+  const reason = error?.reason;
+  if (reason === 'rate_limited') {
+    const retry = Number(error?.retryAfter);
+    const seconds = Number.isFinite(retry) && retry > 0 ? Math.min(retry, 600) : 60;
+    return {
+      message: `For mange innloggingsforsøk mot DJI. Vent ${seconds} sekunder og prøv igjen.`,
+      type: 'warning',
+      cooldownSeconds: seconds,
+    };
+  }
+  if (reason === 'invalid_credentials') {
+    return { message: 'Feil DJI-e-post eller passord. Sjekk og prøv igjen.', type: 'error' };
+  }
+  if (reason === 'account_locked') {
+    return {
+      message: 'DJI har midlertidig låst kontoen pga. sikkerhet. Logg inn i DJI-appen først, og prøv igjen om noen minutter.',
+      type: 'error',
+    };
+  }
+  if (reason === 'api_key_invalid') {
+    return { message: 'DroneLog API-nøkkelen mangler eller er utløpt. Kontakt administrator.', type: 'error' };
+  }
+  if (reason === 'upstream_error') {
+    return { message: 'DJI Cloud svarer ikke akkurat nå. Prøv igjen om et par minutter.', type: 'warning' };
+  }
+  return { message: 'DJI-innlogging feilet: ' + (error?.message || 'ukjent feil'), type: 'error' };
 };
 
 const isApiLimitError = (error: any): boolean => {
