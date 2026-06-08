@@ -53,6 +53,11 @@ export default function KartPage() {
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
+
+  // 3D-modus (MapLibre). Deaktiveres automatisk i route planning siden tegne-
+  // verktøyene bare finnes i 2D-kartet.
+  const [is3D, setIs3D] = useState(false);
+  useEffect(() => { if (isRoutePlanning && is3D) setIs3D(false); }, [isRoutePlanning, is3D]);
   
   // Pilot position state for VLOS measurement
   const [pilotPosition, setPilotPosition] = useState<RoutePoint | undefined>(undefined);
