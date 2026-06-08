@@ -639,9 +639,11 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     map.on("load", () => {
       addZoneLayers(map!, extrudeRef.current);
       addAipLayers(map!, extrudeRef.current);
+      addSafeSkyLayer(map!);
       installClickHandlers(map!);
       refreshZones();
       fetchAip();
+      refreshSafeSky();
     });
 
     const debouncedRefresh = () => {
@@ -650,11 +652,27 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     };
     map.on("moveend", debouncedRefresh);
 
+    // Emit viewport-endringer til parent (Kart) så 2D/3D holdes synkronisert.
+    const emitView = () => {
+      try {
+        const c = map!.getCenter();
+        onViewChangeRef.current?.([c.lat, c.lng], map!.getZoom());
+      } catch {}
+    };
+    map.on("moveend", emitView);
+    map.on("zoomend", emitView);
+
+    // SafeSky-polling (10s) — samme intervall som 2D
+    safeskyPollRef.current = window.setInterval(() => {
+      if (trafficEnabledRef.current) refreshSafeSky();
+    }, 10000);
+
     const t = window.setTimeout(() => { try { map!.resize(); } catch {} }, 300);
 
     return () => {
       window.clearTimeout(t);
       if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
+      if (safeskyPollRef.current) window.clearInterval(safeskyPollRef.current);
       try { map?.remove(); } catch {}
       mapRef.current = null;
     };
@@ -670,14 +688,18 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       map.once("idle", () => {
         addZoneLayers(map, extrudeRef.current);
         addAipLayers(map, extrudeRef.current);
+        addSafeSkyLayer(map);
         installClickHandlers(map);
+        // Re-add ikoner (setStyle tømmer image-cache)
+        safeskyIconsLoadedRef.current.clear();
         refreshZones();
         applyAipData();
+        refreshSafeSky();
       });
     } catch (err) {
       console.error("[Map3D] setStyle failed", err);
     }
-  }, [base, refreshZones, installClickHandlers, applyAipData]);
+  }, [base, refreshZones, installClickHandlers, applyAipData, addSafeSkyLayer, refreshSafeSky]);
 
   // Toggle 3D-sylindere vs flat fill — fjern og legg til lag på nytt
   useEffect(() => {
@@ -687,20 +709,24 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       [
         "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
         "aip-fill", "aip-extrusion", "aip-outline",
+        "safesky-beacons",
       ].forEach((id) => {
         if (map.getLayer(id)) map.removeLayer(id);
       });
       if (map.getSource("zones")) map.removeSource("zones");
       if (map.getSource("aip")) map.removeSource("aip");
+      if (map.getSource("safesky")) map.removeSource("safesky");
       addZoneLayers(map, extrude);
       addAipLayers(map, extrude);
+      addSafeSkyLayer(map);
       installClickHandlers(map);
       refreshZones();
       applyAipData();
+      refreshSafeSky();
     } catch (err) {
       console.error("[Map3D] toggle extrude failed", err);
     }
-  }, [extrude, installClickHandlers, refreshZones, applyAipData]);
+  }, [extrude, installClickHandlers, refreshZones, applyAipData, addSafeSkyLayer, refreshSafeSky]);
 
   // Toggle zones (data)
   useEffect(() => {
@@ -712,9 +738,15 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     applyAipData();
   }, [aipEnabled, applyAipData]);
 
+  // Toggle lufttrafikk (data)
+  useEffect(() => {
+    refreshSafeSky();
+  }, [trafficEnabled, refreshSafeSky]);
+
   const cycleBase = () => {
-    setBase((b) => (b === "osm" ? "satellite" : b === "satellite" ? "topo" : "osm"));
+    setBase((b) => (b === "satellite" ? "topo" : b === "topo" ? "osm" : "satellite"));
   };
+
 
 
 
