@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl, { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
-import { Satellite, Mountain, Map as MapIcon, Shield, Box } from "lucide-react";
+import { Satellite, Mountain, Map as MapIcon, Shield, Box, Plane } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   buildCaaZonePopupHtml,
@@ -18,6 +18,12 @@ import {
   defaultUpperLimitM,
   zoneSource,
 } from "@/lib/zonePopups";
+import {
+  AIP_ZONE_STYLES,
+  AIP_ZONE_TYPES,
+  buildAipZonePopupHtml,
+  parseAipLimitToMeters,
+} from "@/lib/aipPopups";
 
 interface Map3DProps {
   initialCenter?: [number, number];
@@ -165,7 +171,6 @@ function addZoneLayers(map: MlMap, extrude: boolean) {
   });
 
   if (extrude) {
-    // 3D-sylindere: base = lower_limit_m, høyde = upper_limit_m (med kategori-aware fallback).
     map.addLayer({
       id: "zones-extrusion",
       type: "fill-extrusion",
@@ -183,7 +188,6 @@ function addZoneLayers(map: MlMap, extrude: boolean) {
       },
     });
   } else {
-    // Flat fill (bakkenivå)
     map.addLayer({
       id: "zones-fill",
       type: "fill",
@@ -210,15 +214,85 @@ function addZoneLayers(map: MlMap, extrude: boolean) {
   });
 }
 
+// ---- OpenAIP luftrom (CTR, TIZ, P, R, D, RMZ, TMZ) ----
+function aipColorExpression(): any {
+  const expr: any[] = ["match", ["get", "zone_type"]];
+  Object.entries(AIP_ZONE_STYLES).forEach(([k, v]) => {
+    expr.push(k, v.color);
+  });
+  expr.push("#888888");
+  return expr;
+}
+
+function aipOpacityExpression(base: number): any {
+  const expr: any[] = ["match", ["get", "zone_type"]];
+  Object.entries(AIP_ZONE_STYLES).forEach(([k, v]) => {
+    expr.push(k, v.fillOpacity * base);
+  });
+  expr.push(0.15 * base);
+  return expr;
+}
+
+function addAipLayers(map: MlMap, extrude: boolean) {
+  if (map.getSource("aip")) return;
+  map.addSource("aip", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+
+  map.addLayer({
+    id: "aip-outline",
+    type: "line",
+    source: "aip",
+    paint: {
+      "line-color": aipColorExpression(),
+      "line-width": 1.5,
+      "line-opacity": 0.8,
+    },
+  });
+
+  if (extrude) {
+    map.addLayer({
+      id: "aip-extrusion",
+      type: "fill-extrusion",
+      source: "aip",
+      paint: {
+        "fill-extrusion-color": aipColorExpression(),
+        "fill-extrusion-base": ["coalesce", ["get", "lower_limit_m"], 0],
+        "fill-extrusion-height": [
+          "max",
+          80,
+          ["coalesce", ["get", "upper_limit_m"], 1500],
+        ],
+        "fill-extrusion-opacity": aipOpacityExpression(1.6), // litt mer markant enn flat fill
+      },
+    });
+  } else {
+    map.addLayer({
+      id: "aip-fill",
+      type: "fill",
+      source: "aip",
+      paint: {
+        "fill-color": aipColorExpression(),
+        "fill-opacity": aipOpacityExpression(1),
+      },
+    });
+  }
+}
+
+
 export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const fetchTimerRef = useRef<number | null>(null);
   const [base, setBase] = useState<BaseLayer>("osm");
   const [zonesEnabled, setZonesEnabled] = useState(true);
+  const [aipEnabled, setAipEnabled] = useState(true);
   const [extrude, setExtrude] = useState(true);
   const extrudeRef = useRef(extrude);
   extrudeRef.current = extrude;
+  const aipFetchedRef = useRef(false);
+  const aipFeaturesRef = useRef<any[]>([]);
 
   // Hent og oppdater dronesoner basert på viewport
   const refreshZones = useCallback(async () => {
@@ -293,9 +367,61 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
     }
   }, [zonesEnabled]);
 
-  // Popup-click handler (felles for fill/extrusion/point)
+  // Hent AIP-luftrom (én gang, globalt — samme strategi som 2D)
+  const applyAipData = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const src = map.getSource("aip") as GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({
+      type: "FeatureCollection",
+      features: aipEnabled ? aipFeaturesRef.current : [],
+    });
+  }, [aipEnabled]);
+
+  const fetchAip = useCallback(async () => {
+    if (aipFetchedRef.current) return;
+    aipFetchedRef.current = true;
+    try {
+      const { data, error } = await supabase
+        .from("aip_restriction_zones")
+        .select("zone_id, zone_type, name, upper_limit, lower_limit, remarks, geometry")
+        .in("zone_type", AIP_ZONE_TYPES)
+        .eq("is_official", true);
+      if (error || !data) {
+        if (error) console.error("[Map3D] aip fetch error", error);
+        aipFetchedRef.current = false;
+        return;
+      }
+      const features: any[] = [];
+      data.forEach((z: any) => {
+        if (!z?.geometry) return;
+        features.push({
+          type: "Feature",
+          geometry: z.geometry,
+          properties: {
+            zone_id: z.zone_id,
+            zone_type: z.zone_type,
+            name: z.name ?? "",
+            upper_limit: z.upper_limit ?? null,
+            lower_limit: z.lower_limit ?? null,
+            remarks: z.remarks ?? null,
+            lower_limit_m: parseAipLimitToMeters(z.lower_limit),
+            upper_limit_m: parseAipLimitToMeters(z.upper_limit),
+          },
+        });
+      });
+      aipFeaturesRef.current = features;
+      applyAipData();
+    } catch (err) {
+      console.error("[Map3D] aip fetch failed", err);
+      aipFetchedRef.current = false;
+    }
+  }, [applyAipData]);
+
+  // Popup-click handler (felles for soner og AIP-luftrom)
   const installClickHandlers = useCallback((map: MlMap) => {
-    const showPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
+    const showZonePopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
       if (!f) return;
       const p: any = f.properties || {};
@@ -309,11 +435,25 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
         .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)
         .addTo(map);
     };
+    const showAipPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const html = buildAipZonePopupHtml(f.properties || {});
+      new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
+        .setLngLat(e.lngLat)
+        .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)
+        .addTo(map);
+    };
     const setCursor = (cursor: string) => () => {
       map.getCanvas().style.cursor = cursor;
     };
     ["zones-fill", "zones-extrusion", "zones-point"].forEach((layerId) => {
-      map.on("click", layerId, showPopup);
+      map.on("click", layerId, showZonePopup);
+      map.on("mouseenter", layerId, setCursor("pointer"));
+      map.on("mouseleave", layerId, setCursor(""));
+    });
+    ["aip-fill", "aip-extrusion"].forEach((layerId) => {
+      map.on("click", layerId, showAipPopup);
       map.on("mouseenter", layerId, setCursor("pointer"));
       map.on("mouseleave", layerId, setCursor(""));
     });
@@ -349,8 +489,10 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
 
     map.on("load", () => {
       addZoneLayers(map!, extrudeRef.current);
+      addAipLayers(map!, extrudeRef.current);
       installClickHandlers(map!);
       refreshZones();
+      fetchAip();
     });
 
     const debouncedRefresh = () => {
@@ -370,7 +512,7 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Bytt grunnkart uten å bygge kartet på nytt — gjenoppretter sonelagene
+  // Bytt grunnkart uten å bygge kartet på nytt — gjenoppretter sone- og AIP-lagene
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -378,41 +520,54 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
       map.setStyle(buildStyle(base));
       map.once("idle", () => {
         addZoneLayers(map, extrudeRef.current);
+        addAipLayers(map, extrudeRef.current);
         installClickHandlers(map);
         refreshZones();
+        applyAipData();
       });
     } catch (err) {
       console.error("[Map3D] setStyle failed", err);
     }
-  }, [base, refreshZones, installClickHandlers]);
+  }, [base, refreshZones, installClickHandlers, applyAipData]);
 
   // Toggle 3D-sylindere vs flat fill — fjern og legg til lag på nytt
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     try {
-      ["zones-fill", "zones-extrusion", "zones-outline", "zones-point"].forEach((id) => {
+      [
+        "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
+        "aip-fill", "aip-extrusion", "aip-outline",
+      ].forEach((id) => {
         if (map.getLayer(id)) map.removeLayer(id);
       });
       if (map.getSource("zones")) map.removeSource("zones");
+      if (map.getSource("aip")) map.removeSource("aip");
       addZoneLayers(map, extrude);
+      addAipLayers(map, extrude);
       installClickHandlers(map);
       refreshZones();
+      applyAipData();
     } catch (err) {
       console.error("[Map3D] toggle extrude failed", err);
     }
-  }, [extrude, installClickHandlers, refreshZones]);
+  }, [extrude, installClickHandlers, refreshZones, applyAipData]);
 
   // Toggle zones (data)
   useEffect(() => {
     refreshZones();
   }, [zonesEnabled, refreshZones]);
 
-
+  // Toggle AIP-luftrom (data)
+  useEffect(() => {
+    applyAipData();
+  }, [aipEnabled, applyAipData]);
 
   const cycleBase = () => {
     setBase((b) => (b === "osm" ? "satellite" : b === "satellite" ? "topo" : "osm"));
   };
+
+
 
   return (
     <div className="absolute inset-0">
@@ -458,6 +613,18 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
         aria-label="3D-sylindere"
       >
         <Box className="h-5 w-5" />
+      </Button>
+
+      {/* AIP-luftrom-toggle (CTR/TIZ/P/R/D/RMZ/TMZ) */}
+      <Button
+        variant={aipEnabled ? "default" : "secondary"}
+        size="icon"
+        onClick={() => setAipEnabled((v) => !v)}
+        className={`absolute top-[12.5rem] right-4 z-[1100] shadow-lg ${aipEnabled ? "" : "bg-card hover:bg-accent"}`}
+        title={aipEnabled ? "Skjul luftrom (CTR/TIZ/P/R/D)" : "Vis luftrom (CTR/TIZ/P/R/D)"}
+        aria-label="Luftrom"
+      >
+        <Plane className="h-5 w-5" />
       </Button>
     </div>
   );
