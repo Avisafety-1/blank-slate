@@ -497,10 +497,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI auto-login error:', error);
-      // If auto-login fails, clear saved state and show manual login
-      setHasSavedCredentials(false);
-      setSavedDjiEmail("");
-      toast.error('Auto-innlogging feilet. Logg inn manuelt.');
+      const reason = error?.reason;
+      // Only clear saved state if DJI explicitly rejected the credentials
+      // (server has already deleted them in that case).
+      if (reason === 'invalid_credentials' || reason === 'account_locked') {
+        setHasSavedCredentials(false);
+        setSavedDjiEmail("");
+      }
+      if (reason === 'invalid_credentials') {
+        toast.error('Lagret DJI-passord ble avvist. Logg inn på nytt.', { duration: 8000 });
+      } else {
+        const { message, type } = getDjiLoginErrorMessage(error);
+        type === 'warning'
+          ? toast.warning(message, { duration: 8000 })
+          : toast.error(message, { duration: 8000 });
+      }
     } finally {
       setIsAutoLoggingIn(false);
       setIsDjiLoading(false);
