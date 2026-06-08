@@ -467,7 +467,146 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       map.on("mouseenter", layerId, setCursor("pointer"));
       map.on("mouseleave", layerId, setCursor(""));
     });
+    const showTrafficPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p: any = f.properties || {};
+      const html = renderTrafficPopup({
+        callsign: p.callsign,
+        beaconType: p.beacon_type,
+        aircraftModel: p.aircraft_model,
+        registration: p.registration,
+        altitudeM: p.altitude,
+        groundSpeedMs: p.ground_speed,
+        verticalSpeedMs: p.vertical_speed,
+        courseDeg: p.course,
+        squawk: p.squawk,
+        onGround: p.on_ground === true || p.on_ground === "true",
+        updatedAt: p.last_update || p.updated_at,
+        source: { kind: "safesky", subSource: p.source },
+      });
+      new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
+        .setLngLat(e.lngLat)
+        .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)
+        .addTo(map);
+    };
+    map.on("click", "safesky-beacons", showTrafficPopup);
+    map.on("mouseenter", "safesky-beacons", setCursor("pointer"));
+    map.on("mouseleave", "safesky-beacons", setCursor(""));
   }, []);
+
+  // ---- SafeSky-trafikk ----
+  const ensureSafeSkyIcon = useCallback(async (map: MlMap, beaconType: string): Promise<string> => {
+    const iconId = `safesky-${beaconType}`;
+    if (safeskyIconsLoadedRef.current.has(iconId)) return iconId;
+    if (map.hasImage(iconId)) {
+      safeskyIconsLoadedRef.current.add(iconId);
+      return iconId;
+    }
+    try {
+      const url = getBeaconSvgUrl(beaconType);
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.decoding = "async";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = (err) => reject(err);
+        img.src = url;
+      });
+      // Rasteriser SVG til 32×32 så MapLibre kan bruke det som symbol-image.
+      const canvas = document.createElement("canvas");
+      canvas.width = 32;
+      canvas.height = 32;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return iconId;
+      ctx.drawImage(img, 0, 0, 32, 32);
+      const data = ctx.getImageData(0, 0, 32, 32);
+      if (!map.hasImage(iconId)) {
+        map.addImage(iconId, data as any, { pixelRatio: 2 });
+      }
+      safeskyIconsLoadedRef.current.add(iconId);
+    } catch (err) {
+      console.warn("[Map3D] kunne ikke laste SafeSky-ikon", beaconType, err);
+    }
+    return iconId;
+  }, []);
+
+  const addSafeSkyLayer = useCallback((map: MlMap) => {
+    if (map.getSource("safesky")) return;
+    map.addSource("safesky", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+    map.addLayer({
+      id: "safesky-beacons",
+      type: "symbol",
+      source: "safesky",
+      layout: {
+        "icon-image": ["concat", "safesky-", ["coalesce", ["get", "beacon_type"], "UNKNOWN"]],
+        "icon-size": 0.85,
+        "icon-rotate": ["coalesce", ["get", "course"], 0],
+        "icon-rotation-alignment": "map",
+        "icon-pitch-alignment": "viewport",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+      paint: {
+        "icon-opacity": [
+          "case",
+          [">", ["coalesce", ["get", "altitude"], 0], 610],
+          0.55,
+          1.0,
+        ],
+      },
+    });
+  }, []);
+
+  const refreshSafeSky = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const src = map.getSource("safesky") as GeoJSONSource | undefined;
+    if (!src) return;
+    if (!trafficEnabledRef.current) {
+      src.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+    try {
+      const { data, error } = await supabase.from("safesky_beacons").select("*");
+      if (error || !data) return;
+      // Sørg for at vi har et ikon for hver beacon-type vi nettopp fikk.
+      const types = new Set<string>();
+      (data as any[]).forEach((b) => types.add(b.beacon_type || "UNKNOWN"));
+      await Promise.all(Array.from(types).map((t) => ensureSafeSkyIcon(map, t)));
+
+      const features = (data as any[])
+        .filter((b) => b.latitude != null && b.longitude != null)
+        .map((b) => ({
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [Number(b.longitude), Number(b.latitude), Number(b.altitude) || 0],
+          },
+          properties: {
+            beacon_type: b.beacon_type || "UNKNOWN",
+            callsign: b.callsign ?? null,
+            aircraft_model: b.aircraft_model ?? null,
+            registration: b.registration ?? null,
+            altitude: b.altitude ?? null,
+            course: b.course ?? 0,
+            ground_speed: b.ground_speed ?? null,
+            vertical_speed: b.vertical_speed ?? null,
+            squawk: b.squawk ?? null,
+            on_ground: b.on_ground ?? null,
+            source: b.source ?? null,
+            last_update: b.last_update ?? null,
+          },
+        }));
+      src.setData({ type: "FeatureCollection", features });
+    } catch (err) {
+      console.error("[Map3D] safesky fetch failed", err);
+    }
+  }, [ensureSafeSkyIcon]);
+
 
   // Init map
   useEffect(() => {
