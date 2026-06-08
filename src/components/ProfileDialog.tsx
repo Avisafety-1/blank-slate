@@ -148,6 +148,7 @@ export const ProfileDialog = () => {
   const [missionComment, setMissionComment] = useState("");
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
+  const [companyNameMap, setCompanyNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const isAdmin = authIsAdmin;
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
