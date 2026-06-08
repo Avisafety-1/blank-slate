@@ -287,9 +287,12 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
   const fetchTimerRef = useRef<number | null>(null);
   const [base, setBase] = useState<BaseLayer>("osm");
   const [zonesEnabled, setZonesEnabled] = useState(true);
+  const [aipEnabled, setAipEnabled] = useState(true);
   const [extrude, setExtrude] = useState(true);
   const extrudeRef = useRef(extrude);
   extrudeRef.current = extrude;
+  const aipFetchedRef = useRef(false);
+  const aipFeaturesRef = useRef<any[]>([]);
 
   // Hent og oppdater dronesoner basert på viewport
   const refreshZones = useCallback(async () => {
