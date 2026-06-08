@@ -761,15 +761,15 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
         onClick={cycleBase}
         className="absolute top-[3.5rem] right-4 z-[1100] shadow-lg bg-card hover:bg-accent"
         title={
-          base === "osm"
-            ? "Bytt til satellittkart"
-            : base === "satellite"
+          base === "satellite"
             ? "Bytt til topografisk kart"
-            : "Bytt til standard kart"
+            : base === "topo"
+            ? "Bytt til standard kart"
+            : "Bytt til satellittkart"
         }
         aria-label="Bytt grunnkart"
       >
-        {base === "osm" ? <Satellite className="h-5 w-5" /> : base === "satellite" ? <Mountain className="h-5 w-5" /> : <MapIcon className="h-5 w-5" />}
+        {base === "satellite" ? <Mountain className="h-5 w-5" /> : base === "topo" ? <MapIcon className="h-5 w-5" /> : <Satellite className="h-5 w-5" />}
       </Button>
 
       {/* Dronesone-toggle */}
