@@ -708,13 +708,15 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     const map = mapRef.current;
     if (!map) return;
     try {
+      // setStyle fjerner alle lag inkl. vårt custom 3D-modellslag
+      safeskyModelLayerRef.current?.destroy();
+      safeskyModelLayerRef.current = null;
       map.setStyle(buildStyle(base));
       map.once("idle", () => {
         addZoneLayers(map, extrudeRef.current);
         addAipLayers(map, extrudeRef.current);
         addSafeSkyLayer(map);
         installClickHandlers(map);
-        // Re-add ikoner (setStyle tømmer image-cache)
         safeskyIconsLoadedRef.current.clear();
         refreshZones();
         applyAipData();
@@ -733,10 +735,13 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       [
         "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
         "aip-fill", "aip-extrusion", "aip-outline",
+        "safesky-3d-models",
         "safesky-beacons",
       ].forEach((id) => {
         if (map.getLayer(id)) map.removeLayer(id);
       });
+      safeskyModelLayerRef.current?.destroy();
+      safeskyModelLayerRef.current = null;
       if (map.getSource("zones")) map.removeSource("zones");
       if (map.getSource("aip")) map.removeSource("aip");
       if (map.getSource("safesky")) map.removeSource("safesky");
