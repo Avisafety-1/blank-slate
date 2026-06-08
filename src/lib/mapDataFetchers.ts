@@ -256,6 +256,8 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
         if (zone.zone_type === 'ATZ') {
           const tmpGeo = L.geoJSON(geojsonFeature as any);
           const center = tmpGeo.getBounds().getCenter();
+          // Dedupe: hopp over hvis Avinor RPAS allerede dekker denne lufthavnen
+          if (isCoveredByAvinorRpas(center.lat, center.lng)) continue;
           const displayName = zone.name || zone.zone_id || 'Ukjent småflyplass';
           let popup = `<strong>${label}</strong><br/>`;
           popup += `<strong>${displayName}</strong><br/>`;
