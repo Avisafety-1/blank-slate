@@ -245,6 +245,23 @@ const getDjiLoginErrorMessage = (error: any): { message: string; type: 'warning'
   if (reason === 'upstream_error') {
     return { message: 'DJI Cloud svarer ikke akkurat nå. Prøv igjen om et par minutter.', type: 'warning' };
   }
+  // Fallback when server didn't classify but we know the status code
+  const status = Number(error?.upstreamStatus) || 0;
+  if (status === 429) {
+    const retry = Number(error?.retryAfter);
+    const seconds = Number.isFinite(retry) && retry > 0 ? Math.min(retry, 600) : 60;
+    return {
+      message: `For mange innloggingsforsøk mot DJI. Vent ${seconds} sekunder og prøv igjen.`,
+      type: 'warning',
+      cooldownSeconds: seconds,
+    };
+  }
+  if (status === 401 || status === 403) {
+    return { message: 'Feil DJI-e-post eller passord. Sjekk og prøv igjen.', type: 'error' };
+  }
+  if (status >= 500) {
+    return { message: 'DJI Cloud svarer ikke akkurat nå. Prøv igjen om et par minutter.', type: 'warning' };
+  }
   return { message: 'DJI-innlogging feilet: ' + (error?.message || 'ukjent feil'), type: 'error' };
 };
 
