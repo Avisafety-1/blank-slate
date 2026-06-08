@@ -254,7 +254,22 @@ export function ResourceTimeline() {
   const equipmentResources = resourceRows.filter((r) => r.type === "equipment" && r.events.some(eventOverlapsWeek));
   const calendarResources = resourceRows.filter((r) => r.id.startsWith("cal-type-") && r.events.some(eventOverlapsWeek));
 
-  const renderEventBlock = (event: TimelineEvent, row: ResourceRow) => {
+  const assignLanes = (events: TimelineEvent[]): { event: TimelineEvent; lane: number }[] => {
+    const sorted = [...events].sort((a, b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime());
+    const laneEnds: number[] = [];
+    return sorted.map((event) => {
+      let lane = laneEnds.findIndex((endMs) => endMs <= event.start.getTime());
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(event.end.getTime());
+      } else {
+        laneEnds[lane] = event.end.getTime();
+      }
+      return { event, lane };
+    });
+  };
+
+  const renderEventBlock = (event: TimelineEvent, row: ResourceRow, lane: number) => {
     const mStart = Math.max(event.start.getTime(), weekStartMs);
     const mEnd = Math.min(event.end.getTime(), weekEndMs);
     if (mEnd <= mStart) return null;
@@ -289,12 +304,12 @@ export function ResourceTimeline() {
             <button
               onClick={isClickable ? handleClick : undefined}
               className={cn(
-                "absolute top-1 h-7 rounded-md border text-[10px] sm:text-xs font-medium text-white px-1.5 truncate transition-opacity hover:opacity-90 z-10",
+                "absolute h-7 rounded-md border text-[10px] sm:text-xs font-medium text-white px-1.5 truncate transition-opacity hover:opacity-90 z-10",
                 isClickable ? "cursor-pointer" : "cursor-default",
                 color,
                 hasConflict && "ring-2 ring-amber-400 ring-offset-1 ring-offset-background"
               )}
-              style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 2)}%` }}
+              style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 2)}%`, top: `${4 + lane * 30}px` }}
             >
               {blockContent}
             </button>
@@ -319,6 +334,7 @@ export function ResourceTimeline() {
       </TooltipProvider>
     );
   };
+
 
   const renderSection = (title: string, icon: React.ReactNode, rows: ResourceRow[]) => {
     if (rows.length === 0) return null;
