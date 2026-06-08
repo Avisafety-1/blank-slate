@@ -1843,6 +1843,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
       }
       const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
+      const weatherSnapshot = await buildMissionWeatherSnapshot({
+        flightDate: effectiveDate,
+        latitude: result.startPosition?.lat ?? null,
+        longitude: result.startPosition?.lng ?? null,
+        source: 'flight_log_import',
+      });
       const { data: mission, error: missionError } = await supabase.from('missions').insert({
         company_id: companyId, user_id: user.id,
         tittel: `${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
@@ -1851,6 +1857,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         beskrivelse: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'} flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
         latitude: result.startPosition?.lat ?? null,
         longitude: result.startPosition?.lng ?? null,
+        weather_data_snapshot: weatherSnapshot,
       }).select('id').single();
       if (missionError) throw missionError;
 
