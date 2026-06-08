@@ -1135,15 +1135,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const handleDjiLogin = async () => {
     if (!djiEmail || !djiPassword || djiLoginCooldown) return;
     setIsDjiLoading(true);
+    // Default 15s anti-spam cooldown. Will be overridden by retryAfter on rate_limited.
     setDjiLoginCooldown(true);
-    setTimeout(() => setDjiLoginCooldown(false), 15000); // 15s cooldown
+    let cooldownTimer: ReturnType<typeof setTimeout> = setTimeout(() => setDjiLoginCooldown(false), 15000);
     try {
       const data = await callDronelogAction("dji-login", { email: djiEmail, password: djiPassword });
       console.log("DJI login response:", JSON.stringify(data));
       const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId || (typeof data.result === "string" ? data.result : null);
       if (!accountId) throw new Error("Ingen konto-ID mottatt. API-svar: " + JSON.stringify(data).substring(0, 200));
       setDjiAccountId(accountId);
-      
+
       // Save credentials if checkbox is checked
       if (saveCredentials) {
         try {
@@ -1157,20 +1158,26 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           toast.warning('Innlogging OK, men kunne ikke lagre legitimasjon');
         }
       }
-      
+
       setDjiPassword("");
       await fetchDjiLogs(accountId);
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI login error:', error);
-      if (isApiLimitError(error)) {
-        const { message, type } = getDronelogErrorMessage(error);
-        type === 'warning' ? toast.warning(message, { duration: 8000 }) : toast.error(message, { duration: 8000 });
-      } else { toast.error(t('dronelog.djiLoginError', 'DJI-innlogging feilet: ') + error.message); }
+      const { message, type, cooldownSeconds: cs } = getDjiLoginErrorMessage(error);
+      // For rate-limit: extend cooldown to retryAfter (server-suggested seconds).
+      if (cs && cs > 15) {
+        clearTimeout(cooldownTimer);
+        cooldownTimer = setTimeout(() => setDjiLoginCooldown(false), cs * 1000);
+      }
+      type === 'warning'
+        ? toast.warning(message, { duration: 8000 })
+        : toast.error(message, { duration: 8000 });
     } finally {
       setIsDjiLoading(false);
     }
   };
+
 
   const fetchDjiLogs = async (accountId: string, createdAfterId?: number) => {
     setIsDjiLoading(true);
