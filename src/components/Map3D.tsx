@@ -29,6 +29,7 @@ interface Map3DProps {
   initialCenter?: [number, number];
   initialZoom?: number;
   onMissionClick?: (mission: any) => void;
+  onViewChange?: (center: [number, number], zoom: number) => void;
 }
 
 type BaseLayer = "osm" | "satellite" | "topo";
