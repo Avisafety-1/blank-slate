@@ -1,42 +1,29 @@
-# Fix: feilmeldinger fra `process-dronelog` blir aldri lest
-
 ## Problem
-`supabase.functions.invoke()` setter `data = null` når edge-funksjonen returnerer non-2xx (401/403/429/5xx). Responsen ligger på `error.context` (en `Response`). I `callDronelogAction` (`src/components/UploadDroneLogDialog.tsx` ~L173) leses `upstreamStatus`/`reason`/`retryAfter`/`remaining` fra `data` — som alltid er `null` ved feil. Dermed faller alle DJI-feil i `getDjiLoginErrorMessage` til "ukjent feil", og brukeren ser bare den generiske "Edge Function returned a non-2xx status code".
+Ved lagring av FH2 webhook-token får brukeren `Edge Function returned a non-2xx status code` (faktisk 403 `{"error":"forbidden"}`).
 
-## Endring (kun frontend)
-`callDronelogAction` skrives om til å lese feilbody fra `error.context`:
+Rotårsak: `supabase/functions/flighthub2-airspace-webhook-config/index.ts` aksepterer kun rollene `admin` og `superadmin`:
 
 ```ts
-if (error) {
-  let body: any = null;
-  try {
-    const ctx = (error as any).context;
-    if (ctx && typeof ctx.json === 'function') {
-      body = await ctx.clone().json().catch(() => null);
-    }
-  } catch { /* ignore */ }
-  body = body ?? (data as any) ?? {};
-  const err: any = new Error(body.error || error.message || 'Request failed');
-  err.upstreamStatus = body.upstreamStatus ?? (error as any)?.context?.status ?? 0;
-  err.retryAfter = body.retryAfter;
-  err.remaining = body.remaining;
-  err.reason = body.reason;
-  err.details = body.details;
-  throw err;
+if (!roles.includes("admin") && !roles.includes("superadmin")) {
+  return ... "forbidden" 403
 }
 ```
 
-Slik at både `upstreamStatus` og `reason` fra edge-funksjonen kommer riktig ut. `getDjiLoginErrorMessage` fungerer da som tiltenkt:
-- 429 → "For mange innloggingsforsøk mot DJI. Vent X sekunder…"
-- 401 + `reason=invalid_credentials` → "Feil DJI-e-post eller passord…"
-- 401 + `reason=api_key_invalid` → "DroneLog API-nøkkelen mangler…"
+Den norske selskapsadministrator-rollen i `app_role`-enumen heter `administrator` (egen verdi, ikke alias for `admin`). Resten av kodebasen tillater eksplisitt alle tre: `["administrator", "admin", "superadmin"]` (se f.eks. `check-document-expiry`, `admin-delete-user`, `weekly-company-report`, `manage-dronelog-key`). Webhook-config-funksjonen har bare blitt glemt.
 
-## Sekundær fallback
-Hvis serveren skulle sende 401 uten `reason` (gammel cache/edge cold start), legges en fallback i `getDjiLoginErrorMessage`: når `reason` mangler og `upstreamStatus === 401` → vis "Feil DJI-e-post eller passord". `upstreamStatus === 429` uten reason → behandle som rate-limit.
+## Endring
+I `supabase/functions/flighthub2-airspace-webhook-config/index.ts`, oppdater rollesjekken til:
 
-## Filer
-- `src/components/UploadDroneLogDialog.tsx` — `callDronelogAction` + fallback i `getDjiLoginErrorMessage`.
+```ts
+const ADMIN_ROLES = ["administrator", "admin", "superadmin"];
+if (!roles.some((r) => ADMIN_ROLES.includes(r))) {
+  return forbidden();
+}
+```
+
+Ingen andre filer trenger endring. Ingen DB-migrasjon, ingen UI-endring.
 
 ## Verifisering
-- 429 fra DJI-login (allerede reprodusert i edge-loggene) skal nå vise gul rate-limit-toast med nedtelling, ikke generisk feil.
-- Test med feil DJI-passord → rød "Feil DJI-e-post eller passord".
+1. Deploy `flighthub2-airspace-webhook-config`.
+2. Logget inn som `administrator` for UAS Voss, generer ny token, slå på «Aktiver webhook», trykk Lagre → forventer 200, toast «Webhook-konfigurasjon lagret».
+3. Sjekk at `flighthub2_webhook_config` for UAS Voss nå har `enabled = true` og oppdatert `token_encrypted`.
