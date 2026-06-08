@@ -418,24 +418,25 @@ export default function Map3D({ initialCenter, initialZoom = 11, onMissionClick 
     };
   }, [styleReady, setData]);
 
-  // NOTAMs (fra Supabase, geometry_geojson eller sirkel fra center+radius)
+  // NOTAMs (fra Supabase, geometry_geojson — sirkler er allerede polygonisert i feltet)
   useEffect(() => {
     if (!styleReady) return;
     let cancelled = false;
     const fetchNotams = async () => {
       const { data, error } = await supabase
         .from("notams")
-        .select("id, geometry_geojson, center_lat, center_lng, radius_nm, raw_text, summary")
+        .select("id, geometry_geojson, center_lat, center_lng, notam_text")
         .or(`effective_end.gt.${new Date().toISOString()},effective_end.is.null`)
         .limit(1000);
       if (error || cancelled || !data) return;
       const features: GeoJSON.Feature[] = [];
       for (const n of data as any[]) {
-        const text = n.summary || n.raw_text || "";
+        const text = n.notam_text || "";
         if (n.geometry_geojson) {
           features.push({ type: "Feature", geometry: n.geometry_geojson as any, properties: { text } });
-        } else if (n.center_lat != null && n.center_lng != null && n.radius_nm != null) {
-          const poly = circlePolygon(n.center_lat, n.center_lng, n.radius_nm * 1852);
+        } else if (n.center_lat != null && n.center_lng != null) {
+          // Fallback: 5 km sirkel rundt senterpunktet
+          const poly = circlePolygon(n.center_lat, n.center_lng, 5000);
           features.push({ type: "Feature", geometry: poly, properties: { text } });
         }
       }
