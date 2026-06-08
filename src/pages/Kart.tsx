@@ -1087,8 +1087,8 @@ export default function KartPage() {
                 <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
                   <Map3D
                     onMissionClick={handleMissionClick}
-                    initialCenter={sharedView?.center}
-                    initialZoom={sharedView?.zoom}
+                    initialCenter={lastViewRef.current?.center}
+                    initialZoom={lastViewRef.current?.zoom}
                     onViewChange={handleViewChange}
                   />
                 </Suspense>
@@ -1102,7 +1102,7 @@ export default function KartPage() {
               mode={isRoutePlanning ? "routePlanning" : "view"}
               existingRoute={routePlanningState?.existingRoute}
               onRouteChange={handleRouteChange}
-              initialCenter={routePlanningState?.initialCenter ?? sharedView?.center}
+              initialCenter={routePlanningState?.initialCenter ?? lastViewRef.current?.center}
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
               onStartRoutePlanning={handleStartRoutePlanning}
