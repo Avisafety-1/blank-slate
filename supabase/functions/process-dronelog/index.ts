@@ -16,6 +16,43 @@ const DJI_PARSER_URL = (Deno.env.get("DJI_PARSER_URL") ?? "").replace(/\/+$/, ""
 const DJI_PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
 
 /**
+ * Klassifiser feilrespons fra DroneLog `/accounts/dji` (DJI login).
+ * Reglene baserer seg på dokumenterte koder + observerte upstream-meldinger:
+ *   - 429                          → rate_limited (DJI struper innlogging)
+ *   - 401                          → api_key_invalid (vår DroneLog-nøkkel)
+ *   - 400, eller upstream-melding  → invalid_credentials (DJI avviser passord)
+ *   - upstream "locked/captcha/…"  → account_locked (sjekkes FØR creds-regel)
+ *   - resterende 5xx               → upstream_error
+ *   - alt annet                    → unknown
+ */
+function classifyDjiLoginError(
+  status: number,
+  upstreamMessage: string,
+): { reason: string; error: string } {
+  const msg = (upstreamMessage || "").toLowerCase();
+  if (status === 429) {
+    return { reason: "rate_limited", error: "Too many login attempts" };
+  }
+  if (/(locked|blocked|captcha|verification|suspended|risk)/i.test(msg)) {
+    return { reason: "account_locked", error: "DJI account temporarily locked" };
+  }
+  if (status === 401) {
+    return { reason: "api_key_invalid", error: "DroneLog API key invalid or expired" };
+  }
+  if (status === 400) {
+    return { reason: "invalid_credentials", error: "Invalid DJI email or password" };
+  }
+  if (/(invalid|incorrect|wrong|password|email|account|credential|login|denied)/i.test(msg)) {
+    return { reason: "invalid_credentials", error: "Invalid DJI email or password" };
+  }
+  if (status >= 500) {
+    return { reason: "upstream_error", error: "DJI Cloud upstream error" };
+  }
+  return { reason: "unknown", error: upstreamMessage || "DJI login failed" };
+}
+
+
+/**
  * Prøver vår egen Fly.io DJI-parser. Returnerer CSV-tekst på samme form som
  * DroneLog API leverer, eller null hvis vi må falle tilbake.
  */
@@ -874,7 +911,7 @@ Deno.serve(async (req) => {
       if (action === "dji-login") {
         const { email, password } = body;
         if (!email || !password) {
-          return new Response(JSON.stringify({ error: "Email and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: "Email and password required", reason: "missing_input" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         const res = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
           method: "POST",
@@ -883,18 +920,25 @@ Deno.serve(async (req) => {
         });
         const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
         if (!res.ok) {
-          console.error(`[process-dronelog] dji-login key=${keyFingerprint} upstream=${res.status}`);
+          const upstreamMsg = String(data?.message || "").slice(0, 200);
+          const classified = classifyDjiLoginError(res.status, upstreamMsg);
           const retryAfter = res.headers.get("Retry-After") || null;
-          if (res.status === 429) {
-            return new Response(JSON.stringify({ error: "Too many requests", details: data, upstreamStatus: 429, retryAfter, remaining: data?.remaining ?? null }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          console.error(`[process-dronelog] dji-login key=${keyFingerprint} upstream=${res.status} reason=${classified.reason} msg="${upstreamMsg}"`);
+          const payload: Record<string, unknown> = {
+            error: classified.error,
+            reason: classified.reason,
+            details: data,
+            upstreamStatus: res.status,
+          };
+          if (classified.reason === "rate_limited") {
+            payload.retryAfter = retryAfter;
+            payload.remaining = data?.remaining ?? null;
+            return new Response(JSON.stringify(payload), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
-          if (res.status === 401 || res.status === 403) {
-            return new Response(JSON.stringify({ error: "Ugyldig eller utløpt API-nøkkel", details: data, upstreamStatus: res.status }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          if (classified.reason === "api_key_invalid") {
+            return new Response(JSON.stringify(payload), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
-          const errMsg = res.status === 500
-            ? "DroneLog API serverfeil. Sjekk at DJI-legitimasjonen er korrekt, eller prøv igjen senere."
-            : (data.message || "DJI login failed");
-          return new Response(JSON.stringify({ error: errMsg, details: data, upstreamStatus: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify(payload), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -1099,12 +1143,23 @@ Deno.serve(async (req) => {
         });
         const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
         if (!res.ok) {
-          console.error(`[process-dronelog] dji-auto-login upstream=${res.status}`);
-          // If credentials are invalid, delete them
-          if (res.status === 401 || res.status === 403 || res.status === 500) {
+          const upstreamMsg = String(data?.message || "").slice(0, 200);
+          const classified = classifyDjiLoginError(res.status, upstreamMsg);
+          const retryAfter = res.headers.get("Retry-After") || null;
+          console.error(`[process-dronelog] dji-auto-login upstream=${res.status} reason=${classified.reason} msg="${upstreamMsg}"`);
+          // Only delete saved credentials when DJI explicitly rejects the password.
+          // Do NOT delete on rate-limit or transient upstream errors.
+          if (classified.reason === "invalid_credentials" || classified.reason === "account_locked") {
             await serviceClient.from("dji_credentials").delete().eq("user_id", authUser.id);
           }
-          return new Response(JSON.stringify({ error: data.message || "Auto-login failed", upstreamStatus: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          const status = classified.reason === "rate_limited" ? 429 : 502;
+          return new Response(JSON.stringify({
+            error: classified.error,
+            reason: classified.reason,
+            details: data,
+            upstreamStatus: res.status,
+            retryAfter: classified.reason === "rate_limited" ? retryAfter : undefined,
+          }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
         // Update stored accountId if needed

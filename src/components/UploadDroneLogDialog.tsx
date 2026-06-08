@@ -179,6 +179,7 @@ async function callDronelogAction(action: string, payload: Record<string, unknow
     err.upstreamStatus = (data as any)?.upstreamStatus || 0;
     err.retryAfter = (data as any)?.retryAfter;
     err.remaining = (data as any)?.remaining;
+    err.reason = (data as any)?.reason;
     throw err;
   }
   return data;
@@ -199,6 +200,40 @@ const getDronelogErrorMessage = (error: any): { message: string; type: 'warning'
     return { message: 'Ugyldig eller utløpt DroneLog API-nøkkel. Kontakt administrator.', type: 'error' };
   }
   return { message: error?.message || 'Ukjent feil', type: 'error' };
+};
+
+/**
+ * Oversetter klassifisert feil fra `dji-login` / `dji-auto-login` til norsk toast.
+ * Server returnerer `reason` ∈ rate_limited | api_key_invalid | invalid_credentials |
+ * account_locked | upstream_error | unknown.
+ */
+const getDjiLoginErrorMessage = (error: any): { message: string; type: 'warning' | 'error'; cooldownSeconds?: number } => {
+  const reason = error?.reason;
+  if (reason === 'rate_limited') {
+    const retry = Number(error?.retryAfter);
+    const seconds = Number.isFinite(retry) && retry > 0 ? Math.min(retry, 600) : 60;
+    return {
+      message: `For mange innloggingsforsøk mot DJI. Vent ${seconds} sekunder og prøv igjen.`,
+      type: 'warning',
+      cooldownSeconds: seconds,
+    };
+  }
+  if (reason === 'invalid_credentials') {
+    return { message: 'Feil DJI-e-post eller passord. Sjekk og prøv igjen.', type: 'error' };
+  }
+  if (reason === 'account_locked') {
+    return {
+      message: 'DJI har midlertidig låst kontoen pga. sikkerhet. Logg inn i DJI-appen først, og prøv igjen om noen minutter.',
+      type: 'error',
+    };
+  }
+  if (reason === 'api_key_invalid') {
+    return { message: 'DroneLog API-nøkkelen mangler eller er utløpt. Kontakt administrator.', type: 'error' };
+  }
+  if (reason === 'upstream_error') {
+    return { message: 'DJI Cloud svarer ikke akkurat nå. Prøv igjen om et par minutter.', type: 'warning' };
+  }
+  return { message: 'DJI-innlogging feilet: ' + (error?.message || 'ukjent feil'), type: 'error' };
 };
 
 const isApiLimitError = (error: any): boolean => {
@@ -462,10 +497,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI auto-login error:', error);
-      // If auto-login fails, clear saved state and show manual login
-      setHasSavedCredentials(false);
-      setSavedDjiEmail("");
-      toast.error('Auto-innlogging feilet. Logg inn manuelt.');
+      const reason = error?.reason;
+      // Only clear saved state if DJI explicitly rejected the credentials
+      // (server has already deleted them in that case).
+      if (reason === 'invalid_credentials' || reason === 'account_locked') {
+        setHasSavedCredentials(false);
+        setSavedDjiEmail("");
+      }
+      if (reason === 'invalid_credentials') {
+        toast.error('Lagret DJI-passord ble avvist. Logg inn på nytt.', { duration: 8000 });
+      } else {
+        const { message, type } = getDjiLoginErrorMessage(error);
+        type === 'warning'
+          ? toast.warning(message, { duration: 8000 })
+          : toast.error(message, { duration: 8000 });
+      }
     } finally {
       setIsAutoLoggingIn(false);
       setIsDjiLoading(false);
@@ -1100,15 +1146,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const handleDjiLogin = async () => {
     if (!djiEmail || !djiPassword || djiLoginCooldown) return;
     setIsDjiLoading(true);
+    // Default 15s anti-spam cooldown. Will be overridden by retryAfter on rate_limited.
     setDjiLoginCooldown(true);
-    setTimeout(() => setDjiLoginCooldown(false), 15000); // 15s cooldown
+    let cooldownTimer: ReturnType<typeof setTimeout> = setTimeout(() => setDjiLoginCooldown(false), 15000);
     try {
       const data = await callDronelogAction("dji-login", { email: djiEmail, password: djiPassword });
       console.log("DJI login response:", JSON.stringify(data));
       const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId || (typeof data.result === "string" ? data.result : null);
       if (!accountId) throw new Error("Ingen konto-ID mottatt. API-svar: " + JSON.stringify(data).substring(0, 200));
       setDjiAccountId(accountId);
-      
+
       // Save credentials if checkbox is checked
       if (saveCredentials) {
         try {
@@ -1122,20 +1169,26 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           toast.warning('Innlogging OK, men kunne ikke lagre legitimasjon');
         }
       }
-      
+
       setDjiPassword("");
       await fetchDjiLogs(accountId);
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI login error:', error);
-      if (isApiLimitError(error)) {
-        const { message, type } = getDronelogErrorMessage(error);
-        type === 'warning' ? toast.warning(message, { duration: 8000 }) : toast.error(message, { duration: 8000 });
-      } else { toast.error(t('dronelog.djiLoginError', 'DJI-innlogging feilet: ') + error.message); }
+      const { message, type, cooldownSeconds: cs } = getDjiLoginErrorMessage(error);
+      // For rate-limit: extend cooldown to retryAfter (server-suggested seconds).
+      if (cs && cs > 15) {
+        clearTimeout(cooldownTimer);
+        cooldownTimer = setTimeout(() => setDjiLoginCooldown(false), cs * 1000);
+      }
+      type === 'warning'
+        ? toast.warning(message, { duration: 8000 })
+        : toast.error(message, { duration: 8000 });
     } finally {
       setIsDjiLoading(false);
     }
   };
+
 
   const fetchDjiLogs = async (accountId: string, createdAfterId?: number) => {
     setIsDjiLoading(true);
