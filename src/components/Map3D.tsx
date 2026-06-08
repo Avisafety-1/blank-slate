@@ -485,22 +485,27 @@ export default function Map3D({ initialCenter, initialZoom = 11, onMissionClick 
       const since = new Date(Date.now() - 2 * 60 * 1000).toISOString();
       const { data, error } = await (supabase as any)
         .from("flighthub2_positions")
-        .select("device_sn, latitude, longitude, altitude, horizontal_speed, recorded_at")
-        .gte("recorded_at", since)
-        .not("latitude", "is", null)
-        .not("longitude", "is", null)
-        .limit(200);
+        .select("sn, uas_model, lat, lng, altitude_m, height_m, ground_speed_ms, time_stamp")
+        .gte("time_stamp", since)
+        .not("lat", "is", null)
+        .not("lng", "is", null)
+        .limit(500);
       if (error || cancelled || !data) return;
-      // Behold kun siste posisjon per device
+      // Behold kun siste posisjon per drone
       const latest = new Map<string, any>();
       for (const p of data) {
-        const prev = latest.get(p.device_sn);
-        if (!prev || new Date(p.recorded_at) > new Date(prev.recorded_at)) latest.set(p.device_sn, p);
+        const key = p.sn || "unknown";
+        const prev = latest.get(key);
+        if (!prev || new Date(p.time_stamp) > new Date(prev.time_stamp)) latest.set(key, p);
       }
       const features: GeoJSON.Feature[] = Array.from(latest.values()).map((p: any) => ({
         type: "Feature",
-        geometry: { type: "Point", coordinates: [p.longitude, p.latitude] },
-        properties: { device: p.device_sn, altitude: p.altitude, speed: p.horizontal_speed },
+        geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+        properties: {
+          device: p.uas_model || p.sn || "Drone",
+          altitude: p.altitude_m ?? p.height_m,
+          speed: p.ground_speed_ms,
+        },
       }));
       setData("src-fh2", { type: "FeatureCollection", features });
     };
