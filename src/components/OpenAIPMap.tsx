@@ -136,6 +136,8 @@ interface OpenAIPMapProps {
   routeHintOffsetClass?: string;
   /** Hours from now to include planned mission publications. Default 24. */
   plannedMissionsWindowHours?: number;
+  /** Optional button rendered in the right-side stack, directly above the Kartlag button. */
+  stackSlotAboveLayers?: React.ReactNode;
 }
 
 export function OpenAIPMap({ 
