@@ -1026,19 +1026,17 @@ export async function fetchVernRestrictionZones(params: BoundsFetchParams) {
 }
 
 // ---- CAA drone zones (dronesoner.no via caa_drone_zones table) ----
-export interface CaaLayerStyle {
-  color: string;
-  iconLabel: string;
-}
+import {
+  CAA_LAYER_STYLES as CAA_POPUP_STYLES,
+  DK_LAYER_STYLES as DK_POPUP_STYLES,
+  buildCaaZonePopupHtml,
+  buildCaaSmallAirportPopupHtml,
+  buildDkZonePopupHtml,
+} from './zonePopups';
 
-const CAA_LAYER_STYLES: Record<string, CaaLayerStyle> = {
-  fengsler: { color: '#b91c1c', iconLabel: '🚫 Fengsel' },
-  ambassader: { color: '#b91c1c', iconLabel: '🚫 Ambassade' },
-  fareomrader: { color: '#eab308', iconLabel: '⚠️ Fareområde' },
-  flyplasser: { color: '#dc2626', iconLabel: '✈️ Flyplass' },
-  notam_soner: { color: '#eab308', iconLabel: '⚠️ NOTAM-sone' },
-  restriksjoner: { color: '#dc2626', iconLabel: '🚫 Restriksjonsområde' },
-};
+export type CaaLayerStyle = (typeof CAA_POPUP_STYLES)[string];
+
+const CAA_LAYER_STYLES = CAA_POPUP_STYLES;
 
 export async function fetchCaaDroneZones(params: BoundsFetchParams & {
   layerIds: string[];
@@ -1069,10 +1067,6 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
       (zone) => {
         const style = CAA_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ Sone' };
         const isWarning = zone.restriction === 'REQ_AUTHORISATION';
-        const esc = (s: any) =>
-          String(s ?? '').replace(/[&<>"']/g, (c) => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-          }[c]!));
 
         // Småflyplasser (faste fly) tegnes som 5 km sirkel rundt sentroide — kontakt flyplassen/myppr.no.
         // Helikopterplasser holdes som ordinære små markører (default rendering nedenfor).
@@ -1096,12 +1090,7 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
               bubblingMouseEvents: false,
             });
             if (mode !== 'routePlanning') {
-              const p: any = zone || {};
-              let html = `<strong>✈️ Småflyplass — 5 km sone</strong><br/>`;
-              html += `<strong>${esc(p.name || 'Ukjent')}</strong><br/>`;
-              html += `<div style="margin-top:4px">Kontakt flyplassen før flyging — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a></div>`;
-              if (p.authority_phone) html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
-              circle.bindPopup(html);
+              circle.bindPopup(buildCaaSmallAirportPopupHtml(zone));
               attachHoverPromotion(circle as unknown as L.Path, {
                 paneName: 'atzPane',
                 baseStyle: { color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.12 },
@@ -1125,19 +1114,7 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
           },
           onEachFeature: mode !== 'routePlanning' ? (feature, lyr) => {
             const p: any = feature.properties || {};
-            let html = `<strong>${style.iconLabel}</strong><br/>`;
-            html += `<strong>${esc(p.name || 'Ukjent')}</strong><br/>`;
-            if (p.message) html += `<div style="margin-top:4px;max-width:280px">${esc(p.message)}</div>`;
-            if (p.lower_limit_m != null || p.upper_limit_m != null) {
-              html += `<div style="margin-top:4px">Høyde: ${p.lower_limit_m ?? 'GND'}–${p.upper_limit_m ?? '?'} m ${esc(p.upper_ref || 'AGL')}</div>`;
-            }
-            if (p.authority_name) {
-              html += `<div style="margin-top:4px"><em>Myndighet:</em> ${esc(p.authority_name)}`;
-              if (p.authority_url) html += ` (<a href="${esc(p.authority_url)}" target="_blank" rel="noopener">info</a>)`;
-              html += `</div>`;
-            }
-            if (p.authority_phone) html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
-            lyr.bindPopup(html);
+            lyr.bindPopup(buildCaaZonePopupHtml(p));
             attachHoverPromotion(lyr, {
               paneName: 'overlayPane',
               baseStyle: {
@@ -1160,11 +1137,7 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
 }
 
 // ---- DK drone zones (Trafikstyrelsen via dk_drone_zones table) ----
-const DK_LAYER_STYLES: Record<string, { color: string; iconLabel: string; warningLevel: 'danger' | 'warning' | 'caution' }> = {
-  rod:    { color: '#dc2626', iconLabel: '🚫 Flyvesikringskritisk', warningLevel: 'danger' },
-  orange: { color: '#f97316', iconLabel: '⚠️ Opmærksomhedsområde', warningLevel: 'warning' },
-  bla:    { color: '#2563eb', iconLabel: '🛡️ Sikringskritisk', warningLevel: 'caution' },
-};
+const DK_LAYER_STYLES = DK_POPUP_STYLES;
 
 export async function fetchDkDroneZones(params: BoundsFetchParams & {
   layerIds: string[];
@@ -1187,10 +1160,6 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
       if (error) console.error('Feil ved henting av DK dronezoner:', error);
       return;
     }
-    const esc = (s: any) =>
-      String(s ?? '').replace(/[&<>"']/g, (c) => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-      }[c]!));
 
     diffRender(
       layer,
@@ -1210,13 +1179,7 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
             fillOpacity: 0.9,
             pane: 'overlayPane',
             interactive: mode !== 'routePlanning',
-          }).bindPopup(
-            `<strong>${style.iconLabel}</strong><br/>` +
-            `<strong>${esc(zone.name || zone.icao || 'Ukjent')}</strong>` +
-            (zone.category ? `<div>${esc(zone.category)}</div>` : '') +
-            (zone.buffer ? `<div>Bufferzone: ${esc(zone.buffer)}</div>` : '') +
-            `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`
-          );
+          }).bindPopup(buildDkZonePopupHtml(zone));
         }
         return L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: zone } as any, {
           interactive: mode !== 'routePlanning',
@@ -1229,12 +1192,7 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
             dashArray: style.warningLevel === 'danger' ? undefined : '4, 4',
           },
           onEachFeature: mode !== 'routePlanning' ? (_f, lyr) => {
-            let html = `<strong>${style.iconLabel}</strong><br/>`;
-            html += `<strong>${esc(zone.name || 'Ukjent')}</strong>`;
-            if (zone.category) html += `<div>${esc(zone.category)}</div>`;
-            if (zone.buffer) html += `<div>Bufferzone: ${esc(zone.buffer)}</div>`;
-            html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
-            lyr.bindPopup(html);
+            lyr.bindPopup(buildDkZonePopupHtml(zone));
             attachHoverPromotion(lyr, {
               paneName: 'overlayPane',
               baseStyle: {
@@ -1254,6 +1212,7 @@ export async function fetchDkDroneZones(params: BoundsFetchParams & {
     console.error('Kunne ikke hente DK dronezoner:', err);
   }
 }
+
 
 export async function fetchDkNatureAreas(params: BoundsFetchParams & {
   includeInactive?: boolean;
