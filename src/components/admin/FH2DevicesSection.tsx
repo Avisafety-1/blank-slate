@@ -601,7 +601,7 @@ export const FH2DevicesSection = ({ fh2Projects }: FH2DevicesSectionProps) => {
 
             <div className="grid grid-cols-[1fr_auto_auto] gap-2">
               <div>
-                <Label className="text-xs">Egendefinert endpoint (uten /openapi/v0.1/ prefiks)</Label>
+                <Label className="text-xs">Egendefinert endpoint (uten /openapi/vX/ prefiks – testes mot v2.0, v1.0, v0.1 og manage)</Label>
                 <Input value={debugEndpoint} onChange={(e) => setDebugEndpoint(e.target.value)} placeholder="device" className="h-8 text-sm font-mono" />
               </div>
               <div>

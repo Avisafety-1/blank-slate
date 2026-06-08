@@ -1,29 +1,31 @@
-## Problem
-Ved lagring av FH2 webhook-token får brukeren `Edge Function returned a non-2xx status code` (faktisk 403 `{"error":"forbidden"}`).
+## Mål
+Utvide FH2 API Debug-sandkassen slik at hvert kall også prøver DJI sin nye **Public Cloud API V2.0** (`/openapi/v2.0/...`), i tillegg til dagens `openapi-v1.0`, `openapi-v0.1` og `manage-v1.0`.
 
-Rotårsak: `supabase/functions/flighthub2-airspace-webhook-config/index.ts` aksepterer kun rollene `admin` og `superadmin`:
+## Endringer
 
-```ts
-if (!roles.includes("admin") && !roles.includes("superadmin")) {
-  return ... "forbidden" 403
-}
-```
-
-Den norske selskapsadministrator-rollen i `app_role`-enumen heter `administrator` (egen verdi, ikke alias for `admin`). Resten av kodebasen tillater eksplisitt alle tre: `["administrator", "admin", "superadmin"]` (se f.eks. `check-document-expiry`, `admin-delete-user`, `weekly-company-report`, `manage-dronelog-key`). Webhook-config-funksjonen har bare blitt glemt.
-
-## Endring
-I `supabase/functions/flighthub2-airspace-webhook-config/index.ts`, oppdater rollesjekken til:
+### 1. `supabase/functions/flighthub2-proxy/index.ts` (debug-endpoint action, ca. linje 873-877)
+Legg til en ny variant øverst i listen, så `results` returnerer en `openapi-v2.0`-rad ved siden av de andre:
 
 ```ts
-const ADMIN_ROLES = ["administrator", "admin", "superadmin"];
-if (!roles.some((r) => ADMIN_ROLES.includes(r))) {
-  return forbidden();
-}
+const variants = [
+  { name: "openapi-v2.0", base: `${fh2BaseUrl}/openapi/v2.0/${cleanEndpoint}`, v: NEW_API },
+  { name: "openapi-v1.0", base: `${fh2BaseUrl}/openapi/v1.0/${cleanEndpoint}`, v: NEW_API },
+  { name: "openapi-v0.1", base: `${fh2BaseUrl}/openapi/v0.1/${cleanEndpoint}`, v: NEW_API },
+  { name: "manage-v1.0",  base: `${fh2BaseUrl}/manage/api/v1.0/${cleanEndpoint}`, v: OLD_API },
+];
 ```
 
-Ingen andre filer trenger endring. Ingen DB-migrasjon, ingen UI-endring.
+Ingen andre handlinger (`list-projects`, `list-devices`, livestream, osv.) endres — kun debug-sandkassen.
 
-## Verifisering
-1. Deploy `flighthub2-airspace-webhook-config`.
-2. Logget inn som `administrator` for UAS Voss, generer ny token, slå på «Aktiver webhook», trykk Lagre → forventer 200, toast «Webhook-konfigurasjon lagret».
-3. Sjekk at `flighthub2_webhook_config` for UAS Voss nå har `enabled = true` og oppdatert `token_encrypted`.
+### 2. `src/components/admin/FH2DevicesSection.tsx` (debug-dialogen)
+- Oppdatere label-teksten fra `"Egendefinert endpoint (uten /openapi/v0.1/ prefiks)"` til `"Egendefinert endpoint (uten /openapi/vX/ prefiks – testes mot v2.0, v1.0, v0.1 og manage)"` slik at det er tydelig at v2.0 nå er med.
+- Ingen nye knapper trengs; eksisterende hurtigknapper (System status, Org-enheter osv.) vil automatisk få v2.0-resultater i JSON-svaret siden proxyen alltid kjører alle varianter parallelt.
+
+## Hva som ikke endres
+- Ingen produksjons-endepunkter (oppdrag, ruter, annotasjoner, livestream) byttes til v2.0 ennå — kun debug-verktøyet får tilgang. Hvis v2.0 viser seg å fungere kan vi senere planlegge en faktisk migrering av relevante kall.
+- Ingen DB-/RLS-endringer.
+
+## Test
+1. Åpne FH2 Devices → Debug-sandkasse.
+2. Trykk «System status», «List prosjekter» osv. og verifiser at JSON-output nå inneholder en `openapi-v2.0`-blokk med URL `https://es-flight-api-eu.djigate.com/openapi/v2.0/...` og enten 200 eller 404.
+3. Kjør et egendefinert endepunkt (f.eks. `wayline`) for å se hvordan v2.0 svarer.
