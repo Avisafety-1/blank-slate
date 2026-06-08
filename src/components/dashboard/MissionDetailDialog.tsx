@@ -292,7 +292,15 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               const effectiveLng = currentMission.longitude ?? routeCoords?.[0]?.lng;
               const isCompleted = currentMission.status === "Fullført";
               const hasWeatherSnapshot = currentMission.weather_data_snapshot;
-              
+              const isHistoricalNoSnapshot =
+                isCompleted && !hasWeatherSnapshot && currentMission.tidspunkt &&
+                (Date.now() - new Date(currentMission.tidspunkt).getTime()) > 24 * 60 * 60 * 1000;
+              const effectiveSavedWeather = hasWeatherSnapshot
+                ? hasWeatherSnapshot
+                : isHistoricalNoSnapshot
+                  ? { unavailable: true, reason: 'historical', captured_at: new Date().toISOString() }
+                  : undefined;
+
               if (!effectiveLat || !effectiveLng) return null;
               
               return (
@@ -316,7 +324,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                   <DroneWeatherPanel 
                     latitude={effectiveLat} 
                     longitude={effectiveLng}
-                    savedWeatherData={isCompleted && hasWeatherSnapshot ? hasWeatherSnapshot : undefined}
+                    savedWeatherData={effectiveSavedWeather}
                   />
                 </>
               );
