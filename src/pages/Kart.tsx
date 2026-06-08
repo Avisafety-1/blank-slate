@@ -4,7 +4,11 @@ import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { AdjacentAreaPanel } from "@/components/AdjacentAreaPanel";
 import { calculateAdjacentRadius, computeSoraVolumePopulationDensity, type AdjacentAreaResult, type SoraPopulationDensityResult } from "@/lib/adjacentAreaCalculator";
 import { calculateAlos } from "@/lib/alosCalculator";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
+import { Box } from "lucide-react";
+
+// Lazy-load 3D map — MapLibre er ~800 KB. Lastes kun når brukeren aktiverer 3D.
+const Map3D = lazy(() => import("@/components/Map3D"));
 // soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
