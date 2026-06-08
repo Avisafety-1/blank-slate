@@ -505,24 +505,21 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     }
     try {
       const url = getBeaconSvgUrl(beaconType);
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.decoding = "async";
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = (err) => reject(err);
-        img.src = url;
-      });
-      // Rasteriser SVG til 32×32 så MapLibre kan bruke det som symbol-image.
-      const canvas = document.createElement("canvas");
-      canvas.width = 32;
-      canvas.height = 32;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return iconId;
-      ctx.drawImage(img, 0, 0, 32, 32);
-      const data = ctx.getImageData(0, 0, 32, 32);
+      // Bruk fetch + createImageBitmap så SVG-er uten intrinsic størrelse også
+      // tegnes riktig (Image.naturalWidth = 0 for slike SVG-er → drawImage tegner ingenting).
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`icon fetch ${res.status}`);
+      const blob = await res.blob();
+      let bitmap: ImageBitmap | null = null;
+      try {
+        bitmap = await createImageBitmap(blob, { resizeWidth: 64, resizeHeight: 64, resizeQuality: "high" } as any);
+      } catch {
+        // Fallback uten resize-options for eldre Safari
+        bitmap = await createImageBitmap(blob);
+      }
+      if (!bitmap) return iconId;
       if (!map.hasImage(iconId)) {
-        map.addImage(iconId, data as any, { pixelRatio: 2 });
+        map.addImage(iconId, bitmap as any, { pixelRatio: 2 });
       }
       safeskyIconsLoadedRef.current.add(iconId);
     } catch (err) {
