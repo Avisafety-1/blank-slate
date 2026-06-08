@@ -16,6 +16,43 @@ const DJI_PARSER_URL = (Deno.env.get("DJI_PARSER_URL") ?? "").replace(/\/+$/, ""
 const DJI_PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
 
 /**
+ * Klassifiser feilrespons fra DroneLog `/accounts/dji` (DJI login).
+ * Reglene baserer seg på dokumenterte koder + observerte upstream-meldinger:
+ *   - 429                          → rate_limited (DJI struper innlogging)
+ *   - 401                          → api_key_invalid (vår DroneLog-nøkkel)
+ *   - 400, eller upstream-melding  → invalid_credentials (DJI avviser passord)
+ *   - upstream "locked/captcha/…"  → account_locked (sjekkes FØR creds-regel)
+ *   - resterende 5xx               → upstream_error
+ *   - alt annet                    → unknown
+ */
+function classifyDjiLoginError(
+  status: number,
+  upstreamMessage: string,
+): { reason: string; error: string } {
+  const msg = (upstreamMessage || "").toLowerCase();
+  if (status === 429) {
+    return { reason: "rate_limited", error: "Too many login attempts" };
+  }
+  if (/(locked|blocked|captcha|verification|suspended|risk)/i.test(msg)) {
+    return { reason: "account_locked", error: "DJI account temporarily locked" };
+  }
+  if (status === 401) {
+    return { reason: "api_key_invalid", error: "DroneLog API key invalid or expired" };
+  }
+  if (status === 400) {
+    return { reason: "invalid_credentials", error: "Invalid DJI email or password" };
+  }
+  if (/(invalid|incorrect|wrong|password|email|account|credential|login|denied)/i.test(msg)) {
+    return { reason: "invalid_credentials", error: "Invalid DJI email or password" };
+  }
+  if (status >= 500) {
+    return { reason: "upstream_error", error: "DJI Cloud upstream error" };
+  }
+  return { reason: "unknown", error: upstreamMessage || "DJI login failed" };
+}
+
+
+/**
  * Prøver vår egen Fly.io DJI-parser. Returnerer CSV-tekst på samme form som
  * DroneLog API leverer, eller null hvis vi må falle tilbake.
  */
