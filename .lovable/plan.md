@@ -1,66 +1,39 @@
-## Mål
+## Hva som er feil
 
-Når brukeren klikker på en 5km-sone (RPAS-sone rundt en flyplass) i kartet, skal de se samme informasjon som Avinors Dronekart viser: hvordan man søker godkjenning (NINOX m.m.) og telefonnummer/kontaktdetaljer til lufthavna.
-
-## Datakilde
-
-Avinors offentlige ArcGIS Feature Service:
+Etter den nye Avinor-synkroniseringen (`Dronerestriksjonsomraader_gdb`) er det rot i `rpas_5km_zones`:
 
 ```
-https://services.arcgis.com/a8CwScMFSS2ljjgn/arcgis/rest/services/Dronerestriksjonsomraader_gdb/FeatureServer/0
+Zone      Antall   med TEKST   med navn
+5km        99        50          99
+CTR        19         0           0   <- skal ikke ligge her
+TIZ        31         0           0   <- skal ikke ligge her
+Kran        2         0           2
 ```
 
-(Dette er kilden bak experience.arcgis.com-lenken brukeren delte.) Tjenesten har 101 features — én pr lufthavn — med bl.a.:
+To konkrete problemer:
 
-- `ICAO`, `NAVN`, `STED`, `CTR_TIZ`
-- `KONTAKTDETALJER2` (norsk) + `CONTACTDETAILS2` (engelsk) — telefon og kontaktinfo
-- `TEKST1`–`TEKST6` (norsk) + `TEXT1`–`TEXT6` (engelsk) — beskrivelse/godkjenningsprosess (f.eks. NINOX-stegene)
+1. **Bodø (og 48 andre flyplasser) mangler info i popup**
+   Det ligger to rader for Bodø: en gammel enkel 5km-sirkel (OBJECTID 13, ingen TEKST/KONTAKT) og en ny rik rad (OBJECTID 2469, full NINOX-tekst + telefon). Den gamle blev aldri slettet, så når man klikker treffer Leaflet ofte den gamle og popupen faller tilbake til kort default-tekst. Værnes vises riktig fordi den ikke har en gammel duplikatrad lenger.
+   - 49 av 99 5km-rader er gamle duplikater uten TEKST.
 
-I dag bruker vi `RPAS_AVIGIS1`-tjenesten som bare har geometri + navn — derfor er popupen tom for info.
+2. **CTR/TIZ vises som "RPAS 5 km · Ukjent"**
+   Det nye Avinor-endepunktet returnerer CTR/TIZ/Kran-polygoner i samme respons. Disse har ikke NAVN og ble lagret i `rpas_5km_zones` med navn = "Ukjent". CTR/TIZ skal komme fra `rpas_ctr_tiz`, ikke fra 5km-laget — de viser feil etikett, feil farge og dobbeltrenderer kontrollsonene.
 
-## Endringer
+## Plan
 
-### 1. Bytt datakilde i `supabase/functions/sync-geo-layers/index.ts`
+### 1. Filtrer sync-geo-layers (`supabase/functions/sync-geo-layers/index.ts`)
+I `rpas_5km_zones`-mapperen, slipp gjennom kun features hvor `Zone === '5km'` (drop CTR/TIZ/Kran). De hører hjemme i `rpas_ctr_tiz`-laget som allerede synces fra eget endepunkt.
 
-Endre `rpas_5km_zones`-konfigurasjonen til å hente fra `Dronerestriksjonsomraader_gdb/FeatureServer/0` i stedet for `RPAS_AVIGIS1`. Alle ekstra felter (ICAO, KONTAKTDETALJER2, TEKST1–6 osv.) lagres automatisk i den eksisterende `properties jsonb`-kolonnen — ingen DB-migrasjon nødvendig.
+### 2. Migrasjon: rens opp tabellen
+Én SQL-migrasjon som:
+- Sletter alle rader hvor `properties->>'Zone'` er noe annet enn `'5km'` (fjerner de 19 CTR + 31 TIZ + 2 Kran).
+- Sletter de gamle duplikatene: for hver ICAO med flere rader, behold raden som har `properties ? 'TEKST1'` (den nye rike); slett resten.
 
-Kjør deretter funksjonen én gang for å fylle inn data for de 101 sonene.
+### 3. Verifisere
+Kjør sync på nytt etter migrasjon for å bekrefte at antallet stabiliserer seg på ~50 rader, alle med ICAO + TEKST. Klikk Bodø og en CTR-sone for å sjekke popup.
 
-### 2. Rik popup i kartet
+## Tekniske detaljer
 
-To steder rendrer 5km-sonene med en mager popup i dag — begge oppdateres til å vise kontakt + godkjenningstekst fra `properties`:
-
-- `src/lib/mapDataFetchers.ts` → `fetchRpasData` (hovedkartet `OpenAIPMap`). Bytter også fra direkte ArcGIS-fetch til vår egen Supabase-tabell `rpas_5km_zones` (raskere + samme kilde som synken).
-- `src/components/dashboard/ExpandedMapDialog.tsx` (dashboard-kartet) — samme behandling.
-
-Popupen får et tydelig oppsett (kompakt på mobil, scrollbar ved mye tekst):
-
-```
-Bodø lufthavn  (ENBO · CTR)
-─────────────────────────────
-For å fly innenfor 5 km må operatøren ta
-kontakt før flygning.
-
-Denne lufthavnen bruker NINOX DRONE.
-1. Last ned NINOX-appen …
-2. Opprett bruker …
-Flyging og godkjennelse gis i 3 steg …
-
-Kontakt
-☎ +47 75 52 11 90
-Skal kun brukes for oppstart/avslutning
-eller hvis NINOX ikke fungerer.
-```
-
-Felt brukt fra `properties`: `NAVN`, `ICAO`, `CTR_TIZ`, `TEKST1`–`TEKST6`, `KONTAKTDETALJER2`. Linjeskift (`\n`, `\r\n`) konverteres til `<br/>`. HTML-escapes for å hindre XSS.
-
-### 3. Ingenting endres i
-
-- Logikken for varsler / safety-analyse / Ninox-blokkering (`StartFlightDialog`, `AirspaceWarnings`) — bruker fortsatt geometri og samme tabell.
-- DB-skjema, RLS, edge-function-secrets.
-
-## Verifisering
-
-1. Kall `sync-geo-layers` med `layer=rpas_5km_zones`, sjekk at `properties->>'KONTAKTDETALJER2'` er satt for ENBO i Supabase.
-2. Åpne kartet, klikk Bodø-sonen, bekreft at popup viser telefonnummer og NINOX-steg.
-3. Klikk en sone uten NINOX (f.eks. en mindre lufthavn med ren `KONTAKTDETALJER`-tekst) og bekreft fallback.
+- Ingen endring i popup-renderer (`src/lib/rpas5kmPopup.ts`) eller fetcher trengs — de fungerer riktig så snart dataene er rene.
+- Ingen endring i `rpas_ctr_tiz` — CTR/TIZ vises som før via `RPAS_CTR_TIZ/FeatureServer/0`.
+- Ingen endringer i frontend kart-lagene utover at "Ukjent"-popupene forsvinner og Bodø får rik info.

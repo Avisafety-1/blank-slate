@@ -185,13 +185,22 @@ Deno.serve(async (req) => {
       if (!shouldSync(layerId)) continue;
       console.log(`Fetching ${layerId}...`);
       try {
-        const features = await fetchAllGeoJsonFeatures(config.url);
+        let features = await fetchAllGeoJsonFeatures(config.url);
+        // For rpas_5km_zones the Avinor "Dronerestriksjonsomraader_gdb"-endepunktet
+        // returnerer også CTR/TIZ/Kran-polygoner uten NAVN. De hører hjemme i
+        // rpas_ctr_tiz og må filtreres bort her for å unngå "Ukjent"-popups.
+        if (layerId === 'rpas_5km_zones') {
+          const before = features.length;
+          features = features.filter(f => (f?.properties?.Zone ?? '').toString().toLowerCase() === '5km');
+          console.log(`  rpas_5km_zones: filtered ${before} -> ${features.length} (kept only Zone=5km)`);
+        }
         console.log(`Processing ${features.length} features for ${layerId}...`);
 
         let totalSuccess = 0, totalError = 0, totalSkipped = 0;
 
         // Build batches for bulk upsert
         const batches = chunk(features, BATCH_SIZE);
+
         for (const batch of batches) {
           const batchData = batch.map((feature, idx) => {
             const props = feature.properties || {};
