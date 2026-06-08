@@ -1,37 +1,43 @@
-## Mål
+## Problem
 
-1. Når man bytter til 3D skal standard kartlag være **satelitt** (ikke OSM).
-2. 3D-kartet skal åpne på samme posisjon og zoom som 2D-kartet (ikke hoppe til Oslo). Tilsvarende ved bytte tilbake til 2D.
-3. Vis SafeSky-trafikk (lufttrafikk) i 3D, med samme popup som i 2D.
+`OpenAIPMap` har en useEffect:
+```ts
+useEffect(() => {
+  if (initialCenter && leafletMapRef.current) {
+    leafletMapRef.current.setView(initialCenter, 13);
+  }
+}, [initialCenter]);
+```
+I forrige endring sender `Kart.tsx` nå `sharedView?.center` som `initialCenter`. Hver `moveend` i 2D oppdaterer `sharedView` → ny array-referanse → useEffect snapper kartet tilbake til 13-zoom og samme senter → konstant loop som gjør at panorering/zoom ikke fungerer.
 
-## Endringer
+## Fix
 
-### 1) `src/components/Map3D.tsx` — Satelitt som default
-- Endre initial `useState<BaseLayer>("osm")` → `useState<BaseLayer>("satellite")`.
-- Endre `buildStyle("osm")` i `new maplibregl.Map({ style: ... })` → `buildStyle("satellite")`.
-- Juster toggle-rekkefølgen i base-layer-knappen så den fortsatt sirkulerer satellite → topo → osm → satellite (eller behold dagens rekkefølge — bare default endres).
+### 1) `src/pages/Kart.tsx`
+- Slutt å sende live `sharedView?.center` som `initialCenter` til `OpenAIPMap`. I stedet, lag en **ref-snapshot** som bare oppdateres når 2D-kartet er i ferd med å mountes (dvs. ved bytte fra 3D → 2D). Da brukes sharedView som start-senter for den nye 2D-instansen, men senere `sharedView`-oppdateringer påvirker ikke en allerede mountet 2D.
+  - `const lastSharedViewRef = useRef<{ center: [number, number]; zoom: number } | null>(null);`
+  - I `handleViewChange`: oppdater både `sharedView`-state og `lastSharedViewRef.current` (ref tar ikke re-render).
+  - I render: `initialCenter={routePlanningState?.initialCenter ?? (justSwitchedFrom3DRef.current ? lastSharedViewRef.current?.center : undefined)}`.
+  - Enklere variant: bruk en `useMemo`/lokal variabel som kun returnerer sharedView-senteret ved første render av 2D etter `is3D` ble false. Track via en `useRef` som settes når `is3D` veksler.
 
-### 2) Delt viewport mellom 2D og 3D — `src/pages/Kart.tsx` + `OpenAIPMap.tsx` + `Map3D.tsx`
-- I `Kart.tsx`: legg til `const [sharedView, setSharedView] = useState<{ center: [number, number]; zoom: number } | null>(null);`
-- `OpenAIPMap.tsx`: legg til prop `onViewChange?: (center: [number, number], zoom: number) => void`. Inne i map-init: registrer `map.on("moveend", () => onViewChange?.([c.lat, c.lng], map.getZoom()))`. Send fra Kart.tsx.
-- `Map3D.tsx`:
-  - Aksepter `initialZoom` fra prop (allerede definert) og bruk `sharedView.zoom` hvis satt.
-  - Legg til prop `onViewChange?: (center: [number, number], zoom: number) => void` og kall i `moveend`.
-- I `Kart.tsx`-renderlogikken: send `initialCenter={sharedView?.center}` og `initialZoom={sharedView?.zoom}` til `Map3D`, og tilsvarende `initialCenter` til `OpenAIPMap` når man bytter tilbake. Begge komponenter sender `onViewChange={setSharedView}`.
-- Resultat: bytte 2D ↔ 3D bevarer center+zoom uten å hoppe til Oslo.
+- Tilsvarende for `Map3D`: send `initialCenter={lastSharedViewRef.current?.center}` (kun lest ved mount; MapLibre re-leser ikke prop senere). `Map3D` mountes også på nytt ved hver veksling, så ref-verdien er fersk.
 
-### 3) SafeSky-trafikk i 3D — `src/components/Map3D.tsx`
-- Hent beacons fra `safesky_beacons`-tabellen (samme datakilde som 2D bruker indirekte) med 10s polling — kun feltene som popup trenger: `id, latitude, longitude, altitude, course, beacon_type, callsign, aircraft_model, registration, ground_speed, vertical_speed, squawk, on_ground, source, last_update`.
-- Bygg GeoJSON FeatureCollection med Point-features hvor `altitude` (m) brukes som koordinatens Z (3D-posisjon).
-- Legg til kilde `safesky` og et `symbol`-lag som bruker eksisterende beacon-SVG (samme `getBeaconSvgUrl(beaconType)` som 2D) lastet via `map.loadImage` + `map.addImage` per beacon-type. Bruk `icon-rotate` = `course`, `icon-allow-overlap: true`.
-- Behold ikonet flatt mot kameraet (`icon-pitch-alignment: viewport`) — standard MapLibre-oppførsel.
-- Click-handler: bygg popup via eksisterende `renderTrafficPopup({...})` (samme HTML som 2D) og vis i `maplibregl.Popup`.
-- Cleanup-intervaller og kilde i `useEffect`-return.
-- Liten "Lufttrafikk"-toggle-knapp i kontroll-stacken (samme stil som 3D-bygg/airspace-knapper) for å skru av/på.
+### 2) `src/components/OpenAIPMap.tsx`
+- For å være robust: legg til en toleransesjekk i recenter-useEffect (linje 1238–1243) så den ikke snapper når forespurt senter er ~likt nåværende:
+  ```ts
+  useEffect(() => {
+    if (!initialCenter || !leafletMapRef.current) return;
+    const cur = leafletMapRef.current.getCenter();
+    const dLat = Math.abs(cur.lat - initialCenter[0]);
+    const dLng = Math.abs(cur.lng - initialCenter[1]);
+    if (dLat < 1e-4 && dLng < 1e-4) return; // allerede der — ikke snap
+    leafletMapRef.current.setView(initialCenter, 13);
+  }, [initialCenter]);
+  ```
+  Dette beskytter også mot fremtidige tilsvarende feil.
 
-## Tekniske notater
-- Ingen database-, RLS- eller migrasjonsendringer. Bruker eksisterende `safesky_beacons`-tabell og eksisterende `renderTrafficPopup`/`getBeaconSvgUrl`.
-- SafeSky-ikonene er SVG (URL via `getBeaconSvgUrl`); MapLibre krever bitmap — last via `<img>` → `createImageBitmap` → `map.addImage(id, bitmap)` med ett kall per beacon-type ved første bruk.
-- Beacon-høyde (Z i koordinaten) gir riktig vertikal plassering relativt til 3D-bygg og airspace-sylindre i pitched view.
-- Heli-animasjon (frame-bytte i 2D) droppes i 3D for nå — statisk ikon med korrekt rotasjon.
-- Viewport-callback throttles naturlig via `moveend` (kun ved slutt av bevegelse) — billig.
+### 3) Ingen endringer i Map3D nødvendig
+MapLibre leser `initialCenter` kun i konstruktøren én gang per mount, så loop-problemet finnes ikke der.
+
+## Resultat
+- 2D-kartet kan panoreres/zoomes fritt igjen.
+- 2D ↔ 3D bytte beholder fortsatt center/zoom: refen oppdateres på `moveend` fra begge kart, og brukes som start-senter for det nye kartet ved mount.
