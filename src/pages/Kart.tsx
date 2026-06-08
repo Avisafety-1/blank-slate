@@ -1084,7 +1084,12 @@ export default function KartPage() {
                 {/* Stand-alone toggle in 3D mode (OpenAIPMap not rendered) */}
                 <div className="absolute top-4 right-4 z-[1100]">{toggle3DBtn}</div>
                 <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
-                  <Map3D onMissionClick={handleMissionClick} />
+                  <Map3D
+                    onMissionClick={handleMissionClick}
+                    initialCenter={sharedView?.center}
+                    initialZoom={sharedView?.zoom}
+                    onViewChange={handleViewChange}
+                  />
                 </Suspense>
               </>
             );
@@ -1096,7 +1101,8 @@ export default function KartPage() {
               mode={isRoutePlanning ? "routePlanning" : "view"}
               existingRoute={routePlanningState?.existingRoute}
               onRouteChange={handleRouteChange}
-              initialCenter={routePlanningState?.initialCenter}
+              initialCenter={routePlanningState?.initialCenter ?? sharedView?.center}
+              onViewChange={handleViewChange}
               controlledRoute={currentRoute}
               onStartRoutePlanning={handleStartRoutePlanning}
               onPilotPositionChange={handlePilotPositionChange}
