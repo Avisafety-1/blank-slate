@@ -41,19 +41,32 @@ function formatHours(minutes: number): string {
   return `${h}t ${m}m`;
 }
 
-function bucketize(logs: FlightLog[], days: number): { label: string; minutes: number }[] {
+function formatShortDate(d: Date): string {
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function bucketize(
+  logs: FlightLog[],
+  days: number,
+): { label: string; minutes: number; bucketDays: number }[] {
   const buckets = Math.min(12, Math.max(6, Math.ceil(days / 7)));
   const bucketDays = days / buckets;
   const now = Date.now();
   const start = now - days * 24 * 60 * 60 * 1000;
-  const data: { label: string; minutes: number }[] = Array.from({ length: buckets }, (_, i) => ({
-    label: String(i),
-    minutes: 0,
-  }));
+  const msPerBucket = bucketDays * 24 * 60 * 60 * 1000;
+  const data = Array.from({ length: buckets }, (_, i) => {
+    const bStart = new Date(start + i * msPerBucket);
+    const bEnd = new Date(start + (i + 1) * msPerBucket - 1);
+    return {
+      label: `${formatShortDate(bStart)}–${formatShortDate(bEnd)}`,
+      minutes: 0,
+      bucketDays,
+    };
+  });
   for (const log of logs) {
     const t = new Date(log.flight_date).getTime();
     if (isNaN(t) || t < start) continue;
-    const idx = Math.min(buckets - 1, Math.floor((t - start) / (bucketDays * 24 * 60 * 60 * 1000)));
+    const idx = Math.min(buckets - 1, Math.floor((t - start) / msPerBucket));
     data[idx].minutes += log.flight_duration_minutes || 0;
   }
   return data;
@@ -222,6 +235,11 @@ export function PersonnelFlightKpi({ personId }: Props) {
       <div className="grid grid-cols-3 gap-2">
         {stats.map((s, i) => {
           const colorClass = statusColorForDays(s.days, s.total);
+          const bucketDays = s.buckets[0]?.bucketDays ?? s.days / 6;
+          const bucketLabel =
+            Math.round(bucketDays) === 7
+              ? "Flytid per uke"
+              : `Flytid per ${Math.round(bucketDays)} dager`;
           return (
             <div key={i} className="rounded-md border border-border/60 bg-muted/20 p-2 min-w-0">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -230,7 +248,10 @@ export function PersonnelFlightKpi({ personId }: Props) {
               <p className={cn("text-base sm:text-lg font-bold leading-tight", colorClass)}>
                 {loading ? "…" : formatHours(s.total)}
               </p>
-              <div className="h-10 mt-1">
+              <div
+                className="h-10 mt-1"
+                aria-label={`${bucketLabel}, siste ${s.days} dager`}
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={s.buckets}>
                     <XAxis dataKey="label" hide />
@@ -244,12 +265,15 @@ export function PersonnelFlightKpi({ personId }: Props) {
                         padding: "4px 6px",
                       }}
                       formatter={(v: number) => [formatHours(v), "Flytid"]}
-                      labelFormatter={() => ""}
+                      labelFormatter={(label) => String(label)}
                     />
                     <Bar dataKey="minutes" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              <p className="text-[9px] text-muted-foreground/70 leading-none mt-0.5 text-center">
+                {bucketLabel}
+              </p>
             </div>
           );
         })}
