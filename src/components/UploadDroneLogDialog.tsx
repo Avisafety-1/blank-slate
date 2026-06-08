@@ -175,11 +175,23 @@ async function callDronelogAction(action: string, payload: Record<string, unknow
     body: { action, ...payload },
   });
   if (error) {
-    const err: any = new Error(error.message || "Request failed");
-    err.upstreamStatus = (data as any)?.upstreamStatus || 0;
-    err.retryAfter = (data as any)?.retryAfter;
-    err.remaining = (data as any)?.remaining;
-    err.reason = (data as any)?.reason;
+    // When the edge function returns non-2xx, the SDK puts the response in error.context
+    // (data is null). Parse the JSON body so we can extract reason/upstreamStatus/etc.
+    let body: any = null;
+    try {
+      const ctx = (error as any).context;
+      if (ctx && typeof ctx.clone === 'function' && typeof ctx.json === 'function') {
+        body = await ctx.clone().json().catch(() => null);
+      }
+    } catch { /* ignore */ }
+    if (!body) body = (data as any) ?? {};
+    const ctxStatus = (error as any)?.context?.status;
+    const err: any = new Error(body.error || error.message || 'Request failed');
+    err.upstreamStatus = body.upstreamStatus ?? ctxStatus ?? 0;
+    err.retryAfter = body.retryAfter;
+    err.remaining = body.remaining;
+    err.reason = body.reason;
+    err.details = body.details;
     throw err;
   }
   return data;
@@ -231,6 +243,23 @@ const getDjiLoginErrorMessage = (error: any): { message: string; type: 'warning'
     return { message: 'DroneLog API-nøkkelen mangler eller er utløpt. Kontakt administrator.', type: 'error' };
   }
   if (reason === 'upstream_error') {
+    return { message: 'DJI Cloud svarer ikke akkurat nå. Prøv igjen om et par minutter.', type: 'warning' };
+  }
+  // Fallback when server didn't classify but we know the status code
+  const status = Number(error?.upstreamStatus) || 0;
+  if (status === 429) {
+    const retry = Number(error?.retryAfter);
+    const seconds = Number.isFinite(retry) && retry > 0 ? Math.min(retry, 600) : 60;
+    return {
+      message: `For mange innloggingsforsøk mot DJI. Vent ${seconds} sekunder og prøv igjen.`,
+      type: 'warning',
+      cooldownSeconds: seconds,
+    };
+  }
+  if (status === 401 || status === 403) {
+    return { message: 'Feil DJI-e-post eller passord. Sjekk og prøv igjen.', type: 'error' };
+  }
+  if (status >= 500) {
     return { message: 'DJI Cloud svarer ikke akkurat nå. Prøv igjen om et par minutter.', type: 'warning' };
   }
   return { message: 'DJI-innlogging feilet: ' + (error?.message || 'ukjent feil'), type: 'error' };
