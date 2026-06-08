@@ -589,7 +589,15 @@ export const MissionCard = ({
         const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
         const isCompleted = mission.status === "Fullført";
         const hasWeatherSnapshot = mission.weather_data_snapshot;
-        
+        const isHistoricalNoSnapshot =
+          isCompleted && !hasWeatherSnapshot && mission.tidspunkt &&
+          (Date.now() - new Date(mission.tidspunkt).getTime()) > 24 * 60 * 60 * 1000;
+        const effectiveSavedWeather = hasWeatherSnapshot
+          ? hasWeatherSnapshot
+          : isHistoricalNoSnapshot
+            ? { unavailable: true, reason: 'historical', captured_at: new Date().toISOString() }
+            : undefined;
+
         if (!effectiveLat || !effectiveLng) return null;
         
         return (
@@ -597,7 +605,7 @@ export const MissionCard = ({
             <DroneWeatherPanel
               latitude={effectiveLat}
               longitude={effectiveLng}
-              savedWeatherData={isCompleted && hasWeatherSnapshot ? hasWeatherSnapshot : undefined}
+              savedWeatherData={effectiveSavedWeather}
             />
             <AirspaceWarnings
               latitude={effectiveLat}
