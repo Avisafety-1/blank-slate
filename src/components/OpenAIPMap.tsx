@@ -612,9 +612,10 @@ export function OpenAIPMap({
     const startCenter = initialCenter || DEFAULT_POS;
     const map = L.map(mapRef.current, { zoomControl: false }).setView(startCenter, initialCenter ? 13 : 8);
     const zoomCtrl = L.control.zoom({ position: 'topright' }).addTo(map);
-    // Push zoom control below the right-side action buttons (weather/layers/route ~ 200px)
+    // Push zoom control below the right-side action buttons
+    // (vær + base + 3D + kartlag + rute = 5 × 40 px + 4 × 8 px gap + top-4 16 px ≈ 260 px)
     const zoomEl = (zoomCtrl as any).getContainer?.() as HTMLElement | undefined;
-    if (zoomEl) { zoomEl.style.marginTop = '210px'; }
+    if (zoomEl) { zoomEl.style.marginTop = '260px'; }
     leafletMapRef.current = map;
 
     // Create panes
