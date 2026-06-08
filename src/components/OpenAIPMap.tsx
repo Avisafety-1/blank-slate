@@ -1486,6 +1486,8 @@ export function OpenAIPMap({
             : <MapIcon className="h-5 w-5" />}
         </Button>
 
+        {stackSlotAboveLayers}
+
         <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
 
         {mode === "view" && onStartRoutePlanning && (
