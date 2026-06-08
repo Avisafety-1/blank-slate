@@ -528,7 +528,7 @@ export const useOppdragData = () => {
       }
       const { error } = await supabase.from('missions').update(updatePayload).eq('id', missionId);
       if (error) throw error;
-      toast.success(`Rute importert: ${parsed.coordinates.length} punkter · ${(parsed.totalDistance / 1000).toFixed(2)} km`);
+      toast.success(`Rute importert: ${parsed.coordinates.length} punkter · ${parsed.totalDistance.toFixed(2)} km`);
       fetchMissions();
     } catch (err: any) {
       toast.error(err?.message || 'Import feilet');
