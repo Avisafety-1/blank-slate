@@ -119,22 +119,14 @@ function colorExpression(): any {
   return expr;
 }
 
-function addZoneLayers(map: MlMap) {
+function addZoneLayers(map: MlMap, extrude: boolean) {
   if (map.getSource("zones")) return;
   map.addSource("zones", {
     type: "geojson",
     data: { type: "FeatureCollection", features: [] },
   });
-  map.addLayer({
-    id: "zones-fill",
-    type: "fill",
-    source: "zones",
-    filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
-    paint: {
-      "fill-color": colorExpression(),
-      "fill-opacity": 0.18,
-    },
-  });
+
+  // Ground outline — alltid synlig så sonene gjenkjennes rett ovenfra og når man zoomer ut.
   map.addLayer({
     id: "zones-outline",
     type: "line",
@@ -145,6 +137,39 @@ function addZoneLayers(map: MlMap) {
       "line-width": 1.5,
     },
   });
+
+  if (extrude) {
+    // 3D-sylindere: base = lower_limit_m, høyde = upper_limit_m (med kategori-aware fallback).
+    map.addLayer({
+      id: "zones-extrusion",
+      type: "fill-extrusion",
+      source: "zones",
+      filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+      paint: {
+        "fill-extrusion-color": colorExpression(),
+        "fill-extrusion-base": ["coalesce", ["get", "lower_limit_m"], 0],
+        "fill-extrusion-height": [
+          "max",
+          50,
+          ["coalesce", ["get", "upper_limit_m"], ["get", "fallback_upper_m"], 120],
+        ],
+        "fill-extrusion-opacity": 0.35,
+      },
+    });
+  } else {
+    // Flat fill (bakkenivå)
+    map.addLayer({
+      id: "zones-fill",
+      type: "fill",
+      source: "zones",
+      filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+      paint: {
+        "fill-color": colorExpression(),
+        "fill-opacity": 0.18,
+      },
+    });
+  }
+
   map.addLayer({
     id: "zones-point",
     type: "circle",
