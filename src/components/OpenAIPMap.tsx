@@ -1235,11 +1235,15 @@ export function OpenAIPMap({
     };
   }, [profileLoaded, isTensioHierarchy]);
 
-  // Recenter map when initialCenter changes
+  // Recenter map when initialCenter changes — guard with tolerance so a parent
+  // that mirrors moveend back into this prop does not snap the user back.
   useEffect(() => {
-    if (initialCenter && leafletMapRef.current) {
-      leafletMapRef.current.setView(initialCenter, 13);
-    }
+    if (!initialCenter || !leafletMapRef.current) return;
+    const cur = leafletMapRef.current.getCenter();
+    const dLat = Math.abs(cur.lat - initialCenter[0]);
+    const dLng = Math.abs(cur.lng - initialCenter[1]);
+    if (dLat < 1e-4 && dLng < 1e-4) return;
+    leafletMapRef.current.setView(initialCenter, 13);
   }, [initialCenter]);
 
   // Display existing route

@@ -59,10 +59,11 @@ export default function KartPage() {
   const [is3D, setIs3D] = useState(false);
   useEffect(() => { if (isRoutePlanning && is3D) setIs3D(false); }, [isRoutePlanning, is3D]);
 
-  // Delt viewport mellom 2D og 3D — slik at bytte ikke hopper til Oslo.
-  const [sharedView, setSharedView] = useState<{ center: [number, number]; zoom: number } | null>(null);
+  // Delt viewport mellom 2D og 3D — kun lest ved mount, ikke som live prop
+  // (ellers ville moveend → setState → ny initialCenter-prop → setView-loop låse kartet).
+  const lastViewRef = useRef<{ center: [number, number]; zoom: number } | null>(null);
   const handleViewChange = useCallback((center: [number, number], zoom: number) => {
-    setSharedView({ center, zoom });
+    lastViewRef.current = { center, zoom };
   }, []);
   
   // Pilot position state for VLOS measurement
@@ -1086,8 +1087,8 @@ export default function KartPage() {
                 <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
                   <Map3D
                     onMissionClick={handleMissionClick}
-                    initialCenter={sharedView?.center}
-                    initialZoom={sharedView?.zoom}
+                    initialCenter={lastViewRef.current?.center}
+                    initialZoom={lastViewRef.current?.zoom}
                     onViewChange={handleViewChange}
                   />
                 </Suspense>
@@ -1101,7 +1102,7 @@ export default function KartPage() {
               mode={isRoutePlanning ? "routePlanning" : "view"}
               existingRoute={routePlanningState?.existingRoute}
               onRouteChange={handleRouteChange}
-              initialCenter={routePlanningState?.initialCenter ?? sharedView?.center}
+              initialCenter={routePlanningState?.initialCenter ?? lastViewRef.current?.center}
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
               onStartRoutePlanning={handleStartRoutePlanning}
