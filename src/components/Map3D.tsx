@@ -10,8 +10,14 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl, { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
-import { Satellite, Mountain, Map as MapIcon, Shield } from "lucide-react";
+import { Satellite, Mountain, Map as MapIcon, Shield, Box } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  buildCaaZonePopupHtml,
+  buildDkZonePopupHtml,
+  defaultUpperLimitM,
+  zoneSource,
+} from "@/lib/zonePopups";
 
 interface Map3DProps {
   initialCenter?: [number, number];
@@ -113,22 +119,14 @@ function colorExpression(): any {
   return expr;
 }
 
-function addZoneLayers(map: MlMap) {
+function addZoneLayers(map: MlMap, extrude: boolean) {
   if (map.getSource("zones")) return;
   map.addSource("zones", {
     type: "geojson",
     data: { type: "FeatureCollection", features: [] },
   });
-  map.addLayer({
-    id: "zones-fill",
-    type: "fill",
-    source: "zones",
-    filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
-    paint: {
-      "fill-color": colorExpression(),
-      "fill-opacity": 0.18,
-    },
-  });
+
+  // Ground outline — alltid synlig så sonene gjenkjennes rett ovenfra og når man zoomer ut.
   map.addLayer({
     id: "zones-outline",
     type: "line",
@@ -139,6 +137,39 @@ function addZoneLayers(map: MlMap) {
       "line-width": 1.5,
     },
   });
+
+  if (extrude) {
+    // 3D-sylindere: base = lower_limit_m, høyde = upper_limit_m (med kategori-aware fallback).
+    map.addLayer({
+      id: "zones-extrusion",
+      type: "fill-extrusion",
+      source: "zones",
+      filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+      paint: {
+        "fill-extrusion-color": colorExpression(),
+        "fill-extrusion-base": ["coalesce", ["get", "lower_limit_m"], 0],
+        "fill-extrusion-height": [
+          "max",
+          50,
+          ["coalesce", ["get", "upper_limit_m"], ["get", "fallback_upper_m"], 120],
+        ],
+        "fill-extrusion-opacity": 0.35,
+      },
+    });
+  } else {
+    // Flat fill (bakkenivå)
+    map.addLayer({
+      id: "zones-fill",
+      type: "fill",
+      source: "zones",
+      filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
+      paint: {
+        "fill-color": colorExpression(),
+        "fill-opacity": 0.18,
+      },
+    });
+  }
+
   map.addLayer({
     id: "zones-point",
     type: "circle",
@@ -159,6 +190,9 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
   const fetchTimerRef = useRef<number | null>(null);
   const [base, setBase] = useState<BaseLayer>("osm");
   const [zonesEnabled, setZonesEnabled] = useState(true);
+  const [extrude, setExtrude] = useState(true);
+  const extrudeRef = useRef(extrude);
+  extrudeRef.current = extrude;
 
   // Hent og oppdater dronesoner basert på viewport
   const refreshZones = useCallback(async () => {
@@ -202,11 +236,24 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
             type: "Feature",
             geometry: row.geometry,
             properties: {
+              // Felles
               layer_id: row.layer_id,
               name: row.name ?? "",
               restriction: row.restriction ?? "",
               lower_limit_m: row.lower_limit_m ?? null,
               upper_limit_m: row.upper_limit_m ?? null,
+              upper_ref: row.upper_ref ?? null,
+              // CAA-spesifikt
+              message: row.message ?? null,
+              authority_name: row.authority_name ?? null,
+              authority_url: row.authority_url ?? null,
+              authority_phone: row.authority_phone ?? null,
+              // DK-spesifikt
+              icao: row.icao ?? null,
+              category: row.category ?? null,
+              buffer: row.buffer ?? null,
+              // Default-høyde for 3D-sylinder når upper_limit_m mangler
+              fallback_upper_m: defaultUpperLimitM(row.layer_id),
             },
           });
         });
@@ -219,6 +266,32 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
       console.error("[Map3D] zone fetch failed", err);
     }
   }, [zonesEnabled]);
+
+  // Popup-click handler (felles for fill/extrusion/point)
+  const installClickHandlers = useCallback((map: MlMap) => {
+    const showPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p: any = f.properties || {};
+      const src = zoneSource(p.layer_id);
+      const html =
+        src === "dk"
+          ? buildDkZonePopupHtml(p)
+          : buildCaaZonePopupHtml(p);
+      new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
+        .setLngLat(e.lngLat)
+        .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)
+        .addTo(map);
+    };
+    const setCursor = (cursor: string) => () => {
+      map.getCanvas().style.cursor = cursor;
+    };
+    ["zones-fill", "zones-extrusion", "zones-point"].forEach((layerId) => {
+      map.on("click", layerId, showPopup);
+      map.on("mouseenter", layerId, setCursor("pointer"));
+      map.on("mouseleave", layerId, setCursor(""));
+    });
+  }, []);
 
   // Init map
   useEffect(() => {
@@ -249,7 +322,8 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
     );
 
     map.on("load", () => {
-      addZoneLayers(map!);
+      addZoneLayers(map!, extrudeRef.current);
+      installClickHandlers(map!);
       refreshZones();
     });
 
@@ -258,29 +332,6 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
       fetchTimerRef.current = window.setTimeout(() => refreshZones(), 300);
     };
     map.on("moveend", debouncedRefresh);
-
-    // Popup ved klikk på sone
-    map.on("click", "zones-fill", (e) => {
-      const f = e.features?.[0];
-      if (!f) return;
-      const p: any = f.properties || {};
-      const esc = (s: any) =>
-        String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-      const limits =
-        p.lower_limit_m != null || p.upper_limit_m != null
-          ? `<div style="margin-top:4px;font-size:12px;color:#555;">${esc(p.lower_limit_m ?? "?")}–${esc(p.upper_limit_m ?? "?")} m</div>`
-          : "";
-      new maplibregl.Popup({ closeButton: true })
-        .setLngLat(e.lngLat)
-        .setHTML(
-          `<div style="min-width:180px;max-width:280px;"><strong>${esc(p.name)}</strong>${
-            p.restriction ? `<div style="margin-top:2px;font-size:12px;color:#666;">${esc(p.restriction)}</div>` : ""
-          }${limits}</div>`
-        )
-        .addTo(map!);
-    });
-    map.on("mouseenter", "zones-fill", () => { map!.getCanvas().style.cursor = "pointer"; });
-    map.on("mouseleave", "zones-fill", () => { map!.getCanvas().style.cursor = ""; });
 
     const t = window.setTimeout(() => { try { map!.resize(); } catch {} }, 300);
 
@@ -300,18 +351,38 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
     try {
       map.setStyle(buildStyle(base));
       map.once("idle", () => {
-        addZoneLayers(map);
+        addZoneLayers(map, extrudeRef.current);
+        installClickHandlers(map);
         refreshZones();
       });
     } catch (err) {
       console.error("[Map3D] setStyle failed", err);
     }
-  }, [base, refreshZones]);
+  }, [base, refreshZones, installClickHandlers]);
 
-  // Toggle zones
+  // Toggle 3D-sylindere vs flat fill — fjern og legg til lag på nytt
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    try {
+      ["zones-fill", "zones-extrusion", "zones-outline", "zones-point"].forEach((id) => {
+        if (map.getLayer(id)) map.removeLayer(id);
+      });
+      if (map.getSource("zones")) map.removeSource("zones");
+      addZoneLayers(map, extrude);
+      installClickHandlers(map);
+      refreshZones();
+    } catch (err) {
+      console.error("[Map3D] toggle extrude failed", err);
+    }
+  }, [extrude, installClickHandlers, refreshZones]);
+
+  // Toggle zones (data)
   useEffect(() => {
     refreshZones();
   }, [zonesEnabled, refreshZones]);
+
+
 
   const cycleBase = () => {
     setBase((b) => (b === "osm" ? "satellite" : b === "satellite" ? "topo" : "osm"));
@@ -349,6 +420,18 @@ export default function Map3D({ initialCenter, initialZoom = 12 }: Map3DProps) {
         aria-label="Dronesoner"
       >
         <Shield className="h-5 w-5" />
+      </Button>
+
+      {/* Sylinder / flat-toggle (3D-volum) */}
+      <Button
+        variant={extrude ? "default" : "secondary"}
+        size="icon"
+        onClick={() => setExtrude((v) => !v)}
+        className={`absolute top-[9.5rem] right-4 z-[1100] shadow-lg ${extrude ? "" : "bg-card hover:bg-accent"}`}
+        title={extrude ? "Skjul 3D-sylindere (vis flate soner)" : "Vis soner som 3D-sylindere"}
+        aria-label="3D-sylindere"
+      >
+        <Box className="h-5 w-5" />
       </Button>
     </div>
   );
