@@ -348,13 +348,17 @@ export function ResourceTimeline() {
         <div className="border border-border rounded-lg overflow-hidden">
           {rows.map((row, idx) => {
             const visibleEvents = row.events.filter(eventOverlapsWeek);
+            const laneAssignments = assignLanes(visibleEvents);
+            const laneCount = laneAssignments.reduce((max, a) => Math.max(max, a.lane + 1), 1);
+            const rowHeight = 8 + laneCount * 30;
             return (
               <div
                 key={row.id}
                 className={cn(
-                  "flex items-stretch min-h-[36px]",
+                  "flex items-stretch",
                   idx > 0 && "border-t border-border"
                 )}
+                style={{ minHeight: `${rowHeight}px` }}
               >
                 <div className="w-28 sm:w-36 flex-shrink-0 px-2 py-1.5 bg-muted/50 flex items-center">
                   <span className="text-xs sm:text-sm font-medium truncate">{row.name}</span>
@@ -372,7 +376,7 @@ export function ResourceTimeline() {
                       />
                     ))}
                   </div>
-                  {visibleEvents.map((e) => renderEventBlock(e, row))}
+                  {laneAssignments.map(({ event, lane }) => renderEventBlock(event, row, lane))}
                   {visibleEvents.length === 0 && (
                     <div className="absolute inset-0" />
                   )}
@@ -381,6 +385,7 @@ export function ResourceTimeline() {
             );
           })}
         </div>
+
       </div>
     );
   };
