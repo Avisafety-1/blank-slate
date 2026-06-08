@@ -235,6 +235,11 @@ export function PersonnelFlightKpi({ personId }: Props) {
       <div className="grid grid-cols-3 gap-2">
         {stats.map((s, i) => {
           const colorClass = statusColorForDays(s.days, s.total);
+          const bucketDays = s.buckets[0]?.bucketDays ?? s.days / 6;
+          const bucketLabel =
+            Math.round(bucketDays) === 7
+              ? "Flytid per uke"
+              : `Flytid per ${Math.round(bucketDays)} dager`;
           return (
             <div key={i} className="rounded-md border border-border/60 bg-muted/20 p-2 min-w-0">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -243,7 +248,10 @@ export function PersonnelFlightKpi({ personId }: Props) {
               <p className={cn("text-base sm:text-lg font-bold leading-tight", colorClass)}>
                 {loading ? "…" : formatHours(s.total)}
               </p>
-              <div className="h-10 mt-1">
+              <div
+                className="h-10 mt-1"
+                aria-label={`${bucketLabel}, siste ${s.days} dager`}
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={s.buckets}>
                     <XAxis dataKey="label" hide />
@@ -257,12 +265,15 @@ export function PersonnelFlightKpi({ personId }: Props) {
                         padding: "4px 6px",
                       }}
                       formatter={(v: number) => [formatHours(v), "Flytid"]}
-                      labelFormatter={() => ""}
+                      labelFormatter={(label) => String(label)}
                     />
                     <Bar dataKey="minutes" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+              <p className="text-[9px] text-muted-foreground/70 leading-none mt-0.5 text-center">
+                {bucketLabel}
+              </p>
             </div>
           );
         })}
