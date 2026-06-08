@@ -12,7 +12,7 @@ export interface RouteData {
 }
 
 function haversineDistance(a: RouteCoordinate, b: RouteCoordinate): number {
-  const R = 6371000; // metres
+  const R = 6371; // km — match mapGeometry.calculateTotalDistance unit
   const φ1 = (a.lat * Math.PI) / 180;
   const φ2 = (b.lat * Math.PI) / 180;
   const Δφ = ((b.lat - a.lat) * Math.PI) / 180;
@@ -22,6 +22,7 @@ function haversineDistance(a: RouteCoordinate, b: RouteCoordinate): number {
     Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
+
 
 function calcTotalDistance(coords: RouteCoordinate[]): number {
   let total = 0;
