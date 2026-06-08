@@ -138,6 +138,8 @@ interface OpenAIPMapProps {
   plannedMissionsWindowHours?: number;
   /** Optional button rendered in the right-side stack, directly above the Kartlag button. */
   stackSlotAboveLayers?: React.ReactNode;
+  /** Notifies parent of viewport changes (center + zoom) so 2D/3D can stay in sync. */
+  onViewChange?: (center: [number, number], zoom: number) => void;
 }
 
 export function OpenAIPMap({ 
@@ -162,6 +164,7 @@ export function OpenAIPMap({
   routeHintOffsetClass,
   plannedMissionsWindowHours = 24,
   stackSlotAboveLayers,
+  onViewChange,
 }: OpenAIPMapProps) {
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
@@ -617,6 +620,18 @@ export function OpenAIPMap({
     const zoomEl = (zoomCtrl as any).getContainer?.() as HTMLElement | undefined;
     if (zoomEl) { zoomEl.style.marginTop = '260px'; }
     leafletMapRef.current = map;
+
+    // Notify parent (Kart) of viewport changes so 2D/3D can stay in sync.
+    if (onViewChange) {
+      const emitView = () => {
+        try {
+          const c = map.getCenter();
+          onViewChange([c.lat, c.lng], map.getZoom());
+        } catch {}
+      };
+      map.on('moveend', emitView);
+      map.on('zoomend', emitView);
+    }
 
     // Create panes
     const paneConfig: Record<string, string> = {
