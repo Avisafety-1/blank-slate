@@ -617,7 +617,7 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     try {
       map = new maplibregl.Map({
         container: el,
-        style: buildStyle("osm"),
+        style: buildStyle("satellite"),
         center: initialCenter ? [initialCenter[1], initialCenter[0]] : [10.7522, 59.9139],
         zoom: initialZoom,
         pitch: 60,
