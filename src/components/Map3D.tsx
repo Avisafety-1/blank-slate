@@ -807,6 +807,18 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       >
         <Plane className="h-5 w-5" />
       </Button>
+
+      {/* Lufttrafikk (SafeSky) */}
+      <Button
+        variant={trafficEnabled ? "default" : "secondary"}
+        size="icon"
+        onClick={() => setTrafficEnabled((v) => !v)}
+        className={`absolute top-[15.5rem] right-4 z-[1100] shadow-lg ${trafficEnabled ? "" : "bg-card hover:bg-accent"}`}
+        title={trafficEnabled ? "Skjul lufttrafikk (SafeSky)" : "Vis lufttrafikk (SafeSky)"}
+        aria-label="Lufttrafikk"
+      >
+        <Radar className="h-5 w-5" />
+      </Button>
     </div>
   );
 }
