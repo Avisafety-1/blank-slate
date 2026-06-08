@@ -659,6 +659,20 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     map.on("moveend", emitView);
     map.on("zoomend", emitView);
 
+    // Lazy-load ikon når MapLibre prøver å rendre en symbol med ukjent icon-image.
+    map.on("styleimagemissing", (e: any) => {
+      const id: string = e?.id || "";
+      if (!id.startsWith("safesky-")) return;
+      const beaconType = id.slice("safesky-".length) || "UNKNOWN";
+      ensureSafeSkyIcon(map!, beaconType).then(() => {
+        // Trigger re-render
+        const src = map!.getSource("safesky") as GeoJSONSource | undefined;
+        if (src) {
+          try { (src as any)._data && src.setData((src as any)._data); } catch {}
+        }
+      });
+    });
+
     // SafeSky-polling (10s) — samme intervall som 2D
     safeskyPollRef.current = window.setInterval(() => {
       if (trafficEnabledRef.current) refreshSafeSky();
