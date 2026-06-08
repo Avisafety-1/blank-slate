@@ -58,6 +58,12 @@ export default function KartPage() {
   // verktøyene bare finnes i 2D-kartet.
   const [is3D, setIs3D] = useState(false);
   useEffect(() => { if (isRoutePlanning && is3D) setIs3D(false); }, [isRoutePlanning, is3D]);
+
+  // Delt viewport mellom 2D og 3D — slik at bytte ikke hopper til Oslo.
+  const [sharedView, setSharedView] = useState<{ center: [number, number]; zoom: number } | null>(null);
+  const handleViewChange = useCallback((center: [number, number], zoom: number) => {
+    setSharedView({ center, zoom });
+  }, []);
   
   // Pilot position state for VLOS measurement
   const [pilotPosition, setPilotPosition] = useState<RoutePoint | undefined>(undefined);
