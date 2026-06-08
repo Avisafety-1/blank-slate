@@ -4,7 +4,11 @@ import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { AdjacentAreaPanel } from "@/components/AdjacentAreaPanel";
 import { calculateAdjacentRadius, computeSoraVolumePopulationDensity, type AdjacentAreaResult, type SoraPopulationDensityResult } from "@/lib/adjacentAreaCalculator";
 import { calculateAlos } from "@/lib/alosCalculator";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
+import { Box } from "lucide-react";
+
+// Lazy-load 3D map — MapLibre er ~800 KB. Lastes kun når brukeren aktiverer 3D.
+const Map3D = lazy(() => import("@/components/Map3D"));
 // soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,6 +53,11 @@ export default function KartPage() {
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
+
+  // 3D-modus (MapLibre). Deaktiveres automatisk i route planning siden tegne-
+  // verktøyene bare finnes i 2D-kartet.
+  const [is3D, setIs3D] = useState(false);
+  useEffect(() => { if (isRoutePlanning && is3D) setIs3D(false); }, [isRoutePlanning, is3D]);
   
   // Pilot position state for VLOS measurement
   const [pilotPosition, setPilotPosition] = useState<RoutePoint | undefined>(undefined);
@@ -1048,33 +1057,52 @@ export default function KartPage() {
           </a>
         </div>
         
-        <OpenAIPMap 
-          onMissionClick={handleMissionClick}
-          mode={isRoutePlanning ? "routePlanning" : "view"}
-          existingRoute={routePlanningState?.existingRoute}
-          onRouteChange={handleRouteChange}
-          initialCenter={routePlanningState?.initialCenter}
-          controlledRoute={currentRoute}
-          onStartRoutePlanning={handleStartRoutePlanning}
-          onPilotPositionChange={handlePilotPositionChange}
-          pilotPosition={pilotPosition}
-          pilotVlosRadiusM={vlosRadiusM}
-          pilotAlosCalculation={alosInfo?.alosCalculation}
-          isPlacingPilot={isPlacingPilot}
-          focusFlightId={focusFlightId}
-          onFocusFlightHandled={() => setFocusFlightId(null)}
-          soraSettings={soraSettings}
-          adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
-          populationDensityCells={mergedDensityCells}
-          populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
-          routeHintOffsetClass={
-            isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
-              ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
-              : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
-                ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
-                : undefined
-          }
-        />
+        {/* 2D / 3D toggle (skjult i route planning) */}
+        {!isRoutePlanning && (
+          <button
+            onClick={() => setIs3D((v) => !v)}
+            className="absolute top-3 right-3 z-[600] shadow-lg bg-card hover:bg-accent border border-border rounded-md h-10 px-3 flex items-center gap-1.5 text-sm font-semibold"
+            aria-label={is3D ? "Bytt til 2D-kart" : "Bytt til 3D-kart"}
+            title={is3D ? "Bytt til 2D-kart" : "Bytt til 3D-kart (eksperimentell)"}
+          >
+            <Box className="h-4 w-4" />
+            {is3D ? "2D" : "3D"}
+          </button>
+        )}
+
+        {is3D && !isRoutePlanning ? (
+          <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
+            <Map3D onMissionClick={handleMissionClick} />
+          </Suspense>
+        ) : (
+          <OpenAIPMap
+            onMissionClick={handleMissionClick}
+            mode={isRoutePlanning ? "routePlanning" : "view"}
+            existingRoute={routePlanningState?.existingRoute}
+            onRouteChange={handleRouteChange}
+            initialCenter={routePlanningState?.initialCenter}
+            controlledRoute={currentRoute}
+            onStartRoutePlanning={handleStartRoutePlanning}
+            onPilotPositionChange={handlePilotPositionChange}
+            pilotPosition={pilotPosition}
+            pilotVlosRadiusM={vlosRadiusM}
+            pilotAlosCalculation={alosInfo?.alosCalculation}
+            isPlacingPilot={isPlacingPilot}
+            focusFlightId={focusFlightId}
+            onFocusFlightHandled={() => setFocusFlightId(null)}
+            soraSettings={soraSettings}
+            adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
+            populationDensityCells={mergedDensityCells}
+            populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
+            routeHintOffsetClass={
+              isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
+                ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
+                : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
+                  ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
+                  : undefined
+            }
+          />
+        )}
       </div>
 
       {/* Mission Detail Dialog */}
