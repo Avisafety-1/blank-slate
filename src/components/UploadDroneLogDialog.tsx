@@ -15,7 +15,7 @@ import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X, RefreshCw } from "lucide-react";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -366,6 +366,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // DJI login state
   const [djiEmail, setDjiEmail] = useState("");
   const [djiPassword, setDjiPassword] = useState("");
+  const [showDjiPassword, setShowDjiPassword] = useState(false);
   const [djiAccountId, setDjiAccountId] = useState("");
   const [djiLogs, setDjiLogs] = useState<DjiLog[]>([]);
   const [djiHasMore, setDjiHasMore] = useState(false);
@@ -3628,8 +3629,25 @@ ${violations.map(v => `<div class="violation">${v}</div>`).join('')}
                 </div>
                 <div className="space-y-2">
                   <Label>{t('dronelog.djiPassword', 'DJI passord')}</Label>
-                  <Input type="password" value={djiPassword} onChange={e => setDjiPassword(e.target.value)} placeholder="••••••••" />
+                  <div className="relative">
+                    <Input
+                      type={showDjiPassword ? "text" : "password"}
+                      value={djiPassword}
+                      onChange={e => setDjiPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDjiPassword(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                      aria-label={showDjiPassword ? "Skjul passord" : "Vis passord"}
+                    >
+                      {showDjiPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
+
 
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
