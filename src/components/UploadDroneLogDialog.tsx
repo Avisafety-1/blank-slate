@@ -366,6 +366,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // DJI login state
   const [djiEmail, setDjiEmail] = useState("");
   const [djiPassword, setDjiPassword] = useState("");
+  const [showDjiPassword, setShowDjiPassword] = useState(false);
   const [djiAccountId, setDjiAccountId] = useState("");
   const [djiLogs, setDjiLogs] = useState<DjiLog[]>([]);
   const [djiHasMore, setDjiHasMore] = useState(false);
