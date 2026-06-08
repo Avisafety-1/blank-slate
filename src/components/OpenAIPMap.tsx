@@ -136,6 +136,8 @@ interface OpenAIPMapProps {
   routeHintOffsetClass?: string;
   /** Hours from now to include planned mission publications. Default 24. */
   plannedMissionsWindowHours?: number;
+  /** Optional button rendered in the right-side stack, directly above the Kartlag button. */
+  stackSlotAboveLayers?: React.ReactNode;
 }
 
 export function OpenAIPMap({ 
@@ -159,6 +161,7 @@ export function OpenAIPMap({
   populationDensityCoveragePolygons,
   routeHintOffsetClass,
   plannedMissionsWindowHours = 24,
+  stackSlotAboveLayers,
 }: OpenAIPMapProps) {
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
@@ -1482,6 +1485,8 @@ export function OpenAIPMap({
             : baseLayerType === "satellite" ? <Mountain className="h-5 w-5" />
             : <MapIcon className="h-5 w-5" />}
         </Button>
+
+        {stackSlotAboveLayers}
 
         <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
 
