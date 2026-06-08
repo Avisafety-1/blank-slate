@@ -874,7 +874,7 @@ Deno.serve(async (req) => {
       if (action === "dji-login") {
         const { email, password } = body;
         if (!email || !password) {
-          return new Response(JSON.stringify({ error: "Email and password required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: "Email and password required", reason: "missing_input" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         const res = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
           method: "POST",
@@ -883,18 +883,25 @@ Deno.serve(async (req) => {
         });
         const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
         if (!res.ok) {
-          console.error(`[process-dronelog] dji-login key=${keyFingerprint} upstream=${res.status}`);
+          const upstreamMsg = String(data?.message || "").slice(0, 200);
+          const classified = classifyDjiLoginError(res.status, upstreamMsg);
           const retryAfter = res.headers.get("Retry-After") || null;
-          if (res.status === 429) {
-            return new Response(JSON.stringify({ error: "Too many requests", details: data, upstreamStatus: 429, retryAfter, remaining: data?.remaining ?? null }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          console.error(`[process-dronelog] dji-login key=${keyFingerprint} upstream=${res.status} reason=${classified.reason} msg="${upstreamMsg}"`);
+          const payload: Record<string, unknown> = {
+            error: classified.error,
+            reason: classified.reason,
+            details: data,
+            upstreamStatus: res.status,
+          };
+          if (classified.reason === "rate_limited") {
+            payload.retryAfter = retryAfter;
+            payload.remaining = data?.remaining ?? null;
+            return new Response(JSON.stringify(payload), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
-          if (res.status === 401 || res.status === 403) {
-            return new Response(JSON.stringify({ error: "Ugyldig eller utløpt API-nøkkel", details: data, upstreamStatus: res.status }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          if (classified.reason === "api_key_invalid") {
+            return new Response(JSON.stringify(payload), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
-          const errMsg = res.status === 500
-            ? "DroneLog API serverfeil. Sjekk at DJI-legitimasjonen er korrekt, eller prøv igjen senere."
-            : (data.message || "DJI login failed");
-          return new Response(JSON.stringify({ error: errMsg, details: data, upstreamStatus: res.status }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify(payload), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
