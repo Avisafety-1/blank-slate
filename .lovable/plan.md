@@ -1,31 +1,66 @@
 ## Mål
-Utvide FH2 API Debug-sandkassen slik at hvert kall også prøver DJI sin nye **Public Cloud API V2.0** (`/openapi/v2.0/...`), i tillegg til dagens `openapi-v1.0`, `openapi-v0.1` og `manage-v1.0`.
+
+Når brukeren klikker på en 5km-sone (RPAS-sone rundt en flyplass) i kartet, skal de se samme informasjon som Avinors Dronekart viser: hvordan man søker godkjenning (NINOX m.m.) og telefonnummer/kontaktdetaljer til lufthavna.
+
+## Datakilde
+
+Avinors offentlige ArcGIS Feature Service:
+
+```
+https://services.arcgis.com/a8CwScMFSS2ljjgn/arcgis/rest/services/Dronerestriksjonsomraader_gdb/FeatureServer/0
+```
+
+(Dette er kilden bak experience.arcgis.com-lenken brukeren delte.) Tjenesten har 101 features — én pr lufthavn — med bl.a.:
+
+- `ICAO`, `NAVN`, `STED`, `CTR_TIZ`
+- `KONTAKTDETALJER2` (norsk) + `CONTACTDETAILS2` (engelsk) — telefon og kontaktinfo
+- `TEKST1`–`TEKST6` (norsk) + `TEXT1`–`TEXT6` (engelsk) — beskrivelse/godkjenningsprosess (f.eks. NINOX-stegene)
+
+I dag bruker vi `RPAS_AVIGIS1`-tjenesten som bare har geometri + navn — derfor er popupen tom for info.
 
 ## Endringer
 
-### 1. `supabase/functions/flighthub2-proxy/index.ts` (debug-endpoint action, ca. linje 873-877)
-Legg til en ny variant øverst i listen, så `results` returnerer en `openapi-v2.0`-rad ved siden av de andre:
+### 1. Bytt datakilde i `supabase/functions/sync-geo-layers/index.ts`
 
-```ts
-const variants = [
-  { name: "openapi-v2.0", base: `${fh2BaseUrl}/openapi/v2.0/${cleanEndpoint}`, v: NEW_API },
-  { name: "openapi-v1.0", base: `${fh2BaseUrl}/openapi/v1.0/${cleanEndpoint}`, v: NEW_API },
-  { name: "openapi-v0.1", base: `${fh2BaseUrl}/openapi/v0.1/${cleanEndpoint}`, v: NEW_API },
-  { name: "manage-v1.0",  base: `${fh2BaseUrl}/manage/api/v1.0/${cleanEndpoint}`, v: OLD_API },
-];
+Endre `rpas_5km_zones`-konfigurasjonen til å hente fra `Dronerestriksjonsomraader_gdb/FeatureServer/0` i stedet for `RPAS_AVIGIS1`. Alle ekstra felter (ICAO, KONTAKTDETALJER2, TEKST1–6 osv.) lagres automatisk i den eksisterende `properties jsonb`-kolonnen — ingen DB-migrasjon nødvendig.
+
+Kjør deretter funksjonen én gang for å fylle inn data for de 101 sonene.
+
+### 2. Rik popup i kartet
+
+To steder rendrer 5km-sonene med en mager popup i dag — begge oppdateres til å vise kontakt + godkjenningstekst fra `properties`:
+
+- `src/lib/mapDataFetchers.ts` → `fetchRpasData` (hovedkartet `OpenAIPMap`). Bytter også fra direkte ArcGIS-fetch til vår egen Supabase-tabell `rpas_5km_zones` (raskere + samme kilde som synken).
+- `src/components/dashboard/ExpandedMapDialog.tsx` (dashboard-kartet) — samme behandling.
+
+Popupen får et tydelig oppsett (kompakt på mobil, scrollbar ved mye tekst):
+
+```
+Bodø lufthavn  (ENBO · CTR)
+─────────────────────────────
+For å fly innenfor 5 km må operatøren ta
+kontakt før flygning.
+
+Denne lufthavnen bruker NINOX DRONE.
+1. Last ned NINOX-appen …
+2. Opprett bruker …
+Flyging og godkjennelse gis i 3 steg …
+
+Kontakt
+☎ +47 75 52 11 90
+Skal kun brukes for oppstart/avslutning
+eller hvis NINOX ikke fungerer.
 ```
 
-Ingen andre handlinger (`list-projects`, `list-devices`, livestream, osv.) endres — kun debug-sandkassen.
+Felt brukt fra `properties`: `NAVN`, `ICAO`, `CTR_TIZ`, `TEKST1`–`TEKST6`, `KONTAKTDETALJER2`. Linjeskift (`\n`, `\r\n`) konverteres til `<br/>`. HTML-escapes for å hindre XSS.
 
-### 2. `src/components/admin/FH2DevicesSection.tsx` (debug-dialogen)
-- Oppdatere label-teksten fra `"Egendefinert endpoint (uten /openapi/v0.1/ prefiks)"` til `"Egendefinert endpoint (uten /openapi/vX/ prefiks – testes mot v2.0, v1.0, v0.1 og manage)"` slik at det er tydelig at v2.0 nå er med.
-- Ingen nye knapper trengs; eksisterende hurtigknapper (System status, Org-enheter osv.) vil automatisk få v2.0-resultater i JSON-svaret siden proxyen alltid kjører alle varianter parallelt.
+### 3. Ingenting endres i
 
-## Hva som ikke endres
-- Ingen produksjons-endepunkter (oppdrag, ruter, annotasjoner, livestream) byttes til v2.0 ennå — kun debug-verktøyet får tilgang. Hvis v2.0 viser seg å fungere kan vi senere planlegge en faktisk migrering av relevante kall.
-- Ingen DB-/RLS-endringer.
+- Logikken for varsler / safety-analyse / Ninox-blokkering (`StartFlightDialog`, `AirspaceWarnings`) — bruker fortsatt geometri og samme tabell.
+- DB-skjema, RLS, edge-function-secrets.
 
-## Test
-1. Åpne FH2 Devices → Debug-sandkasse.
-2. Trykk «System status», «List prosjekter» osv. og verifiser at JSON-output nå inneholder en `openapi-v2.0`-blokk med URL `https://es-flight-api-eu.djigate.com/openapi/v2.0/...` og enten 200 eller 404.
-3. Kjør et egendefinert endepunkt (f.eks. `wayline`) for å se hvordan v2.0 svarer.
+## Verifisering
+
+1. Kall `sync-geo-layers` med `layer=rpas_5km_zones`, sjekk at `properties->>'KONTAKTDETALJER2'` er satt for ENBO i Supabase.
+2. Åpne kartet, klikk Bodø-sonen, bekreft at popup viser telefonnummer og NINOX-steg.
+3. Klikk en sone uten NINOX (f.eks. en mindre lufthavn med ren `KONTAKTDETALJER`-tekst) og bekreft fallback.
