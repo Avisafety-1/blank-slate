@@ -164,6 +164,7 @@ export function OpenAIPMap({
   routeHintOffsetClass,
   plannedMissionsWindowHours = 24,
   stackSlotAboveLayers,
+  onViewChange,
 }: OpenAIPMapProps) {
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
