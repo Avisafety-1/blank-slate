@@ -1081,6 +1081,10 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
           try {
             const tmp = L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: {} } as any);
             const center = tmp.getBounds().getCenter();
+            // Dedupe: Avinor RPAS 5km-soner har autoritativ NINOX-info for
+            // de ~50 Avinor-lufthavnene. Hopp over CAA-sirkelen for samme
+            // flyplass slik at vi ikke får dobbel sirkel (f.eks. Notodden).
+            if (isCoveredByAvinorRpas(center.lat, center.lng)) return null;
             const circle = L.circle(center, {
               radius: 5000,
               color: '#f59e0b',
