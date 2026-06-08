@@ -1,81 +1,54 @@
-# Plan: Diagnose blank 3D map (no new features, just debug)
+## Findings so far
 
-The container CSS looks fine (`absolute inset-0` inside `flex-1 relative overflow-hidden`, same parent OpenAIPMap uses successfully), and `maplibre-gl.css` is imported at the top of `src/components/Map3D.tsx`. So the blank canvas is almost certainly a **runtime / tile / style** issue, not a sizing issue. We will prove this with logs and a minimal repro before changing anything else.
+- `maplibre-gl/dist/maplibre-gl.css` is imported in `src/components/Map3D.tsx`.
+- The diagnostic `Map3D` component is mounted in the user screenshot because the label is visible.
+- The browser/user console snapshot contains **no `[Map3D]` logs**.
+- The network snapshot contains **no OSM tile requests**.
+- Browser automation opened `/kart` but was redirected to login, so I cannot reproduce inside the browser without a preview login session.
+- Because the diagnostic label renders but there are no MapLibre logs or tile requests, this is **not proven to be a WebGL failure yet**. A WebGL failure would normally produce a constructor error such as `Failed to initialize WebGL` / `webglcontextcreationerror` if the constructor runs.
 
-## Diagnostic changes to `src/components/Map3D.tsx`
+## Most likely root cause
 
-Strip the component to a **bare-minimum MapLibre setup** with verbose logging. No terrain, no buildings, no AviSafe data sources/layers, no popups — just a basemap. Everything else is commented out (not deleted) so we can re-enable in steps.
+The likely failing step is before or during the `useEffect` that creates `new maplibregl.Map(...)`:
 
-### Step A — Minimal map + logging
+1. `Map3D` renders its JSX overlay.
+2. The effect either does not run, is blocked by React development double-mount / auth/session overlay behavior, or the logs are not visible in the captured console snapshot.
+3. Since no tile requests happen, MapLibre is not reaching normal style/tile loading.
 
-Replace the init effect with:
+WebGL remains possible, but we need a direct WebGL capability probe and constructor error capture to confirm it.
 
-```ts
-console.log("[Map3D] mount, container =", containerRef.current,
-  "size =", containerRef.current?.clientWidth, "x", containerRef.current?.clientHeight);
+## Implementation plan
 
-const map = new maplibregl.Map({
-  container: containerRef.current!,
-  style: {
-    version: 8,
-    sources: {
-      osm: {
-        type: "raster",
-        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        attribution: "© OpenStreetMap",
-      },
-    },
-    layers: [
-      { id: "bg", type: "background", paint: { "background-color": "#ff00ff" } }, // magenta = "style loaded but tiles failed"
-      { id: "osm", type: "raster", source: "osm" },
-    ],
-  },
-  center: [10.7522, 59.9139],
-  zoom: 11,
-});
+1. Add an on-screen diagnostic panel in `Map3D` instead of relying only on console logs.
+   - Show container width/height.
+   - Show whether `useEffect` ran.
+   - Show MapLibre version.
+   - Show WebGL1/WebGL2 availability via a small test canvas.
+   - Show constructor success/failure.
+   - Show `load`, `idle`, `error`, and OSM tile load events.
 
-map.on("load",   () => console.log("[Map3D] load OK"));
-map.on("idle",   () => console.log("[Map3D] idle (first paint done)"));
-map.on("error",  (e: any) => console.error("[Map3D] ERROR", e?.error?.message || e));
-map.on("styledata", () => console.log("[Map3D] styledata"));
-map.on("sourcedata", (e: any) => {
-  if (e.sourceId === "osm" && e.isSourceLoaded) console.log("[Map3D] OSM tiles loaded");
-});
-```
+2. Wrap MapLibre initialization with stronger failure capture.
+   - Catch constructor exceptions.
+   - Listen for `webglcontextlost` and `webglcontextrestored` on the MapLibre canvas.
+   - If WebGL is unavailable or constructor throws, display the exact message in the panel.
 
-Comment out (do not delete):
-- `addOperationalLayers(map)` call
-- All five data-fetching `useEffect` blocks (missions, NOTAMs, restriksjoner, SafeSky, FH2)
-- Terrain / hillshade / sky / 3D buildings blocks
-- The `pitch: 60` setting (set `pitch: 0`) to remove 3D as a variable
+3. Keep the map in the current simplest setup.
+   - Solid background.
+   - One OSM raster layer.
+   - No terrain.
+   - No buildings.
+   - No AviSafe layers.
 
-### Step B — Interpret the result
+4. Add a safe delayed `map.resize()` after mount.
+   - This checks whether the white screen is caused by MapLibre initializing before the flex/absolute container has final dimensions.
+   - Log/display dimensions before and after resize.
 
-After approval, I'll ask you to open `/kart`, click "3D", and paste the console output. The result tells us exactly what's wrong:
+5. After the diagnostic panel identifies the failing step, stop and report the exact failing step before restoring terrain/buildings/AviSafe layers.
 
-| What you see | Root cause |
-|---|---|
-| Magenta background, no tiles, `ERROR` about CORS/403/blocked | OSM raster tiles blocked in Lovable iframe → switch to a tile source that works (MapTiler key, Stadia, or proxy) |
-| Magenta background, no error, container size = `0 x 0` | Layout/sizing — fix parent `min-h-0` chain |
-| Map shows OSM correctly | Base works → re-enable steps below one at a time |
-| Nothing in console, no `load` event | Maplibre import / CSS issue |
+## What this changes
 
-### Step C — Re-enable in order (only after Step B passes)
-
-Each step gated on the previous step working visually:
-
-1. Terrain DEM + `setTerrain(...)` + hillshade. Verify with `pitch: 60`.
-2. 3D buildings (OpenFreeMap vector source).
-3. Operational layers (missions, NOTAM, restriksjoner, SafeSky, FH2) one source at a time.
-
-## What I will NOT do in this round
-
-- No new dependencies
-- No changes to `Kart.tsx` (toggle, lazy loading stay as-is)
-- No data fetching changes
-- No new tile providers / API keys until Step B says we need one
-
-## Deliverable from this plan
-
-A console log dump that pinpoints the exact failing step. Then a follow-up plan (or direct fix in build mode) targeting only that cause.
+- Only `src/components/Map3D.tsx`.
+- No database changes.
+- No imports.
+- No heavy queries.
+- No terrain/building/AviSafe layers reintroduced yet.
