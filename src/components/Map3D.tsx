@@ -270,7 +270,7 @@ function addAipLayers(map: MlMap, extrude: boolean) {
           80,
           ["coalesce", ["get", "upper_limit_m"], 1500],
         ],
-        "fill-extrusion-opacity": aipOpacityExpression(1.6), // litt mer markant enn flat fill
+        "fill-extrusion-opacity": 0.4, // MapLibre tillater ikke data-uttrykk her
       },
     });
   } else {
@@ -539,16 +539,19 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
         data: { type: "FeatureCollection", features: [] },
       });
     }
-    // Usynlig circle-lag — kun for click/hover (popup-deteksjon).
+    // Synlig circle-lag — fungerer som fallback hvis 3D-modellen ikke er lastet ennå,
+    // og som klikk-mål for popup. Tydelig gul prikk med hvit kant så trafikk alltid vises.
     if (!map.getLayer("safesky-beacons")) {
       map.addLayer({
         id: "safesky-beacons",
         type: "circle",
         source: "safesky",
         paint: {
-          "circle-radius": 18,
-          "circle-color": "#000000",
-          "circle-opacity": 0.001, // praktisk talt usynlig, men klikkbar
+          "circle-radius": 7,
+          "circle-color": "#fbbf24",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+          "circle-opacity": 0.95,
         },
       });
     }
@@ -608,9 +611,11 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
         id: String(b.id ?? `${b.callsign ?? "x"}-${b.longitude}-${b.latitude}-${i}`),
         lng: Number(b.longitude),
         lat: Number(b.latitude),
-        altitude: Number(b.altitude) || 0,
+        // Løft lave/0-altitude beacons litt over bakken så de ikke skjules av terreng/bygg
+        altitude: Math.max(Number(b.altitude) || 0, 60),
         course: Number(b.course) || 0,
       }));
+      console.info(`[Map3D] SafeSky: ${beacons.length} beacons → 3D-lag (modell-lastet: ${!!safeskyModelLayerRef.current})`);
       safeskyModelLayerRef.current?.setBeacons(beacons);
     } catch (err) {
       console.error("[Map3D] safesky fetch failed", err);

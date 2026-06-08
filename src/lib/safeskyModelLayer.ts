@@ -91,7 +91,19 @@ export function createSafeSkyModelLayer(modelUrl: string, opts?: { modelMeters?:
       loader.load(
         modelUrl,
         (gltf) => {
-          template = gltf.scene;
+          // Sentrer modellen rundt origo og normaliser til ~enhetsstørrelse
+          // slik at MODEL_METERS-skalaen blir konsistent uavhengig av modellens egne mål.
+          const root = gltf.scene;
+          const box = new THREE.Box3().setFromObject(root);
+          const size = new THREE.Vector3();
+          const center = new THREE.Vector3();
+          box.getSize(size);
+          box.getCenter(center);
+          root.position.sub(center);
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          root.scale.setScalar(1 / maxDim);
+          template = root;
+          console.info("[SafeSky3D] GLTF lastet, normalisert maxDim:", maxDim.toFixed(2));
           rebuild();
           mapRef?.triggerRepaint();
         },
