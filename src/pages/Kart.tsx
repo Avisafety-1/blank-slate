@@ -1112,8 +1112,9 @@ export default function KartPage() {
                   ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
                   : undefined
             }
-          />
-        )}
+            />
+          );
+        })()}
       </div>
 
       {/* Mission Detail Dialog */}
