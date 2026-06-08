@@ -1,42 +1,25 @@
 ## Mål
-Vise ekstra "rolle"-badges på profilsiden for de funksjonelle rettighetene en bruker har: oppdragsgodkjenner, oppfølgingsansvarlig hendelser, ECCAIRS-tilgang og teknisk ansvarlig. Hver vises i samme badge-stil som "Administrator", men med en distinkt farge per rolle slik at de skilles fra system-rollen.
+Gjøre stolpediagrammene under "Flytid" i personell-kortet selvforklarende. Stolpene viser flytid (i timer/minutter) fordelt på like store delperioder over hele perioden (f.eks. 30/90/180 dager delt i 6–12 bøtter). I dag har tooltipen tom etikett og bøttene har ingen synlig datoinformasjon.
 
-## Datakilder (allerede på profil)
-Hentet via eksisterende `select("*")` mot `profiles` i `ProfileDialog.fetchUserData`:
-- `can_approve_missions` + `approval_company_ids` (array av company-id, eller `['all']`)
-- `can_be_incident_responsible` + `incident_responsible_company_ids`
-- `can_access_eccairs`
-- `is_technical_responsible`
+## Endringer i `src/components/resources/PersonnelFlightKpi.tsx`
 
-## Endringer i `src/components/ProfileDialog.tsx`
+1. **Lagre datoperiode per bøtte** i `bucketize`:
+   - Returner `{ label, minutes, start: Date, end: Date }` for hver bøtte.
+   - `label` settes til kort datospenn, f.eks. `15.05–21.05` (norsk dd.MM). Brukes til tooltip-label.
 
-1. **Ny state**: `extraRoleBadges: Array<{ key: string; label: string; className: string }>` (eller beregnet via `useMemo`).
+2. **Tooltip viser dato + flytid**:
+   - `labelFormatter={(label) => label}` (datospennet for bøtten).
+   - `formatter={(v) => [formatHours(v), "Flytid"]}` (uendret).
+   - Behold eksisterende stil.
 
-2. **Hent avdelingsnavn** når brukeren har `approval_company_ids`/`incident_responsible_company_ids` som ikke er `['all']`:
-   - Samle unike id-er fra begge listene.
-   - Én spørring: `supabase.from("companies").select("id, navn").in("id", ids)`.
-   - Bygg map `id → navn`.
-   - Skjer i `fetchUserData` etter at profilen er lastet; lagre i `companyNameMap` state.
+3. **Hover-cursor** beholdes (`cursor={{ fill: "hsl(var(--muted))" }}`) slik at man ser hvilken stolpe man peker på selv når den er 0.
 
-3. **Beregn badges** (i render under nåværende rolle-badge):
-   - Godkjenner oppdrag: vises hvis `can_approve_missions === true`.
-     - Label: `"Godkjenner oppdrag"` + parentes med avdelingsnavn, f.eks. `Godkjenner oppdrag (Alle avdelinger)` eller `Godkjenner oppdrag (Avd. A, Avd. B)`. Hvis ingen IDs satt: bare `Godkjenner oppdrag`.
-     - Farge: emerald/grønn.
-   - Oppfølgingsansvarlig hendelser: hvis `can_be_incident_responsible === true`, samme avdelings-format.
-     - Farge: amber/oransje.
-   - ECCAIRS-tilgang: hvis `can_access_eccairs === true`.
-     - Farge: violet/lilla.
-   - Teknisk ansvarlig: hvis `is_technical_responsible === true`.
-     - Farge: sky/blå-cyan (forskjellig fra primary blå som brukes til Administrator).
+4. **Liten forklarende undertekst** under hvert stolpediagram:
+   - Tekst som `Flytid per uke` når bøtte-størrelsen er ca 7 dager, ellers `Flytid per N dager` der N er `Math.round(bucketDays)`.
+   - Styling: `text-[9px] text-muted-foreground/70 leading-none mt-0.5 text-center`.
 
-4. **Render**: I `<div className="space-y-2">` for `profile.role` (ca. linje 1120–1131), legg badges i en `flex flex-wrap gap-2`:
-   - Eksisterende `<Badge variant={getRoleBadgeVariant(userRole)}>` først.
-   - Etterfølgende ekstra badges via `<Badge>` med `variant="outline"` overstyrt med fargeklasser via `className` (Tailwind tokens, ingen rene hex). Eksempel: `bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300`. Beholder rounded-pill-stilen fra shadcn Badge.
-
-5. **Ingen badges**: Hvis brukeren ikke har noen ekstra rettigheter, vises bare den vanlige rolle-badgen (uendret oppførsel).
-
-6. **i18n**: Bruk eksisterende norske strenger inline (samme som resten av filen som blander t() og hardkodet norsk).
+5. **Tilgjengelighet**: legg `aria-label` på chart-container med samme beskrivelse (`Flytid fordelt på N-dagers perioder, siste X dager`).
 
 ## Ingen andre endringer
-- Ingen databasemigrasjon — alle flagg eksisterer allerede på `profiles`.
-- Ingen endringer i Admin-siden eller andre komponenter.
+- Ingen datamodell- eller spørringsendringer.
+- Ingen endringer i andre komponenter.

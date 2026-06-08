@@ -41,19 +41,32 @@ function formatHours(minutes: number): string {
   return `${h}t ${m}m`;
 }
 
-function bucketize(logs: FlightLog[], days: number): { label: string; minutes: number }[] {
+function formatShortDate(d: Date): string {
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function bucketize(
+  logs: FlightLog[],
+  days: number,
+): { label: string; minutes: number; bucketDays: number }[] {
   const buckets = Math.min(12, Math.max(6, Math.ceil(days / 7)));
   const bucketDays = days / buckets;
   const now = Date.now();
   const start = now - days * 24 * 60 * 60 * 1000;
-  const data: { label: string; minutes: number }[] = Array.from({ length: buckets }, (_, i) => ({
-    label: String(i),
-    minutes: 0,
-  }));
+  const msPerBucket = bucketDays * 24 * 60 * 60 * 1000;
+  const data = Array.from({ length: buckets }, (_, i) => {
+    const bStart = new Date(start + i * msPerBucket);
+    const bEnd = new Date(start + (i + 1) * msPerBucket - 1);
+    return {
+      label: `${formatShortDate(bStart)}–${formatShortDate(bEnd)}`,
+      minutes: 0,
+      bucketDays,
+    };
+  });
   for (const log of logs) {
     const t = new Date(log.flight_date).getTime();
     if (isNaN(t) || t < start) continue;
-    const idx = Math.min(buckets - 1, Math.floor((t - start) / (bucketDays * 24 * 60 * 60 * 1000)));
+    const idx = Math.min(buckets - 1, Math.floor((t - start) / msPerBucket));
     data[idx].minutes += log.flight_duration_minutes || 0;
   }
   return data;
