@@ -28,11 +28,34 @@ interface Map3DProps {
 
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
-/** OpenFreeMap free style — inkluderer OpenMapTiles bygnings-features. */
-const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
-
 /** AWS Terrarium DEM — gratis, ingen nøkkel. */
 const TERRAIN_TILES = "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png";
+
+/** OSM raster fallback-stil — kan ikke feile (samme tiles som Leaflet bruker). */
+const INLINE_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  sources: {
+    "osm-raster": {
+      type: "raster",
+      tiles: [
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors",
+      maxzoom: 19,
+    },
+  },
+  layers: [
+    { id: "bg", type: "background", paint: { "background-color": "#cfe2f3" } },
+    { id: "osm", type: "raster", source: "osm-raster" },
+  ],
+};
+
+/** OpenFreeMap vector source (for 3D-bygninger som progressive enhancement). */
+const OPENFREEMAP_TILES = "https://tiles.openfreemap.org/planet/20240805_001001_pt/{z}/{x}/{y}.pbf";
 
 const LIVE_POLL_MS = 5000;
 const STATIC_POLL_MS = 60_000;
