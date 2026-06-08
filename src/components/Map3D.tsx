@@ -105,7 +105,7 @@ export default function Map3D({ initialCenter, initialZoom = 11, onMissionClick 
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: BASEMAP_STYLE,
+      style: INLINE_STYLE,
       center,
       zoom: initialZoom,
       pitch: 60,
@@ -118,7 +118,12 @@ export default function Map3D({ initialCenter, initialZoom = 11, onMissionClick 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
-    map.on("style.load", () => {
+    map.on("error", (e: any) => {
+      // Logg, men ikke kræsj — manglende tiles skal ikke ta ned hele kartet
+      if (e?.error) console.warn("[Map3D]", e.error?.message || e.error);
+    });
+
+    map.on("load", () => {
       // Terrain DEM
       if (!map.getSource("terrain-dem")) {
         map.addSource("terrain-dem", {
@@ -148,74 +153,67 @@ export default function Map3D({ initialCenter, initialZoom = 11, onMissionClick 
         });
       }
 
-      // Sky / atmosfære
+      // Sky (best-effort, kun MapLibre 4+)
       try {
-        map.setSky({
+        map.setSky?.({
           "sky-color": "#87CEEB",
           "horizon-color": "#ffffff",
           "fog-color": "#cfe2f3",
           "sky-horizon-blend": 0.6,
           "horizon-fog-blend": 0.5,
           "fog-ground-blend": 0.5,
-          "atmosphere-blend": [
-            "interpolate", ["linear"], ["zoom"],
-            0, 1,
-            10, 1,
-            12, 0.5
-          ],
         } as any);
       } catch {
-        /* setSky kun i MapLibre 5+; safe-guarded */
+        /* no-op */
       }
 
-      // 3D-bygninger — OpenFreeMap har "building"-laget i sin vektorkilde.
-      // Vi finner kilde-id dynamisk og legger til en fill-extrusion ovenpå.
-      const layers = map.getStyle().layers ?? [];
-      const labelLayerId = layers.find((l) => l.type === "symbol")?.id;
-      // OpenFreeMap source-id er typisk "openmaptiles"
-      const styleSources = map.getStyle().sources || {};
-      const omtSource = Object.keys(styleSources).find((k) => k === "openmaptiles") || "openmaptiles";
-
-      if (styleSources[omtSource] && !map.getLayer("3d-buildings")) {
-        try {
-          map.addLayer(
-            {
-              id: "3d-buildings",
-              source: omtSource,
-              "source-layer": "building",
-              type: "fill-extrusion",
-              minzoom: 14,
-              paint: {
-                "fill-extrusion-color": [
-                  "interpolate", ["linear"], ["get", "render_height"],
-                  0, "#d8d4cd",
-                  50, "#bcb6ab",
-                  150, "#9c9588",
-                ],
-                "fill-extrusion-height": [
-                  "case",
-                  ["has", "render_height"],
-                  ["get", "render_height"],
-                  10,
-                ],
-                "fill-extrusion-base": [
-                  "case",
-                  ["has", "render_min_height"],
-                  ["get", "render_min_height"],
-                  0,
-                ],
-                "fill-extrusion-opacity": 0.85,
-              },
-            },
-            labelLayerId
-          );
-        } catch (e) {
-          console.warn("[Map3D] 3D-bygninger kunne ikke legges til:", e);
-        }
-      }
-
+      // Operasjonelle lag først — så de alltid finnes
       addOperationalLayers(map);
       setStyleReady(true);
+
+      // 3D-bygninger: progressive enhancement. Forsøk å laste OpenFreeMap
+      // vector source separat. Feiler dette, har vi fortsatt terreng + lag.
+      try {
+        if (!map.getSource("openmaptiles")) {
+          map.addSource("openmaptiles", {
+            type: "vector",
+            tiles: [OPENFREEMAP_TILES],
+            minzoom: 0,
+            maxzoom: 14,
+            attribution: "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors",
+          });
+        }
+        if (!map.getLayer("3d-buildings")) {
+          map.addLayer({
+            id: "3d-buildings",
+            source: "openmaptiles",
+            "source-layer": "building",
+            type: "fill-extrusion",
+            minzoom: 14,
+            paint: {
+              "fill-extrusion-color": [
+                "interpolate", ["linear"], ["coalesce", ["get", "render_height"], 10],
+                0, "#d8d4cd",
+                50, "#bcb6ab",
+                150, "#9c9588",
+              ],
+              "fill-extrusion-height": [
+                "case",
+                ["has", "render_height"], ["get", "render_height"],
+                10,
+              ],
+              "fill-extrusion-base": [
+                "case",
+                ["has", "render_min_height"], ["get", "render_min_height"],
+                0,
+              ],
+              "fill-extrusion-opacity": 0.85,
+            },
+          });
+        }
+      } catch (e) {
+        console.warn("[Map3D] 3D-bygninger ikke tilgjengelig:", e);
+      }
     });
 
     return () => {
