@@ -1,34 +1,81 @@
-## Problem
+# Plan: Diagnose blank 3D map (no new features, just debug)
 
-Tre datakilder tegner overlappende 5 km-sirkler rundt flyplasser:
+The container CSS looks fine (`absolute inset-0` inside `flex-1 relative overflow-hidden`, same parent OpenAIPMap uses successfully), and `maplibre-gl.css` is imported at the top of `src/components/Map3D.tsx`. So the blank canvas is almost certainly a **runtime / tile / style** issue, not a sizing issue. We will prove this with logs and a minimal repro before changing anything else.
 
-1. **`rpas_5km_zones`** (Avinor) — 50 store lufthavner (Gardermoen, Bergen, Notodden lufthavn ENNO …). Autoritativ, med full NINOX-prosedyre, telefon og kontaktinfo i popup.
-2. **`caa_drone_zones`** layer `flyplasser` med `type=Fly` — 80 stk. Inkluderer **alle** de 50 Avinor-flyplassene **+** ~30 ikke-Avinor-plasser (Notodden sjøflyplass/Heddalsvatnet, Dagali, Kjeller, Frosta, Hokksund, Aukra …). Popup peker bare til myppr.no.
-3. **OpenAIP `ATZ`** — tegnes også som 5 km sirkel med myppr.no-popup.
+## Diagnostic changes to `src/components/Map3D.tsx`
 
-Resultat: For Notodden vises både Avinor-pin (ENNO) **og** en gul CAA-sirkel ("Notodden sjøflyplass"), pluss potensielt ATZ — flere overlappende sirkler/popups.
+Strip the component to a **bare-minimum MapLibre setup** with verbose logging. No terrain, no buildings, no AviSafe data sources/layers, no popups — just a basemap. Everything else is commented out (not deleted) so we can re-enable in steps.
 
-## Anbefaling
+### Step A — Minimal map + logging
 
-Vi kan **ikke** fjerne våre egne 5 km-soner helt — Avinor dekker bare 50 lufthavner, og småflyplasser/sjøflyplasser ville da forsvinne. I stedet dedupliserer vi slik at Avinor-data alltid vinner der den finnes.
+Replace the init effect with:
 
-## Tiltak (kun frontend-rendering i `src/lib/mapDataFetchers.ts`)
+```ts
+console.log("[Map3D] mount, container =", containerRef.current,
+  "size =", containerRef.current?.clientWidth, "x", containerRef.current?.clientHeight);
 
-1. **Når `rpas_5km_zones` er lastet, bygg et sett av "claimed centers"** — sentroider for alle 50 Avinor-sonene (huskes som lat/lng i en modul-lokal cache).
-2. **Filter i CAA-renderingen** (linje ~1033, `flyplasser` + `type=fly`):
-   - Hvis sentroiden ligger innenfor **3 km** av en Avinor-sentroide → **ikke tegn sirkel**. Avinor-popupen er allerede der og er mer informativ.
-   - Ellers (småflyplass/sjøflyplass uten Avinor-dekning) → tegn 5 km-sirkel som før.
-3. **Samme filter for ATZ-rendering** (linje ~211 i samme fil): hopp over ATZ-soner som ligger innenfor 3 km av en Avinor-sentroide.
-4. **Render-rekkefølge**: sørg for at `rpas_5km_zones` lastes/lagres i cache *før* CAA og ATZ, eller utfør dedupe ved hvert kall (re-evaluér ved layer toggle).
+const map = new maplibregl.Map({
+  container: containerRef.current!,
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "© OpenStreetMap",
+      },
+    },
+    layers: [
+      { id: "bg", type: "background", paint: { "background-color": "#ff00ff" } }, // magenta = "style loaded but tiles failed"
+      { id: "osm", type: "raster", source: "osm" },
+    ],
+  },
+  center: [10.7522, 59.9139],
+  zoom: 11,
+});
 
-Ingen DB-endringer. Ingen endringer i sone-kategorier/regler — kun visuell dedupe.
+map.on("load",   () => console.log("[Map3D] load OK"));
+map.on("idle",   () => console.log("[Map3D] idle (first paint done)"));
+map.on("error",  (e: any) => console.error("[Map3D] ERROR", e?.error?.message || e));
+map.on("styledata", () => console.log("[Map3D] styledata"));
+map.on("sourcedata", (e: any) => {
+  if (e.sourceId === "osm" && e.isSourceLoaded) console.log("[Map3D] OSM tiles loaded");
+});
+```
 
-## Bonus (valgfritt, samme PR)
+Comment out (do not delete):
+- `addOperationalLayers(map)` call
+- All five data-fetching `useEffect` blocks (missions, NOTAMs, restriksjoner, SafeSky, FH2)
+- Terrain / hillshade / sky / 3D buildings blocks
+- The `pitch: 60` setting (set `pitch: 0`) to remove 3D as a variable
 
-Oppdater fallback-popupen i `src/lib/rpas5kmPopup.ts` (linjene 82–86) til å nevne myppr.no når data mangler, slik at brukeren får samme handlingsinfo som i CAA-popupen.
+### Step B — Interpret the result
 
-## Verifisering
+After approval, I'll ask you to open `/kart`, click "3D", and paste the console output. The result tells us exactly what's wrong:
 
-- Notodden: Skal vise **én** sirkel/pin (Avinor ENNO). Den separate "Notodden sjøflyplass"-sirkelen skal forsvinne (sentroide < 3 km fra ENNO).
-- Dagali / Kjeller / Frosta: skal fortsatt vises som gule 5 km-sirkler med myppr.no.
-- Gardermoen, Sola, Værnes: kun Avinor-pin, ingen duplikat fra CAA.
+| What you see | Root cause |
+|---|---|
+| Magenta background, no tiles, `ERROR` about CORS/403/blocked | OSM raster tiles blocked in Lovable iframe → switch to a tile source that works (MapTiler key, Stadia, or proxy) |
+| Magenta background, no error, container size = `0 x 0` | Layout/sizing — fix parent `min-h-0` chain |
+| Map shows OSM correctly | Base works → re-enable steps below one at a time |
+| Nothing in console, no `load` event | Maplibre import / CSS issue |
+
+### Step C — Re-enable in order (only after Step B passes)
+
+Each step gated on the previous step working visually:
+
+1. Terrain DEM + `setTerrain(...)` + hillshade. Verify with `pitch: 60`.
+2. 3D buildings (OpenFreeMap vector source).
+3. Operational layers (missions, NOTAM, restriksjoner, SafeSky, FH2) one source at a time.
+
+## What I will NOT do in this round
+
+- No new dependencies
+- No changes to `Kart.tsx` (toggle, lazy loading stay as-is)
+- No data fetching changes
+- No new tile providers / API keys until Step B says we need one
+
+## Deliverable from this plan
+
+A console log dump that pinpoints the exact failing step. Then a follow-up plan (or direct fix in build mode) targeting only that cause.
