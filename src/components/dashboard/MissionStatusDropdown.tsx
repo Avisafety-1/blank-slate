@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { buildMissionWeatherSnapshot } from "@/lib/missionWeatherSnapshot";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
@@ -88,33 +89,14 @@ export const MissionStatusDropdown = ({
     };
 
     // Capture weather snapshot when completing a mission
-    if (newStatus === "Fullført" && currentStatus !== "Fullført" && latitude && longitude) {
-      const missionTime = tidspunkt ? new Date(tidspunkt) : null;
-      const hoursAgo = missionTime ? (Date.now() - missionTime.getTime()) / (1000 * 60 * 60) : 0;
-
-      if (missionTime && hoursAgo > 24) {
-        updatePayload.weather_data_snapshot = {
-          captured_at: new Date().toISOString(),
-          unavailable: true,
-          reason: "historical",
-          source: "status_dropdown",
-        };
-      } else {
-        try {
-          const { data: weatherData } = await supabase.functions.invoke("drone-weather", {
-            body: { lat: latitude, lon: longitude },
-          });
-          if (weatherData && !weatherData.error) {
-            updatePayload.weather_data_snapshot = {
-              data: weatherData,
-              captured_at: new Date().toISOString(),
-              source: "status_dropdown",
-            };
-          }
-        } catch (e) {
-          console.warn("Could not capture weather snapshot:", e);
-        }
-      }
+    if (newStatus === "Fullført" && currentStatus !== "Fullført") {
+      const snapshot = await buildMissionWeatherSnapshot({
+        flightDate: tidspunkt ? new Date(tidspunkt) : new Date(),
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+        source: "status_dropdown",
+      });
+      updatePayload.weather_data_snapshot = snapshot;
     }
 
     // Check for post-flight checklists when completing
