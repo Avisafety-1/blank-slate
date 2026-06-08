@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl, { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
-import { Satellite, Mountain, Map as MapIcon, Shield, Box } from "lucide-react";
+import { Satellite, Mountain, Map as MapIcon, Shield, Box, Plane } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   buildCaaZonePopupHtml,
@@ -18,6 +18,12 @@ import {
   defaultUpperLimitM,
   zoneSource,
 } from "@/lib/zonePopups";
+import {
+  AIP_ZONE_STYLES,
+  AIP_ZONE_TYPES,
+  buildAipZonePopupHtml,
+  parseAipLimitToMeters,
+} from "@/lib/aipPopups";
 
 interface Map3DProps {
   initialCenter?: [number, number];
