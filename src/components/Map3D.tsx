@@ -36,6 +36,8 @@ interface Map3DProps {
   initialZoom?: number;
   onMissionClick?: (mission: any) => void;
   onViewChange?: (center: [number, number], zoom: number) => void;
+  /** Ekstra knapp/element som rendres rett under base-layer-knappen i høyre stack. */
+  extraStackSlot?: React.ReactNode;
 }
 
 type BaseLayer = "osm" | "satellite" | "topo";
