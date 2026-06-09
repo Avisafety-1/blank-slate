@@ -536,3 +536,141 @@ export function renderAdjacentAreaZone(
       .addTo(layer);
   }
 }
+
+// ============================================================
+// Pure GeoJSON helper — brukes av Map3D (MapLibre) for å bygge
+// extrudable buffer-polygoner uten Leaflet-avhengighet.
+// ============================================================
+
+type GeoJSONPolygon = {
+  type: "Polygon" | "MultiPolygon";
+  coordinates: number[][][] | number[][][][];
+};
+
+type GeoJSONFeature = {
+  type: "Feature";
+  geometry: GeoJSONPolygon;
+  properties: Record<string, any>;
+};
+
+function clipMultiPolygonToGeoJSON(mp: ClipMultiPolygon): GeoJSONPolygon | null {
+  // mp: array of polygons; each polygon: array of rings; each ring: array of [lng, lat]
+  const polys = mp
+    .map((poly) =>
+      poly
+        .map((ring) => {
+          // Ensure closed ring
+          if (ring.length < 4) return ring;
+          const [fx, fy] = ring[0];
+          const [lx, ly] = ring[ring.length - 1];
+          if (fx !== lx || fy !== ly) return [...ring, [fx, fy]] as ClipRing;
+          return ring;
+        })
+        .filter((r) => r.length >= 4)
+    )
+    .filter((p) => p.length > 0);
+  if (polys.length === 0) return null;
+  if (polys.length === 1) {
+    return { type: "Polygon", coordinates: polys[0] as unknown as number[][][] };
+  }
+  return { type: "MultiPolygon", coordinates: polys as unknown as number[][][][] };
+}
+
+function buildMergedBufferClip(
+  validCoords: RoutePoint[],
+  sora: SoraSettings,
+  dist: number,
+  refPoint: RoutePoint,
+  avgLat: number
+): ClipMultiPolygon | null {
+  if (dist <= 0 || validCoords.length === 0) return null;
+
+  const isClosedRoute =
+    validCoords.length >= 3 &&
+    validCoords[0].lat === validCoords[validCoords.length - 1].lat &&
+    validCoords[0].lng === validCoords[validCoords.length - 1].lng;
+
+  const mode = sora.bufferMode ?? "corridor";
+  if (mode === "convexHull" || isClosedRoute) {
+    const hull = computeConvexHull(validCoords);
+    const buffered = bufferPolygon(hull, dist, refPoint, avgLat);
+    if (buffered.length < 3) return null;
+    return [[closeClipRing(buffered)]];
+  }
+
+  const clipPolygons: ClipPolygon[] = [];
+  if (validCoords.length === 1) {
+    const circle = bufferPolyline([validCoords[0]], dist, 16, refPoint, avgLat);
+    if (circle.length >= 3) clipPolygons.push([closeClipRing(circle)]);
+  } else {
+    for (let i = 0; i < validCoords.length - 1; i++) {
+      const start = validCoords[i];
+      const end = validCoords[i + 1];
+      if (start.lat === end.lat && start.lng === end.lng) continue;
+      const segmentBuffer = bufferPolyline([start, end], dist, 16, refPoint, avgLat);
+      if (segmentBuffer.length >= 3) clipPolygons.push([closeClipRing(segmentBuffer)]);
+    }
+  }
+  if (clipPolygons.length === 0) return null;
+  return clipPolygons.slice(1).reduce<ClipMultiPolygon>(
+    (acc, polygon) => polygonClipping.union(acc, polygon),
+    [clipPolygons[0]]
+  );
+}
+
+export interface SoraZoneGeoJSON {
+  flightGeography: GeoJSONFeature | null;
+  contingency: GeoJSONFeature | null;
+  groundRiskBuffer: GeoJSONFeature | null;
+}
+
+/**
+ * Bygger GeoJSON-features for de tre SORA-bufferne (FG, Contingency, GRB)
+ * basert på ruten og SORA-innstillinger. Ren geometri — ingen Leaflet.
+ *
+ * Caller-ansvar: må kun kalles når routePoints.length >= 2 (eller 1
+ * dersom man vil ha en sirkel rundt et enkelt punkt). Returnerer
+ * `{ null, null, null }` ved ugyldig input slik at consumere trygt kan
+ * tømme sources uten å feilhåndtere unntak.
+ */
+export function buildSoraZoneGeoJSON(
+  coordinates: RoutePoint[],
+  sora: SoraSettings
+): SoraZoneGeoJSON {
+  const empty: SoraZoneGeoJSON = {
+    flightGeography: null,
+    contingency: null,
+    groundRiskBuffer: null,
+  };
+  if (!sora?.enabled) return empty;
+  if (!Array.isArray(coordinates) || coordinates.length === 0) return empty;
+
+  const validCoords = coordinates.filter(
+    (p) => p && isFinite(p.lat) && isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
+  );
+  if (validCoords.length === 0) return empty;
+
+  const refPoint = validCoords[0];
+  const avgLat = validCoords.reduce((s, p) => s + p.lat, 0) / validCoords.length;
+
+  const dFg = sora.flightGeographyDistance;
+  const dCont = dFg + sora.contingencyDistance;
+  const dGrb = dCont + sora.groundRiskDistance;
+
+  const mkFeature = (
+    dist: number,
+    properties: Record<string, any>
+  ): GeoJSONFeature | null => {
+    const mp = buildMergedBufferClip(validCoords, sora, dist, refPoint, avgLat);
+    if (!mp) return null;
+    const geom = clipMultiPolygonToGeoJSON(mp);
+    if (!geom) return null;
+    return { type: "Feature", geometry: geom, properties };
+  };
+
+  return {
+    flightGeography: dFg > 0 ? mkFeature(dFg, { zone: "flight_geography" }) : null,
+    contingency: dCont > 0 ? mkFeature(dCont, { zone: "contingency" }) : null,
+    groundRiskBuffer: dGrb > 0 ? mkFeature(dGrb, { zone: "ground_risk_buffer" }) : null,
+  };
+}
