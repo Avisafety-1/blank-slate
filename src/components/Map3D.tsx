@@ -901,7 +901,7 @@ export default function Map3D({
   const removeRoutePlanningLayers = useCallback((map: MlMap) => {
     [
       RP_LAYER_ROUTE_LINE,
-      RP_LAYER_ROUTE_RIBBON,
+      RP_LAYER_ROUTE_LINE + "-halo",
       RP_LAYER_GRB_FILL,
       RP_LAYER_CONT_OUTLINE,
       RP_LAYER_CONT_FILL,
@@ -912,7 +912,7 @@ export default function Map3D({
         try { map.removeLayer(id); } catch {}
       }
     });
-    [RP_SOURCE_ROUTE, RP_SOURCE_ROUTE_RIBBON, RP_SOURCE_GRB, RP_SOURCE_CONT, RP_SOURCE_FG].forEach((id) => {
+    [RP_SOURCE_ROUTE, RP_SOURCE_GRB, RP_SOURCE_CONT, RP_SOURCE_FG].forEach((id) => {
       if (map.getSource(id)) {
         try { map.removeSource(id); } catch {}
       }
@@ -926,7 +926,7 @@ export default function Map3D({
     if (!map.getSource(RP_SOURCE_CONT)) map.addSource(RP_SOURCE_CONT, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_GRB)) map.addSource(RP_SOURCE_GRB, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_ROUTE)) map.addSource(RP_SOURCE_ROUTE, { type: "geojson", data: emptyFC });
-    if (!map.getSource(RP_SOURCE_ROUTE_RIBBON)) map.addSource(RP_SOURCE_ROUTE_RIBBON, { type: "geojson", data: emptyFC });
+    
 
     // Per-lag høyde-uttrykk basert på render_base_m / render_height_m
     // (settes per feature i rebuildRouteSources).
@@ -1000,17 +1000,17 @@ export default function Map3D({
         },
       });
     }
-    if (!map.getLayer(RP_LAYER_ROUTE_RIBBON)) {
+    // Bakkenær rute-linje (drapes naturlig på terrenget). Tegnes med mørk halo + cyan kjerne.
+    if (!map.getLayer(RP_LAYER_ROUTE_LINE + "-halo")) {
       map.addLayer({
-        id: RP_LAYER_ROUTE_RIBBON,
-        type: "fill-extrusion",
-        source: RP_SOURCE_ROUTE_RIBBON,
+        id: RP_LAYER_ROUTE_LINE + "-halo",
+        type: "line",
+        source: RP_SOURCE_ROUTE,
+        layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "fill-extrusion-color": "#06b6d4",
-          "fill-extrusion-opacity": 0.85,
-
-          "fill-extrusion-base": baseExpr,
-          "fill-extrusion-height": heightExprRibbon,
+          "line-color": "#0f172a",
+          "line-width": 8,
+          "line-opacity": 0.9,
         },
       });
     }
@@ -1021,9 +1021,9 @@ export default function Map3D({
         source: RP_SOURCE_ROUTE,
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#3b82f6",
-          "line-width": 3,
-          "line-dasharray": [2, 1],
+          "line-color": "#06b6d4",
+          "line-width": 4,
+          "line-opacity": 1,
         },
       });
     }
@@ -1323,7 +1323,6 @@ export default function Map3D({
     const points = routePointsRef.current;
 
     const routeSrc = map.getSource(RP_SOURCE_ROUTE) as GeoJSONSource | undefined;
-    const ribbonSrc = map.getSource(RP_SOURCE_ROUTE_RIBBON) as GeoJSONSource | undefined;
     const fgSrc = map.getSource(RP_SOURCE_FG) as GeoJSONSource | undefined;
     const contSrc = map.getSource(RP_SOURCE_CONT) as GeoJSONSource | undefined;
     const grbSrc = map.getSource(RP_SOURCE_GRB) as GeoJSONSource | undefined;
@@ -1333,14 +1332,13 @@ export default function Map3D({
     // < 2 punkter → bare markører, ingen linje/buffer, ingen terrain-kall.
     if (points.length < 2) {
       routeSrc?.setData(emptyFC);
-      ribbonSrc?.setData(emptyFC);
       fgSrc?.setData(emptyFC);
       contSrc?.setData(emptyFC);
       grbSrc?.setData(emptyFC);
       return;
     }
 
-    // Rute-linje
+    // Rute-linje (drapes på terrenget når terrain er aktiv)
     routeSrc?.setData({
       type: "Feature",
       geometry: {
@@ -1350,10 +1348,7 @@ export default function Map3D({
       properties: {},
     } as any);
 
-    // Bygg 3D-ribbon for ruten (følger terrenget i flightAltitude AGL).
     const sora = soraSettingsRef.current;
-    const flightAltitudeM = sora?.flightAltitude ?? 120;
-    rebuildRouteRibbon(points, flightAltitudeM, ribbonSrc, emptyFC);
 
     // SORA-buffer (krever soraSettings.enabled — ellers tøm)
     if (!sora?.enabled) {
