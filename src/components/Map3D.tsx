@@ -842,6 +842,11 @@ export default function Map3D({
       map.once("idle", () => {
         addZoneLayers(map, extrudeRef.current);
         addAipLayers(map, extrudeRef.current);
+        if (modeRef.current === "routePlanning") {
+          addRoutePlanningLayers(map);
+          rebuildMarkersRef.current(map);
+          rebuildRouteSourcesRef.current();
+        }
         addSafeSkyLayer(map);
         installClickHandlers(map);
         safeskyIconsLoadedRef.current.clear();
