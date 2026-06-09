@@ -859,35 +859,38 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
         UNDER disse, slik at ingenting overlapper. Nav-kontrollene tar ca. 10rem.
       */}
 
-      {/* Base-toggle (satellitt/topo/standard) */}
-      <Button
-        variant="secondary"
-        size="icon"
-        onClick={cycleBase}
-        className="absolute top-[11rem] right-4 z-[1100] shadow-lg bg-card hover:bg-accent"
-        title={
-          base === "satellite"
-            ? "Bytt til topografisk kart"
-            : base === "topo"
-            ? "Bytt til standard kart"
-            : "Bytt til satellittkart"
-        }
-        aria-label="Bytt grunnkart"
-      >
-        {base === "satellite" ? <Mountain className="h-5 w-5" /> : base === "topo" ? <MapIcon className="h-5 w-5" /> : <Satellite className="h-5 w-5" />}
-      </Button>
+      {/* Egne kart-knapper — stablet vertikalt under MapLibre-navigasjon */}
+      <div className="absolute top-[11rem] right-4 z-[1100] flex flex-col gap-2">
+        {/* Base-toggle (satellitt/topo/standard) */}
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={cycleBase}
+          className="shadow-lg bg-card hover:bg-accent"
+          title={
+            base === "satellite"
+              ? "Bytt til topografisk kart"
+              : base === "topo"
+              ? "Bytt til standard kart"
+              : "Bytt til satellittkart"
+          }
+          aria-label="Bytt grunnkart"
+        >
+          {base === "satellite" ? <Mountain className="h-5 w-5" /> : base === "topo" ? <MapIcon className="h-5 w-5" /> : <Satellite className="h-5 w-5" />}
+        </Button>
 
-      {/* Sylinder / flat-toggle (3D-volum) */}
-      <Button
-        variant={extrude ? "default" : "secondary"}
-        size="icon"
-        onClick={() => setExtrude((v) => !v)}
-        className={`absolute top-[14rem] right-4 z-[1100] shadow-lg ${extrude ? "" : "bg-card hover:bg-accent"}`}
-        title={extrude ? "Skjul 3D-sylindere (vis flate soner)" : "Vis soner som 3D-sylindere"}
-        aria-label="3D-sylindere"
-      >
-        <Box className="h-5 w-5" />
-      </Button>
+        {/* Sylinder / flat-toggle (3D-volum) */}
+        <Button
+          variant={extrude ? "default" : "secondary"}
+          size="icon"
+          onClick={() => setExtrude((v) => !v)}
+          className={`shadow-lg ${extrude ? "" : "bg-card hover:bg-accent"}`}
+          title={extrude ? "Skjul 3D-sylindere (vis flate soner)" : "Vis soner som 3D-sylindere"}
+          aria-label="3D-sylindere"
+        >
+          <Box className="h-5 w-5" />
+        </Button>
+      </div>
     </div>
   );
 }
