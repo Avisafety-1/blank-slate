@@ -1108,8 +1108,8 @@ export default function Map3D({
     }
 
     // Densifiser: ~40 m mellom prøvepunkter, maks ~250 totalt.
-    const SEGMENT_M = 40;
-    const MAX_SAMPLES = 250;
+    const SEGMENT_M = 12;
+    const MAX_SAMPLES = 600;
     const haversineM = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
       const R = 6371000;
       const dLat = ((b.lat - a.lat) * Math.PI) / 180;
