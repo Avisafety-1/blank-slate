@@ -1078,7 +1078,7 @@ export default function KartPage() {
             </Button>
           ) : null;
 
-          if (is3D && !isRoutePlanning) {
+          if (is3D) {
             return (
               <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
                 <Map3D
@@ -1087,6 +1087,11 @@ export default function KartPage() {
                   initialZoom={lastViewRef.current?.zoom}
                   onViewChange={handleViewChange}
                   extraStackSlot={toggle3DBtn}
+                  mode={isRoutePlanning ? "routePlanning" : "view"}
+                  existingRoute={routePlanningState?.existingRoute}
+                  controlledRoute={currentRoute}
+                  onRouteChange={handleRouteChange}
+                  soraSettings={soraSettings}
                 />
               </Suspense>
             );
