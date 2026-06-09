@@ -1384,6 +1384,16 @@ export default function Map3D({
         );
       }
 
+      // Beregn først FG-toppen, slik at Cont kan settes til 50% av FG sin totalhøyde.
+      let fgTopM: number | null = null;
+      const fgIdx = extrusionFeatures.findIndex((x) => x.key === "rp-fg");
+      if (fgIdx >= 0) {
+        const fgRing = ringResults[fgIdx];
+        const fgFb = fgRing ? null : fallbackSamples.get("rp-fg");
+        const tmax = fgRing ? fgRing.smoothedMax : fgFb ? fgFb.max : 0;
+        fgTopM = tmax + fgHeightAgl;
+      }
+
       extrusionFeatures.forEach((f, i) => {
         if (!f.feat || !f.src) return;
         const ring = ringResults[i];
@@ -1398,6 +1408,10 @@ export default function Map3D({
           props.terrain_min_m = fb.min;
           props.terrain_max_m = fb.max;
           topM = fb.max + f.agl;
+        }
+        // Cont (gul) skal visuelt være ca. 50% av FG (grønn) sin totalhøyde.
+        if (f.key === "rp-cont" && fgTopM != null) {
+          topM = 0.5 * fgTopM;
         }
         props.render_base_m = 0;
         props.render_height_m = topM;
