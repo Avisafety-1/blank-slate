@@ -388,6 +388,18 @@ export default function Map3D({
   const onViewChangeRef = useRef(onViewChange);
   onViewChangeRef.current = onViewChange;
 
+  // ===== Route planning state =====
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const onRouteChangeRef = useRef(onRouteChange);
+  onRouteChangeRef.current = onRouteChange;
+  const soraSettingsRef = useRef<SoraSettings | undefined>(soraSettings);
+  soraSettingsRef.current = soraSettings;
+  const routePointsRef = useRef<RoutePoint[]>([]);
+  const routeMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const lastEmittedRouteJsonRef = useRef<string>("");
+  const soraTerrainDebounceRef = useRef<number | null>(null);
+
   // Hent og oppdater dronesoner basert på viewport
   const refreshZones = useCallback(async () => {
     const map = mapRef.current;
