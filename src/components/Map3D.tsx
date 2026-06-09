@@ -1089,15 +1089,16 @@ export default function Map3D({
 
     const { flightGeography, contingency, groundRiskBuffer } = buildSoraZoneGeoJSON(points, sora);
 
-    // Initialt sett: kun terrengfri høyde (height = fallback 120 m / lower=0).
-    // Etter at terreng er samplet, oppdaterer vi properties og setter data på nytt.
-    const fgAltitudeTop = sora.flightAltitude;                    // m AGL over terreng
-    const contAltitudeTop = sora.flightAltitude + (sora.contingencyHeight ?? 0);
-    const grbAltitudeTop = contAltitudeTop;
+    // Lag-spesifikk høyde-semantikk (i henhold til SORA-diagram):
+    //   FG (grønn):   sylinder fra bakken opp til terreng + flightAltitude
+    //   Cont (gul):   sylinder fra bakken opp til terreng + 0.5 × flightAltitude
+    //   GRB (rød):    flatt fill-lag draperes på terreng (ingen ekstrusjon)
+    const fgHeightAgl = sora.flightAltitude;
+    const contHeightAgl = 0.5 * sora.flightAltitude;
 
-    const baseFeature = (
+    const featureWith = (
       feat: ReturnType<typeof buildSoraZoneGeoJSON>["flightGeography"],
-      altitudeTopM: number
+      extraProps: Record<string, any>,
     ) => {
       if (!feat) return emptyFC;
       return {
@@ -1107,28 +1108,33 @@ export default function Map3D({
             ...feat,
             properties: {
               ...feat.properties,
-              // upper_limit_m fylles inn senere når terrain_max_m er kjent.
-              // Inntil da bruker extrusion fallback (terrain_max_m + 120) eller 120.
-              __altitude_top_m: altitudeTopM,
+              ...extraProps,
             },
           },
         ],
       };
     };
 
-    fgSrc?.setData(baseFeature(flightGeography, fgAltitudeTop) as any);
-    contSrc?.setData(baseFeature(contingency, contAltitudeTop) as any);
-    grbSrc?.setData(baseFeature(groundRiskBuffer, grbAltitudeTop) as any);
+    // Initialt (før terreng-sample): base = 0, høyde = AGL-verdi.
+    fgSrc?.setData(
+      featureWith(flightGeography, { render_base_m: 0, render_height_m: fgHeightAgl }) as any,
+    );
+    contSrc?.setData(
+      featureWith(contingency, { render_base_m: 0, render_height_m: contHeightAgl }) as any,
+    );
+    // GRB er fill-lag — trenger ingen høyde-properties.
+    grbSrc?.setData(featureWith(groundRiskBuffer, {}) as any);
 
-    // Debounced terrain-enrichment for korrekt bakke-base + topp.
+    // Debounced terrain-enrichment: bytt til terrain_max_m som base så sonene
+    // ikke blir skjult av terrengtopper inne i polygonet.
     if (soraTerrainDebounceRef.current) {
       window.clearTimeout(soraTerrainDebounceRef.current);
     }
     soraTerrainDebounceRef.current = window.setTimeout(async () => {
       const features = [
-        { src: fgSrc, feat: flightGeography, top: fgAltitudeTop, key: "rp-fg" },
-        { src: contSrc, feat: contingency, top: contAltitudeTop, key: "rp-cont" },
-        { src: grbSrc, feat: groundRiskBuffer, top: grbAltitudeTop, key: "rp-grb" },
+        { src: fgSrc, feat: flightGeography, agl: fgHeightAgl, key: "rp-fg", isExtrusion: true },
+        { src: contSrc, feat: contingency, agl: contHeightAgl, key: "rp-cont", isExtrusion: true },
+        { src: grbSrc, feat: groundRiskBuffer, agl: 0, key: "rp-grb", isExtrusion: false },
       ].filter((x) => x.feat && x.src);
 
       if (features.length === 0) return;
@@ -1144,10 +1150,13 @@ export default function Map3D({
         if (sample) {
           props.terrain_min_m = sample.min;
           props.terrain_max_m = sample.max;
-          props.upper_limit_m = sample.max + f.top;
-        } else {
-          // Ingen terrengdata: la base bli 0 og topp = flightAltitude over havet.
-          props.upper_limit_m = f.top;
+        }
+        if (f.isExtrusion) {
+          // base = terrain_max (over alle terrengtopper i polygonet),
+          // høyde = terrain_max + AGL-verdi.
+          const baseM = sample ? sample.max : 0;
+          props.render_base_m = baseM;
+          props.render_height_m = baseM + f.agl;
         }
         f.src.setData({
           type: "FeatureCollection",
