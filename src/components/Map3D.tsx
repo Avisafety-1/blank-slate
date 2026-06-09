@@ -1000,17 +1000,17 @@ export default function Map3D({
         },
       });
     }
-    if (!map.getLayer(RP_LAYER_ROUTE_RIBBON)) {
+    // Bakkenær rute-linje (drapes naturlig på terrenget). Tegnes med mørk halo + cyan kjerne.
+    if (!map.getLayer(RP_LAYER_ROUTE_LINE + "-halo")) {
       map.addLayer({
-        id: RP_LAYER_ROUTE_RIBBON,
-        type: "fill-extrusion",
-        source: RP_SOURCE_ROUTE_RIBBON,
+        id: RP_LAYER_ROUTE_LINE + "-halo",
+        type: "line",
+        source: RP_SOURCE_ROUTE,
+        layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "fill-extrusion-color": "#06b6d4",
-          "fill-extrusion-opacity": 0.85,
-
-          "fill-extrusion-base": baseExpr,
-          "fill-extrusion-height": heightExprRibbon,
+          "line-color": "#0f172a",
+          "line-width": 8,
+          "line-opacity": 0.9,
         },
       });
     }
@@ -1021,9 +1021,9 @@ export default function Map3D({
         source: RP_SOURCE_ROUTE,
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#3b82f6",
-          "line-width": 3,
-          "line-dasharray": [2, 1],
+          "line-color": "#06b6d4",
+          "line-width": 4,
+          "line-opacity": 1,
         },
       });
     }
