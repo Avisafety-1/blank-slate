@@ -1201,6 +1201,117 @@ export default function Map3D({
     ribbonSrc.setData({ type: "FeatureCollection", features } as any);
   }, []);
 
+  // Sampler terreng jevnt langs polygonets ytre ring og glatter med moving average.
+  // Returnerer { smoothedMin, smoothedMax } i hele meter MSL.
+  const sampleSmoothedRingTerrain = useCallback(async (
+    geometry: any,
+  ): Promise<{ smoothedMin: number; smoothedMax: number } | null> => {
+    if (!geometry) return null;
+    let ring: [number, number][] | null = null;
+    if (geometry.type === "Polygon" && Array.isArray(geometry.coordinates?.[0])) {
+      ring = geometry.coordinates[0];
+    } else if (
+      geometry.type === "MultiPolygon" &&
+      Array.isArray(geometry.coordinates?.[0]?.[0])
+    ) {
+      ring = geometry.coordinates[0][0];
+    }
+    if (!ring || ring.length < 3) return null;
+
+    const EDGE_SAMPLES_PER_100M = 12;
+    const MIN_SAMPLES = 40;
+    const MAX_SAMPLES = 600;
+    const MOVING_AVG_WINDOW = 9;
+
+    const haversineM = (a: [number, number], b: [number, number]) => {
+      const R = 6371000;
+      const dLat = ((b[1] - a[1]) * Math.PI) / 180;
+      const dLng = ((b[0] - a[0]) * Math.PI) / 180;
+      const la1 = (a[1] * Math.PI) / 180;
+      const la2 = (b[1] * Math.PI) / 180;
+      const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    };
+
+    let totalM = 0;
+    for (let i = 1; i < ring.length; i++) totalM += haversineM(ring[i - 1], ring[i]);
+    if (totalM <= 0) return null;
+
+    const target = Math.min(
+      MAX_SAMPLES,
+      Math.max(MIN_SAMPLES, Math.ceil((totalM / 100) * EDGE_SAMPLES_PER_100M)),
+    );
+    const stepM = totalM / target;
+
+    const samples: { lat: number; lng: number }[] = [];
+    let acc = 0;
+    let nextTarget = 0;
+    for (let i = 1; i < ring.length && samples.length < target; i++) {
+      const a = ring[i - 1];
+      const b = ring[i];
+      const segLen = haversineM(a, b);
+      if (segLen <= 0) continue;
+      while (acc + segLen >= nextTarget && samples.length < target) {
+        const t = Math.max(0, Math.min(1, (nextTarget - acc) / segLen));
+        samples.push({ lng: a[0] + (b[0] - a[0]) * t, lat: a[1] + (b[1] - a[1]) * t });
+        nextTarget += stepM;
+      }
+      acc += segLen;
+    }
+    if (samples.length < 3) return null;
+
+    let elevations: (number | null)[] = [];
+    try {
+      elevations = await fetchTerrainElevations(samples);
+    } catch (err) {
+      console.warn("[Map3D] ring terrain fetch failed", err);
+      return null;
+    }
+
+    const validCount = elevations.filter(
+      (v) => typeof v === "number" && Number.isFinite(v),
+    ).length;
+    if (validCount < samples.length * 0.5) return null;
+
+    const N = elevations.length;
+    const filled: number[] = new Array(N);
+    for (let i = 0; i < N; i++) {
+      const v = elevations[i];
+      if (typeof v === "number" && Number.isFinite(v)) {
+        filled[i] = v;
+      } else {
+        let prev: number | null = null;
+        let next: number | null = null;
+        for (let k = 1; k < N; k++) {
+          const pv = elevations[(i - k + N) % N];
+          const nv = elevations[(i + k) % N];
+          if (prev == null && typeof pv === "number" && Number.isFinite(pv)) prev = pv;
+          if (next == null && typeof nv === "number" && Number.isFinite(nv)) next = nv;
+          if (prev != null && next != null) break;
+        }
+        filled[i] = ((prev ?? next ?? 0) + (next ?? prev ?? 0)) / 2;
+      }
+    }
+
+    const half = Math.floor(MOVING_AVG_WINDOW / 2);
+    const smoothed: number[] = new Array(N);
+    for (let i = 0; i < N; i++) {
+      let sum = 0;
+      for (let k = -half; k <= half; k++) sum += filled[(i + k + N) % N];
+      smoothed[i] = sum / MOVING_AVG_WINDOW;
+    }
+
+    let mn = Infinity;
+    let mx = -Infinity;
+    for (const v of smoothed) {
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+    }
+    return { smoothedMin: Math.round(mn), smoothedMax: Math.round(mx) };
+  }, []);
+
+
+
   // Bygg om route-linje + SORA-buffere fra routePointsRef.
   const rebuildRouteSources = useCallback(() => {
     const map = mapRef.current;
