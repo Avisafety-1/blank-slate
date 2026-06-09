@@ -393,6 +393,11 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       pushRows(dkRes.data as any[]);
 
       src.setData({ type: "FeatureCollection", features });
+
+      // Berik polygon-soner med terrenghøyde (min/max MSL) for korrekt 3D-base + fallback-topp.
+      void enrichFeaturesWithTerrain(features).then((changed) => {
+        if (changed) src.setData({ type: "FeatureCollection", features });
+      });
     } catch (err) {
       console.error("[Map3D] zone fetch failed", err);
     }
@@ -404,10 +409,13 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     if (!map) return;
     const src = map.getSource("aip") as GeoJSONSource | undefined;
     if (!src) return;
-    src.setData({
-      type: "FeatureCollection",
-      features: aipEnabled ? aipFeaturesRef.current : [],
-    });
+    const features = aipEnabled ? aipFeaturesRef.current : [];
+    src.setData({ type: "FeatureCollection", features });
+    if (aipEnabled && features.length > 0) {
+      void enrichFeaturesWithTerrain(features).then((changed) => {
+        if (changed) src.setData({ type: "FeatureCollection", features });
+      });
+    }
   }, [aipEnabled]);
 
   const fetchAip = useCallback(async () => {
