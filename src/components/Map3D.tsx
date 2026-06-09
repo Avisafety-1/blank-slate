@@ -1165,6 +1165,9 @@ export default function Map3D({
       });
     }, 200);
   }, []);
+  rebuildRouteSourcesRef.current = rebuildRouteSources;
+
+
 
   // ===== Klikk-handler i routePlanning-modus =====
   useEffect(() => {
