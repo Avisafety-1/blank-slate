@@ -860,7 +860,7 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       */}
 
       {/* Egne kart-knapper — stablet vertikalt under MapLibre-navigasjon */}
-      <div className="absolute top-[11rem] right-4 z-[1100] flex flex-col gap-2">
+      <div className="absolute top-[9.5rem] right-2 z-[1100] flex flex-col gap-2">
         {/* Base-toggle (satellitt/topo/standard) */}
         <Button
           variant="secondary"
