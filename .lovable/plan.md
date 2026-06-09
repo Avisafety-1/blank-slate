@@ -1,21 +1,50 @@
-## Plan: 2D/3D-toggle synlig også under ruteplanlegging
+# Oppdatering av AviSafe – Sikkerhetsdokumentasjon
 
-### Bakgrunn
-- `Kart.tsx` har allerede `is3D`-toggle, men knappen vises kun når `!isRoutePlanning`. I ruteplanleggings­modus er den skjult både i 2D og 3D.
-- Ruta (`currentRoute`) og SORA-innstillingene er allerede løftet til `Kart` og sendes som `controlledRoute` / `soraSettings` til både `OpenAIPMap` (2D) og `Map3D` (3D). Buffersonene gjenoppbygges automatisk fra disse i begge kartene. Ingen ekstra state-deling trengs.
-- Befolkningstetthet beregnes i dag i 2D-kartet (via `mergedDensityCells` / `soraDensityResult` propsene til `OpenAIPMap`) og er ikke implementert i `Map3D`. Det er ønsket adferd å la 2D fortsette å gjøre dette.
+Jeg lager en ny versjon av dokumentet (`AviSafe_-_Sikkerhetsdokumentasjon_v2.docx`) basert på originalen du lastet opp, men korrigert mot dagens faktiske oppsett. Originalen beholdes urørt så du kan sammenligne.
 
-### Endring (kun `src/pages/Kart.tsx`, rundt linje 1068)
+Språket holdes ikke-teknisk: ingen kodeeksempler, ingen tabellnavn, ingen funksjonsnavn — kun forklaringer en revisor eller kunde kan lese. Frontend-plattformen omtales generisk som "vår utviklings- og driftsplattform" uten å nevne leverandøren ved navn.
 
-Fjern guarden som skjuler 2D/3D-knappen i ruteplanlegging:
+## Hovedendringer
 
-- Endre `const toggle3DBtn = !isRoutePlanning ? (...) : null;` til alltid å rendre knappen (`const toggle3DBtn = (...);`).
-- La `routePlannerBtn3D` beholde dagens guard (`is3D && !isRoutePlanning`) — den skal fortsatt kun vises som en startknapp før ruteplanlegging er aktiv.
+### Dette fjernes
+- **Kapittel 8 "Domene-separasjon"** — separasjonen mellom innloggings- og applikasjonsdomene er fjernet i praksis. All bruk skjer på ett domene, og det gamle innloggingsdomenet videresender kun til hovedapplikasjonen.
+- **Kapittel 13 "Offline-støtte og PWA"** — reell offline-bruk fungerer ikke i dag og er misvisende. Erstattes av en kort note om at applikasjonen kan installeres som app-ikon på hjemskjerm, men at funksjonalitet krever nettforbindelse.
+- Setninger om offline-bruk under sesjonshåndtering og tilgjengelighet ryddes bort.
 
-Resultat:
-- Bruker kan nå klikke 2D/3D-ikonet midt i ruteplanlegging og bytte frem og tilbake.
-- `currentRoute` + `soraSettings` følger automatisk med, så ruta, FG/Cont/GRB-sonene og SORA-konfig forblir intakt i overgangen.
-- Befolkningstetthet kjører som før kun i 2D-kartet; 3D-kartet trenger ingen egen tetthetsberegning.
+### Dette oppdateres
+- **Infrastruktur**: legger til at vi bruker en sentralisert feilrapporterings­tjeneste (Sentry) og en egen leverandør for transaksjons-e-post (Resend), i tillegg til databasen og serverless-funksjonene som ligger hos Supabase.
+- **Autentisering**: legger til passnøkler (passkeys/WebAuthn), tofaktor­autentisering, automatisk synkronisering av innlogging mellom faner, og presisering av inaktiv-utlogging (varsel etter 55 min, utlogging etter 60 min).
+- **Roller og tilgangsstyring**: presisere de tre rollene (bruker, administrator, superadmin), forklare hierarkisk tilgang for selskaper med under­avdelinger uten å gå inn i implementasjonsdetaljer.
+- **Kryptering**: presisere at utvalgte sensitive felter (tredjeparts­tokens for blant annet flylogger og hendelses­rapportering) krypteres i databasen i tillegg til standard disk- og transport­kryptering.
+- **Hemmeligheter og API-nøkler**: oppdatert liste over hvilke typer nøkler som lagres sikkert i bakgrunns­miljøet (betaling, e-post, push-varsler, AI, lufttrafikk, sosiale medier osv.) uten å liste opp variabelnavn.
+- **Backend-funksjoner**: oppdatert antall og kategorisering (e-post, planlagte jobber, AI, integrasjoner, betaling, publisering, push, datasynkronisering).
+- **Fillagring**: nevne både dokument-lagring og bildelagring (logbok), samt at filer er adskilt per organisasjon og tilgjengelige via tidsbegrensede lenker.
+- **Push-varsler**: standardbasert push-løsning, opprydding av utgåtte abonnement, varsler avgrenset til riktig organisasjon.
+- **Eksterne integrasjoner** (utvidet liste):
+  - Stripe (abonnement og fakturering)
+  - Resend (transaksjons-e-post og mottakerlister)
+  - LinkedIn (publisering)
+  - BarentsWatch (skipstrafikk-data)
+  - DJI FlightHub 2 (sanntids dronesposisjon via signert webhook)
+  - ArduPilot- og DJI-loggparsing (separate bakgrunns­tjenester)
+  - NVE (kraftlinjer)
+  - Kartverket (norske kartfliser)
+  - CAA Norge og dansk Trafikstyrelsen (dronesoner)
+  - NOAA (romvær / Kp-indeks)
+  - NOTAM (luftrom-varsler)
+  - SSB, Eurostat, Miljødirektoratet, MET, Open-Meteo (offentlige data)
+- **Logging og overvåkning**: legger til ekstern feilrapportering, plattform­aktivitetslogg og fullt revisjonsspor for hendelser og myndighets­rapportering.
+- **Datatyper lagret**: legger til abonnement- og fakturerings­data, passnøkkel-legitimasjon, push-abonnement, og krypterte tredjeparts­tokens.
+- **GDPR og personvern**: presisere at brukersletting bevarer operasjonell historikk (av hensyn til flysikkerhets­dokumentasjon) ved at personlige data fjernes mens referansene i logger og oppdrag anonymiseres.
+- **Tilgjengelighet og sikkerhetskopier**: fjerne påstander om offline-modus, beholde redundans, daglige sikkerhets­kopier og point-in-time recovery.
+- **Versjon**: oppgraderes til **1.1** med dato **juni 2026**.
 
-### Ingen øvrige filer berøres
-`Map3D.tsx`, `OpenAIPMap` og SORA-flyt er uendret.
+### Format og leveranse
+- Beholder visuell stil (AviSafe-logo i topp, bunntekst med organisasjonsnummer, samme kapittel­nummerering og typografi).
+- Innholdsfortegnelsen renummereres etter at to kapitler fjernes (totalt 21 kapitler i stedet for 23).
+- Levert som `/mnt/documents/AviSafe_-_Sikkerhetsdokumentasjon_v2.docx` slik at du kan laste ned og se gjennom.
+
+## Hva som IKKE endres
+- Kjernebeskrivelse av multi-tenancy, kryptering under transport, JWT-sesjoner og databasens rad-nivå sikkerhet (forklart i klartekst, ikke som kode).
+- GDPR juridisk grunnlag og rettighets­tabell.
+- Kontaktinformasjon og selskapsdetaljer.
