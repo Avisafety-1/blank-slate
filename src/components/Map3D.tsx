@@ -372,6 +372,7 @@ export default function Map3D({
   const mapRef = useRef<MlMap | null>(null);
   const fetchTimerRef = useRef<number | null>(null);
   const [base, setBase] = useState<BaseLayer>("satellite");
+  const didApplyInitialBaseStyleRef = useRef(false);
   // Soner, luftrom og lufttrafikk er alltid på (egne toggle-knapper er fjernet for å rydde i UI)
   const zonesEnabled = true;
   const aipEnabled = true;
@@ -829,6 +830,10 @@ export default function Map3D({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (!didApplyInitialBaseStyleRef.current) {
+      didApplyInitialBaseStyleRef.current = true;
+      return;
+    }
     try {
       // setStyle fjerner alle lag inkl. vårt custom 3D-modellslag
       safeskyModelLayerRef.current?.destroy();
@@ -837,6 +842,11 @@ export default function Map3D({
       map.once("idle", () => {
         addZoneLayers(map, extrudeRef.current);
         addAipLayers(map, extrudeRef.current);
+        if (modeRef.current === "routePlanning") {
+          addRoutePlanningLayers(map);
+          rebuildMarkersRef.current(map);
+          rebuildRouteSourcesRef.current();
+        }
         addSafeSkyLayer(map);
         installClickHandlers(map);
         safeskyIconsLoadedRef.current.clear();
