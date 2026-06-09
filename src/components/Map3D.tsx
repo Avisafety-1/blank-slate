@@ -926,12 +926,14 @@ export default function Map3D({
     if (!map.getSource(RP_SOURCE_CONT)) map.addSource(RP_SOURCE_CONT, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_GRB)) map.addSource(RP_SOURCE_GRB, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_ROUTE)) map.addSource(RP_SOURCE_ROUTE, { type: "geojson", data: emptyFC });
+    if (!map.getSource(RP_SOURCE_ROUTE_RIBBON)) map.addSource(RP_SOURCE_ROUTE_RIBBON, { type: "geojson", data: emptyFC });
 
     // Per-lag høyde-uttrykk basert på render_base_m / render_height_m
     // (settes per feature i rebuildRouteSources).
     const baseExpr: any = ["coalesce", ["get", "render_base_m"], 0];
     const heightExprFG: any = ["coalesce", ["get", "render_height_m"], 120];
     const heightExprCont: any = ["coalesce", ["get", "render_height_m"], 60];
+    const heightExprRibbon: any = ["coalesce", ["get", "render_height_m"], 120];
 
     // GRB: flatt fill-lag draperes automatisk på terreng.
     if (!map.getLayer(RP_LAYER_GRB_FILL)) {
@@ -941,8 +943,8 @@ export default function Map3D({
         source: RP_SOURCE_GRB,
         paint: {
           "fill-color": "#ef4444",
-          "fill-opacity": 0.2,
-          "fill-outline-color": "#ef4444",
+          "fill-opacity": 0.35,
+          "fill-outline-color": "#b91c1c",
         },
       });
     }
@@ -953,9 +955,21 @@ export default function Map3D({
         source: RP_SOURCE_CONT,
         paint: {
           "fill-extrusion-color": "#eab308",
-          "fill-extrusion-opacity": 0.25,
+          "fill-extrusion-opacity": 0.40,
           "fill-extrusion-base": baseExpr,
           "fill-extrusion-height": heightExprCont,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_CONT_OUTLINE)) {
+      map.addLayer({
+        id: RP_LAYER_CONT_OUTLINE,
+        type: "line",
+        source: RP_SOURCE_CONT,
+        paint: {
+          "line-color": "#a16207",
+          "line-width": 1.5,
+          "line-opacity": 0.7,
         },
       });
     }
@@ -966,9 +980,34 @@ export default function Map3D({
         source: RP_SOURCE_FG,
         paint: {
           "fill-extrusion-color": "#22c55e",
-          "fill-extrusion-opacity": 0.25,
+          "fill-extrusion-opacity": 0.45,
           "fill-extrusion-base": baseExpr,
           "fill-extrusion-height": heightExprFG,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_FG_OUTLINE)) {
+      map.addLayer({
+        id: RP_LAYER_FG_OUTLINE,
+        type: "line",
+        source: RP_SOURCE_FG,
+        paint: {
+          "line-color": "#15803d",
+          "line-width": 1.5,
+          "line-opacity": 0.7,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_ROUTE_RIBBON)) {
+      map.addLayer({
+        id: RP_LAYER_ROUTE_RIBBON,
+        type: "fill-extrusion",
+        source: RP_SOURCE_ROUTE_RIBBON,
+        paint: {
+          "fill-extrusion-color": "#22c55e",
+          "fill-extrusion-opacity": 0.7,
+          "fill-extrusion-base": baseExpr,
+          "fill-extrusion-height": heightExprRibbon,
         },
       });
     }
