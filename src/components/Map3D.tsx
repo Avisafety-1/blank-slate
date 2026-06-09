@@ -1389,18 +1389,18 @@ export default function Map3D({
         const ring = ringResults[i];
         const fb = ring ? null : fallbackSamples.get(f.key);
         const props: Record<string, any> = { ...f.feat.properties };
-        let baseM = 0;
+        let topM = f.agl;
         if (ring) {
           props.terrain_min_m = ring.smoothedMin;
           props.terrain_max_m = ring.smoothedMax;
-          baseM = ring.smoothedMax;
+          topM = ring.smoothedMax + f.agl;
         } else if (fb) {
           props.terrain_min_m = fb.min;
           props.terrain_max_m = fb.max;
-          baseM = fb.max;
+          topM = fb.max + f.agl;
         }
-        props.render_base_m = baseM;
-        props.render_height_m = baseM + f.agl;
+        props.render_base_m = 0;
+        props.render_height_m = topM;
         f.src.setData({
           type: "FeatureCollection",
           features: [{ ...f.feat, properties: props }],
