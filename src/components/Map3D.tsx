@@ -27,6 +27,7 @@ import {
   parseAipLimitToMeters,
 } from "@/lib/aipPopups";
 import { createSafeSkyModelLayer, SafeSkyModelLayer, SafeSkyBeacon } from "@/lib/safeskyModelLayer";
+import { sampleZonesTerrain, zoneCacheKey } from "@/lib/zoneTerrainSampler";
 
 const SAFESKY_MODEL_URL = "/models/dji_matrice_t300/scene.gltf";
 
@@ -184,11 +185,19 @@ function addZoneLayers(map: MlMap, extrude: boolean) {
       filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
       paint: {
         "fill-extrusion-color": colorExpression(),
-        "fill-extrusion-base": ["coalesce", ["get", "lower_limit_m"], 0],
+        // base: lower_limit_m → terrain_min_m → 0
+        "fill-extrusion-base": [
+          "case",
+          ["!=", ["get", "lower_limit_m"], null], ["get", "lower_limit_m"],
+          ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
+          0,
+        ],
+        // height: upper_limit_m (MSL) → terrain_max_m + 120 → 120 (nød-fallback)
         "fill-extrusion-height": [
-          "max",
-          50,
-          ["coalesce", ["get", "upper_limit_m"], ["get", "fallback_upper_m"], 120],
+          "case",
+          ["!=", ["get", "upper_limit_m"], null], ["get", "upper_limit_m"],
+          ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 120],
+          120,
         ],
         "fill-extrusion-opacity": 0.35,
       },
@@ -264,11 +273,19 @@ function addAipLayers(map: MlMap, extrude: boolean) {
       source: "aip",
       paint: {
         "fill-extrusion-color": aipColorExpression(),
-        "fill-extrusion-base": ["coalesce", ["get", "lower_limit_m"], 0],
+        // base: lower_limit_m → terrain_min_m → 0
+        "fill-extrusion-base": [
+          "case",
+          ["!=", ["get", "lower_limit_m"], null], ["get", "lower_limit_m"],
+          ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
+          0,
+        ],
+        // height: upper_limit_m (MSL) → terrain_max_m + 120 → 120 (nød-fallback)
         "fill-extrusion-height": [
-          "max",
-          80,
-          ["coalesce", ["get", "upper_limit_m"], 1500],
+          "case",
+          ["!=", ["get", "upper_limit_m"], null], ["get", "upper_limit_m"],
+          ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 120],
+          120,
         ],
         "fill-extrusion-opacity": 0.4, // MapLibre tillater ikke data-uttrykk her
       },
@@ -285,6 +302,43 @@ function addAipLayers(map: MlMap, extrude: boolean) {
     });
   }
 }
+
+/**
+ * Beriker GeoJSON-features med terrain_min_m / terrain_max_m (MSL) for polygon-soner.
+ * Muterer feature.properties in-place. Returnerer true hvis minst én feature ble oppdatert
+ * (kaller bør da re-sette GeoJSON-source).
+ */
+async function enrichFeaturesWithTerrain(features: any[]): Promise<boolean> {
+  const polys = features.filter(
+    (f) =>
+      f?.geometry?.type === "Polygon" || f?.geometry?.type === "MultiPolygon"
+  );
+  if (polys.length === 0) return false;
+  const items = polys.map((f) => ({
+    key: zoneCacheKey(f.properties, f.geometry),
+    geometry: f.geometry,
+    feature: f,
+  }));
+  const samples = await sampleZonesTerrain(
+    items.map((i) => ({ key: i.key, geometry: i.geometry }))
+  );
+  let changed = false;
+  for (const it of items) {
+    const s = samples.get(it.key);
+    if (!s) continue;
+    if (
+      it.feature.properties.terrain_min_m !== s.min ||
+      it.feature.properties.terrain_max_m !== s.max
+    ) {
+      it.feature.properties.terrain_min_m = s.min;
+      it.feature.properties.terrain_max_m = s.max;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+
 
 
 export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }: Map3DProps) {
@@ -376,6 +430,11 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       pushRows(dkRes.data as any[]);
 
       src.setData({ type: "FeatureCollection", features });
+
+      // Berik polygon-soner med terrenghøyde (min/max MSL) for korrekt 3D-base + fallback-topp.
+      void enrichFeaturesWithTerrain(features).then((changed) => {
+        if (changed) src.setData({ type: "FeatureCollection", features });
+      });
     } catch (err) {
       console.error("[Map3D] zone fetch failed", err);
     }
@@ -387,10 +446,13 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     if (!map) return;
     const src = map.getSource("aip") as GeoJSONSource | undefined;
     if (!src) return;
-    src.setData({
-      type: "FeatureCollection",
-      features: aipEnabled ? aipFeaturesRef.current : [],
-    });
+    const features = aipEnabled ? aipFeaturesRef.current : [];
+    src.setData({ type: "FeatureCollection", features });
+    if (aipEnabled && features.length > 0) {
+      void enrichFeaturesWithTerrain(features).then((changed) => {
+        if (changed) src.setData({ type: "FeatureCollection", features });
+      });
+    }
   }, [aipEnabled]);
 
   const fetchAip = useCallback(async () => {
