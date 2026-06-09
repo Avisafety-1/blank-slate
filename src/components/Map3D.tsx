@@ -886,12 +886,16 @@ export default function Map3D({
   //   • Sender hver endring videre via onRouteChange — ingen save-logikk her.
   // ===================================================================
   const RP_SOURCE_ROUTE = "rp-route-src";
+  const RP_SOURCE_ROUTE_RIBBON = "rp-route-ribbon-src";
   const RP_SOURCE_FG = "rp-sora-fg-src";
   const RP_SOURCE_CONT = "rp-sora-contingency-src";
   const RP_SOURCE_GRB = "rp-sora-grb-src";
   const RP_LAYER_ROUTE_LINE = "rp-route-line";
+  const RP_LAYER_ROUTE_RIBBON = "rp-route-ribbon";
   const RP_LAYER_FG_FILL = "rp-sora-fg-fill";
+  const RP_LAYER_FG_OUTLINE = "rp-sora-fg-outline";
   const RP_LAYER_CONT_FILL = "rp-sora-contingency-fill";
+  const RP_LAYER_CONT_OUTLINE = "rp-sora-contingency-outline";
   const RP_LAYER_GRB_FILL = "rp-sora-grb-fill";
 
   const removeRoutePlanningLayers = useCallback((map: MlMap) => {
