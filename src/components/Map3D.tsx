@@ -303,6 +303,43 @@ function addAipLayers(map: MlMap, extrude: boolean) {
   }
 }
 
+/**
+ * Beriker GeoJSON-features med terrain_min_m / terrain_max_m (MSL) for polygon-soner.
+ * Muterer feature.properties in-place. Returnerer true hvis minst én feature ble oppdatert
+ * (kaller bør da re-sette GeoJSON-source).
+ */
+async function enrichFeaturesWithTerrain(features: any[]): Promise<boolean> {
+  const polys = features.filter(
+    (f) =>
+      f?.geometry?.type === "Polygon" || f?.geometry?.type === "MultiPolygon"
+  );
+  if (polys.length === 0) return false;
+  const items = polys.map((f) => ({
+    key: zoneCacheKey(f.properties, f.geometry),
+    geometry: f.geometry,
+    feature: f,
+  }));
+  const samples = await sampleZonesTerrain(
+    items.map((i) => ({ key: i.key, geometry: i.geometry }))
+  );
+  let changed = false;
+  for (const it of items) {
+    const s = samples.get(it.key);
+    if (!s) continue;
+    if (
+      it.feature.properties.terrain_min_m !== s.min ||
+      it.feature.properties.terrain_max_m !== s.max
+    ) {
+      it.feature.properties.terrain_min_m = s.min;
+      it.feature.properties.terrain_max_m = s.max;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+
+
 
 export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
