@@ -54,10 +54,9 @@ export default function KartPage() {
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
 
-  // 3D-modus (MapLibre). Deaktiveres automatisk i route planning siden tegne-
-  // verktøyene bare finnes i 2D-kartet.
+  // 3D-modus (MapLibre). Ruteplanlegging støttes nå også i 3D — ingen
+  // automatisk deaktivering.
   const [is3D, setIs3D] = useState(false);
-  useEffect(() => { if (isRoutePlanning && is3D) setIs3D(false); }, [isRoutePlanning, is3D]);
 
   // Delt viewport mellom 2D og 3D — kun lest ved mount, ikke som live prop
   // (ellers ville moveend → setState → ny initialCenter-prop → setView-loop låse kartet).
@@ -1079,7 +1078,7 @@ export default function KartPage() {
             </Button>
           ) : null;
 
-          if (is3D && !isRoutePlanning) {
+          if (is3D) {
             return (
               <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
                 <Map3D
@@ -1088,6 +1087,11 @@ export default function KartPage() {
                   initialZoom={lastViewRef.current?.zoom}
                   onViewChange={handleViewChange}
                   extraStackSlot={toggle3DBtn}
+                  mode={isRoutePlanning ? "routePlanning" : "view"}
+                  existingRoute={routePlanningState?.existingRoute}
+                  controlledRoute={currentRoute}
+                  onRouteChange={handleRouteChange}
+                  soraSettings={soraSettings}
                 />
               </Suspense>
             );
