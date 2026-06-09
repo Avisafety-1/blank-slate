@@ -28,6 +28,7 @@ import {
 } from "@/lib/aipPopups";
 import { createSafeSkyModelLayer, SafeSkyModelLayer, SafeSkyBeacon } from "@/lib/safeskyModelLayer";
 import { sampleZonesTerrain, zoneCacheKey } from "@/lib/zoneTerrainSampler";
+import { fetchTerrainElevations } from "@/lib/terrainElevation";
 import { buildSoraZoneGeoJSON, type SoraSettings } from "@/lib/soraGeometry";
 import type { RouteData, RoutePoint } from "@/types/map";
 import { calculateTotalDistance, calculatePolygonAreaKm2 } from "@/lib/mapGeometry";
