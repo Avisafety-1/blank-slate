@@ -926,7 +926,7 @@ export default function Map3D({
     if (!map.getSource(RP_SOURCE_CONT)) map.addSource(RP_SOURCE_CONT, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_GRB)) map.addSource(RP_SOURCE_GRB, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_ROUTE)) map.addSource(RP_SOURCE_ROUTE, { type: "geojson", data: emptyFC });
-    if (!map.getSource(RP_SOURCE_ROUTE_RIBBON)) map.addSource(RP_SOURCE_ROUTE_RIBBON, { type: "geojson", data: emptyFC });
+    
 
     // Per-lag høyde-uttrykk basert på render_base_m / render_height_m
     // (settes per feature i rebuildRouteSources).
