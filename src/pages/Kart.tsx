@@ -1081,18 +1081,15 @@ export default function KartPage() {
 
           if (is3D && !isRoutePlanning) {
             return (
-              <>
-                {/* Stand-alone toggle in 3D mode (OpenAIPMap not rendered) */}
-                <div className="absolute top-4 right-4 z-[1100]">{toggle3DBtn}</div>
-                <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
-                  <Map3D
-                    onMissionClick={handleMissionClick}
-                    initialCenter={lastViewRef.current?.center}
-                    initialZoom={lastViewRef.current?.zoom}
-                    onViewChange={handleViewChange}
-                  />
-                </Suspense>
-              </>
+              <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
+                <Map3D
+                  onMissionClick={handleMissionClick}
+                  initialCenter={lastViewRef.current?.center}
+                  initialZoom={lastViewRef.current?.zoom}
+                  onViewChange={handleViewChange}
+                  extraStackSlot={toggle3DBtn}
+                />
+              </Suspense>
             );
           }
 
