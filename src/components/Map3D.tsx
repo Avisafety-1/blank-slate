@@ -1195,10 +1195,11 @@ export default function Map3D({
         type: "Feature",
         geometry: { type: "Polygon", coordinates: [ring] },
         properties: {
-          render_base_m: terrainMid,
-          render_height_m: terrainMid + flightAltitudeM,
+          render_base_m: terrainMid + flightAltitudeM,
+          render_height_m: terrainMid + flightAltitudeM + 3,
         },
       });
+
     }
 
     ribbonSrc.setData({ type: "FeatureCollection", features } as any);
