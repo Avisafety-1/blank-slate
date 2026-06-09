@@ -755,6 +755,11 @@ export default function Map3D({
     map.on("load", () => {
       addZoneLayers(map!, extrudeRef.current);
       addAipLayers(map!, extrudeRef.current);
+      if (modeRef.current === "routePlanning") {
+        addRoutePlanningLayers(map!);
+        rebuildMarkersRef.current(map!);
+        rebuildRouteSourcesRef.current();
+      }
       addSafeSkyLayer(map!);
       installClickHandlers(map!);
       refreshZones();
@@ -1483,10 +1488,12 @@ export default function Map3D({
     const map = mapRef.current;
     if (!map) return;
     if (map.isStyleLoaded()) {
+      if (!map.getSource(RP_SOURCE_ROUTE)) addRoutePlanningLayers(map);
       rebuildMarkers(map);
       rebuildRouteSources();
     } else {
       map.once("idle", () => {
+        if (!map.getSource(RP_SOURCE_ROUTE)) addRoutePlanningLayers(map);
         rebuildMarkers(map);
         rebuildRouteSources();
       });
