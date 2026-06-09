@@ -1127,8 +1127,12 @@ export default function Map3D({
       properties: {},
     } as any);
 
-    // SORA-buffer (krever soraSettings.enabled — ellers tøm)
+    // Bygg 3D-ribbon for ruten (følger terrenget i flightAltitude AGL).
     const sora = soraSettingsRef.current;
+    const flightAltitudeM = sora?.flightAltitude ?? 120;
+    rebuildRouteRibbon(points, flightAltitudeM, ribbonSrc, emptyFC);
+
+    // SORA-buffer (krever soraSettings.enabled — ellers tøm)
     if (!sora?.enabled) {
       fgSrc?.setData(emptyFC);
       contSrc?.setData(emptyFC);
