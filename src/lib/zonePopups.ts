@@ -54,6 +54,8 @@ export function buildCaaZonePopupHtml(zone: any): string {
   }
   if (p.lower_limit_m != null || p.upper_limit_m != null) {
     html += `<div style="margin-top:4px">Høyde: ${p.lower_limit_m ?? 'GND'}–${p.upper_limit_m ?? '?'} m ${esc(p.upper_ref || 'AGL')}</div>`;
+  } else if (p.terrain_max_m != null) {
+    html += `<div style="margin-top:4px">Høyde: ≈${Math.round(p.terrain_min_m ?? p.terrain_max_m)}–${Math.round(p.terrain_max_m + 120)} m MSL (terreng + 120 m)</div>`;
   }
   if (p.authority_name) {
     html += `<div style="margin-top:4px"><em>Myndighet:</em> ${esc(p.authority_name)}`;

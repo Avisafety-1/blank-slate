@@ -67,8 +67,16 @@ export function buildAipZonePopupHtml(zone: any): string {
   const displayName = zone?.name || zone?.zone_id || 'Ukjent';
   let html = `<strong>${esc(style.label)}</strong><br/>`;
   html += `<strong>${esc(displayName)}</strong><br/>`;
-  if (zone?.upper_limit) html += `Øvre grense: ${esc(zone.upper_limit)}<br/>`;
-  if (zone?.lower_limit) html += `Nedre grense: ${esc(zone.lower_limit)}<br/>`;
+  if (zone?.upper_limit) {
+    html += `Øvre grense: ${esc(zone.upper_limit)}<br/>`;
+  } else if (zone?.terrain_max_m != null) {
+    html += `Øvre grense: ≈${Math.round(zone.terrain_max_m + 120)} m MSL (terreng + 120 m)<br/>`;
+  }
+  if (zone?.lower_limit) {
+    html += `Nedre grense: ${esc(zone.lower_limit)}<br/>`;
+  } else if (zone?.terrain_min_m != null) {
+    html += `Nedre grense: ≈${Math.round(zone.terrain_min_m)} m MSL (bakkenivå)<br/>`;
+  }
   if (zone?.remarks) {
     html += `<div style="font-size:11px;margin-top:4px;color:#666;">${esc(zone.remarks)}</div>`;
   }
