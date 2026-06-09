@@ -36,6 +36,8 @@ interface Map3DProps {
   initialZoom?: number;
   onMissionClick?: (mission: any) => void;
   onViewChange?: (center: [number, number], zoom: number) => void;
+  /** Ekstra knapp/element som rendres rett under base-layer-knappen i høyre stack. */
+  extraStackSlot?: React.ReactNode;
 }
 
 type BaseLayer = "osm" | "satellite" | "topo";
@@ -341,7 +343,7 @@ async function enrichFeaturesWithTerrain(features: any[]): Promise<boolean> {
 
 
 
-export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }: Map3DProps) {
+export default function Map3D({ initialCenter, initialZoom = 12, onViewChange, extraStackSlot }: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const fetchTimerRef = useRef<number | null>(null);
@@ -855,8 +857,8 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
         rett under den, slik at ingenting overlapper. Nav-kontrollen tar ca. 6rem.
       */}
 
-      {/* Egen kart-knapp — rett under MapLibre-navigasjon */}
-      <div className="absolute top-[6.5rem] right-2 z-[1100]">
+      {/* Egen knapp-stack — rett under MapLibre-navigasjon (zoom + kompass) */}
+      <div className="absolute top-[6.5rem] right-2 z-[1100] flex flex-col gap-2">
         {/* Base-toggle (satellitt/topo/standard) */}
         <Button
           variant="secondary"
@@ -875,6 +877,8 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
           {base === "satellite" ? <Mountain className="h-5 w-5" /> : base === "topo" ? <MapIcon className="h-5 w-5" /> : <Satellite className="h-5 w-5" />}
         </Button>
 
+        {/* Ekstra slot — f.eks. 2D/3D-toggle fra parent */}
+        {extraStackSlot}
       </div>
     </div>
   );

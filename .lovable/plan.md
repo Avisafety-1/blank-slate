@@ -1,19 +1,35 @@
-Plan:
+## Problem
 
-1. Fiks MapLibre-feilen som stopper lagoppsett
-   - `aip-extrusion` bruker nå et datauttrykk for `fill-extrusion-opacity`, som MapLibre ikke støtter for extrusion-opacity.
-   - Endre dette til en fast opacity-verdi, slik at resten av `load/idle`-flyten ikke bryter før SafeSky-laget får rendret.
+I 3D-modus blokkerer kube-knappen (2D/3D-toggle) zoom-knappene. Min forrige endring flyttet kun knappen i 2D-modus (via `stackSlotAboveLayers` i `OpenAIPMap`), men i 3D-modus rendres `Map3D` i stedet — der finnes ingen Kartlag-knapp, og kuben plasseres separat i `Kart.tsx` på `top-4 right-4`, akkurat der MapLibre sin NavigationControl (zoom + kompass) ligger. Derfor overlapper de.
 
-2. Gjør SafeSky-dronene synlige selv om GLTF-modellen laster tregt eller feiler
-   - Behold Matrice 3D-modellen for alle droner.
-   - Legg inn en tydelig fallback i samme SafeSky-kilde: små, synlige punkter/markører under 3D-modellen, ikke nesten usynlig `circle-opacity: 0.001`.
-   - Når 3D-modellen er lastet, vises Matrice-modellene; fallback-markøren sikrer at trafikk aldri blir “usynlig”.
+## Knapp-stack i 3D-modus (`Map3D`)
 
-3. Forbedre 3D-modellaget
-   - Normaliser Matrice-modellen rundt eget senter før cloning, så den ikke havner forskjøvet langt fra koordinatet.
-   - Bruk en minimumshøyde over bakken for lave/0-altitude beacons, slik at droner ikke skjules i terreng eller bygninger.
-   - Legg inn korte debug-logger for antall beacons og modell-load-status, så vi kan se om data, lag eller modell er problemet.
+```text
+top-2     [ + ]   ← MapLibre zoom inn
+          [ − ]   ← MapLibre zoom ut
+          [ ◣ ]   ← MapLibre kompass
+top-6.5rem [ ⛰ ]   ← Base-layer toggle (satellitt/topo/standard)
+```
 
-4. Valider etter endring
-   - Sjekk konsollen for at `aip-extrusion`-feilen er borte.
-   - Sjekk at SafeSky henter beacons og at minst fallback-markørene vises i 3D-kartet, med Matrice-modeller når modellen er lastet.
+Kuben må plasseres som neste slot i denne kolonnen, slik:
+
+```text
+top-6.5rem [ ⛰ ]   ← Base-layer toggle
+top-10rem  [ ⬛ ]   ← 2D/3D-toggle (kube)  ← NY POSISJON
+```
+
+## Endringer
+
+1. **`src/components/Map3D.tsx`**
+   - Legg til en valgfri prop `extraStackSlot?: React.ReactNode` på `Map3DProps`.
+   - Render `{extraStackSlot}` rett under base-layer-knappen i den eksisterende vertikale stacken (`top-2 right-2` containeren utvides til en `flex flex-col gap-2`-wrapper rundt begge knappene), slik at de stacker pent uten manuelle `top-*`-offsets.
+
+2. **`src/pages/Kart.tsx`**
+   - Fjern den absoluttposisjonerte `<div className="absolute top-4 right-4 z-[1100]">{toggle3DBtn}</div>` i 3D-grenen.
+   - Send i stedet `toggle3DBtn` videre som `extraStackSlot={toggle3DBtn}` til `<Map3D …/>`, slik at den havner i samme høyre-stack som base-layer-knappen — direkte under Kartlag/grunnkart-knappen og under MapLibre-zoom.
+
+## Resultat
+
+- Zoom +/−/kompass forblir helt klikkbare.
+- Knappene stacker vertikalt i ett konsistent oppsett i både 2D og 3D.
+- Ingen endring i forretningslogikk — kun layout/plassering.
