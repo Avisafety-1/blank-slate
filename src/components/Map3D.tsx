@@ -400,6 +400,10 @@ export default function Map3D({
   const routeMarkersRef = useRef<maplibregl.Marker[]>([]);
   const lastEmittedRouteJsonRef = useRef<string>("");
   const soraTerrainDebounceRef = useRef<number | null>(null);
+  const [routeScreenPath, setRouteScreenPath] = useState("");
+  const routeScreenPathRef = useRef("");
+  const routeOverlayFrameRef = useRef<number | null>(null);
+  const requestRouteOverlayUpdateRef = useRef<() => void>(() => {});
 
   // Hent og oppdater dronesoner basert på viewport
   const refreshZones = useCallback(async () => {
@@ -762,7 +766,10 @@ export default function Map3D({
       if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
       fetchTimerRef.current = window.setTimeout(() => refreshZones(), 300);
     };
+    const handleRouteOverlayUpdate = () => requestRouteOverlayUpdateRef.current();
     map.on("moveend", debouncedRefresh);
+    map.on("move", handleRouteOverlayUpdate);
+    map.on("render", handleRouteOverlayUpdate);
 
     // Emit viewport-endringer til parent (Kart) så 2D/3D holdes synkronisert.
     const emitView = () => {
@@ -800,6 +807,9 @@ export default function Map3D({
       if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
       if (safeskyPollRef.current) window.clearInterval(safeskyPollRef.current);
       if (soraTerrainDebounceRef.current) window.clearTimeout(soraTerrainDebounceRef.current);
+      if (routeOverlayFrameRef.current != null) window.cancelAnimationFrame(routeOverlayFrameRef.current);
+      try { map?.off("move", handleRouteOverlayUpdate); } catch {}
+      try { map?.off("render", handleRouteOverlayUpdate); } catch {}
       safeskyModelLayerRef.current?.destroy();
       safeskyModelLayerRef.current = null;
       routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
@@ -886,12 +896,10 @@ export default function Map3D({
   //   • Sender hver endring videre via onRouteChange — ingen save-logikk her.
   // ===================================================================
   const RP_SOURCE_ROUTE = "rp-route-src";
-  const RP_SOURCE_ROUTE_RIBBON = "rp-route-ribbon-src";
   const RP_SOURCE_FG = "rp-sora-fg-src";
   const RP_SOURCE_CONT = "rp-sora-contingency-src";
   const RP_SOURCE_GRB = "rp-sora-grb-src";
   const RP_LAYER_ROUTE_LINE = "rp-route-line";
-  const RP_LAYER_ROUTE_RIBBON = "rp-route-ribbon";
   const RP_LAYER_FG_FILL = "rp-sora-fg-fill";
   const RP_LAYER_FG_OUTLINE = "rp-sora-fg-outline";
   const RP_LAYER_CONT_FILL = "rp-sora-contingency-fill";
@@ -933,7 +941,6 @@ export default function Map3D({
     const baseExpr: any = ["coalesce", ["get", "render_base_m"], 0];
     const heightExprFG: any = ["coalesce", ["get", "render_height_m"], 120];
     const heightExprCont: any = ["coalesce", ["get", "render_height_m"], 60];
-    const heightExprRibbon: any = ["coalesce", ["get", "render_height_m"], 120];
 
     // GRB: flatt fill-lag draperes automatisk på terreng.
     if (!map.getLayer(RP_LAYER_GRB_FILL)) {
@@ -1058,6 +1065,7 @@ export default function Map3D({
       display: flex; align-items: center; justify-content: center;
       border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.4);
       cursor: grab; user-select: none;
+      position: relative; z-index: 4;
     `;
     el.textContent = String(index + 1);
     return el;
@@ -1096,24 +1104,18 @@ export default function Map3D({
   }, [emitRouteChange]);
   rebuildMarkersRef.current = rebuildMarkers;
 
-  // Densifiserer ruten, henter terreng, og bygger tynne polygon-segmenter
-  // med base/høyde basert på terrenget (følger terrenget i flightAltitude AGL).
-  const rebuildRouteRibbon = useCallback(async (
-    points: { lat: number; lng: number }[],
-    flightAltitudeM: number,
-    ribbonSrc: GeoJSONSource | undefined,
-    emptyFC: { type: "FeatureCollection"; features: any[] },
-  ) => {
-    if (!ribbonSrc) return;
-    if (points.length < 2) {
-      ribbonSrc.setData(emptyFC as any);
+  const updateRouteScreenPath = useCallback(() => {
+    const map = mapRef.current;
+    const points = routePointsRef.current;
+    if (!map || modeRef.current !== "routePlanning" || points.length < 2) {
+      if (routeScreenPathRef.current) {
+        routeScreenPathRef.current = "";
+        setRouteScreenPath("");
+      }
       return;
     }
 
-    // Densifiser: ~40 m mellom prøvepunkter, maks ~250 totalt.
-    const SEGMENT_M = 12;
-    const MAX_SAMPLES = 600;
-    const haversineM = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    const haversineM = (a: RoutePoint, b: RoutePoint) => {
       const R = 6371000;
       const dLat = ((b.lat - a.lat) * Math.PI) / 180;
       const dLng = ((b.lng - a.lng) * Math.PI) / 180;
@@ -1122,88 +1124,45 @@ export default function Map3D({
       const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
       return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
     };
+
     let totalM = 0;
     for (let i = 1; i < points.length; i++) totalM += haversineM(points[i - 1], points[i]);
-    const targetSamples = Math.min(MAX_SAMPLES, Math.max(2, Math.ceil(totalM / SEGMENT_M) + 1));
-    const stepM = totalM / Math.max(1, targetSamples - 1);
-
-    const densified: { lat: number; lng: number }[] = [points[0]];
-    let acc = 0;
-    let nextTarget = stepM;
+    const stepM = Math.max(8, totalM / 360);
+    const samples: RoutePoint[] = [points[0]];
     for (let i = 1; i < points.length; i++) {
       const a = points[i - 1];
       const b = points[i];
       const segLen = haversineM(a, b);
-      if (segLen <= 0) continue;
-      while (acc + segLen >= nextTarget && densified.length < targetSamples - 1) {
-        const t = (nextTarget - acc) / segLen;
-        densified.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
-        nextTarget += stepM;
+      const steps = Math.max(1, Math.ceil(segLen / stepM));
+      for (let s = 1; s <= steps; s++) {
+        const t = s / steps;
+        samples.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
       }
-      acc += segLen;
-    }
-    densified.push(points[points.length - 1]);
-
-    // Sample terreng for alle densifiserte punkter.
-    let elevations: (number | null)[] = [];
-    try {
-      elevations = await fetchTerrainElevations(densified);
-    } catch (err) {
-      console.warn("[Map3D] ribbon terrain fetch failed", err);
-      elevations = densified.map(() => null);
     }
 
-    // Bygg tynne polygon-segmenter med svak overlapp for å skjule glipper.
-    const WIDTH_M = 1.8;
-    const OVERLAP_M = 1.5;
-    const features: any[] = [];
-    for (let i = 0; i < densified.length - 1; i++) {
-      const p1 = densified[i];
-      const p2 = densified[i + 1];
-      const e1 = elevations[i];
-      const e2 = elevations[i + 1];
-      const terrainMid = ((typeof e1 === "number" ? e1 : 0) + (typeof e2 === "number" ? e2 : 0)) / 2;
+    const nextPath = samples
+      .map((p, i) => {
+        const projected = map.project([p.lng, p.lat]);
+        if (!Number.isFinite(projected.x) || !Number.isFinite(projected.y)) return null;
+        return `${i === 0 ? "M" : "L"}${projected.x.toFixed(1)} ${projected.y.toFixed(1)}`;
+      })
+      .filter(Boolean)
+      .join(" ");
 
-      // Perpendikulær offset i lng/lat (korrigert for breddegrad).
-      const dLng = p2.lng - p1.lng;
-      const dLat = p2.lat - p1.lat;
-      const midLat = (p1.lat + p2.lat) / 2;
-      const cosLat = Math.cos((midLat * Math.PI) / 180);
-      const dx = dLng * cosLat;
-      const dy = dLat;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const halfW = WIDTH_M / 2 / 111320; // ca. meter→grader
-      const perpLng = (-dy / len) * halfW / cosLat;
-      const perpLat = (dx / len) * halfW;
-
-      // Forleng segmentet langs ruteretningen for å overlappe nabosegmentene.
-      const halfOverlapDeg = OVERLAP_M / 2 / 111320;
-      const extLng = (dx / len) * halfOverlapDeg / cosLat;
-      const extLat = (dy / len) * halfOverlapDeg;
-      const a = { lng: p1.lng - extLng, lat: p1.lat - extLat };
-      const b = { lng: p2.lng + extLng, lat: p2.lat + extLat };
-
-      const ring: [number, number][] = [
-        [a.lng + perpLng, a.lat + perpLat],
-        [b.lng + perpLng, b.lat + perpLat],
-        [b.lng - perpLng, b.lat - perpLat],
-        [a.lng - perpLng, a.lat - perpLat],
-        [a.lng + perpLng, a.lat + perpLat],
-      ];
-
-      features.push({
-        type: "Feature",
-        geometry: { type: "Polygon", coordinates: [ring] },
-        properties: {
-          render_base_m: terrainMid + flightAltitudeM,
-          render_height_m: terrainMid + flightAltitudeM + 3,
-        },
-      });
-
+    if (nextPath !== routeScreenPathRef.current) {
+      routeScreenPathRef.current = nextPath;
+      setRouteScreenPath(nextPath);
     }
-
-    ribbonSrc.setData({ type: "FeatureCollection", features } as any);
   }, []);
+
+  const requestRouteOverlayUpdate = useCallback(() => {
+    if (routeOverlayFrameRef.current != null) return;
+    routeOverlayFrameRef.current = window.requestAnimationFrame(() => {
+      routeOverlayFrameRef.current = null;
+      updateRouteScreenPath();
+    });
+  }, [updateRouteScreenPath]);
+  requestRouteOverlayUpdateRef.current = requestRouteOverlayUpdate;
 
   // Sampler terreng jevnt langs polygonets ytre ring og glatter med moving average.
   // Returnerer { smoothedMin, smoothedMax } i hele meter MSL.
@@ -1335,6 +1294,7 @@ export default function Map3D({
       fgSrc?.setData(emptyFC);
       contSrc?.setData(emptyFC);
       grbSrc?.setData(emptyFC);
+      updateRouteScreenPath();
       return;
     }
 
@@ -1347,6 +1307,7 @@ export default function Map3D({
       },
       properties: {},
     } as any);
+    requestRouteOverlayUpdate();
 
     const sora = soraSettingsRef.current;
 
@@ -1448,7 +1409,7 @@ export default function Map3D({
 
       // GRB: fortsatt flatt fill-lag — ingen høyder å sette.
     }, 200);
-  }, []);
+  }, [requestRouteOverlayUpdate, updateRouteScreenPath]);
   rebuildRouteSourcesRef.current = rebuildRouteSources;
 
 
@@ -1485,11 +1446,12 @@ export default function Map3D({
         routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
         routeMarkersRef.current = [];
         removeRoutePlanningLayers(map);
+        updateRouteScreenPath();
       }
     };
     if (map.isStyleLoaded()) apply();
     else map.once("idle", apply);
-  }, [mode, addRoutePlanningLayers, removeRoutePlanningLayers, rebuildMarkers, rebuildRouteSources]);
+  }, [mode, addRoutePlanningLayers, removeRoutePlanningLayers, rebuildMarkers, rebuildRouteSources, updateRouteScreenPath]);
 
   // ===== Sync controlledRoute / existingRoute fra parent =====
   useEffect(() => {
@@ -1551,6 +1513,15 @@ export default function Map3D({
   return (
     <div className="absolute inset-0">
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+
+        <svg className="pointer-events-none absolute inset-0 z-[1]" width="100%" height="100%">
+          {routeScreenPath && (
+            <>
+              <path d={routeScreenPath} fill="none" stroke="rgba(15, 23, 42, 0.95)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={routeScreenPath} fill="none" stroke="#06b6d4" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+            </>
+          )}
+        </svg>
 
       {/*
         MapLibre NavigationControl (zoom +/-, kompass) plasseres
