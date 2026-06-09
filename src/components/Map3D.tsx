@@ -709,10 +709,6 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     }
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
-    map.addControl(
-      new maplibregl.TerrainControl({ source: "terrainSource", exaggeration: 1.3 }),
-      "top-right"
-    );
 
     map.on("load", () => {
       addZoneLayers(map!, extrudeRef.current);
