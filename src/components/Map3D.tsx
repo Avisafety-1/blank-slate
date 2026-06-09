@@ -798,8 +798,11 @@ export default function Map3D({
       window.clearTimeout(t);
       if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
       if (safeskyPollRef.current) window.clearInterval(safeskyPollRef.current);
+      if (soraTerrainDebounceRef.current) window.clearTimeout(soraTerrainDebounceRef.current);
       safeskyModelLayerRef.current?.destroy();
       safeskyModelLayerRef.current = null;
+      routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
+      routeMarkersRef.current = [];
       try { map?.remove(); } catch {}
       mapRef.current = null;
     };
