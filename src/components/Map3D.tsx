@@ -901,15 +901,18 @@ export default function Map3D({
   const removeRoutePlanningLayers = useCallback((map: MlMap) => {
     [
       RP_LAYER_ROUTE_LINE,
+      RP_LAYER_ROUTE_RIBBON,
       RP_LAYER_GRB_FILL,
+      RP_LAYER_CONT_OUTLINE,
       RP_LAYER_CONT_FILL,
+      RP_LAYER_FG_OUTLINE,
       RP_LAYER_FG_FILL,
     ].forEach((id) => {
       if (map.getLayer(id)) {
         try { map.removeLayer(id); } catch {}
       }
     });
-    [RP_SOURCE_ROUTE, RP_SOURCE_GRB, RP_SOURCE_CONT, RP_SOURCE_FG].forEach((id) => {
+    [RP_SOURCE_ROUTE, RP_SOURCE_ROUTE_RIBBON, RP_SOURCE_GRB, RP_SOURCE_CONT, RP_SOURCE_FG].forEach((id) => {
       if (map.getSource(id)) {
         try { map.removeSource(id); } catch {}
       }
