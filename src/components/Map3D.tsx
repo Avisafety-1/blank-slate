@@ -1005,7 +1005,7 @@ export default function Map3D({
         source: RP_SOURCE_ROUTE_RIBBON,
         paint: {
           "fill-extrusion-color": "#22c55e",
-          "fill-extrusion-opacity": 0.7,
+          "fill-extrusion-opacity": 0.5,
           "fill-extrusion-base": baseExpr,
           "fill-extrusion-height": heightExprRibbon,
         },
