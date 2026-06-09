@@ -919,31 +919,22 @@ export default function Map3D({
     if (!map.getSource(RP_SOURCE_GRB)) map.addSource(RP_SOURCE_GRB, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_ROUTE)) map.addSource(RP_SOURCE_ROUTE, { type: "geojson", data: emptyFC });
 
-    // Høyde-uttrykk: base = lower_limit_m || terrain_min_m || 0
-    //                height = upper_limit_m || (terrain_max_m + 120) || 120
-    const baseExpr: any = [
-      "case",
-      ["!=", ["get", "lower_limit_m"], null], ["get", "lower_limit_m"],
-      ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
-      0,
-    ];
-    const heightExpr: any = [
-      "case",
-      ["!=", ["get", "upper_limit_m"], null], ["get", "upper_limit_m"],
-      ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 120],
-      120,
-    ];
+    // Per-lag høyde-uttrykk basert på render_base_m / render_height_m
+    // (settes per feature i rebuildRouteSources).
+    const baseExpr: any = ["coalesce", ["get", "render_base_m"], 0];
+    const heightExprFG: any = ["coalesce", ["get", "render_height_m"], 120];
+    const heightExprCont: any = ["coalesce", ["get", "render_height_m"], 60];
 
+    // GRB: flatt fill-lag draperes automatisk på terreng.
     if (!map.getLayer(RP_LAYER_GRB_FILL)) {
       map.addLayer({
         id: RP_LAYER_GRB_FILL,
-        type: "fill-extrusion",
+        type: "fill",
         source: RP_SOURCE_GRB,
         paint: {
-          "fill-extrusion-color": "#ef4444",
-          "fill-extrusion-opacity": 0.15,
-          "fill-extrusion-base": baseExpr,
-          "fill-extrusion-height": heightExpr,
+          "fill-color": "#ef4444",
+          "fill-opacity": 0.2,
+          "fill-outline-color": "#ef4444",
         },
       });
     }
@@ -954,9 +945,9 @@ export default function Map3D({
         source: RP_SOURCE_CONT,
         paint: {
           "fill-extrusion-color": "#eab308",
-          "fill-extrusion-opacity": 0.2,
+          "fill-extrusion-opacity": 0.25,
           "fill-extrusion-base": baseExpr,
-          "fill-extrusion-height": heightExpr,
+          "fill-extrusion-height": heightExprCont,
         },
       });
     }
@@ -969,7 +960,7 @@ export default function Map3D({
           "fill-extrusion-color": "#22c55e",
           "fill-extrusion-opacity": 0.25,
           "fill-extrusion-base": baseExpr,
-          "fill-extrusion-height": heightExpr,
+          "fill-extrusion-height": heightExprFG,
         },
       });
     }
