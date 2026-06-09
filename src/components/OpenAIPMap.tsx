@@ -1506,9 +1506,9 @@ export function OpenAIPMap({
             : <MapIcon className="h-5 w-5" />}
         </Button>
 
-        {stackSlotAboveLayers}
-
         <MapLayerControl layers={layers} onLayerToggle={handleLayerToggle} />
+
+        {stackSlotAboveLayers}
 
         {mode === "view" && onStartRoutePlanning && (
           <Button data-tour="map-route-planner-trigger" onClick={onStartRoutePlanning} variant="default" size="icon" className="shadow-lg" title="Planlegg ny rute">
