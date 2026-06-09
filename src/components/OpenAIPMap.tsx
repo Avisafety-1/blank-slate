@@ -866,6 +866,9 @@ export function OpenAIPMap({
 
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
+    if (routePointsRef.current.length > 0) {
+      updateRouteDisplay();
+    }
 
     const pilotLayer = L.layerGroup().addTo(map);
     pilotLayerRef.current = pilotLayer;
