@@ -1503,8 +1503,30 @@ export default function Map3D({
   // ===== Reager på soraSettings-endringer =====
   useEffect(() => {
     if (mode !== "routePlanning") return;
-    rebuildRouteSources();
-  }, [soraSettings, mode, rebuildRouteSources]);
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.getSource(RP_SOURCE_ROUTE)) addRoutePlanningLayers(map);
+      rebuildRouteSources();
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("idle", apply);
+  }, [soraSettings, mode, addRoutePlanningLayers, rebuildRouteSources]);
+
+  // ===== Sikre at buffer-soner rendres ved (re)mount når soraSettings.enabled =====
+  // Workaround for race der load/idle fyrer før routePointsRef er populert.
+  useEffect(() => {
+    if (mode !== "routePlanning") return;
+    if (!soraSettings?.enabled) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const t = window.setTimeout(() => {
+      if (routePointsRef.current.length < 2) return;
+      if (!map.getSource(RP_SOURCE_ROUTE)) addRoutePlanningLayers(map);
+      rebuildRouteSources();
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [mode, soraSettings?.enabled, controlledRoute, existingRoute, addRoutePlanningLayers, rebuildRouteSources]);
 
   // ===== Re-attach route-planning-lag etter style-swap =====
   useEffect(() => {
