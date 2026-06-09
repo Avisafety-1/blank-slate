@@ -598,15 +598,26 @@ export function OpenAIPMap({
     const firstChanged =
       controlled.length > 0 && current.length > 0 &&
       (controlled[0].lat !== current[0].lat || controlled[0].lng !== current[0].lng);
-    if (controlled.length < current.length || controlled.length === 0 || firstChanged || (controlled.length > 0 && current.length === 0)) {
+    const lengthDiffers = controlled.length !== current.length;
+    let contentDiffers = false;
+    if (!lengthDiffers) {
+      for (let i = 0; i < controlled.length; i++) {
+        if (controlled[i].lat !== current[i].lat || controlled[i].lng !== current[i].lng) {
+          contentDiffers = true;
+          break;
+        }
+      }
+    }
+    if (lengthDiffers || contentDiffers || firstChanged) {
+      const wasEmpty = current.length === 0;
       routePointsRef.current = [...controlled];
       setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
-      if (controlled.length > 0 && leafletMapRef.current && (current.length === 0 || firstChanged)) {
+      if (controlled.length > 0 && leafletMapRef.current && (wasEmpty || firstChanged)) {
         leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
       }
     }
-  }, [controlledRoute?.coordinates.length, controlledRoute?.coordinates[0]?.lat, controlledRoute?.coordinates[0]?.lng, updateRouteDisplay]);
+  }, [controlledRoute, updateRouteDisplay]);
 
   // ==================== MAIN MAP INIT useEffect ====================
   useEffect(() => {
