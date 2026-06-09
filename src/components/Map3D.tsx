@@ -28,6 +28,9 @@ import {
 } from "@/lib/aipPopups";
 import { createSafeSkyModelLayer, SafeSkyModelLayer, SafeSkyBeacon } from "@/lib/safeskyModelLayer";
 import { sampleZonesTerrain, zoneCacheKey } from "@/lib/zoneTerrainSampler";
+import { buildSoraZoneGeoJSON, type SoraSettings } from "@/lib/soraGeometry";
+import type { RouteData, RoutePoint } from "@/types/map";
+import { calculateTotalDistance, calculatePolygonAreaKm2 } from "@/lib/mapGeometry";
 
 const SAFESKY_MODEL_URL = "/models/dji_matrice_t300/scene.gltf";
 
@@ -38,6 +41,16 @@ interface Map3DProps {
   onViewChange?: (center: [number, number], zoom: number) => void;
   /** Ekstra knapp/element som rendres rett under base-layer-knappen i høyre stack. */
   extraStackSlot?: React.ReactNode;
+  /** Aktiv modus — "routePlanning" aktiverer klikk-til-rutepunkt og SORA-buffer. */
+  mode?: "view" | "routePlanning";
+  /** Eksisterende rute som skal lastes inn ved oppstart (f.eks. ved mission-edit). */
+  existingRoute?: RouteData;
+  /** Kontrollert rute fra parent — synces inn ved endring (KML-import, undo, clear). */
+  controlledRoute?: RouteData;
+  /** Kalles ved hver endring av ruten (klikk, drag, slett). */
+  onRouteChange?: (route: RouteData) => void;
+  /** SORA-innstillinger fra parent — driver 3D-buffer-extrusion. */
+  soraSettings?: SoraSettings;
 }
 
 type BaseLayer = "osm" | "satellite" | "topo";
