@@ -1487,12 +1487,13 @@ export default function Map3D({
     lastEmittedRouteJsonRef.current = incomingJson;
     const map = mapRef.current;
     if (!map) return;
-    if (!map.getSource(RP_SOURCE_ROUTE)) addRoutePlanningLayers(map);
     if (map.isStyleLoaded()) {
+      if (!map.getSource(RP_SOURCE_ROUTE)) addRoutePlanningLayers(map);
       rebuildMarkers(map);
       rebuildRouteSources();
     } else {
       map.once("idle", () => {
+        if (!map.getSource(RP_SOURCE_ROUTE)) addRoutePlanningLayers(map);
         rebuildMarkers(map);
         rebuildRouteSources();
       });
