@@ -1403,41 +1403,55 @@ export default function Map3D({
       window.clearTimeout(soraTerrainDebounceRef.current);
     }
     soraTerrainDebounceRef.current = window.setTimeout(async () => {
-      const features = [
-        { src: fgSrc, feat: flightGeography, agl: fgHeightAgl, key: "rp-fg", isExtrusion: true },
-        { src: contSrc, feat: contingency, agl: contHeightAgl, key: "rp-cont", isExtrusion: true },
-        { src: grbSrc, feat: groundRiskBuffer, agl: 0, key: "rp-grb", isExtrusion: false },
+      const extrusionFeatures = [
+        { src: fgSrc, feat: flightGeography, agl: fgHeightAgl, key: "rp-fg" },
+        { src: contSrc, feat: contingency, agl: contHeightAgl, key: "rp-cont" },
       ].filter((x) => x.feat && x.src);
 
-      if (features.length === 0) return;
-
-      const samples = await sampleZonesTerrain(
-        features.map((f) => ({ key: f.key, geometry: f.feat!.geometry }))
+      // FG + Cont: bruk glatt terrengprofil langs ringen.
+      const ringResults = await Promise.all(
+        extrusionFeatures.map((f) => sampleSmoothedRingTerrain(f.feat!.geometry)),
       );
 
-      features.forEach((f) => {
-        const sample = samples.get(f.key);
+      // Fallback: dersom ring-sampling feiler, bruk bbox-grid for de feilede.
+      const fallbackNeeded = extrusionFeatures
+        .map((f, i) => ({ f, i }))
+        .filter(({ i }) => ringResults[i] == null);
+      let fallbackSamples = new Map<string, { min: number; max: number; mean: number }>();
+      if (fallbackNeeded.length > 0) {
+        fallbackSamples = await sampleZonesTerrain(
+          fallbackNeeded.map(({ f }) => ({ key: f.key, geometry: f.feat!.geometry })),
+        );
+      }
+
+      extrusionFeatures.forEach((f, i) => {
         if (!f.feat || !f.src) return;
+        const ring = ringResults[i];
+        const fb = ring ? null : fallbackSamples.get(f.key);
         const props: Record<string, any> = { ...f.feat.properties };
-        if (sample) {
-          props.terrain_min_m = sample.min;
-          props.terrain_max_m = sample.max;
+        let baseM = 0;
+        if (ring) {
+          props.terrain_min_m = ring.smoothedMin;
+          props.terrain_max_m = ring.smoothedMax;
+          baseM = ring.smoothedMax;
+        } else if (fb) {
+          props.terrain_min_m = fb.min;
+          props.terrain_max_m = fb.max;
+          baseM = fb.max;
         }
-        if (f.isExtrusion) {
-          // base = terrain_max (over alle terrengtopper i polygonet),
-          // høyde = terrain_max + AGL-verdi.
-          const baseM = sample ? sample.max : 0;
-          props.render_base_m = baseM;
-          props.render_height_m = baseM + f.agl;
-        }
+        props.render_base_m = baseM;
+        props.render_height_m = baseM + f.agl;
         f.src.setData({
           type: "FeatureCollection",
           features: [{ ...f.feat, properties: props }],
         } as any);
       });
+
+      // GRB: fortsatt flatt fill-lag — ingen høyder å sette.
     }, 200);
   }, []);
   rebuildRouteSourcesRef.current = rebuildRouteSources;
+
 
 
 
