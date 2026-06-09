@@ -969,7 +969,8 @@ export default function Map3D({
         paint: {
           "line-color": "#a16207",
           "line-width": 1.5,
-          "line-opacity": 0.7,
+          "line-opacity": 0.6,
+
         },
       });
     }
