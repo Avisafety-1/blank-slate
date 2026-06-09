@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl, { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
-import { Satellite, Mountain, Map as MapIcon, Box } from "lucide-react";
+import { Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getBeaconSvgUrl } from "@/lib/mapIcons";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
@@ -879,17 +879,6 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
           {base === "satellite" ? <Mountain className="h-5 w-5" /> : base === "topo" ? <MapIcon className="h-5 w-5" /> : <Satellite className="h-5 w-5" />}
         </Button>
 
-        {/* Sylinder / flat-toggle (3D-volum) */}
-        <Button
-          variant={extrude ? "default" : "secondary"}
-          size="icon"
-          onClick={() => setExtrude((v) => !v)}
-          className={`shadow-lg ${extrude ? "" : "bg-card hover:bg-accent"}`}
-          title={extrude ? "Skjul 3D-sylindere (vis flate soner)" : "Vis soner som 3D-sylindere"}
-          aria-label="3D-sylindere"
-        >
-          <Box className="h-5 w-5" />
-        </Button>
       </div>
     </div>
   );
