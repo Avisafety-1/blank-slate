@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl, { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
-import { Satellite, Mountain, Map as MapIcon, Shield, Box, Plane, Radar } from "lucide-react";
+import { Satellite, Mountain, Map as MapIcon, Box } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getBeaconSvgUrl } from "@/lib/mapIcons";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
@@ -346,9 +346,10 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
   const mapRef = useRef<MlMap | null>(null);
   const fetchTimerRef = useRef<number | null>(null);
   const [base, setBase] = useState<BaseLayer>("satellite");
-  const [zonesEnabled, setZonesEnabled] = useState(true);
-  const [aipEnabled, setAipEnabled] = useState(true);
-  const [trafficEnabled, setTrafficEnabled] = useState(true);
+  // Soner, luftrom og lufttrafikk er alltid på (egne toggle-knapper er fjernet for å rydde i UI)
+  const zonesEnabled = true;
+  const aipEnabled = true;
+  const trafficEnabled = true;
   const [extrude, setExtrude] = useState(true);
   const extrudeRef = useRef(extrude);
   extrudeRef.current = extrude;
@@ -852,12 +853,18 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     <div className="absolute inset-0">
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
-      {/* Base-toggle */}
+      {/*
+        MapLibre NavigationControl (zoom +/-, kompass) og TerrainControl plasseres
+        i "top-right" av kartet (via map.addControl). Våre egne knapper plasseres
+        UNDER disse, slik at ingenting overlapper. Nav-kontrollene tar ca. 10rem.
+      */}
+
+      {/* Base-toggle (satellitt/topo/standard) */}
       <Button
         variant="secondary"
         size="icon"
         onClick={cycleBase}
-        className="absolute top-[3.5rem] right-4 z-[1100] shadow-lg bg-card hover:bg-accent"
+        className="absolute top-[11rem] right-4 z-[1100] shadow-lg bg-card hover:bg-accent"
         title={
           base === "satellite"
             ? "Bytt til topografisk kart"
@@ -870,52 +877,16 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
         {base === "satellite" ? <Mountain className="h-5 w-5" /> : base === "topo" ? <MapIcon className="h-5 w-5" /> : <Satellite className="h-5 w-5" />}
       </Button>
 
-      {/* Dronesone-toggle */}
-      <Button
-        variant={zonesEnabled ? "default" : "secondary"}
-        size="icon"
-        onClick={() => setZonesEnabled((v) => !v)}
-        className={`absolute top-[6.5rem] right-4 z-[1100] shadow-lg ${zonesEnabled ? "" : "bg-card hover:bg-accent"}`}
-        title={zonesEnabled ? "Skjul dronesoner" : "Vis dronesoner (CAA + DK)"}
-        aria-label="Dronesoner"
-      >
-        <Shield className="h-5 w-5" />
-      </Button>
-
       {/* Sylinder / flat-toggle (3D-volum) */}
       <Button
         variant={extrude ? "default" : "secondary"}
         size="icon"
         onClick={() => setExtrude((v) => !v)}
-        className={`absolute top-[9.5rem] right-4 z-[1100] shadow-lg ${extrude ? "" : "bg-card hover:bg-accent"}`}
+        className={`absolute top-[14rem] right-4 z-[1100] shadow-lg ${extrude ? "" : "bg-card hover:bg-accent"}`}
         title={extrude ? "Skjul 3D-sylindere (vis flate soner)" : "Vis soner som 3D-sylindere"}
         aria-label="3D-sylindere"
       >
         <Box className="h-5 w-5" />
-      </Button>
-
-      {/* AIP-luftrom-toggle (CTR/TIZ/P/R/D/RMZ/TMZ) */}
-      <Button
-        variant={aipEnabled ? "default" : "secondary"}
-        size="icon"
-        onClick={() => setAipEnabled((v) => !v)}
-        className={`absolute top-[12.5rem] right-4 z-[1100] shadow-lg ${aipEnabled ? "" : "bg-card hover:bg-accent"}`}
-        title={aipEnabled ? "Skjul luftrom (CTR/TIZ/P/R/D)" : "Vis luftrom (CTR/TIZ/P/R/D)"}
-        aria-label="Luftrom"
-      >
-        <Plane className="h-5 w-5" />
-      </Button>
-
-      {/* Lufttrafikk (SafeSky) */}
-      <Button
-        variant={trafficEnabled ? "default" : "secondary"}
-        size="icon"
-        onClick={() => setTrafficEnabled((v) => !v)}
-        className={`absolute top-[15.5rem] right-4 z-[1100] shadow-lg ${trafficEnabled ? "" : "bg-card hover:bg-accent"}`}
-        title={trafficEnabled ? "Skjul lufttrafikk (SafeSky)" : "Vis lufttrafikk (SafeSky)"}
-        aria-label="Lufttrafikk"
-      >
-        <Radar className="h-5 w-5" />
       </Button>
     </div>
   );
