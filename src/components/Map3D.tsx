@@ -1100,6 +1100,7 @@ export default function Map3D({
     const points = routePointsRef.current;
 
     const routeSrc = map.getSource(RP_SOURCE_ROUTE) as GeoJSONSource | undefined;
+    const ribbonSrc = map.getSource(RP_SOURCE_ROUTE_RIBBON) as GeoJSONSource | undefined;
     const fgSrc = map.getSource(RP_SOURCE_FG) as GeoJSONSource | undefined;
     const contSrc = map.getSource(RP_SOURCE_CONT) as GeoJSONSource | undefined;
     const grbSrc = map.getSource(RP_SOURCE_GRB) as GeoJSONSource | undefined;
@@ -1109,6 +1110,7 @@ export default function Map3D({
     // < 2 punkter → bare markører, ingen linje/buffer, ingen terrain-kall.
     if (points.length < 2) {
       routeSrc?.setData(emptyFC);
+      ribbonSrc?.setData(emptyFC);
       fgSrc?.setData(emptyFC);
       contSrc?.setData(emptyFC);
       grbSrc?.setData(emptyFC);
