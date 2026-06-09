@@ -875,9 +875,380 @@ export default function Map3D({
     refreshSafeSky();
   }, [trafficEnabled, refreshSafeSky]);
 
+  // ===================================================================
+  // ROUTE PLANNING (3D) — speiler 2D-kartet, men bruker MapLibre.
+  //   • Faste layer/source-IDs så cleanup/style-swap er trygt.
+  //   • Tegner GeoJSON-rute + SORA-extrusion via flate fill-extrusion-lag.
+  //   • Sender hver endring videre via onRouteChange — ingen save-logikk her.
+  // ===================================================================
+  const RP_SOURCE_ROUTE = "rp-route-src";
+  const RP_SOURCE_FG = "rp-sora-fg-src";
+  const RP_SOURCE_CONT = "rp-sora-contingency-src";
+  const RP_SOURCE_GRB = "rp-sora-grb-src";
+  const RP_LAYER_ROUTE_LINE = "rp-route-line";
+  const RP_LAYER_FG_FILL = "rp-sora-fg-fill";
+  const RP_LAYER_CONT_FILL = "rp-sora-contingency-fill";
+  const RP_LAYER_GRB_FILL = "rp-sora-grb-fill";
+
+  const removeRoutePlanningLayers = useCallback((map: MlMap) => {
+    [
+      RP_LAYER_ROUTE_LINE,
+      RP_LAYER_GRB_FILL,
+      RP_LAYER_CONT_FILL,
+      RP_LAYER_FG_FILL,
+    ].forEach((id) => {
+      if (map.getLayer(id)) {
+        try { map.removeLayer(id); } catch {}
+      }
+    });
+    [RP_SOURCE_ROUTE, RP_SOURCE_GRB, RP_SOURCE_CONT, RP_SOURCE_FG].forEach((id) => {
+      if (map.getSource(id)) {
+        try { map.removeSource(id); } catch {}
+      }
+    });
+  }, []);
+
+  const addRoutePlanningLayers = useCallback((map: MlMap) => {
+    // Tomme sources — fylles via setData ved første rebuild.
+    const emptyFC = { type: "FeatureCollection" as const, features: [] };
+    if (!map.getSource(RP_SOURCE_FG)) map.addSource(RP_SOURCE_FG, { type: "geojson", data: emptyFC });
+    if (!map.getSource(RP_SOURCE_CONT)) map.addSource(RP_SOURCE_CONT, { type: "geojson", data: emptyFC });
+    if (!map.getSource(RP_SOURCE_GRB)) map.addSource(RP_SOURCE_GRB, { type: "geojson", data: emptyFC });
+    if (!map.getSource(RP_SOURCE_ROUTE)) map.addSource(RP_SOURCE_ROUTE, { type: "geojson", data: emptyFC });
+
+    // Høyde-uttrykk: base = lower_limit_m || terrain_min_m || 0
+    //                height = upper_limit_m || (terrain_max_m + 120) || 120
+    const baseExpr: any = [
+      "case",
+      ["!=", ["get", "lower_limit_m"], null], ["get", "lower_limit_m"],
+      ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
+      0,
+    ];
+    const heightExpr: any = [
+      "case",
+      ["!=", ["get", "upper_limit_m"], null], ["get", "upper_limit_m"],
+      ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 120],
+      120,
+    ];
+
+    if (!map.getLayer(RP_LAYER_GRB_FILL)) {
+      map.addLayer({
+        id: RP_LAYER_GRB_FILL,
+        type: "fill-extrusion",
+        source: RP_SOURCE_GRB,
+        paint: {
+          "fill-extrusion-color": "#ef4444",
+          "fill-extrusion-opacity": 0.15,
+          "fill-extrusion-base": baseExpr,
+          "fill-extrusion-height": heightExpr,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_CONT_FILL)) {
+      map.addLayer({
+        id: RP_LAYER_CONT_FILL,
+        type: "fill-extrusion",
+        source: RP_SOURCE_CONT,
+        paint: {
+          "fill-extrusion-color": "#eab308",
+          "fill-extrusion-opacity": 0.2,
+          "fill-extrusion-base": baseExpr,
+          "fill-extrusion-height": heightExpr,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_FG_FILL)) {
+      map.addLayer({
+        id: RP_LAYER_FG_FILL,
+        type: "fill-extrusion",
+        source: RP_SOURCE_FG,
+        paint: {
+          "fill-extrusion-color": "#22c55e",
+          "fill-extrusion-opacity": 0.25,
+          "fill-extrusion-base": baseExpr,
+          "fill-extrusion-height": heightExpr,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_ROUTE_LINE)) {
+      map.addLayer({
+        id: RP_LAYER_ROUTE_LINE,
+        type: "line",
+        source: RP_SOURCE_ROUTE,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#3b82f6",
+          "line-width": 3,
+          "line-dasharray": [2, 1],
+        },
+      });
+    }
+  }, []);
+
+  // Bygg rute-RouteData fra interne punkter (identisk format som 2D).
+  const buildRouteData = useCallback((): RouteData => {
+    const coords = routePointsRef.current.slice();
+    return {
+      coordinates: coords,
+      totalDistance: calculateTotalDistance(coords),
+      areaKm2: calculatePolygonAreaKm2(coords),
+    };
+  }, []);
+
+  // Emit en endring til parent (Kart.tsx). Lagrer JSON-snapshot for å unngå
+  // ping-pong når parent setter controlledRoute basert på vår egen emit.
+  const emitRouteChange = useCallback(() => {
+    const data = buildRouteData();
+    lastEmittedRouteJsonRef.current = JSON.stringify(data);
+    onRouteChangeRef.current?.(data);
+  }, [buildRouteData]);
+
+  // Markør-bygging
+  const buildMarkerEl = (index: number, total: number): HTMLDivElement => {
+    const el = document.createElement("div");
+    const color =
+      index === 0 ? "#16a34a" : index === total - 1 ? "#dc2626" : "#2563eb";
+    el.style.cssText = `
+      width: 26px; height: 26px; border-radius: 50%;
+      background: ${color}; color: white; font-weight: 700; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      cursor: grab; user-select: none;
+    `;
+    el.textContent = String(index + 1);
+    return el;
+  };
+
+  const rebuildMarkers = useCallback((map: MlMap) => {
+    // Fjern eksisterende
+    routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
+    routeMarkersRef.current = [];
+    const points = routePointsRef.current;
+    points.forEach((pt, idx) => {
+      const el = buildMarkerEl(idx, points.length);
+      const marker = new maplibregl.Marker({ element: el, draggable: true })
+        .setLngLat([pt.lng, pt.lat])
+        .addTo(map);
+      marker.on("dragend", () => {
+        const ll = marker.getLngLat();
+        routePointsRef.current[idx] = { lat: ll.lat, lng: ll.lng };
+        // Oppdater farger/numre er ikke nødvendig — kun posisjon endres.
+        rebuildRouteSources();
+        emitRouteChange();
+      });
+      el.addEventListener("contextmenu", (ev) => {
+        ev.preventDefault();
+        routePointsRef.current.splice(idx, 1);
+        rebuildMarkers(map);
+        rebuildRouteSources();
+        emitRouteChange();
+      });
+      routeMarkersRef.current.push(marker);
+    });
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  }, [emitRouteChange]);
+
+  // Bygg om route-linje + SORA-buffere fra routePointsRef.
+  const rebuildRouteSources = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const points = routePointsRef.current;
+
+    const routeSrc = map.getSource(RP_SOURCE_ROUTE) as GeoJSONSource | undefined;
+    const fgSrc = map.getSource(RP_SOURCE_FG) as GeoJSONSource | undefined;
+    const contSrc = map.getSource(RP_SOURCE_CONT) as GeoJSONSource | undefined;
+    const grbSrc = map.getSource(RP_SOURCE_GRB) as GeoJSONSource | undefined;
+
+    const emptyFC = { type: "FeatureCollection" as const, features: [] };
+
+    // < 2 punkter → bare markører, ingen linje/buffer, ingen terrain-kall.
+    if (points.length < 2) {
+      routeSrc?.setData(emptyFC);
+      fgSrc?.setData(emptyFC);
+      contSrc?.setData(emptyFC);
+      grbSrc?.setData(emptyFC);
+      return;
+    }
+
+    // Rute-linje
+    routeSrc?.setData({
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        coordinates: points.map((p) => [p.lng, p.lat]),
+      },
+      properties: {},
+    } as any);
+
+    // SORA-buffer (krever soraSettings.enabled — ellers tøm)
+    const sora = soraSettingsRef.current;
+    if (!sora?.enabled) {
+      fgSrc?.setData(emptyFC);
+      contSrc?.setData(emptyFC);
+      grbSrc?.setData(emptyFC);
+      return;
+    }
+
+    const { flightGeography, contingency, groundRiskBuffer } = buildSoraZoneGeoJSON(points, sora);
+
+    // Initialt sett: kun terrengfri høyde (height = fallback 120 m / lower=0).
+    // Etter at terreng er samplet, oppdaterer vi properties og setter data på nytt.
+    const fgAltitudeTop = sora.flightAltitude;                    // m AGL over terreng
+    const contAltitudeTop = sora.flightAltitude + (sora.contingencyHeight ?? 0);
+    const grbAltitudeTop = contAltitudeTop;
+
+    const baseFeature = (
+      feat: ReturnType<typeof buildSoraZoneGeoJSON>["flightGeography"],
+      altitudeTopM: number
+    ) => {
+      if (!feat) return emptyFC;
+      return {
+        type: "FeatureCollection" as const,
+        features: [
+          {
+            ...feat,
+            properties: {
+              ...feat.properties,
+              // upper_limit_m fylles inn senere når terrain_max_m er kjent.
+              // Inntil da bruker extrusion fallback (terrain_max_m + 120) eller 120.
+              __altitude_top_m: altitudeTopM,
+            },
+          },
+        ],
+      };
+    };
+
+    fgSrc?.setData(baseFeature(flightGeography, fgAltitudeTop) as any);
+    contSrc?.setData(baseFeature(contingency, contAltitudeTop) as any);
+    grbSrc?.setData(baseFeature(groundRiskBuffer, grbAltitudeTop) as any);
+
+    // Debounced terrain-enrichment for korrekt bakke-base + topp.
+    if (soraTerrainDebounceRef.current) {
+      window.clearTimeout(soraTerrainDebounceRef.current);
+    }
+    soraTerrainDebounceRef.current = window.setTimeout(async () => {
+      const features = [
+        { src: fgSrc, feat: flightGeography, top: fgAltitudeTop, key: "rp-fg" },
+        { src: contSrc, feat: contingency, top: contAltitudeTop, key: "rp-cont" },
+        { src: grbSrc, feat: groundRiskBuffer, top: grbAltitudeTop, key: "rp-grb" },
+      ].filter((x) => x.feat && x.src);
+
+      if (features.length === 0) return;
+
+      const samples = await sampleZonesTerrain(
+        features.map((f) => ({ key: f.key, geometry: f.feat!.geometry }))
+      );
+
+      features.forEach((f) => {
+        const sample = samples.get(f.key);
+        if (!f.feat || !f.src) return;
+        const props: Record<string, any> = { ...f.feat.properties };
+        if (sample) {
+          props.terrain_min_m = sample.min;
+          props.terrain_max_m = sample.max;
+          props.upper_limit_m = sample.max + f.top;
+        } else {
+          // Ingen terrengdata: la base bli 0 og topp = flightAltitude over havet.
+          props.upper_limit_m = f.top;
+        }
+        f.src.setData({
+          type: "FeatureCollection",
+          features: [{ ...f.feat, properties: props }],
+        } as any);
+      });
+    }, 200);
+  }, []);
+
+  // ===== Klikk-handler i routePlanning-modus =====
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const handleClick = (e: maplibregl.MapMouseEvent) => {
+      if (modeRef.current !== "routePlanning") return;
+      const { lng, lat } = e.lngLat;
+      routePointsRef.current.push({ lat, lng });
+      rebuildMarkers(map);
+      rebuildRouteSources();
+      emitRouteChange();
+    };
+    map.on("click", handleClick);
+    return () => {
+      try { map.off("click", handleClick); } catch {}
+    };
+  }, [rebuildMarkers, rebuildRouteSources, emitRouteChange]);
+
+  // ===== Aktiver/deaktiver route-planning-lag når mode endres =====
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (modeRef.current === "routePlanning") {
+        addRoutePlanningLayers(map);
+        rebuildMarkers(map);
+        rebuildRouteSources();
+      } else {
+        routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
+        routeMarkersRef.current = [];
+        removeRoutePlanningLayers(map);
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("idle", apply);
+  }, [mode, addRoutePlanningLayers, removeRoutePlanningLayers, rebuildMarkers, rebuildRouteSources]);
+
+  // ===== Sync controlledRoute / existingRoute fra parent =====
+  useEffect(() => {
+    if (mode !== "routePlanning") return;
+    const route = controlledRoute ?? existingRoute;
+    if (!route) return;
+    const incomingJson = JSON.stringify({
+      coordinates: route.coordinates ?? [],
+      totalDistance: route.totalDistance ?? 0,
+      areaKm2: route.areaKm2 ?? 0,
+    });
+    if (incomingJson === lastEmittedRouteJsonRef.current) return;
+    routePointsRef.current = (route.coordinates ?? []).map((p) => ({ lat: p.lat, lng: p.lng }));
+    lastEmittedRouteJsonRef.current = incomingJson;
+    const map = mapRef.current;
+    if (!map) return;
+    if (map.isStyleLoaded()) {
+      rebuildMarkers(map);
+      rebuildRouteSources();
+    } else {
+      map.once("idle", () => {
+        rebuildMarkers(map);
+        rebuildRouteSources();
+      });
+    }
+  }, [mode, controlledRoute, existingRoute, rebuildMarkers, rebuildRouteSources]);
+
+  // ===== Reager på soraSettings-endringer =====
+  useEffect(() => {
+    if (mode !== "routePlanning") return;
+    rebuildRouteSources();
+  }, [soraSettings, mode, rebuildRouteSources]);
+
+  // ===== Re-attach route-planning-lag etter style-swap =====
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const onStyle = () => {
+      if (modeRef.current !== "routePlanning") return;
+      // setStyle har fjernet våre lag — re-registrer og fyll på nytt.
+      addRoutePlanningLayers(map);
+      rebuildRouteSources();
+    };
+    map.on("styledata", onStyle);
+    return () => {
+      try { map.off("styledata", onStyle); } catch {}
+    };
+  }, [addRoutePlanningLayers, rebuildRouteSources]);
+
   const cycleBase = () => {
     setBase((b) => (b === "satellite" ? "topo" : b === "topo" ? "osm" : "satellite"));
   };
+
+
 
 
 
