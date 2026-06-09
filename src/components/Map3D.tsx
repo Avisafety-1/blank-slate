@@ -27,6 +27,7 @@ import {
   parseAipLimitToMeters,
 } from "@/lib/aipPopups";
 import { createSafeSkyModelLayer, SafeSkyModelLayer, SafeSkyBeacon } from "@/lib/safeskyModelLayer";
+import { sampleZonesTerrain, zoneCacheKey } from "@/lib/zoneTerrainSampler";
 
 const SAFESKY_MODEL_URL = "/models/dji_matrice_t300/scene.gltf";
 
@@ -184,11 +185,19 @@ function addZoneLayers(map: MlMap, extrude: boolean) {
       filter: ["any", ["==", ["geometry-type"], "Polygon"], ["==", ["geometry-type"], "MultiPolygon"]],
       paint: {
         "fill-extrusion-color": colorExpression(),
-        "fill-extrusion-base": ["coalesce", ["get", "lower_limit_m"], 0],
+        // base: lower_limit_m → terrain_min_m → 0
+        "fill-extrusion-base": [
+          "case",
+          ["!=", ["get", "lower_limit_m"], null], ["get", "lower_limit_m"],
+          ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
+          0,
+        ],
+        // height: upper_limit_m (MSL) → terrain_max_m + 120 → 120 (nød-fallback)
         "fill-extrusion-height": [
-          "max",
-          50,
-          ["coalesce", ["get", "upper_limit_m"], ["get", "fallback_upper_m"], 120],
+          "case",
+          ["!=", ["get", "upper_limit_m"], null], ["get", "upper_limit_m"],
+          ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 120],
+          120,
         ],
         "fill-extrusion-opacity": 0.35,
       },
@@ -264,11 +273,19 @@ function addAipLayers(map: MlMap, extrude: boolean) {
       source: "aip",
       paint: {
         "fill-extrusion-color": aipColorExpression(),
-        "fill-extrusion-base": ["coalesce", ["get", "lower_limit_m"], 0],
+        // base: lower_limit_m → terrain_min_m → 0
+        "fill-extrusion-base": [
+          "case",
+          ["!=", ["get", "lower_limit_m"], null], ["get", "lower_limit_m"],
+          ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
+          0,
+        ],
+        // height: upper_limit_m (MSL) → terrain_max_m + 120 → 120 (nød-fallback)
         "fill-extrusion-height": [
-          "max",
-          80,
-          ["coalesce", ["get", "upper_limit_m"], 1500],
+          "case",
+          ["!=", ["get", "upper_limit_m"], null], ["get", "upper_limit_m"],
+          ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 120],
+          120,
         ],
         "fill-extrusion-opacity": 0.4, // MapLibre tillater ikke data-uttrykk her
       },
