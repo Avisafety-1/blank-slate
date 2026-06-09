@@ -1,33 +1,21 @@
-## Problem
-Når ruta tegnes, bygges FG (grønn) og Cont (gul) først som sylindre fra bakken (`render_base_m = 0`) opp til AGL-høyden. Det ser riktig ut. Etter ~200 ms kjører en terreng-enrichment som setter `render_base_m = terrain_max_m`, og sonene "løftes" da opp til den høyeste terrengtoppen innenfor polygonet. Det er det som gjør at de mister kontakt med bakken etter ca. 1 sekund.
+## Plan: 2D/3D-toggle synlig også under ruteplanlegging
 
-## Endring (kun `src/components/Map3D.tsx`, i `rebuildRouteSources` → terrain-enrichment, rundt linje 1387–1408)
+### Bakgrunn
+- `Kart.tsx` har allerede `is3D`-toggle, men knappen vises kun når `!isRoutePlanning`. I ruteplanleggings­modus er den skjult både i 2D og 3D.
+- Ruta (`currentRoute`) og SORA-innstillingene er allerede løftet til `Kart` og sendes som `controlledRoute` / `soraSettings` til både `OpenAIPMap` (2D) og `Map3D` (3D). Buffersonene gjenoppbygges automatisk fra disse i begge kartene. Ingen ekstra state-deling trengs.
+- Befolkningstetthet beregnes i dag i 2D-kartet (via `mergedDensityCells` / `soraDensityResult` propsene til `OpenAIPMap`) og er ikke implementert i `Map3D`. Det er ønsket adferd å la 2D fortsette å gjøre dette.
 
-La sonene fortsatt starte ved bakken, men bruk terrengdata kun til å heve toppen slik at sonen dekker både laveste og høyeste terrengpunkt + AGL.
+### Endring (kun `src/pages/Kart.tsx`, rundt linje 1068)
 
-Konkret:
-- Behold `render_base_m = 0` (ikke bytt til `terrain_max_m`).
-- Sett `render_height_m = terrain_max_m + agl` (slik at toppen fortsatt strekker seg AGL over høyeste terrengpunkt). Fallback uendret når sampling mangler: `render_height_m = agl`.
-- Behold lagring av `terrain_min_m` / `terrain_max_m` som properties (brukt andre steder / debug).
+Fjern guarden som skjuler 2D/3D-knappen i ruteplanlegging:
 
-Effekt: fill-extrusion-volumene står fortsatt fra `0 m` MSL og opp, så de er visuelt forankret i bakken, samtidig som toppen er hevet nok til å representere AGL-taket over terrenget. Ingen endring i SORA-buffergeometri, FG-/Cont-/GRB-farger, ruteoverlay, markører eller andre lag.
+- Endre `const toggle3DBtn = !isRoutePlanning ? (...) : null;` til alltid å rendre knappen (`const toggle3DBtn = (...);`).
+- La `routePlannerBtn3D` beholde dagens guard (`is3D && !isRoutePlanning`) — den skal fortsatt kun vises som en startknapp før ruteplanlegging er aktiv.
 
-## Teknisk detalj
+Resultat:
+- Bruker kan nå klikke 2D/3D-ikonet midt i ruteplanlegging og bytte frem og tilbake.
+- `currentRoute` + `soraSettings` følger automatisk med, så ruta, FG/Cont/GRB-sonene og SORA-konfig forblir intakt i overgangen.
+- Befolkningstetthet kjører som før kun i 2D-kartet; 3D-kartet trenger ingen egen tetthetsberegning.
 
-```ts
-// Erstatt blokken som i dag setter baseM = terrain_max:
-let topM = f.agl;
-if (ring) {
-  props.terrain_min_m = ring.smoothedMin;
-  props.terrain_max_m = ring.smoothedMax;
-  topM = ring.smoothedMax + f.agl;
-} else if (fb) {
-  props.terrain_min_m = fb.min;
-  props.terrain_max_m = fb.max;
-  topM = fb.max + f.agl;
-}
-props.render_base_m = 0;
-props.render_height_m = topM;
-```
-
-Ingen andre filer berøres.
+### Ingen øvrige filer berøres
+`Map3D.tsx`, `OpenAIPMap` og SORA-flyt er uendret.
