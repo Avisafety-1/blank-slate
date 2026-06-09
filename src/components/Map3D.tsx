@@ -28,6 +28,7 @@ import {
 } from "@/lib/aipPopups";
 import { createSafeSkyModelLayer, SafeSkyModelLayer, SafeSkyBeacon } from "@/lib/safeskyModelLayer";
 import { sampleZonesTerrain, zoneCacheKey } from "@/lib/zoneTerrainSampler";
+import { fetchTerrainElevations } from "@/lib/terrainElevation";
 import { buildSoraZoneGeoJSON, type SoraSettings } from "@/lib/soraGeometry";
 import type { RouteData, RoutePoint } from "@/types/map";
 import { calculateTotalDistance, calculatePolygonAreaKm2 } from "@/lib/mapGeometry";
@@ -885,26 +886,33 @@ export default function Map3D({
   //   • Sender hver endring videre via onRouteChange — ingen save-logikk her.
   // ===================================================================
   const RP_SOURCE_ROUTE = "rp-route-src";
+  const RP_SOURCE_ROUTE_RIBBON = "rp-route-ribbon-src";
   const RP_SOURCE_FG = "rp-sora-fg-src";
   const RP_SOURCE_CONT = "rp-sora-contingency-src";
   const RP_SOURCE_GRB = "rp-sora-grb-src";
   const RP_LAYER_ROUTE_LINE = "rp-route-line";
+  const RP_LAYER_ROUTE_RIBBON = "rp-route-ribbon";
   const RP_LAYER_FG_FILL = "rp-sora-fg-fill";
+  const RP_LAYER_FG_OUTLINE = "rp-sora-fg-outline";
   const RP_LAYER_CONT_FILL = "rp-sora-contingency-fill";
+  const RP_LAYER_CONT_OUTLINE = "rp-sora-contingency-outline";
   const RP_LAYER_GRB_FILL = "rp-sora-grb-fill";
 
   const removeRoutePlanningLayers = useCallback((map: MlMap) => {
     [
       RP_LAYER_ROUTE_LINE,
+      RP_LAYER_ROUTE_RIBBON,
       RP_LAYER_GRB_FILL,
+      RP_LAYER_CONT_OUTLINE,
       RP_LAYER_CONT_FILL,
+      RP_LAYER_FG_OUTLINE,
       RP_LAYER_FG_FILL,
     ].forEach((id) => {
       if (map.getLayer(id)) {
         try { map.removeLayer(id); } catch {}
       }
     });
-    [RP_SOURCE_ROUTE, RP_SOURCE_GRB, RP_SOURCE_CONT, RP_SOURCE_FG].forEach((id) => {
+    [RP_SOURCE_ROUTE, RP_SOURCE_ROUTE_RIBBON, RP_SOURCE_GRB, RP_SOURCE_CONT, RP_SOURCE_FG].forEach((id) => {
       if (map.getSource(id)) {
         try { map.removeSource(id); } catch {}
       }
@@ -918,12 +926,14 @@ export default function Map3D({
     if (!map.getSource(RP_SOURCE_CONT)) map.addSource(RP_SOURCE_CONT, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_GRB)) map.addSource(RP_SOURCE_GRB, { type: "geojson", data: emptyFC });
     if (!map.getSource(RP_SOURCE_ROUTE)) map.addSource(RP_SOURCE_ROUTE, { type: "geojson", data: emptyFC });
+    if (!map.getSource(RP_SOURCE_ROUTE_RIBBON)) map.addSource(RP_SOURCE_ROUTE_RIBBON, { type: "geojson", data: emptyFC });
 
     // Per-lag høyde-uttrykk basert på render_base_m / render_height_m
     // (settes per feature i rebuildRouteSources).
     const baseExpr: any = ["coalesce", ["get", "render_base_m"], 0];
     const heightExprFG: any = ["coalesce", ["get", "render_height_m"], 120];
     const heightExprCont: any = ["coalesce", ["get", "render_height_m"], 60];
+    const heightExprRibbon: any = ["coalesce", ["get", "render_height_m"], 120];
 
     // GRB: flatt fill-lag draperes automatisk på terreng.
     if (!map.getLayer(RP_LAYER_GRB_FILL)) {
@@ -933,8 +943,8 @@ export default function Map3D({
         source: RP_SOURCE_GRB,
         paint: {
           "fill-color": "#ef4444",
-          "fill-opacity": 0.2,
-          "fill-outline-color": "#ef4444",
+          "fill-opacity": 0.35,
+          "fill-outline-color": "#b91c1c",
         },
       });
     }
@@ -945,9 +955,21 @@ export default function Map3D({
         source: RP_SOURCE_CONT,
         paint: {
           "fill-extrusion-color": "#eab308",
-          "fill-extrusion-opacity": 0.25,
+          "fill-extrusion-opacity": 0.40,
           "fill-extrusion-base": baseExpr,
           "fill-extrusion-height": heightExprCont,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_CONT_OUTLINE)) {
+      map.addLayer({
+        id: RP_LAYER_CONT_OUTLINE,
+        type: "line",
+        source: RP_SOURCE_CONT,
+        paint: {
+          "line-color": "#a16207",
+          "line-width": 1.5,
+          "line-opacity": 0.7,
         },
       });
     }
@@ -958,9 +980,34 @@ export default function Map3D({
         source: RP_SOURCE_FG,
         paint: {
           "fill-extrusion-color": "#22c55e",
-          "fill-extrusion-opacity": 0.25,
+          "fill-extrusion-opacity": 0.45,
           "fill-extrusion-base": baseExpr,
           "fill-extrusion-height": heightExprFG,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_FG_OUTLINE)) {
+      map.addLayer({
+        id: RP_LAYER_FG_OUTLINE,
+        type: "line",
+        source: RP_SOURCE_FG,
+        paint: {
+          "line-color": "#15803d",
+          "line-width": 1.5,
+          "line-opacity": 0.7,
+        },
+      });
+    }
+    if (!map.getLayer(RP_LAYER_ROUTE_RIBBON)) {
+      map.addLayer({
+        id: RP_LAYER_ROUTE_RIBBON,
+        type: "fill-extrusion",
+        source: RP_SOURCE_ROUTE_RIBBON,
+        paint: {
+          "fill-extrusion-color": "#22c55e",
+          "fill-extrusion-opacity": 0.7,
+          "fill-extrusion-base": baseExpr,
+          "fill-extrusion-height": heightExprRibbon,
         },
       });
     }
@@ -1046,6 +1093,106 @@ export default function Map3D({
   }, [emitRouteChange]);
   rebuildMarkersRef.current = rebuildMarkers;
 
+  // Densifiserer ruten, henter terreng, og bygger tynne polygon-segmenter
+  // med base/høyde basert på terrenget (følger terrenget i flightAltitude AGL).
+  const rebuildRouteRibbon = useCallback(async (
+    points: { lat: number; lng: number }[],
+    flightAltitudeM: number,
+    ribbonSrc: GeoJSONSource | undefined,
+    emptyFC: { type: "FeatureCollection"; features: any[] },
+  ) => {
+    if (!ribbonSrc) return;
+    if (points.length < 2) {
+      ribbonSrc.setData(emptyFC as any);
+      return;
+    }
+
+    // Densifiser: ~40 m mellom prøvepunkter, maks ~250 totalt.
+    const SEGMENT_M = 40;
+    const MAX_SAMPLES = 250;
+    const haversineM = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+      const R = 6371000;
+      const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+      const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+      const la1 = (a.lat * Math.PI) / 180;
+      const la2 = (b.lat * Math.PI) / 180;
+      const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    };
+    let totalM = 0;
+    for (let i = 1; i < points.length; i++) totalM += haversineM(points[i - 1], points[i]);
+    const targetSamples = Math.min(MAX_SAMPLES, Math.max(2, Math.ceil(totalM / SEGMENT_M) + 1));
+    const stepM = totalM / Math.max(1, targetSamples - 1);
+
+    const densified: { lat: number; lng: number }[] = [points[0]];
+    let acc = 0;
+    let nextTarget = stepM;
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      const segLen = haversineM(a, b);
+      if (segLen <= 0) continue;
+      while (acc + segLen >= nextTarget && densified.length < targetSamples - 1) {
+        const t = (nextTarget - acc) / segLen;
+        densified.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+        nextTarget += stepM;
+      }
+      acc += segLen;
+    }
+    densified.push(points[points.length - 1]);
+
+    // Sample terreng for alle densifiserte punkter.
+    let elevations: (number | null)[] = [];
+    try {
+      elevations = await fetchTerrainElevations(densified);
+    } catch (err) {
+      console.warn("[Map3D] ribbon terrain fetch failed", err);
+      elevations = densified.map(() => null);
+    }
+
+    // Bygg tynne polygon-segmenter (~3 m bredt).
+    const WIDTH_M = 3;
+    const features: any[] = [];
+    for (let i = 0; i < densified.length - 1; i++) {
+      const p1 = densified[i];
+      const p2 = densified[i + 1];
+      const e1 = elevations[i];
+      const e2 = elevations[i + 1];
+      const terrainMid = ((typeof e1 === "number" ? e1 : 0) + (typeof e2 === "number" ? e2 : 0)) / 2;
+
+      // Perpendikulær offset i lng/lat (korrigert for breddegrad).
+      const dLng = p2.lng - p1.lng;
+      const dLat = p2.lat - p1.lat;
+      const midLat = (p1.lat + p2.lat) / 2;
+      const cosLat = Math.cos((midLat * Math.PI) / 180);
+      const dx = dLng * cosLat;
+      const dy = dLat;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const halfW = WIDTH_M / 2 / 111320; // ca. meter→grader
+      const perpLng = (-dy / len) * halfW / cosLat;
+      const perpLat = (dx / len) * halfW;
+
+      const ring: [number, number][] = [
+        [p1.lng + perpLng, p1.lat + perpLat],
+        [p2.lng + perpLng, p2.lat + perpLat],
+        [p2.lng - perpLng, p2.lat - perpLat],
+        [p1.lng - perpLng, p1.lat - perpLat],
+        [p1.lng + perpLng, p1.lat + perpLat],
+      ];
+
+      features.push({
+        type: "Feature",
+        geometry: { type: "Polygon", coordinates: [ring] },
+        properties: {
+          render_base_m: terrainMid,
+          render_height_m: terrainMid + flightAltitudeM,
+        },
+      });
+    }
+
+    ribbonSrc.setData({ type: "FeatureCollection", features } as any);
+  }, []);
+
   // Bygg om route-linje + SORA-buffere fra routePointsRef.
   const rebuildRouteSources = useCallback(() => {
     const map = mapRef.current;
@@ -1053,6 +1200,7 @@ export default function Map3D({
     const points = routePointsRef.current;
 
     const routeSrc = map.getSource(RP_SOURCE_ROUTE) as GeoJSONSource | undefined;
+    const ribbonSrc = map.getSource(RP_SOURCE_ROUTE_RIBBON) as GeoJSONSource | undefined;
     const fgSrc = map.getSource(RP_SOURCE_FG) as GeoJSONSource | undefined;
     const contSrc = map.getSource(RP_SOURCE_CONT) as GeoJSONSource | undefined;
     const grbSrc = map.getSource(RP_SOURCE_GRB) as GeoJSONSource | undefined;
@@ -1062,6 +1210,7 @@ export default function Map3D({
     // < 2 punkter → bare markører, ingen linje/buffer, ingen terrain-kall.
     if (points.length < 2) {
       routeSrc?.setData(emptyFC);
+      ribbonSrc?.setData(emptyFC);
       fgSrc?.setData(emptyFC);
       contSrc?.setData(emptyFC);
       grbSrc?.setData(emptyFC);
@@ -1078,8 +1227,12 @@ export default function Map3D({
       properties: {},
     } as any);
 
-    // SORA-buffer (krever soraSettings.enabled — ellers tøm)
+    // Bygg 3D-ribbon for ruten (følger terrenget i flightAltitude AGL).
     const sora = soraSettingsRef.current;
+    const flightAltitudeM = sora?.flightAltitude ?? 120;
+    rebuildRouteRibbon(points, flightAltitudeM, ribbonSrc, emptyFC);
+
+    // SORA-buffer (krever soraSettings.enabled — ellers tøm)
     if (!sora?.enabled) {
       fgSrc?.setData(emptyFC);
       contSrc?.setData(emptyFC);
