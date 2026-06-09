@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl, { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
-import { Satellite, Mountain, Map as MapIcon, Box } from "lucide-react";
+import { Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getBeaconSvgUrl } from "@/lib/mapIcons";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
