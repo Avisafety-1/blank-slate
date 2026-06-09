@@ -1150,8 +1150,9 @@ export default function Map3D({
       elevations = densified.map(() => null);
     }
 
-    // Bygg tynne polygon-segmenter (~3 m bredt).
-    const WIDTH_M = 3;
+    // Bygg tynne polygon-segmenter med svak overlapp for å skjule glipper.
+    const WIDTH_M = 1.8;
+    const OVERLAP_M = 1.5;
     const features: any[] = [];
     for (let i = 0; i < densified.length - 1; i++) {
       const p1 = densified[i];
@@ -1172,12 +1173,19 @@ export default function Map3D({
       const perpLng = (-dy / len) * halfW / cosLat;
       const perpLat = (dx / len) * halfW;
 
+      // Forleng segmentet langs ruteretningen for å overlappe nabosegmentene.
+      const halfOverlapDeg = OVERLAP_M / 2 / 111320;
+      const extLng = (dx / len) * halfOverlapDeg / cosLat;
+      const extLat = (dy / len) * halfOverlapDeg;
+      const a = { lng: p1.lng - extLng, lat: p1.lat - extLat };
+      const b = { lng: p2.lng + extLng, lat: p2.lat + extLat };
+
       const ring: [number, number][] = [
-        [p1.lng + perpLng, p1.lat + perpLat],
-        [p2.lng + perpLng, p2.lat + perpLat],
-        [p2.lng - perpLng, p2.lat - perpLat],
-        [p1.lng - perpLng, p1.lat - perpLat],
-        [p1.lng + perpLng, p1.lat + perpLat],
+        [a.lng + perpLng, a.lat + perpLat],
+        [b.lng + perpLng, b.lat + perpLat],
+        [b.lng - perpLng, b.lat - perpLat],
+        [a.lng - perpLng, a.lat - perpLat],
+        [a.lng + perpLng, a.lat + perpLat],
       ];
 
       features.push({
