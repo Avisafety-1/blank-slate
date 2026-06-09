@@ -1093,6 +1093,106 @@ export default function Map3D({
   }, [emitRouteChange]);
   rebuildMarkersRef.current = rebuildMarkers;
 
+  // Densifiserer ruten, henter terreng, og bygger tynne polygon-segmenter
+  // med base/høyde basert på terrenget (følger terrenget i flightAltitude AGL).
+  const rebuildRouteRibbon = useCallback(async (
+    points: { lat: number; lng: number }[],
+    flightAltitudeM: number,
+    ribbonSrc: GeoJSONSource | undefined,
+    emptyFC: { type: "FeatureCollection"; features: any[] },
+  ) => {
+    if (!ribbonSrc) return;
+    if (points.length < 2) {
+      ribbonSrc.setData(emptyFC as any);
+      return;
+    }
+
+    // Densifiser: ~40 m mellom prøvepunkter, maks ~250 totalt.
+    const SEGMENT_M = 40;
+    const MAX_SAMPLES = 250;
+    const haversineM = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+      const R = 6371000;
+      const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+      const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+      const la1 = (a.lat * Math.PI) / 180;
+      const la2 = (b.lat * Math.PI) / 180;
+      const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    };
+    let totalM = 0;
+    for (let i = 1; i < points.length; i++) totalM += haversineM(points[i - 1], points[i]);
+    const targetSamples = Math.min(MAX_SAMPLES, Math.max(2, Math.ceil(totalM / SEGMENT_M) + 1));
+    const stepM = totalM / Math.max(1, targetSamples - 1);
+
+    const densified: { lat: number; lng: number }[] = [points[0]];
+    let acc = 0;
+    let nextTarget = stepM;
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      const segLen = haversineM(a, b);
+      if (segLen <= 0) continue;
+      while (acc + segLen >= nextTarget && densified.length < targetSamples - 1) {
+        const t = (nextTarget - acc) / segLen;
+        densified.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+        nextTarget += stepM;
+      }
+      acc += segLen;
+    }
+    densified.push(points[points.length - 1]);
+
+    // Sample terreng for alle densifiserte punkter.
+    let elevations: (number | null)[] = [];
+    try {
+      elevations = await fetchTerrainElevations(densified);
+    } catch (err) {
+      console.warn("[Map3D] ribbon terrain fetch failed", err);
+      elevations = densified.map(() => null);
+    }
+
+    // Bygg tynne polygon-segmenter (~3 m bredt).
+    const WIDTH_M = 3;
+    const features: any[] = [];
+    for (let i = 0; i < densified.length - 1; i++) {
+      const p1 = densified[i];
+      const p2 = densified[i + 1];
+      const e1 = elevations[i];
+      const e2 = elevations[i + 1];
+      const terrainMid = ((typeof e1 === "number" ? e1 : 0) + (typeof e2 === "number" ? e2 : 0)) / 2;
+
+      // Perpendikulær offset i lng/lat (korrigert for breddegrad).
+      const dLng = p2.lng - p1.lng;
+      const dLat = p2.lat - p1.lat;
+      const midLat = (p1.lat + p2.lat) / 2;
+      const cosLat = Math.cos((midLat * Math.PI) / 180);
+      const dx = dLng * cosLat;
+      const dy = dLat;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const halfW = WIDTH_M / 2 / 111320; // ca. meter→grader
+      const perpLng = (-dy / len) * halfW / cosLat;
+      const perpLat = (dx / len) * halfW;
+
+      const ring: [number, number][] = [
+        [p1.lng + perpLng, p1.lat + perpLat],
+        [p2.lng + perpLng, p2.lat + perpLat],
+        [p2.lng - perpLng, p2.lat - perpLat],
+        [p1.lng - perpLng, p1.lat - perpLat],
+        [p1.lng + perpLng, p1.lat + perpLat],
+      ];
+
+      features.push({
+        type: "Feature",
+        geometry: { type: "Polygon", coordinates: [ring] },
+        properties: {
+          render_base_m: terrainMid,
+          render_height_m: terrainMid + flightAltitudeM,
+        },
+      });
+    }
+
+    ribbonSrc.setData({ type: "FeatureCollection", features } as any);
+  }, []);
+
   // Bygg om route-linje + SORA-buffere fra routePointsRef.
   const rebuildRouteSources = useCallback(() => {
     const map = mapRef.current;
