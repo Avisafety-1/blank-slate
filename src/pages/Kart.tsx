@@ -1078,6 +1078,18 @@ export default function KartPage() {
             </Button>
           ) : null;
 
+          const routePlannerBtn3D = is3D && !isRoutePlanning ? (
+            <Button
+              onClick={handleStartRoutePlanning}
+              variant="default"
+              size="icon"
+              className="shadow-lg"
+              title="Planlegg ny rute"
+            >
+              <Route className="h-5 w-5" />
+            </Button>
+          ) : null;
+
           if (is3D) {
             return (
               <Suspense fallback={<div className="absolute inset-0 bg-muted animate-pulse" />}>
@@ -1086,7 +1098,7 @@ export default function KartPage() {
                   initialCenter={lastViewRef.current?.center}
                   initialZoom={lastViewRef.current?.zoom}
                   onViewChange={handleViewChange}
-                  extraStackSlot={toggle3DBtn}
+                  extraStackSlot={<>{toggle3DBtn}{routePlannerBtn3D}</>}
                   mode={isRoutePlanning ? "routePlanning" : "view"}
                   existingRoute={routePlanningState?.existingRoute}
                   controlledRoute={currentRoute}
