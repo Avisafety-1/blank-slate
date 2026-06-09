@@ -709,10 +709,6 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
     }
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
-    map.addControl(
-      new maplibregl.TerrainControl({ source: "terrainSource", exaggeration: 1.3 }),
-      "top-right"
-    );
 
     map.on("load", () => {
       addZoneLayers(map!, extrudeRef.current);
@@ -854,13 +850,13 @@ export default function Map3D({ initialCenter, initialZoom = 12, onViewChange }:
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
       {/*
-        MapLibre NavigationControl (zoom +/-, kompass) og TerrainControl plasseres
-        i "top-right" av kartet (via map.addControl). Våre egne knapper plasseres
-        UNDER disse, slik at ingenting overlapper. Nav-kontrollene tar ca. 10rem.
+        MapLibre NavigationControl (zoom +/-, kompass) plasseres
+        i "top-right" av kartet (via map.addControl). Vår egen knapp plasseres
+        rett under den, slik at ingenting overlapper. Nav-kontrollen tar ca. 6rem.
       */}
 
-      {/* Egne kart-knapper — stablet vertikalt under MapLibre-navigasjon */}
-      <div className="absolute top-[9.5rem] right-2 z-[1100] flex flex-col gap-2">
+      {/* Egen kart-knapp — rett under MapLibre-navigasjon */}
+      <div className="absolute top-[6.5rem] right-2 z-[1100]">
         {/* Base-toggle (satellitt/topo/standard) */}
         <Button
           variant="secondary"
