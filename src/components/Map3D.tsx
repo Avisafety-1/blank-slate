@@ -356,7 +356,17 @@ async function enrichFeaturesWithTerrain(features: any[]): Promise<boolean> {
 
 
 
-export default function Map3D({ initialCenter, initialZoom = 12, onViewChange, extraStackSlot }: Map3DProps) {
+export default function Map3D({
+  initialCenter,
+  initialZoom = 12,
+  onViewChange,
+  extraStackSlot,
+  mode = "view",
+  existingRoute,
+  controlledRoute,
+  onRouteChange,
+  soraSettings,
+}: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const fetchTimerRef = useRef<number | null>(null);
