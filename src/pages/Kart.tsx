@@ -1065,7 +1065,7 @@ export default function KartPage() {
         
         {/* 2D / 3D toggle — icon-button, sits directly above the Kartlag button */}
         {(() => {
-          const toggle3DBtn = !isRoutePlanning ? (
+          const toggle3DBtn = (
             <Button
               variant="secondary"
               size="icon"
@@ -1076,7 +1076,7 @@ export default function KartPage() {
             >
               <Box className="h-5 w-5" />
             </Button>
-          ) : null;
+          );
 
           const routePlannerBtn3D = is3D && !isRoutePlanning ? (
             <Button
