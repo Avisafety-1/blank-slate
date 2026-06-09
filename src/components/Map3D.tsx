@@ -1022,6 +1022,11 @@ export default function Map3D({
     return el;
   };
 
+  // Placeholder — definert senere som useCallback. Markører trenger en stabil
+  // referanse å kalle ved drag/contextmenu, så vi bruker en ref-indirection.
+  const rebuildRouteSourcesRef = useRef<() => void>(() => {});
+  const rebuildMarkersRef = useRef<(map: MlMap) => void>(() => {});
+
   const rebuildMarkers = useCallback((map: MlMap) => {
     // Fjern eksisterende
     routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
@@ -1035,21 +1040,20 @@ export default function Map3D({
       marker.on("dragend", () => {
         const ll = marker.getLngLat();
         routePointsRef.current[idx] = { lat: ll.lat, lng: ll.lng };
-        // Oppdater farger/numre er ikke nødvendig — kun posisjon endres.
-        rebuildRouteSources();
+        rebuildRouteSourcesRef.current();
         emitRouteChange();
       });
       el.addEventListener("contextmenu", (ev) => {
         ev.preventDefault();
         routePointsRef.current.splice(idx, 1);
-        rebuildMarkers(map);
-        rebuildRouteSources();
+        rebuildMarkersRef.current(map);
+        rebuildRouteSourcesRef.current();
         emitRouteChange();
       });
       routeMarkersRef.current.push(marker);
     });
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
   }, [emitRouteChange]);
+  rebuildMarkersRef.current = rebuildMarkers;
 
   // Bygg om route-linje + SORA-buffere fra routePointsRef.
   const rebuildRouteSources = useCallback(() => {
