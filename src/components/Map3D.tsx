@@ -600,6 +600,52 @@ export default function Map3D({
     }
   }, [applyAipData]);
 
+  // ---- RPAS 5 km-soner (rundt lufthavner) ----
+  const applyRpasData = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const src = map.getSource("rpas") as GeoJSONSource | undefined;
+    if (!src) return;
+    const features = rpasFeaturesRef.current;
+    src.setData({ type: "FeatureCollection", features });
+    if (features.length > 0) {
+      void enrichFeaturesWithTerrain(features).then((changed) => {
+        if (changed) src.setData({ type: "FeatureCollection", features });
+      });
+    }
+  }, []);
+
+  const fetchRpas = useCallback(async () => {
+    if (rpasFetchedRef.current) return;
+    rpasFetchedRef.current = true;
+    try {
+      const { data, error } = await supabase
+        .from("rpas_5km_zones")
+        .select("name, geometry, properties");
+      if (error || !data) {
+        if (error) console.error("[Map3D] rpas fetch error", error);
+        rpasFetchedRef.current = false;
+        return;
+      }
+      const features: any[] = [];
+      data.forEach((row: any) => {
+        if (!row?.geometry) return;
+        features.push({
+          type: "Feature",
+          geometry: row.geometry,
+          properties: { ...(row.properties || {}), __name: row.name, NAVN: (row.properties?.NAVN ?? row.name) },
+        });
+      });
+      rpasFeaturesRef.current = features;
+      applyRpasData();
+    } catch (err) {
+      console.error("[Map3D] rpas fetch failed", err);
+      rpasFetchedRef.current = false;
+    }
+  }, [applyRpasData]);
+
+
+
   // Popup-click handler (felles for soner og AIP-luftrom)
   const installClickHandlers = useCallback((map: MlMap) => {
     const showZonePopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
