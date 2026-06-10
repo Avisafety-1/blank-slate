@@ -398,7 +398,10 @@ export default function Map3D({
   const soraSettingsRef = useRef<SoraSettings | undefined>(soraSettings);
   soraSettingsRef.current = soraSettings;
   const routePointsRef = useRef<RoutePoint[]>([]);
-  const routeMarkersRef = useRef<maplibregl.Marker[]>([]);
+  // DOM-overlay markører (ikke maplibregl.Marker) — projiseres via map.project
+  // hver frame slik at de havner samme sted som SVG-rutelinja (terrengbevisst).
+  const routeMarkerElsRef = useRef<HTMLDivElement[]>([]);
+  const routeMarkerOverlayRef = useRef<HTMLDivElement | null>(null);
   const lastEmittedRouteJsonRef = useRef<string>("");
   const soraTerrainDebounceRef = useRef<number | null>(null);
   const [routeScreenPath, setRouteScreenPath] = useState("");
@@ -818,8 +821,8 @@ export default function Map3D({
       try { map?.off("render", handleRouteOverlayUpdate); } catch {}
       safeskyModelLayerRef.current?.destroy();
       safeskyModelLayerRef.current = null;
-      routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
-      routeMarkersRef.current = [];
+      routeMarkerElsRef.current.forEach((el) => { try { el.remove(); } catch {} });
+      routeMarkerElsRef.current = [];
       try { map?.remove(); } catch {}
       mapRef.current = null;
     };
@@ -1092,32 +1095,103 @@ export default function Map3D({
   const rebuildMarkersRef = useRef<(map: MlMap) => void>(() => {});
 
   const rebuildMarkers = useCallback((map: MlMap) => {
-    // Fjern eksisterende
-    routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
-    routeMarkersRef.current = [];
+    const overlay = routeMarkerOverlayRef.current;
+    // Fjern eksisterende DOM-markører
+    routeMarkerElsRef.current.forEach((el) => { try { el.remove(); } catch {} });
+    routeMarkerElsRef.current = [];
+    if (!overlay) return;
+
     const points = routePointsRef.current;
-    points.forEach((pt, idx) => {
+    points.forEach((_, idx) => {
       const el = buildMarkerEl(idx, points.length);
-      const marker = new maplibregl.Marker({ element: el, draggable: true })
-        .setLngLat([pt.lng, pt.lat])
-        .addTo(map);
-      marker.on("dragend", () => {
-        const ll = marker.getLngLat();
+      el.style.position = "absolute";
+      el.style.left = "0";
+      el.style.top = "0";
+      el.style.willChange = "transform";
+      el.style.pointerEvents = "auto";
+      el.style.touchAction = "none";
+      el.style.display = "none";
+
+      // Drag via pointer events — bruker map.unproject (terrengbevisst) slik
+      // at markøren slippes nøyaktig der den vises på skjermen.
+      let dragging = false;
+      const onPointerDown = (ev: PointerEvent) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        dragging = true;
+        el.style.cursor = "grabbing";
+        try { el.setPointerCapture(ev.pointerId); } catch {}
+        try { map.dragPan.disable(); } catch {}
+        try { map.dragRotate.disable(); } catch {}
+      };
+      const onPointerMove = (ev: PointerEvent) => {
+        if (!dragging) return;
+        ev.preventDefault();
+        const rect = map.getContainer().getBoundingClientRect();
+        const x = ev.clientX - rect.left;
+        const y = ev.clientY - rect.top;
+        const ll = map.unproject([x, y]);
         routePointsRef.current[idx] = { lat: ll.lat, lng: ll.lng };
         rebuildRouteSourcesRef.current();
+        requestRouteOverlayUpdateRef.current();
+      };
+      const onPointerUp = (ev: PointerEvent) => {
+        if (!dragging) return;
+        dragging = false;
+        el.style.cursor = "grab";
+        try { el.releasePointerCapture(ev.pointerId); } catch {}
+        try { map.dragPan.enable(); } catch {}
+        try { map.dragRotate.enable(); } catch {}
         emitRouteChange();
-      });
+      };
+      el.addEventListener("pointerdown", onPointerDown);
+      el.addEventListener("pointermove", onPointerMove);
+      el.addEventListener("pointerup", onPointerUp);
+      el.addEventListener("pointercancel", onPointerUp);
+
       el.addEventListener("contextmenu", (ev) => {
         ev.preventDefault();
+        ev.stopPropagation();
         routePointsRef.current.splice(idx, 1);
         rebuildMarkersRef.current(map);
         rebuildRouteSourcesRef.current();
+        requestRouteOverlayUpdateRef.current();
         emitRouteChange();
       });
-      routeMarkersRef.current.push(marker);
+
+      overlay.appendChild(el);
+      routeMarkerElsRef.current.push(el);
     });
+    // Initial posisjonering
+    requestRouteOverlayUpdateRef.current();
   }, [emitRouteChange]);
   rebuildMarkersRef.current = rebuildMarkers;
+
+  const updateRouteMarkersScreen = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const els = routeMarkerElsRef.current;
+    const points = routePointsRef.current;
+    if (els.length !== points.length) return;
+    const w = map.getContainer().clientWidth;
+    const h = map.getContainer().clientHeight;
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      const p = points[i];
+      const proj = map.project([p.lng, p.lat]);
+      if (
+        !Number.isFinite(proj.x) ||
+        !Number.isFinite(proj.y) ||
+        proj.x < -40 || proj.y < -40 ||
+        proj.x > w + 40 || proj.y > h + 40
+      ) {
+        el.style.display = "none";
+        continue;
+      }
+      el.style.display = "flex";
+      el.style.transform = `translate(-50%, -50%) translate3d(${proj.x.toFixed(1)}px, ${proj.y.toFixed(1)}px, 0)`;
+    }
+  }, []);
 
   const updateRouteScreenPath = useCallback(() => {
     const map = mapRef.current;
@@ -1183,8 +1257,9 @@ export default function Map3D({
     routeOverlayFrameRef.current = window.requestAnimationFrame(() => {
       routeOverlayFrameRef.current = null;
       updateRouteScreenPath();
+      updateRouteMarkersScreen();
     });
-  }, [updateRouteScreenPath]);
+  }, [updateRouteScreenPath, updateRouteMarkersScreen]);
   requestRouteOverlayUpdateRef.current = requestRouteOverlayUpdate;
 
   // Sampler terreng jevnt langs polygonets ytre ring og glatter med moving average.
@@ -1480,8 +1555,8 @@ export default function Map3D({
         rebuildMarkers(map);
         rebuildRouteSources();
       } else {
-        routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
-        routeMarkersRef.current = [];
+        routeMarkerElsRef.current.forEach((el) => { try { el.remove(); } catch {} });
+        routeMarkerElsRef.current = [];
         removeRoutePlanningLayers(map);
         updateRouteScreenPath();
       }
@@ -1586,6 +1661,15 @@ export default function Map3D({
             </>
           )}
         </svg>
+
+        {/* Rutepunkt-markører — DOM-overlay som projiseres via map.project
+            (terrengbevisst) hver frame, slik at de havner samme sted som
+            rutelinja og ikke flyter i feil høyde ved pitch/rotasjon. */}
+        <div
+          ref={routeMarkerOverlayRef}
+          className="pointer-events-none absolute inset-0 z-[1050]"
+          style={{ overflow: "hidden" }}
+        />
 
       {/*
         MapLibre NavigationControl (zoom +/-, kompass) plasseres
