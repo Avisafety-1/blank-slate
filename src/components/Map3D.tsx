@@ -1257,8 +1257,9 @@ export default function Map3D({
     routeOverlayFrameRef.current = window.requestAnimationFrame(() => {
       routeOverlayFrameRef.current = null;
       updateRouteScreenPath();
+      updateRouteMarkersScreen();
     });
-  }, [updateRouteScreenPath]);
+  }, [updateRouteScreenPath, updateRouteMarkersScreen]);
   requestRouteOverlayUpdateRef.current = requestRouteOverlayUpdate;
 
   // Sampler terreng jevnt langs polygonets ytre ring og glatter med moving average.
