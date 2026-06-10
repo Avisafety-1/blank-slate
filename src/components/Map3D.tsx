@@ -1567,14 +1567,9 @@ export default function Map3D({
     <div className="absolute inset-0">
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
-        <svg className="pointer-events-none absolute inset-0 z-[1]" width="100%" height="100%">
-          {routeScreenPath && (
-            <>
-              <path d={routeScreenPath} fill="none" stroke="rgba(15, 23, 42, 0.95)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-              <path d={routeScreenPath} fill="none" stroke="#06b6d4" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            </>
-          )}
-        </svg>
+        {/* Rute-linja tegnes som GeoJSON line-layer (drapes på terrenget) for å
+            unngå at en flat SVG-overlay havner over de 3D-ekstruderte sonene og
+            visuelt "henger" i lufta over rutepunkt-markørene. */}
 
       {/*
         MapLibre NavigationControl (zoom +/-, kompass) plasseres
