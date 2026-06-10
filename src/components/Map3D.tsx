@@ -437,6 +437,8 @@ export default function Map3D({
   extrudeRef.current = extrude;
   const aipFetchedRef = useRef(false);
   const aipFeaturesRef = useRef<any[]>([]);
+  const rpasFetchedRef = useRef(false);
+  const rpasFeaturesRef = useRef<any[]>([]);
   const trafficEnabledRef = useRef(trafficEnabled);
   trafficEnabledRef.current = trafficEnabled;
   const safeskyIconsLoadedRef = useRef<Set<string>>(new Set());
