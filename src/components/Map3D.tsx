@@ -10,7 +10,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl, { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
-import { Satellite, Mountain, Map as MapIcon } from "lucide-react";
+import { Satellite, Mountain, Map as MapIcon, AlertTriangle } from "lucide-react";
+import { Sentry } from "@/lib/sentry";
 import { supabase } from "@/integrations/supabase/client";
 import { getBeaconSvgUrl } from "@/lib/mapIcons";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
@@ -83,6 +84,17 @@ const ZONE_COLORS: Record<string, string> = {
 
 const CAA_LAYER_IDS = ["fengsler", "ambassader", "fareomrader", "flyplasser", "notam_soner", "restriksjoner"];
 const DK_LAYER_IDS = ["rod", "orange", "bla"];
+
+// Lag/sources eid av Map3D. Brukes til cleanup ved unmount og toggle-extrude.
+// Terrain-source ("terrain") og hillshade-lag ("hillshade") settes av buildStyle()
+// og eies av MapLibre — ikke rør disse her.
+const OWNED_LAYER_IDS = [
+  "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
+  "aip-fill", "aip-extrusion", "aip-outline",
+  "rpas-fill", "rpas-extrusion", "rpas-outline",
+  "safesky-3d-models", "safesky-beacons",
+];
+const OWNED_SOURCE_IDS = ["zones", "aip", "rpas", "safesky"];
 
 function buildStyle(base: BaseLayer): StyleSpecification {
   const baseSource =
@@ -467,6 +479,31 @@ export default function Map3D({
   const routeOverlayFrameRef = useRef<number | null>(null);
   const requestRouteOverlayUpdateRef = useRef<() => void>(() => {});
 
+  // ===== Robusthet: WebGL context loss + cleanup-tracking =====
+  const [contextLost, setContextLost] = useState(false);
+  type ClickReg = { event: string; layerId: string; fn: (e: any) => void };
+  const clickHandlersRef = useRef<ClickReg[]>([]);
+  const canvasLossHandlerRef = useRef<((e: Event) => void) | null>(null);
+  const canvasRestoreHandlerRef = useRef<((e: Event) => void) | null>(null);
+
+  const removeManagedClickHandlers = useCallback((map: MlMap) => {
+    clickHandlersRef.current.forEach(({ event, layerId, fn }) => {
+      try { map.off(event as any, layerId, fn); } catch {}
+    });
+    clickHandlersRef.current = [];
+  }, []);
+
+  const removeOwnedLayersAndSources = useCallback((map: MlMap) => {
+    OWNED_LAYER_IDS.forEach((id) => {
+      try { if (map.getLayer(id)) map.removeLayer(id); } catch {}
+    });
+    try { safeskyModelLayerRef.current?.destroy(); } catch {}
+    safeskyModelLayerRef.current = null;
+    OWNED_SOURCE_IDS.forEach((id) => {
+      try { if (map.getSource(id)) map.removeSource(id); } catch {}
+    });
+  }, []);
+
   // Hent og oppdater dronesoner basert på viewport
   const refreshZones = useCallback(async () => {
     const map = mapRef.current;
@@ -648,6 +685,12 @@ export default function Map3D({
 
   // Popup-click handler (felles for soner og AIP-luftrom)
   const installClickHandlers = useCallback((map: MlMap) => {
+    // Defensiv tom-rydding hvis tidligere handlere ligger igjen (style-swap etc.)
+    removeManagedClickHandlers(map);
+    const reg = (event: string, layerId: string, fn: (e: any) => void) => {
+      map.on(event as any, layerId, fn);
+      clickHandlersRef.current.push({ event, layerId, fn });
+    };
     const showZonePopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
       if (!f) return;
@@ -675,14 +718,14 @@ export default function Map3D({
       map.getCanvas().style.cursor = cursor;
     };
     ["zones-fill", "zones-extrusion", "zones-point"].forEach((layerId) => {
-      map.on("click", layerId, showZonePopup);
-      map.on("mouseenter", layerId, setCursor("pointer"));
-      map.on("mouseleave", layerId, setCursor(""));
+      reg("click", layerId, showZonePopup);
+      reg("mouseenter", layerId, setCursor("pointer"));
+      reg("mouseleave", layerId, setCursor(""));
     });
     ["aip-fill", "aip-extrusion"].forEach((layerId) => {
-      map.on("click", layerId, showAipPopup);
-      map.on("mouseenter", layerId, setCursor("pointer"));
-      map.on("mouseleave", layerId, setCursor(""));
+      reg("click", layerId, showAipPopup);
+      reg("mouseenter", layerId, setCursor("pointer"));
+      reg("mouseleave", layerId, setCursor(""));
     });
     const showRpasPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
@@ -696,9 +739,9 @@ export default function Map3D({
         .addTo(map);
     };
     ["rpas-fill", "rpas-extrusion"].forEach((layerId) => {
-      map.on("click", layerId, showRpasPopup);
-      map.on("mouseenter", layerId, setCursor("pointer"));
-      map.on("mouseleave", layerId, setCursor(""));
+      reg("click", layerId, showRpasPopup);
+      reg("mouseenter", layerId, setCursor("pointer"));
+      reg("mouseleave", layerId, setCursor(""));
     });
     const showTrafficPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
@@ -723,10 +766,10 @@ export default function Map3D({
         .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)
         .addTo(map);
     };
-    map.on("click", "safesky-beacons", showTrafficPopup);
-    map.on("mouseenter", "safesky-beacons", setCursor("pointer"));
-    map.on("mouseleave", "safesky-beacons", setCursor(""));
-  }, []);
+    reg("click", "safesky-beacons", showTrafficPopup);
+    reg("mouseenter", "safesky-beacons", setCursor("pointer"));
+    reg("mouseleave", "safesky-beacons", setCursor(""));
+  }, [removeManagedClickHandlers]);
 
   // ---- SafeSky-trafikk ----
   const ensureSafeSkyIcon = useCallback(async (map: MlMap, beaconType: string): Promise<string> => {
@@ -871,12 +914,15 @@ export default function Map3D({
       mapRef.current = map;
     } catch (err) {
       console.error("[Map3D] init failed", err);
+      try {
+        Sentry.captureException(err, { tags: { component: "Map3D", phase: "init" } });
+      } catch {}
       return;
     }
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
-    map.on("load", () => {
+    const onLoad = () => {
       addZoneLayers(map!, extrudeRef.current);
       addAipLayers(map!, extrudeRef.current);
       addRpasLayers(map!, extrudeRef.current);
@@ -891,7 +937,8 @@ export default function Map3D({
       fetchAip();
       fetchRpas();
       refreshSafeSky();
-    });
+    };
+    map.on("load", onLoad);
 
     const debouncedRefresh = () => {
       if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
@@ -913,25 +960,67 @@ export default function Map3D({
     map.on("zoomend", emitView);
 
     // Lazy-load ikon når MapLibre prøver å rendre en symbol med ukjent icon-image.
-    map.on("styleimagemissing", (e: any) => {
+    const onStyleImgMissing = (e: any) => {
       const id: string = e?.id || "";
       if (!id.startsWith("safesky-")) return;
       const beaconType = id.slice("safesky-".length) || "UNKNOWN";
       ensureSafeSkyIcon(map!, beaconType).then(() => {
-        // Trigger re-render
         const src = map!.getSource("safesky") as GeoJSONSource | undefined;
         if (src) {
           try { (src as any)._data && src.setData((src as any)._data); } catch {}
         }
       });
-    });
+    };
+    map.on("styleimagemissing", onStyleImgMissing);
 
     // SafeSky-polling (10s) — samme intervall som 2D
-    safeskyPollRef.current = window.setInterval(() => {
-      if (trafficEnabledRef.current) refreshSafeSky();
-    }, 10000);
+    const startSafeSkyPoll = () => {
+      if (safeskyPollRef.current) window.clearInterval(safeskyPollRef.current);
+      safeskyPollRef.current = window.setInterval(() => {
+        if (trafficEnabledRef.current) refreshSafeSky();
+      }, 10000);
+    };
+    startSafeSkyPoll();
 
     const t = window.setTimeout(() => { try { map!.resize(); } catch {} }, 300);
+
+    // ===== WebGL context loss / restored =====
+    const canvas = map.getCanvas();
+    const onContextLost = (e: Event) => {
+      e.preventDefault(); // tillater restored-event
+      setContextLost(true);
+      // Stopp aktive timere så vi ikke kaller mot død GL-kontekst
+      if (fetchTimerRef.current) { window.clearTimeout(fetchTimerRef.current); fetchTimerRef.current = null; }
+      if (safeskyPollRef.current) { window.clearInterval(safeskyPollRef.current); safeskyPollRef.current = null; }
+      if (soraTerrainDebounceRef.current) { window.clearTimeout(soraTerrainDebounceRef.current); soraTerrainDebounceRef.current = null; }
+      if (routeOverlayFrameRef.current != null) {
+        window.cancelAnimationFrame(routeOverlayFrameRef.current);
+        routeOverlayFrameRef.current = null;
+      }
+      try {
+        Sentry.captureMessage("Map3D: WebGL context lost", {
+          level: "warning",
+          tags: { component: "Map3D", event: "webglcontextlost" },
+        });
+      } catch {}
+    };
+    const onContextRestored = () => {
+      try {
+        Sentry.addBreadcrumb({ category: "map3d", message: "webgl context restored", level: "info" });
+      } catch {}
+      try { map?.triggerRepaint(); } catch {}
+      // Gjenoppta polling + fyll på data
+      startSafeSkyPoll();
+      try { refreshZones(); } catch {}
+      try { applyAipData(); } catch {}
+      try { applyRpasData(); } catch {}
+      try { refreshSafeSky(); } catch {}
+      setContextLost(false);
+    };
+    canvas.addEventListener("webglcontextlost", onContextLost, false);
+    canvas.addEventListener("webglcontextrestored", onContextRestored, false);
+    canvasLossHandlerRef.current = onContextLost;
+    canvasRestoreHandlerRef.current = onContextRestored;
 
     return () => {
       window.clearTimeout(t);
@@ -939,10 +1028,28 @@ export default function Map3D({
       if (safeskyPollRef.current) window.clearInterval(safeskyPollRef.current);
       if (soraTerrainDebounceRef.current) window.clearTimeout(soraTerrainDebounceRef.current);
       if (routeOverlayFrameRef.current != null) window.cancelAnimationFrame(routeOverlayFrameRef.current);
+      // Canvas event listeners
+      try {
+        if (canvasLossHandlerRef.current) canvas.removeEventListener("webglcontextlost", canvasLossHandlerRef.current);
+        if (canvasRestoreHandlerRef.current) canvas.removeEventListener("webglcontextrestored", canvasRestoreHandlerRef.current);
+      } catch {}
+      canvasLossHandlerRef.current = null;
+      canvasRestoreHandlerRef.current = null;
+      // Map event listeners (navngitt handler-cleanup)
+      try { map?.off("load", onLoad); } catch {}
+      try { map?.off("moveend", debouncedRefresh); } catch {}
+      try { map?.off("moveend", emitView); } catch {}
+      try { map?.off("zoomend", emitView); } catch {}
       try { map?.off("move", handleRouteOverlayUpdate); } catch {}
       try { map?.off("render", handleRouteOverlayUpdate); } catch {}
-      safeskyModelLayerRef.current?.destroy();
-      safeskyModelLayerRef.current = null;
+      try { map?.off("styleimagemissing", onStyleImgMissing); } catch {}
+      // Managed click/hover-handlere på Map3D-eide lag
+      if (map) {
+        try { removeManagedClickHandlers(map); } catch {}
+        try { removeRoutePlanningLayers(map); } catch {}
+        try { removeOwnedLayersAndSources(map); } catch {}
+      }
+      // DOM-overlay markører
       routeMarkerElsRef.current.forEach((el) => { try { el.remove(); } catch {} });
       routeMarkerElsRef.current = [];
       try { map?.remove(); } catch {}
@@ -960,7 +1067,9 @@ export default function Map3D({
       return;
     }
     try {
-      // setStyle fjerner alle lag inkl. vårt custom 3D-modellslag
+      // setStyle fjerner alle lag inkl. vårt custom 3D-modellslag.
+      // Fjern handlere først så de ikke dobbel-registreres når vi re-installer.
+      removeManagedClickHandlers(map);
       safeskyModelLayerRef.current?.destroy();
       safeskyModelLayerRef.current = null;
       map.setStyle(buildStyle(base));
@@ -984,28 +1093,16 @@ export default function Map3D({
     } catch (err) {
       console.error("[Map3D] setStyle failed", err);
     }
-  }, [base, refreshZones, installClickHandlers, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky]);
+  }, [base, refreshZones, installClickHandlers, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky, removeManagedClickHandlers]);
 
   // Toggle 3D-sylindere vs flat fill — fjern og legg til lag på nytt
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     try {
-      [
-        "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
-        "aip-fill", "aip-extrusion", "aip-outline",
-        "rpas-fill", "rpas-extrusion", "rpas-outline",
-        "safesky-3d-models",
-        "safesky-beacons",
-      ].forEach((id) => {
-        if (map.getLayer(id)) map.removeLayer(id);
-      });
-      safeskyModelLayerRef.current?.destroy();
-      safeskyModelLayerRef.current = null;
-      if (map.getSource("zones")) map.removeSource("zones");
-      if (map.getSource("aip")) map.removeSource("aip");
-      if (map.getSource("rpas")) map.removeSource("rpas");
-      if (map.getSource("safesky")) map.removeSource("safesky");
+      // Fjern Map3D-eide handlere først, så bygg lagene på nytt og re-install.
+      removeManagedClickHandlers(map);
+      removeOwnedLayersAndSources(map);
       addZoneLayers(map, extrude);
       addAipLayers(map, extrude);
       addRpasLayers(map, extrude);
@@ -1018,7 +1115,7 @@ export default function Map3D({
     } catch (err) {
       console.error("[Map3D] toggle extrude failed", err);
     }
-  }, [extrude, installClickHandlers, refreshZones, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky]);
+  }, [extrude, installClickHandlers, refreshZones, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky, removeManagedClickHandlers, removeOwnedLayersAndSources]);
 
   // Toggle zones (data)
   useEffect(() => {
@@ -1777,6 +1874,19 @@ export default function Map3D({
   return (
     <div className="absolute inset-0">
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+
+      {contextLost && (
+        <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-background/85 backdrop-blur-sm">
+          <div className="rounded-lg border bg-card p-6 text-center shadow-lg max-w-sm">
+            <AlertTriangle className="mx-auto h-8 w-8 text-amber-500 mb-2" />
+            <h3 className="font-semibold mb-1">3D-kartet mistet GPU-kontekst</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Kan skje ved lite minne eller mange åpne faner. Forsøker å gjenopprette automatisk.
+            </p>
+            <Button onClick={() => window.location.reload()}>Last kart på nytt</Button>
+          </div>
+        </div>
+      )}
 
         {/* Rute-overlay: tegner ruta terrengkorrekt (via map.project som er
             terrengbevisst) over de 3D-ekstruderte sonene slik at den forblir
