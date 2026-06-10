@@ -26,6 +26,7 @@ import {
   buildAipZonePopupHtml,
   parseAipLimitToMeters,
 } from "@/lib/aipPopups";
+import { buildRpas5kmPopupHtml } from "@/lib/rpas5kmPopup";
 import { createSafeSkyModelLayer, SafeSkyModelLayer, SafeSkyBeacon } from "@/lib/safeskyModelLayer";
 import { sampleZonesTerrain, zoneCacheKey } from "@/lib/zoneTerrainSampler";
 import { fetchTerrainElevations } from "@/lib/terrainElevation";
