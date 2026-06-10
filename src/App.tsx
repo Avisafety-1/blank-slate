@@ -179,6 +179,27 @@ const RouteWatcher = () => {
   return null;
 };
 
+// Sentry: tagger hver navigasjon med rute (uten query/hash) og legger
+// igjen et breadcrumb. Pathname-only — query kan inneholde tokens.
+const SentryRouteTracker = () => {
+  const location = useLocation();
+  useEffect(() => {
+    Sentry.setTag("route", location.pathname);
+    Sentry.addBreadcrumb({
+      category: "navigation",
+      message: location.pathname,
+      level: "info",
+    });
+  }, [location.pathname]);
+  return null;
+};
+
+// Synker Sentry-bruker/selskaps-kontekst med AuthContext.
+const SentryAuthSync = () => {
+  useSentryContext();
+  return null;
+};
+
 const App = () => {
   useEffect(() => {
     const isDji = /dji/i.test(navigator.userAgent);
