@@ -1120,55 +1120,15 @@ export default function Map3D({
   rebuildMarkersRef.current = rebuildMarkers;
 
   const updateRouteScreenPath = useCallback(() => {
-    const map = mapRef.current;
-    const points = routePointsRef.current;
-    if (!map || modeRef.current !== "routePlanning" || points.length < 2) {
-      if (routeScreenPathRef.current) {
-        routeScreenPathRef.current = "";
-        setRouteScreenPath("");
-      }
-      return;
-    }
-
-    const haversineM = (a: RoutePoint, b: RoutePoint) => {
-      const R = 6371000;
-      const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-      const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-      const la1 = (a.lat * Math.PI) / 180;
-      const la2 = (b.lat * Math.PI) / 180;
-      const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
-      return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-    };
-
-    let totalM = 0;
-    for (let i = 1; i < points.length; i++) totalM += haversineM(points[i - 1], points[i]);
-    const stepM = Math.max(8, totalM / 360);
-    const samples: RoutePoint[] = [points[0]];
-    for (let i = 1; i < points.length; i++) {
-      const a = points[i - 1];
-      const b = points[i];
-      const segLen = haversineM(a, b);
-      const steps = Math.max(1, Math.ceil(segLen / stepM));
-      for (let s = 1; s <= steps; s++) {
-        const t = s / steps;
-        samples.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
-      }
-    }
-
-    const nextPath = samples
-      .map((p, i) => {
-        const projected = map.project([p.lng, p.lat]);
-        if (!Number.isFinite(projected.x) || !Number.isFinite(projected.y)) return null;
-        return `${i === 0 ? "M" : "L"}${projected.x.toFixed(1)} ${projected.y.toFixed(1)}`;
-      })
-      .filter(Boolean)
-      .join(" ");
-
-    if (nextPath !== routeScreenPathRef.current) {
-      routeScreenPathRef.current = nextPath;
-      setRouteScreenPath(nextPath);
+    // No-op: rute-linja rendres nå som GeoJSON line-layer (drapes på terreng).
+    // SVG-overlayen ble fjernet fordi den lå over de 3D-ekstruderte sonene og
+    // dermed kom ut av posisjon i forhold til rutepunkt-markørene.
+    if (routeScreenPathRef.current) {
+      routeScreenPathRef.current = "";
+      setRouteScreenPath("");
     }
   }, []);
+
 
   const requestRouteOverlayUpdate = useCallback(() => {
     if (routeOverlayFrameRef.current != null) return;
