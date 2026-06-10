@@ -352,11 +352,11 @@ function addRpasLayers(map: MlMap, extrude: boolean) {
           ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
           0,
         ],
-        // height: terrain_max_m + 900 m (≈ typisk CTR-tak 2500ft + 500ft buffer) for synlighet over CTR
+        // height: terrain_max_m + 1400 m (≈ CTR-tak 2500ft + 2000ft) for synlighet over CTR
         "fill-extrusion-height": [
           "case",
-          ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 900],
-          900,
+          ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 1400],
+          1400,
         ],
         "fill-extrusion-opacity": 0.25,
       },
