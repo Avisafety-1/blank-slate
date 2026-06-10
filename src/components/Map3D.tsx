@@ -967,6 +967,7 @@ export default function Map3D({
       map.once("idle", () => {
         addZoneLayers(map, extrudeRef.current);
         addAipLayers(map, extrudeRef.current);
+        addRpasLayers(map, extrudeRef.current);
         if (modeRef.current === "routePlanning") {
           addRoutePlanningLayers(map);
           rebuildMarkersRef.current(map);
@@ -977,12 +978,13 @@ export default function Map3D({
         safeskyIconsLoadedRef.current.clear();
         refreshZones();
         applyAipData();
+        applyRpasData();
         refreshSafeSky();
       });
     } catch (err) {
       console.error("[Map3D] setStyle failed", err);
     }
-  }, [base, refreshZones, installClickHandlers, applyAipData, addSafeSkyLayer, refreshSafeSky]);
+  }, [base, refreshZones, installClickHandlers, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky]);
 
   // Toggle 3D-sylindere vs flat fill — fjern og legg til lag på nytt
   useEffect(() => {
