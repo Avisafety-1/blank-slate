@@ -15,6 +15,71 @@ export const escapePopupHtml = (s: any): string =>
 
 const esc = escapePopupHtml;
 
+/**
+ * Sanitizes CAA `message` text that may contain a small subset of HTML
+ * (typically a single `<a href="...">Mer info</a>` link from dronesoner.no).
+ *
+ * Strategy: full-escape the whole string, then re-introduce only a strict
+ * whitelist of tags via token substitution from the original raw string.
+ * No external deps (DOMPurify is not in the project).
+ *
+ * Whitelist:
+ *  - `<a href="http(s)://… | mailto:… | tel:…">text</a>` (other attrs stripped,
+ *    target/rel forced to _blank/noopener noreferrer)
+ *  - `<br>`, `<br/>`, `<br />`
+ *  - `<strong>`, `<em>`, `<b>`, `<i>`, `<p>` (and closing tags)
+ *
+ * Newlines become `<br/>` so multi-line source content renders correctly.
+ */
+export function sanitizeCaaMessageHtml(raw: unknown): string {
+  if (raw === null || raw === undefined) return '';
+  const src = String(raw);
+  if (!src) return '';
+
+  const NUL = '\u0000';
+  const tokens: string[] = [];
+  const tokenize = (html: string) => {
+    const i = tokens.length;
+    tokens.push(html);
+    return `${NUL}T${i}${NUL}`;
+  };
+
+  // Order matters: handle <a>…</a> first so its inner text isn't mis-tokenized.
+  let working = src.replace(
+    /<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a>/gi,
+    (_m, dq, sq, bare, inner) => {
+      const href = String(dq ?? sq ?? bare ?? '').trim();
+      if (!/^(https?:|mailto:|tel:)/i.test(href)) {
+        // Drop the tag, keep inner text (will be escaped below).
+        return inner;
+      }
+      const safeHref = esc(href);
+      const safeText = esc(String(inner).replace(/<[^>]*>/g, ''));
+      return tokenize(
+        `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${safeText}</a>`,
+      );
+    },
+  );
+
+  // Standalone whitelisted tags
+  working = working.replace(/<br\s*\/?\s*>/gi, () => tokenize('<br/>'));
+  working = working.replace(
+    /<\/?(?:strong|em|b|i|p)\s*>/gi,
+    (m) => tokenize(m.toLowerCase().replace(/\s+/g, '')),
+  );
+
+  // Escape everything else
+  let out = esc(working);
+
+  // Convert raw newlines to <br/>
+  out = out.replace(/\r\n|\r|\n/g, '<br/>');
+
+  // Restore tokens
+  out = out.replace(new RegExp(`${NUL}T(\\d+)${NUL}`, 'g'), (_m, i) => tokens[Number(i)] ?? '');
+
+  return out;
+}
+
 export interface CaaLayerStyleEntry {
   color: string;
   iconLabel: string;

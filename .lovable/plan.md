@@ -1,188 +1,68 @@
+# Fix: kryptisk HTML-tekst i 3D-popups for CAA-soner (Fengsel, Ambassade, m.fl.)
 
-# Plan: Sentry-kontekst med bruker, selskap og PII-vern
+## Problem
 
-Mål: når en feil skjer, skal vi i Sentry kunne se hvilken bruker (anonymisert), hvilket selskap, hvilken rolle, hvilken rute og hvilken app-versjon — uten å lekke epost, telefon eller andre persondata.
+Popupen for f.eks. Trondheim fengsel viser rå HTML midt i teksten:
 
-Alle endringer er **frontend-only**. Ingen DB-endringer, ingen edge functions, ingen funksjonelle endringer.
-
----
-
-## 1. Hardene `src/lib/sentry.ts` (PII-vern + release)
-
-Oppdater `Sentry.init` med PII-sikre defaults og en `beforeSend`-skrubber.
-
-```ts
-Sentry.init({
-  dsn,
-  environment: import.meta.env.MODE,
-  release: import.meta.env.VITE_APP_VERSION || "unknown",
-  integrations: [
-    Sentry.browserTracingIntegration(),
-    Sentry.httpClientIntegration(),
-    Sentry.captureConsoleIntegration({ levels: ["error"] }),
-  ],
-  tracesSampleRate: 0.1,
-  sampleRate: 1.0,
-  sendDefaultPii: false,            // explisitt av
-  tracePropagationTargets: ["localhost", /^https:\/\/avisafev2\.lovable\.app/, /^https:\/\/app\.avisafe\.no/],
-  ignoreErrors: [
-    "ResizeObserver loop limit exceeded",
-    "Non-Error promise rejection captured",
-    "Failed to fetch",                 // nettverksfeil håndteres egne steder
-    "Load failed",                     // Safari-variant
-    "NetworkError when attempting to fetch",
-  ],
-  denyUrls: [/extensions\//i, /^chrome:\/\//i, /^moz-extension:\/\//i],
-  beforeSend(event) {
-    return scrubPii(event);            // se §4
-  },
-  beforeBreadcrumb(breadcrumb) {
-    return scrubBreadcrumb(breadcrumb); // se §4
-  },
-  enabled: !!dsn,
-});
+```
+…fengselet.Sikkerhetsnivå: Lavere sikkerhet. <a href='https://www.kriminalomsorgen.no/...'>Mer info</a>
 ```
 
-Custom domains (`app.avisafe.no`, `login.avisafe.no`) legges til i `tracePropagationTargets`.
+Årsak: `caa_drone_zones.message`-feltet inneholder ferdig HTML (lenker o.l.) fra dronesoner.no-synken, men `buildCaaZonePopupHtml` i `src/lib/zonePopups.ts` kjører hele `message` gjennom `escapePopupHtml`, så `<a>`-taggen vises som tekst. Samme builder brukes både av 2D (Leaflet) og 3D (MapLibre), så feilen gjelder begge — bare mer synlig i 3D der popupene er større.
 
-## 2. Sett bruker/selskaps-kontekst fra AuthContext
+I tillegg mangler det et linjeskift før `Sikkerhetsnivå:` (kildedata har ofte `\n` som blir flatet ut).
 
-Ny hook `src/hooks/useSentryContext.ts` som monteres én gang i `AuthProvider` (eller i `App.tsx` rett under `<AuthProvider>`). Den lytter på endringer i `user`, `companyId`, `companyType`, `userRole` og oppdaterer Sentry-scopet:
+## Endring
 
-```ts
-useEffect(() => {
-  if (!user) {
-    Sentry.setUser(null);
-    Sentry.setTags({ company_id: undefined, company_type: undefined, user_role: undefined });
-    return;
-  }
-  Sentry.setUser({
-    id: user.id,                       // UUID — ikke PII
-    // BEVISST IKKE: email, username, ip_address, phone
-  });
-  Sentry.setTags({
-    company_id: companyId ?? "none",
-    company_type: companyType ?? "none",
-    user_role: userRole ?? "none",
-  });
-  Sentry.setContext("company", companyId ? {
-    id: companyId,
-    name: companyName,                 // selskapsnavn er forretningsdata, ikke personlig PII
-    type: companyType,
-  } : null);
-}, [user?.id, companyId, companyName, companyType, userRole]);
-```
+Kun `src/lib/zonePopups.ts` endres. Ingen endringer i datasynk, Map3D-cleanup, ruteplanlegging eller SORA.
 
-`companyName` regnes som ikke-PII (forretningsdata om abonnenten, ikke en fysisk person). Hvis dere vil være ekstra forsiktige kan vi droppe `setContext("company")` og bare beholde `companyId` — si fra om dere foretrekker det.
+### 1. Trygg HTML-rendering av `message`
 
-## 3. Rute-tag + nyttige breadcrumbs
+Legg til en intern `sanitizeCaaMessageHtml(raw)` som:
 
-Liten komponent `<SentryRouteTracker />` i `App.tsx` (inne i `BrowserRouter`):
+- Escaper alt som default (`escapePopupHtml`).
+- Tillater kun en hvitliste av enkle tagger som faktisk forekommer i CAA-meldinger: `<a href="…" target="_blank" rel="noopener noreferrer">`, `<br>`, `<br/>`, `<strong>`, `<em>`, `<b>`, `<i>`, `<p>`.
+- For `<a>`: kun `href` som starter med `https://`, `http://`, `mailto:` eller `tel:` slippes gjennom. Tving `target="_blank" rel="noopener noreferrer"`. Alle andre attributter fjernes (ingen `onclick`, `style`, `javascript:` osv.).
+- Konverter rå `\n` til `<br/>` slik at "Sikkerhetsnivå:" havner på egen linje.
+
+Implementasjon uten ny avhengighet (DOMPurify er ikke i prosjektet): først full escape, deretter en kontrollert regex-pass som re-introduserer kun de hvitlistede taggene fra original-strengen via en token-basert tilnærming (replace `<a …>…</a>`, `<br/?>`, `<strong>…</strong>` osv. med plassholdere før escape, og bytt tilbake til validert HTML etterpå). Plassholderne bruker tegn som ikke kan oppstå i meldinger (f.eks. `\u0000TAG{n}\u0000`). Hver lenke valideres: parse `href`, sjekk protokoll, escape attributtverdien, escape lenketeksten.
+
+### 2. Bruk i builder
+
+I `buildCaaZonePopupHtml`, bytt:
 
 ```ts
-const location = useLocation();
-useEffect(() => {
-  Sentry.setTag("route", location.pathname);
-  Sentry.addBreadcrumb({
-    category: "navigation",
-    message: location.pathname,
-    level: "info",
-  });
-}, [location.pathname]);
+html += `<div style="margin-top:4px;max-width:280px">${esc(p.message)}</div>`;
 ```
 
-Andre nyttige breadcrumbs vi får "gratis" via integrasjonene som allerede er på (`browserTracing`, `console`, `httpClient`): fetch/XHR-feil, console.error.
-
-## 4. PII-skrubber (`scrubPii` + `scrubBreadcrumb`)
-
-Felles helper i `sentry.ts`. Forventer å treffe:
-
-- `event.user.email`, `event.user.username`, `event.user.ip_address` → slett
-- `event.request.cookies`, `event.request.headers.Authorization`, `apikey`, `x-supabase-auth` → slett
-- I `breadcrumb.data` (særlig `fetch`/`xhr`): fjern `Authorization`, `apikey`, query/body som matcher epost-regex (`/\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/gi`) eller telefon-regex (`/\+?\d[\d\s().-]{7,}\d/g`) → erstatt med `[redacted]`.
-- I `event.exception.values[].value` og `event.message`: kjør samme regex-erstatning så stack-traces ikke lekker.
-- Strip Supabase storage signed-URL tokens (`?token=...`) fra URL-er.
-
-Hvitlistet: `event.user.id` (UUID), `event.tags.company_id`, `event.contexts.company`.
-
-## 5. Berik manuelle `captureException`-kall
-
-Liten wrapper `captureWithContext(err, extras)` i `sentry.ts` som setter feature-tag på det enkelte eventet uten å forurense globalt scope:
+til:
 
 ```ts
-export const captureWithContext = (err: unknown, opts: {
-  feature?: string;        // f.eks. "missions", "map3d", "sora"
-  action?: string;         // f.eks. "save_mission", "import_kml"
-  extra?: Record<string, unknown>;
-}) => {
-  Sentry.withScope((scope) => {
-    if (opts.feature) scope.setTag("feature", opts.feature);
-    if (opts.action) scope.setTag("action", opts.action);
-    if (opts.extra) scope.setContext("extra", opts.extra);
-    Sentry.captureException(err);
-  });
-};
+html += `<div style="margin-top:4px;max-width:280px;word-break:break-word">${sanitizeCaaMessageHtml(p.message)}</div>`;
 ```
 
-**Ingen mass-refactor i denne planen** — vi tar den i bruk gradvis i nye/oppdaterte filer. Eksisterende `Sentry.captureException(err, { tags: {...} })` (f.eks. Map3D) fortsetter å virke.
+`word-break:break-word` hindrer at lange URL-er sprenger popupbredden (slik som i skjermbildet).
 
-## 6. ErrorBoundary-berikelse
+### 3. Eksport
 
-`src/components/ErrorBoundary.tsx` (eksisterende): pakk inn med `Sentry.ErrorBoundary` eller legg til `Sentry.captureException` med `withScope` som setter `tag: { boundary: "root" }` og `context: { componentStack }`. Beholder eksisterende fallback-UI.
+Eksporter `sanitizeCaaMessageHtml` slik at `buildCaaSmallAirportPopupHtml` og `buildDkZonePopupHtml` kan ta den i bruk senere hvis behov, men ingen call-sites endres nå utenom CAA-builderen.
 
-## 7. App-versjon i release-tag
+## Sikkerhet
 
-I `vite.config.ts`: injiser `VITE_APP_VERSION` fra `package.json` version + git commit hash (kort). Trengs for å koble feil til en spesifikk deploy. Hvis ikke build-pipeline har commit-hash tilgjengelig, faller vi tilbake til kun `package.json` version.
-
-```ts
-// vite.config.ts
-import { execSync } from "node:child_process";
-const commit = (() => { try { return execSync("git rev-parse --short HEAD").toString().trim(); } catch { return "dev"; } })();
-define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(`${pkg.version}+${commit}`) }
-```
-
-## 8. (Valgfritt — krever bekreftelse) Session Replay
-
-Sentry Session Replay kan vise nøyaktig hva brukeren gjorde rett før feilen. Den **kan** maskere PII automatisk (`maskAllText: true`, `blockAllMedia: true`). Likevel: replays er tunge og lagring koster. **Foreslår å ikke aktivere nå** — gi beskjed hvis dere vil ha det, så legger jeg det inn med strengeste masking.
-
----
-
-## Berørte filer
-
-- `src/lib/sentry.ts` — init + scrubber + `captureWithContext`
-- `src/hooks/useSentryContext.ts` — ny
-- `src/contexts/AuthContext.tsx` — kall `useSentryContext()` én gang (eller bruk i App.tsx)
-- `src/App.tsx` — `<SentryRouteTracker />`
-- `src/components/ErrorBoundary.tsx` — withScope-berikelse
-- `vite.config.ts` — release-versjon
-
-## Ikke berørt
-
-- DB, RLS, edge functions
-- Auth-flyt, login/logout
-- Eksisterende `captureException`-kall (bakoverkompatible)
+- Standard er fortsatt full escaping.
+- Bare hvitlistede tagger og protokoller slippes gjennom.
+- Ingen `style`/`on*`/`javascript:` aksepteres.
+- Lenketekst og `href` escapes etter validering før de settes inn.
 
 ## Verifisering
 
-1. Build passerer.
-2. Logg inn → trigger en testfeil (f.eks. `throw` i en komponent eller `Sentry.captureMessage("test", "info")` fra konsoll). I Sentry-dashboardet skal eventet ha:
-   - `user.id` = UUID (ingen epost)
-   - tags: `company_id`, `company_type`, `user_role`, `route`, `feature` (hvis satt)
-   - context: `company` med id/name/type
-   - release: `1.x.x+<hash>`
-3. Skrubber: send et event med `Authorization: Bearer eyJ...` i breadcrumb → bekreft at headeren ikke finnes i Sentry-payload.
-4. Logg ut → bekreft at neste event har `user: null`.
+- 3D-kart: åpne popup på Trondheim fengsel og en annen fengsel-/ambassade-sone — lenken "Mer info" skal være klikkbar, ikke vises som rå HTML, og åpne i ny fane.
+- 2D-kart: samme popup ser likt ut (samme builder).
+- En melding med f.eks. `<script>alert(1)</script>` (defensiv test via lokal mock) skal vises som ren tekst, ikke kjøres.
+- Lange URL-er bryter inne i popupen.
 
-## Personvern-oppsummering
+## Filer
 
-| Felt | Sendes til Sentry? |
-|------|-------------------|
-| user.id (UUID) | Ja |
-| Epost | Nei (skrubbet) |
-| Telefonnummer | Nei (skrubbet) |
-| IP-adresse | Nei (`sendDefaultPii: false`) |
-| Cookies / Authorization-headere | Nei (skrubbet) |
-| companyId / companyType / userRole | Ja (forretningskontekst) |
-| companyName | Ja (kan tas ut hvis ønsket) |
-| Rute (pathname) | Ja |
-| App-versjon / commit | Ja |
+- `src/lib/zonePopups.ts` (endret)
+
+Ingen DB-migrasjoner. Ingen endringer i Map3D, ruteplanlegging, SORA eller datasynk.
