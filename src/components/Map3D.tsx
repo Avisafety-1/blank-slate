@@ -821,8 +821,8 @@ export default function Map3D({
       try { map?.off("render", handleRouteOverlayUpdate); } catch {}
       safeskyModelLayerRef.current?.destroy();
       safeskyModelLayerRef.current = null;
-      routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
-      routeMarkersRef.current = [];
+      routeMarkerElsRef.current.forEach((el) => { try { el.remove(); } catch {} });
+      routeMarkerElsRef.current = [];
       try { map?.remove(); } catch {}
       mapRef.current = null;
     };
