@@ -1095,32 +1095,103 @@ export default function Map3D({
   const rebuildMarkersRef = useRef<(map: MlMap) => void>(() => {});
 
   const rebuildMarkers = useCallback((map: MlMap) => {
-    // Fjern eksisterende
-    routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
-    routeMarkersRef.current = [];
+    const overlay = routeMarkerOverlayRef.current;
+    // Fjern eksisterende DOM-markører
+    routeMarkerElsRef.current.forEach((el) => { try { el.remove(); } catch {} });
+    routeMarkerElsRef.current = [];
+    if (!overlay) return;
+
     const points = routePointsRef.current;
-    points.forEach((pt, idx) => {
+    points.forEach((_, idx) => {
       const el = buildMarkerEl(idx, points.length);
-      const marker = new maplibregl.Marker({ element: el, draggable: true })
-        .setLngLat([pt.lng, pt.lat])
-        .addTo(map);
-      marker.on("dragend", () => {
-        const ll = marker.getLngLat();
+      el.style.position = "absolute";
+      el.style.left = "0";
+      el.style.top = "0";
+      el.style.willChange = "transform";
+      el.style.pointerEvents = "auto";
+      el.style.touchAction = "none";
+      el.style.display = "none";
+
+      // Drag via pointer events — bruker map.unproject (terrengbevisst) slik
+      // at markøren slippes nøyaktig der den vises på skjermen.
+      let dragging = false;
+      const onPointerDown = (ev: PointerEvent) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        dragging = true;
+        el.style.cursor = "grabbing";
+        try { el.setPointerCapture(ev.pointerId); } catch {}
+        try { map.dragPan.disable(); } catch {}
+        try { map.dragRotate.disable(); } catch {}
+      };
+      const onPointerMove = (ev: PointerEvent) => {
+        if (!dragging) return;
+        ev.preventDefault();
+        const rect = map.getContainer().getBoundingClientRect();
+        const x = ev.clientX - rect.left;
+        const y = ev.clientY - rect.top;
+        const ll = map.unproject([x, y]);
         routePointsRef.current[idx] = { lat: ll.lat, lng: ll.lng };
         rebuildRouteSourcesRef.current();
+        requestRouteOverlayUpdateRef.current();
+      };
+      const onPointerUp = (ev: PointerEvent) => {
+        if (!dragging) return;
+        dragging = false;
+        el.style.cursor = "grab";
+        try { el.releasePointerCapture(ev.pointerId); } catch {}
+        try { map.dragPan.enable(); } catch {}
+        try { map.dragRotate.enable(); } catch {}
         emitRouteChange();
-      });
+      };
+      el.addEventListener("pointerdown", onPointerDown);
+      el.addEventListener("pointermove", onPointerMove);
+      el.addEventListener("pointerup", onPointerUp);
+      el.addEventListener("pointercancel", onPointerUp);
+
       el.addEventListener("contextmenu", (ev) => {
         ev.preventDefault();
+        ev.stopPropagation();
         routePointsRef.current.splice(idx, 1);
         rebuildMarkersRef.current(map);
         rebuildRouteSourcesRef.current();
+        requestRouteOverlayUpdateRef.current();
         emitRouteChange();
       });
-      routeMarkersRef.current.push(marker);
+
+      overlay.appendChild(el);
+      routeMarkerElsRef.current.push(el);
     });
+    // Initial posisjonering
+    requestRouteOverlayUpdateRef.current();
   }, [emitRouteChange]);
   rebuildMarkersRef.current = rebuildMarkers;
+
+  const updateRouteMarkersScreen = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const els = routeMarkerElsRef.current;
+    const points = routePointsRef.current;
+    if (els.length !== points.length) return;
+    const w = map.getContainer().clientWidth;
+    const h = map.getContainer().clientHeight;
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      const p = points[i];
+      const proj = map.project([p.lng, p.lat]);
+      if (
+        !Number.isFinite(proj.x) ||
+        !Number.isFinite(proj.y) ||
+        proj.x < -40 || proj.y < -40 ||
+        proj.x > w + 40 || proj.y > h + 40
+      ) {
+        el.style.display = "none";
+        continue;
+      }
+      el.style.display = "flex";
+      el.style.transform = `translate(-50%, -50%) translate3d(${proj.x.toFixed(1)}px, ${proj.y.toFixed(1)}px, 0)`;
+    }
+  }, []);
 
   const updateRouteScreenPath = useCallback(() => {
     const map = mapRef.current;
