@@ -914,12 +914,15 @@ export default function Map3D({
       mapRef.current = map;
     } catch (err) {
       console.error("[Map3D] init failed", err);
+      try {
+        Sentry.captureException(err, { tags: { component: "Map3D", phase: "init" } });
+      } catch {}
       return;
     }
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 
-    map.on("load", () => {
+    const onLoad = () => {
       addZoneLayers(map!, extrudeRef.current);
       addAipLayers(map!, extrudeRef.current);
       addRpasLayers(map!, extrudeRef.current);
@@ -934,7 +937,8 @@ export default function Map3D({
       fetchAip();
       fetchRpas();
       refreshSafeSky();
-    });
+    };
+    map.on("load", onLoad);
 
     const debouncedRefresh = () => {
       if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
@@ -956,25 +960,67 @@ export default function Map3D({
     map.on("zoomend", emitView);
 
     // Lazy-load ikon når MapLibre prøver å rendre en symbol med ukjent icon-image.
-    map.on("styleimagemissing", (e: any) => {
+    const onStyleImgMissing = (e: any) => {
       const id: string = e?.id || "";
       if (!id.startsWith("safesky-")) return;
       const beaconType = id.slice("safesky-".length) || "UNKNOWN";
       ensureSafeSkyIcon(map!, beaconType).then(() => {
-        // Trigger re-render
         const src = map!.getSource("safesky") as GeoJSONSource | undefined;
         if (src) {
           try { (src as any)._data && src.setData((src as any)._data); } catch {}
         }
       });
-    });
+    };
+    map.on("styleimagemissing", onStyleImgMissing);
 
     // SafeSky-polling (10s) — samme intervall som 2D
-    safeskyPollRef.current = window.setInterval(() => {
-      if (trafficEnabledRef.current) refreshSafeSky();
-    }, 10000);
+    const startSafeSkyPoll = () => {
+      if (safeskyPollRef.current) window.clearInterval(safeskyPollRef.current);
+      safeskyPollRef.current = window.setInterval(() => {
+        if (trafficEnabledRef.current) refreshSafeSky();
+      }, 10000);
+    };
+    startSafeSkyPoll();
 
     const t = window.setTimeout(() => { try { map!.resize(); } catch {} }, 300);
+
+    // ===== WebGL context loss / restored =====
+    const canvas = map.getCanvas();
+    const onContextLost = (e: Event) => {
+      e.preventDefault(); // tillater restored-event
+      setContextLost(true);
+      // Stopp aktive timere så vi ikke kaller mot død GL-kontekst
+      if (fetchTimerRef.current) { window.clearTimeout(fetchTimerRef.current); fetchTimerRef.current = null; }
+      if (safeskyPollRef.current) { window.clearInterval(safeskyPollRef.current); safeskyPollRef.current = null; }
+      if (soraTerrainDebounceRef.current) { window.clearTimeout(soraTerrainDebounceRef.current); soraTerrainDebounceRef.current = null; }
+      if (routeOverlayFrameRef.current != null) {
+        window.cancelAnimationFrame(routeOverlayFrameRef.current);
+        routeOverlayFrameRef.current = null;
+      }
+      try {
+        Sentry.captureMessage("Map3D: WebGL context lost", {
+          level: "warning",
+          tags: { component: "Map3D", event: "webglcontextlost" },
+        });
+      } catch {}
+    };
+    const onContextRestored = () => {
+      try {
+        Sentry.addBreadcrumb({ category: "map3d", message: "webgl context restored", level: "info" });
+      } catch {}
+      try { map?.triggerRepaint(); } catch {}
+      // Gjenoppta polling + fyll på data
+      startSafeSkyPoll();
+      try { refreshZones(); } catch {}
+      try { applyAipData(); } catch {}
+      try { applyRpasData(); } catch {}
+      try { refreshSafeSky(); } catch {}
+      setContextLost(false);
+    };
+    canvas.addEventListener("webglcontextlost", onContextLost, false);
+    canvas.addEventListener("webglcontextrestored", onContextRestored, false);
+    canvasLossHandlerRef.current = onContextLost;
+    canvasRestoreHandlerRef.current = onContextRestored;
 
     return () => {
       window.clearTimeout(t);
@@ -982,10 +1028,28 @@ export default function Map3D({
       if (safeskyPollRef.current) window.clearInterval(safeskyPollRef.current);
       if (soraTerrainDebounceRef.current) window.clearTimeout(soraTerrainDebounceRef.current);
       if (routeOverlayFrameRef.current != null) window.cancelAnimationFrame(routeOverlayFrameRef.current);
+      // Canvas event listeners
+      try {
+        if (canvasLossHandlerRef.current) canvas.removeEventListener("webglcontextlost", canvasLossHandlerRef.current);
+        if (canvasRestoreHandlerRef.current) canvas.removeEventListener("webglcontextrestored", canvasRestoreHandlerRef.current);
+      } catch {}
+      canvasLossHandlerRef.current = null;
+      canvasRestoreHandlerRef.current = null;
+      // Map event listeners (navngitt handler-cleanup)
+      try { map?.off("load", onLoad); } catch {}
+      try { map?.off("moveend", debouncedRefresh); } catch {}
+      try { map?.off("moveend", emitView); } catch {}
+      try { map?.off("zoomend", emitView); } catch {}
       try { map?.off("move", handleRouteOverlayUpdate); } catch {}
       try { map?.off("render", handleRouteOverlayUpdate); } catch {}
-      safeskyModelLayerRef.current?.destroy();
-      safeskyModelLayerRef.current = null;
+      try { map?.off("styleimagemissing", onStyleImgMissing); } catch {}
+      // Managed click/hover-handlere på Map3D-eide lag
+      if (map) {
+        try { removeManagedClickHandlers(map); } catch {}
+        try { removeRoutePlanningLayers(map); } catch {}
+        try { removeOwnedLayersAndSources(map); } catch {}
+      }
+      // DOM-overlay markører
       routeMarkerElsRef.current.forEach((el) => { try { el.remove(); } catch {} });
       routeMarkerElsRef.current = [];
       try { map?.remove(); } catch {}
@@ -1003,7 +1067,9 @@ export default function Map3D({
       return;
     }
     try {
-      // setStyle fjerner alle lag inkl. vårt custom 3D-modellslag
+      // setStyle fjerner alle lag inkl. vårt custom 3D-modellslag.
+      // Fjern handlere først så de ikke dobbel-registreres når vi re-installer.
+      removeManagedClickHandlers(map);
       safeskyModelLayerRef.current?.destroy();
       safeskyModelLayerRef.current = null;
       map.setStyle(buildStyle(base));
@@ -1027,28 +1093,16 @@ export default function Map3D({
     } catch (err) {
       console.error("[Map3D] setStyle failed", err);
     }
-  }, [base, refreshZones, installClickHandlers, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky]);
+  }, [base, refreshZones, installClickHandlers, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky, removeManagedClickHandlers]);
 
   // Toggle 3D-sylindere vs flat fill — fjern og legg til lag på nytt
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     try {
-      [
-        "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
-        "aip-fill", "aip-extrusion", "aip-outline",
-        "rpas-fill", "rpas-extrusion", "rpas-outline",
-        "safesky-3d-models",
-        "safesky-beacons",
-      ].forEach((id) => {
-        if (map.getLayer(id)) map.removeLayer(id);
-      });
-      safeskyModelLayerRef.current?.destroy();
-      safeskyModelLayerRef.current = null;
-      if (map.getSource("zones")) map.removeSource("zones");
-      if (map.getSource("aip")) map.removeSource("aip");
-      if (map.getSource("rpas")) map.removeSource("rpas");
-      if (map.getSource("safesky")) map.removeSource("safesky");
+      // Fjern Map3D-eide handlere først, så bygg lagene på nytt og re-install.
+      removeManagedClickHandlers(map);
+      removeOwnedLayersAndSources(map);
       addZoneLayers(map, extrude);
       addAipLayers(map, extrude);
       addRpasLayers(map, extrude);
@@ -1061,7 +1115,7 @@ export default function Map3D({
     } catch (err) {
       console.error("[Map3D] toggle extrude failed", err);
     }
-  }, [extrude, installClickHandlers, refreshZones, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky]);
+  }, [extrude, installClickHandlers, refreshZones, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky, removeManagedClickHandlers, removeOwnedLayersAndSources]);
 
   // Toggle zones (data)
   useEffect(() => {
