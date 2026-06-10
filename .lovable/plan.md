@@ -1,169 +1,188 @@
-# Plan: Robusthet for 3D-kartet (Map3D.tsx)
 
-Mål: gjøre 3D-kartet motstandsdyktig mot WebGL context loss og rydde opp i alle lag/event/timer/marker-registreringer som Map3D selv eier. **Ingen funksjonelle endringer** i ruteplanlegging, SORA-geometri eller datalagring.
+# Plan: Sentry-kontekst med bruker, selskap og PII-vern
 
-Alt skjer i `src/components/Map3D.tsx`. Sentry-kall gjenbruker `@/lib/sentry`.
+Mål: når en feil skjer, skal vi i Sentry kunne se hvilken bruker (anonymisert), hvilket selskap, hvilken rolle, hvilken rute og hvilken app-versjon — uten å lekke epost, telefon eller andre persondata.
 
-**Viktig restriksjon:** terrain-source og hillshade-lag som MapLibre setter opp via `buildStyle()` skal IKKE røres i cleanup. Vi rydder kun det Map3D selv har lagt til via `addLayer`/`addSource`.
+Alle endringer er **frontend-only**. Ingen DB-endringer, ingen edge functions, ingen funksjonelle endringer.
 
 ---
 
-## Prioritert rekkefølge
+## 1. Hardene `src/lib/sentry.ts` (PII-vern + release)
 
-### 1. WebGL context-loss/restored overlay  (HØY)
-
-I init-`useEffect` (rundt linje 877, etter `addControl`):
-
-- Hent canvas: `const canvas = map.getCanvas()`
-- Registrer:
-  - `canvas.addEventListener('webglcontextlost', onLost, false)`
-  - `canvas.addEventListener('webglcontextrestored', onRestored, false)`
-- `onLost(e)`:
-  - `e.preventDefault()`
-  - `setContextLost(true)`
-  - Stopp aktive timere: `safeskyPollRef`, `fetchTimerRef`, `soraTerrainDebounceRef`, `routeOverlayFrameRef` (clear/cancel, sett til null).
-  - `Sentry.captureMessage('Map3D: WebGL context lost', { level: 'warning', tags: { component: 'Map3D' } })`
-- `onRestored()`:
-  - `Sentry.addBreadcrumb({ category: 'map3d', message: 'webgl context restored' })`
-  - Gjenoppta `safeskyPollRef` (samme 10s-intervall).
-  - `map.triggerRepaint()` og re-fetch: `refreshZones()`, `applyAipData()`, `applyRpasData()`, `refreshSafeSky()`.
-  - `setContextLost(false)`.
-
-Overlay i render:
-
-```tsx
-{contextLost && (
-  <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-background/85 backdrop-blur-sm">
-    <div className="rounded-lg border bg-card p-6 text-center shadow-lg max-w-sm">
-      <AlertTriangle className="mx-auto h-8 w-8 text-amber-500 mb-2" />
-      <h3 className="font-semibold mb-1">3D-kartet mistet GPU-kontekst</h3>
-      <p className="text-sm text-muted-foreground mb-4">
-        Kan skje ved lite minne eller mange åpne faner. Forsøker å gjenopprette automatisk.
-      </p>
-      <Button onClick={() => window.location.reload()}>Last kart på nytt</Button>
-    </div>
-  </div>
-)}
-```
-
-Hvis `onRestored` skyter, skjules overlay automatisk via `setContextLost(false)`.
-
-### 2. Cleanup av lag/sources Map3D eier  (HØY)
-
-Kun lag/sources lagt til av Map3D fjernes. **Ikke** rør `terrain` source eller `hillshade` lag — disse eies av `buildStyle()`/MapLibre.
-
-Map3D-eide ID-er (samlet til konstanter øverst i fil for vedlikehold):
-
-- **Zone-lag:** `zones-fill`, `zones-extrusion`, `zones-outline`, `zones-point` + source `zones`
-- **AIP-lag:** `aip-fill`, `aip-extrusion`, `aip-outline` + source `aip`
-- **RPAS-lag:** `rpas-fill`, `rpas-extrusion`, `rpas-outline` + source `rpas`
-- **SafeSky:** `safesky-beacons`, `safesky-3d-models` (custom layer) + source `safesky`
-- **Route planning (RP_*):** håndteres allerede av `removeRoutePlanningLayers`
-
-Lag helper:
+Oppdater `Sentry.init` med PII-sikre defaults og en `beforeSend`-skrubber.
 
 ```ts
-const OWNED_LAYER_IDS = [
-  "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
-  "aip-fill", "aip-extrusion", "aip-outline",
-  "rpas-fill", "rpas-extrusion", "rpas-outline",
-  "safesky-3d-models", "safesky-beacons",
-];
-const OWNED_SOURCE_IDS = ["zones", "aip", "rpas", "safesky"];
-
-const removeOwnedLayersAndSources = (map: MlMap) => {
-  OWNED_LAYER_IDS.forEach(id => { try { if (map.getLayer(id)) map.removeLayer(id); } catch {} });
-  try { safeskyModelLayerRef.current?.destroy(); } catch {}
-  safeskyModelLayerRef.current = null;
-  OWNED_SOURCE_IDS.forEach(id => { try { if (map.getSource(id)) map.removeSource(id); } catch {} });
-};
-```
-
-Brukes i init-cleanup (før `map.remove()`) og kan gjenbrukes i toggle-extrude-effekten (linje 990-1021) for å erstatte hardkodet liste.
-
-### 3. Cleanup av klikk-handlers (clickHandlersRef)  (HØY)
-
-I dag er `installClickHandlers` lukket — handlere kan ikke fjernes individuelt. Endre slik:
-
-```ts
-type ClickReg = { event: string; layerId: string; fn: (e: any) => void };
-const clickHandlersRef = useRef<ClickReg[]>([]);
-
-const registerLayerHandler = (map: MlMap, event: string, layerId: string, fn: (e: any) => void) => {
-  map.on(event as any, layerId, fn);
-  clickHandlersRef.current.push({ event, layerId, fn });
-};
-
-const removeManagedClickHandlers = (map: MlMap) => {
-  clickHandlersRef.current.forEach(({ event, layerId, fn }) => {
-    try { map.off(event as any, layerId, fn); } catch {}
-  });
-  clickHandlersRef.current = [];
-};
-```
-
-I `installClickHandlers` (linje 650-729): bytt alle `map.on("click"|"mouseenter"|"mouseleave", layerId, fn)` til `registerLayerHandler(map, ...)`.
-
-Kall `removeManagedClickHandlers(map)`:
-- Først i `installClickHandlers` (defensiv tom-rydding)
-- I init-cleanup, før `map.remove()`
-- I setStyle-effekten (linje 955) før `map.setStyle(...)` — så de gamle handlerne ikke henger igjen når nye registreres etter style-load.
-- I toggle-extrude-effekten (linje 990) før re-install.
-
-### 4. Cleanup av timers/rAF og event listeners  (HØY)
-
-Init-cleanup (linje 936-950) dekker det meste allerede. Sjekk og fyll inn:
-
-- ✅ `fetchTimerRef`, `safeskyPollRef`, `soraTerrainDebounceRef`, `routeOverlayFrameRef`, `t` (resize-timer)
-- ✅ `map.off("move", handleRouteOverlayUpdate)`, `map.off("render", handleRouteOverlayUpdate)`
-- ➕ Legg til: `map.off("load", onLoad)`, `map.off("moveend", debouncedRefresh)`, `map.off("moveend", emitView)`, `map.off("zoomend", emitView)`, `map.off("styleimagemissing", onStyleImgMissing)` — gjør alle handlere til navngitte funksjoner i useEffect-scope.
-- ➕ `canvas.removeEventListener('webglcontextlost'/'webglcontextrestored', ...)`
-- ➕ `removeManagedClickHandlers(map)` før `map.remove()`
-- ➕ `removeRoutePlanningLayers(map)` før `map.remove()` (defensiv; `map.remove()` river uansett ned alt, men gjør cleanup eksplisitt for tilfellet der vi prøver å unngå GPU-leak)
-
-Wrap init-feilen (linje 872-875) med `Sentry.captureException(err, { tags: { component: 'Map3D', phase: 'init' } })` i tillegg til `console.error`.
-
-### 5. Unngå duplikate handlere ved styledata/style.load  (HØY)
-
-To trigger-veier finnes:
-
-**a) Eksplisitt setStyle** (linje 955-987, ved base-bytte):
-```
-removeManagedClickHandlers(map);  // ← nytt, før setStyle
-safeskyModelLayerRef.current?.destroy();
-map.setStyle(buildStyle(base));
-map.once("idle", () => {
-  addZoneLayers(...); addAipLayers(...); addRpasLayers(...);
-  if (routePlanning) addRoutePlanningLayers(map);
-  addSafeSkyLayer(map);
-  installClickHandlers(map);  // pusher inn nye i clickHandlersRef
-  ...
+Sentry.init({
+  dsn,
+  environment: import.meta.env.MODE,
+  release: import.meta.env.VITE_APP_VERSION || "unknown",
+  integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.httpClientIntegration(),
+    Sentry.captureConsoleIntegration({ levels: ["error"] }),
+  ],
+  tracesSampleRate: 0.1,
+  sampleRate: 1.0,
+  sendDefaultPii: false,            // explisitt av
+  tracePropagationTargets: ["localhost", /^https:\/\/avisafev2\.lovable\.app/, /^https:\/\/app\.avisafe\.no/],
+  ignoreErrors: [
+    "ResizeObserver loop limit exceeded",
+    "Non-Error promise rejection captured",
+    "Failed to fetch",                 // nettverksfeil håndteres egne steder
+    "Load failed",                     // Safari-variant
+    "NetworkError when attempting to fetch",
+  ],
+  denyUrls: [/extensions\//i, /^chrome:\/\//i, /^moz-extension:\/\//i],
+  beforeSend(event) {
+    return scrubPii(event);            // se §4
+  },
+  beforeBreadcrumb(breadcrumb) {
+    return scrubBreadcrumb(breadcrumb); // se §4
+  },
+  enabled: !!dsn,
 });
 ```
 
-**b) styledata-effekten for route planning** (linje 1753-1766):
-Allerede idempotent fordi `addRoutePlanningLayers` sjekker `if (!map.getSource(...))`. Beholdes uendret.
+Custom domains (`app.avisafe.no`, `login.avisafe.no`) legges til i `tracePropagationTargets`.
 
-`installClickHandlers` kaller defensiv `removeManagedClickHandlers(map)` først, så selv om den (mot formodning) trigges to ganger, blir det ikke duplikater.
+## 2. Sett bruker/selskaps-kontekst fra AuthContext
+
+Ny hook `src/hooks/useSentryContext.ts` som monteres én gang i `AuthProvider` (eller i `App.tsx` rett under `<AuthProvider>`). Den lytter på endringer i `user`, `companyId`, `companyType`, `userRole` og oppdaterer Sentry-scopet:
+
+```ts
+useEffect(() => {
+  if (!user) {
+    Sentry.setUser(null);
+    Sentry.setTags({ company_id: undefined, company_type: undefined, user_role: undefined });
+    return;
+  }
+  Sentry.setUser({
+    id: user.id,                       // UUID — ikke PII
+    // BEVISST IKKE: email, username, ip_address, phone
+  });
+  Sentry.setTags({
+    company_id: companyId ?? "none",
+    company_type: companyType ?? "none",
+    user_role: userRole ?? "none",
+  });
+  Sentry.setContext("company", companyId ? {
+    id: companyId,
+    name: companyName,                 // selskapsnavn er forretningsdata, ikke personlig PII
+    type: companyType,
+  } : null);
+}, [user?.id, companyId, companyName, companyType, userRole]);
+```
+
+`companyName` regnes som ikke-PII (forretningsdata om abonnenten, ikke en fysisk person). Hvis dere vil være ekstra forsiktige kan vi droppe `setContext("company")` og bare beholde `companyId` — si fra om dere foretrekker det.
+
+## 3. Rute-tag + nyttige breadcrumbs
+
+Liten komponent `<SentryRouteTracker />` i `App.tsx` (inne i `BrowserRouter`):
+
+```ts
+const location = useLocation();
+useEffect(() => {
+  Sentry.setTag("route", location.pathname);
+  Sentry.addBreadcrumb({
+    category: "navigation",
+    message: location.pathname,
+    level: "info",
+  });
+}, [location.pathname]);
+```
+
+Andre nyttige breadcrumbs vi får "gratis" via integrasjonene som allerede er på (`browserTracing`, `console`, `httpClient`): fetch/XHR-feil, console.error.
+
+## 4. PII-skrubber (`scrubPii` + `scrubBreadcrumb`)
+
+Felles helper i `sentry.ts`. Forventer å treffe:
+
+- `event.user.email`, `event.user.username`, `event.user.ip_address` → slett
+- `event.request.cookies`, `event.request.headers.Authorization`, `apikey`, `x-supabase-auth` → slett
+- I `breadcrumb.data` (særlig `fetch`/`xhr`): fjern `Authorization`, `apikey`, query/body som matcher epost-regex (`/\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/gi`) eller telefon-regex (`/\+?\d[\d\s().-]{7,}\d/g`) → erstatt med `[redacted]`.
+- I `event.exception.values[].value` og `event.message`: kjør samme regex-erstatning så stack-traces ikke lekker.
+- Strip Supabase storage signed-URL tokens (`?token=...`) fra URL-er.
+
+Hvitlistet: `event.user.id` (UUID), `event.tags.company_id`, `event.contexts.company`.
+
+## 5. Berik manuelle `captureException`-kall
+
+Liten wrapper `captureWithContext(err, extras)` i `sentry.ts` som setter feature-tag på det enkelte eventet uten å forurense globalt scope:
+
+```ts
+export const captureWithContext = (err: unknown, opts: {
+  feature?: string;        // f.eks. "missions", "map3d", "sora"
+  action?: string;         // f.eks. "save_mission", "import_kml"
+  extra?: Record<string, unknown>;
+}) => {
+  Sentry.withScope((scope) => {
+    if (opts.feature) scope.setTag("feature", opts.feature);
+    if (opts.action) scope.setTag("action", opts.action);
+    if (opts.extra) scope.setContext("extra", opts.extra);
+    Sentry.captureException(err);
+  });
+};
+```
+
+**Ingen mass-refactor i denne planen** — vi tar den i bruk gradvis i nye/oppdaterte filer. Eksisterende `Sentry.captureException(err, { tags: {...} })` (f.eks. Map3D) fortsetter å virke.
+
+## 6. ErrorBoundary-berikelse
+
+`src/components/ErrorBoundary.tsx` (eksisterende): pakk inn med `Sentry.ErrorBoundary` eller legg til `Sentry.captureException` med `withScope` som setter `tag: { boundary: "root" }` og `context: { componentStack }`. Beholder eksisterende fallback-UI.
+
+## 7. App-versjon i release-tag
+
+I `vite.config.ts`: injiser `VITE_APP_VERSION` fra `package.json` version + git commit hash (kort). Trengs for å koble feil til en spesifikk deploy. Hvis ikke build-pipeline har commit-hash tilgjengelig, faller vi tilbake til kun `package.json` version.
+
+```ts
+// vite.config.ts
+import { execSync } from "node:child_process";
+const commit = (() => { try { return execSync("git rev-parse --short HEAD").toString().trim(); } catch { return "dev"; } })();
+define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(`${pkg.version}+${commit}`) }
+```
+
+## 8. (Valgfritt — krever bekreftelse) Session Replay
+
+Sentry Session Replay kan vise nøyaktig hva brukeren gjorde rett før feilen. Den **kan** maskere PII automatisk (`maskAllText: true`, `blockAllMedia: true`). Likevel: replays er tunge og lagring koster. **Foreslår å ikke aktivere nå** — gi beskjed hvis dere vil ha det, så legger jeg det inn med strengeste masking.
 
 ---
 
+## Berørte filer
+
+- `src/lib/sentry.ts` — init + scrubber + `captureWithContext`
+- `src/hooks/useSentryContext.ts` — ny
+- `src/contexts/AuthContext.tsx` — kall `useSentryContext()` én gang (eller bruk i App.tsx)
+- `src/App.tsx` — `<SentryRouteTracker />`
+- `src/components/ErrorBoundary.tsx` — withScope-berikelse
+- `vite.config.ts` — release-versjon
+
 ## Ikke berørt
 
-- `useRoutePlanner`, ruteplanlegging-logikk, SORA-buffer/geometri
-- DB-skriving, RPC, edge functions
-- 2D-kartet (`MapView`)
-- terrain-source/hillshade — MapLibre eier disse via `buildStyle()`
-- Popups (transient, fjernes når kartet renderes på nytt eller bruker klikker X)
-
-## Berørt fil
-
-Kun `src/components/Map3D.tsx`.
+- DB, RLS, edge functions
+- Auth-flyt, login/logout
+- Eksisterende `captureException`-kall (bakoverkompatible)
 
 ## Verifisering
 
-1. Build passerer (auto).
-2. Naviger inn/ut av `/kart` 5+ ganger → ingen "too many active WebGL contexts" i konsoll.
-3. Bytt grunnkart (satellitt ↔ topo ↔ standard) flere ganger → klikk en sone → kun én popup (ikke 2-3).
-4. DevTools → `Rendering > GPU process > Crash GPU process` (eller `WEBGL_lose_context.loseContext()` fra konsoll) → overlay vises → restored-event gjenoppretter kartet automatisk, ellers fungerer "Last kart på nytt".
-5. Sentry: bekreft at "Map3D: WebGL context lost" dukker opp som warning.
+1. Build passerer.
+2. Logg inn → trigger en testfeil (f.eks. `throw` i en komponent eller `Sentry.captureMessage("test", "info")` fra konsoll). I Sentry-dashboardet skal eventet ha:
+   - `user.id` = UUID (ingen epost)
+   - tags: `company_id`, `company_type`, `user_role`, `route`, `feature` (hvis satt)
+   - context: `company` med id/name/type
+   - release: `1.x.x+<hash>`
+3. Skrubber: send et event med `Authorization: Bearer eyJ...` i breadcrumb → bekreft at headeren ikke finnes i Sentry-payload.
+4. Logg ut → bekreft at neste event har `user: null`.
+
+## Personvern-oppsummering
+
+| Felt | Sendes til Sentry? |
+|------|-------------------|
+| user.id (UUID) | Ja |
+| Epost | Nei (skrubbet) |
+| Telefonnummer | Nei (skrubbet) |
+| IP-adresse | Nei (`sendDefaultPii: false`) |
+| Cookies / Authorization-headere | Nei (skrubbet) |
+| companyId / companyType / userRole | Ja (forretningskontekst) |
+| companyName | Ja (kan tas ut hvis ønsket) |
+| Rute (pathname) | Ja |
+| App-versjon / commit | Ja |
