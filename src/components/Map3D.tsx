@@ -685,6 +685,12 @@ export default function Map3D({
 
   // Popup-click handler (felles for soner og AIP-luftrom)
   const installClickHandlers = useCallback((map: MlMap) => {
+    // Defensiv tom-rydding hvis tidligere handlere ligger igjen (style-swap etc.)
+    removeManagedClickHandlers(map);
+    const reg = (event: string, layerId: string, fn: (e: any) => void) => {
+      map.on(event as any, layerId, fn);
+      clickHandlersRef.current.push({ event, layerId, fn });
+    };
     const showZonePopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
       if (!f) return;
@@ -712,14 +718,14 @@ export default function Map3D({
       map.getCanvas().style.cursor = cursor;
     };
     ["zones-fill", "zones-extrusion", "zones-point"].forEach((layerId) => {
-      map.on("click", layerId, showZonePopup);
-      map.on("mouseenter", layerId, setCursor("pointer"));
-      map.on("mouseleave", layerId, setCursor(""));
+      reg("click", layerId, showZonePopup);
+      reg("mouseenter", layerId, setCursor("pointer"));
+      reg("mouseleave", layerId, setCursor(""));
     });
     ["aip-fill", "aip-extrusion"].forEach((layerId) => {
-      map.on("click", layerId, showAipPopup);
-      map.on("mouseenter", layerId, setCursor("pointer"));
-      map.on("mouseleave", layerId, setCursor(""));
+      reg("click", layerId, showAipPopup);
+      reg("mouseenter", layerId, setCursor("pointer"));
+      reg("mouseleave", layerId, setCursor(""));
     });
     const showRpasPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
@@ -733,9 +739,9 @@ export default function Map3D({
         .addTo(map);
     };
     ["rpas-fill", "rpas-extrusion"].forEach((layerId) => {
-      map.on("click", layerId, showRpasPopup);
-      map.on("mouseenter", layerId, setCursor("pointer"));
-      map.on("mouseleave", layerId, setCursor(""));
+      reg("click", layerId, showRpasPopup);
+      reg("mouseenter", layerId, setCursor("pointer"));
+      reg("mouseleave", layerId, setCursor(""));
     });
     const showTrafficPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
@@ -760,10 +766,10 @@ export default function Map3D({
         .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)
         .addTo(map);
     };
-    map.on("click", "safesky-beacons", showTrafficPopup);
-    map.on("mouseenter", "safesky-beacons", setCursor("pointer"));
-    map.on("mouseleave", "safesky-beacons", setCursor(""));
-  }, []);
+    reg("click", "safesky-beacons", showTrafficPopup);
+    reg("mouseenter", "safesky-beacons", setCursor("pointer"));
+    reg("mouseleave", "safesky-beacons", setCursor(""));
+  }, [removeManagedClickHandlers]);
 
   // ---- SafeSky-trafikk ----
   const ensureSafeSkyIcon = useCallback(async (map: MlMap, beaconType: string): Promise<string> => {
