@@ -684,6 +684,22 @@ export default function Map3D({
       map.on("mouseenter", layerId, setCursor("pointer"));
       map.on("mouseleave", layerId, setCursor(""));
     });
+    const showRpasPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p: any = f.properties || {};
+      if (!p.NAVN && p.__name) p.NAVN = p.__name;
+      const html = buildRpas5kmPopupHtml(p);
+      new maplibregl.Popup({ closeButton: true, maxWidth: "340px" })
+        .setLngLat(e.lngLat)
+        .setHTML(html)
+        .addTo(map);
+    };
+    ["rpas-fill", "rpas-extrusion"].forEach((layerId) => {
+      map.on("click", layerId, showRpasPopup);
+      map.on("mouseenter", layerId, setCursor("pointer"));
+      map.on("mouseleave", layerId, setCursor(""));
+    });
     const showTrafficPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
       const f = e.features?.[0];
       if (!f) return;
