@@ -85,6 +85,17 @@ const ZONE_COLORS: Record<string, string> = {
 const CAA_LAYER_IDS = ["fengsler", "ambassader", "fareomrader", "flyplasser", "notam_soner", "restriksjoner"];
 const DK_LAYER_IDS = ["rod", "orange", "bla"];
 
+// Lag/sources eid av Map3D. Brukes til cleanup ved unmount og toggle-extrude.
+// Terrain-source ("terrain") og hillshade-lag ("hillshade") settes av buildStyle()
+// og eies av MapLibre — ikke rør disse her.
+const OWNED_LAYER_IDS = [
+  "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
+  "aip-fill", "aip-extrusion", "aip-outline",
+  "rpas-fill", "rpas-extrusion", "rpas-outline",
+  "safesky-3d-models", "safesky-beacons",
+];
+const OWNED_SOURCE_IDS = ["zones", "aip", "rpas", "safesky"];
+
 function buildStyle(base: BaseLayer): StyleSpecification {
   const baseSource =
     base === "osm"
