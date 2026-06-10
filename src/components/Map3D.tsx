@@ -1662,6 +1662,15 @@ export default function Map3D({
           )}
         </svg>
 
+        {/* Rutepunkt-markører — DOM-overlay som projiseres via map.project
+            (terrengbevisst) hver frame, slik at de havner samme sted som
+            rutelinja og ikke flyter i feil høyde ved pitch/rotasjon. */}
+        <div
+          ref={routeMarkerOverlayRef}
+          className="pointer-events-none absolute inset-0 z-[1050]"
+          style={{ overflow: "hidden" }}
+        />
+
       {/*
         MapLibre NavigationControl (zoom +/-, kompass) plasseres
         i "top-right" av kartet (via map.addControl). Vår egen knapp plasseres
