@@ -267,3 +267,41 @@ All colors MUST be HSL.
 [data-radix-scroll-area-viewport] {
   overflow-x: hidden !important;
 }
+
+/* MapLibre popup-styling — match Leaflet-utseendet brukt på 2D-kartet
+   (avrundet hvit boks med tydelig "×" øverst til høyre). HTML-innholdet
+   bygges av samme popup-byggere som 2D-kartet, så vi trenger bare å
+   overstyre default MapLibre-CSS. */
+.maplibregl-popup-content {
+  background: #ffffff;
+  color: #1f2937;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.maplibregl-popup-tip {
+  border-top-color: #ffffff !important;
+  border-bottom-color: #ffffff !important;
+}
+.maplibregl-popup-close-button {
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  line-height: 22px;
+  text-align: center;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  right: 6px;
+  top: 6px;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.maplibregl-popup-close-button:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
