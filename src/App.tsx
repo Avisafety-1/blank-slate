@@ -217,6 +217,8 @@ const App = () => {
           <AuthProvider>
             <BrowserRouter>
               <RouteWatcher />
+              <SentryRouteTracker />
+              <SentryAuthSync />
               <GuidedTourProvider>
               <ForceReloadBanner />
               <Toaster />
