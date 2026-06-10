@@ -1554,8 +1554,8 @@ export default function Map3D({
         rebuildMarkers(map);
         rebuildRouteSources();
       } else {
-        routeMarkersRef.current.forEach((m) => { try { m.remove(); } catch {} });
-        routeMarkersRef.current = [];
+        routeMarkerElsRef.current.forEach((el) => { try { el.remove(); } catch {} });
+        routeMarkerElsRef.current = [];
         removeRoutePlanningLayers(map);
         updateRouteScreenPath();
       }
