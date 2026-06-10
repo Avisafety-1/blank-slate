@@ -879,6 +879,7 @@ export default function Map3D({
     map.on("load", () => {
       addZoneLayers(map!, extrudeRef.current);
       addAipLayers(map!, extrudeRef.current);
+      addRpasLayers(map!, extrudeRef.current);
       if (modeRef.current === "routePlanning") {
         addRoutePlanningLayers(map!);
         rebuildMarkersRef.current(map!);
@@ -888,6 +889,7 @@ export default function Map3D({
       installClickHandlers(map!);
       refreshZones();
       fetchAip();
+      fetchRpas();
       refreshSafeSky();
     });
 
