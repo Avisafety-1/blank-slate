@@ -994,6 +994,7 @@ export default function Map3D({
       [
         "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
         "aip-fill", "aip-extrusion", "aip-outline",
+        "rpas-fill", "rpas-extrusion", "rpas-outline",
         "safesky-3d-models",
         "safesky-beacons",
       ].forEach((id) => {
@@ -1003,18 +1004,21 @@ export default function Map3D({
       safeskyModelLayerRef.current = null;
       if (map.getSource("zones")) map.removeSource("zones");
       if (map.getSource("aip")) map.removeSource("aip");
+      if (map.getSource("rpas")) map.removeSource("rpas");
       if (map.getSource("safesky")) map.removeSource("safesky");
       addZoneLayers(map, extrude);
       addAipLayers(map, extrude);
+      addRpasLayers(map, extrude);
       addSafeSkyLayer(map);
       installClickHandlers(map);
       refreshZones();
       applyAipData();
+      applyRpasData();
       refreshSafeSky();
     } catch (err) {
       console.error("[Map3D] toggle extrude failed", err);
     }
-  }, [extrude, installClickHandlers, refreshZones, applyAipData, addSafeSkyLayer, refreshSafeSky]);
+  }, [extrude, installClickHandlers, refreshZones, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky]);
 
   // Toggle zones (data)
   useEffect(() => {
