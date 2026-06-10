@@ -398,7 +398,10 @@ export default function Map3D({
   const soraSettingsRef = useRef<SoraSettings | undefined>(soraSettings);
   soraSettingsRef.current = soraSettings;
   const routePointsRef = useRef<RoutePoint[]>([]);
-  const routeMarkersRef = useRef<maplibregl.Marker[]>([]);
+  // DOM-overlay markører (ikke maplibregl.Marker) — projiseres via map.project
+  // hver frame slik at de havner samme sted som SVG-rutelinja (terrengbevisst).
+  const routeMarkerElsRef = useRef<HTMLDivElement[]>([]);
+  const routeMarkerOverlayRef = useRef<HTMLDivElement | null>(null);
   const lastEmittedRouteJsonRef = useRef<string>("");
   const soraTerrainDebounceRef = useRef<number | null>(null);
   const [routeScreenPath, setRouteScreenPath] = useState("");
