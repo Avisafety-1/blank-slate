@@ -24,7 +24,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary - Uncaught error:', error, errorInfo);
-    (Sentry as any).captureException(error, { extra: { componentStack: errorInfo.componentStack } });
+    Sentry.withScope((scope) => {
+      scope.setTag("boundary", "root");
+      scope.setContext("react", { componentStack: errorInfo.componentStack });
+      Sentry.captureException(error);
+    });
   }
 
   private handleReset = () => {
