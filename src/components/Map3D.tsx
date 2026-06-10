@@ -479,6 +479,31 @@ export default function Map3D({
   const routeOverlayFrameRef = useRef<number | null>(null);
   const requestRouteOverlayUpdateRef = useRef<() => void>(() => {});
 
+  // ===== Robusthet: WebGL context loss + cleanup-tracking =====
+  const [contextLost, setContextLost] = useState(false);
+  type ClickReg = { event: string; layerId: string; fn: (e: any) => void };
+  const clickHandlersRef = useRef<ClickReg[]>([]);
+  const canvasLossHandlerRef = useRef<((e: Event) => void) | null>(null);
+  const canvasRestoreHandlerRef = useRef<((e: Event) => void) | null>(null);
+
+  const removeManagedClickHandlers = useCallback((map: MlMap) => {
+    clickHandlersRef.current.forEach(({ event, layerId, fn }) => {
+      try { map.off(event as any, layerId, fn); } catch {}
+    });
+    clickHandlersRef.current = [];
+  }, []);
+
+  const removeOwnedLayersAndSources = useCallback((map: MlMap) => {
+    OWNED_LAYER_IDS.forEach((id) => {
+      try { if (map.getLayer(id)) map.removeLayer(id); } catch {}
+    });
+    try { safeskyModelLayerRef.current?.destroy(); } catch {}
+    safeskyModelLayerRef.current = null;
+    OWNED_SOURCE_IDS.forEach((id) => {
+      try { if (map.getSource(id)) map.removeSource(id); } catch {}
+    });
+  }, []);
+
   // Hent og oppdater dronesoner basert på viewport
   const refreshZones = useCallback(async () => {
     const map = mapRef.current;
