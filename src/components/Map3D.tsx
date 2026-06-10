@@ -1875,6 +1875,19 @@ export default function Map3D({
     <div className="absolute inset-0">
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
 
+      {contextLost && (
+        <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-background/85 backdrop-blur-sm">
+          <div className="rounded-lg border bg-card p-6 text-center shadow-lg max-w-sm">
+            <AlertTriangle className="mx-auto h-8 w-8 text-amber-500 mb-2" />
+            <h3 className="font-semibold mb-1">3D-kartet mistet GPU-kontekst</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Kan skje ved lite minne eller mange åpne faner. Forsøker å gjenopprette automatisk.
+            </p>
+            <Button onClick={() => window.location.reload()}>Last kart på nytt</Button>
+          </div>
+        </div>
+      )}
+
         {/* Rute-overlay: tegner ruta terrengkorrekt (via map.project som er
             terrengbevisst) over de 3D-ekstruderte sonene slik at den forblir
             synlig gjennom grønn/gul sone, men fortsatt følger bakken. */}
