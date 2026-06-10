@@ -115,7 +115,7 @@ export function buildCaaZonePopupHtml(zone: any): string {
   let html = `<strong>${style.iconLabel}</strong><br/>`;
   html += `<strong>${esc(p.name || 'Ukjent')}</strong><br/>`;
   if (p.message) {
-    html += `<div style="margin-top:4px;max-width:280px">${esc(p.message)}</div>`;
+    html += `<div style="margin-top:4px;max-width:280px;word-break:break-word">${sanitizeCaaMessageHtml(p.message)}</div>`;
   }
   if (p.lower_limit_m != null || p.upper_limit_m != null) {
     html += `<div style="margin-top:4px">Høyde: ${p.lower_limit_m ?? 'GND'}–${p.upper_limit_m ?? '?'} m ${esc(p.upper_ref || 'AGL')}</div>`;
