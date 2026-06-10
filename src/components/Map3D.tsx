@@ -26,6 +26,7 @@ import {
   buildAipZonePopupHtml,
   parseAipLimitToMeters,
 } from "@/lib/aipPopups";
+import { buildRpas5kmPopupHtml } from "@/lib/rpas5kmPopup";
 import { createSafeSkyModelLayer, SafeSkyModelLayer, SafeSkyBeacon } from "@/lib/safeskyModelLayer";
 import { sampleZonesTerrain, zoneCacheKey } from "@/lib/zoneTerrainSampler";
 import { fetchTerrainElevations } from "@/lib/terrainElevation";
@@ -319,6 +320,61 @@ function addAipLayers(map: MlMap, extrude: boolean) {
   }
 }
 
+// ---- RPAS 5 km-soner rundt lufthavner (oransje, 0-120 m AGL) ----
+function addRpasLayers(map: MlMap, extrude: boolean) {
+  if (map.getSource("rpas")) return;
+  map.addSource("rpas", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+
+  map.addLayer({
+    id: "rpas-outline",
+    type: "line",
+    source: "rpas",
+    paint: {
+      "line-color": "#f97316",
+      "line-width": 2,
+      "line-opacity": 0.9,
+    },
+  });
+
+  if (extrude) {
+    map.addLayer({
+      id: "rpas-extrusion",
+      type: "fill-extrusion",
+      source: "rpas",
+      paint: {
+        "fill-extrusion-color": "#f97316",
+        // base: terrain_min_m → 0 (sonen starter på bakken)
+        "fill-extrusion-base": [
+          "case",
+          ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
+          0,
+        ],
+        // height: terrain_max_m + 120 → 120 (AGL 120 m)
+        "fill-extrusion-height": [
+          "case",
+          ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 120],
+          120,
+        ],
+        "fill-extrusion-opacity": 0.25,
+      },
+    });
+  } else {
+    map.addLayer({
+      id: "rpas-fill",
+      type: "fill",
+      source: "rpas",
+      paint: {
+        "fill-color": "#f97316",
+        "fill-opacity": 0.2,
+      },
+    });
+  }
+}
+
+
 /**
  * Beriker GeoJSON-features med terrain_min_m / terrain_max_m (MSL) for polygon-soner.
  * Muterer feature.properties in-place. Returnerer true hvis minst én feature ble oppdatert
@@ -382,6 +438,8 @@ export default function Map3D({
   extrudeRef.current = extrude;
   const aipFetchedRef = useRef(false);
   const aipFeaturesRef = useRef<any[]>([]);
+  const rpasFetchedRef = useRef(false);
+  const rpasFeaturesRef = useRef<any[]>([]);
   const trafficEnabledRef = useRef(trafficEnabled);
   trafficEnabledRef.current = trafficEnabled;
   const safeskyIconsLoadedRef = useRef<Set<string>>(new Set());
@@ -542,6 +600,52 @@ export default function Map3D({
     }
   }, [applyAipData]);
 
+  // ---- RPAS 5 km-soner (rundt lufthavner) ----
+  const applyRpasData = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const src = map.getSource("rpas") as GeoJSONSource | undefined;
+    if (!src) return;
+    const features = rpasFeaturesRef.current;
+    src.setData({ type: "FeatureCollection", features });
+    if (features.length > 0) {
+      void enrichFeaturesWithTerrain(features).then((changed) => {
+        if (changed) src.setData({ type: "FeatureCollection", features });
+      });
+    }
+  }, []);
+
+  const fetchRpas = useCallback(async () => {
+    if (rpasFetchedRef.current) return;
+    rpasFetchedRef.current = true;
+    try {
+      const { data, error } = await supabase
+        .from("rpas_5km_zones")
+        .select("name, geometry, properties");
+      if (error || !data) {
+        if (error) console.error("[Map3D] rpas fetch error", error);
+        rpasFetchedRef.current = false;
+        return;
+      }
+      const features: any[] = [];
+      data.forEach((row: any) => {
+        if (!row?.geometry) return;
+        features.push({
+          type: "Feature",
+          geometry: row.geometry,
+          properties: { ...(row.properties || {}), __name: row.name, NAVN: (row.properties?.NAVN ?? row.name) },
+        });
+      });
+      rpasFeaturesRef.current = features;
+      applyRpasData();
+    } catch (err) {
+      console.error("[Map3D] rpas fetch failed", err);
+      rpasFetchedRef.current = false;
+    }
+  }, [applyRpasData]);
+
+
+
   // Popup-click handler (felles for soner og AIP-luftrom)
   const installClickHandlers = useCallback((map: MlMap) => {
     const showZonePopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
@@ -577,6 +681,22 @@ export default function Map3D({
     });
     ["aip-fill", "aip-extrusion"].forEach((layerId) => {
       map.on("click", layerId, showAipPopup);
+      map.on("mouseenter", layerId, setCursor("pointer"));
+      map.on("mouseleave", layerId, setCursor(""));
+    });
+    const showRpasPopup = (e: maplibregl.MapMouseEvent & { features?: any[] }) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p: any = f.properties || {};
+      if (!p.NAVN && p.__name) p.NAVN = p.__name;
+      const html = buildRpas5kmPopupHtml(p);
+      new maplibregl.Popup({ closeButton: true, maxWidth: "340px" })
+        .setLngLat(e.lngLat)
+        .setHTML(html)
+        .addTo(map);
+    };
+    ["rpas-fill", "rpas-extrusion"].forEach((layerId) => {
+      map.on("click", layerId, showRpasPopup);
       map.on("mouseenter", layerId, setCursor("pointer"));
       map.on("mouseleave", layerId, setCursor(""));
     });
@@ -759,6 +879,7 @@ export default function Map3D({
     map.on("load", () => {
       addZoneLayers(map!, extrudeRef.current);
       addAipLayers(map!, extrudeRef.current);
+      addRpasLayers(map!, extrudeRef.current);
       if (modeRef.current === "routePlanning") {
         addRoutePlanningLayers(map!);
         rebuildMarkersRef.current(map!);
@@ -768,6 +889,7 @@ export default function Map3D({
       installClickHandlers(map!);
       refreshZones();
       fetchAip();
+      fetchRpas();
       refreshSafeSky();
     });
 
@@ -845,6 +967,7 @@ export default function Map3D({
       map.once("idle", () => {
         addZoneLayers(map, extrudeRef.current);
         addAipLayers(map, extrudeRef.current);
+        addRpasLayers(map, extrudeRef.current);
         if (modeRef.current === "routePlanning") {
           addRoutePlanningLayers(map);
           rebuildMarkersRef.current(map);
@@ -855,12 +978,13 @@ export default function Map3D({
         safeskyIconsLoadedRef.current.clear();
         refreshZones();
         applyAipData();
+        applyRpasData();
         refreshSafeSky();
       });
     } catch (err) {
       console.error("[Map3D] setStyle failed", err);
     }
-  }, [base, refreshZones, installClickHandlers, applyAipData, addSafeSkyLayer, refreshSafeSky]);
+  }, [base, refreshZones, installClickHandlers, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky]);
 
   // Toggle 3D-sylindere vs flat fill — fjern og legg til lag på nytt
   useEffect(() => {
@@ -870,6 +994,7 @@ export default function Map3D({
       [
         "zones-fill", "zones-extrusion", "zones-outline", "zones-point",
         "aip-fill", "aip-extrusion", "aip-outline",
+        "rpas-fill", "rpas-extrusion", "rpas-outline",
         "safesky-3d-models",
         "safesky-beacons",
       ].forEach((id) => {
@@ -879,18 +1004,21 @@ export default function Map3D({
       safeskyModelLayerRef.current = null;
       if (map.getSource("zones")) map.removeSource("zones");
       if (map.getSource("aip")) map.removeSource("aip");
+      if (map.getSource("rpas")) map.removeSource("rpas");
       if (map.getSource("safesky")) map.removeSource("safesky");
       addZoneLayers(map, extrude);
       addAipLayers(map, extrude);
+      addRpasLayers(map, extrude);
       addSafeSkyLayer(map);
       installClickHandlers(map);
       refreshZones();
       applyAipData();
+      applyRpasData();
       refreshSafeSky();
     } catch (err) {
       console.error("[Map3D] toggle extrude failed", err);
     }
-  }, [extrude, installClickHandlers, refreshZones, applyAipData, addSafeSkyLayer, refreshSafeSky]);
+  }, [extrude, installClickHandlers, refreshZones, applyAipData, applyRpasData, addSafeSkyLayer, refreshSafeSky]);
 
   // Toggle zones (data)
   useEffect(() => {
