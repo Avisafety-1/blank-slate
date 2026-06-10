@@ -319,6 +319,61 @@ function addAipLayers(map: MlMap, extrude: boolean) {
   }
 }
 
+// ---- RPAS 5 km-soner rundt lufthavner (oransje, 0-120 m AGL) ----
+function addRpasLayers(map: MlMap, extrude: boolean) {
+  if (map.getSource("rpas")) return;
+  map.addSource("rpas", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] },
+  });
+
+  map.addLayer({
+    id: "rpas-outline",
+    type: "line",
+    source: "rpas",
+    paint: {
+      "line-color": "#f97316",
+      "line-width": 2,
+      "line-opacity": 0.9,
+    },
+  });
+
+  if (extrude) {
+    map.addLayer({
+      id: "rpas-extrusion",
+      type: "fill-extrusion",
+      source: "rpas",
+      paint: {
+        "fill-extrusion-color": "#f97316",
+        // base: terrain_min_m → 0 (sonen starter på bakken)
+        "fill-extrusion-base": [
+          "case",
+          ["!=", ["get", "terrain_min_m"], null], ["get", "terrain_min_m"],
+          0,
+        ],
+        // height: terrain_max_m + 120 → 120 (AGL 120 m)
+        "fill-extrusion-height": [
+          "case",
+          ["!=", ["get", "terrain_max_m"], null], ["+", ["get", "terrain_max_m"], 120],
+          120,
+        ],
+        "fill-extrusion-opacity": 0.25,
+      },
+    });
+  } else {
+    map.addLayer({
+      id: "rpas-fill",
+      type: "fill",
+      source: "rpas",
+      paint: {
+        "fill-color": "#f97316",
+        "fill-opacity": 0.2,
+      },
+    });
+  }
+}
+
+
 /**
  * Beriker GeoJSON-features med terrain_min_m / terrain_max_m (MSL) for polygon-soner.
  * Muterer feature.properties in-place. Returnerer true hvis minst én feature ble oppdatert
