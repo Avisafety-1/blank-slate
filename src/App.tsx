@@ -8,6 +8,8 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Sentry } from "@/lib/sentry";
+import { useSentryContext } from "@/hooks/useSentryContext";
 import { DomainGuard } from "@/components/DomainGuard";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
 import { MfaGate } from "@/components/MfaGate";
