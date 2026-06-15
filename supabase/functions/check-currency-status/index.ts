@@ -182,7 +182,7 @@ serve(async (req) => {
           last_status: newStatus,
           last_notified_at: nowIso,
           updated_at: nowIso,
-        }, { onConflict: 'user_id,rule_index' });
+        }, { onConflict: 'user_id,company_id,rule_index' });
 
         if (!transition || !prevStatus) continue; // First-time seed: no notification
 
