@@ -1,68 +1,41 @@
-# Fix: kryptisk HTML-tekst i 3D-popups for CAA-soner (Fengsel, Ambassade, m.fl.)
+# Fix: Observatør-krav i AI-risikovurdering
 
 ## Problem
+Brukeren (Breili drift) satte `observerCount = 1` i risikovurderingsdialogen, men AI returnerte likevel HARD STOP med teksten "selskapets påkrevde observatør ikke tildelt for oppdraget".
 
-Popupen for f.eks. Trondheim fengsel viser rå HTML midt i teksten:
+Selv om `observerCount` sendes til AI, sier prompt-regelen kun:
+> OBSERVATØR: Selskapet KREVER dedikert observatør — mangler dette er det HARD STOP.
 
+Den definerer ikke HVA "mangler" betyr. AI tolker det fritt — sannsynligvis ved å se på `mission_personnel` (ingen rad med rollen "Observatør") i stedet for `pilotInputs.observerCount`. Resultatet er en hard stop på falskt grunnlag, og en misvisende forklaring til brukeren.
+
+## Løsning
+Gjør regelen entydig i begge språkversjoner av prompten (`supabase/functions/ai-risk-assessment/prompts.ts`):
+
+1. Knytt "observatør tilstede" eksplisitt til `pilotInputs.observerCount`.
+2. HARD STOP utløses KUN hvis `observerCount < 1`.
+3. Hvis `observerCount >= 1`, regnes kravet som oppfylt — uavhengig av om noen i `mission_personnel` har rollen "Observatør".
+4. Hard stop-teksten skal referere til "antall observatører oppgitt i risikovurderingen er 0" (ikke "ikke tildelt for oppdraget"), slik at brukeren forstår hvilken input som telles.
+
+## Tekniske detaljer
+
+**Filer som endres:**
+- `supabase/functions/ai-risk-assessment/prompts.ts` — linje ~143 (norsk) og ~697 (engelsk)
+
+**Ny formulering (norsk):**
 ```
-…fengselet.Sikkerhetsnivå: Lavere sikkerhet. <a href='https://www.kriminalomsorgen.no/...'>Mer info</a>
-```
-
-Årsak: `caa_drone_zones.message`-feltet inneholder ferdig HTML (lenker o.l.) fra dronesoner.no-synken, men `buildCaaZonePopupHtml` i `src/lib/zonePopups.ts` kjører hele `message` gjennom `escapePopupHtml`, så `<a>`-taggen vises som tekst. Samme builder brukes både av 2D (Leaflet) og 3D (MapLibre), så feilen gjelder begge — bare mer synlig i 3D der popupene er større.
-
-I tillegg mangler det et linjeskift før `Sikkerhetsnivå:` (kildedata har ofte `\n` som blir flatet ut).
-
-## Endring
-
-Kun `src/lib/zonePopups.ts` endres. Ingen endringer i datasynk, Map3D-cleanup, ruteplanlegging eller SORA.
-
-### 1. Trygg HTML-rendering av `message`
-
-Legg til en intern `sanitizeCaaMessageHtml(raw)` som:
-
-- Escaper alt som default (`escapePopupHtml`).
-- Tillater kun en hvitliste av enkle tagger som faktisk forekommer i CAA-meldinger: `<a href="…" target="_blank" rel="noopener noreferrer">`, `<br>`, `<br/>`, `<strong>`, `<em>`, `<b>`, `<i>`, `<p>`.
-- For `<a>`: kun `href` som starter med `https://`, `http://`, `mailto:` eller `tel:` slippes gjennom. Tving `target="_blank" rel="noopener noreferrer"`. Alle andre attributter fjernes (ingen `onclick`, `style`, `javascript:` osv.).
-- Konverter rå `\n` til `<br/>` slik at "Sikkerhetsnivå:" havner på egen linje.
-
-Implementasjon uten ny avhengighet (DOMPurify er ikke i prosjektet): først full escape, deretter en kontrollert regex-pass som re-introduserer kun de hvitlistede taggene fra original-strengen via en token-basert tilnærming (replace `<a …>…</a>`, `<br/?>`, `<strong>…</strong>` osv. med plassholdere før escape, og bytt tilbake til validert HTML etterpå). Plassholderne bruker tegn som ikke kan oppstå i meldinger (f.eks. `\u0000TAG{n}\u0000`). Hver lenke valideres: parse `href`, sjekk protokoll, escape attributtverdien, escape lenketeksten.
-
-### 2. Bruk i builder
-
-I `buildCaaZonePopupHtml`, bytt:
-
-```ts
-html += `<div style="margin-top:4px;max-width:280px">${esc(p.message)}</div>`;
+OBSERVATØR: Selskapet KREVER dedikert observatør. Kravet er oppfylt
+hvis pilotInputs.observerCount >= 1. HARD STOP utløses KUN hvis
+pilotInputs.observerCount === 0. Ikke baser deg på mission_personnel
+for denne sjekken. Hvis hard stop utløses, skriv: "Antall observatører
+oppgitt i risikovurderingen er 0 — selskapet krever minst én."
 ```
 
-til:
+**Tilsvarende på engelsk** rundt linje 697 (samme regel, samme presisjon).
 
-```ts
-html += `<div style="margin-top:4px;max-width:280px;word-break:break-word">${sanitizeCaaMessageHtml(p.message)}</div>`;
-```
-
-`word-break:break-word` hindrer at lange URL-er sprenger popupbredden (slik som i skjermbildet).
-
-### 3. Eksport
-
-Eksporter `sanitizeCaaMessageHtml` slik at `buildCaaSmallAirportPopupHtml` og `buildDkZonePopupHtml` kan ta den i bruk senere hvis behov, men ingen call-sites endres nå utenom CAA-builderen.
-
-## Sikkerhet
-
-- Standard er fortsatt full escaping.
-- Bare hvitlistede tagger og protokoller slippes gjennom.
-- Ingen `style`/`on*`/`javascript:` aksepteres.
-- Lenketekst og `href` escapes etter validering før de settes inn.
+## Ikke endret
+- Frontend (`RiskAssessmentDialog.tsx`) — `observerCount` sendes allerede korrekt.
+- Selve `mission_personnel`-koblingen vurderes ikke nå (eget tema fra forrige samtale).
+- Andre hard-stop-regler.
 
 ## Verifisering
-
-- 3D-kart: åpne popup på Trondheim fengsel og en annen fengsel-/ambassade-sone — lenken "Mer info" skal være klikkbar, ikke vises som rå HTML, og åpne i ny fane.
-- 2D-kart: samme popup ser likt ut (samme builder).
-- En melding med f.eks. `<script>alert(1)</script>` (defensiv test via lokal mock) skal vises som ren tekst, ikke kjøres.
-- Lange URL-er bryter inne i popupen.
-
-## Filer
-
-- `src/lib/zonePopups.ts` (endret)
-
-Ingen DB-migrasjoner. Ingen endringer i Map3D, ruteplanlegging, SORA eller datasynk.
+Etter deploy: kjør risikovurdering med `observerCount = 1` på et oppdrag uten observatør i `mission_personnel`, og bekreft at HARD STOP for observatør IKKE utløses.
