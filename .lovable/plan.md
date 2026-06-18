@@ -1,29 +1,52 @@
-## Skjul Turnstile-widgeten visuelt — behold verifisering i bakgrunnen
+## Mål
+Forhindre "captcha verification failed" når brukeren trykker "Logg inn" før Turnstile har rukket å generere token. Gi tydelig feedback (spinner / synlig widget) i stedet for å feile stille.
 
-Cloudflare Turnstile støtter en "usynlig" modus der widgeten kjører og produserer token uten å vise checkbox/badge, så lenge brukeren ikke trenger en interaktiv challenge.
+## Endringer
 
-### Endring
+### 1. `src/components/auth/TurnstileWidget.tsx`
+Utvid widgeten til å rapportere status, ikke bare token.
 
-**Fil:** `src/components/auth/TurnstileWidget.tsx`
+- Legg til ny prop `onStatusChange?: (status: "loading" | "ready" | "skipped" | "error" | "expired") => void`.
+- Send status-events:
+  - `"loading"` initielt (i useEffect før script lastes).
+  - `"skipped"` for DJI-controller (gjeldende `shouldSkipCaptcha()`-gren).
+  - `"error"` hvis script feiler å laste eller `render()` kaster.
+  - `"ready"` i Turnstile `callback` (samtidig som `onVerify(token)`).
+  - `"expired"` i `expired-callback` (token blir også satt til null).
+- Legg til ny prop `forceVisible?: boolean`. Når true, render widget med `appearance: "always"` (vis checkboxen). Brukes som fallback hvis captcha henger.
+- Eksporter en ny imperativ helper `executeTurnstile()` (kaller `window.turnstile?.execute(widgetId)`) — ikke strengt nødvendig hvis vi bare venter, men nyttig hvis vi vil trigge på nytt.
 
-1. Endre `appearance: "always"` → `appearance: "interaction-only"` i `window.turnstile.render(...)`-kallet.
-   - "interaction-only" betyr: widget er skjult som standard, vises kun hvis Cloudflare faktisk krever en interaktiv challenge (sjelden — kun ved mistenkelig trafikk). Token genereres normalt i bakgrunnen via `callback`.
-2. Behold container-`<div>`-en (Turnstile trenger et DOM-feste selv i usynlig modus), men gi den `className="hidden"` som default, og fjern `hidden` dynamisk hvis en interaktiv challenge dukker opp.
-   - Enkleste variant: la `className` fra parent stå, men sett container-stil til `style={{ minHeight: 0 }}` — Turnstile injiserer ingen synlig iframe i interaction-only-modus, så den tar 0px plass naturlig. Ingen ekstra logikk trengs.
+### 2. `src/pages/Auth.tsx`
+Gating av login på captcha-readiness.
 
-### Det vi IKKE rører
+- Ny state:
+  - `captchaStatus: "loading" | "ready" | "skipped" | "error" | "expired"` (default `"loading"`).
+  - `showCaptchaFallback: boolean` (default false) — toggler `forceVisible` på widgeten.
+- Send `onStatusChange={setCaptchaStatus}` til `<TurnstileWidget>`.
+- Behold eksisterende `onVerify={setCaptchaToken}`.
+- I `handleAuth` (login-grenen), før `signInWithPassword`:
+  - Hvis `captchaStatus === "ready"` eller `"skipped"` eller `"error"` → fortsett som i dag (`captchaToken` brukes hvis den finnes).
+  - Hvis `captchaStatus === "loading"` eller `"expired"`:
+    - Sett en lokal `waitingForCaptcha`-state slik at knappen viser spinner + tekst "Verifiserer …".
+    - Vent på token via en liten polling-promise (sjekk `captchaStatus`/`captchaToken` hver 100 ms, maks 4 sekunder).
+    - Hvis token kommer innen timeout → fortsett login.
+    - Hvis timeout → sett `showCaptchaFallback=true` (widgeten blir synlig), vis toast "Bekreft at du ikke er en robot og prøv igjen", `setLoading(false)` og return.
+- Submit-knapp:
+  - Behold eksisterende `disabled`-betingelser.
+  - Når `loading && waitingForCaptcha` vis tekst "Verifiserer …" i stedet for "Logger inn …".
+- Etter feilet login (eksisterende `resetTurnstile()` + `setCaptchaToken(null)`):
+  - Også `setCaptchaStatus("loading")` så ny ventelogikk fungerer på neste forsøk.
 
-- `Auth.tsx` og innloggingsflyten: token sendes fortsatt med `signInWithPassword({ options: { captchaToken } })` som før.
-- DJI-skip-logikken (`shouldSkipCaptcha`) — uendret.
-- Test-key vs. prod-key-logikken — uendret.
-- Backend/Supabase captcha-validering — uendret.
+### 3. Ingen endringer
+- Backend / Supabase captcha-konfig — uendret.
+- DJI skip-flow — uendret (status `"skipped"` lar login fortsette uten å vente).
+- Signup/reset-flows — captcha er ikke aktiv der i dag, ingen endring.
 
-### Risiko
-
-Veldig lav. Hvis Cloudflare bestemmer at en bruker må gjøre en interaktiv challenge, vil widgeten automatisk bli synlig (det er hele poenget med "interaction-only"). Da ser brukeren en checkbox akkurat der `<div>`-en står i Auth.tsx, så plasseringen i layouten bør forbli fornuftig.
-
-### Verifisering etter endring
-
-- Last `/auth` — ingen synlig Turnstile-boks.
-- Logg inn med korrekt passord — skal fungere som før (sjekk Network: `cf-turnstile-response` token sendes med).
-- Konsoll: `[Turnstile] Token generated` skal fortsatt logges.
+## Verifisering
+1. Hard refresh `/auth`. Skriv epost+passord og trykk "Logg inn" umiddelbart (<1 s):
+   - Knappen viser "Verifiserer …" kort, deretter logger den inn uten feilmelding.
+2. Simuler treg captcha (DevTools → Network throttling "Slow 3G", blokker `challenges.cloudflare.com` midlertidig):
+   - Etter ~4 s blir Turnstile-boksen synlig under passordfeltet, toast informerer brukeren, ingen Supabase-feil.
+3. Normal login (vent 2 s før klikk): uendret oppførsel, ingen synlig widget.
+4. Feil passord: `resetTurnstile()` kjører, status går tilbake til `loading`, neste forsøk venter på ny token.
+5. DJI-controller (skipped): login fungerer umiddelbart uten venting.

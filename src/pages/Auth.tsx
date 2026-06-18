@@ -37,6 +37,15 @@ const Auth = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaStatus, setCaptchaStatus] = useState<
+    "loading" | "ready" | "skipped" | "error" | "expired"
+  >("loading");
+  const [showCaptchaFallback, setShowCaptchaFallback] = useState(false);
+  const [waitingForCaptcha, setWaitingForCaptcha] = useState(false);
+  const captchaTokenRef = useRef<string | null>(null);
+  const captchaStatusRef = useRef(captchaStatus);
+  useEffect(() => { captchaTokenRef.current = captchaToken; }, [captchaToken]);
+  useEffect(() => { captchaStatusRef.current = captchaStatus; }, [captchaStatus]);
   
   // Registration mode: 'code' (existing company) or 'new' (create company)
   const [regMode, setRegMode] = useState<'code' | 'new'>('code');
@@ -337,17 +346,47 @@ const Auth = () => {
     setLoading(true);
     try {
       if (isLogin) {
+        // Vent på captcha hvis den ikke er klar ennå (maks 4s).
+        const needsWait =
+          captchaStatusRef.current === "loading" ||
+          captchaStatusRef.current === "expired";
+        if (needsWait && !captchaTokenRef.current) {
+          setWaitingForCaptcha(true);
+          const start = Date.now();
+          while (
+            Date.now() - start < 4000 &&
+            !captchaTokenRef.current &&
+            captchaStatusRef.current !== "ready" &&
+            captchaStatusRef.current !== "skipped" &&
+            captchaStatusRef.current !== "error"
+          ) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+          setWaitingForCaptcha(false);
+          if (
+            !captchaTokenRef.current &&
+            captchaStatusRef.current !== "skipped" &&
+            captchaStatusRef.current !== "error"
+          ) {
+            setShowCaptchaFallback(true);
+            toast.error("Bekreft at du ikke er en robot og prøv igjen");
+            setLoading(false);
+            return;
+          }
+        }
+        const tokenToSend = captchaTokenRef.current;
         const {
           data,
           error
         } = await supabase.auth.signInWithPassword({
           email,
           password,
-          options: captchaToken ? { captchaToken } : undefined,
+          options: tokenToSend ? { captchaToken: tokenToSend } : undefined,
         });
         if (error) {
           resetTurnstile();
           setCaptchaToken(null);
+          setCaptchaStatus("loading");
           throw error;
         }
         if (data.user) {
@@ -877,11 +916,21 @@ const Auth = () => {
               {isLogin && (
                 <TurnstileWidget
                   onVerify={setCaptchaToken}
+                  onStatusChange={setCaptchaStatus}
+                  forceVisible={showCaptchaFallback}
                   className="flex justify-center"
                 />
               )}
               <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'new') || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && !isPasswordValid(password))}>
-                {loading ? t('common.processing') : isLogin ? t('auth.signIn') : regMode === 'new' ? 'Selv-registrering stengt' : t('auth.signUp')}
+                {waitingForCaptcha
+                  ? "Verifiserer …"
+                  : loading
+                  ? t('common.processing')
+                  : isLogin
+                  ? t('auth.signIn')
+                  : regMode === 'new'
+                  ? 'Selv-registrering stengt'
+                  : t('auth.signUp')}
               </Button>
             </form>
             

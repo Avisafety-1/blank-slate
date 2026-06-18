@@ -76,19 +76,34 @@ function loadTurnstile(): Promise<boolean> {
   return scriptPromise;
 }
 
+export type TurnstileStatus =
+  | "loading"
+  | "ready"
+  | "skipped"
+  | "error"
+  | "expired";
+
 interface TurnstileWidgetProps {
   onVerify: (token: string | null) => void;
+  onStatusChange?: (status: TurnstileStatus) => void;
+  forceVisible?: boolean;
   className?: string;
 }
 
 /**
  * Cloudflare Turnstile widget. Calls onVerify(token) when solved,
- * onVerify(null) on error/expiry/load failure.
+ * onVerify(null) on error/expiry/load failure. Reports lifecycle via
+ * onStatusChange so callers can gate actions (e.g. wait before submit).
  *
  * Returns null (renders nothing) for DJI controllers — caller may treat
  * this as "skipped".
  */
-export function TurnstileWidget({ onVerify, className }: TurnstileWidgetProps) {
+export function TurnstileWidget({
+  onVerify,
+  onStatusChange,
+  forceVisible,
+  className,
+}: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [skipped] = useState(() => shouldSkipCaptcha());
@@ -97,40 +112,47 @@ export function TurnstileWidget({ onVerify, className }: TurnstileWidgetProps) {
   useEffect(() => {
     if (skipped) {
       console.info("[Turnstile] Skipped for DJI controller");
+      onStatusChange?.("skipped");
       onVerify(null);
       return;
     }
 
+    onStatusChange?.("loading");
     let cancelled = false;
     loadTurnstile().then((ok) => {
       if (cancelled) return;
       if (!ok || !window.turnstile || !containerRef.current) {
         console.warn("[Turnstile] Script failed to load — login allowed without token");
         setLoadFailed(true);
+        onStatusChange?.("error");
         onVerify(null);
         return;
       }
       try {
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: getSiteKey(),
-          appearance: "interaction-only",
+          appearance: forceVisible ? "always" : "interaction-only",
           theme: "auto",
           callback: (token) => {
             console.info("[Turnstile] Token generated");
+            onStatusChange?.("ready");
             onVerify(token);
           },
           "error-callback": () => {
             console.warn("[Turnstile] Widget error");
+            onStatusChange?.("error");
             onVerify(null);
           },
           "expired-callback": () => {
             console.info("[Turnstile] Token expired");
+            onStatusChange?.("expired");
             onVerify(null);
           },
         });
       } catch (err) {
         console.error("[Turnstile] Render failed", err);
         setLoadFailed(true);
+        onStatusChange?.("error");
         onVerify(null);
       }
     });
@@ -146,11 +168,12 @@ export function TurnstileWidget({ onVerify, className }: TurnstileWidgetProps) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skipped]);
+  }, [skipped, forceVisible]);
 
   if (skipped || loadFailed) return null;
   return <div ref={containerRef} className={className} />;
 }
+
 
 /**
  * Imperative reset helper — use after a failed login to force a fresh token
