@@ -113,7 +113,7 @@ export function TurnstileWidget({ onVerify, className }: TurnstileWidgetProps) {
       try {
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: getSiteKey(),
-          appearance: "always",
+          appearance: "interaction-only",
           theme: "auto",
           callback: (token) => {
             console.info("[Turnstile] Token generated");
