@@ -288,8 +288,7 @@ const Admin = () => {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, debouncedFetchData)
         .subscribe();
 
-      const rolesChannel = supabase
-        .channel('admin-roles-changes')
+      const rolesChannel = createUniqueChannel('admin-roles-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, debouncedFetchData)
         .subscribe();
 
