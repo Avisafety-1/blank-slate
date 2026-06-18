@@ -37,6 +37,15 @@ const Auth = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaStatus, setCaptchaStatus] = useState<
+    "loading" | "ready" | "skipped" | "error" | "expired"
+  >("loading");
+  const [showCaptchaFallback, setShowCaptchaFallback] = useState(false);
+  const [waitingForCaptcha, setWaitingForCaptcha] = useState(false);
+  const captchaTokenRef = useRef<string | null>(null);
+  const captchaStatusRef = useRef(captchaStatus);
+  useEffect(() => { captchaTokenRef.current = captchaToken; }, [captchaToken]);
+  useEffect(() => { captchaStatusRef.current = captchaStatus; }, [captchaStatus]);
   
   // Registration mode: 'code' (existing company) or 'new' (create company)
   const [regMode, setRegMode] = useState<'code' | 'new'>('code');
