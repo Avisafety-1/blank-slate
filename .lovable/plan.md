@@ -1,81 +1,29 @@
-## Mål
-Fjerne krasjen `cannot add 'postgres_changes' callbacks for realtime channel after subscribe` som oppstår etter oppgraderingen til `@supabase/supabase-js` 2.108. Beholde native passkey-støtten.
+## Skjul Turnstile-widgeten visuelt — behold verifisering i bakgrunnen
 
-## Årsak
-Den nye realtime-klienten returnerer en eksisterende kanal hvis `supabase.channel("static-name")` kalles med et navn som allerede finnes — og kaster hvis man da kjeder `.on('postgres_changes', ...)` etter at den gamle instansen allerede er subscribed. Dette skjer ved rute-navigasjon, tab-bytte (visibilitychange), eller når cleanup-funksjonen kjører litt etter at den nye mounten har startet.
+Cloudflare Turnstile støtter en "usynlig" modus der widgeten kjører og produserer token uten å vise checkbox/badge, så lenge brukeren ikke trenger en interaktiv challenge.
 
-Vi har ~25 statiske `postgres_changes`-kanalnavn i kodebasen som er sårbare.
+### Endring
 
-## Løsning
-Gi hver mount sitt eget unike kanalnavn ved å suffixere med `crypto.randomUUID()`. Cleanup-funksjonen river ned akkurat den instansen, og det blir aldri kollisjon.
+**Fil:** `src/components/auth/TurnstileWidget.tsx`
 
-Viktig presisering: **Kun** `postgres_changes`-kanaler endres. Broadcast- og presence-kanaler beholdes med statiske navn fordi de er avhengig av at alle instanser lytter på samme kanalnavn.
+1. Endre `appearance: "always"` → `appearance: "interaction-only"` i `window.turnstile.render(...)`-kallet.
+   - "interaction-only" betyr: widget er skjult som standard, vises kun hvis Cloudflare faktisk krever en interaktiv challenge (sjelden — kun ved mistenkelig trafikk). Token genereres normalt i bakgrunnen via `callback`.
+2. Behold container-`<div>`-en (Turnstile trenger et DOM-feste selv i usynlig modus), men gi den `className="hidden"` som default, og fjern `hidden` dynamisk hvis en interaktiv challenge dukker opp.
+   - Enkleste variant: la `className` fra parent stå, men sett container-stil til `style={{ minHeight: 0 }}` — Turnstile injiserer ingen synlig iframe i interaction-only-modus, så den tar 0px plass naturlig. Ingen ekstra logikk trengs.
 
-### Steg 1 — Ny hjelpefunksjon
-Lag `src/lib/realtimeChannel.ts`:
+### Det vi IKKE rører
 
-```ts
-import { supabase } from "@/integrations/supabase/client";
+- `Auth.tsx` og innloggingsflyten: token sendes fortsatt med `signInWithPassword({ options: { captchaToken } })` som før.
+- DJI-skip-logikken (`shouldSkipCaptcha`) — uendret.
+- Test-key vs. prod-key-logikken — uendret.
+- Backend/Supabase captcha-validering — uendret.
 
-/**
- * Lager en realtime-kanal med et garantert unikt navn per mount.
- * Forhindrer "cannot add postgres_changes callbacks" feilen fra
- * @supabase/realtime-js >=2.11 ved kollisjon mellom mount/unmount-sykluser.
- * Brukes KUN for postgres_changes-kanaler, ikke for broadcast/presence-kanaler.
- */
-export function createUniqueChannel(baseName: string) {
-  const suffix =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  return supabase.channel(`${baseName}-${suffix}`);
-}
-```
+### Risiko
 
-### Steg 2 — Bytt ut statiske navn på postgres_changes-kanaler
-Endre `supabase.channel("name")` → `createUniqueChannel("name")` i følgende filer (alle har allerede korrekt cleanup med `removeChannel`):
+Veldig lav. Hvis Cloudflare bestemmer at en bruker må gjøre en interaktiv challenge, vil widgeten automatisk bli synlig (det er hele poenget med "interaction-only"). Da ser brukeren en checkbox akkurat der `<div>`-en står i Auth.tsx, så plasseringen i layouten bør forbli fornuftig.
 
-- `src/hooks/useDashboardRealtime.ts` (2 kanaler)
-- `src/hooks/useSoraApprovalEnabled.ts`
-- `src/hooks/useFlightTimer.ts`
-- `src/hooks/useOppdragData.ts`
-- `src/pages/Resources.tsx`
-- `src/pages/Hendelser.tsx`
-- `src/pages/Kalender.tsx`
-- `src/pages/Documents.tsx`
-- `src/pages/Admin.tsx` (kun `admin-profiles-changes` og `admin-roles-changes`)
-- `src/contexts/AuthContext.tsx` (kanalen har `${user.id}`-suffiks; gjøres helt unik per mount)
-- `src/components/OpenAIPMap.tsx`
-- `src/components/PendingApprovalsBadge.tsx`
-- `src/components/dashboard/KPIChart.tsx`
-- `src/components/dashboard/IncidentDetailDialog.tsx` (har `${incident.id}`-suffiks; gjøres unik likevel)
-- `src/components/resources/PersonCompetencyDialog.tsx`
-- `src/components/resources/EquipmentDetailDialog.tsx`
-- `src/components/resources/DroneDetailDialog.tsx`
-- `src/components/admin/CustomerManagementSection.tsx`
-- `src/components/admin/CompanyManagementSection.tsx`
-- `src/components/admin/ChildCompaniesSection.tsx`
-- `src/lib/mapSafeSky.ts`
+### Verifisering etter endring
 
-### Steg 3 — Ikke endre broadcast-/presence-kanaler
-Disse beholdes med statiske navn:
-- `global-force-reload` (4 bruksteder i `src/pages/Admin.tsx` + `src/hooks/useForceReload.ts`) — brukes for cross-tab broadcast og krever felles kanalnavn.
-- `presence-room` (`src/hooks/usePresence.ts`) — presence-kanal uten postgres_changes.
-
-### Steg 4 — Verifisering
-- Sjekk hver berørt useEffect for korrekt `removeChannel(channel)` i cleanup.
-- Test i preview: naviger frem og tilbake mellom Dashboard ↔ Oppdrag ↔ Hendelser ↔ Admin flere ganger raskt.
-- Test i produksjon etter publish: logg inn, naviger, sett fanen i bakgrunnen og bytt tilbake.
-
-## Teknisk omfang
-- 1 ny fil (~15 linjer)
-- ~25 enkle search-replace-endringer (en `import` + en funksjonsbytte per fil)
-- Ingen DB-endringer, ingen edge-funksjon-endringer, ingen avhengighetsendringer
-- Total risiko: lav. Hver postgres_changes-kanal blir unik per mount, cleanup er allerede på plass.
-
-## Hva som IKKE endres
-- Passkey-implementasjonen (Supabase native)
-- Edge-funksjoner
-- Database / RLS
-- `@supabase/supabase-js`-versjon
-- Broadcast- og presence-kanaler (statiske navn beholdes)
+- Last `/auth` — ingen synlig Turnstile-boks.
+- Logg inn med korrekt passord — skal fungere som før (sjekk Network: `cf-turnstile-response` token sendes med).
+- Konsoll: `[Turnstile] Token generated` skal fortsatt logges.
