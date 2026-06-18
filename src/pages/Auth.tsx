@@ -15,7 +15,7 @@ import { Chrome, CheckCircle2, Building2, KeyRound, Fingerprint, Loader2 } from 
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
-import { startAuthentication } from "@simplewebauthn/browser";
+
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 import { TurnstileWidget, resetTurnstile } from "@/components/auth/TurnstileWidget";
 
@@ -635,48 +635,27 @@ const Auth = () => {
   const handlePasskeyLogin = async () => {
     setPasskeyLoading(true);
     try {
-      // Step 1: Get discoverable authentication options (no email needed)
-      const { data: optionsData, error: optionsError } = await supabase.functions.invoke("webauthn", {
-        body: { action: "login-options-discoverable" },
-      });
-      if (optionsError || optionsData?.error) {
-        throw new Error(optionsData?.error || t('passkey.loginError'));
-      }
+      // Supabase native discoverable-credential sign-in.
+      // Runs the full WebAuthn ceremony and creates a session on success.
+      const { data, error } = await (supabase.auth as any).signInWithPasskey();
+      if (error) throw error;
 
-      // Step 2: Authenticate with browser — shows all available passkeys
-      const credential = await startAuthentication({ optionsJSON: optionsData.options });
-
-      // Step 3: Verify with server
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("webauthn", {
-        body: {
-          action: "login-verify",
-          credential,
-          signedChallenge: optionsData.signedChallenge,
-        },
-      });
-      if (verifyError || verifyData?.error) {
-        throw new Error(verifyData?.error || t('passkey.loginError'));
-      }
-
-      if (verifyData.verified && verifyData.token_hash) {
-        // Step 4: Complete login with the token
-        const { error: otpError } = await supabase.auth.verifyOtp({
-          token_hash: verifyData.token_hash,
-          type: 'magiclink',
-        });
-        if (otpError) throw otpError;
-
+      if (data?.session) {
         toast.success(t('auth.loginSuccess'), { id: 'login-success' });
         redirectToApp('/');
       }
     } catch (err: any) {
       console.error("Passkey login error:", err);
-      if (err.name === "NotAllowedError") return;
-      toast.error(err.message || t('passkey.loginError'));
+      if (err?.name === "NotAllowedError") return;
+      // If user previously had a passkey from the legacy system, it will fail here.
+      // Surface a helpful message so they know to re-register after logging in with password.
+      const msg = err?.message || t('passkey.loginError');
+      toast.error(msg);
     } finally {
       setPasskeyLoading(false);
     }
   };
+
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();

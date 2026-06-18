@@ -1,22 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Fingerprint, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { startRegistration } from "@simplewebauthn/browser";
 import { isDevelopment } from "@/config/domains";
-
-const getDefaultDeviceName = () => {
-  const ua = navigator.userAgent;
-  if (/iPhone/i.test(ua)) return "iPhone";
-  if (/iPad/i.test(ua)) return "iPad";
-  if (/Android/i.test(ua)) return "Android";
-  if (/Mac/i.test(ua)) return "Mac";
-  if (/Windows/i.test(ua)) return "Windows";
-  return "Enhet";
-};
 
 export const PasskeyPromptDialog = () => {
   const { t } = useTranslation();
@@ -31,11 +27,23 @@ export const PasskeyPromptDialog = () => {
       try {
         if (localStorage.getItem("avisafe_passkey_prompt_dismissed")) return;
         if (localStorage.getItem("avisafe_passkey_registered")) return;
-      } catch { return; }
+      } catch {
+        return;
+      }
 
-      // Check if user already has passkeys
-      const { data } = await supabase.from("passkeys").select("id").limit(1);
-      if (data && data.length > 0) return;
+      // Check if user already has passkeys via Supabase native API
+      try {
+        const { data } = await (supabase.auth as any).passkey.list();
+        if (Array.isArray(data) && data.length > 0) {
+          try {
+            localStorage.setItem("avisafe_passkey_registered", "1");
+          } catch {}
+          return;
+        }
+      } catch {
+        // If list fails (e.g. no session), just skip the prompt
+        return;
+      }
 
       setOpen(true);
     };
@@ -45,41 +53,26 @@ export const PasskeyPromptDialog = () => {
   const handleRegister = async () => {
     setRegistering(true);
     try {
-      const { data: optionsData, error: optionsError } = await supabase.functions.invoke("webauthn", {
-        body: { action: "register-options" },
-      });
-      if (optionsError) throw optionsError;
-
-      const credential = await startRegistration({ optionsJSON: optionsData.options });
-
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke("webauthn", {
-        body: {
-          action: "register-verify",
-          credential,
-          signedChallenge: optionsData.signedChallenge,
-          deviceName: getDefaultDeviceName(),
-        },
-      });
-      if (verifyError) throw verifyError;
-
-      if (verifyData.verified) {
-        toast.success(t("passkey.registered"));
-        try { localStorage.setItem("avisafe_passkey_registered", "1"); } catch {}
-        setOpen(false);
-      } else {
-        toast.error(t("passkey.registerError"));
-      }
+      const { error } = await (supabase.auth as any).registerPasskey();
+      if (error) throw error;
+      toast.success(t("passkey.registered"));
+      try {
+        localStorage.setItem("avisafe_passkey_registered", "1");
+      } catch {}
+      setOpen(false);
     } catch (err: any) {
       console.error("Passkey registration error:", err);
-      if (err.name === "NotAllowedError") return;
-      toast.error(err.message || t("passkey.registerError"));
+      if (err?.name === "NotAllowedError") return;
+      toast.error(err?.message || t("passkey.registerError"));
     } finally {
       setRegistering(false);
     }
   };
 
   const handleDismiss = () => {
-    try { localStorage.setItem("avisafe_passkey_prompt_dismissed", "1"); } catch {}
+    try {
+      localStorage.setItem("avisafe_passkey_prompt_dismissed", "1");
+    } catch {}
     setOpen(false);
   };
 
@@ -94,7 +87,10 @@ export const PasskeyPromptDialog = () => {
             {t("passkey.promptTitle", "Aktiver biometrisk innlogging")}
           </DialogTitle>
           <DialogDescription className="text-center">
-            {t("passkey.promptDescription", "Logg inn raskere neste gang med fingeravtrykk eller ansiktsgjenkjenning. Vil du aktivere dette nå?")}
+            {t(
+              "passkey.promptDescription",
+              "Logg inn raskere neste gang med fingeravtrykk eller ansiktsgjenkjenning. Vil du aktivere dette nå?"
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
