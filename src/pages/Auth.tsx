@@ -916,11 +916,21 @@ const Auth = () => {
               {isLogin && (
                 <TurnstileWidget
                   onVerify={setCaptchaToken}
+                  onStatusChange={setCaptchaStatus}
+                  forceVisible={showCaptchaFallback}
                   className="flex justify-center"
                 />
               )}
               <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'new') || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && !isPasswordValid(password))}>
-                {loading ? t('common.processing') : isLogin ? t('auth.signIn') : regMode === 'new' ? 'Selv-registrering stengt' : t('auth.signUp')}
+                {waitingForCaptcha
+                  ? "Verifiserer …"
+                  : loading
+                  ? t('common.processing')
+                  : isLogin
+                  ? t('auth.signIn')
+                  : regMode === 'new'
+                  ? 'Selv-registrering stengt'
+                  : t('auth.signUp')}
               </Button>
             </form>
             
