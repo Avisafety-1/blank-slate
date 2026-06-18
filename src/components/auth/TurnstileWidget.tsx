@@ -2,12 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import { shouldSkipCaptcha } from "@/lib/deviceDetection";
 
 // Cloudflare Turnstile site key (offentlig — trygt å ha i frontend).
-// Erstatt med din egen fra dash.cloudflare.com → Turnstile.
-// Fallback: bruk Cloudflares "always passes" test-key så widget alltid laster
-// i utvikling. Sett VITE_TURNSTILE_SITE_KEY i .env for produksjon.
-const SITE_KEY =
-  (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ||
-  "1x00000000000000000000AA"; // test key, alltid pass
+// Test-key ("alltid pass") brukes automatisk på localhost og *.lovable.app
+// fordi Cloudflare ikke godtar wildcard på delte preview-domener.
+// Produksjons-key (VITE_TURNSTILE_SITE_KEY) brukes på alle andre hosts.
+const TEST_KEY = "1x00000000000000000000AA";
+function getSiteKey(): string {
+  if (typeof window === "undefined") return TEST_KEY;
+  const host = window.location.hostname;
+  const isDev =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".lovable.app") ||
+    host.endsWith(".lovableproject.com");
+  const prodKey = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+  if (isDev || !prodKey) {
+    console.info("[Turnstile] Using TEST site key (host:", host, ")");
+    return TEST_KEY;
+  }
+  console.info("[Turnstile] Using production site key (host:", host, ")");
+  return prodKey;
+}
 
 const TURNSTILE_SCRIPT =
   "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
