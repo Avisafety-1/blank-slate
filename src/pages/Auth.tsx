@@ -17,6 +17,7 @@ import type { User } from "@supabase/supabase-js";
 import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
+import { TurnstileWidget, resetTurnstile } from "@/components/auth/TurnstileWidget";
 
 
 const Auth = () => {
@@ -35,6 +36,7 @@ const Auth = () => {
   const [validatedCompany, setValidatedCompany] = useState<{ id: string; name: string } | null>(null);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   
   // Registration mode: 'code' (existing company) or 'new' (create company)
   const [regMode, setRegMode] = useState<'code' | 'new'>('code');
@@ -340,9 +342,14 @@ const Auth = () => {
           error
         } = await supabase.auth.signInWithPassword({
           email,
-          password
+          password,
+          options: captchaToken ? { captchaToken } : undefined,
         });
-        if (error) throw error;
+        if (error) {
+          resetTurnstile();
+          setCaptchaToken(null);
+          throw error;
+        }
         if (data.user) {
           // Check MFA requirement
           const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -888,6 +895,12 @@ const Auth = () => {
                 )}
                 {!isLogin && <PasswordRequirements password={password} className="mt-2" />}
               </div>
+              {isLogin && (
+                <TurnstileWidget
+                  onVerify={setCaptchaToken}
+                  className="flex justify-center"
+                />
+              )}
               <Button type="submit" className="w-full" disabled={loading || (!isLogin && regMode === 'new') || (!isLogin && regMode === 'code' && !validatedCompany) || (!isLogin && !isPasswordValid(password))}>
                 {loading ? t('common.processing') : isLogin ? t('auth.signIn') : regMode === 'new' ? 'Selv-registrering stengt' : t('auth.signUp')}
               </Button>
