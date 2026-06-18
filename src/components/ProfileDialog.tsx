@@ -678,8 +678,9 @@ export const ProfileDialog = () => {
     try {
       const { error } = await supabase
         .from("notification_preferences")
-        .update({ [field]: value })
+        .update({ [field]: value } as any)
         .eq("user_id", user.id);
+
       
       if (error) throw error;
       
