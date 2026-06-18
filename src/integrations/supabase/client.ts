@@ -87,8 +87,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: safeAuthStorage,
     persistSession: true,
     autoRefreshToken: true,
+    // Enable Supabase native passkey support (experimental).
+    // Requires @supabase/supabase-js >= 2.105.
+    experimental: { passkey: true },
   },
   global: {
     fetch: fetchWithRetry,
   },
 });
+
