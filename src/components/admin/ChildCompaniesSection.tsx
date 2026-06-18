@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { invalidateCompanySettingsCache } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlassCard } from "@/components/GlassCard";
@@ -403,8 +404,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     fetchFlightAlerts();
 
     if (!companyId) return;
-    const channel = supabase
-      .channel(`company-settings-${companyId}`)
+    const channel = createUniqueChannel(`company-settings-${companyId}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "companies", filter: `id=eq.${companyId}` },

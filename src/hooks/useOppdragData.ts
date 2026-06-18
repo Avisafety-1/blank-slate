@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
@@ -84,8 +85,7 @@ export const useOppdragData = () => {
       }, 5000);
     };
 
-    const channel = supabase
-      .channel('oppdrag-page-changes')
+    const channel = createUniqueChannel('oppdrag-page-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, handler)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mission_personnel' }, handler)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mission_drones' }, handler)

@@ -1,5 +1,6 @@
 import L from "leaflet";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { getBeaconSvgUrl, isAnimatedType, HELI_ANIM_FRAMES, droneAnimatedIcon } from "@/lib/mapIcons";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 
@@ -297,8 +298,7 @@ export function createSafeSkyManager(params: {
       
       if (destroyed) return;
       
-      safeskyChannel = supabase
-        .channel('safesky-beacons-changes')
+      safeskyChannel = createUniqueChannel('safesky-beacons-changes')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'safesky_beacons' },

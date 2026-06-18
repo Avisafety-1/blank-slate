@@ -3,6 +3,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,8 +25,7 @@ export const KPIChart = () => {
   useEffect(() => {
     fetchIncidentStats();
 
-    const channel = supabase
-      .channel('incidents-stats')
+    const channel = createUniqueChannel('incidents-stats')
       .on(
         'postgres_changes',
         {

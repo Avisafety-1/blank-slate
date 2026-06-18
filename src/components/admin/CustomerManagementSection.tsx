@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
@@ -65,8 +66,7 @@ export const CustomerManagementSection = () => {
   useEffect(() => {
     fetchCustomers();
 
-    const channel = supabase
-      .channel("customers_changes")
+    const channel = createUniqueChannel("customers_changes")
       .on(
         "postgres_changes",
         {

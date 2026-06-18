@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
@@ -187,8 +188,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
     
     if (!incident?.id) return;
     
-    const channel = supabase
-      .channel(`incident_comments_${incident.id}`)
+    const channel = createUniqueChannel(`incident_comments_${incident.id}`)
       .on(
         'postgres_changes',
         {

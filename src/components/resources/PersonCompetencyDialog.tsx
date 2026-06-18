@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Pencil, Trash2, Book, Paperclip, Upload, X, FileText, ExternalLink, GraduationCap, Bell, Compass, ChevronDown, Plus } from "lucide-react";
@@ -160,8 +161,7 @@ export function PersonCompetencyDialog({
   useEffect(() => {
     if (!person?.id || !open) return;
 
-    const channel = supabase
-      .channel(`person-competencies-${person.id}`)
+    const channel = createUniqueChannel(`person-competencies-${person.id}`)
       .on(
         'postgres_changes',
         {

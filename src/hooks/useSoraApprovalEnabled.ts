@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
 
 const cache: Record<string, { enabled: boolean; ts: number }> = {};
@@ -52,8 +53,7 @@ export function useSoraApprovalEnabled(): boolean {
       fetch();
     }
 
-    const channel = supabase
-      .channel(`sora-config-${companyId}`)
+    const channel = createUniqueChannel(`sora-config-${companyId}`)
       .on(
         "postgres_changes",
         {
