@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createUniqueChannel } from '@/lib/realtimeChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { addToQueue } from '@/lib/offlineQueue';
@@ -233,8 +234,7 @@ export const useFlightTimer = () => {
     window.addEventListener('online', onOnline);
 
     // Listen for DELETE on our own active_flights row (e.g. another tab/device ended the flight)
-    const channel = supabase
-      .channel(`active_flights_self_${user.id}`)
+    const channel = createUniqueChannel(`active_flights_self_${user.id}`)
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'active_flights', filter: `profile_id=eq.${user.id}` },

@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
@@ -202,8 +203,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   useEffect(() => {
     if (!drone?.id || !open) return;
 
-    const channel = supabase
-      .channel(`drone-detail-${drone.id}`)
+    const channel = createUniqueChannel(`drone-detail-${drone.id}`)
       .on(
         'postgres_changes',
         {

@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -114,8 +115,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   useEffect(() => {
     if (!equipment?.id || !open) return;
 
-    const channel = supabase
-      .channel(`equipment-detail-${equipment.id}`)
+    const channel = createUniqueChannel(`equipment-detail-${equipment.id}`)
       .on(
         'postgres_changes',
         {

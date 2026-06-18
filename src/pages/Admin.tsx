@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio, Send, AlertTriangle, GraduationCap, Rss } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -283,8 +284,7 @@ const Admin = () => {
         adminDebounce = window.setTimeout(() => fetchData(), 2000);
       };
 
-      const profilesChannel = supabase
-        .channel('admin-profiles-changes')
+      const profilesChannel = createUniqueChannel('admin-profiles-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, debouncedFetchData)
         .subscribe();
 

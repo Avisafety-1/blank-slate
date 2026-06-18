@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -51,8 +52,7 @@ export const PendingApprovalsBadge = ({ isAdmin }: PendingApprovalsBadgeProps) =
 
     fetchPendingCount();
 
-    const channel = supabase
-      .channel("pending-approvals")
+    const channel = createUniqueChannel("pending-approvals")
       .on(
         "postgres_changes",
         {

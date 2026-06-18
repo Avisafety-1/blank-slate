@@ -21,6 +21,7 @@ import { format, isSameDay } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
@@ -142,8 +143,7 @@ export default function Kalender() {
       fetchCustomEvents();
     };
 
-    const channel = supabase
-      .channel('kalender-main')
+    const channel = createUniqueChannel('kalender-main')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, refetchIfOnline)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions' }, refetchIfOnline)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, refetchIfOnline)

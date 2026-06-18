@@ -8,6 +8,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -88,8 +89,7 @@ const Resources = () => {
     // Real-time subscriptions — single consolidated channel
     const guardedFetch = (fn: () => void) => () => { if (navigator.onLine) fn(); };
 
-    const channel = supabase
-      .channel('ressurser-main')
+    const channel = createUniqueChannel('ressurser-main')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drones' }, guardedFetch(fetchDrones))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, guardedFetch(fetchEquipment))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dronetag_devices' }, guardedFetch(fetchDronetags))

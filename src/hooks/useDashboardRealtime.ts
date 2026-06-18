@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -66,8 +67,7 @@ export function useDashboardRealtime() {
     };
 
     // ---- dashboard-main channel ----
-    const mainChannel = supabase
-      .channel("dashboard-main")
+    const mainChannel = createUniqueChannel("dashboard-main")
       // Status data tables (previously in useStatusData)
       .on("postgres_changes", { event: "*", schema: "public", table: "drones" }, (p) => {
         dispatch(mainCallbacksRef, "drones")(p);
@@ -108,8 +108,7 @@ export function useDashboardRealtime() {
       .subscribe();
 
     // ---- dashboard-flights channel ----
-    const flightsChannel = supabase
-      .channel("dashboard-flights")
+    const flightsChannel = createUniqueChannel("dashboard-flights")
       .on("postgres_changes", { event: "*", schema: "public", table: "active_flights" }, dispatch(flightsCallbacksRef, "active_flights"))
       .on("postgres_changes", { event: "*", schema: "public", table: "dronetag_positions" }, dispatch(flightsCallbacksRef, "dronetag_positions"))
       .subscribe();
