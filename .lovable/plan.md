@@ -1,21 +1,13 @@
-## Problem
-Cloudflare Turnstile feiler i Lovable preview fordi produksjons-site-key (`0x4AAAAAADnVAQnwtLDe3M3P`) krever at domenet er eksplisitt tillatt i Cloudflare. Preview-domener (`id-preview--...lovable.app`) endres per økt, og Cloudflare godtar ikke wildcard (`*.lovable.app`) på delte domener.
+# Plan: Migrer til Supabase native passkeys — FERDIG
 
-## Løsning
-Modifiser `TurnstileWidget.tsx` til å automatisk bruke Cloudflares test-site-key (`1x00000000000000000000AA` — alltid passer) når appen kjører på:
-- `localhost`
-- ethvert domene som inneholder `lovable.app`
+Implementert i denne sesjonen:
 
-I produksjon (`login.avisafe.no`, `app.avisafe.no`) fortsetter widgeten å bruke `VITE_TURNSTILE_SITE_KEY`.
-
-## Endringer
-1. **src/components/auth/TurnstileWidget.tsx**:
-   - Endre `SITE_KEY` fra en konstant til en funksjon/hjelper som sjekker `window.location.hostname`
-   - Bruk test-key på `localhost` og `*.lovable.app`
-   - Bruk `VITE_TURNSTILE_SITE_KEY` for alle andre domener
-   - Logg til konsoll hvilken key som brukes (for debugging)
-
-## Konsekvenser
-- Preview fungerer umiddelbart uten Cloudflare-konfigurasjon
-- Ingen endring i produksjonsoppførsel
-- Test-key er trygg å eksponere (designet av Cloudflare for testing)
+1. Oppgradert `@supabase/supabase-js` til ^2.105 (faktisk 2.108.2)
+2. Aktivert `experimental: { passkey: true }` i `src/integrations/supabase/client.ts`
+3. Rewrote `src/components/PasskeySetup.tsx` til å bruke `supabase.auth.registerPasskey()` + `supabase.auth.passkey.list()/.delete()`
+4. Rewrote `src/components/PasskeyPromptDialog.tsx` på samme måte
+5. Rewrote passkey-login i `src/pages/Auth.tsx` til `supabase.auth.signInWithPasskey()`
+6. Fjernet `@simplewebauthn/browser` fra `package.json`
+7. Slettet `supabase/functions/webauthn/` + avregistrert Edge Function
+8. Dropet `public.passkeys`-tabellen
+9. Eksisterende 55 passkeys må re-registreres av brukere (engangs)
