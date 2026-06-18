@@ -346,17 +346,47 @@ const Auth = () => {
     setLoading(true);
     try {
       if (isLogin) {
+        // Vent på captcha hvis den ikke er klar ennå (maks 4s).
+        const needsWait =
+          captchaStatusRef.current === "loading" ||
+          captchaStatusRef.current === "expired";
+        if (needsWait && !captchaTokenRef.current) {
+          setWaitingForCaptcha(true);
+          const start = Date.now();
+          while (
+            Date.now() - start < 4000 &&
+            !captchaTokenRef.current &&
+            captchaStatusRef.current !== "ready" &&
+            captchaStatusRef.current !== "skipped" &&
+            captchaStatusRef.current !== "error"
+          ) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+          setWaitingForCaptcha(false);
+          if (
+            !captchaTokenRef.current &&
+            captchaStatusRef.current !== "skipped" &&
+            captchaStatusRef.current !== "error"
+          ) {
+            setShowCaptchaFallback(true);
+            toast.error("Bekreft at du ikke er en robot og prøv igjen");
+            setLoading(false);
+            return;
+          }
+        }
+        const tokenToSend = captchaTokenRef.current;
         const {
           data,
           error
         } = await supabase.auth.signInWithPassword({
           email,
           password,
-          options: captchaToken ? { captchaToken } : undefined,
+          options: tokenToSend ? { captchaToken: tokenToSend } : undefined,
         });
         if (error) {
           resetTurnstile();
           setCaptchaToken(null);
+          setCaptchaStatus("loading");
           throw error;
         }
         if (data.user) {
