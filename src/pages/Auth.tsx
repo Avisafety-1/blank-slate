@@ -44,8 +44,53 @@ const Auth = () => {
   const [waitingForCaptcha, setWaitingForCaptcha] = useState(false);
   const captchaTokenRef = useRef<string | null>(null);
   const captchaStatusRef = useRef(captchaStatus);
+  // Markeres true rett før vi sender captchaToken til Supabase. Turnstile-tokener
+  // er engangstokener, så ved neste login-forsøk må vi tvinge en ny.
+  const usedCaptchaRef = useRef(false);
   useEffect(() => { captchaTokenRef.current = captchaToken; }, [captchaToken]);
   useEffect(() => { captchaStatusRef.current = captchaStatus; }, [captchaStatus]);
+
+  // Hvis brukeren logger ut (f.eks. via idle timeout / annen tab), reset Turnstile
+  // slik at neste innloggingsforsøk får en frisk token i stedet for å gjenbruke
+  // en allerede forbrukt token (som gir «a non-webauthn related error occurred»
+  // ved passkey-login).
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        try { resetTurnstile(); } catch {}
+        usedCaptchaRef.current = false;
+        setCaptchaToken(null);
+        setCaptchaStatus("loading");
+      }
+    });
+    return () => { sub.subscription.unsubscribe(); };
+  }, []);
+
+  // Tvinger en frisk Turnstile-token før neste innloggingsforsøk hvis forrige
+  // token allerede er forbrukt. Returnerer når en ny token er klar eller timeout
+  // er nådd. Kaller selv resetTurnstile + nullstiller state.
+  const ensureFreshCaptcha = async (): Promise<void> => {
+    if (!usedCaptchaRef.current) return;
+    if (captchaStatusRef.current === "skipped" || captchaStatusRef.current === "error") return;
+    try { resetTurnstile(); } catch {}
+    setCaptchaToken(null);
+    captchaTokenRef.current = null;
+    setCaptchaStatus("loading");
+    captchaStatusRef.current = "loading";
+    usedCaptchaRef.current = false;
+    setWaitingForCaptcha(true);
+    const start = Date.now();
+    while (
+      Date.now() - start < 4000 &&
+      !captchaTokenRef.current &&
+      captchaStatusRef.current !== "ready" &&
+      captchaStatusRef.current !== "skipped" &&
+      captchaStatusRef.current !== "error"
+    ) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    setWaitingForCaptcha(false);
+  };
   
   // Registration mode: 'code' (existing company) or 'new' (create company)
   const [regMode, setRegMode] = useState<'code' | 'new'>('code');
