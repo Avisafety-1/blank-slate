@@ -15,6 +15,7 @@ import { Chrome, CheckCircle2, Building2, KeyRound, Fingerprint, Loader2 } from 
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
+import { isPasskeyLogin } from "@/lib/authMethod";
 
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 import { TurnstileWidget, resetTurnstile } from "@/components/auth/TurnstileWidget";
@@ -228,13 +229,16 @@ const Auth = () => {
         if (profile && profile.company_id) {
           // User has a profile with company_id
           if (profile.approved) {
-            // Check MFA requirement before redirecting
-            const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-            if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
-              console.log('Google user requires MFA verification');
-              setShowMfaChallenge(true);
-              setCheckingGoogleUser(false);
-              return;
+            // Check MFA requirement before redirecting (skip for passkey sessions)
+            const { data: sessData } = await supabase.auth.getSession();
+            if (!isPasskeyLogin(sessData?.session ?? null)) {
+              const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+              if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+                console.log('Google user requires MFA verification');
+                setShowMfaChallenge(true);
+                setCheckingGoogleUser(false);
+                return;
+              }
             }
 
             // Approved user - redirect to app with delay for session stability
@@ -283,11 +287,14 @@ const Auth = () => {
 
     if (!isOAuthUser && user) {
       const checkMfaAndRedirect = async () => {
-        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
-          console.log('User requires MFA verification before redirect');
-          setShowMfaChallenge(true);
-          return;
+        const { data: sessData } = await supabase.auth.getSession();
+        if (!isPasskeyLogin(sessData?.session ?? null)) {
+          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+          if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+            console.log('User requires MFA verification before redirect');
+            setShowMfaChallenge(true);
+            return;
+          }
         }
 
         // Loop guard: if we already redirected once and ended up back here,
@@ -439,12 +446,15 @@ const Auth = () => {
           throw error;
         }
         if (data.user) {
-          // Check MFA requirement
-          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-          if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
-            setShowMfaChallenge(true);
-            setLoading(false);
-            return;
+          // Check MFA requirement (skip for passkey sessions — N/A here since
+          // this is the password flow, but kept symmetric for safety)
+          if (!isPasskeyLogin(data.session ?? null)) {
+            const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+            if (aalData && aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+              setShowMfaChallenge(true);
+              setLoading(false);
+              return;
+            }
           }
 
           // Check if user is approved
