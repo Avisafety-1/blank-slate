@@ -66,7 +66,6 @@ const Auth = () => {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
-  const passkeyRegistered = typeof window !== "undefined" && !!localStorage.getItem("avisafe_passkey_registered");
   const isDevEnv = isDevelopment();
   const googleProfileCheckedRef = useRef(false);
 
@@ -688,12 +687,43 @@ const Auth = () => {
       if (err?.name === "NotAllowedError") return;
       // If user previously had a passkey from the legacy system, it will fail here.
       // Surface a helpful message so they know to re-register after logging in with password.
-      const msg = err?.message || t('passkey.loginError');
-      toast.error(msg);
+      toast.error(t('passkey.loginErrorFriendly', { defaultValue: 'Fant ingen passkey for denne enheten. Logg inn med passord først og aktiver passkey under Profil.' }));
     } finally {
       setPasskeyLoading(false);
     }
   };
+
+  // WebAuthn Conditional UI / Autofill: lets the OS suggest passkeys
+  // directly in the email field when supported. Silent on failure.
+  useEffect(() => {
+    if (!isLogin || !passkeySupported || isDevEnv) return;
+    let cancelled = false;
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const isAvailable = await (PublicKeyCredential as any).isConditionalMediationAvailable?.();
+        if (!isAvailable || cancelled) return;
+        const { data, error } = await (supabase.auth as any).signInWithPasskey({
+          mediation: "conditional",
+          signal: controller.signal,
+        });
+        if (cancelled || error) return;
+        if (data?.session) {
+          toast.success(t('auth.loginSuccess'), { id: 'login-success' });
+          redirectToApp('/');
+        }
+      } catch {
+        // Silent — conditional UI should be invisible on failure/abort
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [isLogin, passkeySupported, isDevEnv]);
+
 
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -887,6 +917,7 @@ const Auth = () => {
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
                   required 
+                  autoComplete={isLogin ? "username webauthn" : "email"}
                 />
               </div>
               <div className="space-y-2">
@@ -901,6 +932,7 @@ const Auth = () => {
                   onChange={e => setPassword(e.target.value)} 
                   required 
                   minLength={isLogin ? 6 : 8} 
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                 />
                 {isLogin && (
                   <button
@@ -954,7 +986,7 @@ const Auth = () => {
               {t('auth.signInWithGoogle')}
             </Button>
 
-            {isLogin && passkeySupported && passkeyRegistered && !isDevEnv && (
+            {isLogin && passkeySupported && !isDevEnv && (
               <Button
                 type="button"
                 variant="outline"
