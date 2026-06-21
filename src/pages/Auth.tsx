@@ -83,9 +83,9 @@ const Auth = () => {
     while (
       Date.now() - start < 4000 &&
       !captchaTokenRef.current &&
-      captchaStatusRef.current !== "ready" &&
-      captchaStatusRef.current !== "skipped" &&
-      captchaStatusRef.current !== "error"
+      (captchaStatusRef.current as string) !== "ready" &&
+      (captchaStatusRef.current as string) !== "skipped" &&
+      (captchaStatusRef.current as string) !== "error"
     ) {
       await new Promise((r) => setTimeout(r, 100));
     }
