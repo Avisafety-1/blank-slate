@@ -1455,11 +1455,18 @@ serve(async (req) => {
       } : null),
       airspace: airspaceFacts,
       // GDPR: Anonymize pilot data before sending to AI - use identifiers instead of names
-      assignedPilots: assignedPilots.map((p: any, index: number) => ({
-        identifier: `Pilot ${index + 1}`,
-        role: p.tittel || 'Pilot',
-        totalFlightHours: p.flyvetimer || 0,
-      })),
+      assignedPilots: assignedPilots.map((p: any, index: number) => {
+        const stats = pilotFlightStats.find((s: any) => s.pilotId === p.id);
+        const loggedHours = stats ? stats.totalMinutes / 60 : 0;
+        // Prefer summed flight_logs (authoritative). Fall back to stored profile value
+        // only if the user has no logs at all (e.g. legacy imported totals).
+        const totalFlightHours = loggedHours > 0 ? loggedHours : (p.flyvetimer || 0);
+        return {
+          identifier: `Pilot ${index + 1}`,
+          role: p.tittel || 'Pilot',
+          totalFlightHours: Math.round(totalFlightHours * 100) / 100,
+        };
+      }),
       pilotStats: {
         totalAssignedPilots: assignedPilots.length,
         totalFlights: aggregatedFlightStats.totalFlights,
