@@ -44,8 +44,53 @@ const Auth = () => {
   const [waitingForCaptcha, setWaitingForCaptcha] = useState(false);
   const captchaTokenRef = useRef<string | null>(null);
   const captchaStatusRef = useRef(captchaStatus);
+  // Markeres true rett før vi sender captchaToken til Supabase. Turnstile-tokener
+  // er engangstokener, så ved neste login-forsøk må vi tvinge en ny.
+  const usedCaptchaRef = useRef(false);
   useEffect(() => { captchaTokenRef.current = captchaToken; }, [captchaToken]);
   useEffect(() => { captchaStatusRef.current = captchaStatus; }, [captchaStatus]);
+
+  // Hvis brukeren logger ut (f.eks. via idle timeout / annen tab), reset Turnstile
+  // slik at neste innloggingsforsøk får en frisk token i stedet for å gjenbruke
+  // en allerede forbrukt token (som gir «a non-webauthn related error occurred»
+  // ved passkey-login).
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        try { resetTurnstile(); } catch {}
+        usedCaptchaRef.current = false;
+        setCaptchaToken(null);
+        setCaptchaStatus("loading");
+      }
+    });
+    return () => { sub.subscription.unsubscribe(); };
+  }, []);
+
+  // Tvinger en frisk Turnstile-token før neste innloggingsforsøk hvis forrige
+  // token allerede er forbrukt. Returnerer når en ny token er klar eller timeout
+  // er nådd. Kaller selv resetTurnstile + nullstiller state.
+  const ensureFreshCaptcha = async (): Promise<void> => {
+    if (!usedCaptchaRef.current) return;
+    if (captchaStatusRef.current === "skipped" || captchaStatusRef.current === "error") return;
+    try { resetTurnstile(); } catch {}
+    setCaptchaToken(null);
+    captchaTokenRef.current = null;
+    setCaptchaStatus("loading");
+    captchaStatusRef.current = "loading";
+    usedCaptchaRef.current = false;
+    setWaitingForCaptcha(true);
+    const start = Date.now();
+    while (
+      Date.now() - start < 4000 &&
+      !captchaTokenRef.current &&
+      (captchaStatusRef.current as string) !== "ready" &&
+      (captchaStatusRef.current as string) !== "skipped" &&
+      (captchaStatusRef.current as string) !== "error"
+    ) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    setWaitingForCaptcha(false);
+  };
   
   // Registration mode: 'code' (existing company) or 'new' (create company)
   const [regMode, setRegMode] = useState<'code' | 'new'>('code');
@@ -345,27 +390,30 @@ const Auth = () => {
     setLoading(true);
     try {
       if (isLogin) {
+        // Hvis forrige forsøk allerede har forbrukt captcha-tokenen, tving en ny
+        // før vi sender. Turnstile-tokener er engangstokener.
+        await ensureFreshCaptcha();
         // Vent på captcha hvis den ikke er klar ennå (maks 4s).
         const needsWait =
-          captchaStatusRef.current === "loading" ||
-          captchaStatusRef.current === "expired";
+          (captchaStatusRef.current as string) === "loading" ||
+          (captchaStatusRef.current as string) === "expired";
         if (needsWait && !captchaTokenRef.current) {
           setWaitingForCaptcha(true);
           const start = Date.now();
           while (
             Date.now() - start < 4000 &&
             !captchaTokenRef.current &&
-            captchaStatusRef.current !== "ready" &&
-            captchaStatusRef.current !== "skipped" &&
-            captchaStatusRef.current !== "error"
+            (captchaStatusRef.current as string) !== "ready" &&
+            (captchaStatusRef.current as string) !== "skipped" &&
+            (captchaStatusRef.current as string) !== "error"
           ) {
             await new Promise((r) => setTimeout(r, 100));
           }
           setWaitingForCaptcha(false);
           if (
             !captchaTokenRef.current &&
-            captchaStatusRef.current !== "skipped" &&
-            captchaStatusRef.current !== "error"
+            (captchaStatusRef.current as string) !== "skipped" &&
+            (captchaStatusRef.current as string) !== "error"
           ) {
             setShowCaptchaFallback(true);
             toast.error("Bekreft at du ikke er en robot og prøv igjen");
@@ -374,6 +422,7 @@ const Auth = () => {
           }
         }
         const tokenToSend = captchaTokenRef.current;
+        if (tokenToSend) usedCaptchaRef.current = true;
         const {
           data,
           error
@@ -386,6 +435,7 @@ const Auth = () => {
           resetTurnstile();
           setCaptchaToken(null);
           setCaptchaStatus("loading");
+          usedCaptchaRef.current = false;
           throw error;
         }
         if (data.user) {
@@ -673,27 +723,32 @@ const Auth = () => {
   const handlePasskeyLogin = async () => {
     setPasskeyLoading(true);
     try {
+      // Hvis forrige login-forsøk har forbrukt captcha-tokenen, tving en frisk.
+      // Turnstile-tokener er engangstokener; gjenbruk gir 4xx fra Supabase som
+      // SimpleWebAuthn pakker inn som «a non-webauthn related error occurred».
+      await ensureFreshCaptcha();
+
       // Wait for Turnstile captcha token if needed (same as password flow).
       const needsWait =
-        captchaStatusRef.current === "loading" ||
-        captchaStatusRef.current === "expired";
+        (captchaStatusRef.current as string) === "loading" ||
+        (captchaStatusRef.current as string) === "expired";
       if (needsWait && !captchaTokenRef.current) {
         setWaitingForCaptcha(true);
         const start = Date.now();
         while (
           Date.now() - start < 4000 &&
           !captchaTokenRef.current &&
-          captchaStatusRef.current !== "ready" &&
-          captchaStatusRef.current !== "skipped" &&
-          captchaStatusRef.current !== "error"
+          (captchaStatusRef.current as string) !== "ready" &&
+          (captchaStatusRef.current as string) !== "skipped" &&
+          (captchaStatusRef.current as string) !== "error"
         ) {
           await new Promise((r) => setTimeout(r, 100));
         }
         setWaitingForCaptcha(false);
         if (
           !captchaTokenRef.current &&
-          captchaStatusRef.current !== "skipped" &&
-          captchaStatusRef.current !== "error"
+          (captchaStatusRef.current as string) !== "skipped" &&
+          (captchaStatusRef.current as string) !== "error"
         ) {
           setShowCaptchaFallback(true);
           toast.error("Bekreft at du ikke er en robot og prøv igjen");
@@ -702,6 +757,7 @@ const Auth = () => {
       }
 
       const tokenToSend = captchaTokenRef.current;
+      if (tokenToSend) usedCaptchaRef.current = true;
       // Supabase native discoverable-credential sign-in.
       // Runs the full WebAuthn ceremony and creates a session on success.
       const { data, error } = await (supabase.auth as any).signInWithPasskey(
@@ -726,6 +782,7 @@ const Auth = () => {
         resetTurnstile();
         setCaptchaToken(null);
         setCaptchaStatus("loading");
+        usedCaptchaRef.current = false;
       } catch {}
       const name = err?.name;
       if (name === "NotAllowedError" || name === "AbortError") {
@@ -741,8 +798,24 @@ const Auth = () => {
         );
         return;
       }
-      const msg = typeof err?.message === "string" && err.message.trim()
-        ? err.message
+      // «a non-webauthn related error occurred» = Supabase HTTP-feil (typisk
+      // captcha-validering). Gi en mer presis melding.
+      const rawMsg = typeof err?.message === "string" ? err.message : "";
+      const isCaptchaIsh =
+        /non[- ]?webauthn/i.test(rawMsg) ||
+        /captcha/i.test(rawMsg) ||
+        (typeof err?.status === "number" && err.status >= 400 && err.status < 500);
+      if (isCaptchaIsh) {
+        toast.error(
+          t("passkey.loginErrorCaptcha", {
+            defaultValue:
+              "Sikkerhetstoken utløpt. Vent et øyeblikk og prøv igjen.",
+          })
+        );
+        return;
+      }
+      const msg = rawMsg.trim()
+        ? rawMsg
         : t("passkey.loginErrorGeneric", {
             defaultValue: "Innlogging med passkey feilet. Prøv igjen eller bruk passord.",
           });
