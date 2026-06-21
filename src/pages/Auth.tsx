@@ -683,46 +683,37 @@ const Auth = () => {
         redirectToApp('/');
       }
     } catch (err: any) {
-      console.error("Passkey login error:", err);
-      if (err?.name === "NotAllowedError") return;
-      // If user previously had a passkey from the legacy system, it will fail here.
-      // Surface a helpful message so they know to re-register after logging in with password.
-      toast.error(t('passkey.loginErrorFriendly', { defaultValue: 'Fant ingen passkey for denne enheten. Logg inn med passord først og aktiver passkey under Profil.' }));
+      console.error("Passkey login error:", {
+        name: err?.name,
+        code: err?.code,
+        message: err?.message,
+        status: err?.status,
+        error: err,
+      });
+      const name = err?.name;
+      if (name === "NotAllowedError" || name === "AbortError") {
+        // User cancelled or system aborted — silent
+        return;
+      }
+      if (name === "SecurityError" || name === "InvalidStateError") {
+        toast.error(
+          t("passkey.loginErrorTransient", {
+            defaultValue:
+              "Passkey kunne ikke brukes på denne enheten akkurat nå. Prøv igjen eller bruk passord.",
+          })
+        );
+        return;
+      }
+      const msg = typeof err?.message === "string" && err.message.trim()
+        ? err.message
+        : t("passkey.loginErrorGeneric", {
+            defaultValue: "Innlogging med passkey feilet. Prøv igjen eller bruk passord.",
+          });
+      toast.error(msg);
     } finally {
       setPasskeyLoading(false);
     }
   };
-
-  // WebAuthn Conditional UI / Autofill: lets the OS suggest passkeys
-  // directly in the email field when supported. Silent on failure.
-  useEffect(() => {
-    if (!isLogin || !passkeySupported || isDevEnv) return;
-    let cancelled = false;
-    const controller = new AbortController();
-
-    (async () => {
-      try {
-        const isAvailable = await (PublicKeyCredential as any).isConditionalMediationAvailable?.();
-        if (!isAvailable || cancelled) return;
-        const { data, error } = await (supabase.auth as any).signInWithPasskey({
-          mediation: "conditional",
-          signal: controller.signal,
-        });
-        if (cancelled || error) return;
-        if (data?.session) {
-          toast.success(t('auth.loginSuccess'), { id: 'login-success' });
-          redirectToApp('/');
-        }
-      } catch {
-        // Silent — conditional UI should be invisible on failure/abort
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [isLogin, passkeySupported, isDevEnv]);
 
 
 
