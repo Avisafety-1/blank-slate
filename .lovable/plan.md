@@ -1,87 +1,33 @@
-## Mål
+## Hva som er galt
 
-Hopp over TOTP-2FA-utfordringen når brukeren logger inn med passkey. Behold 2FA-kravet for innlogging med e-post/passord (og Google OAuth) på samme konto.
+For oppdraget «Førsvatn kartlegging vei» (Norconsult, avd. Bergen) viser AI-risikovurderingen at piloten Jan Amund Walde har **0,28 timer** totalt. Det stemmer at `profiles.flyvetimer` for ham er **0,28** — men `flight_logs` summerer til **9,97 timer** (15 logger).
 
-## Sikkerhetsbegrunnelse
+**Årsak:** AI-risikofunksjonen (`supabase/functions/ai-risk-assessment/index.ts`, linje 724 + 1461) henter `totalFlightHours` fra feltet `profiles.flyvetimer`. Det feltet oppdateres **ikke** automatisk når en ny `flight_logs`-rad legges inn — det finnes triggere som vedlikeholder `drones.flyvetimer` og `equipment.flyvetimer`, men ingen tilsvarende for `profiles`. Kun den gamle import-/manuell-loggføringsflyten (`FlightLogbookDialog.tsx`) skriver til feltet, så for piloter som logger via `LogFlightTimeDialog` / opplastede dronelogger blir verdien stående på det den var ved oppstart.
 
-En passkey (WebAuthn) er allerede phishing-resistent, enhetsbundet og krever lokal brukerverifikasjon (biometri / PIN). Det regnes som sterk autentisering (NIST AAL2/AAL3), så å kreve TOTP i tillegg gir liten ekstra sikkerhet og mye friksjon. Passord alene er svakere og bør fortsatt kreve TOTP.
+Det betyr at AI-en får helt feil totalflytid for nesten alle aktive piloter, og kategorien "Piloterfaring" blir kunstig lav.
 
-## Endringer
+## Fiks
 
-### 1. Ny hjelpefil — `src/lib/authMethod.ts`
+### 1. AI-risikofunksjonen — bruk faktiske flight_logs
+`supabase/functions/ai-risk-assessment/index.ts`:
+- Vi har allerede `pilotFlightStats` (linje 791–801) som summerer `flight_duration_minutes` per pilot fra `flight_logs`.
+- Endre `assignedPilots.map(...)` (linje 1458–1462) slik at `totalFlightHours` hentes som `pilotFlightStats.find(s => s.pilotId === p.id)?.totalMinutes / 60` (avrundet til 2 desimaler), med fallback til `p.flyvetimer || 0` hvis det ikke finnes loggdata.
+- Ingen endring i prompt/kategori-logikk — AI-en får bare riktig tall inn.
 
-```ts
-import type { Session } from "@supabase/supabase-js";
-
-type AmrEntry = { method: string; timestamp?: number };
-
-function decodeJwtPayload(token: string): Record<string, any> | null {
-  const base64Url = token.split(".")[1];
-  if (!base64Url) return null;
-  try {
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(
-      base64.length + ((4 - (base64.length % 4)) % 4),
-      "="
-    );
-    return JSON.parse(atob(padded));
-  } catch {
-    return null;
-  }
-}
-
-function getAmr(session: Session | null): AmrEntry[] {
-  const token = session?.access_token;
-  if (!token) return [];
-  const payload = decodeJwtPayload(token);
-  return Array.isArray(payload?.amr) ? payload.amr : [];
-}
-
-/**
- * Returnerer true hvis denne sesjonen ble autentisert med passkey/WebAuthn.
- * Vi sjekker hele amr-arrayen (ikke bare siste entry), fordi Supabase
- * ikke garanterer rekkefølge. En passkey-autentisering i sesjonens historikk
- * er tilstrekkelig bevis på sterk auth.
- */
-export function isPasskeyLogin(session: Session | null): boolean {
-  const amr = getAmr(session);
-  return amr.some(
-    (e) => e?.method === "passkey" || e?.method === "webauthn"
-  );
-}
+### 2. (Anbefalt) Trigger som holder `profiles.flyvetimer` synk
+For at Resources, Status-siden, dashboard-kort og PDF-eksport også skal vise riktig sum, legge til en database-trigger på `flight_logs` (INSERT / UPDATE / DELETE) som regner ut `SUM(flight_duration_minutes)/60` for `user_id` og oppdaterer `profiles.flyvetimer` — samme mønster som `update_drone_flight_hours_on_log`. Inkluderer en éngangs-backfill:
+```sql
+UPDATE profiles p SET flyvetimer = COALESCE(s.hours, 0)
+FROM (SELECT user_id, SUM(flight_duration_minutes)/60.0 AS hours
+      FROM flight_logs GROUP BY user_id) s
+WHERE p.id = s.user_id;
 ```
+Den manuelle `update flyvetimer`-koden i `FlightLogbookDialog.tsx` (linje 158) kan stå — trigger vil overskrive med korrekt sum uansett.
 
-**Endringer fra forrige utkast:**
-- Bruker korrekt base64url-dekoding med padding (ikke `atob(token.split(".")[1])`), slik ChatGPT foreslo. Dette håndterer `-`, `_` og manglende `=`-padding.
-- Funksjonen er trygg: den returnerer `null` ved ugyldig token i stedet for å kaste.
+## Resultat
 
-### 2. `src/components/MfaGate.tsx`
+- Jan Amund Walde får `totalFlightHours ≈ 9,97` i neste AI-risikovurdering, og «Piloterfaring»-kategorien får riktig grunnlag.
+- Alle andre piloter får tilsvarende korreksjon med én gang backfill kjøres.
+- Loggføring framover holder seg automatisk i synk.
 
-I `runCheck`: hent gjeldende sesjon, og hvis `isPasskeyLogin(session)` returnerer `true`, sett `needsMfa = false` og hopp over `getAuthenticatorAssuranceLevel`. Dette dekker første render etter login og senere reloads.
-
-### 3. `src/pages/Auth.tsx`
-
-- I `handlePasskeyLogin` etter vellykket login: hent ny sesjon, og hvis `isPasskeyLogin(session)` er `true`, redirect direkte uten AAL-sjekk eller `MfaChallengeDialog`.
-- I redirect-`useEffect` og den andre AAL-sjekken: samme bypass.
-- `handleLogin` (passord-flyten) — uendret. TOTP kreves fortsatt.
-
-### 4. Google OAuth — uendret
-
-`amr` vil inneholde `oauth`, ikke `passkey`, så TOTP kreves fortsatt for Google-innlogging på MFA-konti.
-
-## Edge cases
-
-- **Session refresh:** `amr` bevares i nytt access-token av Supabase, så bypass holder på tvers av reloads inntil utlogging.
-- **Bruker uten TOTP:** Ingen effekt — `nextLevel` er allerede `aal1`.
-- **Ugyldig/manglende token:** `getAmr` returnerer tom array → ingen bypass, fail-closed.
-- **Passkey + TOTP i samme `amr`:** Passkey-metoden trigger bypass, fordi passkey allerede er sterk autentisering.
-- **Fremtidig step-up:** Sensitive handlinger (slette konto, endre roller) kan fortsatt kreve lokal AAL2-prompt om nødvendig.
-
-## QA
-
-1. Bruker med TOTP + passkey: logg inn med biometri → rett inn, ingen TOTP-dialog.
-2. Samme bruker: logg ut → logg inn med e-post/passord → TOTP-dialog vises.
-3. Samme bruker: logg ut → logg inn med Google → TOTP-dialog vises.
-4. Bruker uten TOTP: passkey-login som før.
-5. Reload nettleser etter passkey-login: ingen TOTP-prompt fra `MfaGate`.
-6. Sjekk konsoll: ingen feil fra JWT-dekoding ved passkey-login.
+Skal jeg gjøre begge endringene (1 + 2), eller bare punkt 1 (kun AI-fiks, uten trigger / backfill)?
