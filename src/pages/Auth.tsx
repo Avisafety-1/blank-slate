@@ -673,9 +673,40 @@ const Auth = () => {
   const handlePasskeyLogin = async () => {
     setPasskeyLoading(true);
     try {
+      // Wait for Turnstile captcha token if needed (same as password flow).
+      const needsWait =
+        captchaStatusRef.current === "loading" ||
+        captchaStatusRef.current === "expired";
+      if (needsWait && !captchaTokenRef.current) {
+        setWaitingForCaptcha(true);
+        const start = Date.now();
+        while (
+          Date.now() - start < 4000 &&
+          !captchaTokenRef.current &&
+          captchaStatusRef.current !== "ready" &&
+          captchaStatusRef.current !== "skipped" &&
+          captchaStatusRef.current !== "error"
+        ) {
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        setWaitingForCaptcha(false);
+        if (
+          !captchaTokenRef.current &&
+          captchaStatusRef.current !== "skipped" &&
+          captchaStatusRef.current !== "error"
+        ) {
+          setShowCaptchaFallback(true);
+          toast.error("Bekreft at du ikke er en robot og prøv igjen");
+          return;
+        }
+      }
+
+      const tokenToSend = captchaTokenRef.current;
       // Supabase native discoverable-credential sign-in.
       // Runs the full WebAuthn ceremony and creates a session on success.
-      const { data, error } = await (supabase.auth as any).signInWithPasskey();
+      const { data, error } = await (supabase.auth as any).signInWithPasskey(
+        tokenToSend ? { options: { captchaToken: tokenToSend } } : undefined
+      );
       if (error) throw error;
 
       if (data?.session) {
@@ -690,6 +721,12 @@ const Auth = () => {
         status: err?.status,
         error: err,
       });
+      // Reset captcha so next attempt gets a fresh token.
+      try {
+        resetTurnstile();
+        setCaptchaToken(null);
+        setCaptchaStatus("loading");
+      } catch {}
       const name = err?.name;
       if (name === "NotAllowedError" || name === "AbortError") {
         // User cancelled or system aborted — silent
@@ -712,6 +749,7 @@ const Auth = () => {
       toast.error(msg);
     } finally {
       setPasskeyLoading(false);
+      setWaitingForCaptcha(false);
     }
   };
 

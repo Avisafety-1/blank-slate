@@ -1,51 +1,45 @@
-# Fiks: "Passkey ikke konfigurert" på telefon selv om den er konfigurert
+# Fiks: "captcha protection; request disallowed" ved passkey-innlogging
 
 ## Rotårsaken
 
-Etter å ha gravd i `@supabase/auth-js` (v2.105) viser det seg at vår nye Conditional UI-effekt i `Auth.tsx` (linje 696–725) er feilimplementert:
+Supabase Auth-prosjektet har captcha-beskyttelse (Cloudflare Turnstile) påslått. Alle auth-endepunkter — inkludert passkey-flyten (`/passkey/authentication/options`) — krever et gyldig `captchaToken`. Vårt `handlePasskeyLogin` kaller `signInWithPasskey()` **uten** captcha-token, og Supabase avviser dermed forespørselen med "captcha protection: request disallowed". Vanlig e-post/passord-innlogging gjør det riktig (linje 376–384) ved å hente token fra Turnstile-widgeten først.
 
-- `supabase.auth.signInWithPasskey()` aksepterer **ikke** `mediation`-feltet. SDK-en bryr seg bare om `options.captchaToken` og `options.signal`. Alt annet ignoreres.
-- Det betyr at "conditional" autofill-effekten vår faktisk starter en **vanlig modal WebAuthn-ceremoni** ved sidelast — ikke en stille autofill-forespørsel.
-- På mobil starter dermed en passkey-dialog automatisk. Når brukeren lukker den (eller den feiler), kaster `webAuthnAbortService` den interne aborten. Når brukeren så trykker "Logg inn med passkey", starter en ny ceremoni — og avhengig av timing/feilkode fra serveren (f.eks. `_startPasskeyAuthentication` returnerer feil før WebAuthn-promptet) får brukeren vår generiske "Fant ingen passkey for denne enheten"-toast, selv om enheten faktisk har en passkey.
-
-I tillegg gjør toast-teksten ("Fant ingen passkey ... logg inn med passord først") feilen verre — den antyder feil årsak. All ikke-`NotAllowedError` får samme tekst, så server-/nettverksfeil ser ut som "passkey mangler".
+Etter en ny app-versjon (PWA-oppdatering) blir Turnstile-widgeten remountet og må generere et nytt token før knappen kan brukes — derav at feilen ofte oppstår "rett etter publisering".
 
 ## Endringer
 
-### 1. `src/pages/Auth.tsx` — Fjern den ødelagte Conditional UI-effekten
+### `src/pages/Auth.tsx` — `handlePasskeyLogin`
 
-Slett hele `useEffect` på linje 696–725. Begrunnelse:
-- Den implementerer ikke ekte Conditional UI fordi SDK-en ikke støtter `mediation: "conditional"` direkte.
-- Den trigger en uventet WebAuthn-prompt ved sidelast på mobil — sannsynlig direkte kilde til feilmeldingen brukeren ser.
-- Ekte Conditional UI krever en egen flyt (hent challenge via `passkey.startAuthentication`, kall `navigator.credentials.get({ mediation: "conditional", ... })`, verifiser med `passkey.verifyAuthentication`). Det kan vi legge til senere som egen forbedring, men holdes utenfor denne fiksen for å redusere risiko.
+1. Før kall til `signInWithPasskey`, vent på Turnstile-token akkurat som passordflyten:
+   - Hvis `captchaStatusRef.current` er `"loading"` eller `"expired"` og det ikke finnes token, sett `waitingForCaptcha=true` og poll i opptil 4 s.
+   - Hvis vi etter ventingen fortsatt mangler token og status ikke er `"skipped"`/`"error"` (dvs. captcha er aktiv men ikke ferdig), vis `showCaptchaFallback` + toast "Bekreft at du ikke er en robot og prøv igjen" og avbryt (samme oppførsel som passord-grenen).
 
-Resultat: passkey-knappen er fortsatt alltid synlig, men ingenting skjer før brukeren trykker på den. Det matcher iOS/Android sin egen "klikk-for-å-bruke-passkey"-modell og er trygt i PWA.
+2. Send token videre:
+   ```ts
+   const tokenToSend = captchaTokenRef.current;
+   const { data, error } = await (supabase.auth as any).signInWithPasskey(
+     tokenToSend ? { options: { captchaToken: tokenToSend } } : undefined
+   );
+   ```
+   (SDK-ens `SignInWithPasskeyCredentials` aksepterer `options.captchaToken` — verifisert i `node_modules/@supabase/auth-js`.)
 
-### 2. `src/pages/Auth.tsx` — Bedre feilhåndtering i `handlePasskeyLogin`
+3. Ved feil i passkey-flyten: kall `resetTurnstile()` + `setCaptchaToken(null)` + `setCaptchaStatus("loading")` slik at neste forsøk får friskt token (samme nullstilling som passordflyten gjør på linje 386–388). Behold eksisterende error-mapping (`NotAllowedError`/`AbortError` stille, osv.).
 
-Erstatt linje 685–693 slik at vi:
-- Logger `err.name`, `err.code`, `err.message`, `err.status` til console (synlig i Lovable-logs for debugging).
-- Differensierer toast-tekster:
-  - `NotAllowedError` → fortsatt stille (bruker kansellerte eller ingen matchende passkey i system-UI).
-  - `SecurityError` / `InvalidStateError` → "Passkey kunne ikke brukes på denne enheten akkurat nå. Prøv igjen eller bruk passord."
-  - `AbortError` → stille.
-  - Annet (server-/nettverksfeil) → vis faktisk `err.message` hvis tilgjengelig, ellers en nøytral "Innlogging med passkey feilet. Prøv igjen eller bruk passord." Ingen påstand om at passkey "ikke er konfigurert".
+4. Sørg for at `setPasskeyLoading(false)` og `setWaitingForCaptcha(false)` alltid kjøres via `finally`.
 
-### 3. Ingen endringer i
+### Ingen endringer i
 
-- `PasskeySetup.tsx` / `PasskeyPromptDialog.tsx` — registreringsflyt fungerer.
-- Supabase-konfig, edge functions, RP ID (`app.avisafe.no`) — uendret.
-- Autofill-attributter på input-feltene beholdes (`autoComplete="username webauthn"`); de skader ikke selv uten aktiv conditional-call.
+- Turnstile-widget, captcha-state, eller andre flows.
+- Supabase-config, RP ID, edge functions.
 
 ## Verifisering
 
-1. Last `/auth` på telefon (PWA og Safari/Chrome): **ingen** passkey-dialog skal poppe opp automatisk.
-2. Trykk "Logg inn med passkey" → system-UI viser registrerte passkeys → velg → logget inn.
-3. Trykk knappen og kanseller → ingen toast.
-4. Hvis serverfeil oppstår → konsoll viser detaljert feil, toast viser konkret melding (ikke "ikke konfigurert").
-5. Desktop Chrome: oppførsel uendret (knappen virker, ingen autofill-prompt).
+1. Last `/auth` på mobil etter ny PWA-versjon → vent til Turnstile er klar (knappen "Logg inn" kan trykkes) → trykk "Logg inn med passkey" → systemets passkey-UI → logget inn. Ingen "captcha protection"-feil.
+2. Trykk passkey-knappen **før** Turnstile er ferdig → kort "venter på captcha"-tilstand, så enten suksess eller fallback-toast hvis det tar >4 s.
+3. Avbryt passkey-prompten → fortsatt stille (ingen toast), Turnstile-token nullstilt for nytt forsøk.
+4. Desktop Chrome → uendret oppførsel, fortsatt fungerende.
 
 ## Tekniske notater
 
-- Vi kan re-introdusere ekte Conditional UI i en senere iterasjon med riktig lavnivå-flyt (`passkey.startAuthentication` → `navigator.credentials.get({mediation:"conditional"})` → `passkey.verifyAuthentication`). Krever litt mer kode og bør verifiseres på flere plattformer før utrulling.
-- `localStorage`-flagg endres ikke; knappen er fortsatt alltid synlig.
+- `signInWithPasskey` videresender `captchaToken` til `_startPasskeyAuthentication`, som er den eneste server-runden i flyten som captcha-gating treffer.
+- Vi unngår å duplisere wait-loop-logikken ved å holde den enkelt inline i `handlePasskeyLogin`; den er kort nok. Hvis det blir et tredje sted senere (f.eks. Google OAuth), bør vi trekke ut til en hjelpefunksjon.
