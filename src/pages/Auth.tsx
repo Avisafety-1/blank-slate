@@ -66,7 +66,6 @@ const Auth = () => {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
 
   const passkeySupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
-  const passkeyRegistered = typeof window !== "undefined" && !!localStorage.getItem("avisafe_passkey_registered");
   const isDevEnv = isDevelopment();
   const googleProfileCheckedRef = useRef(false);
 
@@ -887,6 +886,7 @@ const Auth = () => {
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
                   required 
+                  autoComplete={isLogin ? "username webauthn" : "email"}
                 />
               </div>
               <div className="space-y-2">
@@ -901,6 +901,7 @@ const Auth = () => {
                   onChange={e => setPassword(e.target.value)} 
                   required 
                   minLength={isLogin ? 6 : 8} 
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                 />
                 {isLogin && (
                   <button
@@ -954,7 +955,7 @@ const Auth = () => {
               {t('auth.signInWithGoogle')}
             </Button>
 
-            {isLogin && passkeySupported && passkeyRegistered && !isDevEnv && (
+            {isLogin && passkeySupported && !isDevEnv && (
               <Button
                 type="button"
                 variant="outline"
