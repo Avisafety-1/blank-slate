@@ -723,27 +723,32 @@ const Auth = () => {
   const handlePasskeyLogin = async () => {
     setPasskeyLoading(true);
     try {
+      // Hvis forrige login-forsøk har forbrukt captcha-tokenen, tving en frisk.
+      // Turnstile-tokener er engangstokener; gjenbruk gir 4xx fra Supabase som
+      // SimpleWebAuthn pakker inn som «a non-webauthn related error occurred».
+      await ensureFreshCaptcha();
+
       // Wait for Turnstile captcha token if needed (same as password flow).
       const needsWait =
-        captchaStatusRef.current === "loading" ||
-        captchaStatusRef.current === "expired";
+        (captchaStatusRef.current as string) === "loading" ||
+        (captchaStatusRef.current as string) === "expired";
       if (needsWait && !captchaTokenRef.current) {
         setWaitingForCaptcha(true);
         const start = Date.now();
         while (
           Date.now() - start < 4000 &&
           !captchaTokenRef.current &&
-          captchaStatusRef.current !== "ready" &&
-          captchaStatusRef.current !== "skipped" &&
-          captchaStatusRef.current !== "error"
+          (captchaStatusRef.current as string) !== "ready" &&
+          (captchaStatusRef.current as string) !== "skipped" &&
+          (captchaStatusRef.current as string) !== "error"
         ) {
           await new Promise((r) => setTimeout(r, 100));
         }
         setWaitingForCaptcha(false);
         if (
           !captchaTokenRef.current &&
-          captchaStatusRef.current !== "skipped" &&
-          captchaStatusRef.current !== "error"
+          (captchaStatusRef.current as string) !== "skipped" &&
+          (captchaStatusRef.current as string) !== "error"
         ) {
           setShowCaptchaFallback(true);
           toast.error("Bekreft at du ikke er en robot og prøv igjen");
@@ -752,6 +757,7 @@ const Auth = () => {
       }
 
       const tokenToSend = captchaTokenRef.current;
+      if (tokenToSend) usedCaptchaRef.current = true;
       // Supabase native discoverable-credential sign-in.
       // Runs the full WebAuthn ceremony and creates a session on success.
       const { data, error } = await (supabase.auth as any).signInWithPasskey(
@@ -776,6 +782,7 @@ const Auth = () => {
         resetTurnstile();
         setCaptchaToken(null);
         setCaptchaStatus("loading");
+        usedCaptchaRef.current = false;
       } catch {}
       const name = err?.name;
       if (name === "NotAllowedError" || name === "AbortError") {
@@ -791,8 +798,24 @@ const Auth = () => {
         );
         return;
       }
-      const msg = typeof err?.message === "string" && err.message.trim()
-        ? err.message
+      // «a non-webauthn related error occurred» = Supabase HTTP-feil (typisk
+      // captcha-validering). Gi en mer presis melding.
+      const rawMsg = typeof err?.message === "string" ? err.message : "";
+      const isCaptchaIsh =
+        /non[- ]?webauthn/i.test(rawMsg) ||
+        /captcha/i.test(rawMsg) ||
+        (typeof err?.status === "number" && err.status >= 400 && err.status < 500);
+      if (isCaptchaIsh) {
+        toast.error(
+          t("passkey.loginErrorCaptcha", {
+            defaultValue:
+              "Sikkerhetstoken utløpt. Vent et øyeblikk og prøv igjen.",
+          })
+        );
+        return;
+      }
+      const msg = rawMsg.trim()
+        ? rawMsg
         : t("passkey.loginErrorGeneric", {
             defaultValue: "Innlogging med passkey feilet. Prøv igjen eller bruk passord.",
           });
