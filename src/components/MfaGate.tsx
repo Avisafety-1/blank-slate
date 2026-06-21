@@ -3,12 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { isPasskeyLogin } from "@/lib/authMethod";
 
 /**
  * MfaGate: enforces TOTP MFA for any user who has a verified factor,
  * regardless of how they signed in (password, Google OAuth, etc.).
  * Supabase does not enforce MFA server-side at login — the app must
  * gate access until the session is upgraded to AAL2.
+ *
+ * Unntak: Sesjoner autentisert med passkey/WebAuthn er allerede sterk
+ * (phishing-resistent, enhetsbundet, lokal brukerverifikasjon), så TOTP
+ * hoppes over for disse.
  */
 export const MfaGate = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
@@ -18,6 +23,11 @@ export const MfaGate = ({ children }: { children: React.ReactNode }) => {
 
   const runCheck = async () => {
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (isPasskeyLogin(sessionData?.session ?? null)) {
+        setNeedsMfa(false);
+        return;
+      }
       const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (error) {
         console.error('MfaGate AAL check failed:', error);
