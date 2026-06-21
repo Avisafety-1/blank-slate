@@ -1,42 +1,87 @@
-## Problem
+## Mål
 
-Feilen «a non-webauthn related error occurred» kommer fra `@simplewebauthn/browser` når Supabase-kallet (ikke selve WebAuthn-ceremonien) feiler. Den dukker oftest opp rett etter en utlogging.
+Hopp over TOTP-2FA-utfordringen når brukeren logger inn med passkey. Behold 2FA-kravet for innlogging med e-post/passord (og Google OAuth) på samme konto.
 
-Årsak: Cloudflare Turnstile-tokener er **engangstokener**. I dagens flyt i `src/pages/Auth.tsx`:
+## Sikkerhetsbegrunnelse
 
-- Når brukeren logger inn (passord eller passkey) sendes `captchaTokenRef.current` til Supabase og forbrukes der.
-- Etter innlogging blir Turnstile-widgeten stående med status `ready` og samme token i `captchaTokenRef`.
-- Ved utlogging blir widgeten i praksis re-mountet, men hvis brukeren rekker å trykke «Logg inn med biometri» før den nye tokenen er klar, sendes enten:
-  - den gamle, allerede forbrukte tokenen, eller
-  - ingen token (mens Supabase krever én).
-- Supabase svarer 4xx/5xx → `signInWithPasskey` kaster en ikke-WebAuthn-feil → SimpleWebAuthn pakker den inn som «a non-webauthn related error occurred».
+En passkey (WebAuthn) er allerede phishing-resistent, enhetsbundet og krever lokal brukerverifikasjon (biometri / PIN). Det regnes som sterk autentisering (NIST AAL2/AAL3), så å kreve TOTP i tillegg gir liten ekstra sikkerhet og mye friksjon. Passord alene er svakere og bør fortsatt kreve TOTP.
 
-Det stemmer også med at det skjer «etter å ha logget ut kort tid før», og at vente-løkken bare venter når status er `loading`/`expired` — ikke når status er `ready` med en stale token.
+## Endringer
 
-## Løsning
+### 1. Ny hjelpefil — `src/lib/authMethod.ts`
 
-Tving alltid en frisk Turnstile-token før `signInWithPasskey` kalles, og resett widgeten ved utlogging.
+```ts
+import type { Session } from "@supabase/supabase-js";
 
-### Endringer i `src/pages/Auth.tsx`
+type AmrEntry = { method: string; timestamp?: number };
 
-1. **I starten av `handlePasskeyLogin`** (før wait-løkken):
-   - Hvis `captchaStatusRef.current === "ready"` OG en passkey-login (eller annen login) allerede har blitt forsøkt i denne mount-en, kall `resetTurnstile()`, sett `captchaToken=null` og `captchaStatus="loading"`. Bruk en `usedCaptchaRef` (boolean) som settes `true` rett før hvert Supabase-kall som sender captchaToken, og som sjekkes her.
-   - Wait-løkken vil dermed kjøre og vente på en ny token (opptil 4 s) før kallet til Supabase.
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  const base64Url = token.split(".")[1];
+  if (!base64Url) return null;
+  try {
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "="
+    );
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
 
-2. **Samme `usedCaptchaRef`-sjekk i `handleLogin`** (passord-flyten linje ~352) for konsistens, slik at heller ikke passord-innlogging gjenbruker token etter logout→login.
+function getAmr(session: Session | null): AmrEntry[] {
+  const token = session?.access_token;
+  if (!token) return [];
+  const payload = decodeJwtPayload(token);
+  return Array.isArray(payload?.amr) ? payload.amr : [];
+}
 
-3. **Lytte på `SIGNED_OUT`-event**: I `AuthContext` (eller en liten `useEffect` i `Auth.tsx` som lytter via `supabase.auth.onAuthStateChange`) kalle `resetTurnstile()` + nullstille `captchaToken`/`captchaStatus` når `event === "SIGNED_OUT"`. Dette sikrer at widgeten faktisk genererer en ny token før neste forsøk.
+/**
+ * Returnerer true hvis denne sesjonen ble autentisert med passkey/WebAuthn.
+ * Vi sjekker hele amr-arrayen (ikke bare siste entry), fordi Supabase
+ * ikke garanterer rekkefølge. En passkey-autentisering i sesjonens historikk
+ * er tilstrekkelig bevis på sterk auth.
+ */
+export function isPasskeyLogin(session: Session | null): boolean {
+  const amr = getAmr(session);
+  return amr.some(
+    (e) => e?.method === "passkey" || e?.method === "webauthn"
+  );
+}
+```
 
-4. **Bedre feilmelding**: Når `err?.message` matcher «non-webauthn related» eller `err?.status` er 4xx fra Supabase, vis en mer presis toast:
-   «Sikkerhetstoken utløpt. Vent et øyeblikk og prøv igjen.» i stedet for den generiske teksten.
+**Endringer fra forrige utkast:**
+- Bruker korrekt base64url-dekoding med padding (ikke `atob(token.split(".")[1])`), slik ChatGPT foreslo. Dette håndterer `-`, `_` og manglende `=`-padding.
+- Funksjonen er trygg: den returnerer `null` ved ugyldig token i stedet for å kaste.
 
-### Ingen endringer
+### 2. `src/components/MfaGate.tsx`
 
-- `TurnstileWidget.tsx` — uendret. `resetTurnstile()` finnes allerede.
-- Ingen DB- eller edge function-endringer.
+I `runCheck`: hent gjeldende sesjon, og hvis `isPasskeyLogin(session)` returnerer `true`, sett `needsMfa = false` og hopp over `getAuthenticatorAssuranceLevel`. Dette dekker første render etter login og senere reloads.
+
+### 3. `src/pages/Auth.tsx`
+
+- I `handlePasskeyLogin` etter vellykket login: hent ny sesjon, og hvis `isPasskeyLogin(session)` er `true`, redirect direkte uten AAL-sjekk eller `MfaChallengeDialog`.
+- I redirect-`useEffect` og den andre AAL-sjekken: samme bypass.
+- `handleLogin` (passord-flyten) — uendret. TOTP kreves fortsatt.
+
+### 4. Google OAuth — uendret
+
+`amr` vil inneholde `oauth`, ikke `passkey`, så TOTP kreves fortsatt for Google-innlogging på MFA-konti.
+
+## Edge cases
+
+- **Session refresh:** `amr` bevares i nytt access-token av Supabase, så bypass holder på tvers av reloads inntil utlogging.
+- **Bruker uten TOTP:** Ingen effekt — `nextLevel` er allerede `aal1`.
+- **Ugyldig/manglende token:** `getAmr` returnerer tom array → ingen bypass, fail-closed.
+- **Passkey + TOTP i samme `amr`:** Passkey-metoden trigger bypass, fordi passkey allerede er sterk autentisering.
+- **Fremtidig step-up:** Sensitive handlinger (slette konto, endre roller) kan fortsatt kreve lokal AAL2-prompt om nødvendig.
 
 ## QA
 
-- Logg inn med passkey → logg ut → trykk «Logg inn med biometri» umiddelbart. Skal nå vente kort på ny token og lykkes, ikke kaste «non-webauthn related».
-- Logg inn med passord → logg ut → logg inn med passkey. Samme oppførsel.
-- Normal første-gangs passkey-innlogging skal fungere uendret (ingen ekstra ventetid når tokenen allerede er fersk og ubrukt).
+1. Bruker med TOTP + passkey: logg inn med biometri → rett inn, ingen TOTP-dialog.
+2. Samme bruker: logg ut → logg inn med e-post/passord → TOTP-dialog vises.
+3. Samme bruker: logg ut → logg inn med Google → TOTP-dialog vises.
+4. Bruker uten TOTP: passkey-login som før.
+5. Reload nettleser etter passkey-login: ingen TOTP-prompt fra `MfaGate`.
+6. Sjekk konsoll: ingen feil fra JWT-dekoding ved passkey-login.
