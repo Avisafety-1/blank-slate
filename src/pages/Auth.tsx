@@ -390,27 +390,30 @@ const Auth = () => {
     setLoading(true);
     try {
       if (isLogin) {
+        // Hvis forrige forsøk allerede har forbrukt captcha-tokenen, tving en ny
+        // før vi sender. Turnstile-tokener er engangstokener.
+        await ensureFreshCaptcha();
         // Vent på captcha hvis den ikke er klar ennå (maks 4s).
         const needsWait =
-          captchaStatusRef.current === "loading" ||
-          captchaStatusRef.current === "expired";
+          (captchaStatusRef.current as string) === "loading" ||
+          (captchaStatusRef.current as string) === "expired";
         if (needsWait && !captchaTokenRef.current) {
           setWaitingForCaptcha(true);
           const start = Date.now();
           while (
             Date.now() - start < 4000 &&
             !captchaTokenRef.current &&
-            captchaStatusRef.current !== "ready" &&
-            captchaStatusRef.current !== "skipped" &&
-            captchaStatusRef.current !== "error"
+            (captchaStatusRef.current as string) !== "ready" &&
+            (captchaStatusRef.current as string) !== "skipped" &&
+            (captchaStatusRef.current as string) !== "error"
           ) {
             await new Promise((r) => setTimeout(r, 100));
           }
           setWaitingForCaptcha(false);
           if (
             !captchaTokenRef.current &&
-            captchaStatusRef.current !== "skipped" &&
-            captchaStatusRef.current !== "error"
+            (captchaStatusRef.current as string) !== "skipped" &&
+            (captchaStatusRef.current as string) !== "error"
           ) {
             setShowCaptchaFallback(true);
             toast.error("Bekreft at du ikke er en robot og prøv igjen");
@@ -419,6 +422,7 @@ const Auth = () => {
           }
         }
         const tokenToSend = captchaTokenRef.current;
+        if (tokenToSend) usedCaptchaRef.current = true;
         const {
           data,
           error
@@ -431,6 +435,7 @@ const Auth = () => {
           resetTurnstile();
           setCaptchaToken(null);
           setCaptchaStatus("loading");
+          usedCaptchaRef.current = false;
           throw error;
         }
         if (data.user) {
