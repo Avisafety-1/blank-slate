@@ -5483,6 +5483,7 @@ export type Database = {
           description: string | null
           entry_date: string
           entry_type: string | null
+          flight_log_id: string | null
           id: string
           image_url: string | null
           profile_id: string
@@ -5495,6 +5496,7 @@ export type Database = {
           description?: string | null
           entry_date: string
           entry_type?: string | null
+          flight_log_id?: string | null
           id?: string
           image_url?: string | null
           profile_id: string
@@ -5507,6 +5509,7 @@ export type Database = {
           description?: string | null
           entry_date?: string
           entry_type?: string | null
+          flight_log_id?: string | null
           id?: string
           image_url?: string | null
           profile_id?: string
@@ -5519,6 +5522,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personnel_log_entries_flight_log_id_fkey"
+            columns: ["flight_log_id"]
+            isOneToOne: false
+            referencedRelation: "flight_logs"
             referencedColumns: ["id"]
           },
           {
