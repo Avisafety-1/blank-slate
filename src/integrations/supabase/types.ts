@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      _backup_flight_log_personnel_2026_06_22: {
+        Row: {
+          flight_log_id: string
+          profile_id: string
+          snapshot_at: string
+        }
+        Insert: {
+          flight_log_id: string
+          profile_id: string
+          snapshot_at?: string
+        }
+        Update: {
+          flight_log_id?: string
+          profile_id?: string
+          snapshot_at?: string
+        }
+        Relationships: []
+      }
+      _backup_flyvetimer_2026_06_22: {
+        Row: {
+          flyvetimer_before: number | null
+          full_name: string | null
+          profile_id: string
+          snapshot_at: string
+        }
+        Insert: {
+          flyvetimer_before?: number | null
+          full_name?: string | null
+          profile_id: string
+          snapshot_at?: string
+        }
+        Update: {
+          flyvetimer_before?: number | null
+          full_name?: string | null
+          profile_id?: string
+          snapshot_at?: string
+        }
+        Relationships: []
+      }
       active_flights: {
         Row: {
           company_id: string
