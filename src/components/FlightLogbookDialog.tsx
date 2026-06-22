@@ -56,6 +56,7 @@ interface PersonnelLogEntry {
   description: string | null;
   image_url: string | null;
   imagePublicUrl?: string;
+  flight_log_id?: string | null;
 }
 
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
@@ -118,7 +119,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const fetchPersonnelLogs = async () => {
     const { data, error } = await (supabase as any)
       .from("personnel_log_entries")
-      .select("id, entry_date, entry_type, title, description, image_url")
+      .select("id, entry_date, entry_type, title, description, image_url, flight_log_id")
       .eq("profile_id", personId)
       .order("entry_date", { ascending: false });
 
@@ -229,6 +230,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         entry_type: "flytid",
         title: `Manuelt lagt til ${durationLabel} flytid`,
         description: null,
+        flight_log_id: newLog.id,
       });
 
     toast.success("Flytimer lagt til");
@@ -413,13 +415,112 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     setShowAddHours(false);
   };
 
-  const handleDeleteEntry = async (entryId: string) => {
+  const parseManualDurationMinutes = (title: string): number | null => {
+    const both = title.match(/(\d+)\s*t\s+(\d+)\s*min/i);
+    if (both) return parseInt(both[1], 10) * 60 + parseInt(both[2], 10);
+    const onlyH = title.match(/(\d+)\s*t(?!\w)/i);
+    if (onlyH) return parseInt(onlyH[1], 10) * 60;
+    const onlyM = title.match(/(\d+)\s*min/i);
+    if (onlyM) return parseInt(onlyM[1], 10);
+    return null;
+  };
+
+  const ambiguousToast = () =>
+    toast.error(
+      "Kunne ikke entydig identifisere tilhørende flytur. Slett eller kontroller flyturen manuelt fra Flyturer-fanen."
+    );
+
+  const handleDeleteEntry = async (entry: PersonnelLogEntry) => {
     try {
+      // Case 1: entry is linked to a flight_log
+      if (entry.flight_log_id) {
+        // Owner verification — confirm flight_log belongs to this person and is manual
+        const { data: ownerRows, error: ownerErr } = await (supabase as any)
+          .from("flight_logs")
+          .select("id, flight_log_personnel!inner(profile_id)")
+          .eq("id", entry.flight_log_id)
+          .eq("entry_source", "manual")
+          .eq("flight_log_personnel.profile_id", personId);
+
+        if (ownerErr) throw ownerErr;
+        if (!ownerRows || ownerRows.length !== 1) {
+          ambiguousToast();
+          return;
+        }
+
+        await (supabase as any).from("flight_log_personnel").delete().eq("flight_log_id", entry.flight_log_id);
+        const { error: flErr } = await (supabase as any).from("flight_logs").delete().eq("id", entry.flight_log_id);
+        if (flErr) throw flErr;
+        const { error: pleErr } = await (supabase as any).from("personnel_log_entries").delete().eq("id", entry.id);
+        if (pleErr) throw pleErr;
+
+        toast.success("Innlegg og tilhørende flytur slettet");
+        await Promise.all([fetchFlightLogs(), fetchProfileData(), fetchPersonnelLogs()]);
+        queryClient.invalidateQueries({ queryKey: ['profiles'] });
+        return;
+      }
+
+      // Case 2: legacy manual "flytid" entry without flight_log_id — fallback match
+      if (entry.entry_type === "flytid" && entry.title?.startsWith("Manuelt lagt til")) {
+        const minutes = parseManualDurationMinutes(entry.title);
+        if (minutes == null) {
+          ambiguousToast();
+          return;
+        }
+
+        const { data: candidates, error: candErr } = await (supabase as any)
+          .from("flight_logs")
+          .select("id, flight_date, flight_duration_minutes, flight_log_personnel!inner(profile_id)")
+          .eq("entry_source", "manual")
+          .eq("flight_duration_minutes", minutes)
+          .eq("flight_log_personnel.profile_id", personId);
+
+        if (candErr) throw candErr;
+
+        const sameDay = (candidates || []).filter((c: any) => {
+          const d = new Date(c.flight_date);
+          const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const utc = d.toISOString().split('T')[0];
+          return local === entry.entry_date || utc === entry.entry_date;
+        });
+
+        if (sameDay.length === 0) {
+          ambiguousToast();
+          return;
+        }
+
+        // Filter out flight_logs already linked from another personnel_log_entries
+        const ids = sameDay.map((c: any) => c.id);
+        const { data: alreadyLinked } = await (supabase as any)
+          .from("personnel_log_entries")
+          .select("flight_log_id")
+          .in("flight_log_id", ids);
+        const linkedSet = new Set((alreadyLinked || []).map((r: any) => r.flight_log_id));
+        const free = sameDay.filter((c: any) => !linkedSet.has(c.id));
+
+        if (free.length !== 1) {
+          ambiguousToast();
+          return;
+        }
+
+        const flightLogId = free[0].id;
+        await (supabase as any).from("flight_log_personnel").delete().eq("flight_log_id", flightLogId);
+        const { error: flErr } = await (supabase as any).from("flight_logs").delete().eq("id", flightLogId);
+        if (flErr) throw flErr;
+        const { error: pleErr } = await (supabase as any).from("personnel_log_entries").delete().eq("id", entry.id);
+        if (pleErr) throw pleErr;
+
+        toast.success("Innlegg og tilhørende flytur slettet");
+        await Promise.all([fetchFlightLogs(), fetchProfileData(), fetchPersonnelLogs()]);
+        queryClient.invalidateQueries({ queryKey: ['profiles'] });
+        return;
+      }
+
+      // Case 3: regular note — delete entry only
       const { error } = await (supabase as any)
         .from("personnel_log_entries")
         .delete()
-        .eq("id", entryId);
-
+        .eq("id", entry.id);
       if (error) throw error;
       toast.success("Innlegg slettet");
       fetchPersonnelLogs();
@@ -859,7 +960,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeleteEntry(entry.id)}
+                              onClick={() => handleDeleteEntry(entry)}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
