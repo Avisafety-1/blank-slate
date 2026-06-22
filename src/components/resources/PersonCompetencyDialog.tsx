@@ -523,8 +523,8 @@ export function PersonCompetencyDialog({
             </div>
           </DialogHeader>
 
-          <ScrollArea className="h-[calc(90vh-12rem)] sm:h-[calc(90vh-10rem)] w-full max-w-full">
-            <div className="pr-3 sm:pr-4 max-w-full overflow-hidden space-y-4">
+          <ScrollArea className="h-[calc(90vh-12rem)] sm:h-[calc(90vh-10rem)] w-full max-w-full [&>[data-radix-scroll-area-viewport]>div]:!block">
+            <div className="pr-3 sm:pr-4 w-full max-w-full min-w-0 overflow-hidden space-y-4">
               <PersonnelFlightKpi personId={person.id} />
 
 
