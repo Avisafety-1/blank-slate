@@ -537,11 +537,10 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             </div>
 
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground px-1">
-              <span>{t("logbook.fromLoggedFlights")}: {formatDuration(totalMinutes)}</span>
-              {profileFlyvetimer > 0 && (
-                <span>{t("logbook.manuallyAdded")}: {formatDuration(Math.round(profileFlyvetimer * 60))}</span>
-              )}
+              <span>{t("logbook.fromLoggedFlights")}: {formatDuration(loggedMinutes)}</span>
+              <span>{t("logbook.manuallyAdded")}: {formatDuration(manualMinutes2)}</span>
             </div>
+
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-2">
