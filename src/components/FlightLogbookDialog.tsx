@@ -230,6 +230,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         entry_type: "flytid",
         title: `Manuelt lagt til ${durationLabel} flytid`,
         description: null,
+        flight_log_id: newLog.id,
       });
 
     toast.success("Flytimer lagt til");
