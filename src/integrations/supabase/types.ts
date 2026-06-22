@@ -3201,6 +3201,7 @@ export type Database = {
           dronelog_warnings: Json | null
           dronetag_device_id: string | null
           end_time_utc: string | null
+          entry_source: string
           flight_date: string
           flight_duration_minutes: number
           flight_track: Json | null
@@ -3243,6 +3244,7 @@ export type Database = {
           dronelog_warnings?: Json | null
           dronetag_device_id?: string | null
           end_time_utc?: string | null
+          entry_source?: string
           flight_date?: string
           flight_duration_minutes: number
           flight_track?: Json | null
@@ -3285,6 +3287,7 @@ export type Database = {
           dronelog_warnings?: Json | null
           dronetag_device_id?: string | null
           end_time_utc?: string | null
+          entry_source?: string
           flight_date?: string
           flight_duration_minutes?: number
           flight_track?: Json | null
