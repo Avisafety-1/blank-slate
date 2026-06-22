@@ -450,10 +450,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       doc.text(`Total flytid: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40);
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`Fra loggførte flyturer: ${formatDurationForPdf(totalMinutes)}`, 14, 47);
-      if (profileFlyvetimer > 0) {
-        doc.text(`Manuelt lagt til: ${formatDurationForPdf(Math.round(profileFlyvetimer * 60))}`, 14, 54);
-      }
+      doc.text(`Fra loggførte flyturer: ${formatDurationForPdf(loggedMinutes)}`, 14, 47);
+      doc.text(`Manuelt lagt til: ${formatDurationForPdf(manualMinutes2)}`, 14, 54);
       
       const tableData = flightLogs.map(log => [
         format(new Date(log.flight_date), "dd.MM.yyyy"),
