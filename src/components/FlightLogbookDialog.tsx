@@ -249,7 +249,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     return `${hours} t ${mins} min`;
   };
 
-  const totalFlytid = totalMinutes + (profileFlyvetimer * 60);
+  // Sannhetskilde: summen av flight_logs koblet til piloten via flight_log_personnel.
+  // profiles.flyvetimer holdes synk'et av DB-trigger trg_flp_recompute_pilot.
+  const totalFlytid = totalMinutes;
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
