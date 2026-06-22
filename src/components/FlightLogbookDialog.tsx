@@ -119,7 +119,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const fetchPersonnelLogs = async () => {
     const { data, error } = await (supabase as any)
       .from("personnel_log_entries")
-      .select("id, entry_date, entry_type, title, description, image_url")
+      .select("id, entry_date, entry_type, title, description, image_url, flight_log_id")
       .eq("profile_id", personId)
       .order("entry_date", { ascending: false });
 
