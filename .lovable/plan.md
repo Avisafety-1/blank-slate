@@ -1,97 +1,84 @@
-## Plan: lenke + trygg fallback-sletting + eier-verifisering før sletting
+## Ren frontend-fix av `handleDeleteEntry` i `FlightLogbookDialog.tsx`
 
-### Steg 1: Skjemaendring (migrasjon)
+FK `flight_log_personnel.flight_log_id → flight_logs(id)` er bekreftet `ON DELETE CASCADE`, så sletting av `flight_logs` rydder automatisk i `flight_log_personnel`. Ingen DB-endringer.
 
-```sql
-ALTER TABLE public.personnel_log_entries
-  ADD COLUMN IF NOT EXISTS flight_log_id UUID NULL
-    REFERENCES public.flight_logs(id) ON DELETE SET NULL;
+### Endringer (linjer 433–530)
 
-CREATE INDEX IF NOT EXISTS personnel_log_entries_flight_log_id_idx
-  ON public.personnel_log_entries(flight_log_id);
+**1. Erstatt embedded eier-sjekk med to enkle queries (Case 1)**
+
+```ts
+const { data: fl, error: flGetErr } = await supabase
+  .from("flight_logs")
+  .select("id, entry_source")
+  .eq("id", entry.flight_log_id)
+  .maybeSingle();
+if (flGetErr) throw flGetErr;
+if (!fl || fl.entry_source !== "manual") { ambiguousToast(); return; }
+
+const { data: flpRows, error: flpGetErr } = await supabase
+  .from("flight_log_personnel")
+  .select("profile_id")
+  .eq("flight_log_id", entry.flight_log_id);
+if (flpGetErr) throw flpGetErr;
+if (!flpRows?.some(r => r.profile_id === personId)) { ambiguousToast(); return; }
 ```
 
-Idempotent. `ON DELETE SET NULL` hindrer kaskadetap.
+**2. Dato-normalisering i Case 2**
 
-### Steg 2: `FlightLogbookDialog.tsx` — nye innlegg lenkes direkte
+`entry.entry_date` er `timestamptz` og kommer tilbake som `"YYYY-MM-DDT00:00:00+00:00"`. Normaliser før sammenligning:
 
-- `handleAddManualHours`: sett `flight_log_id: newLog.id` på `personnel_log_entries.insert`.
-- `fetchPersonnelLogs`: hent også `flight_log_id` og `entry_date`.
-- `PersonnelLogEntry`-interface: legg til `flight_log_id?: string | null`.
-
-### Steg 3: `handleDeleteEntry(entry)` — trygg logikk
-
-```text
-hvis entry.flight_log_id finnes:
-    // Eier-verifisering — bekreft at flight_log faktisk tilhører denne personen
-    SELECT fl.id
-    FROM flight_logs fl
-    JOIN flight_log_personnel flp ON flp.flight_log_id = fl.id
-    WHERE fl.id = entry.flight_log_id
-      AND flp.profile_id = personId
-      AND fl.entry_source = 'manual';
-
-    hvis ikke nøyaktig ett treff:
-        toast "Kunne ikke entydig identifisere tilhørende flytur. Slett eller kontroller flyturen manuelt fra Flyturer-fanen."
-        ABORT — ingenting slettes
-
-    slett flight_log_personnel der flight_log_id = entry.flight_log_id
-    slett flight_logs der id = entry.flight_log_id   // trigger trekker timer
-    slett personnel_log_entries der id = entry.id
-    toast suksess
-
-ellers hvis entry.entry_type = 'flytid' og title starter med 'Manuelt lagt til':
-    parse varighet fra title (regex: 'X t Y min' | 'X t' | 'Y min')
-    hvis parsing feiler:
-        toast "Kunne ikke entydig identifisere tilhørende flytur. Slett eller kontroller flyturen manuelt fra Flyturer-fanen."
-        ABORT
-
-    SELECT fl.id
-    FROM flight_logs fl
-    JOIN flight_log_personnel flp ON flp.flight_log_id = fl.id
-    WHERE flp.profile_id = personId
-      AND fl.entry_source = 'manual'
-      AND fl.flight_date::date = entry.entry_date
-      AND fl.flight_duration_minutes = parsedMinutes
-      AND NOT EXISTS (
-        SELECT 1 FROM personnel_log_entries ple
-        WHERE ple.flight_log_id = fl.id
-      );
-
-    hvis nøyaktig én match:
-        slett flight_log_personnel + flight_logs (matchet id) + personnel_log_entries (entry.id)
-        toast suksess
-    ellers (0 eller ≥2):
-        toast "Kunne ikke entydig identifisere tilhørende flytur. Slett eller kontroller flyturen manuelt fra Flyturer-fanen."
-        ABORT — ingenting slettes
-
-ellers (vanlig logginnlegg uten flytid):
-    slett kun personnel_log_entries (dagens oppførsel)
-    toast suksess
+```ts
+const entryDateStr = String(entry.entry_date).slice(0, 10);
+const sameDay = (candidates || []).filter((c: any) => {
+  const d = new Date(c.flight_date);
+  const local = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const utc = d.toISOString().slice(0,10);
+  return local === entryDateStr || utc === entryDateStr;
+});
 ```
 
-Refresh ved suksess: `fetchFlightLogs()` + `fetchProfileData()` + `fetchPersonnelLogs()`, invalidér `profiles`-cache.
+Behold de øvrige to enkle queries for kandidater (kan beholdes med `flight_log_personnel!inner(profile_id)` siden den fungerer som filter her, men eier-sjekken skjer reelt via den påfølgende slettings-verifikasjonen).
 
-### Edge cases
+**3. Slett `flight_logs` først, verifiser med `.select("id")`, og avbryt hvis 0 rader**
 
-| Tilfelle | Oppførsel |
-|---|---|
-| Nytt manuelt innlegg, riktig lenket | Eier-sjekk passerer → trygg sletting |
-| Lenket flight_log som ikke tilhører personen (datafeil/manipulasjon) | Eier-sjekk avbryter, toast |
-| Lenket flight_log slettet via annen vei | `flight_log_id` blir NULL via SET NULL → fall til fallback-gren |
-| Eldre entydig (én manuell flylogg samme dag + varighet, ulenket) | Fallback finner og sletter begge |
-| Eldre tvetydig (≥2 kandidater) | Avbryter, toast |
-| Eldre uten matchende flylogg | Avbryter, toast |
-| Vanlig notat-innlegg | Slettes som før |
+Felles slette-sekvens for både Case 1 og Case 2 (CASCADE fjerner `flight_log_personnel` automatisk):
 
-### Verifisering
+```ts
+const { data: flDel, error: flErr } = await supabase
+  .from("flight_logs")
+  .delete()
+  .eq("id", flightLogId)
+  .select("id");
+if (flErr) throw flErr;
+if (!flDel || flDel.length === 0) {
+  // RLS blokkerte stille eller raden var allerede borte
+  ambiguousToast();
+  await Promise.all([fetchFlightLogs(), fetchProfileData(), fetchPersonnelLogs()]);
+  return;
+}
 
-1. Legg til 1 t manuelt → ny rad har `flight_log_id`. Slett → totalt og "Manuelt lagt til" reduseres, raden borte fra "Flyturer".
-2. Eldre Gard-rad (10 t) entydig → slettes korrekt via fallback.
-3. To eldre 10 t-rader samme dag → sletting blokkeres, toast vises.
-4. Manuelt manipulert `flight_log_id` som peker til annens flylogg → eier-sjekk blokkerer.
+// Først NÅ er det trygt å slette logginnlegget
+const { data: pleDel, error: pleErr } = await supabase
+  .from("personnel_log_entries")
+  .delete()
+  .eq("id", entry.id)
+  .select("id");
+if (pleErr) throw pleErr;
+```
 
-## Hva som IKKE endres
-- `entry_source`, total/manuell-splitting, PDF.
-- DB-triggere for `profiles.flyvetimer`.
-- Vanlige (ikke-flytid) logginnlegg.
+Fjern eksplisitt `flight_log_personnel.delete()` før `flight_logs.delete()` — CASCADE håndterer den.
+
+**4. Case 3 (vanlig notat) uendret** — sletter kun `personnel_log_entries`.
+
+**5. Beholdt:** `ambiguousToast`, `parseManualDurationMinutes`, refetch + `queryClient.invalidateQueries` ved suksess, toast-meldinger.
+
+### Sluttresultat
+
+- Logginnlegget kan ALDRI bli slettet uten at tilhørende flytur også er slettet.
+- Hvis RLS stille blokkerer `flight_logs.delete()`, vises toast og ingenting slettes.
+- DB-trigger `tg_flp_recompute_pilot` (AFTER DELETE på `flight_log_personnel`, fyrt via CASCADE) recomputer `profiles.flyvetimer` korrekt.
+- Frontend henter ny sum via `fetchFlightLogs` → "Total flytid" og "Manuelt lagt til" oppdateres umiddelbart i dialogen.
+
+### Ikke endret
+
+- Ingen migrasjoner, ingen DB-funksjoner, ingen backfill, ingen triggerendringer.
