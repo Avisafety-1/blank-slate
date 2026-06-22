@@ -38,6 +38,7 @@ interface FlightLog {
   flight_duration_minutes: number;
   movements: number;
   notes: string | null;
+  entry_source?: 'logged' | 'manual' | null;
   drone: {
     modell: string;
     serienummer: string;
