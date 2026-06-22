@@ -739,6 +739,11 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
+                            {log.entry_source === 'manual' && (
+                              <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                Manuell
+                              </Badge>
+                            )}
                             <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
                             {isAdmin && (
                               <Button
