@@ -56,6 +56,7 @@ interface PersonnelLogEntry {
   description: string | null;
   image_url: string | null;
   imagePublicUrl?: string;
+  flight_log_id?: string | null;
 }
 
 export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }: FlightLogbookDialogProps) => {
