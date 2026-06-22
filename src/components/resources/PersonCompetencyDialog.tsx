@@ -768,17 +768,17 @@ export function PersonCompetencyDialog({
                   Tilgjengelige kurs
                 </h3>
                 {availableCourses.map((course) => (
-                  <div key={course.id} className="border rounded-lg p-3 bg-card flex items-center justify-between gap-3">
+                  <div key={course.id} className="border rounded-lg p-3 bg-card flex items-center justify-between gap-2 sm:gap-3 min-w-0 max-w-full overflow-hidden">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-sm truncate">{course.title}</p>
                       {course.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">{course.description}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1 break-words">{course.description}</p>
                       )}
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         Bestått: {course.passing_score}% · {course.validity_months ? `Gyldig ${course.validity_months} mnd` : "Permanent"}
                       </p>
                     </div>
-                    <Button size="sm" onClick={() => handleTakeCourse(course)}>
+                    <Button size="sm" className="shrink-0" onClick={() => handleTakeCourse(course)}>
                       Ta kurs
                     </Button>
                   </div>
