@@ -189,6 +189,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         landing_location: "Manuell",
         operation_type: "VLOS",
         notes: "Manuelt registrert tilleggstid",
+        entry_source: "manual",
       })
       .select("id")
       .single();
