@@ -268,6 +268,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           flight_duration_minutes,
           movements,
           notes,
+          entry_source,
           drone:drone_id (
             modell,
             serienummer
@@ -281,8 +282,16 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
       if (logs) {
         setFlightLogs(logs);
-        const total = logs.reduce((sum: number, log: FlightLog) => sum + log.flight_duration_minutes, 0);
-        setTotalMinutes(total);
+        let logged = 0;
+        let manual = 0;
+        for (const log of logs as FlightLog[]) {
+          const mins = log.flight_duration_minutes || 0;
+          if (log.entry_source === 'manual') manual += mins;
+          else logged += mins;
+        }
+        setLoggedMinutes(logged);
+        setManualMinutes2(manual);
+        setTotalMinutes(logged + manual);
       }
     } catch (error) {
       console.error("Error fetching flight logs:", error);
