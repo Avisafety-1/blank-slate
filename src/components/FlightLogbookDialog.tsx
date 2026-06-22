@@ -463,7 +463,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       ]);
       
       autoTable(doc, {
-        startY: profileFlyvetimer > 0 ? 62 : 55,
+        startY: 62,
         head: [["Dato", "Avgang", "Landing", "Varighet", "Drone", "Oppdrag"]],
         body: tableData,
         styles: { fontSize: 8, font: getPdfFontName() },
