@@ -252,6 +252,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       if (!personnelLogs || personnelLogs.length === 0) {
         setFlightLogs([]);
         setTotalMinutes(0);
+        setLoggedMinutes(0);
+        setManualMinutes2(0);
         setLoading(false);
         return;
       }
