@@ -777,19 +777,36 @@ serve(async (req) => {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
+    // Hent flyturer via flight_log_personnel-junctionen (én sannhetskilde for pilot-tilskrivning).
+    // user_id på flight_logs er den som lastet opp loggen, ikke nødvendigvis piloten.
     let allFlightLogs: any[] = [];
+    const logToPilotIds = new Map<string, string[]>();
     if (pilotIds.length > 0) {
-      const { data: flightLogs } = await supabase
-        .from('flight_logs')
-        .select('*')
-        .in('user_id', pilotIds)
-        .order('flight_date', { ascending: false });
-      allFlightLogs = flightLogs || [];
+      const { data: flpRows } = await supabase
+        .from('flight_log_personnel')
+        .select('flight_log_id, profile_id')
+        .in('profile_id', pilotIds);
+
+      const flightLogIds = Array.from(new Set((flpRows || []).map((r: any) => r.flight_log_id)));
+      for (const row of flpRows || []) {
+        const arr = logToPilotIds.get(row.flight_log_id) || [];
+        arr.push(row.profile_id);
+        logToPilotIds.set(row.flight_log_id, arr);
+      }
+
+      if (flightLogIds.length > 0) {
+        const { data: flightLogs } = await supabase
+          .from('flight_logs')
+          .select('*')
+          .in('id', flightLogIds)
+          .order('flight_date', { ascending: false });
+        allFlightLogs = flightLogs || [];
+      }
     }
 
     // Build flight stats per pilot
     const pilotFlightStats = pilotIds.map((pilotId: string) => {
-      const pilotLogs = allFlightLogs.filter(log => log.user_id === pilotId);
+      const pilotLogs = allFlightLogs.filter(log => (logToPilotIds.get(log.id) || []).includes(pilotId));
       return {
         pilotId,
         totalFlights: pilotLogs.length,

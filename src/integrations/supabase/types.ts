@@ -7322,7 +7322,7 @@ export type Database = {
       postgis_wagyu_version: { Args: never; Returns: string }
       purge_old_flighthub2_positions: { Args: never; Returns: undefined }
       recompute_profile_flyvetimer: {
-        Args: { _user_id: string }
+        Args: { _profile_id: string }
         Returns: undefined
       }
       retry_ardupilot_parse_job: {
