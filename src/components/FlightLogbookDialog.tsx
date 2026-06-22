@@ -150,45 +150,91 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     const hours = parseInt(manualHours) || 0;
     const mins = parseInt(manualMinutes) || 0;
     const additionalMinutes = hours * 60 + mins;
-    const additionalHours = additionalMinutes / 60;
-    const newTotal = profileFlyvetimer + additionalHours;
-    
-    const { error } = await supabase
-      .from("profiles")
-      .update({ flyvetimer: newTotal })
-      .eq("id", personId);
-
-    if (error) {
-      toast.error("Kunne ikke legge til flytimer");
-      console.error(error);
-    } else {
-      // Create a logbook entry so it's visible in the log
-      const durationLabel = hours > 0 && mins > 0
-        ? `${hours} t ${mins} min`
-        : hours > 0
-          ? `${hours} t`
-          : `${mins} min`;
-
-      await (supabase as any)
-        .from("personnel_log_entries")
-        .insert({
-          profile_id: personId,
-          company_id: companyId,
-          user_id: user?.id,
-          entry_date: new Date().toISOString().split('T')[0],
-          entry_type: "flytid",
-          title: `Manuelt lagt til ${durationLabel} flytid`,
-          description: null,
-        });
-
-      toast.success("Flytimer lagt til");
-      setProfileFlyvetimer(newTotal);
-      setManualHours("");
-      setManualMinutes("");
-      setShowAddHours(false);
-      fetchPersonnelLogs();
+    if (additionalMinutes <= 0) {
+      toast.error("Angi timer eller minutter");
+      setConfirmDialogOpen(false);
+      return;
     }
+
+    // Hent profil for company_id
+    const { data: profile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("id", personId)
+      .single();
+
+    if (profileErr || !profile?.company_id) {
+      toast.error("Kunne ikke hente profilinformasjon");
+      console.error(profileErr);
+      setConfirmDialogOpen(false);
+      return;
+    }
+
+    // Opprett en flight_logs-rad for den manuelt registrerte tiden.
+    // DB-triggeren oppdaterer profiles.flyvetimer automatisk når personnel-kobling lages.
+    const { data: newLog, error: logErr } = await (supabase as any)
+      .from("flight_logs")
+      .insert({
+        company_id: profile.company_id,
+        user_id: personId,
+        drone_id: null,
+        mission_id: null,
+        flight_date: new Date().toISOString(),
+        flight_duration_minutes: additionalMinutes,
+        movements: 0,
+        departure_location: "Manuell",
+        landing_location: "Manuell",
+        operation_type: "VLOS",
+        notes: "Manuelt registrert tilleggstid",
+      })
+      .select("id")
+      .single();
+
+    if (logErr || !newLog) {
+      toast.error("Kunne ikke legge til flytimer");
+      console.error(logErr);
+      setConfirmDialogOpen(false);
+      return;
+    }
+
+    const { error: flpErr } = await (supabase as any)
+      .from("flight_log_personnel")
+      .insert({ flight_log_id: newLog.id, profile_id: personId });
+
+    if (flpErr) {
+      toast.error("Flytur opprettet, men kunne ikke knytte til pilot");
+      console.error(flpErr);
+      setConfirmDialogOpen(false);
+      return;
+    }
+
+    // Skriv en tekstnotat i tidslinjen for sporbarhet
+    const durationLabel = hours > 0 && mins > 0
+      ? `${hours} t ${mins} min`
+      : hours > 0
+        ? `${hours} t`
+        : `${mins} min`;
+
+    await (supabase as any)
+      .from("personnel_log_entries")
+      .insert({
+        profile_id: personId,
+        company_id: profile.company_id,
+        user_id: user?.id,
+        entry_date: new Date().toISOString().split('T')[0],
+        entry_type: "flytid",
+        title: `Manuelt lagt til ${durationLabel} flytid`,
+        description: null,
+      });
+
+    toast.success("Flytimer lagt til");
+    setManualHours("");
+    setManualMinutes("");
+    setShowAddHours(false);
     setConfirmDialogOpen(false);
+    // Refresh både logger og profil (cache)
+    await Promise.all([fetchFlightLogs(), fetchProfileData(), fetchPersonnelLogs()]);
+    queryClient.invalidateQueries({ queryKey: ['profiles'] });
   };
 
   const fetchFlightLogs = async () => {
