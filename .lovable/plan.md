@@ -1,54 +1,38 @@
-## Problemet
+## Problem
 
-Etter at vi gjorde manuelle timer om til ekte `flight_logs`-rader, faller de inn under **samme sum** som logførte flyturer. Derfor viser «Fra loggførte flyturer» og «Manuelt lagt til» nøyaktig samme tall, og begge vokser når du legger til manuelt.
+Når man legger til flytimer manuelt opprettes det **to** rader:
+1. En `flight_logs`-rad med `entry_source='manual'` → påvirker total flytid + vises under "Flyturer".
+2. En `personnel_log_entries`-rad (tidslinjenotat) → vises under "Logginnlegg".
 
-## Løsning: eksplisitt skille mellom manuell og logført
+`handleDeleteEntry` sletter kun `personnel_log_entries`-raden. `flight_logs`-raden blir liggende, så totalen og "Flyturer"-listen endres ikke.
 
-### 1. Database (migrasjon)
-Legg til kolonne `entry_source TEXT NOT NULL DEFAULT 'logged'` i `flight_logs`, med constraint `CHECK (entry_source IN ('logged','manual'))`.
+## Løsning: koble logginnlegget til flight_log og kaskadeslett
 
-Backfill eksisterende rader:
-- `entry_source = 'manual'` der `drone_id IS NULL` og `notes ILIKE 'Manuelt lagt til%' OR notes ILIKE 'Startbalanse%'`
-- Alt annet beholder default `'logged'`
+### 1. Migrasjon
+- Legg til `flight_log_id UUID NULL REFERENCES flight_logs(id) ON DELETE SET NULL` på `personnel_log_entries`.
+- Index på `flight_log_id`.
+- Backfill: for eksisterende `personnel_log_entries` med `entry_type='flytid'` og `title ILIKE 'Manuelt lagt til%'`, finn matchende `flight_logs`-rad (samme `profile_id` via `flight_log_personnel`, `entry_source='manual'`, samme `entry_date` = `flight_date::date`, varighet utledet fra title) og sett `flight_log_id`. Best-effort — der det er flere kandidater på samme dag/varighet, ta den nyeste som ikke allerede er lenket.
 
-Index: `CREATE INDEX flight_logs_entry_source_idx ON flight_logs(entry_source);`
+### 2. `FlightLogbookDialog.tsx` — `handleAddManualHours`
+Etter at `flight_logs`-raden og `flight_log_personnel`-koblingen er opprettet, sett `flight_log_id: newLog.id` på `personnel_log_entries.insert(...)`.
 
-### 2. `FlightLogbookDialog.tsx` — innleggingsflyt
-I `handleAddManualHours`, sett `entry_source: 'manual'` på den nye `flight_logs`-raden.
+### 3. `FlightLogbookDialog.tsx` — `fetchPersonnelLogs`
+Hent også `flight_log_id` slik at `handleDeleteEntry` har den tilgjengelig.
 
-### 3. `FlightLogbookDialog.tsx` — visning
-I `fetchFlightLogs`, hent også `entry_source`. Beregn:
-- `loggedMinutes` = sum av logger der `entry_source = 'logged'`
-- `manualMinutes` = sum av logger der `entry_source = 'manual'`
-- `totalFlytid = loggedMinutes + manualMinutes`
+### 4. `FlightLogbookDialog.tsx` — `handleDeleteEntry`
+Endre signatur til å motta hele entry. Hvis `entry.flight_log_id`:
+1. Slett `flight_log_personnel` der `flight_log_id = entry.flight_log_id`.
+2. Slett `flight_logs` der `id = entry.flight_log_id`. (DB-trigger trekker timene fra `profiles.flyvetimer`.)
+3. Slett `personnel_log_entries`-raden.
+4. Kjør `fetchFlightLogs()` + `fetchProfileData()` + `fetchPersonnelLogs()`.
 
-Vis:
-```
-Total flytid: <total>
-Fra loggførte flyturer: <loggedMinutes>
-Manuelt lagt til:       <manualMinutes>
-```
-
-### 4. PDF-eksport
-Samme tre tall. Manuelle rader vises i en egen tabellseksjon eller med en «Manuell»-tag i eksisterende tabell, så piloten kan dokumentere kilden.
-
-### 5. «Flyturer»-tab i dialogen
-Vis en liten badge `Manuell` på rader med `entry_source = 'manual'` så det er åpenbart hva som er hva.
-
-### 6. AI risk assessment + andre lesere
-`flight_log_personnel`-join blir uendret — alle timer telles fortsatt likt for currency/erfaring. `entry_source` brukes kun til visuell splitting i loggboken og PDF.
+Hvis ingen `flight_log_id` (vanlig logginnlegg uten flytid) → behold dagens oppførsel (slett bare entry).
 
 ## Hva som IKKE endres
-
-- `profiles.flyvetimer` — fortsatt sum av alle timer (logged + manual), autoritativ.
-- Triggers — uendret. `entry_source` påvirker ikke beregningen.
-- Currency-regler — manuelle timer teller fortsatt med (slik de gjorde før).
+- `entry_source`-kolonnen, total/manuell-splittingen, PDF — alt fungerer som før.
+- Vanlige logginnlegg (notat, hendelse osv.) påvirkes ikke.
 
 ## Verifisering
-
-1. Åpne Gards loggbok → «Fra loggførte flyturer» og «Manuelt lagt til» skal nå være ulike (basert på backfill).
-2. Klikk «Legg til flytimer manuelt» → 1t → kun «Manuelt lagt til» øker.
-3. En reell DJI-logg-sync → kun «Fra loggførte flyturer» øker.
-4. «Flyturer»-listen viser `Manuell`-badge der relevant.
-
-Godkjenn så starter jeg med migrasjonen.
+1. Legg til 1t manuelt → totalt og "Manuelt lagt til" øker, rad i begge tabber.
+2. Slett raden under "Logginnlegg" → totalt og "Manuelt lagt til" reduseres med 1t, raden forsvinner også fra "Flyturer".
+3. Gamle eksisterende manuelle innlegg (Gard sine 10t-rader) skal også kunne slettes og fjerne tilhørende flight_logs etter backfill.
