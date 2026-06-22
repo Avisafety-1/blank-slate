@@ -430,33 +430,61 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       "Kunne ikke entydig identifisere tilhørende flytur. Slett eller kontroller flyturen manuelt fra Flyturer-fanen."
     );
 
+  const deleteFlightLogThenEntry = async (flightLogId: string, entryId: string) => {
+    // CASCADE on flight_log_personnel.flight_log_id removes related FLP rows automatically.
+    const { data: flDel, error: flErr } = await (supabase as any)
+      .from("flight_logs")
+      .delete()
+      .eq("id", flightLogId)
+      .select("id");
+    if (flErr) throw flErr;
+    if (!flDel || flDel.length === 0) {
+      // RLS silently blocked or row already gone — do NOT delete personnel_log_entries
+      ambiguousToast();
+      await Promise.all([fetchFlightLogs(), fetchProfileData(), fetchPersonnelLogs()]);
+      return false;
+    }
+
+    const { error: pleErr } = await (supabase as any)
+      .from("personnel_log_entries")
+      .delete()
+      .eq("id", entryId)
+      .select("id");
+    if (pleErr) throw pleErr;
+
+    toast.success("Innlegg og tilhørende flytur slettet");
+    await Promise.all([fetchFlightLogs(), fetchProfileData(), fetchPersonnelLogs()]);
+    queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    return true;
+  };
+
   const handleDeleteEntry = async (entry: PersonnelLogEntry) => {
     try {
       // Case 1: entry is linked to a flight_log
       if (entry.flight_log_id) {
-        // Owner verification — confirm flight_log belongs to this person and is manual
-        const { data: ownerRows, error: ownerErr } = await (supabase as any)
+        // Owner verification — two simple queries
+        const { data: fl, error: flGetErr } = await (supabase as any)
           .from("flight_logs")
-          .select("id, flight_log_personnel!inner(profile_id)")
+          .select("id, entry_source")
           .eq("id", entry.flight_log_id)
-          .eq("entry_source", "manual")
-          .eq("flight_log_personnel.profile_id", personId);
-
-        if (ownerErr) throw ownerErr;
-        if (!ownerRows || ownerRows.length !== 1) {
+          .maybeSingle();
+        if (flGetErr) throw flGetErr;
+        if (!fl || fl.entry_source !== "manual") {
           ambiguousToast();
           return;
         }
 
-        await (supabase as any).from("flight_log_personnel").delete().eq("flight_log_id", entry.flight_log_id);
-        const { error: flErr } = await (supabase as any).from("flight_logs").delete().eq("id", entry.flight_log_id);
-        if (flErr) throw flErr;
-        const { error: pleErr } = await (supabase as any).from("personnel_log_entries").delete().eq("id", entry.id);
-        if (pleErr) throw pleErr;
+        const { data: flpRows, error: flpGetErr } = await (supabase as any)
+          .from("flight_log_personnel")
+          .select("profile_id")
+          .eq("flight_log_id", entry.flight_log_id);
+        if (flpGetErr) throw flpGetErr;
+        if (!flpRows?.some((r: any) => r.profile_id === personId)) {
+          ambiguousToast();
+          return;
+        }
 
-        toast.success("Innlegg og tilhørende flytur slettet");
-        await Promise.all([fetchFlightLogs(), fetchProfileData(), fetchPersonnelLogs()]);
-        queryClient.invalidateQueries({ queryKey: ['profiles'] });
+        await deleteFlightLogThenEntry(entry.flight_log_id, entry.id);
         return;
       }
 
@@ -477,11 +505,13 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
         if (candErr) throw candErr;
 
+        // Normalize entry.entry_date (timestamptz string) to YYYY-MM-DD
+        const entryDateStr = String(entry.entry_date).slice(0, 10);
         const sameDay = (candidates || []).filter((c: any) => {
           const d = new Date(c.flight_date);
           const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const utc = d.toISOString().split('T')[0];
-          return local === entry.entry_date || utc === entry.entry_date;
+          const utc = d.toISOString().slice(0, 10);
+          return local === entryDateStr || utc === entryDateStr;
         });
 
         if (sameDay.length === 0) {
@@ -503,16 +533,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           return;
         }
 
-        const flightLogId = free[0].id;
-        await (supabase as any).from("flight_log_personnel").delete().eq("flight_log_id", flightLogId);
-        const { error: flErr } = await (supabase as any).from("flight_logs").delete().eq("id", flightLogId);
-        if (flErr) throw flErr;
-        const { error: pleErr } = await (supabase as any).from("personnel_log_entries").delete().eq("id", entry.id);
-        if (pleErr) throw pleErr;
-
-        toast.success("Innlegg og tilhørende flytur slettet");
-        await Promise.all([fetchFlightLogs(), fetchProfileData(), fetchPersonnelLogs()]);
-        queryClient.invalidateQueries({ queryKey: ['profiles'] });
+        await deleteFlightLogThenEntry(free[0].id, entry.id);
         return;
       }
 
