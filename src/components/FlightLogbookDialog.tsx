@@ -38,6 +38,7 @@ interface FlightLog {
   flight_duration_minutes: number;
   movements: number;
   notes: string | null;
+  entry_source?: 'logged' | 'manual' | null;
   drone: {
     modell: string;
     serienummer: string;
@@ -68,6 +69,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const [personnelLogs, setPersonnelLogs] = useState<PersonnelLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalMinutes, setTotalMinutes] = useState(0);
+  const [loggedMinutes, setLoggedMinutes] = useState(0);
+  const [manualMinutes2, setManualMinutes2] = useState(0);
   const [profileFlyvetimer, setProfileFlyvetimer] = useState(0);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [showAddHours, setShowAddHours] = useState(false);
@@ -186,6 +189,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         landing_location: "Manuell",
         operation_type: "VLOS",
         notes: "Manuelt registrert tilleggstid",
+        entry_source: "manual",
       })
       .select("id")
       .single();
@@ -248,6 +252,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       if (!personnelLogs || personnelLogs.length === 0) {
         setFlightLogs([]);
         setTotalMinutes(0);
+        setLoggedMinutes(0);
+        setManualMinutes2(0);
         setLoading(false);
         return;
       }
@@ -264,6 +270,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
           flight_duration_minutes,
           movements,
           notes,
+          entry_source,
           drone:drone_id (
             modell,
             serienummer
@@ -277,8 +284,16 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
       if (logs) {
         setFlightLogs(logs);
-        const total = logs.reduce((sum: number, log: FlightLog) => sum + log.flight_duration_minutes, 0);
-        setTotalMinutes(total);
+        let logged = 0;
+        let manual = 0;
+        for (const log of logs as FlightLog[]) {
+          const mins = log.flight_duration_minutes || 0;
+          if (log.entry_source === 'manual') manual += mins;
+          else logged += mins;
+        }
+        setLoggedMinutes(logged);
+        setManualMinutes2(manual);
+        setTotalMinutes(logged + manual);
       }
     } catch (error) {
       console.error("Error fetching flight logs:", error);
@@ -435,10 +450,8 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       doc.text(`Total flytid: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40);
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`Fra loggførte flyturer: ${formatDurationForPdf(totalMinutes)}`, 14, 47);
-      if (profileFlyvetimer > 0) {
-        doc.text(`Manuelt lagt til: ${formatDurationForPdf(Math.round(profileFlyvetimer * 60))}`, 14, 54);
-      }
+      doc.text(`Fra loggførte flyturer: ${formatDurationForPdf(loggedMinutes)}`, 14, 47);
+      doc.text(`Manuelt lagt til: ${formatDurationForPdf(manualMinutes2)}`, 14, 54);
       
       const tableData = flightLogs.map(log => [
         format(new Date(log.flight_date), "dd.MM.yyyy"),
@@ -450,7 +463,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       ]);
       
       autoTable(doc, {
-        startY: profileFlyvetimer > 0 ? 62 : 55,
+        startY: 62,
         head: [["Dato", "Avgang", "Landing", "Varighet", "Drone", "Oppdrag"]],
         body: tableData,
         styles: { fontSize: 8, font: getPdfFontName() },
@@ -522,11 +535,10 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
             </div>
 
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground px-1">
-              <span>{t("logbook.fromLoggedFlights")}: {formatDuration(totalMinutes)}</span>
-              {profileFlyvetimer > 0 && (
-                <span>{t("logbook.manuallyAdded")}: {formatDuration(Math.round(profileFlyvetimer * 60))}</span>
-              )}
+              <span>{t("logbook.fromLoggedFlights")}: {formatDuration(loggedMinutes)}</span>
+              <span>{t("logbook.manuallyAdded")}: {formatDuration(manualMinutes2)}</span>
             </div>
+
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-2">
@@ -727,6 +739,11 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
+                            {log.entry_source === 'manual' && (
+                              <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                Manuell
+                              </Badge>
+                            )}
                             <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
                             {isAdmin && (
                               <Button
