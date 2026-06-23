@@ -123,10 +123,12 @@ export const MissionResourceSections = ({ mission, open }: MissionResourceSectio
             <ul className="text-base space-y-0.5">
               {drones.map((d) => (
                 <li key={d.drone_id}>
-                  {d.drones?.modell || "Ukjent"}{" "}
-                  <span className="text-sm text-muted-foreground">
-                    ({d.drones?.serienummer})
-                  </span>
+                  <div>{d.drones?.modell || "Ukjent"}</div>
+                  {d.drones?.serienummer && (
+                    <div className="text-sm text-muted-foreground break-all">
+                      {d.drones.serienummer}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

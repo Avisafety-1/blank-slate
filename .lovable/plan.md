@@ -1,47 +1,24 @@
-## Årsak
+## Endring
 
-Når en flylogg lagres trigges `checkFlightAlerts` i `UploadDroneLogDialog`. Den kaller `send-notification-email` med rå `htmlContent` (selve varselmailen er bygd i klienten), uten å sette `type`. Edge-funksjonen blokkerer dette med 403 fordi `htmlContent` kun er tillatt for admin/superadmin-typer — for å hindre at vanlige brukere sender vilkårlig HTML under selskapets brand. Piloter er ikke admin, så hver gang en pilot laster opp en logg som overskrider en terskel, returnerer funksjonen 403.
+Mobil-visning av oppdragsdialogen scroller horisontalt. To justeringer:
 
-## Løsning
+### 1. `src/components/dashboard/MissionResourceSections.tsx` (drone-liste)
+Vis serienummeret på egen linje under modellnavnet i stedet for samme linje, så lange modell+SN-strenger ikke pusher bredden.
 
-Flytt HTML-genereringen til serveren og introduser en ny company-scoped type `notify_flight_alert`. Klienten skal bare sende strukturerte data (drone, pilot, dato, brudd-strenger og mottakerliste fra `get_effective_flight_alert_config`), aldri rå HTML.
+```tsx
+<li key={d.drone_id}>
+  <div>{d.drones?.modell || "Ukjent"}</div>
+  {d.drones?.serienummer && (
+    <div className="text-sm text-muted-foreground">{d.drones.serienummer}</div>
+  )}
+</li>
+```
 
-### `supabase/functions/send-notification-email/index.ts`
+### 2. `src/components/dashboard/MissionDetailDialog.tsx` (flylogg-kort, ~linje 374–451)
+Pakk knappene mer kompakt på mobil:
+- Endre rad-container fra `flex items-center justify-between` til layout som tillater wrap: bytt `gap-1`-knappe-blokken til `flex flex-col gap-1 items-end` på mobil, og legg GPX+KMZ i en undergruppe `flex flex-col gap-1` så de stables vertikalt. Analyser-knappen blir stående ved siden av.
+- Konkret: knappe-wrapperen (linje 387) blir `<div className="flex items-center gap-1 shrink-0">` med to barn: `Analyser`-knapp og en ny `<div className="flex flex-col gap-1">` rundt GPX og KMZ.
+- Legg `min-w-0` på tekst-kolonnen (linje 377) så datoen kan brytes uten å presse layouten.
+- Legg `overflow-hidden` på kort-containeren (linje 376) for å hindre at noe stikker ut.
 
-1. Legg til `'notify_flight_alert'` i `COMPANY_SCOPED_TYPES` (krever innlogget bruker som tilhører `companyId`, ikke admin).
-2. Ny håndterer for `type === 'notify_flight_alert'`:
-   - Validerer payload: `companyId`, `droneName`, `pilotName`, `flightDate`, `violations: string[]` (maks ~20, hver ≤ 200 tegn — escape før render), og `recipientEmails: string[]` valgfritt.
-   - Authcheck: `requireUser` + `assertUserInCompany(caller, companyId)` (gjøres allerede av den eksisterende `COMPANY_SCOPED_TYPES`-grenen).
-   - Henter mottakere selv via `get_effective_flight_alert_config(companyId)` + `profiles` (samme spørringer som klienten gjør i dag) — ignorerer `recipientEmails` fra klient for å unngå at noen sender mail til vilkårlige adresser.
-   - Bygger samme HTML-mal som klienten har i dag (samme styling, logo, header, violation-bokser) inne i edge-funksjonen, med strenge-escaping av alle felter.
-   - Sender én mail per mottaker via samme sende-mekanisme som de andre typene allerede bruker i denne filen.
-3. Ingen endring i `htmlContent`-guarden — den fortsetter å beskytte mot fri-form HTML fra ikke-admin brukere.
-
-### `src/components/UploadDroneLogDialog.tsx`
-
-`checkFlightAlerts` (linje ~2104–2209):
-- Fjern HTML-templaten og recipient-loopen som kaller funksjonen én gang per epost.
-- Erstatt med ett enkelt kall:
-  ```ts
-  await supabase.functions.invoke('send-notification-email', {
-    body: {
-      type: 'notify_flight_alert',
-      companyId,
-      droneName,
-      pilotName,
-      flightDate,
-      violations,
-    },
-  });
-  ```
-- Beholder fortsatt `violations`-beregning og early-return når lista er tom.
-
-### Ingen DB-endring
-
-`get_effective_flight_alert_config` finnes allerede; ingen migrering.
-
-## Resultat
-
-- 403-feilen forsvinner — piloter trigger en company-scoped type uten å sende HTML.
-- Brand-HTML kontrolleres helt server-side; misbruk via `htmlContent` fra vanlige brukere er fortsatt blokkert.
-- Klient-koden blir enklere (ingen 90-linjer HTML-template i React-filen).
+Ingen logikk-/data-endring; rent CSS/JSX-omstrukturering for mobil.
