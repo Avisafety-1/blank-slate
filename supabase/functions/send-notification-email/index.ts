@@ -106,7 +106,7 @@ serve(async (req: Request): Promise<Response> => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
     const body: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
-    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, campaignId, excludeUserIds = [], newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, dry_run: dryRun } = body;
+    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, campaignId, excludeUserIds = [], newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, flightAlert, dry_run: dryRun } = body;
     // sentBy is server-set from authenticated caller below — body value is ignored.
     let sentBy: string | undefined;
 
