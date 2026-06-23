@@ -2146,26 +2146,42 @@ serve(async (req) => {
     try {
       const redDrones: { label: string; reasons: string[] }[] = [];
       const yellowDrones: { label: string; reasons: string[] }[] = [];
+      // Notater om koblet utstyr/tilbehør som er Rødt/Gult men IKKE valgt på oppdraget.
+      // Disse trigger ikke hard stop — vises kun informativt i utstyrsseksjonen.
+      const linkedOnlyNotes: string[] = [];
+      const assignedEqIds = new Set((assignedEquipment as any[]).map(e => e.id));
+
+      const addLinkedNotes = (droneLabel: string, linkedReasons: string[]) => {
+        for (const r of linkedReasons || []) {
+          linkedOnlyNotes.push(`${droneLabel}: ${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt).`);
+        }
+      };
+
       if (primaryDroneStatusInfo) {
         const label = `${droneData?.modell ?? 'Primærdrone'}${droneData?.serienummer ? ` (SN ${droneData.serienummer})` : ''}`;
-        if (primaryDroneStatusInfo.status === 'Rød') redDrones.push({ label, reasons: primaryDroneStatusInfo.reasons });
-        else if (primaryDroneStatusInfo.status === 'Gul') yellowDrones.push({ label, reasons: primaryDroneStatusInfo.reasons });
+        if (primaryDroneStatusInfo.ownStatus === 'Rød') redDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
+        else if (primaryDroneStatusInfo.ownStatus === 'Gul') yellowDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
+        if (primaryDroneStatusInfo.linkedReasons.length > 0) addLinkedNotes(label, primaryDroneStatusInfo.linkedReasons);
       }
       for (const d of assignedDrones as any[]) {
         if (droneData && d.id === droneData.id) continue;
-        const s = assignedDroneStatuses.get(d.id);
+        const info = assignedDroneStatuses.get(d.id);
         const label = `${d.modell ?? 'Drone'}${d.serienummer ? ` (SN ${d.serienummer})` : ''}`;
-        if (s === 'Rød') redDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
-        else if (s === 'Gul') yellowDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
+        if (info?.ownStatus === 'Rød') redDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
+        else if (info?.ownStatus === 'Gul') yellowDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
+        if (info?.linkedReasons?.length) addLinkedNotes(label, info.linkedReasons);
       }
       const redEquipment: string[] = [];
       const yellowEquipment: string[] = [];
       for (const e of assignedEquipment as any[]) {
         const s = assignedEquipmentStatuses.get(e.id);
-        const label = `${e.navn ?? 'Utstyr'}${e.neste_vedlikehold ? ` (neste vedlikehold ${e.neste_vedlikehold})` : ''}`;
+        const label = `${e.navn ?? 'Utstyr'}${e.neste_vedlikehold ? ` (neste vedlikehold ${String(e.neste_vedlikehold).slice(0, 10)})` : ''}`;
         if (s === 'Rød') redEquipment.push(label);
         else if (s === 'Gul') yellowEquipment.push(label);
       }
+      // Sikkerhet: dropp evt. duplikater fra linkedOnlyNotes som faktisk er i assignedEquipment.
+      // (linkedEquipment-listen er navnbasert, så vi kan ikke matche eksakt — beholder notene som de er.)
+      void assignedEqIds;
 
       if (redDrones.length > 0 || redEquipment.length > 0) {
         const reasonBits: string[] = [];
@@ -2176,13 +2192,13 @@ serve(async (req) => {
         // Kort overskriftstekst til konklusjon/hard stop (uten SN/datoer).
         let shortReason: string;
         if (redDrones.length > 0 && redEquipment.length > 0) {
-          shortReason = 'Forfalt vedlikehold/inspeksjon på drone og tilkoblet utstyr';
+          shortReason = 'Forfalt vedlikehold/inspeksjon på drone og oppdragsutstyr';
         } else if (redDrones.length === 1) {
           shortReason = 'Forfalt vedlikehold/inspeksjon på dronen';
         } else if (redDrones.length > 1) {
           shortReason = `Forfalt vedlikehold/inspeksjon på ${redDrones.length} droner`;
         } else {
-          shortReason = 'Forfalt vedlikehold på tilkoblet utstyr';
+          shortReason = 'Forfalt vedlikehold på oppdragsutstyr';
         }
         console.log('Equipment hard-stop triggered:', reasonText);
 
@@ -2194,6 +2210,7 @@ serve(async (req) => {
           actual_conditions: reasonText,
           concerns: [
             ...reasonBits.map(r => `Hard stop: ${r}.`),
+            ...linkedOnlyNotes.map(n => `Info: ${n}`),
           ],
           factors: [],
         };
@@ -2216,12 +2233,24 @@ serve(async (req) => {
         eqCat.concerns = [
           ...(Array.isArray(eqCat.concerns) ? eqCat.concerns : []),
           ...noteBits.map(n => `Forsiktighet: ${n}.`),
+          ...linkedOnlyNotes.map(n => `Info: ${n}`),
+        ];
+        aiAnalysis.categories.equipment = eqCat;
+      } else if (linkedOnlyNotes.length > 0) {
+        // Hverken hard stop eller gul status på selve dronen/oppdragsutstyret,
+        // men koblet utstyr har avvik — legg ved som ren informasjon.
+        aiAnalysis.categories = aiAnalysis.categories || {};
+        const eqCat = aiAnalysis.categories.equipment || {};
+        eqCat.concerns = [
+          ...(Array.isArray(eqCat.concerns) ? eqCat.concerns : []),
+          ...linkedOnlyNotes.map(n => `Info: ${n}`),
         ];
         aiAnalysis.categories.equipment = eqCat;
       }
     } catch (eqGuardErr) {
       console.error('Equipment deterministic guard error (non-blocking):', eqGuardErr);
     }
+
 
     // Recompute recommendation after guards
     aiAnalysis.recommendation = deriveRiskRecommendation(
