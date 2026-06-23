@@ -2159,7 +2159,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
       if (violations.length === 0) return;
 
-      const droneName = selectedDrone ? `${selectedDrone.modell} (${(selectedDrone as any).serienummer || ''})` : 'Ukjent drone';
+      // Resolve drone with fallbacks: explicit selection → matched pending log → parser metadata.
+      const droneIdForAlert = selectedDroneId || matchedLog?.drone_id || null;
+      const droneRow = droneIdForAlert ? drones.find(d => d.id === droneIdForAlert) : undefined;
+      let droneName = 'Ukjent drone';
+      if (droneRow) {
+        droneName = `${droneRow.modell}${(droneRow as any).serienummer ? ` (${(droneRow as any).serienummer})` : ''}`;
+      } else if ((parsedResult as any).droneModel) {
+        droneName = String((parsedResult as any).droneModel);
+        console.warn('checkFlightAlerts: drone not found in list, using parser droneModel', { selectedDroneId, matchedDroneId: matchedLog?.drone_id });
+      } else {
+        console.warn('checkFlightAlerts: no drone resolved', { selectedDroneId, matchedDroneId: matchedLog?.drone_id });
+      }
       const pilotName = selectedPilot ? (selectedPilot as any).full_name || 'Ukjent pilot' : 'Ukjent pilot';
       const flightDate = parsedResult.startTime ? format(parseFlightDate(parsedResult.startTime) || new Date(), 'dd.MM.yyyy HH:mm') : format(new Date(), 'dd.MM.yyyy HH:mm');
 
