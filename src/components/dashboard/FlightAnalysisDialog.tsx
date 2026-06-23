@@ -401,6 +401,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           </div>
         </DialogHeader>
 
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-3 px-3 sm:-mx-4 sm:px-4 space-y-3">
         {flightTrack?.summary && (
           <FlightSummaryPanel summary={flightTrack.summary} events={events} />
         )}
