@@ -189,6 +189,68 @@ serve(async (req: Request): Promise<Response> => {
     }
 
 
+    // Handle flight log threshold alert (server-rendered HTML to prevent abuse)
+    if (type === 'notify_flight_alert' && companyId && flightAlert) {
+      const droneName = String(flightAlert.droneName || '').slice(0, 200);
+      const pilotName = String(flightAlert.pilotName || '').slice(0, 200);
+      const flightDate = String(flightAlert.flightDate || '').slice(0, 100);
+      const violations = Array.isArray(flightAlert.violations)
+        ? flightAlert.violations.slice(0, 20).map((v) => String(v || '').slice(0, 200))
+        : [];
+      if (violations.length === 0) {
+        return new Response(JSON.stringify({ success: true, message: 'No violations' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const { data: config } = await (supabase as any).rpc('get_effective_flight_alert_config', { _company_id: companyId });
+      const profileIds: string[] = config?.recipient_profile_ids || [];
+      if (profileIds.length === 0) {
+        return new Response(JSON.stringify({ success: true, message: 'No recipients' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+      const { data: profiles } = await supabase.from('profiles').select('email').in('id', profileIds);
+      const recipients = (profiles || []).map((p: any) => p.email).filter((e: any) => !!e);
+      if (recipients.length === 0) {
+        return new Response(JSON.stringify({ success: true, message: 'No recipient emails' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
+      const html = `<!DOCTYPE html>
+<html><head><style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.logo { text-align: center; padding: 20px 20px 10px 20px; }
+.header { background: #dc2626; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+.violation { background: #fee2e2; border-left: 4px solid #dc2626; padding: 8px 12px; margin: 8px 0; border-radius: 0 4px 4px 0; }
+</style></head><body>
+<div class="container">
+<div class="logo"><img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" /></div>
+<div class="header"><h1 style="margin:0;font-size:18px;">⚠️ Flylogg-varsel: Terskelverdier overskredet</h1></div>
+<div class="content">
+<p><strong>Drone:</strong> ${escapeHtml(droneName)}</p>
+<p><strong>Pilot:</strong> ${escapeHtml(pilotName)}</p>
+<p><strong>Dato:</strong> ${escapeHtml(flightDate)}</p>
+<h3 style="margin-top:16px;">Overskredne terskelverdier:</h3>
+${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join('')}
+<p style="margin-top:20px;color:#666;font-size:12px;">Logg inn i AviSafe for å se detaljer om flyturen.</p>
+</div></div></body></html>`;
+
+      const emailConfig = await getEmailConfig(companyId);
+      const fromName = emailConfig.fromName || 'AviSafe';
+      const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
+      const subjectLine = sanitizeSubject(`⚠️ Flylogg-varsel: ${violations.length} terskel${violations.length > 1 ? 'verdier' : 'verdi'} overskredet`);
+
+      let emailsSent = 0;
+      for (const to of recipients) {
+        try {
+          await sendEmail({ from: senderAddress, to, subject: subjectLine, html });
+          emailsSent++;
+        } catch (e) {
+          console.error('Flight alert send failed for', to, e);
+        }
+      }
+      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
 
     // Handle new incident notification
     if (type === 'notify_new_incident' && companyId && incident) {
