@@ -2121,9 +2121,89 @@ serve(async (req) => {
       console.error('Airspace deterministic guard error (non-blocking):', guardErr);
     }
 
+    // ===== DETERMINISTIC EQUIPMENT/MAINTENANCE GUARD =====
+    // Hvis serverberegnet aggregert dronestatus eller utstyrsstatus er Rød
+    // (forfalt inspeksjon, overskredet timeintervall, oppdragsintervall,
+    // tilbehør eller koblet utstyr), så MÅ utstyrskategorien settes til
+    // NO-GO og en hard stop trigges — uavhengig av hva AI skrev.
+    try {
+      const redDrones: { label: string; reasons: string[] }[] = [];
+      const yellowDrones: { label: string; reasons: string[] }[] = [];
+      if (primaryDroneStatusInfo) {
+        const label = `${droneData?.modell ?? 'Primærdrone'}${droneData?.serienummer ? ` (SN ${droneData.serienummer})` : ''}`;
+        if (primaryDroneStatusInfo.status === 'Rød') redDrones.push({ label, reasons: primaryDroneStatusInfo.reasons });
+        else if (primaryDroneStatusInfo.status === 'Gul') yellowDrones.push({ label, reasons: primaryDroneStatusInfo.reasons });
+      }
+      for (const d of assignedDrones as any[]) {
+        if (droneData && d.id === droneData.id) continue;
+        const s = assignedDroneStatuses.get(d.id);
+        const label = `${d.modell ?? 'Drone'}${d.serienummer ? ` (SN ${d.serienummer})` : ''}`;
+        if (s === 'Rød') redDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
+        else if (s === 'Gul') yellowDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
+      }
+      const redEquipment: string[] = [];
+      const yellowEquipment: string[] = [];
+      for (const e of assignedEquipment as any[]) {
+        const s = assignedEquipmentStatuses.get(e.id);
+        const label = `${e.navn ?? 'Utstyr'}${e.neste_vedlikehold ? ` (neste vedlikehold ${e.neste_vedlikehold})` : ''}`;
+        if (s === 'Rød') redEquipment.push(label);
+        else if (s === 'Gul') yellowEquipment.push(label);
+      }
+
+      if (redDrones.length > 0 || redEquipment.length > 0) {
+        const reasonBits: string[] = [];
+        for (const d of redDrones) reasonBits.push(`${d.label}: ${d.reasons.join('; ') || 'forfalt vedlikehold/inspeksjon'}`);
+        for (const e of redEquipment) reasonBits.push(`Utstyr ${e}: forfalt vedlikehold`);
+        const reasonText = `Forfalt vedlikehold/inspeksjon — ${reasonBits.join(' | ')}`;
+        console.log('Equipment hard-stop triggered:', reasonText);
+
+        aiAnalysis.categories = aiAnalysis.categories || {};
+        aiAnalysis.categories.equipment = {
+          ...(aiAnalysis.categories.equipment || {}),
+          score: 1,
+          go_decision: 'NO-GO',
+          actual_conditions: reasonText,
+          concerns: [
+            ...reasonBits.map(r => `Hard stop: ${r}.`),
+          ],
+          factors: [],
+        };
+        aiAnalysis.hard_stop_triggered = true;
+        aiAnalysis.hard_stop_reason = reasonText;
+        aiAnalysis.overall_score = Math.min(Number(aiAnalysis.overall_score) || 1, 2);
+        aiAnalysis.recommendation = 'no-go';
+        aiAnalysis.summary = `${reasonText}. ${aiAnalysis.summary || ''}`.trim();
+      } else if (yellowDrones.length > 0 || yellowEquipment.length > 0) {
+        const noteBits: string[] = [];
+        for (const d of yellowDrones) noteBits.push(`${d.label}: ${d.reasons.join('; ') || 'vedlikehold nærmer seg'}`);
+        for (const e of yellowEquipment) noteBits.push(`Utstyr ${e}: vedlikehold nærmer seg`);
+        const noteText = `Vedlikehold/inspeksjon nærmer seg fristen — ${noteBits.join(' | ')}`;
+        console.log('Equipment caution applied:', noteText);
+        aiAnalysis.categories = aiAnalysis.categories || {};
+        const eqCat = aiAnalysis.categories.equipment || {};
+        const currentScore = Number(eqCat.score);
+        eqCat.score = Math.min(Number.isFinite(currentScore) ? currentScore : 7, 6);
+        eqCat.go_decision = eqCat.go_decision === 'NO-GO' ? 'NO-GO' : 'BETINGET';
+        eqCat.concerns = [
+          ...(Array.isArray(eqCat.concerns) ? eqCat.concerns : []),
+          ...noteBits.map(n => `Forsiktighet: ${n}.`),
+        ];
+        aiAnalysis.categories.equipment = eqCat;
+      }
+    } catch (eqGuardErr) {
+      console.error('Equipment deterministic guard error (non-blocking):', eqGuardErr);
+    }
+
+    // Recompute recommendation after guards
+    aiAnalysis.recommendation = deriveRiskRecommendation(
+      aiAnalysis.overall_score,
+      aiAnalysis.hard_stop_triggered === true,
+      aiAnalysis.recommendation
+    );
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
+
 
     // 10. Save to database
     const { data: savedAssessment, error: saveError } = await supabase

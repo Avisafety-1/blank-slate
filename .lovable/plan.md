@@ -1,33 +1,24 @@
-# Fix: AI-risikovurdering bruker utdatert dronestatus
+Jeg ser årsaken: risikovurderingen har hittil vært for avhengig av AI-ens tolkning av drone-/utstyrsstatus. Selv om UI viser dronen som Rød basert på forfalt neste inspeksjon/vedlikehold, kan AI-resultatet fortsatt ende med GO hvis den får eller bruker den statiske DB-statusen som «Grønn», eller hvis den ignorerer datoen i teksten.
 
-## Problem
-UI viser dronen som **Rød** fordi inspeksjonsdatoen er forfalt (30.05.2026 < dagens dato), men AI-risikovurderingen rapporterer **Grønn** og gir 9.0/10 GO. Årsaken er at edge-funksjonen sender den rå `drones.status`-kolonnen (som ikke oppdateres automatisk når datoer passerer), mens UI-et beregner status dynamisk fra inspeksjonsdato + flytimer + oppdrag + tilbehør + koblet utstyr.
+Plan:
+1. Gjør vedlikeholdsstatus autoritativ før AI-kallet
+   - Beregn status for primærdrone, alle tildelte droner og tildelt utstyr med samme logikk som UI: forfalt dato, timeintervall, oppdragsintervall, tilbehør og koblet utstyr.
+   - Sørg for at både moderavdeling og underavdelinger bruker samme beregning, uavhengig av hva `drones.status` står som.
 
-## Løsning
-Porter samme statuslogikk som `src/lib/maintenanceStatus.ts` bruker, inn i edge-funksjonen, og send den beregnede statusen til AI-prompten i stedet for den rå kolonnen.
+2. Legg inn deterministisk sikkerhetsvakt etter AI-svaret
+   - Hvis beregnet primærdrone/tildelt drone/kritisk utstyr er Rød, skal funksjonen overstyre AI-resultatet til:
+     - `equipment.go_decision = NO-GO`
+     - lav utstyrsscore
+     - `hard_stop_triggered = true`
+     - `recommendation = no-go`
+   - Begrunnelsen skal komme fra den beregnede årsaken, f.eks. «Inspeksjonsdato 2026-06-06 er forfalt».
 
-### Filer som endres
+3. Gjør AI-teksten umulig å motsi serverstatus
+   - Hvis AI skriver «neste inspeksjon er godt innenfor fristen» når datoen er forfalt, fjernes/erstattes dette i serverens etterkontroll.
+   - Resultatvisningen skal dermed ikke kunne vise grønn tekst for en rød drone.
 
-**1. Ny: `supabase/functions/ai-risk-assessment/maintenanceStatus.ts`**
-Deno-versjon av logikken (kopi fra `src/lib/maintenanceStatus.ts`):
-- `calculateMaintenanceStatus(date, warningDays)`
-- `calculateUsageStatus(usage, limit, warningMargin)`
-- `calculateDroneInspectionStatus({...})`
-- `calculateEquipmentMaintenanceStatus({...})`
-- `calculateDroneAggregatedStatus(drone, accessories, linkedEquipment)`
-- `worstStatus`, `STATUS_PRIORITY`
+4. Test mot eksempelet i skjermbildet
+   - Verifiser at DJI Matrice 350 RTK med neste inspeksjon 2026-06-06 blir Rød/NO-GO i risikovurderingen.
+   - Sjekk også at en drone med Gul status ikke blir hard-stop, men gir redusert score og forsiktighetsanbefaling.
 
-**2. `supabase/functions/ai-risk-assessment/index.ts`**
-- For primærdronen: hent `drone_accessories` (eller tilsvarende tabell) og bruk allerede henta `assignedEquipment` for å kjøre `calculateDroneAggregatedStatus`. Erstatt `status: droneData.status` (linje 1518) med den beregnede aggregerte statusen, og legg ved `statusReason` / `affectedItems` så AI kan forklare hvorfor.
-- For hvert element i `assignedEquipment` og `assignedDrones`: erstatt rå `status`-felt i payloaden med `calculateEquipmentMaintenanceStatus` / `calculateDroneInspectionStatus`-resultatet før det sendes til AI.
-- Logg en advarsel hvis rå status og beregnet status avviker, så vi kan oppdage stale `drones.status`-kolonner.
-
-**3. `supabase/functions/ai-risk-assessment/prompts.ts`**
-Liten justering: gjør det eksplisitt i UTSTYR-seksjonen at `primaryDrone.status` allerede er den aggregerte beregnede statusen (forfalt inspeksjon → Rød), slik at AI ikke bortforklarer den med "siste inspeksjon ble nylig utført".
-
-## Forventet resultat
-Dersom `neste_inspeksjon` er passert, vil AI motta `primaryDrone.status = "Rød"` med begrunnelse "inspeksjon forfalt", utløse hard stop-regel #3 (UTSTYR Rød) og gi NO-GO på utstyrskategorien i stedet for 9.0/10 GO.
-
-## Ikke endret
-- Selve `drones.status`-kolonnen i databasen røres ikke (egen oppgave hvis ønsket).
-- UI-logikken for status er allerede riktig og endres ikke.
+Ingen databaseendringer trengs.
