@@ -145,43 +145,50 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
       )}
 
       {(mainEvents.length > 0 || appWarningEvents.length > 0) && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">Hendelser under flyging</p>
-          {mainEvents.map(({ ev, count }, i) => (
-            <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
-              {ev.type === "RTH" && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-              {ev.type === "LOW_BATTERY" && <Battery className="w-3 h-3 text-destructive shrink-0" />}
-              {(ev.type === "error" || ev.type === "failsafe") && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-              {ev.type === "arm" && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />}
-              {ev.type === "disarm" && <LogOut className="w-3 h-3 text-muted-foreground shrink-0" />}
-              {ev.type === "mode_change" && <Plane className="w-3 h-3 text-primary shrink-0" />}
-              {!["RTH", "LOW_BATTERY", "error", "failsafe", "arm", "disarm", "mode_change"].includes(ev.type) && (
-                <Info className="w-3 h-3 text-muted-foreground shrink-0" />
-              )}
-              <span className="font-medium">{ev.type}</span>
-              {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
-              {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
-            </div>
-          ))}
-          {appWarningEvents.length > 0 && (
-            <Collapsible>
-              <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-                <Info className="w-3 h-3 shrink-0" />
-                <span>APP_WARNING ({appWarningEvents.reduce((s, g) => s + g.count, 0)} hendelser)</span>
-                <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-1 mt-1">
-                {appWarningEvents.map(({ ev, count }, i) => (
-                  <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded bg-muted/30 text-xs">
-                    <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-                    <span className="text-muted-foreground break-words whitespace-normal flex-1">{ev.message}</span>
-                    {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
-                  </div>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-        </div>
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/40 transition-colors">
+            <p className="text-xs font-medium text-muted-foreground">
+              Hendelser under flyging ({mainEvents.reduce((s, g) => s + g.count, 0) + appWarningEvents.reduce((s, g) => s + g.count, 0)})
+            </p>
+            <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-1.5 mt-1.5">
+            {mainEvents.map(({ ev, count }, i) => (
+              <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
+                {ev.type === "RTH" && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                {ev.type === "LOW_BATTERY" && <Battery className="w-3 h-3 text-destructive shrink-0" />}
+                {(ev.type === "error" || ev.type === "failsafe") && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                {ev.type === "arm" && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />}
+                {ev.type === "disarm" && <LogOut className="w-3 h-3 text-muted-foreground shrink-0" />}
+                {ev.type === "mode_change" && <Plane className="w-3 h-3 text-primary shrink-0" />}
+                {!["RTH", "LOW_BATTERY", "error", "failsafe", "arm", "disarm", "mode_change"].includes(ev.type) && (
+                  <Info className="w-3 h-3 text-muted-foreground shrink-0" />
+                )}
+                <span className="font-medium">{ev.type}</span>
+                {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
+                {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+              </div>
+            ))}
+            {appWarningEvents.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+                  <Info className="w-3 h-3 shrink-0" />
+                  <span>APP_WARNING ({appWarningEvents.reduce((s, g) => s + g.count, 0)} hendelser)</span>
+                  <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1 mt-1">
+                  {appWarningEvents.map(({ ev, count }, i) => (
+                    <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded bg-muted/30 text-xs">
+                      <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                      <span className="text-muted-foreground break-words whitespace-normal flex-1">{ev.message}</span>
+                      {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                    </div>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   );
