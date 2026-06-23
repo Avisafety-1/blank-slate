@@ -373,8 +373,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <p className="text-sm font-medium text-muted-foreground mb-2">Flylogger ({missionFlightLogs.length})</p>
               <div className="space-y-1.5">
                 {missionFlightLogs.map((log: any) => (
-                  <div key={log.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2">
-                    <div className="text-sm">
+                  <div key={log.id} className="flex items-center justify-between gap-2 bg-muted/50 rounded-md px-3 py-2 overflow-hidden">
+                    <div className="text-sm min-w-0 flex-1">
                       <span className="font-medium">
                         {new Date(log.flight_date).toLocaleDateString('nb-NO', { day: '2-digit', month: 'short' })}
                       </span>
