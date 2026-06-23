@@ -1275,6 +1275,93 @@ serve(async (req) => {
       }
     }
 
+    // 9b. Beregn ekte aggregert status for droner/utstyr (samme logikk som UI).
+    // drones.status / equipment.status oppdateres ikke automatisk når en
+    // inspeksjonsdato/intervall passerer, så vi må re-derive her for at AI
+    // ikke skal se "Grønn" på en drone som UI viser som "Rød".
+    const countUniqueMissionsSinceInspection = async (
+      droneId: string,
+      sistInspeksjon: string | null | undefined,
+    ): Promise<number> => {
+      try {
+        let q = supabase.from('mission_drones').select('mission_id, missions!inner(start_dato)').eq('drone_id', droneId);
+        if (sistInspeksjon) q = q.gte('missions.start_dato', sistInspeksjon);
+        const { data } = await q;
+        return data ? new Set(data.map((r: any) => r.mission_id)).size : 0;
+      } catch (_) { return 0; }
+    };
+
+    const computeDroneStatus = async (d: any): Promise<{ status: MaintStatus; reasons: string[]; affectedItems: string[] }> => {
+      const [accRes, eqRes] = await Promise.all([
+        supabase.from('drone_accessories').select('navn, neste_vedlikehold, varsel_dager').eq('drone_id', d.id),
+        supabase.from('drone_equipment').select('equipment(navn, neste_vedlikehold, varsel_dager)').eq('drone_id', d.id),
+      ]);
+      const accessories = (accRes.data as any[]) || [];
+      const linkedEquipment = ((eqRes.data as any[]) || []).map(r => r.equipment).filter(Boolean);
+      const missionsSinceInspection = d.inspection_interval_missions
+        ? await countUniqueMissionsSinceInspection(d.id, d.sist_inspeksjon)
+        : 0;
+      const result = calculateDroneAggregatedStatus(
+        {
+          neste_inspeksjon: d.neste_inspeksjon,
+          varsel_dager: d.varsel_dager,
+          flyvetimer: d.flyvetimer ?? 0,
+          hours_at_last_inspection: d.hours_at_last_inspection ?? 0,
+          inspection_interval_hours: d.inspection_interval_hours,
+          varsel_timer: d.varsel_timer,
+          missions_since_inspection: missionsSinceInspection,
+          inspection_interval_missions: d.inspection_interval_missions,
+          varsel_oppdrag: d.varsel_oppdrag,
+        },
+        accessories,
+        linkedEquipment,
+      );
+      const dbStatus = (d.status as MaintStatus) || 'Grønn';
+      const finalStatus = worstStatus(result.status, dbStatus);
+      if (finalStatus !== dbStatus) {
+        console.log(`Drone ${d.modell} (${d.id}): rå DB-status='${dbStatus}', beregnet='${result.status}', endelig='${finalStatus}'. Årsaker: ${result.reasons.join('; ')}`);
+      }
+      return { status: finalStatus, reasons: result.reasons, affectedItems: result.affectedItems };
+    };
+
+    const computeEquipmentStatus = async (e: any): Promise<MaintStatus> => {
+      let missionsSinceMaintenance = 0;
+      if (e.inspection_interval_missions) {
+        try {
+          const { data } = await supabase.from('mission_equipment').select('mission_id').eq('equipment_id', e.id);
+          if (data) {
+            const total = new Set(data.map((r: any) => r.mission_id)).size;
+            missionsSinceMaintenance = Math.max(0, total - (e.missions_at_last_maintenance ?? 0));
+          }
+        } catch (_) { /* ignore */ }
+      }
+      const maint = calculateEquipmentMaintenanceStatus({
+        neste_vedlikehold: e.neste_vedlikehold,
+        varsel_dager: e.varsel_dager,
+        flyvetimer: e.flyvetimer ?? 0,
+        hours_at_last_maintenance: e.hours_at_last_maintenance ?? 0,
+        inspection_interval_hours: e.inspection_interval_hours,
+        varsel_timer: e.varsel_timer,
+        missions_since_maintenance: missionsSinceMaintenance,
+        inspection_interval_missions: e.inspection_interval_missions,
+        varsel_oppdrag: e.varsel_oppdrag,
+      });
+      return worstStatus(maint, (e.status as MaintStatus) || 'Grønn');
+    };
+
+    const primaryDroneStatusInfo = droneData ? await computeDroneStatus(droneData) : null;
+    const assignedDroneStatuses = new Map<string, MaintStatus>();
+    for (const d of assignedDrones as any[]) {
+      const { status } = await computeDroneStatus(d);
+      assignedDroneStatuses.set(d.id, status);
+    }
+    const assignedEquipmentStatuses = new Map<string, MaintStatus>();
+    for (const e of assignedEquipment as any[]) {
+      assignedEquipmentStatuses.set(e.id, await computeEquipmentStatus(e));
+    }
+
+
+
     // 10. Build AI prompt
     const today = new Date();
     const validCompetencies = allCompetencies.filter((c: any) => 
