@@ -384,7 +384,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                       </span>
                     </div>
                     {log.flight_track?.positions?.length > 0 && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button
                           variant="ghost"
                           size="sm"
