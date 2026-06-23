@@ -1608,7 +1608,7 @@ serve(async (req) => {
       assignedDrones: assignedDrones.map((d: any) => ({
         model: d.modell,
         serialNumber: d.serienummer,
-        status: assignedDroneStatuses.get(d.id) ?? d.status,
+        status: assignedDroneStatuses.get(d.id)?.status ?? d.status,
         rawDbStatus: d.status,
         flightHours: d.flyvetimer,
         lastInspection: d.sist_inspeksjon,
