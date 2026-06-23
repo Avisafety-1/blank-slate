@@ -1,23 +1,29 @@
-Jeg fant to konkrete ting:
+## Problem
 
-1. Ja: Edge Function må deployes for at endringene skal gjelde i Supabase.
-   - De siste kjøringene bruker deployment version 580.
-   - Loggene viser ingen `Equipment hard-stop triggered` og ingen `Drone ... beregnet=...`-linje, selv om den nye koden burde logget dette hvis den faktisk beregnet rød status.
-   - Det tyder på at deployet funksjon enten ikke har fått siste kode, eller at den nye beregningen ikke leser riktig datafelt.
+I "Foreslått konklusjon" og "HARD STOP"-banneret vises full teknisk streng med serienummer og ISO-tidsstempel (`2026-06-06T00:00:00+00:00`). Disse detaljene hører hjemme nede i Utstyr-kortet, ikke i toppkonklusjonen.
 
-2. Det er også en logisk feil i dato-/tidsgrunnlaget:
-   - Dronen har `neste_inspeksjon = 2026-06-06`.
-   - Risikovurderingens oppdrag ser ut til å være datert `2024-10-16`, men vedlikeholdsstatus beregnes mot dagens dato i Edge Function.
-   - Hvis UI viser dronen som rød nå, må risikovurderingen bruke samme autoritative status som UI, men den lagrede vurderingen viser fortsatt at AI fikk/brukte grønn.
+Kilde: `supabase/functions/ai-risk-assessment/index.ts` linje 2153-2175 (equipment hard-stop guard). I dag settes både `hard_stop_reason` og `summary` til hele `reasonText` (med SN + datoer), og det er denne teksten UI-et viser i banneret/konklusjonen.
 
-Plan for å fikse dette:
+## Endring
 
-- Deploy `ai-risk-assessment` Edge Function på nytt med siste kode.
-- Stramme inn serverkoden slik at vedlikeholdsstatus alltid logges for primærdrone og tildelte droner, ikke bare når status endrer seg fra DB-status.
-- Gjøre vedlikeholds-guard mer robust ved å:
-  - beregne rød/gul direkte fra `neste_inspeksjon`, timer, oppdragsintervall, tilbehør og koblet utstyr,
-  - sende `statusReasons` også for alle `assignedDrones`, ikke bare `primaryDrone`,
-  - sørge for at `mission_risk_assessments.equipment_score`, `recommendation`, `overall_score` og lagret `ai_analysis` får den overstyrte NO-GO-statusen.
-- Etter deploy: sjekke Edge Function-loggene for den aktuelle misjonen og verifisere at den skriver en tydelig linje som viser beregnet status for dronen og eventuelt `Equipment hard-stop triggered`.
+I equipment-guarden (index.ts ~2153-2175):
 
-Dette krever ingen databaseendring.
+1. Lag en kort overskriftstekst for konklusjon/hard stop:
+   - 1 rød drone: `"Forfalt vedlikehold/inspeksjon på dronen"`
+   - Flere røde droner: `"Forfalt vedlikehold/inspeksjon på N droner"`
+   - Kun utstyr rødt: `"Forfalt vedlikehold på tilkoblet utstyr"`
+   - Kombinert: `"Forfalt vedlikehold/inspeksjon på drone og tilkoblet utstyr"`
+
+2. Bruk denne korte teksten i:
+   - `aiAnalysis.hard_stop_reason`
+   - `aiAnalysis.summary` (prepend kort tekst, ikke full reasonText)
+
+3. Behold den detaljerte `reasonText` (med SN + datoer) kun i:
+   - `aiAnalysis.categories.equipment.actual_conditions`
+   - `aiAnalysis.categories.equipment.concerns`
+   
+   Slik at brukeren ser detaljene når de scroller ned til Utstyr-kortet.
+
+4. Rens også ISO-tidsstempel fra datoer som vises: konverter `2026-06-06T00:00:00+00:00` → `2026-06-06` i `reasons`-strenger fra `calculateDroneAggregatedStatus` (i `maintenanceStatus.ts` linje 130: `Inspeksjonsdato (${drone.neste_inspeksjon}) → ${dateS}` — formater datoen som YYYY-MM-DD før interpolasjon).
+
+Ingen andre filer eller logikk endres. Ingen DB-endringer. Edge function re-deployes automatisk.

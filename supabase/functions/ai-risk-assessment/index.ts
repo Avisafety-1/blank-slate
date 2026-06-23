@@ -2155,6 +2155,18 @@ serve(async (req) => {
         for (const d of redDrones) reasonBits.push(`${d.label}: ${d.reasons.join('; ') || 'forfalt vedlikehold/inspeksjon'}`);
         for (const e of redEquipment) reasonBits.push(`Utstyr ${e}: forfalt vedlikehold`);
         const reasonText = `Forfalt vedlikehold/inspeksjon — ${reasonBits.join(' | ')}`;
+
+        // Kort overskriftstekst til konklusjon/hard stop (uten SN/datoer).
+        let shortReason: string;
+        if (redDrones.length > 0 && redEquipment.length > 0) {
+          shortReason = 'Forfalt vedlikehold/inspeksjon på drone og tilkoblet utstyr';
+        } else if (redDrones.length === 1) {
+          shortReason = 'Forfalt vedlikehold/inspeksjon på dronen';
+        } else if (redDrones.length > 1) {
+          shortReason = `Forfalt vedlikehold/inspeksjon på ${redDrones.length} droner`;
+        } else {
+          shortReason = 'Forfalt vedlikehold på tilkoblet utstyr';
+        }
         console.log('Equipment hard-stop triggered:', reasonText);
 
         aiAnalysis.categories = aiAnalysis.categories || {};
@@ -2169,10 +2181,10 @@ serve(async (req) => {
           factors: [],
         };
         aiAnalysis.hard_stop_triggered = true;
-        aiAnalysis.hard_stop_reason = reasonText;
+        aiAnalysis.hard_stop_reason = shortReason;
         aiAnalysis.overall_score = Math.min(Number(aiAnalysis.overall_score) || 1, 2);
         aiAnalysis.recommendation = 'no-go';
-        aiAnalysis.summary = `${reasonText}. ${aiAnalysis.summary || ''}`.trim();
+        aiAnalysis.summary = `${shortReason}. ${aiAnalysis.summary || ''}`.trim();
       } else if (yellowDrones.length > 0 || yellowEquipment.length > 0) {
         const noteBits: string[] = [];
         for (const d of yellowDrones) noteBits.push(`${d.label}: ${d.reasons.join('; ') || 'vedlikehold nærmer seg'}`);
