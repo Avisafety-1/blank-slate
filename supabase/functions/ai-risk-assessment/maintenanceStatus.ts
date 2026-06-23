@@ -122,32 +122,41 @@ export const calculateDroneAggregatedStatus = (
   drone: DroneAggregateInput,
   accessories: MaintenanceItem[],
   linkedEquipment: MaintenanceItem[],
-): { status: Status; affectedItems: string[]; reasons: string[] } => {
-  const reasons: string[] = [];
+): {
+  status: Status;
+  ownStatus: Status;
+  affectedItems: string[];
+  reasons: string[];
+  ownReasons: string[];
+  linkedReasons: string[];
+} => {
+  const ownReasons: string[] = [];
+  const linkedReasons: string[] = [];
   const affectedItems: string[] = [];
 
   const dateS = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
   const inspDateShort = drone.neste_inspeksjon ? String(drone.neste_inspeksjon).slice(0, 10) : "ukjent";
-  if (dateS !== "Grønn") reasons.push(`Inspeksjonsdato (${inspDateShort}) → ${dateS}`);
+  if (dateS !== "Grønn") ownReasons.push(`Inspeksjonsdato (${inspDateShort}) → ${dateS}`);
 
   const hoursDelta = (drone.flyvetimer ?? 0) - (drone.hours_at_last_inspection ?? 0);
   const hoursS = calculateUsageStatus(hoursDelta, drone.inspection_interval_hours, drone.varsel_timer);
-  if (hoursS !== "Grønn") reasons.push(`Timer siden inspeksjon (${hoursDelta.toFixed(1)}/${drone.inspection_interval_hours}) → ${hoursS}`);
+  if (hoursS !== "Grønn") ownReasons.push(`Timer siden inspeksjon (${hoursDelta.toFixed(1)}/${drone.inspection_interval_hours}) → ${hoursS}`);
 
   const missionsS = calculateUsageStatus(
     drone.missions_since_inspection ?? 0,
     drone.inspection_interval_missions,
     drone.varsel_oppdrag,
   );
-  if (missionsS !== "Grønn") reasons.push(`Oppdrag siden inspeksjon (${drone.missions_since_inspection}/${drone.inspection_interval_missions}) → ${missionsS}`);
+  if (missionsS !== "Grønn") ownReasons.push(`Oppdrag siden inspeksjon (${drone.missions_since_inspection}/${drone.inspection_interval_missions}) → ${missionsS}`);
 
-  let worst = [dateS, hoursS, missionsS].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
+  const ownStatus = [dateS, hoursS, missionsS].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
+  let worst: Status = ownStatus;
 
   for (const acc of accessories || []) {
     const s = calculateMaintenanceStatus(acc.neste_vedlikehold, acc.varsel_dager ?? 14);
     if (s !== "Grønn") {
       affectedItems.push(acc.navn || "Tilbehør");
-      reasons.push(`Tilbehør ${acc.navn ?? ""} → ${s}`);
+      linkedReasons.push(`Tilbehør ${acc.navn ?? ""} → ${s}`);
     }
     worst = worstStatus(worst, s);
   }
@@ -155,10 +164,18 @@ export const calculateDroneAggregatedStatus = (
     const s = calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14);
     if (s !== "Grønn") {
       affectedItems.push(eq.navn || "Utstyr");
-      reasons.push(`Koblet utstyr ${eq.navn ?? ""} → ${s}`);
+      linkedReasons.push(`Koblet utstyr ${eq.navn ?? ""} → ${s}`);
     }
     worst = worstStatus(worst, s);
   }
 
-  return { status: worst, affectedItems, reasons };
+  return {
+    status: worst,
+    ownStatus,
+    affectedItems,
+    reasons: [...ownReasons, ...linkedReasons],
+    ownReasons,
+    linkedReasons,
+  };
 };
+
