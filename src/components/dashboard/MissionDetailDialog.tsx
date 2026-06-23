@@ -424,30 +424,32 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                           <BarChart3 className="w-3.5 h-3.5 mr-1" />
                           Analyser
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => {
-                            const base = `${currentMission.tittel || 'flight'}-${log.flight_date ? format(new Date(log.flight_date), 'yyyyMMdd-HHmm') : 'log'}`;
-                            downloadGpx(log.flight_track, base);
-                          }}
-                        >
-                          <Download className="w-3.5 h-3.5 mr-1" />
-                          GPX
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => {
-                            const base = `${currentMission.tittel || 'flight'}-${log.flight_date ? format(new Date(log.flight_date), 'yyyyMMdd-HHmm') : 'log'}`;
-                            downloadKmz(log.flight_track, base);
-                          }}
-                        >
-                          <Download className="w-3.5 h-3.5 mr-1" />
-                          KMZ
-                        </Button>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => {
+                              const base = `${currentMission.tittel || 'flight'}-${log.flight_date ? format(new Date(log.flight_date), 'yyyyMMdd-HHmm') : 'log'}`;
+                              downloadGpx(log.flight_track, base);
+                            }}
+                          >
+                            <Download className="w-3.5 h-3.5 mr-1" />
+                            GPX
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => {
+                              const base = `${currentMission.tittel || 'flight'}-${log.flight_date ? format(new Date(log.flight_date), 'yyyyMMdd-HHmm') : 'log'}`;
+                              downloadKmz(log.flight_track, base);
+                            }}
+                          >
+                            <Download className="w-3.5 h-3.5 mr-1" />
+                            KMZ
+                          </Button>
+                        </div>
                       </div>
                     )}
                     {!(log.flight_track?.positions?.length > 0) && (
