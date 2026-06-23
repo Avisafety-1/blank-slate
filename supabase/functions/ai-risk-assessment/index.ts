@@ -2162,6 +2162,45 @@ serve(async (req) => {
     // tilbehør eller koblet utstyr), så MÅ utstyrskategorien settes til
     // NO-GO og en hard stop trigges — uavhengig av hva AI skrev.
     try {
+      // Pre-beregn røde forhold på EGEN dronestatus + valgt oppdragsutstyr.
+      const preRedDroneOwn = (() => {
+        if (primaryDroneStatusInfo?.ownStatus === 'Rød') return true;
+        for (const d of assignedDrones as any[]) {
+          if (droneData && d.id === droneData.id) continue;
+          if (assignedDroneStatuses.get(d.id)?.ownStatus === 'Rød') return true;
+        }
+        return false;
+      })();
+      const preRedAssignedEq = (assignedEquipment as any[]).some(
+        (e) => assignedEquipmentStatuses.get(e.id) === 'Rød'
+      );
+
+      // Clearing-steg: AI kan ha satt hard stop basert på aggregert dronestatus
+      // (som inkluderer koblet utstyr ikke valgt på oppdraget). Hvis verken
+      // egen dronestatus eller valgt utstyr er Rød — nullstill utstyrs-hard-stop.
+      if (aiAnalysis?.hard_stop_triggered === true && !preRedDroneOwn && !preRedAssignedEq) {
+        const eqCat = aiAnalysis.categories?.equipment;
+        const reasonLc = String(aiAnalysis.hard_stop_reason || '').toLowerCase();
+        const equipmentHardStop =
+          (eqCat && eqCat.go_decision === 'NO-GO') ||
+          /vedlikehold|inspeksjon|utstyr|tilbeh|koblet/.test(reasonLc);
+        if (equipmentHardStop) {
+          console.log('Clearing AI hard stop: own drone status green and assigned equipment green (linked-only reds present).');
+          aiAnalysis.hard_stop_triggered = false;
+          aiAnalysis.hard_stop_reason = null;
+          if (eqCat) {
+            eqCat.go_decision = eqCat.go_decision === 'NO-GO' ? 'BETINGET' : (eqCat.go_decision || 'GO');
+            const currentScore = Number(eqCat.score);
+            eqCat.score = Number.isFinite(currentScore) ? Math.max(currentScore, 6) : 7;
+            eqCat.concerns = [
+              ...(Array.isArray(eqCat.concerns) ? eqCat.concerns : []),
+              'Info: Tilknyttet utstyr/tilbehør har rød status, men er ikke valgt på oppdraget — antas ikke brukt. Ingen hard stop.',
+            ];
+            aiAnalysis.categories.equipment = eqCat;
+          }
+        }
+      }
+
       const redDrones: { label: string; reasons: string[] }[] = [];
       const yellowDrones: { label: string; reasons: string[] }[] = [];
       // Notater om koblet utstyr/tilbehør som er Rødt/Gult men IKKE valgt på oppdraget.
