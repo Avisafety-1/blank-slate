@@ -127,7 +127,8 @@ export const calculateDroneAggregatedStatus = (
   const affectedItems: string[] = [];
 
   const dateS = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
-  if (dateS !== "Grønn") reasons.push(`Inspeksjonsdato (${drone.neste_inspeksjon}) → ${dateS}`);
+  const inspDateShort = drone.neste_inspeksjon ? String(drone.neste_inspeksjon).slice(0, 10) : "ukjent";
+  if (dateS !== "Grønn") reasons.push(`Inspeksjonsdato (${inspDateShort}) → ${dateS}`);
 
   const hoursDelta = (drone.flyvetimer ?? 0) - (drone.hours_at_last_inspection ?? 0);
   const hoursS = calculateUsageStatus(hoursDelta, drone.inspection_interval_hours, drone.varsel_timer);
