@@ -64,6 +64,7 @@ interface EmailRequest {
   pilotComment?: { missionTitle: string; missionLocation: string; missionDate: string; comment: string; senderName: string; };
   missionMention?: { recipientId: string; senderId?: string; senderName: string; missionTitle: string; missionLocation?: string; missionDate: string; missionNote: string; };
   trainingAssigned?: { recipientId: string; courseName: string; };
+  flightAlert?: { droneName: string; pilotName: string; flightDate: string; violations: string[]; };
 }
 
 const escapeHtml = (value: string) => value
