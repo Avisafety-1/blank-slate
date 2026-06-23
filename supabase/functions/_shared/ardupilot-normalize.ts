@@ -172,7 +172,9 @@ export function normalizeToUnified(raw: any) {
     .map((b: any) => b.remaining)
     .filter((r: any): r is number => r != null && r >= 0 && r <= 100);
 
-  const minBattery = validBatteryReadings.length > 0 ? Math.min(...validBatteryReadings) : 0;
+  // Use -1 sentinel when no valid % readings (e.g. BATT_CAPACITY not configured)
+  // so client-side `minBattery >= 0` guard skips false low_battery alerts.
+  const minBattery = validBatteryReadings.length > 0 ? Math.min(...validBatteryReadings) : -1;
 
   let minVoltage = 999;
   let maxCurrent = 0;
