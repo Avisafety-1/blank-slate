@@ -401,7 +401,12 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           </div>
         </DialogHeader>
 
+        {flightTrack?.summary && (
+          <FlightSummaryPanel summary={flightTrack.summary} events={events} />
+        )}
+
         {/* Map */}
+
         <div className="relative">
           <div
             ref={mapContainerRef}
