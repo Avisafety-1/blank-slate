@@ -1591,7 +1591,8 @@ serve(async (req) => {
       assignedDrones: assignedDrones.map((d: any) => ({
         model: d.modell,
         serialNumber: d.serienummer,
-        status: d.status,
+        status: assignedDroneStatuses.get(d.id) ?? d.status,
+        rawDbStatus: d.status,
         flightHours: d.flyvetimer,
         lastInspection: d.sist_inspeksjon,
         nextInspection: d.neste_inspeksjon,
@@ -1601,7 +1602,8 @@ serve(async (req) => {
       assignedEquipment: assignedEquipment.map((e: any) => ({
         name: e.navn,
         type: e.type,
-        status: e.status,
+        status: assignedEquipmentStatuses.get(e.id) ?? e.status,
+        rawDbStatus: e.status,
         serialNumber: e.serienummer,
         lastMaintenance: e.sist_vedlikeholdt,
         nextMaintenance: e.neste_vedlikehold,
@@ -1609,7 +1611,10 @@ serve(async (req) => {
       })),
       primaryDrone: droneData ? {
         model: droneData.modell,
-        status: droneData.status,
+        status: primaryDroneStatusInfo?.status ?? droneData.status,
+        statusReasons: primaryDroneStatusInfo?.reasons ?? [],
+        statusAffectedItems: primaryDroneStatusInfo?.affectedItems ?? [],
+        rawDbStatus: droneData.status,
         flightHours: droneData.flyvetimer,
         lastInspection: droneData.sist_inspeksjon,
         nextInspection: droneData.neste_inspeksjon,
