@@ -1605,17 +1605,28 @@ serve(async (req) => {
         validCompetencies: validCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expires: c.utloper_dato })),
         expiredCompetencies: expiredCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expired: c.utloper_dato })),
       },
-      assignedDrones: assignedDrones.map((d: any) => ({
-        model: d.modell,
-        serialNumber: d.serienummer,
-        status: assignedDroneStatuses.get(d.id)?.status ?? d.status,
-        rawDbStatus: d.status,
-        flightHours: d.flyvetimer,
-        lastInspection: d.sist_inspeksjon,
-        nextInspection: d.neste_inspeksjon,
-        available: d.tilgjengelig,
-        class: d.klasse,
-      })),
+      assignedDrones: assignedDrones.map((d: any) => {
+        const info = assignedDroneStatuses.get(d.id);
+        return {
+          model: d.modell,
+          serialNumber: d.serienummer,
+          // status = dronens EGEN status (eksklusiv tilbehør/koblet utstyr).
+          // Hard stop skal kun vurderes ut fra denne + valgt oppdragsutstyr.
+          status: info?.ownStatus ?? d.status,
+          aggregatedStatus: info?.status ?? d.status,
+          rawDbStatus: d.status,
+          // Koblet utstyr/tilbehør som IKKE er valgt på oppdraget — kun informativt,
+          // skal ALDRI utløse hard stop eller senke utstyrs-score.
+          linkedOnlyIssues: (info?.linkedReasons ?? []).map((r: string) =>
+            `${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt)`
+          ),
+          flightHours: d.flyvetimer,
+          lastInspection: d.sist_inspeksjon,
+          nextInspection: d.neste_inspeksjon,
+          available: d.tilgjengelig,
+          class: d.klasse,
+        };
+      }),
       assignedEquipment: assignedEquipment.map((e: any) => ({
         name: e.navn,
         type: e.type,
@@ -1628,9 +1639,16 @@ serve(async (req) => {
       })),
       primaryDrone: droneData ? {
         model: droneData.modell,
-        status: primaryDroneStatusInfo?.status ?? droneData.status,
-        statusReasons: primaryDroneStatusInfo?.reasons ?? [],
+        // status = dronens EGEN status (uten tilbehør/koblet utstyr).
+        status: primaryDroneStatusInfo?.ownStatus ?? droneData.status,
+        statusReasons: primaryDroneStatusInfo?.ownReasons ?? [],
         statusAffectedItems: primaryDroneStatusInfo?.affectedItems ?? [],
+        aggregatedStatus: primaryDroneStatusInfo?.status ?? droneData.status,
+        // Koblet utstyr/tilbehør som IKKE er valgt på oppdraget — kun informativt,
+        // skal ALDRI utløse hard stop eller senke utstyrs-score.
+        linkedOnlyIssues: (primaryDroneStatusInfo?.linkedReasons ?? []).map((r: string) =>
+          `${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt)`
+        ),
         rawDbStatus: droneData.status,
         flightHours: droneData.flyvetimer,
         lastInspection: droneData.sist_inspeksjon,
