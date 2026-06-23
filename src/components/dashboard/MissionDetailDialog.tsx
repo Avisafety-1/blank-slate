@@ -99,7 +99,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       const [missionRes, soraRes, logsRes] = await Promise.all([
         supabase.from("missions").select("*").eq("id", mission.id).single(),
         supabase.from("mission_sora").select("sora_status").eq("mission_id", mission.id).maybeSingle(),
-        supabase.from("flight_logs").select("id, flight_date, flight_track, flight_duration_minutes, departure_location, landing_location")
+        supabase.from("flight_logs").select("id, flight_date, flight_track, flight_duration_minutes, departure_location, landing_location, source, total_distance_m, max_distance_m, max_height_m, max_horiz_speed_ms, max_vert_speed_ms, rth_triggered, battery_voltage_min_v, battery_cell_deviation_max_v, battery_temp_min_c, battery_temp_max_c, gps_sat_min, gps_sat_max")
           .eq("mission_id", mission.id).not("flight_track", "is", null).order("flight_date", { ascending: false }),
       ]);
       if (missionRes.data) {
