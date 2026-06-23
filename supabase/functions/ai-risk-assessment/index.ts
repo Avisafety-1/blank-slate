@@ -1291,7 +1291,14 @@ serve(async (req) => {
       } catch (_) { return 0; }
     };
 
-    const computeDroneStatus = async (d: any): Promise<{ status: MaintStatus; reasons: string[]; affectedItems: string[] }> => {
+    const computeDroneStatus = async (d: any): Promise<{
+      status: MaintStatus;
+      ownStatus: MaintStatus;
+      reasons: string[];
+      ownReasons: string[];
+      linkedReasons: string[];
+      affectedItems: string[];
+    }> => {
       const [accRes, eqRes] = await Promise.all([
         supabase.from('drone_accessories').select('navn, neste_vedlikehold, varsel_dager').eq('drone_id', d.id),
         supabase.from('drone_equipment').select('equipment(navn, neste_vedlikehold, varsel_dager)').eq('drone_id', d.id),
@@ -1318,10 +1325,19 @@ serve(async (req) => {
       );
       const dbStatus = (d.status as MaintStatus) || 'Grønn';
       const finalStatus = worstStatus(result.status, dbStatus);
+      // ownStatus skal ikke ta hensyn til DB-status fra koblet utstyr; bruk kun beregnet ownStatus.
+      const ownStatus = result.ownStatus;
       if (finalStatus !== dbStatus) {
-        console.log(`Drone ${d.modell} (${d.id}): rå DB-status='${dbStatus}', beregnet='${result.status}', endelig='${finalStatus}'. Årsaker: ${result.reasons.join('; ')}`);
+        console.log(`Drone ${d.modell} (${d.id}): rå DB-status='${dbStatus}', beregnet='${result.status}', endelig='${finalStatus}', egen='${ownStatus}'. Årsaker: ${result.reasons.join('; ')}`);
       }
-      return { status: finalStatus, reasons: result.reasons, affectedItems: result.affectedItems };
+      return {
+        status: finalStatus,
+        ownStatus,
+        reasons: result.reasons,
+        ownReasons: result.ownReasons,
+        linkedReasons: result.linkedReasons,
+        affectedItems: result.affectedItems,
+      };
     };
 
     const computeEquipmentStatus = async (e: any): Promise<MaintStatus> => {
@@ -1350,11 +1366,12 @@ serve(async (req) => {
     };
 
     const primaryDroneStatusInfo = droneData ? await computeDroneStatus(droneData) : null;
-    const assignedDroneStatuses = new Map<string, MaintStatus>();
+    const assignedDroneStatuses = new Map<string, { status: MaintStatus; ownStatus: MaintStatus; linkedReasons: string[] }>();
     for (const d of assignedDrones as any[]) {
-      const { status } = await computeDroneStatus(d);
-      assignedDroneStatuses.set(d.id, status);
+      const info = await computeDroneStatus(d);
+      assignedDroneStatuses.set(d.id, { status: info.status, ownStatus: info.ownStatus, linkedReasons: info.linkedReasons });
     }
+
     const assignedEquipmentStatuses = new Map<string, MaintStatus>();
     for (const e of assignedEquipment as any[]) {
       assignedEquipmentStatuses.set(e.id, await computeEquipmentStatus(e));
