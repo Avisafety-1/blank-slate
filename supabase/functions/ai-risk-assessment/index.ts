@@ -1605,17 +1605,28 @@ serve(async (req) => {
         validCompetencies: validCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expires: c.utloper_dato })),
         expiredCompetencies: expiredCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expired: c.utloper_dato })),
       },
-      assignedDrones: assignedDrones.map((d: any) => ({
-        model: d.modell,
-        serialNumber: d.serienummer,
-        status: assignedDroneStatuses.get(d.id)?.status ?? d.status,
-        rawDbStatus: d.status,
-        flightHours: d.flyvetimer,
-        lastInspection: d.sist_inspeksjon,
-        nextInspection: d.neste_inspeksjon,
-        available: d.tilgjengelig,
-        class: d.klasse,
-      })),
+      assignedDrones: assignedDrones.map((d: any) => {
+        const info = assignedDroneStatuses.get(d.id);
+        return {
+          model: d.modell,
+          serialNumber: d.serienummer,
+          // status = dronens EGEN status (eksklusiv tilbehør/koblet utstyr).
+          // Hard stop skal kun vurderes ut fra denne + valgt oppdragsutstyr.
+          status: info?.ownStatus ?? d.status,
+          aggregatedStatus: info?.status ?? d.status,
+          rawDbStatus: d.status,
+          // Koblet utstyr/tilbehør som IKKE er valgt på oppdraget — kun informativt,
+          // skal ALDRI utløse hard stop eller senke utstyrs-score.
+          linkedOnlyIssues: (info?.linkedReasons ?? []).map((r: string) =>
+            `${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt)`
+          ),
+          flightHours: d.flyvetimer,
+          lastInspection: d.sist_inspeksjon,
+          nextInspection: d.neste_inspeksjon,
+          available: d.tilgjengelig,
+          class: d.klasse,
+        };
+      }),
       assignedEquipment: assignedEquipment.map((e: any) => ({
         name: e.navn,
         type: e.type,
@@ -1628,9 +1639,16 @@ serve(async (req) => {
       })),
       primaryDrone: droneData ? {
         model: droneData.modell,
-        status: primaryDroneStatusInfo?.status ?? droneData.status,
-        statusReasons: primaryDroneStatusInfo?.reasons ?? [],
+        // status = dronens EGEN status (uten tilbehør/koblet utstyr).
+        status: primaryDroneStatusInfo?.ownStatus ?? droneData.status,
+        statusReasons: primaryDroneStatusInfo?.ownReasons ?? [],
         statusAffectedItems: primaryDroneStatusInfo?.affectedItems ?? [],
+        aggregatedStatus: primaryDroneStatusInfo?.status ?? droneData.status,
+        // Koblet utstyr/tilbehør som IKKE er valgt på oppdraget — kun informativt,
+        // skal ALDRI utløse hard stop eller senke utstyrs-score.
+        linkedOnlyIssues: (primaryDroneStatusInfo?.linkedReasons ?? []).map((r: string) =>
+          `${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt)`
+        ),
         rawDbStatus: droneData.status,
         flightHours: droneData.flyvetimer,
         lastInspection: droneData.sist_inspeksjon,
@@ -2144,6 +2162,45 @@ serve(async (req) => {
     // tilbehør eller koblet utstyr), så MÅ utstyrskategorien settes til
     // NO-GO og en hard stop trigges — uavhengig av hva AI skrev.
     try {
+      // Pre-beregn røde forhold på EGEN dronestatus + valgt oppdragsutstyr.
+      const preRedDroneOwn = (() => {
+        if (primaryDroneStatusInfo?.ownStatus === 'Rød') return true;
+        for (const d of assignedDrones as any[]) {
+          if (droneData && d.id === droneData.id) continue;
+          if (assignedDroneStatuses.get(d.id)?.ownStatus === 'Rød') return true;
+        }
+        return false;
+      })();
+      const preRedAssignedEq = (assignedEquipment as any[]).some(
+        (e) => assignedEquipmentStatuses.get(e.id) === 'Rød'
+      );
+
+      // Clearing-steg: AI kan ha satt hard stop basert på aggregert dronestatus
+      // (som inkluderer koblet utstyr ikke valgt på oppdraget). Hvis verken
+      // egen dronestatus eller valgt utstyr er Rød — nullstill utstyrs-hard-stop.
+      if (aiAnalysis?.hard_stop_triggered === true && !preRedDroneOwn && !preRedAssignedEq) {
+        const eqCat = aiAnalysis.categories?.equipment;
+        const reasonLc = String(aiAnalysis.hard_stop_reason || '').toLowerCase();
+        const equipmentHardStop =
+          (eqCat && eqCat.go_decision === 'NO-GO') ||
+          /vedlikehold|inspeksjon|utstyr|tilbeh|koblet/.test(reasonLc);
+        if (equipmentHardStop) {
+          console.log('Clearing AI hard stop: own drone status green and assigned equipment green (linked-only reds present).');
+          aiAnalysis.hard_stop_triggered = false;
+          aiAnalysis.hard_stop_reason = null;
+          if (eqCat) {
+            eqCat.go_decision = eqCat.go_decision === 'NO-GO' ? 'BETINGET' : (eqCat.go_decision || 'GO');
+            const currentScore = Number(eqCat.score);
+            eqCat.score = Number.isFinite(currentScore) ? Math.max(currentScore, 6) : 7;
+            eqCat.concerns = [
+              ...(Array.isArray(eqCat.concerns) ? eqCat.concerns : []),
+              'Info: Tilknyttet utstyr/tilbehør har rød status, men er ikke valgt på oppdraget — antas ikke brukt. Ingen hard stop.',
+            ];
+            aiAnalysis.categories.equipment = eqCat;
+          }
+        }
+      }
+
       const redDrones: { label: string; reasons: string[] }[] = [];
       const yellowDrones: { label: string; reasons: string[] }[] = [];
       // Notater om koblet utstyr/tilbehør som er Rødt/Gult men IKKE valgt på oppdraget.
