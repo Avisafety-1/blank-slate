@@ -22,6 +22,7 @@ const COMPANY_SCOPED_TYPES = new Set([
   'notify_mission_mention',
   'notify_training_assigned',
   'notify_mission_approved',
+  'notify_flight_alert',
 ]);
 
 // Types that require admin/superadmin (and operate within a company).
