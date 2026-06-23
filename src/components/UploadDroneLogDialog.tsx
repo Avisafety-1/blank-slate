@@ -2118,10 +2118,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const profileIds: string[] = config.recipient_profile_ids || [];
       if (profileIds.length === 0) return;
 
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name, email").in("id", profileIds);
-      const recipientEmails = (profiles || []).filter((p: any) => p.email).map((p: any) => ({ email: p.email, name: p.full_name }));
-      if (recipientEmails.length === 0) return;
-
       const violations: string[] = [];
       for (const alert of alerts) {
         const t = alert.threshold_value;
@@ -2167,42 +2163,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const pilotName = selectedPilot ? (selectedPilot as any).full_name || 'Ukjent pilot' : 'Ukjent pilot';
       const flightDate = parsedResult.startTime ? format(parseFlightDate(parsedResult.startTime) || new Date(), 'dd.MM.yyyy HH:mm') : format(new Date(), 'dd.MM.yyyy HH:mm');
 
-      const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
-      const html = `<!DOCTYPE html>
-<html><head><style>
-body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-.container { max-width: 600px; margin: 0 auto; padding: 20px; }
-.logo { text-align: center; padding: 20px 20px 10px 20px; }
-.header { background: #dc2626; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-.content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
-.violation { background: #fee2e2; border-left: 4px solid #dc2626; padding: 8px 12px; margin: 8px 0; border-radius: 0 4px 4px 0; }
-</style></head><body>
-<div class="container">
-<div class="logo"><img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" /></div>
-<div class="header"><h1 style="margin:0;font-size:18px;">⚠️ Flylogg-varsel: Terskelverdier overskredet</h1></div>
-<div class="content">
-<p><strong>Drone:</strong> ${droneName}</p>
-<p><strong>Pilot:</strong> ${pilotName}</p>
-<p><strong>Dato:</strong> ${flightDate}</p>
-<h3 style="margin-top:16px;">Overskredne terskelverdier:</h3>
-${violations.map(v => `<div class="violation">${v}</div>`).join('')}
-<p style="margin-top:20px;color:#666;font-size:12px;">Logg inn i AviSafe for å se detaljer om flyturen.</p>
-</div></div></body></html>`;
-
-      for (const recipient of recipientEmails) {
-        try {
-          await supabase.functions.invoke('send-notification-email', {
-            body: {
-              recipientEmail: recipient.email,
-              subject: `⚠️ Flylogg-varsel: ${violations.length} terskel${violations.length > 1 ? 'verdier' : 'verdi'} overskredet`,
-              htmlContent: html,
-              companyId,
-            },
-          });
-        } catch (e) {
-          console.error('Failed to send flight alert to', recipient.email, e);
-        }
+      try {
+        await supabase.functions.invoke('send-notification-email', {
+          body: {
+            type: 'notify_flight_alert',
+            companyId,
+            flightAlert: { droneName, pilotName, flightDate, violations },
+          },
+        });
+      } catch (e) {
+        console.error('Failed to send flight alert:', e);
       }
+
     } catch (err) {
       console.error('Error checking flight alerts:', err);
     }
