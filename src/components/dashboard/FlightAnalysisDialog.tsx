@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
+import { FlightSummaryPanel, type FlightSummary } from "./FlightSummaryPanel";
 
 const Drone3DViewer = lazy(() => import("./Drone3DViewer").then(m => ({ default: m.Drone3DViewer })));
 import { BarChart3, AlertTriangle, Gauge, Wind } from "lucide-react";
@@ -22,7 +23,12 @@ export interface BatterySummary {
 interface FlightAnalysisDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  flightTrack: { positions: any[]; events?: any[]; batterySummary?: BatterySummary } | null;
+  flightTrack: {
+    positions: any[];
+    events?: any[];
+    batterySummary?: BatterySummary;
+    summary?: FlightSummary;
+  } | null;
   flightDate?: string;
   droneName?: string;
 }
