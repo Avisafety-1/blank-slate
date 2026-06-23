@@ -127,7 +127,7 @@ export const DroneLogbookDialog = ({
       // Fetch flight logs
       const { data: flightLogs } = await supabase
         .from("flight_logs")
-        .select(`id, flight_date, flight_duration_minutes, departure_location, landing_location, notes, movements, user_id, flight_track, battery_cycles, battery_health_pct, battery_full_capacity_mah, battery_voltage_min_v, battery_temp_max_c, battery_cell_deviation_max_v`)
+        .select(`id, flight_date, flight_duration_minutes, departure_location, landing_location, notes, movements, user_id, flight_track, source, total_distance_m, max_distance_m, max_height_m, max_horiz_speed_ms, max_vert_speed_ms, rth_triggered, gps_sat_min, gps_sat_max, battery_cycles, battery_health_pct, battery_full_capacity_mah, battery_voltage_min_v, battery_temp_min_c, battery_temp_max_c, battery_cell_deviation_max_v`)
         .eq("drone_id", droneId)
         .order("flight_date", { ascending: false });
 
@@ -190,6 +190,24 @@ export const DroneLogbookDialog = ({
                 voltageMinV: (log as any).battery_voltage_min_v ?? null,
                 tempMaxC: (log as any).battery_temp_max_c ?? null,
                 cellDeviationV: (log as any).battery_cell_deviation_max_v ?? null,
+              },
+              summary: {
+                durationMinutes: log.flight_duration_minutes ?? null,
+                maxSpeedMs: (log as any).max_horiz_speed_ms ?? null,
+                minBatteryV: (log as any).battery_voltage_min_v ?? null,
+                totalRows: existingTrack?.positions?.length ?? null,
+                totalDistanceM: (log as any).total_distance_m ?? null,
+                maxAltitudeM: (log as any).max_height_m ?? null,
+                minGpsSat: (log as any).gps_sat_min ?? null,
+                maxGpsSat: (log as any).gps_sat_max ?? null,
+                batteryTempMaxC: (log as any).battery_temp_max_c ?? null,
+                batteryTempMinC: (log as any).battery_temp_min_c ?? null,
+                batteryVoltageMinV: (log as any).battery_voltage_min_v ?? null,
+                maxDistanceM: (log as any).max_distance_m ?? null,
+                maxVSpeedMs: (log as any).max_vert_speed_ms ?? null,
+                batteryCellDeviationV: (log as any).battery_cell_deviation_max_v ?? null,
+                rthTriggered: (log as any).rth_triggered ?? false,
+                source: (log as any).source ?? null,
               },
             },
             flightDate: log.flight_date,
