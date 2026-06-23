@@ -1081,12 +1081,28 @@ export const AddMissionDialog = ({
     setSelectedEquipment(prev => prev.filter(id => id !== equipmentId));
   };
 
-  const toggleDrone = (droneId: string) => {
+  const toggleDrone = async (droneId: string) => {
+    const isAdding = !selectedDrones.includes(droneId);
     setSelectedDrones(prev =>
       prev.includes(droneId)
         ? prev.filter(id => id !== droneId)
         : [...prev, droneId]
     );
+    if (isAdding) {
+      try {
+        const { data, error } = await (supabase as any)
+          .from("drone_equipment")
+          .select("equipment_id")
+          .eq("drone_id", droneId);
+        if (error) throw error;
+        const eqIds = (data || []).map((r: any) => r.equipment_id).filter(Boolean);
+        if (eqIds.length > 0) {
+          setSelectedEquipment(prev => Array.from(new Set([...prev, ...eqIds])));
+        }
+      } catch (err) {
+        console.error("Auto-add linked equipment failed:", err);
+      }
+    }
   };
 
   const removeDrone = (droneId: string) => {
