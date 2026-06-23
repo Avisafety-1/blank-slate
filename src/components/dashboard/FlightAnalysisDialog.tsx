@@ -503,7 +503,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
         </div>
 
         {/* Timeline + Charts */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div>
           <FlightAnalysisTimeline
             positions={positions}
             currentIndex={currentIndex}
@@ -512,6 +512,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             showWarnings={showWarnings}
             batterySummary={flightTrack?.batterySummary}
           />
+        </div>
         </div>
       </DialogContent>
     </Dialog>
