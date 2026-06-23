@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
+import {
+  calculateDroneAggregatedStatus,
+  calculateDroneInspectionStatus,
+  calculateEquipmentMaintenanceStatus,
+  worstStatus,
+  type Status as MaintStatus,
+} from "./maintenanceStatus.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
