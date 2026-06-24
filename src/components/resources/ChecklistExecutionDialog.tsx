@@ -113,7 +113,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
       setFileMode(null);
       setFileName(null);
       setLoadError(null);
-      setManuallyCompleted(false);
+      setPdfNumPages(0);
       try {
         const { data, error } = await supabase
           .from("documents")
