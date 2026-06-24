@@ -2,8 +2,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useRef } from "react";
-import { CheckCircle2, Circle, ClipboardCheck, ImageIcon, FileText, ExternalLink, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTriangle, Loader2 } from "lucide-react";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+
+// Configure pdf.js worker from CDN (matches installed pdfjs-dist version)
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 type FileMode = "image" | "pdf" | "document" | null;
 
