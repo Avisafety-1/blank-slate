@@ -1,40 +1,19 @@
-
 ## Problem
 
-På iPhone (Safari/Gmail in-app browser) skjer to ting når brukeren åpner en sjekkliste fra «Start flytur»:
+På iPhone 13 Pro bruker `SignatureDrawerDialog` en rotert «landskaps»-layout på mobil (`flex-row` med vertikal header til venstre og vertikal footer til høyre). Resultatet:
 
-1. **Sjekklisten laster ikke** i `ChecklistExecutionDialog` – siden står tom (skjermbilde viser kun en blå progressbar i en ny fane).
-2. Når brukeren trykker «Åpne sjekkliste» åpnes signed URL i ny fane via `window.open(...)`. iOS Safari laster da PDF-en ned som vedlegg i stedet for å vise den, fordi Supabase Storage signed URLs sender `Content-Disposition: attachment` for PDF-er.
-3. «Last inn på ny» nederst i Safari trigger krasj fordi dialogen ikke håndterer reload-state.
-
-Bildet/PDF-en lastes egentlig fint (signed URL fungerer på desktop), problemet er ren mobilrendering + at vi sender brukeren ut av appen.
+- Footeren med Tøm/Angre/Lagre-knappene havner utenfor synlig område.
+- Canvas-en virker enorm fordi den fyller hele bredden uten å regne med adressefelt/safe-area.
+- Brukeren kan ikke zoome eller scrolle for å nå knappene.
 
 ## Plan
 
-Endre kun `src/components/resources/ChecklistExecutionDialog.tsx` (frontend/presentasjon):
+Endre kun `src/components/SignatureDrawerDialog.tsx` (frontend, ingen logikk-endring i lagring eller storage).
 
-### 1. Behandle PDF som egen modus
-Utvid `getFileMode()` til å returnere `"pdf" | "image" | "document" | null`. PDF får dedikert rendering.
+1. **Felles vertikal layout** på mobil og desktop: header øverst, canvas i midten, footer nederst. Drop `isMobile`-grenen som setter `flex-row` og roterer header/footer.
+2. **Viewport-bundet høyde**: container bruker `h-[100dvh]` + `pt-[env(safe-area-inset-top)]` + `pb-[env(safe-area-inset-bottom)]` slik at iOS-adressefelt og hjemmeindikator ikke skjuler innholdet.
+3. **Canvas fyller midten uten å overflowe**: `<div className="flex-1 min-h-0 p-4">` rundt canvas, canvas selv `w-full h-full`.
+4. **Fjern canvas-rotering på lagring**: slett `rotateCanvasForSave`-funksjonen og `isMobile`-grenen i `handleSave`. Signaturen lagres nå i samme orientering som tegnet (portrett).
+5. **Footer alltid synlig**: horisontal rad nederst med Tøm + Angre til venstre og Lagre til høyre, alle med tekstetiketter også på mobil.
 
-### 2. Render PDF inline i dialogen
-For `fileMode === "pdf"`:
-- Bruk `<iframe src={fileUrl} className="w-full h-[60vh] rounded-lg border" title="Sjekkliste PDF" />` slik at PDF-en vises direkte uten å forlate appen.
-- Behold «Åpne i ny fane»-knapp som sekundær handling for de som vil ha større visning.
-- iOS Safari rendrer PDF i iframe inline (i motsetning til `window.open` på en `Content-Disposition: attachment`-URL som tvinger nedlasting).
-
-### 3. Be Supabase om inline-visning der mulig
-Når vi genererer signed URL, legg til `?download=` parameter fjernet og bruk `transform`-fri kall – men viktigste fix er at PDF-rendering skjer via `<iframe>`, ikke `window.open`.
-
-### 4. Reload-stabilitet
-Sett iframe `key={fileUrl}` slik at Safari-reload ikke beholder gammel state, og clear `fileUrl` ved dialog-close (allerede gjort ved tab-change, må også ved `onOpenChange(false)`).
-
-### Andre filtyper
-- `image` – uendret (vises allerede inline).
-- `document` (Word/Excel/etc.) – uendret, fortsatt «Åpne dokument»-knapp (kan ikke renderes inline uansett).
-
-## Teknisk notat
-
-- Ingen endringer i edge functions, DB eller storage policies.
-- Ingen endringer i opplastings-/upload-flyten.
-- Kun frontend i én fil: `ChecklistExecutionDialog.tsx`.
-- Behold eksisterende «Marker som utført»-knapp under PDF-en.
+Ingen endringer i edge functions, DB, storage-bucket eller andre komponenter. `useIsMobile`-import fjernes hvis den ikke lenger brukes.
