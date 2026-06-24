@@ -82,7 +82,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         checklistIds.find((id) => !completedChecklistIds.has(id)) ?? checklistIds[0];
       setActiveChecklistId(firstIncomplete);
       setCheckedByTab({});
-      setManuallyCompleted(false);
+      setPdfNumPages(0);
     }
     prevOpenRef.current = open;
   }, [open]);
