@@ -5,13 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
 import { CheckCircle2, Circle, ClipboardCheck, ImageIcon, FileText, ExternalLink, AlertTriangle } from "lucide-react";
 
-type FileMode = "image" | "document" | null;
+type FileMode = "image" | "pdf" | "document" | null;
 
 const getFileMode = (fileName: string | null | undefined, fileUrl: string | null | undefined): FileMode => {
   const source = (fileName || fileUrl || "").toLowerCase();
   const ext = source.split('.').pop()?.split('?')[0];
   if (!ext) return null;
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return "image";
+  if (ext === 'pdf') return "pdf";
   return "document";
 };
 
@@ -260,6 +261,26 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     className="w-full h-auto cursor-pointer"
                     onClick={() => window.open(fileUrl!, '_blank')}
                   />
+                </div>
+              ) : fileMode === "pdf" ? (
+                <div className="space-y-2">
+                  <div className="rounded-lg border overflow-hidden bg-muted/20">
+                    <iframe
+                      key={fileUrl}
+                      src={fileUrl!}
+                      title={checklistTitles[activeChecklistId] || "Sjekkliste PDF"}
+                      className="w-full h-[60vh] bg-white"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => window.open(fileUrl!, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Åpne i ny fane
+                  </Button>
                 </div>
               ) : (
                 <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
