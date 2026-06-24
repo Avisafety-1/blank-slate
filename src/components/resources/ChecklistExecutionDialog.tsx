@@ -174,7 +174,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   };
 
   const allItemsChecked = isFileMode
-    ? manuallyCompleted
+    ? true
     : items.length > 0 && checkedItems.size === items.length;
   const checkedCount = checkedItems.size;
   const totalCount = items.length;
