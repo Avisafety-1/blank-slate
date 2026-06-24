@@ -4,7 +4,6 @@ import { X, Undo2, Trash2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SignatureDrawerDialogProps {
   open: boolean;
@@ -19,7 +18,6 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
   const [history, setHistory] = useState<ImageData[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const { user } = useAuth();
-  const isMobile = useIsMobile();
 
   const saveToHistory = useCallback(() => {
     const canvas = canvasRef.current;
@@ -54,7 +52,6 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
 
   useEffect(() => {
     if (open) {
-      // Delay to ensure container is rendered
       setTimeout(initCanvas, 50);
     }
   }, [open, initCanvas]);
@@ -64,7 +61,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
-    
+
     if ("touches" in e) {
       const touch = e.touches[0];
       return {
@@ -125,33 +122,14 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     initCanvas();
   };
 
-  // Rotate canvas 90 degrees clockwise for correct orientation
-  const rotateCanvasForSave = (sourceCanvas: HTMLCanvasElement): HTMLCanvasElement => {
-    const rotatedCanvas = document.createElement('canvas');
-    rotatedCanvas.width = sourceCanvas.height;
-    rotatedCanvas.height = sourceCanvas.width;
-    
-    const ctx = rotatedCanvas.getContext('2d');
-    if (ctx) {
-      ctx.translate(rotatedCanvas.width, 0);
-      ctx.rotate(Math.PI / 2);
-      ctx.drawImage(sourceCanvas, 0, 0);
-    }
-    
-    return rotatedCanvas;
-  };
-
   const handleSave = async () => {
     const canvas = canvasRef.current;
     if (!canvas || !user) return;
 
     setIsSaving(true);
     try {
-      // On mobile, rotate the signature back to normal orientation
-      const canvasToSave = isMobile ? rotateCanvasForSave(canvas) : canvas;
-      
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvasToSave.toBlob(resolve, "image/png")
+        canvas.toBlob(resolve, "image/png")
       );
 
       if (!blob) {
@@ -175,7 +153,6 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
         .from("signatures")
         .getPublicUrl(fileName);
 
-      // Update profile with signature URL
       const { error: updateError } = await (supabase as any)
         .from("profiles")
         .update({ signature_url: urlData.publicUrl })
@@ -199,29 +176,30 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
   if (!open) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 bg-background flex ${isMobile ? 'flex-row' : 'flex-col'}`}>
-      {/* Header - rotated on mobile */}
-      <div className={`flex items-center justify-between border-border bg-background ${
-        isMobile 
-          ? 'flex-col w-14 h-full border-r p-2' 
-          : 'flex-row p-4 border-b'
-      }`}>
-        <h2 className={`font-semibold ${isMobile ? 'text-sm writing-mode-vertical rotate-180' : 'text-lg'}`}>
-          Tegn signatur
-        </h2>
+    <div
+      className="fixed inset-0 z-50 bg-background flex flex-col"
+      style={{
+        height: "100dvh",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border bg-background p-4 flex-shrink-0">
+        <h2 className="font-semibold text-lg">Tegn signatur</h2>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-5 w-5" />
         </Button>
       </div>
 
-      {/* Canvas container */}
-      <div 
+      {/* Canvas */}
+      <div
         ref={containerRef}
-        className="flex-1 p-4 bg-muted"
+        className="flex-1 min-h-0 p-4 bg-muted"
       >
         <canvas
           ref={canvasRef}
-          className="w-full h-full rounded-lg border-2 border-dashed border-muted-foreground/30 touch-none cursor-crosshair"
+          className="w-full h-full rounded-lg border-2 border-dashed border-muted-foreground/30 touch-none cursor-crosshair bg-white"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -232,35 +210,26 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
         />
       </div>
 
-      {/* Footer with actions - rotated on mobile */}
-      <div className={`flex items-center justify-between border-border bg-background ${
-        isMobile 
-          ? 'flex-col-reverse w-auto h-full border-l p-2 gap-2' 
-          : 'flex-row p-4 border-t'
-      }`}>
-        <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} gap-2`}>
-          <Button variant="outline" size={isMobile ? "icon" : "sm"} onClick={handleClear}>
-            <Trash2 className="h-4 w-4" />
-            {!isMobile && <span className="ml-2">Tøm</span>}
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-2 border-t border-border bg-background p-4 flex-shrink-0">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleClear}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Tøm
           </Button>
-          <Button 
-            variant="outline" 
-            size={isMobile ? "icon" : "sm"} 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleUndo}
             disabled={history.length === 0}
           >
-            <Undo2 className="h-4 w-4" />
-            {!isMobile && <span className="ml-2">Angre</span>}
+            <Undo2 className="h-4 w-4 mr-2" />
+            Angre
           </Button>
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={isSaving}
-          size={isMobile ? "icon" : "default"}
-          className={isMobile ? "w-10 h-10" : ""}
-        >
-          <Save className="h-4 w-4" />
-          {!isMobile && <span className="ml-2">{isSaving ? "Lagrer..." : "Lagre signatur"}</span>}
+        <Button onClick={handleSave} disabled={isSaving}>
+          <Save className="h-4 w-4 mr-2" />
+          {isSaving ? "Lagrer..." : "Lagre"}
         </Button>
       </div>
     </div>
