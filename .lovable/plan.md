@@ -1,19 +1,27 @@
 ## Problem
 
-På iPhone 13 Pro bruker `SignatureDrawerDialog` en rotert «landskaps»-layout på mobil (`flex-row` med vertikal header til venstre og vertikal footer til høyre). Resultatet:
-
-- Footeren med Tøm/Angre/Lagre-knappene havner utenfor synlig område.
-- Canvas-en virker enorm fordi den fyller hele bredden uten å regne med adressefelt/safe-area.
-- Brukeren kan ikke zoome eller scrolle for å nå knappene.
+1. **PDF-sjekkliste vises som blank/hvit** i dialogen på mobil. `<iframe>`-rendering av PDF fungerer ikke pålitelig på Android Chrome eller iOS in-app browsere.
+2. **To knapper for å markere som utført**: «Marker som utført» (inni file-content) og «Marker sjekklisten som utført» (footer). Brukeren vil bare ha den nederste.
 
 ## Plan
 
-Endre kun `src/components/SignatureDrawerDialog.tsx` (frontend, ingen logikk-endring i lagring eller storage).
+Endre kun `src/components/resources/ChecklistExecutionDialog.tsx` + installere én avhengighet.
 
-1. **Felles vertikal layout** på mobil og desktop: header øverst, canvas i midten, footer nederst. Drop `isMobile`-grenen som setter `flex-row` og roterer header/footer.
-2. **Viewport-bundet høyde**: container bruker `h-[100dvh]` + `pt-[env(safe-area-inset-top)]` + `pb-[env(safe-area-inset-bottom)]` slik at iOS-adressefelt og hjemmeindikator ikke skjuler innholdet.
-3. **Canvas fyller midten uten å overflowe**: `<div className="flex-1 min-h-0 p-4">` rundt canvas, canvas selv `w-full h-full`.
-4. **Fjern canvas-rotering på lagring**: slett `rotateCanvasForSave`-funksjonen og `isMobile`-grenen i `handleSave`. Signaturen lagres nå i samme orientering som tegnet (portrett).
-5. **Footer alltid synlig**: horisontal rad nederst med Tøm + Angre til venstre og Lagre til høyre, alle med tekstetiketter også på mobil.
+### 1. Render PDF inline med react-pdf
+- `bun add react-pdf` (bruker `pdfjs-dist` under panseret).
+- Sett opp pdf.js worker fra CDN: `pdfjs.GlobalWorkerOptions.workerSrc = ...`.
+- I `fileMode === "pdf"`-grenen, erstatt `<iframe>` med:
+  ```tsx
+  <Document file={fileUrl} loading={<p>Laster PDF...</p>}>
+    {pages.map(n => <Page key={n} pageNumber={n} width={containerWidth} />)}
+  </Document>
+  ```
+- Mål container-bredden via ref, slik at sidene fyller dialogen.
+- Behold «Åpne i ny fane»-knappen som sekundær handling.
 
-Ingen endringer i edge functions, DB, storage-bucket eller andre komponenter. `useIsMobile`-import fjernes hvis den ikke lenger brukes.
+### 2. Fjern duplikat-knappen
+- Slett den indre `Marker som utført`-knappen (linje 282-298) og `manuallyCompleted`-state.
+- Endre `allItemsChecked`-betingelsen: `isFileMode ? true : items.length > 0 && checkedItems.size === items.length`.
+- Footer-knappen «Marker sjekklisten som utført» er da aktiv umiddelbart for file/PDF/image-sjekklister og fullfører direkte.
+
+Ingen endringer i backend, edge functions eller DB.

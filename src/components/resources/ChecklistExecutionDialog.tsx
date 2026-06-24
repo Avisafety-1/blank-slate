@@ -2,8 +2,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useRef } from "react";
-import { CheckCircle2, Circle, ClipboardCheck, ImageIcon, FileText, ExternalLink, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTriangle, Loader2 } from "lucide-react";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+
+// Configure pdf.js worker from CDN (matches installed pdfjs-dist version)
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 type FileMode = "image" | "pdf" | "document" | null;
 
@@ -60,7 +66,9 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const [fileMode, setFileMode] = useState<FileMode>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [manuallyCompleted, setManuallyCompleted] = useState(false);
+  const [pdfNumPages, setPdfNumPages] = useState<number>(0);
+  const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(0);
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
 
   const completedChecklistIds = new Set(completedIds);
   const checkedItems: Set<string> = checkedByTab[activeChecklistId] ?? new Set();
@@ -74,7 +82,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         checklistIds.find((id) => !completedChecklistIds.has(id)) ?? checklistIds[0];
       setActiveChecklistId(firstIncomplete);
       setCheckedByTab({});
-      setManuallyCompleted(false);
+      setPdfNumPages(0);
     }
     prevOpenRef.current = open;
   }, [open]);
@@ -105,7 +113,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
       setFileMode(null);
       setFileName(null);
       setLoadError(null);
-      setManuallyCompleted(false);
+      setPdfNumPages(0);
       try {
         const { data, error } = await supabase
           .from("documents")
@@ -156,6 +164,19 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     setActiveChecklistId(newId);
   };
 
+  // Measure PDF container width for react-pdf rendering
+  useLayoutEffect(() => {
+    if (fileMode !== "pdf") return;
+    const measure = () => {
+      if (pdfContainerRef.current) {
+        setPdfContainerWidth(pdfContainerRef.current.clientWidth);
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [fileMode, fileUrl]);
+
   const handleToggleItem = (itemId: string) => {
     setCheckedByTab((prev) => {
       const current = new Set(prev[activeChecklistId] ?? []);
@@ -166,7 +187,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   };
 
   const allItemsChecked = isFileMode
-    ? manuallyCompleted
+    ? true
     : items.length > 0 && checkedItems.size === items.length;
   const checkedCount = checkedItems.size;
   const totalCount = items.length;
@@ -264,13 +285,35 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 </div>
               ) : fileMode === "pdf" ? (
                 <div className="space-y-2">
-                  <div className="rounded-lg border overflow-hidden bg-muted/20">
-                    <iframe
-                      key={fileUrl}
-                      src={fileUrl!}
-                      title={checklistTitles[activeChecklistId] || "Sjekkliste PDF"}
-                      className="w-full h-[60vh] bg-white"
-                    />
+                  <div
+                    ref={pdfContainerRef}
+                    className="rounded-lg border overflow-hidden bg-muted/20"
+                  >
+                    <Document
+                      file={fileUrl!}
+                      onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
+                      onLoadError={(err) => {
+                        console.error("[ChecklistExecutionDialog] PDF load failed:", err);
+                        setLoadError("Kunne ikke laste PDF. Prøv å åpne i ny fane.");
+                      }}
+                      loading={
+                        <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="text-sm">Laster PDF...</span>
+                        </div>
+                      }
+                    >
+                      {Array.from({ length: pdfNumPages }, (_, i) => (
+                        <Page
+                          key={i + 1}
+                          pageNumber={i + 1}
+                          width={pdfContainerWidth || undefined}
+                          renderTextLayer={false}
+                          renderAnnotationLayer={false}
+                          className="border-b last:border-b-0"
+                        />
+                      ))}
+                    </Document>
                   </div>
                   <Button
                     variant="outline"
@@ -299,23 +342,6 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                   </Button>
                 </div>
               )}
-              <Button
-                variant={manuallyCompleted ? "default" : "outline"}
-                className="w-full gap-2"
-                onClick={() => setManuallyCompleted(!manuallyCompleted)}
-              >
-                {manuallyCompleted ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Markert som utført
-                  </>
-                ) : (
-                  <>
-                    <ImageIcon className="w-4 h-4" />
-                    Marker som utført
-                  </>
-                )}
-              </Button>
             </div>
           ) : loadError ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-center px-4">
