@@ -272,13 +272,35 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 </div>
               ) : fileMode === "pdf" ? (
                 <div className="space-y-2">
-                  <div className="rounded-lg border overflow-hidden bg-muted/20">
-                    <iframe
-                      key={fileUrl}
-                      src={fileUrl!}
-                      title={checklistTitles[activeChecklistId] || "Sjekkliste PDF"}
-                      className="w-full h-[60vh] bg-white"
-                    />
+                  <div
+                    ref={pdfContainerRef}
+                    className="rounded-lg border overflow-hidden bg-muted/20"
+                  >
+                    <Document
+                      file={fileUrl!}
+                      onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
+                      onLoadError={(err) => {
+                        console.error("[ChecklistExecutionDialog] PDF load failed:", err);
+                        setLoadError("Kunne ikke laste PDF. Prøv å åpne i ny fane.");
+                      }}
+                      loading={
+                        <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="text-sm">Laster PDF...</span>
+                        </div>
+                      }
+                    >
+                      {Array.from({ length: pdfNumPages }, (_, i) => (
+                        <Page
+                          key={i + 1}
+                          pageNumber={i + 1}
+                          width={pdfContainerWidth || undefined}
+                          renderTextLayer={false}
+                          renderAnnotationLayer={false}
+                          className="border-b last:border-b-0"
+                        />
+                      ))}
+                    </Document>
                   </div>
                   <Button
                     variant="outline"
@@ -307,23 +329,6 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                   </Button>
                 </div>
               )}
-              <Button
-                variant={manuallyCompleted ? "default" : "outline"}
-                className="w-full gap-2"
-                onClick={() => setManuallyCompleted(!manuallyCompleted)}
-              >
-                {manuallyCompleted ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    Markert som utført
-                  </>
-                ) : (
-                  <>
-                    <ImageIcon className="w-4 h-4" />
-                    Marker som utført
-                  </>
-                )}
-              </Button>
             </div>
           ) : loadError ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-center px-4">
