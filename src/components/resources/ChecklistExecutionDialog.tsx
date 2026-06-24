@@ -262,6 +262,26 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={() => window.open(fileUrl!, '_blank')}
                   />
                 </div>
+              ) : fileMode === "pdf" ? (
+                <div className="space-y-2">
+                  <div className="rounded-lg border overflow-hidden bg-muted/20">
+                    <iframe
+                      key={fileUrl}
+                      src={fileUrl!}
+                      title={checklistTitles[activeChecklistId] || "Sjekkliste PDF"}
+                      className="w-full h-[60vh] bg-white"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => window.open(fileUrl!, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Åpne i ny fane
+                  </Button>
+                </div>
               ) : (
                 <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
                   <FileText className="w-12 h-12 text-primary" />
