@@ -164,6 +164,19 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     setActiveChecklistId(newId);
   };
 
+  // Measure PDF container width for react-pdf rendering
+  useLayoutEffect(() => {
+    if (fileMode !== "pdf") return;
+    const measure = () => {
+      if (pdfContainerRef.current) {
+        setPdfContainerWidth(pdfContainerRef.current.clientWidth);
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [fileMode, fileUrl]);
+
   const handleToggleItem = (itemId: string) => {
     setCheckedByTab((prev) => {
       const current = new Set(prev[activeChecklistId] ?? []);
