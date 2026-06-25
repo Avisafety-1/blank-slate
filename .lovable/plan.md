@@ -1,73 +1,94 @@
 ## Mål
-På mobil skal tegnefeltet i `SignatureDrawerDialog` vises rotert 90° (landskap) selv om telefonen holdes vertikalt. Brukeren tegner sidelengs uten å snu telefonen, og signaturen lagres som et normalt liggende bilde. Skal tilpasse seg ulike skjermstørrelser (iPhone 13 Pro, iPhone SE, Pro Max osv.).
+1. Forbedre DOCX-visningen i sjekkliste-dialogen så den ser penere ut (overskrifter, lister, tabeller, fet/kursiv, riktig avstand).
+2. "Åpne"-knappen skal tvinge nedlasting når filen ikke kan vises i nettleseren (.docx, .doc, .xlsx, .pptx, osv.). PDF og bilder skal fortsatt åpnes i ny fane som før.
 
-## Endringer (kun `src/components/SignatureDrawerDialog.tsx`)
+## Endringer (kun `src/components/resources/ChecklistExecutionDialog.tsx`)
 
-### 1. Oppdage mobil
-Bruk eksisterende `useIsMobile()` fra `@/hooks/use-mobile` for å vite om vi skal rotere. Desktop/tablet (≥ 768px) beholder dagens layout.
+### 1. Bedre mammoth-konvertering
+Bytt `convertToHtml({ arrayBuffer })` til en variant med eksplisitt styleMap som mapper Word-stiler til semantiske HTML-tagger:
 
-### 2. Rotert canvas-container på mobil
-Inne i `flex-1`-området:
-- En ytre wrapper måler tilgjengelig høyde og bredde via `ResizeObserver` (eller `getBoundingClientRect` på containeren etter mount/resize).
-- En indre wrapper som inneholder canvas får CSS `transform: rotate(-90deg)` og bytter bredde/høyde:
-  - `width  = containerHøyde`
-  - `height = containerBredde`
-  - `transformOrigin: "center center"`
-- Canvas-elementet får `width = containerHøyde` og `height = containerBredde` (logiske piksler), slik at det fyller hele det roterte området. Bruk `devicePixelRatio` for skarp tegning (sett `canvas.width = cssW * dpr`, `canvas.height = cssH * dpr`, `ctx.scale(dpr, dpr)`).
-- Resultatet: brukeren ser et bredt landskaps-lerret som dekker hele dialogens innhold-område.
-
-### 3. Justere koordinatberegning for berøring
-`getCoordinates` må kompensere for rotasjonen når `isMobile === true`:
-- Hent `rect = canvas.getBoundingClientRect()` (rect-en er allerede den synlig-roterte boksen).
-- Beregn lokal posisjon ved å bruke rotasjonsmatrise:
-  - `localX = (clientY - rect.top)`
-  - `localY = (rect.right - clientX)`
-  (dvs. -90° rotasjon → tegnekoordinater i canvasens eget koordinatsystem)
-- Del på `dpr` ikke nødvendig hvis vi bruker `ctx.scale(dpr, dpr)`.
-
-### 4. Lagring – bilde i landskap
-- Når `isMobile`, lagres canvas direkte (det er allerede et bredt landskaps-bilde i sin egen referanseramme). Ingen ekstra rotering ved blob-export – `toBlob` returnerer korrekt orientert PNG.
-- Eksisterende upload-flyt til `signatures`-bucket og `profiles.signature_url` er uendret.
-
-### 5. Re-init ved resize / orientation change
-- Legg til `window.addEventListener('resize', initCanvas)` og fjern i cleanup.
-- Bevar `useEffect` på `open` for første init.
-- Når størrelsen endres mister vi tegningen (akseptabelt – samme som i dag ved orientering).
-
-### 6. UI-tips på mobil
-Liten tekst over lerretet på mobil: "Tegn signaturen din sidelengs". På desktop vises ingen ekstra tekst.
-
-### 7. Header/footer-knapper
-Uendret. "Tøm", "Angre" og "Lagre" beholdes nederst i normal portrett-orientering.
-
-## Teknisk skisse
-
+```ts
+const result = await mammoth.convertToHtml(
+  { arrayBuffer },
+  {
+    styleMap: [
+      "p[style-name='Title'] => h1.docx-title:fresh",
+      "p[style-name='Subtitle'] => h2.docx-subtitle:fresh",
+      "p[style-name='Heading 1'] => h2:fresh",
+      "p[style-name='Heading 2'] => h3:fresh",
+      "p[style-name='Heading 3'] => h4:fresh",
+      "p[style-name='Heading 4'] => h5:fresh",
+      "p[style-name='Quote'] => blockquote:fresh",
+      "p[style-name='List Paragraph'] => p.docx-list-p:fresh",
+      "r[style-name='Strong'] => strong",
+      "r[style-name='Emphasis'] => em",
+      "b => strong",
+      "i => em",
+      "u => u",
+    ],
+    includeDefaultStyleMap: true,
+    ignoreEmptyParagraphs: false,
+  },
+);
 ```
-+------------------ dialog (portrait) ------------------+
-| Header                                                |
-+-------------------------------------------------------+
-|   outer (flex-1, padding, måler w×h)                  |
-|   ┌─────────────────────────────────────────────┐     |
-|   │  rotated wrapper                            │     |
-|   │  width=h, height=w, transform: rotate(-90)  │     |
-|   │  ┌───────────────────────────────────────┐  │     |
-|   │  │           canvas (bred, lav)          │  │     |
-|   │  └───────────────────────────────────────┘  │     |
-|   └─────────────────────────────────────────────┘     |
-+-------------------------------------------------------+
-| Footer (Tøm / Angre / Lagre)                          |
-+-------------------------------------------------------+
+
+### 2. Innpakning med eget CSS-skop
+Render konvertert HTML inne i en `<div className="docx-content prose prose-sm dark:prose-invert max-w-none">` og legg en liten `<style>`-blokk (eller Tailwind-klasser) som gir:
+- Tabeller: full bredde, `border-collapse`, tynne grå border, padding i celler, striped header
+- Bilder: `max-w-full h-auto rounded`
+- Lister: korrekt indent og avstand
+- Headings: tydeligere størrelse + margin
+- Avsnitt: leselig `line-height` og avstand
+- Bryt lange ord (`break-words`) og scroll horisontalt på smale skjermer for brede tabeller
+
+CSS legges som en lokal `<style>`-tag scoped via `.docx-content` (ingen global påvirkning).
+
+### 3. "Åpne"-knappen tvinger nedlasting for ikke-viseable filer
+
+Lag en hjelper:
+```ts
+const isBrowserViewable = (mode: FileMode) => mode === "image" || mode === "pdf";
+
+const handleOpenFile = async () => {
+  if (!fileUrl) return;
+  if (isBrowserViewable(fileMode)) {
+    window.open(fileUrl, "_blank");
+    return;
+  }
+  // Tving nedlasting via blob + <a download> for docx/doc/document
+  try {
+    const res = await fetch(fileUrl);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName || "sjekkliste";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    // Fallback: vanlig åpne
+    window.open(fileUrl, "_blank");
+  }
+};
 ```
+
+Bruk `handleOpenFile` på begge knappene i `docx`-grenen og den generelle `document`-grenen. Bytt ikon til `Download` og tekst til "Last ned" når `!isBrowserViewable(fileMode)`. PDF/bilde-grenen beholder dagens "Åpne i ny fane".
+
+### 4. Berørte UI-strenger
+- DOCX-fane: knappen blir "Last ned dokument" (ikon: Download).
+- Ukjent-dokument-fane: knappen blir "Last ned sjekkliste" (ikon: Download).
+- PDF/image: uendret.
 
 ## Hva vi IKKE rører
-- `SignaturePad.tsx` (knappene utenfor)
-- Storage policies / upload-logikk
-- Profil-update-kall
-- Desktop-visning (bredt felt som før)
+- Sjekkliste-logikk, sjekkboks-state, PDF-pinch-zoom, signering, lagring.
+- Andre dialoger / komponenter.
+- Storage policies eller backend.
 
 ## Verifisering
-1. Åpne profil på iPhone 13 Pro (390×844), iPhone SE (375×667) og Pro Max (430×932) i preview-mobil-viewport. Bekreft at lerretet fyller området og er rotert.
-2. Tegn med finger – streken følger fingeren naturlig sidelengs.
-3. Trykk Angre/Tøm – fungerer.
-4. Trykk Lagre – sjekk at signaturen lastes opp og vises riktig vei i profilen.
-5. Sjekk desktop (≥ 768px) – uendret oppførsel.
+1. Åpne en .docx-sjekkliste — bekreft pen visning (overskrifter, lister, tabeller med border, bilder skalert).
+2. Klikk "Last ned dokument" — bekreft at filen lastes ned med riktig filnavn (ikke åpnes i ny fane).
+3. Åpne en PDF — knappen åpner fortsatt i ny fane.
+4. Åpne et bilde — uendret.
+5. Sjekk mørkt tema — tekst og borders er leselige.
