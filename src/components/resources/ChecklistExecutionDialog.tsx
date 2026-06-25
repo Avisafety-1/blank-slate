@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTriangle, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTriangle, Loader2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -71,6 +71,12 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
   const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(0);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const pdfViewportRef = useRef<HTMLDivElement>(null);
+  const [pdfScale, setPdfScale] = useState<number>(1);
+  const [pdfOffset, setPdfOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const gestureRef = useRef<{ startDist: number; startScale: number; startOffset: { x: number; y: number }; startMid: { x: number; y: number } } | null>(null);
+  const panRef = useRef<{ startX: number; startY: number; startOffset: { x: number; y: number } } | null>(null);
   const [docxHtml, setDocxHtml] = useState<string | null>(null);
   const [docxLoading, setDocxLoading] = useState(false);
 
@@ -180,6 +186,95 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [fileMode, fileUrl]);
+
+  // Reset zoom/pan when PDF changes
+  useEffect(() => {
+    setPdfScale(1);
+    setPdfOffset({ x: 0, y: 0 });
+    pointersRef.current.clear();
+    gestureRef.current = null;
+    panRef.current = null;
+  }, [fileUrl, fileMode]);
+
+  const clampScale = (s: number) => Math.min(5, Math.max(0.5, s));
+
+  const applyScale = (next: number, focal?: { x: number; y: number }) => {
+    const ns = clampScale(next);
+    setPdfScale((prev) => {
+      if (focal && pdfViewportRef.current) {
+        const rect = pdfViewportRef.current.getBoundingClientRect();
+        const fx = focal.x - rect.left;
+        const fy = focal.y - rect.top;
+        setPdfOffset((o) => {
+          // keep focal point stable: new_offset = focal - (focal - old_offset) * (ns/prev)
+          const ratio = ns / prev;
+          const nx = fx - (fx - o.x) * ratio;
+          const ny = fy - (fy - o.y) * ratio;
+          return ns <= 1.001 ? { x: 0, y: 0 } : { x: nx, y: ny };
+        });
+      } else if (ns <= 1.001) {
+        setPdfOffset({ x: 0, y: 0 });
+      }
+      return ns;
+    });
+  };
+
+  const handlePdfPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = Array.from(pointersRef.current.values());
+    if (pts.length === 2) {
+      const dx = pts[0].x - pts[1].x;
+      const dy = pts[0].y - pts[1].y;
+      gestureRef.current = {
+        startDist: Math.hypot(dx, dy) || 1,
+        startScale: pdfScale,
+        startOffset: { ...pdfOffset },
+        startMid: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 },
+      };
+      panRef.current = null;
+    } else if (pts.length === 1 && pdfScale > 1) {
+      panRef.current = { startX: e.clientX, startY: e.clientY, startOffset: { ...pdfOffset } };
+    }
+  };
+
+  const handlePdfPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = Array.from(pointersRef.current.values());
+    if (pts.length === 2 && gestureRef.current) {
+      const dx = pts[0].x - pts[1].x;
+      const dy = pts[0].y - pts[1].y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const ratio = dist / gestureRef.current.startDist;
+      const ns = clampScale(gestureRef.current.startScale * ratio);
+      if (pdfViewportRef.current) {
+        const rect = pdfViewportRef.current.getBoundingClientRect();
+        const fx = gestureRef.current.startMid.x - rect.left;
+        const fy = gestureRef.current.startMid.y - rect.top;
+        const r = ns / gestureRef.current.startScale;
+        const nx = fx - (fx - gestureRef.current.startOffset.x) * r;
+        const ny = fy - (fy - gestureRef.current.startOffset.y) * r;
+        setPdfScale(ns);
+        setPdfOffset(ns <= 1.001 ? { x: 0, y: 0 } : { x: nx, y: ny });
+      }
+    } else if (pts.length === 1 && panRef.current && pdfScale > 1) {
+      const dx = e.clientX - panRef.current.startX;
+      const dy = e.clientY - panRef.current.startY;
+      setPdfOffset({ x: panRef.current.startOffset.x + dx, y: panRef.current.startOffset.y + dy });
+    }
+  };
+
+  const handlePdfPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) gestureRef.current = null;
+    if (pointersRef.current.size === 0) panRef.current = null;
+  };
+
+  const resetPdfZoom = () => {
+    setPdfScale(1);
+    setPdfOffset({ x: 0, y: 0 });
+  };
 
   // Convert .docx to HTML in browser using mammoth
   useEffect(() => {
@@ -318,33 +413,64 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <div className="space-y-2">
                   <div
                     ref={pdfContainerRef}
-                    className="rounded-lg border overflow-hidden bg-muted/20"
+                    className="relative rounded-lg border overflow-hidden bg-muted/20"
                   >
-                    <Document
-                      file={fileUrl!}
-                      onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
-                      onLoadError={(err) => {
-                        console.error("[ChecklistExecutionDialog] PDF load failed:", err);
-                        setLoadError("Kunne ikke laste PDF. Prøv å åpne i ny fane.");
-                      }}
-                      loading={
-                        <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span className="text-sm">Laster PDF...</span>
-                        </div>
-                      }
+                    {/* Zoom controls */}
+                    <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md bg-background/90 backdrop-blur border shadow-sm p-1">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale - 0.25)} aria-label="Zoom ut">
+                        <ZoomOut className="h-4 w-4" />
+                      </Button>
+                      <span className="text-xs tabular-nums w-10 text-center">{Math.round(pdfScale * 100)}%</span>
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale + 0.25)} aria-label="Zoom inn">
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={resetPdfZoom} aria-label="Nullstill zoom">
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div
+                      ref={pdfViewportRef}
+                      className="overflow-hidden"
+                      style={{ touchAction: "none", WebkitUserSelect: "none", userSelect: "none" }}
+                      onPointerDown={handlePdfPointerDown}
+                      onPointerMove={handlePdfPointerMove}
+                      onPointerUp={handlePdfPointerUp}
+                      onPointerCancel={handlePdfPointerUp}
                     >
-                      {Array.from({ length: pdfNumPages }, (_, i) => (
-                        <Page
-                          key={i + 1}
-                          pageNumber={i + 1}
-                          width={pdfContainerWidth || undefined}
-                          renderTextLayer={false}
-                          renderAnnotationLayer={false}
-                          className="border-b last:border-b-0"
-                        />
-                      ))}
-                    </Document>
+                      <div
+                        style={{
+                          transform: `translate(${pdfOffset.x}px, ${pdfOffset.y}px) scale(${pdfScale})`,
+                          transformOrigin: "0 0",
+                          width: "100%",
+                        }}
+                      >
+                        <Document
+                          file={fileUrl!}
+                          onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
+                          onLoadError={(err) => {
+                            console.error("[ChecklistExecutionDialog] PDF load failed:", err);
+                            setLoadError("Kunne ikke laste PDF. Prøv å åpne i ny fane.");
+                          }}
+                          loading={
+                            <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span className="text-sm">Laster PDF...</span>
+                            </div>
+                          }
+                        >
+                          {Array.from({ length: pdfNumPages }, (_, i) => (
+                            <Page
+                              key={i + 1}
+                              pageNumber={i + 1}
+                              width={pdfContainerWidth || undefined}
+                              renderTextLayer={false}
+                              renderAnnotationLayer={false}
+                              className="border-b last:border-b-0"
+                            />
+                          ))}
+                        </Document>
+                      </div>
+                    </div>
                   </div>
                   <Button
                     variant="outline"
