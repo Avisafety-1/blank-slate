@@ -207,13 +207,14 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
 
   if (!open) return null;
 
-  return (
+  const content = (
     <div
-      className="fixed inset-0 z-50 bg-background flex flex-col"
+      className="fixed inset-0 z-[100] bg-background flex flex-col"
       style={{
         height: "100dvh",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
+        overscrollBehavior: "contain",
       }}
     >
       {/* Header */}
@@ -225,7 +226,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
       </div>
 
       {isMobile && (
-        <div className="px-4 pt-2 text-center text-xs text-muted-foreground flex-shrink-0">
+        <div className="px-4 pt-1 pb-1 text-center text-xs text-muted-foreground flex-shrink-0">
           Tegn signaturen din sidelengs
         </div>
       )}
@@ -233,7 +234,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 p-4 bg-muted relative overflow-hidden"
+        className="flex-1 min-h-0 p-2 sm:p-4 bg-muted relative overflow-hidden"
       >
         {isMobile ? (
           <div
@@ -277,11 +278,11 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between gap-2 border-t border-border bg-background p-4 flex-shrink-0">
+      <div className="flex items-center justify-between gap-2 border-t border-border bg-background p-3 sm:p-4 flex-shrink-0">
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleClear}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Tøm
+            <Trash2 className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Tøm</span>
           </Button>
           <Button
             variant="outline"
@@ -289,15 +290,17 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
             onClick={handleUndo}
             disabled={history.length === 0}
           >
-            <Undo2 className="h-4 w-4 mr-2" />
-            Angre
+            <Undo2 className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Angre</span>
           </Button>
         </div>
-        <Button onClick={handleSave} disabled={isSaving}>
+        <Button onClick={handleSave} disabled={isSaving} size="sm">
           <Save className="h-4 w-4 mr-2" />
           {isSaving ? "Lagrer..." : "Lagre"}
         </Button>
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
