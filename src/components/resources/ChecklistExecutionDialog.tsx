@@ -327,24 +327,26 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
 
   const isBrowserViewable = (mode: FileMode) => mode === "image" || mode === "pdf";
 
-  const handleOpenFile = async () => {
+  const handleOpenFile = () => {
     if (!fileUrl) return;
     if (isBrowserViewable(fileMode)) {
       window.open(fileUrl, "_blank");
       return;
     }
     try {
-      const res = await fetch(fileUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      // Supabase Storage signed URLs support ?download=<filename> to force
+      // Content-Disposition: attachment server-side. This works cross-origin
+      // and on mobile Safari, unlike the <a download> attribute.
+      const sep = fileUrl.includes("?") ? "&" : "?";
+      const downloadName = encodeURIComponent(fileName || "sjekkliste");
+      const downloadUrl = `${fileUrl}${sep}download=${downloadName}`;
       const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName || "sjekkliste";
+      a.href = downloadUrl;
+      a.rel = "noopener";
+      a.target = "_blank";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       console.error("[ChecklistExecutionDialog] download failed:", err);
       window.open(fileUrl, "_blank");
