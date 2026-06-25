@@ -622,6 +622,77 @@ serve(async (req) => {
         console.error('SAIL post-processing failed:', e);
       }
 
+      // Anti-hallucination guard: scrub fabricated drone models / crew claims when
+      // there is no grounding in previousAnalysis or substantive pilot comments.
+      try {
+        const ACK_ONLY_RE = /^(ok(ay)?|ja|nei|greit|fint|bra|yes|no|fine|good|n\/a|na|none|ingen( kommentar)?|none provided|no comment|\.|-)$/i;
+        const isAck = (v: unknown) => {
+          const s = typeof v === 'string' ? v.trim() : '';
+          return !s || ACK_ONLY_RE.test(s);
+        };
+        const commentsObj = (pilotComments && typeof pilotComments === 'object') ? pilotComments as Record<string, unknown> : {};
+        const substantiveText = Object.entries(commentsObj)
+          .filter(([, v]) => !isAck(v))
+          .map(([, v]) => String(v))
+          .join('\n');
+
+        const prevPrimary = (previousAnalysis as any)?.primaryDrone;
+        const prevAssigned = (previousAnalysis as any)?.assignedDrones;
+        const knownDroneModels: string[] = [];
+        if (prevPrimary?.model) knownDroneModels.push(String(prevPrimary.model));
+        if (Array.isArray(prevAssigned)) {
+          for (const d of prevAssigned) {
+            if (d?.model) knownDroneModels.push(String(d.model));
+          }
+        }
+        const normalizedKnown = knownDroneModels.map(m => m.toLowerCase());
+        const hasKnownDrone = normalizedKnown.length > 0;
+
+        const DRONE_BRAND_RE = /\b(DJI|Autel|Parrot|Skydio|Yuneec|Mavic|Phantom|Matrice|Anafi|Inspire|Air ?2S?|Mini \d|M\d{2,3}[A-Z]*)\b/gi;
+        const scrub = (text: unknown): unknown => {
+          if (typeof text !== 'string') return text;
+          let out = text;
+          const matches = text.match(DRONE_BRAND_RE) || [];
+          for (const m of matches) {
+            const ml = m.toLowerCase();
+            const inKnown = normalizedKnown.some(k => k.includes(ml) || ml.includes(k));
+            const inComments = substantiveText.toLowerCase().includes(ml);
+            if (!inKnown && !inComments) {
+              out = out.replace(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'primærdrone ikke spesifisert');
+            }
+          }
+          return out;
+        };
+
+        const scrubKeys = ['summary', 'conops_summary', 'ground_mitigations', 'airspace_mitigations', 'residual_risk_comment', 'operational_limits'];
+        for (const k of scrubKeys) {
+          if (soraAnalysis[k]) soraAnalysis[k] = scrub(soraAnalysis[k]);
+        }
+        if (soraAnalysis.containment?.fts_note) {
+          soraAnalysis.containment.fts_note = scrub(soraAnalysis.containment.fts_note);
+        }
+
+        // If the initial equipment category had a red/hard-stop and the equipment
+        // comment is acknowledgement-only, do not allow SORA to upgrade to "go".
+        const initEquip = (previousAnalysis as any)?.categories?.equipment;
+        const equipWasRed = initEquip?.status === 'red' || initEquip?.go_decision === 'NO-GO' || initEquip?.go_decision === 'BETINGET';
+        const equipCommentAck = isAck(commentsObj['equipment']);
+        if (equipWasRed && equipCommentAck && soraAnalysis.recommendation === 'go') {
+          console.log('Anti-hallucination guard: forcing recommendation down from "go" because equipment was red and comment is ack-only');
+          soraAnalysis.recommendation = 'caution';
+          if (typeof soraAnalysis.summary === 'string') {
+            soraAnalysis.summary = `Merk: Opprinnelig utstyrsvurdering var rød/betinget og kommentaren ga ingen ny mitigering. Anbefaling nedjustert. ${soraAnalysis.summary}`;
+          }
+        }
+
+        // If primary drone was missing in previousAnalysis, force a note in summary.
+        if (!hasKnownDrone && typeof soraAnalysis.summary === 'string' && !/primærdrone ikke spesifisert/i.test(soraAnalysis.summary)) {
+          soraAnalysis.summary = `${soraAnalysis.summary} Merk: primærdrone er ikke spesifisert i oppdraget.`;
+        }
+      } catch (e) {
+        console.error('Anti-hallucination guard failed (non-blocking):', e);
+      }
+
       console.log('SORA analysis complete:', soraAnalysis.sail, soraAnalysis.residual_risk_level);
 
       const soraOverallScore = normalizeRiskScore(soraAnalysis.overall_score) ?? normalizeRiskScore(previousAnalysis.overall_score);
