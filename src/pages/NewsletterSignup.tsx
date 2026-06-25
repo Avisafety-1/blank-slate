@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Mail, CheckCircle2 } from "lucide-react";
+import { Loader2, Mail, CheckCircle2, ArrowLeft } from "lucide-react";
+import logoText from "@/assets/avisafe-logo-text.png";
+import droneBg from "@/assets/drone-background.webp";
 
 const NewsletterSignup = () => {
   const [email, setEmail] = useState("");
@@ -32,50 +35,116 @@ const NewsletterSignup = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-2">
-            <Mail className="w-7 h-7 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">AviSafe Nyhetsbrev</h1>
-          <p className="text-muted-foreground text-sm">
-            Meld deg på vårt nyhetsbrev for å holde deg oppdatert på nyheter, tips og oppdateringer.
-          </p>
-        </div>
+    <div
+      className="min-h-screen flex flex-col bg-slate-950 text-slate-100 relative"
+      style={{
+        backgroundImage: `linear-gradient(180deg, rgba(8,15,28,0.85) 0%, rgba(8,15,28,0.95) 60%, rgba(8,15,28,1) 100%), url(${droneBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* Header */}
+      <header className="w-full px-6 py-5 flex items-center justify-between border-b border-white/5">
+        <a href="https://avisafe.no" className="flex items-center gap-2">
+          <img src={logoText} alt="AviSafe" className="h-7 w-auto" />
+        </a>
+        <a
+          href="https://avisafe.no"
+          className="text-xs uppercase tracking-[0.18em] text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Tilbake til avisafe.no
+        </a>
+      </header>
 
-        {done ? (
-          <div className="text-center space-y-3 p-6 border border-border rounded-lg bg-card">
-            <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
-            <p className="text-foreground font-medium">Takk for at du meldte deg på!</p>
-            <p className="text-sm text-muted-foreground">Du vil motta vårt neste nyhetsbrev på {email}.</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4 p-6 border border-border rounded-lg bg-card">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Fornavn</Label>
-                <Input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ola" />
-              </div>
-              <div>
-                <Label className="text-xs">Etternavn</Label>
-                <Input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Nordmann" />
-              </div>
+      {/* Main */}
+      <main className="flex-1 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
+              <Mail className="w-5 h-5 text-sky-300" />
             </div>
-            <div>
-              <Label className="text-xs">E-post *</Label>
-              <Input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="din@epost.no" />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
-              Meld meg på
-            </Button>
-            <p className="text-[11px] text-muted-foreground text-center">
-              Du kan melde deg av når som helst via lenken i nyhetsbrevet.
+            <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80 font-semibold">
+              Hold deg oppdatert
             </p>
-          </form>
-        )}
-      </div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight">
+              AviSafe Nyhetsbrev
+            </h1>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Meld deg på for innsikt, regelverksendringer og oppdateringer for profesjonelle droneoperasjoner.
+            </p>
+          </div>
+
+          {done ? (
+            <div className="text-center space-y-3 p-7 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md shadow-2xl">
+              <CheckCircle2 className="w-11 h-11 text-emerald-400 mx-auto" />
+              <p className="text-white font-semibold">Takk for at du meldte deg på!</p>
+              <p className="text-sm text-slate-400">
+                Du vil motta vårt neste nyhetsbrev på <span className="text-slate-200">{email}</span>.
+              </p>
+            </div>
+          ) : (
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 p-6 sm:p-7 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md shadow-2xl"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] uppercase tracking-wider text-slate-400">Fornavn</Label>
+                  <Input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Ola"
+                    className="bg-white/[0.03] border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-sky-500/40 focus-visible:border-sky-400/40"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] uppercase tracking-wider text-slate-400">Etternavn</Label>
+                  <Input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Nordmann"
+                    className="bg-white/[0.03] border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-sky-500/40 focus-visible:border-sky-400/40"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] uppercase tracking-wider text-slate-400">E-post *</Label>
+                <Input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="din@epost.no"
+                  className="bg-white/[0.03] border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-sky-500/40 focus-visible:border-sky-400/40"
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-white text-slate-900 hover:bg-slate-100 font-semibold tracking-wide uppercase text-xs h-11"
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Mail className="w-4 h-4 mr-2" />
+                )}
+                Meld meg på
+              </Button>
+              <p className="text-[10px] text-slate-500 text-center leading-relaxed pt-1">
+                Du kan melde deg av når som helst via lenken i nyhetsbrevet.
+              </p>
+            </form>
+          )}
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="px-6 py-4 border-t border-white/5 text-center">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+          © {new Date().getFullYear()} AviSafe · Operational Intelligence for Professional Drone Operations
+        </p>
+      </footer>
     </div>
   );
 };
