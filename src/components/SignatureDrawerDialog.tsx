@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { X, Undo2, Trash2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
