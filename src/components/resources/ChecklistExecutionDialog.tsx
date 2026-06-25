@@ -71,6 +71,8 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
   const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(0);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const [docxHtml, setDocxHtml] = useState<string | null>(null);
+  const [docxLoading, setDocxLoading] = useState(false);
 
   const completedChecklistIds = new Set(completedIds);
   const checkedItems: Set<string> = checkedByTab[activeChecklistId] ?? new Set();
