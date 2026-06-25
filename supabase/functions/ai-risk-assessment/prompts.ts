@@ -1552,12 +1552,29 @@ Return this JSON structure:
 export const buildSoraReassessSystemPrompt = (language: unknown): string =>
   normalizeLang(language) === 'en' ? SORA_SYSTEM_EN : SORA_SYSTEM_NO;
 
+// Detect comments that are empty or pure acknowledgements (no actual mitigation content).
+const ACK_ONLY_RE = /^(ok(ay)?|ja|nei|greit|fint|bra|yes|no|fine|good|n\/a|na|none|ingen( kommentar)?|none provided|no comment|\.|-)$/i;
+const classifyComments = (pilotComments: unknown): {
+  ackOnly: string[];
+  substantive: string[];
+} => {
+  const result = { ackOnly: [] as string[], substantive: [] as string[] };
+  if (!pilotComments || typeof pilotComments !== 'object') return result;
+  for (const [key, raw] of Object.entries(pilotComments as Record<string, unknown>)) {
+    const trimmed = typeof raw === 'string' ? raw.trim() : '';
+    if (!trimmed || ACK_ONLY_RE.test(trimmed)) result.ackOnly.push(key);
+    else result.substantive.push(key);
+  }
+  return result;
+};
+
 export const buildSoraReassessUserPrompt = (
   language: unknown,
   previousAnalysis: unknown,
   pilotComments: unknown,
 ): string => {
   const lang = normalizeLang(language);
+  const { ackOnly, substantive } = classifyComments(pilotComments);
   if (lang === 'en') {
     return `CRITICAL: Respond ENTIRELY in English. Translate any Norwegian terms found in the input below.
 
@@ -1569,7 +1586,13 @@ ${JSON.stringify(previousAnalysis, null, 2)}
 ### Pilot's mitigations/comments per category:
 ${JSON.stringify(pilotComments, null, 2)}
 
-IMPORTANT: Consider the pilot's comments carefully. They may contain mitigations that reduce fGRC and/or ARC further beyond what the initial AI assessment determined. Adjust fGRC/ARC accordingly BEFORE computing SAIL from the matrix.
+### Comment classification (pre-computed, authoritative)
+- Categories with acknowledgement-only or empty comments (NO new mitigation — do NOT change score, hard stop or risk for these): ${JSON.stringify(ackOnly)}
+- Categories with substantive comments (evaluate concretely): ${JSON.stringify(substantive)}
+
+For every category in the acknowledgement-only list, you MUST keep the original assessment's score, hard stops and concerns unchanged. Do not invent observers, training, equipment, drones, NOTAMs, clearances or any other facts to explain them away.
+
+IMPORTANT: Consider the pilot's comments carefully ONLY for the substantive categories. They may contain mitigations that reduce fGRC and/or ARC further. Adjust fGRC/ARC accordingly BEFORE computing SAIL from the matrix. Never introduce a drone model, equipment, crew member, training event, or operational fact that is not explicitly present in the initial assessment or a substantive comment.
 
 Analyze the data and produce a complete SORA assessment with SAIL lookup, containment requirements and OSO table. All output fields must be in English.`;
   }
@@ -1581,7 +1604,13 @@ ${JSON.stringify(previousAnalysis, null, 2)}
 ### Brukerens mitigeringer/kommentarer per kategori:
 ${JSON.stringify(pilotComments, null, 2)}
 
-VIKTIG: Vurder brukerens kommentarer nøye. De kan inneholde mitigeringer som reduserer fGRC og/eller ARC ytterligere utover det den opprinnelige AI-vurderingen fastsatte. Juster fGRC/ARC deretter FØR du beregner SAIL fra matrisen.
+### Klassifisering av kommentarer (forhåndsberegnet, autoritativ)
+- Kategorier med kun bekreftelse eller tom kommentar (INGEN ny mitigering — IKKE endre score, hard stop eller risiko for disse): ${JSON.stringify(ackOnly)}
+- Kategorier med substansielle kommentarer (vurder konkret): ${JSON.stringify(substantive)}
+
+For hver kategori i bekreftelseslisten SKAL du beholde opprinnelig vurderings score, hard stops og bekymringer uendret. Ikke finn på observatører, trening, utstyr, droner, NOTAM, klareringer eller andre fakta for å bortforklare dem.
+
+VIKTIG: Vurder brukerens kommentarer nøye KUN for de substansielle kategoriene. De kan inneholde mitigeringer som reduserer fGRC og/eller ARC ytterligere. Juster fGRC/ARC deretter FØR du beregner SAIL fra matrisen. Du skal aldri introdusere en dronemodell, utstyr, mannskap, treningshendelse eller operativt faktum som ikke eksplisitt er til stede i den opprinnelige vurderingen eller en substansiell kommentar.
 
 Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, containment-krav og OSO-tabell. Alle felter skal være på norsk.`;
 };
