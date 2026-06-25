@@ -1,18 +1,24 @@
 ## Problem
 
-PDF-en feiler med «Failed to fetch dynamically imported module … pdf.worker.min.mjs». cdnjs har ikke pdf.js versjon 5.4.296 (versjonen `react-pdf` installerte). Worker-URL-en peker på en fil som ikke finnes.
+Filen som forårsaket problemet er en `.docx` (`Sjekkliste - Drone i åpen kategori.docx`). iOS Safari kan ikke vise Word-dokumenter inline — den prøver å laste dem ned, noe som forklarer den blanke nedlastingen i brukerens første skjermbilde. Den nåværende «Åpne dokument»-knappen er derfor utilstrekkelig på mobil.
 
 ## Plan
 
-Endre `src/components/resources/ChecklistExecutionDialog.tsx`:
+Endre kun `src/components/resources/ChecklistExecutionDialog.tsx` + installere én avhengighet.
 
-Bytt fra cdnjs til en pålitelig kilde for worker-filen. Vite støtter import av filer som URL med `?url`-suffix, så vi laster worker-en direkte fra `pdfjs-dist`-pakken som ble installert lokalt (samme versjon som `react-pdf` bruker — ingen versjonsmismatch mulig):
+### 1. Render .docx inline med mammoth.js
+- `bun add mammoth` (~150kB, konverterer .docx til HTML i nettleseren).
+- Utvid `getFileMode()` til å returnere `"docx"` for `.docx` og `.doc`.
+- Når `fileMode === "docx"` og `fileUrl` er satt:
+  - Hent fil-bytene: `const buf = await fetch(fileUrl).then(r => r.arrayBuffer())`.
+  - Konverter: `const { value: html } = await mammoth.convertToHtml({ arrayBuffer: buf })`.
+  - Render i en scrollbar boks: `<div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: html }} />`.
+  - Loader-spinner mens konvertering pågår, error-tilstand hvis det feiler.
+- Behold «Åpne i ny fane» som sekundær knapp under.
 
-```ts
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
-```
+### 2. Andre Office-formater
+xlsx/pptx faller fortsatt til den eksisterende «Åpne dokument»-grenen (kan ikke vises inline uten større biblioteker).
 
-Worker-filen blir da bundlet av Vite, servert fra samme origin, og alltid i riktig versjon.
-
-Ingen andre endringer.
+### Ingen endringer i:
+- Backend, edge functions, DB, storage policies.
+- Annen UI eller andre filtyper (image/pdf/json-checklists fungerer som før).
