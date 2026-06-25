@@ -71,6 +71,12 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
   const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(0);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const pdfViewportRef = useRef<HTMLDivElement>(null);
+  const [pdfScale, setPdfScale] = useState<number>(1);
+  const [pdfOffset, setPdfOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const gestureRef = useRef<{ startDist: number; startScale: number; startOffset: { x: number; y: number }; startMid: { x: number; y: number } } | null>(null);
+  const panRef = useRef<{ startX: number; startY: number; startOffset: { x: number; y: number } } | null>(null);
   const [docxHtml, setDocxHtml] = useState<string | null>(null);
   const [docxLoading, setDocxLoading] = useState(false);
 
