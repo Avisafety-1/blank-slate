@@ -356,6 +356,35 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     Åpne i ny fane
                   </Button>
                 </div>
+              ) : fileMode === "docx" ? (
+                <div className="space-y-2">
+                  <div className="rounded-lg border bg-background p-4 overflow-x-auto">
+                    {docxLoading ? (
+                      <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="text-sm">Konverterer Word-dokument...</span>
+                      </div>
+                    ) : docxHtml ? (
+                      <div
+                        className="prose prose-sm dark:prose-invert max-w-none break-words"
+                        dangerouslySetInnerHTML={{ __html: docxHtml }}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        Ingen innhold kunne vises.
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => window.open(fileUrl!, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Åpne i ny fane
+                  </Button>
+                </div>
               ) : (
                 <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
                   <FileText className="w-12 h-12 text-primary" />
