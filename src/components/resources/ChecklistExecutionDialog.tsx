@@ -181,6 +181,33 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     return () => window.removeEventListener("resize", measure);
   }, [fileMode, fileUrl]);
 
+  // Convert .docx to HTML in browser using mammoth
+  useEffect(() => {
+    if (fileMode !== "docx" || !fileUrl) {
+      setDocxHtml(null);
+      return;
+    }
+    let cancelled = false;
+    setDocxLoading(true);
+    setDocxHtml(null);
+    (async () => {
+      try {
+        const mammoth = await import("mammoth/mammoth.browser");
+        const res = await fetch(fileUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const arrayBuffer = await res.arrayBuffer();
+        const { value } = await mammoth.convertToHtml({ arrayBuffer });
+        if (!cancelled) setDocxHtml(value);
+      } catch (err) {
+        console.error("[ChecklistExecutionDialog] docx convert failed:", err);
+        if (!cancelled) setLoadError("Kunne ikke vise Word-dokumentet. Bruk «Åpne i ny fane» for å laste det ned.");
+      } finally {
+        if (!cancelled) setDocxLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [fileMode, fileUrl]);
+
   const handleToggleItem = (itemId: string) => {
     setCheckedByTab((prev) => {
       const current = new Set(prev[activeChecklistId] ?? []);
