@@ -12,7 +12,7 @@ import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 // Configure pdf.js worker — bundled locally by Vite, always matches react-pdf's version
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-type FileMode = "image" | "pdf" | "document" | null;
+type FileMode = "image" | "pdf" | "docx" | "document" | null;
 
 const getFileMode = (fileName: string | null | undefined, fileUrl: string | null | undefined): FileMode => {
   const source = (fileName || fileUrl || "").toLowerCase();
@@ -20,6 +20,7 @@ const getFileMode = (fileName: string | null | undefined, fileUrl: string | null
   if (!ext) return null;
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return "image";
   if (ext === 'pdf') return "pdf";
+  if (ext === 'docx' || ext === 'doc') return "docx";
   return "document";
 };
 
@@ -70,6 +71,8 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
   const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(0);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const [docxHtml, setDocxHtml] = useState<string | null>(null);
+  const [docxLoading, setDocxLoading] = useState(false);
 
   const completedChecklistIds = new Set(completedIds);
   const checkedItems: Set<string> = checkedByTab[activeChecklistId] ?? new Set();
@@ -176,6 +179,33 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
+  }, [fileMode, fileUrl]);
+
+  // Convert .docx to HTML in browser using mammoth
+  useEffect(() => {
+    if (fileMode !== "docx" || !fileUrl) {
+      setDocxHtml(null);
+      return;
+    }
+    let cancelled = false;
+    setDocxLoading(true);
+    setDocxHtml(null);
+    (async () => {
+      try {
+        const mammoth = await import("mammoth/mammoth.browser");
+        const res = await fetch(fileUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const arrayBuffer = await res.arrayBuffer();
+        const { value } = await mammoth.convertToHtml({ arrayBuffer });
+        if (!cancelled) setDocxHtml(value);
+      } catch (err) {
+        console.error("[ChecklistExecutionDialog] docx convert failed:", err);
+        if (!cancelled) setLoadError("Kunne ikke vise Word-dokumentet. Bruk «Åpne i ny fane» for å laste det ned.");
+      } finally {
+        if (!cancelled) setDocxLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [fileMode, fileUrl]);
 
   const handleToggleItem = (itemId: string) => {
@@ -315,6 +345,35 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                         />
                       ))}
                     </Document>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => window.open(fileUrl!, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Åpne i ny fane
+                  </Button>
+                </div>
+              ) : fileMode === "docx" ? (
+                <div className="space-y-2">
+                  <div className="rounded-lg border bg-background p-4 overflow-x-auto">
+                    {docxLoading ? (
+                      <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="text-sm">Konverterer Word-dokument...</span>
+                      </div>
+                    ) : docxHtml ? (
+                      <div
+                        className="prose prose-sm dark:prose-invert max-w-none break-words"
+                        dangerouslySetInnerHTML={{ __html: docxHtml }}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        Ingen innhold kunne vises.
+                      </p>
+                    )}
                   </div>
                   <Button
                     variant="outline"
