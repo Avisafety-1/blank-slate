@@ -1,31 +1,73 @@
 ## Mål
-Gjøre PDF-en i `ChecklistExecutionDialog` zoombar med to-finger pinch (og pan når innzoomet), mens den fortsatt starter i full bredde av dialogen.
+På mobil skal tegnefeltet i `SignatureDrawerDialog` vises rotert 90° (landskap) selv om telefonen holdes vertikalt. Brukeren tegner sidelengs uten å snu telefonen, og signaturen lagres som et normalt liggende bilde. Skal tilpasse seg ulike skjermstørrelser (iPhone 13 Pro, iPhone SE, Pro Max osv.).
 
-## Endring (kun frontend)
+## Endringer (kun `src/components/SignatureDrawerDialog.tsx`)
 
-**`src/components/resources/ChecklistExecutionDialog.tsx`** — pakk inn PDF-rendringen i en zoom-/pan-container:
+### 1. Oppdage mobil
+Bruk eksisterende `useIsMobile()` fra `@/hooks/use-mobile` for å vite om vi skal rotere. Desktop/tablet (≥ 768px) beholder dagens layout.
 
-1. Ny state `pdfScale` (default `1`) og `pdfOffset` (`{x:0, y:0}`).
-2. Beholder `pdfContainerRef`-måling som i dag, slik at `<Page width={pdfContainerWidth} />` fortsatt gir full bredde fra start.
-3. Legger til en indre wrapper rundt `<Document>` med:
-   - `style={{ transform: \`translate(${x}px, ${y}px) scale(${pdfScale})\`, transformOrigin: '0 0' }}`
-   - `touch-action: none` på den ytre rammen for å hindre at Safari/iOS tar over gesten.
-4. Pinch/pan håndteres med native pointer events (ingen nytt bibliotek):
-   - Holder en `Map<pointerId, {x,y}>` på `onPointerDown/Move/Up/Cancel`.
-   - 1 finger + scale>1 → pan (oppdater offset).
-   - 2 fingre → regn ut avstand mellom punktene; ratio mot start-avstand multipliseres med start-scale. Clamp `0.5–5`.
-   - Ved scale tilbake til ~1 → reset offset til `{0,0}`.
-5. Legger til små «−  100%  +  ⟲»-knapper øverst til høyre i PDF-rammen som fallback (desktop/mus). Reset-knapp nullstiller scale + offset.
-6. Den ytre rammen får `overflow-hidden` og fast/min høyde slik at innzoomet innhold kan pannes uten å sprenge dialogen. Selve dialog-scrollen (`overflow-y-auto` rundt) beholdes for når scale=1.
-7. Når brukeren bytter fane / laster nytt PDF (`fileUrl` endrer seg) → reset scale=1 og offset=0.
+### 2. Rotert canvas-container på mobil
+Inne i `flex-1`-området:
+- En ytre wrapper måler tilgjengelig høyde og bredde via `ResizeObserver` (eller `getBoundingClientRect` på containeren etter mount/resize).
+- En indre wrapper som inneholder canvas får CSS `transform: rotate(-90deg)` og bytter bredde/høyde:
+  - `width  = containerHøyde`
+  - `height = containerBredde`
+  - `transformOrigin: "center center"`
+- Canvas-elementet får `width = containerHøyde` og `height = containerBredde` (logiske piksler), slik at det fyller hele det roterte området. Bruk `devicePixelRatio` for skarp tegning (sett `canvas.width = cssW * dpr`, `canvas.height = cssH * dpr`, `ctx.scale(dpr, dpr)`).
+- Resultatet: brukeren ser et bredt landskaps-lerret som dekker hele dialogens innhold-område.
 
-Ingen endringer i worker-oppsettet, ingen nye pakker, ingen backend-endringer.
+### 3. Justere koordinatberegning for berøring
+`getCoordinates` må kompensere for rotasjonen når `isMobile === true`:
+- Hent `rect = canvas.getBoundingClientRect()` (rect-en er allerede den synlig-roterte boksen).
+- Beregn lokal posisjon ved å bruke rotasjonsmatrise:
+  - `localX = (clientY - rect.top)`
+  - `localY = (rect.right - clientX)`
+  (dvs. -90° rotasjon → tegnekoordinater i canvasens eget koordinatsystem)
+- Del på `dpr` ikke nødvendig hvis vi bruker `ctx.scale(dpr, dpr)`.
 
-## Teknisk detalj
-- Pointer Events fungerer på iOS Safari 13+, så ingen behov for `react-use-gesture`/Hammer.
-- `transformOrigin: '0 0'` + manuell offset gir presis pinch rundt midtpunktet mellom de to fingrene (vi justerer offset slik at midtpunktet i sidens lokale koordinater holder seg under fingrene).
-- `touch-action: none` settes kun på PDF-rammen, ikke på resten av dialogen, så vanlig scroll i sjekklistedialogen er uberørt.
+### 4. Lagring – bilde i landskap
+- Når `isMobile`, lagres canvas direkte (det er allerede et bredt landskaps-bilde i sin egen referanseramme). Ingen ekstra rotering ved blob-export – `toBlob` returnerer korrekt orientert PNG.
+- Eksisterende upload-flyt til `signatures`-bucket og `profiles.signature_url` er uendret.
+
+### 5. Re-init ved resize / orientation change
+- Legg til `window.addEventListener('resize', initCanvas)` og fjern i cleanup.
+- Bevar `useEffect` på `open` for første init.
+- Når størrelsen endres mister vi tegningen (akseptabelt – samme som i dag ved orientering).
+
+### 6. UI-tips på mobil
+Liten tekst over lerretet på mobil: "Tegn signaturen din sidelengs". På desktop vises ingen ekstra tekst.
+
+### 7. Header/footer-knapper
+Uendret. "Tøm", "Angre" og "Lagre" beholdes nederst i normal portrett-orientering.
+
+## Teknisk skisse
+
+```
++------------------ dialog (portrait) ------------------+
+| Header                                                |
++-------------------------------------------------------+
+|   outer (flex-1, padding, måler w×h)                  |
+|   ┌─────────────────────────────────────────────┐     |
+|   │  rotated wrapper                            │     |
+|   │  width=h, height=w, transform: rotate(-90)  │     |
+|   │  ┌───────────────────────────────────────┐  │     |
+|   │  │           canvas (bred, lav)          │  │     |
+|   │  └───────────────────────────────────────┘  │     |
+|   └─────────────────────────────────────────────┘     |
++-------------------------------------------------------+
+| Footer (Tøm / Angre / Lagre)                          |
++-------------------------------------------------------+
+```
+
+## Hva vi IKKE rører
+- `SignaturePad.tsx` (knappene utenfor)
+- Storage policies / upload-logikk
+- Profil-update-kall
+- Desktop-visning (bredt felt som før)
 
 ## Verifisering
-- `tsgo --noEmit` etter endring.
-- Manuell test fra StartFlightDialog → sjekkliste med PDF: pinch zoom inn/ut, pan, reset-knapp, byte fane resetter, «Åpne i ny fane» fungerer fortsatt.
+1. Åpne profil på iPhone 13 Pro (390×844), iPhone SE (375×667) og Pro Max (430×932) i preview-mobil-viewport. Bekreft at lerretet fyller området og er rotert.
+2. Tegn med finger – streken følger fingeren naturlig sidelengs.
+3. Trykk Angre/Tøm – fungerer.
+4. Trykk Lagre – sjekk at signaturen lastes opp og vises riktig vei i profilen.
+5. Sjekk desktop (≥ 768px) – uendret oppførsel.

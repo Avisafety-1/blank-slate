@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { X, Undo2, Trash2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
 interface SignatureDrawerDialogProps {
@@ -17,7 +18,10 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
   const [isDrawing, setIsDrawing] = useState(false);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // Logical (CSS) canvas size — on mobile this is rotated (w=container height, h=container width)
+  const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const saveToHistory = useCallback(() => {
     const canvas = canvasRef.current;
@@ -33,27 +37,45 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    // On mobile we rotate the canvas -90deg, so swap dimensions so it fills
+    // the available area after rotation.
+    const cssW = isMobile ? rect.height : rect.width;
+    const cssH = isMobile ? rect.width : rect.height;
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
     ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, cssW, cssH);
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
+    setCanvasSize({ w: cssW, h: cssH });
     setHistory([]);
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(initCanvas, 50);
-    }
+    if (!open) return;
+    const t = window.setTimeout(initCanvas, 50);
+    const onResize = () => initCanvas();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
   }, [open, initCanvas]);
 
   const getCoordinates = (e: React.TouchEvent | React.MouseEvent) => {
@@ -61,19 +83,24 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
-    if ("touches" in e) {
-      const touch = e.touches[0];
+    if (isMobile) {
+      // Canvas is visually rotated -90deg (counter-clockwise).
+      // Map screen coords to the canvas' own (un-rotated) coordinate system.
+      // After rotate(-90): canvas's local +X goes from screen-top to screen-bottom,
+      // and local +Y goes from screen-right to screen-left.
       return {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
-      };
-    } else {
-      return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        x: clientY - rect.top,
+        y: rect.right - clientX,
       };
     }
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
   };
 
   const startDrawing = (e: React.TouchEvent | React.MouseEvent) => {
@@ -111,7 +138,11 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     const newHistory = [...history];
     const lastState = newHistory.pop();
     if (lastState) {
+      // putImageData uses device pixels — reset transform first, then restore dpr scale.
+      const dpr = window.devicePixelRatio || 1;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.putImageData(lastState, 0, 0);
+      ctx.scale(dpr, dpr);
     } else {
       initCanvas();
     }
@@ -192,22 +223,56 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
         </Button>
       </div>
 
+      {isMobile && (
+        <div className="px-4 pt-2 text-center text-xs text-muted-foreground flex-shrink-0">
+          Tegn signaturen din sidelengs
+        </div>
+      )}
+
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 p-4 bg-muted"
+        className="flex-1 min-h-0 p-4 bg-muted relative overflow-hidden"
       >
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full rounded-lg border-2 border-dashed border-muted-foreground/30 touch-none cursor-crosshair bg-white"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-        />
+        {isMobile ? (
+          <div
+            className="absolute"
+            style={{
+              width: canvasSize.w,
+              height: canvasSize.h,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%) rotate(-90deg)",
+              transformOrigin: "center center",
+            }}
+          >
+            <canvas
+              ref={canvasRef}
+              className="rounded-lg border-2 border-dashed border-muted-foreground/30 touch-none cursor-crosshair bg-white"
+              style={{ width: "100%", height: "100%", display: "block" }}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+            />
+          </div>
+        ) : (
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full rounded-lg border-2 border-dashed border-muted-foreground/30 touch-none cursor-crosshair bg-white"
+            style={{ width: canvasSize.w || "100%", height: canvasSize.h || "100%" }}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+          />
+        )}
       </div>
 
       {/* Footer */}
