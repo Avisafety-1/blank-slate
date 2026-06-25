@@ -291,7 +291,29 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         const res = await fetch(fileUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const arrayBuffer = await res.arrayBuffer();
-        const { value } = await mammoth.convertToHtml({ arrayBuffer });
+        const { value } = await mammoth.convertToHtml(
+          { arrayBuffer },
+          {
+            styleMap: [
+              "p[style-name='Title'] => h1.docx-title:fresh",
+              "p[style-name='Subtitle'] => h2.docx-subtitle:fresh",
+              "p[style-name='Heading 1'] => h2:fresh",
+              "p[style-name='Heading 2'] => h3:fresh",
+              "p[style-name='Heading 3'] => h4:fresh",
+              "p[style-name='Heading 4'] => h5:fresh",
+              "p[style-name='Quote'] => blockquote:fresh",
+              "p[style-name='Intense Quote'] => blockquote.docx-intense:fresh",
+              "p[style-name='List Paragraph'] => p.docx-list-p:fresh",
+              "r[style-name='Strong'] => strong",
+              "r[style-name='Emphasis'] => em",
+              "b => strong",
+              "i => em",
+              "u => u",
+            ],
+            includeDefaultStyleMap: true,
+            ignoreEmptyParagraphs: false,
+          } as any,
+        );
         if (!cancelled) setDocxHtml(value);
       } catch (err) {
         console.error("[ChecklistExecutionDialog] docx convert failed:", err);
