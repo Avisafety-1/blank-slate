@@ -325,6 +325,32 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     return () => { cancelled = true; };
   }, [fileMode, fileUrl]);
 
+  const isBrowserViewable = (mode: FileMode) => mode === "image" || mode === "pdf";
+
+  const handleOpenFile = async () => {
+    if (!fileUrl) return;
+    if (isBrowserViewable(fileMode)) {
+      window.open(fileUrl, "_blank");
+      return;
+    }
+    try {
+      const res = await fetch(fileUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName || "sjekkliste";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("[ChecklistExecutionDialog] download failed:", err);
+      window.open(fileUrl, "_blank");
+    }
+  };
+
   const handleToggleItem = (itemId: string) => {
     setCheckedByTab((prev) => {
       const current = new Set(prev[activeChecklistId] ?? []);
