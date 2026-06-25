@@ -12,7 +12,7 @@ import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 // Configure pdf.js worker — bundled locally by Vite, always matches react-pdf's version
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-type FileMode = "image" | "pdf" | "document" | null;
+type FileMode = "image" | "pdf" | "docx" | "document" | null;
 
 const getFileMode = (fileName: string | null | undefined, fileUrl: string | null | undefined): FileMode => {
   const source = (fileName || fileUrl || "").toLowerCase();
@@ -20,6 +20,7 @@ const getFileMode = (fileName: string | null | undefined, fileUrl: string | null
   if (!ext) return null;
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return "image";
   if (ext === 'pdf') return "pdf";
+  if (ext === 'docx' || ext === 'doc') return "docx";
   return "document";
 };
 
