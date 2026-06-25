@@ -215,6 +215,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
         overscrollBehavior: "contain",
+        pointerEvents: "auto",
       }}
     >
       {/* Header */}
