@@ -1,24 +1,25 @@
 ## Problem
 
-Filen som forårsaket problemet er en `.docx` (`Sjekkliste - Drone i åpen kategori.docx`). iOS Safari kan ikke vise Word-dokumenter inline — den prøver å laste dem ned, noe som forklarer den blanke nedlastingen i brukerens første skjermbilde. Den nåværende «Åpne dokument»-knappen er derfor utilstrekkelig på mobil.
+Konsollfeil: `The API version "5.4.296" does not match the Worker version "4.4.168"`.
+
+- `react-pdf` har sin egen `pdfjs-dist@5.4.296` som dependency (brukes når vi importerer `Document`/`Page`/`pdfjs` fra `react-pdf`).
+- Vi laster worker via `import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url"` — denne resolver til hoisted `pdfjs-dist@4.4.168` (brukt av `TrainingCourseEditor`/`AICourseGeneratorDialog`).
+- Versjonene matcher ikke → PDF-rendering feiler.
+
+Andre komponenter (`TrainingCourseEditor`, `AICourseGeneratorDialog`) bruker allerede CDN-mønsteret med `pdfjs.version` for å garantere match.
 
 ## Plan
 
-Endre kun `src/components/resources/ChecklistExecutionDialog.tsx` + installere én avhengighet.
+Kun én fil: `src/components/resources/ChecklistExecutionDialog.tsx`.
 
-### 1. Render .docx inline med mammoth.js
-- `bun add mammoth` (~150kB, konverterer .docx til HTML i nettleseren).
-- Utvid `getFileMode()` til å returnere `"docx"` for `.docx` og `.doc`.
-- Når `fileMode === "docx"` og `fileUrl` er satt:
-  - Hent fil-bytene: `const buf = await fetch(fileUrl).then(r => r.arrayBuffer())`.
-  - Konverter: `const { value: html } = await mammoth.convertToHtml({ arrayBuffer: buf })`.
-  - Render i en scrollbar boks: `<div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: html }} />`.
-  - Loader-spinner mens konvertering pågår, error-tilstand hvis det feiler.
-- Behold «Åpne i ny fane» som sekundær knapp under.
+1. Fjern `?url`-importen av `pdf.worker.min.mjs` (peker på feil versjon).
+2. Sett worker-URL fra CDN basert på `pdfjs.version` — som her er re-eksportert fra `react-pdf` og dermed alltid lik 5.4.296 (eller hva enn react-pdf oppgraderes til senere):
 
-### 2. Andre Office-formater
-xlsx/pptx faller fortsatt til den eksisterende «Åpne dokument»-grenen (kan ikke vises inline uten større biblioteker).
+```ts
+pdfjs.GlobalWorkerOptions.workerSrc =
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+```
 
-### Ingen endringer i:
-- Backend, edge functions, DB, storage policies.
-- Annen UI eller andre filtyper (image/pdf/json-checklists fungerer som før).
+Konsistent med eksisterende mønster i `TrainingCourseEditor.tsx`.
+
+Ingen endringer i package.json, andre filer eller backend.
