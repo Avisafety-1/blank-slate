@@ -187,6 +187,95 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     return () => window.removeEventListener("resize", measure);
   }, [fileMode, fileUrl]);
 
+  // Reset zoom/pan when PDF changes
+  useEffect(() => {
+    setPdfScale(1);
+    setPdfOffset({ x: 0, y: 0 });
+    pointersRef.current.clear();
+    gestureRef.current = null;
+    panRef.current = null;
+  }, [fileUrl, fileMode]);
+
+  const clampScale = (s: number) => Math.min(5, Math.max(0.5, s));
+
+  const applyScale = (next: number, focal?: { x: number; y: number }) => {
+    const ns = clampScale(next);
+    setPdfScale((prev) => {
+      if (focal && pdfViewportRef.current) {
+        const rect = pdfViewportRef.current.getBoundingClientRect();
+        const fx = focal.x - rect.left;
+        const fy = focal.y - rect.top;
+        setPdfOffset((o) => {
+          // keep focal point stable: new_offset = focal - (focal - old_offset) * (ns/prev)
+          const ratio = ns / prev;
+          const nx = fx - (fx - o.x) * ratio;
+          const ny = fy - (fy - o.y) * ratio;
+          return ns <= 1.001 ? { x: 0, y: 0 } : { x: nx, y: ny };
+        });
+      } else if (ns <= 1.001) {
+        setPdfOffset({ x: 0, y: 0 });
+      }
+      return ns;
+    });
+  };
+
+  const handlePdfPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = Array.from(pointersRef.current.values());
+    if (pts.length === 2) {
+      const dx = pts[0].x - pts[1].x;
+      const dy = pts[0].y - pts[1].y;
+      gestureRef.current = {
+        startDist: Math.hypot(dx, dy) || 1,
+        startScale: pdfScale,
+        startOffset: { ...pdfOffset },
+        startMid: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 },
+      };
+      panRef.current = null;
+    } else if (pts.length === 1 && pdfScale > 1) {
+      panRef.current = { startX: e.clientX, startY: e.clientY, startOffset: { ...pdfOffset } };
+    }
+  };
+
+  const handlePdfPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(e.pointerId)) return;
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = Array.from(pointersRef.current.values());
+    if (pts.length === 2 && gestureRef.current) {
+      const dx = pts[0].x - pts[1].x;
+      const dy = pts[0].y - pts[1].y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const ratio = dist / gestureRef.current.startDist;
+      const ns = clampScale(gestureRef.current.startScale * ratio);
+      if (pdfViewportRef.current) {
+        const rect = pdfViewportRef.current.getBoundingClientRect();
+        const fx = gestureRef.current.startMid.x - rect.left;
+        const fy = gestureRef.current.startMid.y - rect.top;
+        const r = ns / gestureRef.current.startScale;
+        const nx = fx - (fx - gestureRef.current.startOffset.x) * r;
+        const ny = fy - (fy - gestureRef.current.startOffset.y) * r;
+        setPdfScale(ns);
+        setPdfOffset(ns <= 1.001 ? { x: 0, y: 0 } : { x: nx, y: ny });
+      }
+    } else if (pts.length === 1 && panRef.current && pdfScale > 1) {
+      const dx = e.clientX - panRef.current.startX;
+      const dy = e.clientY - panRef.current.startY;
+      setPdfOffset({ x: panRef.current.startOffset.x + dx, y: panRef.current.startOffset.y + dy });
+    }
+  };
+
+  const handlePdfPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) gestureRef.current = null;
+    if (pointersRef.current.size === 0) panRef.current = null;
+  };
+
+  const resetPdfZoom = () => {
+    setPdfScale(1);
+    setPdfOffset({ x: 0, y: 0 });
+  };
+
   // Convert .docx to HTML in browser using mammoth
   useEffect(() => {
     if (fileMode !== "docx" || !fileUrl) {
