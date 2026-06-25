@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTriangle, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTriangle, Loader2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
