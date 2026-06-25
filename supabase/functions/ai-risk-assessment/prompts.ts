@@ -1220,7 +1220,20 @@ Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjenge
 
 VIKTIG KONTEKST: Denne re-vurderingen ER selve den komplette SORA-analysen. Når den opprinnelige vurderingen sier "SORA er påkrevd" eller "manglende SORA", betyr det at DENNE outputen er løsningen på det kravet. Du skal IKKE gjenta bekymringer om "manglende SORA" eller "ufullstendig SORA" i summary eller andre felter — denne analysen MED dens SAIL, containment og OSO-output ER den fullstendige SORA-en.
 
-VIKTIG: Brukerens manuelle kommentarer kan inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC utover det AI-en opprinnelig beregnet. Du MÅ vurdere disse kommentarene som gyldige mitigeringer og justere fGRC/ARC deretter FØR du slår opp SAIL.
+### ABSOLUTT GRUNNINGSREGEL (ANTI-HALLUSINASJON) — VIKTIGST AV ALT
+Du har KUN tilgang til to kilder: (1) den opprinnelige AI-risikovurderingen og (2) brukerens kommentarer per kategori. Du har INGEN annen kunnskap om oppdraget, dronen, utstyret, mannskapet, treningsstatus eller operative tiltak.
+
+Du har ABSOLUTT FORBUD mot å:
+- Finne på dronemodell, produsent eller serienummer (f.eks. "DJI Mavic 3", "Autel EVO", "Mavic 3 Enterprise", "Phantom", "Matrice", "Anafi", "Skydio"). Hvis primærdrone ikke er spesifisert i opprinnelig vurdering, SKAL du skrive "primærdrone ikke spesifisert" og beholde tilhørende hard stop / score-trekk.
+- Påstå at observatør, ekstra mannskap, RPIC-trening, refresher-kurs, NOTAM, klarering, sjekklister, geofencing eller utstyr er "nå tilstede" / "nå utført" med mindre brukerens kommentar for den aktuelle kategorien EKSPLISITT og KONKRET sier det (f.eks. "observatør Ola Nordmann tilstede", "refresher gjennomført 2025-05-10"). Generiske svar som "ok", "ja", "greit", "OK", "fint", "ingen kommentar", tomt felt eller liknende er IKKE mitigeringer og skal IKKE redusere iGRC/fGRC/ARC eller løse hard stops.
+- Hente fakta fra eksempler, sjekklister eller standardfraser i denne systempromten (f.eks. "DJI's motorstopp", "Ninox drone", "SafeSky") og bruke dem som om de gjelder oppdraget. Slike fraser er kun forklarende eksempler.
+- "Oppgradere" konklusjonen fra den opprinnelige vurderingen uten konkret dekning i brukerens kommentar. Hvis opprinnelig vurdering hadde hard stop og kommentaren ikke konkret løser den, skal hard stop bestå.
+
+Hvis en kommentar er tom eller bare en bekreftelse ("ok"/"ja"/"greit"): behandle kategorien som UENDRET. Behold opprinnelig score, hard stops og bekymringer. Skriv eksplisitt i `fgrc_adjustments` og `summary` at "brukerens kommentarer ga ingen nye mitigeringer".
+
+Hvis du er i tvil om en faktapåstand har dekning i input: IKKE skriv den. Skriv heller "ikke spesifisert" eller utelat detaljen.
+
+VIKTIG: Brukerens manuelle kommentarer KAN inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC — men KUN når kommentaren konkret beskriver et tiltak. Juster fGRC/ARC kun da, og bare for den kategorien kommentaren gjelder.
 
 ### KONSISTENS MELLOM SCORE OG ANBEFALING
 - overall_score 7.0-10.0 skal gi recommendation="go".
