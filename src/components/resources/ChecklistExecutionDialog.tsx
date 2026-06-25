@@ -413,33 +413,64 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <div className="space-y-2">
                   <div
                     ref={pdfContainerRef}
-                    className="rounded-lg border overflow-hidden bg-muted/20"
+                    className="relative rounded-lg border overflow-hidden bg-muted/20"
                   >
-                    <Document
-                      file={fileUrl!}
-                      onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
-                      onLoadError={(err) => {
-                        console.error("[ChecklistExecutionDialog] PDF load failed:", err);
-                        setLoadError("Kunne ikke laste PDF. Prøv å åpne i ny fane.");
-                      }}
-                      loading={
-                        <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span className="text-sm">Laster PDF...</span>
-                        </div>
-                      }
+                    {/* Zoom controls */}
+                    <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md bg-background/90 backdrop-blur border shadow-sm p-1">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale - 0.25)} aria-label="Zoom ut">
+                        <ZoomOut className="h-4 w-4" />
+                      </Button>
+                      <span className="text-xs tabular-nums w-10 text-center">{Math.round(pdfScale * 100)}%</span>
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale + 0.25)} aria-label="Zoom inn">
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={resetPdfZoom} aria-label="Nullstill zoom">
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div
+                      ref={pdfViewportRef}
+                      className="overflow-hidden"
+                      style={{ touchAction: "none", WebkitUserSelect: "none", userSelect: "none" }}
+                      onPointerDown={handlePdfPointerDown}
+                      onPointerMove={handlePdfPointerMove}
+                      onPointerUp={handlePdfPointerUp}
+                      onPointerCancel={handlePdfPointerUp}
                     >
-                      {Array.from({ length: pdfNumPages }, (_, i) => (
-                        <Page
-                          key={i + 1}
-                          pageNumber={i + 1}
-                          width={pdfContainerWidth || undefined}
-                          renderTextLayer={false}
-                          renderAnnotationLayer={false}
-                          className="border-b last:border-b-0"
-                        />
-                      ))}
-                    </Document>
+                      <div
+                        style={{
+                          transform: `translate(${pdfOffset.x}px, ${pdfOffset.y}px) scale(${pdfScale})`,
+                          transformOrigin: "0 0",
+                          width: "100%",
+                        }}
+                      >
+                        <Document
+                          file={fileUrl!}
+                          onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
+                          onLoadError={(err) => {
+                            console.error("[ChecklistExecutionDialog] PDF load failed:", err);
+                            setLoadError("Kunne ikke laste PDF. Prøv å åpne i ny fane.");
+                          }}
+                          loading={
+                            <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span className="text-sm">Laster PDF...</span>
+                            </div>
+                          }
+                        >
+                          {Array.from({ length: pdfNumPages }, (_, i) => (
+                            <Page
+                              key={i + 1}
+                              pageNumber={i + 1}
+                              width={pdfContainerWidth || undefined}
+                              renderTextLayer={false}
+                              renderAnnotationLayer={false}
+                              className="border-b last:border-b-0"
+                            />
+                          ))}
+                        </Document>
+                      </div>
+                    </div>
                   </div>
                   <Button
                     variant="outline"
