@@ -87,13 +87,13 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
     if (isMobile) {
-      // Canvas is visually rotated -90deg (counter-clockwise).
-      // Map screen coords to the canvas' own (un-rotated) coordinate system.
-      // After rotate(-90): canvas's local +X goes from screen-top to screen-bottom,
-      // and local +Y goes from screen-right to screen-left.
+      // Canvas is visually rotated -90deg (CSS = counter-clockwise).
+      // After CCW rotation: canvas (0,0) sits at screen (rect.left, rect.bottom).
+      //   canvas_x grows upward on screen  → canvas_x = rect.bottom - clientY
+      //   canvas_y grows rightward on screen → canvas_y = clientX - rect.left
       return {
-        x: clientY - rect.top,
-        y: rect.right - clientX,
+        x: rect.bottom - clientY,
+        y: clientX - rect.left,
       };
     }
 
