@@ -532,6 +532,43 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 </div>
               ) : fileMode === "docx" ? (
                 <div className="space-y-2">
+                  <style>{`
+                    .docx-content { color: hsl(var(--foreground)); font-size: 0.9rem; line-height: 1.6; }
+                    .docx-content h1, .docx-content h2, .docx-content h3, .docx-content h4, .docx-content h5 {
+                      font-weight: 600; line-height: 1.25; margin: 1.2em 0 0.5em; color: hsl(var(--foreground));
+                    }
+                    .docx-content h1, .docx-content .docx-title { font-size: 1.5rem; }
+                    .docx-content h2, .docx-content .docx-subtitle { font-size: 1.25rem; }
+                    .docx-content h3 { font-size: 1.1rem; }
+                    .docx-content h4 { font-size: 1rem; }
+                    .docx-content h5 { font-size: 0.95rem; }
+                    .docx-content p { margin: 0.5em 0; }
+                    .docx-content ul, .docx-content ol { margin: 0.5em 0 0.5em 1.4em; padding: 0; }
+                    .docx-content li { margin: 0.2em 0; }
+                    .docx-content li > p { margin: 0; }
+                    .docx-content blockquote {
+                      border-left: 3px solid hsl(var(--primary) / 0.5);
+                      padding: 0.25em 0.8em; margin: 0.8em 0;
+                      color: hsl(var(--muted-foreground)); font-style: italic;
+                      background: hsl(var(--muted) / 0.3); border-radius: 0 0.375rem 0.375rem 0;
+                    }
+                    .docx-content a { color: hsl(var(--primary)); text-decoration: underline; }
+                    .docx-content strong { font-weight: 600; }
+                    .docx-content em { font-style: italic; }
+                    .docx-content img { max-width: 100%; height: auto; border-radius: 0.375rem; margin: 0.5em 0; display: block; }
+                    .docx-content table {
+                      border-collapse: collapse; width: 100%; margin: 0.75em 0;
+                      font-size: 0.85rem; display: block; overflow-x: auto;
+                    }
+                    .docx-content table th, .docx-content table td {
+                      border: 1px solid hsl(var(--border));
+                      padding: 0.45em 0.65em; text-align: left; vertical-align: top;
+                    }
+                    .docx-content table th { background: hsl(var(--muted) / 0.6); font-weight: 600; }
+                    .docx-content table tr:nth-child(even) td { background: hsl(var(--muted) / 0.25); }
+                    .docx-content hr { border: 0; border-top: 1px solid hsl(var(--border)); margin: 1em 0; }
+                    .docx-content * { word-break: break-word; overflow-wrap: anywhere; }
+                  `}</style>
                   <div className="rounded-lg border bg-background p-4 overflow-x-auto">
                     {docxLoading ? (
                       <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
@@ -540,7 +577,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                       </div>
                     ) : docxHtml ? (
                       <div
-                        className="prose prose-sm dark:prose-invert max-w-none break-words"
+                        className="docx-content max-w-none"
                         dangerouslySetInnerHTML={{ __html: docxHtml }}
                       />
                     ) : (
@@ -553,10 +590,10 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     variant="outline"
                     size="sm"
                     className="w-full gap-2"
-                    onClick={() => window.open(fileUrl!, '_blank')}
+                    onClick={handleOpenFile}
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    Åpne i ny fane
+                    <Download className="w-4 h-4" />
+                    Last ned dokument
                   </Button>
                 </div>
               ) : (
@@ -564,15 +601,15 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                   <FileText className="w-12 h-12 text-primary" />
                   <div className="text-center">
                     <p className="font-medium text-sm">{fileName || "Sjekklistefil"}</p>
-                    <p className="text-xs text-muted-foreground">Åpne dokumentet for å gjennomgå sjekklisten</p>
+                    <p className="text-xs text-muted-foreground">Last ned dokumentet for å gjennomgå sjekklisten</p>
                   </div>
                   <Button
                     variant="outline"
                     className="w-full gap-2"
-                    onClick={() => window.open(fileUrl!, '_blank')}
+                    onClick={handleOpenFile}
                   >
-                    <ExternalLink className="w-4 h-4" />
-                    Åpne sjekkliste
+                    <Download className="w-4 h-4" />
+                    Last ned sjekkliste
                   </Button>
                 </div>
               )}
