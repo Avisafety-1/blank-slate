@@ -1,25 +1,9 @@
-## Problem
+Plan:
 
-Konsollfeil: `The API version "5.4.296" does not match the Worker version "4.4.168"`.
+1. Update `ChecklistExecutionDialog.tsx` so PDF.js uses the local worker bundled with `react-pdf` / its nested `pdfjs-dist`, instead of the CDN URL that fails to load on the blob/iPhone path.
+2. Keep the existing `react-pdf` rendering in the checklist dialog, but make the worker import resolve to the same PDF.js version as `react-pdf` (`5.4.296`) to avoid both CDN fetch failures and API/worker version mismatch.
+3. Ensure PDF load errors show the Norwegian fallback message with the existing “Åpne i ny fane” option.
+4. Verify with TypeScript/build signal after implementation.
 
-- `react-pdf` har sin egen `pdfjs-dist@5.4.296` som dependency (brukes når vi importerer `Document`/`Page`/`pdfjs` fra `react-pdf`).
-- Vi laster worker via `import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url"` — denne resolver til hoisted `pdfjs-dist@4.4.168` (brukt av `TrainingCourseEditor`/`AICourseGeneratorDialog`).
-- Versjonene matcher ikke → PDF-rendering feiler.
-
-Andre komponenter (`TrainingCourseEditor`, `AICourseGeneratorDialog`) bruker allerede CDN-mønsteret med `pdfjs.version` for å garantere match.
-
-## Plan
-
-Kun én fil: `src/components/resources/ChecklistExecutionDialog.tsx`.
-
-1. Fjern `?url`-importen av `pdf.worker.min.mjs` (peker på feil versjon).
-2. Sett worker-URL fra CDN basert på `pdfjs.version` — som her er re-eksportert fra `react-pdf` og dermed alltid lik 5.4.296 (eller hva enn react-pdf oppgraderes til senere):
-
-```ts
-pdfjs.GlobalWorkerOptions.workerSrc =
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-```
-
-Konsistent med eksisterende mønster i `TrainingCourseEditor.tsx`.
-
-Ingen endringer i package.json, andre filer eller backend.
+Technical detail:
+- Replace `pdfjs.GlobalWorkerOptions.workerSrc = https://cdnjs...` with a Vite `?url` import from `react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs`, then assign that imported URL to `pdfjs.GlobalWorkerOptions.workerSrc`.

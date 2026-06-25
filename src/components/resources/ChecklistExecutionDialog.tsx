@@ -7,9 +7,10 @@ import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTria
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+// Use local worker bundled with react-pdf's nested pdfjs-dist to guarantee version match
+import pdfWorkerUrl from "react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// Configure pdf.js worker — load from CDN matching react-pdf's bundled pdfjs version
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 type FileMode = "image" | "pdf" | "docx" | "document" | null;
 
