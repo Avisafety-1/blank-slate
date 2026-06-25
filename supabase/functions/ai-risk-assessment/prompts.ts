@@ -1220,7 +1220,20 @@ Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjenge
 
 VIKTIG KONTEKST: Denne re-vurderingen ER selve den komplette SORA-analysen. Når den opprinnelige vurderingen sier "SORA er påkrevd" eller "manglende SORA", betyr det at DENNE outputen er løsningen på det kravet. Du skal IKKE gjenta bekymringer om "manglende SORA" eller "ufullstendig SORA" i summary eller andre felter — denne analysen MED dens SAIL, containment og OSO-output ER den fullstendige SORA-en.
 
-VIKTIG: Brukerens manuelle kommentarer kan inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC utover det AI-en opprinnelig beregnet. Du MÅ vurdere disse kommentarene som gyldige mitigeringer og justere fGRC/ARC deretter FØR du slår opp SAIL.
+### ABSOLUTT GRUNNINGSREGEL (ANTI-HALLUSINASJON) — VIKTIGST AV ALT
+Du har KUN tilgang til to kilder: (1) den opprinnelige AI-risikovurderingen og (2) brukerens kommentarer per kategori. Du har INGEN annen kunnskap om oppdraget, dronen, utstyret, mannskapet, treningsstatus eller operative tiltak.
+
+Du har ABSOLUTT FORBUD mot å:
+- Finne på dronemodell, produsent eller serienummer (f.eks. "DJI Mavic 3", "Autel EVO", "Mavic 3 Enterprise", "Phantom", "Matrice", "Anafi", "Skydio"). Hvis primærdrone ikke er spesifisert i opprinnelig vurdering, SKAL du skrive "primærdrone ikke spesifisert" og beholde tilhørende hard stop / score-trekk.
+- Påstå at observatør, ekstra mannskap, RPIC-trening, refresher-kurs, NOTAM, klarering, sjekklister, geofencing eller utstyr er "nå tilstede" / "nå utført" med mindre brukerens kommentar for den aktuelle kategorien EKSPLISITT og KONKRET sier det (f.eks. "observatør Ola Nordmann tilstede", "refresher gjennomført 2025-05-10"). Generiske svar som "ok", "ja", "greit", "OK", "fint", "ingen kommentar", tomt felt eller liknende er IKKE mitigeringer og skal IKKE redusere iGRC/fGRC/ARC eller løse hard stops.
+- Hente fakta fra eksempler, sjekklister eller standardfraser i denne systempromten (f.eks. "DJI's motorstopp", "Ninox drone", "SafeSky") og bruke dem som om de gjelder oppdraget. Slike fraser er kun forklarende eksempler.
+- "Oppgradere" konklusjonen fra den opprinnelige vurderingen uten konkret dekning i brukerens kommentar. Hvis opprinnelig vurdering hadde hard stop og kommentaren ikke konkret løser den, skal hard stop bestå.
+
+Hvis en kommentar er tom eller bare en bekreftelse ("ok"/"ja"/"greit"): behandle kategorien som UENDRET. Behold opprinnelig score, hard stops og bekymringer. Skriv eksplisitt i `fgrc_adjustments` og `summary` at "brukerens kommentarer ga ingen nye mitigeringer".
+
+Hvis du er i tvil om en faktapåstand har dekning i input: IKKE skriv den. Skriv heller "ikke spesifisert" eller utelat detaljen.
+
+VIKTIG: Brukerens manuelle kommentarer KAN inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC — men KUN når kommentaren konkret beskriver et tiltak. Juster fGRC/ARC kun da, og bare for den kategorien kommentaren gjelder.
 
 ### KONSISTENS MELLOM SCORE OG ANBEFALING
 - overall_score 7.0-10.0 skal gi recommendation="go".
@@ -1376,7 +1389,20 @@ Your task is to produce a structured SORA analysis based on all available inform
 
 IMPORTANT CONTEXT: This re-assessment IS the complete SORA analysis itself. When the initial assessment says "SORA is required" or "missing SORA", that means THIS output is the solution to that requirement. You must NOT repeat concerns about "missing SORA" or "incomplete SORA" in summary or other fields — this analysis WITH its SAIL, containment and OSO output IS the complete SORA.
 
-IMPORTANT: The user's manual comments may contain additional mitigations that reduce fGRC and/or ARC beyond what the AI originally calculated. You MUST treat these comments as valid mitigations and adjust fGRC/ARC accordingly BEFORE looking up SAIL.
+### ABSOLUTE GROUNDING RULE (ANTI-HALLUCINATION) — MOST IMPORTANT OF ALL
+You have access to ONLY two sources: (1) the initial AI risk assessment and (2) the user's comments per category. You have NO other knowledge about the mission, drone, equipment, crew, training status, or operational measures.
+
+You are ABSOLUTELY FORBIDDEN from:
+- Inventing drone model, manufacturer or serial numbers (e.g. "DJI Mavic 3", "Autel EVO", "Mavic 3 Enterprise", "Phantom", "Matrice", "Anafi", "Skydio"). If primary drone is not specified in the initial assessment, you MUST write "primary drone not specified" and keep the associated hard stop / score deduction.
+- Claiming that observer, additional crew, RPIC training, refresher course, NOTAM, clearance, checklists, geofencing or equipment is "now present" / "now completed" unless the user's comment for that category EXPLICITLY and CONCRETELY says so (e.g. "observer Ola Nordmann present", "refresher completed 2025-05-10"). Generic answers like "ok", "yes", "fine", "OK", "no comment", empty field or similar are NOT mitigations and shall NOT reduce iGRC/fGRC/ARC or resolve hard stops.
+- Pulling facts from examples, checklists or standard phrases in this system prompt (e.g. "DJI's motor stop", "Ninox drone", "SafeSky") and using them as if they apply to the mission. Such phrases are only illustrative examples.
+- "Upgrading" the conclusion from the initial assessment without concrete coverage in the user's comment. If the initial assessment had a hard stop and the comment does not concretely resolve it, the hard stop must remain.
+
+If a comment is empty or only an acknowledgement ("ok"/"yes"/"fine"): treat the category as UNCHANGED. Keep original score, hard stops and concerns. Explicitly write in `fgrc_adjustments` and `summary` that "the user's comments provided no new mitigations".
+
+If you are in doubt whether a factual claim has coverage in the input: DO NOT write it. Write "not specified" or omit the detail instead.
+
+IMPORTANT: The user's manual comments MAY contain additional mitigations that reduce fGRC and/or ARC — but ONLY when the comment concretely describes a measure. Adjust fGRC/ARC only then, and only for the category the comment applies to.
 
 ### CONSISTENCY BETWEEN SCORE AND RECOMMENDATION
 - overall_score 7.0-10.0 must give recommendation="go".
@@ -1526,12 +1552,29 @@ Return this JSON structure:
 export const buildSoraReassessSystemPrompt = (language: unknown): string =>
   normalizeLang(language) === 'en' ? SORA_SYSTEM_EN : SORA_SYSTEM_NO;
 
+// Detect comments that are empty or pure acknowledgements (no actual mitigation content).
+const ACK_ONLY_RE = /^(ok(ay)?|ja|nei|greit|fint|bra|yes|no|fine|good|n\/a|na|none|ingen( kommentar)?|none provided|no comment|\.|-)$/i;
+const classifyComments = (pilotComments: unknown): {
+  ackOnly: string[];
+  substantive: string[];
+} => {
+  const result = { ackOnly: [] as string[], substantive: [] as string[] };
+  if (!pilotComments || typeof pilotComments !== 'object') return result;
+  for (const [key, raw] of Object.entries(pilotComments as Record<string, unknown>)) {
+    const trimmed = typeof raw === 'string' ? raw.trim() : '';
+    if (!trimmed || ACK_ONLY_RE.test(trimmed)) result.ackOnly.push(key);
+    else result.substantive.push(key);
+  }
+  return result;
+};
+
 export const buildSoraReassessUserPrompt = (
   language: unknown,
   previousAnalysis: unknown,
   pilotComments: unknown,
 ): string => {
   const lang = normalizeLang(language);
+  const { ackOnly, substantive } = classifyComments(pilotComments);
   if (lang === 'en') {
     return `CRITICAL: Respond ENTIRELY in English. Translate any Norwegian terms found in the input below.
 
@@ -1543,7 +1586,13 @@ ${JSON.stringify(previousAnalysis, null, 2)}
 ### Pilot's mitigations/comments per category:
 ${JSON.stringify(pilotComments, null, 2)}
 
-IMPORTANT: Consider the pilot's comments carefully. They may contain mitigations that reduce fGRC and/or ARC further beyond what the initial AI assessment determined. Adjust fGRC/ARC accordingly BEFORE computing SAIL from the matrix.
+### Comment classification (pre-computed, authoritative)
+- Categories with acknowledgement-only or empty comments (NO new mitigation — do NOT change score, hard stop or risk for these): ${JSON.stringify(ackOnly)}
+- Categories with substantive comments (evaluate concretely): ${JSON.stringify(substantive)}
+
+For every category in the acknowledgement-only list, you MUST keep the original assessment's score, hard stops and concerns unchanged. Do not invent observers, training, equipment, drones, NOTAMs, clearances or any other facts to explain them away.
+
+IMPORTANT: Consider the pilot's comments carefully ONLY for the substantive categories. They may contain mitigations that reduce fGRC and/or ARC further. Adjust fGRC/ARC accordingly BEFORE computing SAIL from the matrix. Never introduce a drone model, equipment, crew member, training event, or operational fact that is not explicitly present in the initial assessment or a substantive comment.
 
 Analyze the data and produce a complete SORA assessment with SAIL lookup, containment requirements and OSO table. All output fields must be in English.`;
   }
@@ -1555,7 +1604,13 @@ ${JSON.stringify(previousAnalysis, null, 2)}
 ### Brukerens mitigeringer/kommentarer per kategori:
 ${JSON.stringify(pilotComments, null, 2)}
 
-VIKTIG: Vurder brukerens kommentarer nøye. De kan inneholde mitigeringer som reduserer fGRC og/eller ARC ytterligere utover det den opprinnelige AI-vurderingen fastsatte. Juster fGRC/ARC deretter FØR du beregner SAIL fra matrisen.
+### Klassifisering av kommentarer (forhåndsberegnet, autoritativ)
+- Kategorier med kun bekreftelse eller tom kommentar (INGEN ny mitigering — IKKE endre score, hard stop eller risiko for disse): ${JSON.stringify(ackOnly)}
+- Kategorier med substansielle kommentarer (vurder konkret): ${JSON.stringify(substantive)}
+
+For hver kategori i bekreftelseslisten SKAL du beholde opprinnelig vurderings score, hard stops og bekymringer uendret. Ikke finn på observatører, trening, utstyr, droner, NOTAM, klareringer eller andre fakta for å bortforklare dem.
+
+VIKTIG: Vurder brukerens kommentarer nøye KUN for de substansielle kategoriene. De kan inneholde mitigeringer som reduserer fGRC og/eller ARC ytterligere. Juster fGRC/ARC deretter FØR du beregner SAIL fra matrisen. Du skal aldri introdusere en dronemodell, utstyr, mannskap, treningshendelse eller operativt faktum som ikke eksplisitt er til stede i den opprinnelige vurderingen eller en substansiell kommentar.
 
 Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, containment-krav og OSO-tabell. Alle felter skal være på norsk.`;
 };
