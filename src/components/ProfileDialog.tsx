@@ -907,6 +907,13 @@ export const ProfileDialog = () => {
     }
   }, [location.state]);
 
+  // Close profile dialog when navigating to another page
+  useEffect(() => {
+    if (profileDialogOpen) {
+      setProfileDialogOpen(false);
+    }
+  }, [location.pathname]);
+
   return (
     <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
       <DialogTrigger asChild>
