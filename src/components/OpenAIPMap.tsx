@@ -54,6 +54,26 @@ import {
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 const TENSIO_WMS_URL = "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer";
 
+const ROUTE_PLANNING_NON_INTERACTIVE_PANES = [
+  'overlayPane',
+  'aipPane',
+  'rmzPane',
+  'rpasPane',
+  'atzPane',
+  'nsmPane',
+  'obstaclePane',
+  'airportPane',
+  'safeskyPane',
+  'missionPane',
+  'notamPane',
+  'notamPinPane',
+  'populationDensityPane',
+  'tensioPowerPane',
+  'powerPane',
+  'naisPane',
+  'liveFlightPane',
+];
+
 const isTensioName = (name?: string | null) => name?.toLowerCase().includes("tensio") ?? false;
 
 const escapePopupHtml = (value: unknown) =>
@@ -224,6 +244,7 @@ export function OpenAIPMap({
   const populationDensityRendererRef = useRef<L.Renderer | null>(null);
   const routeProximityLayerRef = useRef<L.LayerGroup | null>(null);
   const naisLayerRef = useRef<L.LayerGroup | null>(null);
+  const routePlanningInteractiveLayerRefs = useRef<L.Layer[]>([]);
   const routeProximityCacheRef = useRef(createProximityCache());
   const routeProximityAbortRef = useRef<AbortController | null>(null);
   const routeProximityDebounceRef = useRef<number | null>(null);
@@ -295,6 +316,65 @@ export function OpenAIPMap({
     []
   );
 
+  const setLeafletLayerInteractivity = useCallback((layer: L.Layer | null | undefined, enabled: boolean) => {
+    const applyToLayer = (target: L.Layer | null | undefined) => {
+      if (!target) return;
+
+      const group = target as L.LayerGroup;
+      if (typeof group.eachLayer === "function") {
+        group.eachLayer((child) => applyToLayer(child));
+      }
+
+      const anyLayer = target as any;
+      if (anyLayer.options) {
+        anyLayer.options.interactive = enabled;
+        anyLayer.options.bubblingMouseEvents = true;
+      }
+
+      const elements = [
+        typeof anyLayer.getElement === "function" ? anyLayer.getElement() : null,
+        anyLayer._path,
+        anyLayer._icon,
+        anyLayer._shadow,
+      ].filter(Boolean) as HTMLElement[];
+
+      elements.forEach((el) => {
+        el.style.pointerEvents = enabled ? "auto" : "none";
+        if (!enabled && typeof anyLayer.removeInteractiveTarget === "function") {
+          try { anyLayer.removeInteractiveTarget(el); } catch { /* ignore */ }
+        } else if (enabled && typeof anyLayer.addInteractiveTarget === "function" && anyLayer._map) {
+          try { anyLayer.addInteractiveTarget(el); } catch { /* ignore */ }
+        }
+      });
+    };
+
+    applyToLayer(layer);
+  }, []);
+
+  const syncRoutePlanningInteractivity = useCallback((currentMode = modeRef.current, inspectMode = routeInspectModeRef.current) => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    const overlaysInteractive = currentMode !== "routePlanning" || !!inspectMode;
+    const pointerEvents = overlaysInteractive ? "auto" : "none";
+    const container = map.getContainer();
+    if (currentMode === "routePlanning" && !inspectMode) {
+      container.classList.add("route-planning-active");
+    } else {
+      container.classList.remove("route-planning-active");
+    }
+
+    ROUTE_PLANNING_NON_INTERACTIVE_PANES.forEach((paneName) => {
+      const pane = map.getPane(paneName);
+      if (pane) pane.style.pointerEvents = pointerEvents;
+    });
+
+    setGeoJsonInteractivity(nsmGeoJsonRef.current, overlaysInteractive);
+    setGeoJsonInteractivity(rpasGeoJsonRef.current, overlaysInteractive);
+    aipGeoJsonLayersRef.current.forEach((layer) => setGeoJsonInteractivity(layer, overlaysInteractive));
+    routePlanningInteractiveLayerRefs.current.forEach((layer) => setLeafletLayerInteractivity(layer, overlaysInteractive));
+  }, [setGeoJsonInteractivity, setLeafletLayerInteractivity]);
+
   // Switch between base map layers
   const switchBaseLayer = useCallback((newType: 'osm' | 'satellite' | 'topo') => {
     if (!leafletMapRef.current || !baseLayerRef.current) return;
@@ -345,7 +425,10 @@ export function OpenAIPMap({
   useEffect(() => { onMissionClickRef.current = onMissionClick; }, [onMissionClick]);
   useEffect(() => { onRouteChangeRef.current = onRouteChange; }, [onRouteChange]);
   useEffect(() => { isPlacingPilotRef.current = isPlacingPilot; }, [isPlacingPilot]);
-  useEffect(() => { routeInspectModeRef.current = routeInspectMode; }, [routeInspectMode]);
+  useEffect(() => {
+    routeInspectModeRef.current = routeInspectMode;
+    syncRoutePlanningInteractivity(modeRef.current, routeInspectMode);
+  }, [routeInspectMode, syncRoutePlanningInteractivity]);
 
   useEffect(() => { onPilotPositionChangeRef.current = onPilotPositionChange; }, [onPilotPositionChange]);
   useEffect(() => {
@@ -645,27 +728,13 @@ export function OpenAIPMap({
     });
 
     if (leafletMapRef.current) {
-      const map = leafletMapRef.current;
-      const container = map.getContainer();
-      if (mode === "routePlanning") {
-        container.classList.add("route-planning-active");
-      } else {
-        container.classList.remove("route-planning-active");
-      }
-      const pointerEvents = mode === "routePlanning" ? "none" : "auto";
-      const panesToDisable = ['overlayPane', 'aipPane', 'rmzPane', 'rpasPane', 'atzPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'missionPane', 'notamPane', 'notamPinPane', 'populationDensityPane'];
-      for (const paneName of panesToDisable) {
-        const pane = map.getPane(paneName);
-        if (pane) {
-          pane.style.pointerEvents = pointerEvents;
-        }
-      }
+      syncRoutePlanningInteractivity(mode, routeInspectModeRef.current);
     }
 
     if (routeLayerRef.current && leafletMapRef.current) {
       updateRouteDisplay();
     }
-  }, [mode, updateRouteDisplay, setGeoJsonInteractivity]);
+  }, [mode, updateRouteDisplay, setGeoJsonInteractivity, syncRoutePlanningInteractivity]);
 
   // Sync with controlled route from parent
   useEffect(() => {
@@ -737,7 +806,7 @@ export function OpenAIPMap({
       powerPane: '700', tensioPowerPane: '699', obstaclePane: '660', nsmPane: '650', atzPane: '645', notamPane: '640', populationDensityPane: '635',
       rpasPane: '630', aipPane: '625', rmzPane: '620',
     };
-    const nonInteractivePanes = new Set(['aipPane', 'rmzPane', 'rpasPane', 'atzPane', 'nsmPane', 'obstaclePane', 'airportPane', 'safeskyPane', 'overlayPane', 'notamPane', 'notamPinPane', 'populationDensityPane', 'tensioPowerPane']);
+    const nonInteractivePanes = new Set(ROUTE_PLANNING_NON_INTERACTIVE_PANES);
     for (const [paneName, zIndex] of Object.entries(paneConfig)) {
       map.createPane(paneName);
       const pane = map.getPane(paneName);
@@ -958,6 +1027,34 @@ export function OpenAIPMap({
     routeLayerRef.current = routeLayer;
     const routeProximityLayer = L.layerGroup().addTo(map);
     routeProximityLayerRef.current = routeProximityLayer;
+    routePlanningInteractiveLayerRefs.current = [
+      rpasLayer,
+      nsmLayer,
+      aipLayer,
+      rmzTmzAtzLayer,
+      naturvernLayer,
+      dkNatureLayer,
+      caaFengslerLayer,
+      caaAmbassaderLayer,
+      caaFareLayer,
+      caaFlyplasserLayer,
+      caaNotamSonerLayer,
+      caaRestriksjonerLayer,
+      dkRodLayer,
+      dkOrangeLayer,
+      dkBlaLayer,
+      notamLayer,
+      obstaclesLayer,
+      airportsLayer,
+      droneLayer,
+      safeskyLayer,
+      missionsLayer,
+      completedMissionsLayer,
+      plannedPublishedLayer,
+      kraftledningerLayer,
+      naisLayer,
+    ];
+    syncRoutePlanningInteractivity(modeRef.current, routeInspectModeRef.current);
     if (routePointsRef.current.length > 0) {
       updateRouteDisplay();
     }
@@ -979,7 +1076,10 @@ export function OpenAIPMap({
 
     // Map click handler
     const handleMapClick = async (e: any) => {
-      if (e.originalEvent?.target?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-popup-content-wrapper, .route-segment-hit')) return;
+      const target = e.originalEvent?.target as HTMLElement | null | undefined;
+      const isRouteDrawingClick = modeRef.current === "routePlanning" && !routeInspectModeRef.current;
+      if (target?.closest('.leaflet-popup, .leaflet-popup-content-wrapper, .route-segment-hit')) return;
+      if (!isRouteDrawingClick && target?.closest('.leaflet-marker-icon')) return;
       
       const { lat, lng } = e.latlng;
       
@@ -1071,11 +1171,11 @@ export function OpenAIPMap({
     // Start ALL layers immediately — AuthContext handles session validity,
     // Supabase SDK auto-attaches the JWT from localStorage for RLS queries.
     safeSkyManager.start();
-    fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-    fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-    fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
-    fetchObstacles({ layer: obstaclesLayer, mode });
-    fetchAirportsData({ layer: airportsLayer, mode });
+    fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+    fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+    fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+    fetchObstacles({ layer: obstaclesLayer, mode: modeRef.current });
+    fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
     fetchDroneTelemetry({ droneLayer, modeRef });
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
@@ -1299,11 +1399,11 @@ export function OpenAIPMap({
         safeSkyManager.start();
         
         // 4. Re-fetch ALL data layers (including RLS-protected ones)
-        fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-        fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-        fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
-        fetchObstacles({ layer: obstaclesLayer, mode });
-        fetchAirportsData({ layer: airportsLayer, mode });
+        fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+        fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+        fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+        fetchObstacles({ layer: obstaclesLayer, mode: modeRef.current });
+        fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
         fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
         fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
         fetchDroneTelemetry({ droneLayer, modeRef });
@@ -1337,6 +1437,7 @@ export function OpenAIPMap({
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
+      routePlanningInteractiveLayerRefs.current = [];
       leafletMapRef.current = null;
       try { map.stop(); } catch {}
       try { map.remove(); } catch {}

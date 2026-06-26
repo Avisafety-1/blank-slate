@@ -422,7 +422,12 @@ export async function fetchAirportsData(params: FetchParams) {
           iconAnchor: [16, 40],
           popupAnchor: [0, -40]
         });
-        return L.marker(latlng, { icon, interactive: mode !== 'routePlanning', pane: 'airportPane' });
+        return L.marker(latlng, {
+          icon,
+          interactive: mode !== 'routePlanning',
+          pane: 'airportPane',
+          bubblingMouseEvents: true,
+        });
       },
       onEachFeature: mode !== 'routePlanning' ? (feature, layer) => {
         if (feature.properties) {
@@ -1087,7 +1092,7 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
               fillOpacity: 0.12,
               pane: 'atzPane',
               interactive: mode !== 'routePlanning',
-              bubblingMouseEvents: false,
+              bubblingMouseEvents: true,
             });
             if (mode !== 'routePlanning') {
               circle.bindPopup(buildCaaSmallAirportPopupHtml(zone));
