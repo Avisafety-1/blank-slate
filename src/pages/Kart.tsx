@@ -12,7 +12,7 @@ const Map3D = lazy(() => import("@/components/Map3D"));
 // soraGeometry imports removed — buffer computation moved to FlightHub2SendDialog
 import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -42,6 +42,7 @@ export default function KartPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading, companyId } = useAuth();
   useAppHeartbeat();
   const [selectedMission, setSelectedMission] = useState<any>(null);
@@ -421,6 +422,50 @@ export default function KartPage() {
     setShowAdjacentArea(!!route?.adjacentAreaDocumentation?.enabled);
     setAdjacentResult((route?.adjacentAreaDocumentation as any) || null);
   }, [defaultSoraSettings]);
+
+  // Load mission from ?missionId=... URL param (from "Utvid"-knappen i oppdragskort)
+  const handledMissionParamRef = useRef<string | null>(null);
+  const [pendingInitialCenter, setPendingInitialCenter] = useState<[number, number] | undefined>(undefined);
+  useEffect(() => {
+    if (!user || !companyId) return;
+    const mid = searchParams.get("missionId");
+    if (!mid) return;
+    if (handledMissionParamRef.current === mid) return;
+    handledMissionParamRef.current = mid;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("missions")
+        .select("id, route, latitude, longitude")
+        .eq("id", mid)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Fant ikke oppdraget");
+      } else {
+        const route = (data.route as any) as RouteData | null;
+        const coords = route?.coordinates ?? [];
+        if (!coords.length) {
+          if (data.latitude && data.longitude) {
+            setPendingInitialCenter([data.latitude, data.longitude]);
+          }
+          toast.message("Oppdraget har ingen lagret rute");
+        } else {
+          // Centroid of route coordinates
+          const lat = coords.reduce((s, p) => s + p.lat, 0) / coords.length;
+          const lng = coords.reduce((s, p) => s + p.lng, 0) / coords.length;
+          setPendingInitialCenter([lat, lng]);
+          handleEditMissionRoute({ id: data.id, route });
+        }
+      }
+      // Clear the URL param so refresh doesn't re-trigger
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("missionId");
+        return next;
+      }, { replace: true });
+    })();
+  }, [user, companyId, searchParams, setSearchParams, handleEditMissionRoute]);
+
 
   const handleCancelRoute = () => {
     if (routePlanningState) {
@@ -1115,7 +1160,7 @@ export default function KartPage() {
               mode={isRoutePlanning ? "routePlanning" : "view"}
               existingRoute={routePlanningState?.existingRoute}
               onRouteChange={handleRouteChange}
-              initialCenter={routePlanningState?.initialCenter ?? lastViewRef.current?.center}
+              initialCenter={pendingInitialCenter ?? routePlanningState?.initialCenter ?? lastViewRef.current?.center}
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
               onStartRoutePlanning={handleStartRoutePlanning}

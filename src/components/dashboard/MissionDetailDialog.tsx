@@ -16,7 +16,7 @@ import { AirspaceWarnings } from "./AirspaceWarnings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionMapPreview } from "./MissionMapPreview";
-import { ExpandedMapDialog } from "./ExpandedMapDialog";
+import { useNavigate } from "react-router-dom";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
@@ -56,12 +56,16 @@ interface MissionDetailDialogProps {
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { companyId } = useAuth();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
-  const [expandedMapOpen, setExpandedMapOpen] = useState(false);
+  const openMissionInMap = (missionId: string) => {
+    onOpenChange(false);
+    navigate(`/kart?missionId=${missionId}`);
+  };
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
   const [soraStatus, setSoraStatus] = useState<string | null>(null);
@@ -112,23 +116,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     fetchLatest();
   }, [open, mission?.id]);
 
-  // Fetch flight logs when expanded map opens
-  useEffect(() => {
-    if (!expandedMapOpen || !mission?.id) return;
-    if (mission.flightLogs) {
-      setFlightLogs(mission.flightLogs);
-      return;
-    }
-    const fetchLogs = async () => {
-      const { data } = await supabase
-        .from("flight_logs")
-        .select("id, flight_date, flight_track, flight_duration_minutes")
-        .eq("mission_id", mission.id)
-        .not("flight_track", "is", null);
-      setFlightLogs(data || []);
-    };
-    fetchLogs();
-  }, [expandedMapOpen, mission?.id, mission?.flightLogs]);
+
+
 
   const currentMission = liveMission ? { ...mission, ...liveMission } : mission;
 
@@ -485,14 +474,14 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <div className="border-t border-border pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-medium text-muted-foreground">Kartvisning</p>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setExpandedMapOpen(true)}>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openMissionInMap(currentMission.id)}>
                     <Maximize2 className="w-3.5 h-3.5 mr-1" />
                     Utvid
                   </Button>
                 </div>
                 <div
                   className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                  onClick={() => setExpandedMapOpen(true)}
+                  onClick={() => openMissionInMap(currentMission.id)}
                 >
                   <MissionMapPreview
                     latitude={effectiveLat}
@@ -588,31 +577,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       onSoraSaved={onMissionUpdated}
     />
 
-    {(() => {
-      const routeCoords = (currentMission.route as any)?.coordinates;
-      const effectiveLat = currentMission.latitude ?? routeCoords?.[0]?.lat;
-      const effectiveLng = currentMission.longitude ?? routeCoords?.[0]?.lng;
-      if (!effectiveLat || !effectiveLng) return null;
-      return (
-        <ExpandedMapDialog
-          open={expandedMapOpen}
-          onOpenChange={setExpandedMapOpen}
-          latitude={effectiveLat}
-          longitude={effectiveLng}
-          route={currentMission.route as any}
-          flightTracks={memoizedFlightTracks}
-          missionTitle={currentMission.tittel}
-          missionId={currentMission.id}
-          onSoraUpdated={onMissionUpdated}
-          notam={currentMission.notam_text ? {
-            lat: currentMission.notam_center_lat_wgs84 ?? effectiveLat,
-            lng: currentMission.notam_center_lon_wgs84 ?? effectiveLng,
-            radiusNm: currentMission.notam_radius_nm ?? 0.5,
-            text: currentMission.notam_text,
-          } : null}
-        />
-      );
-    })()}
 
     {/* Approval Confirmation */}
     <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
