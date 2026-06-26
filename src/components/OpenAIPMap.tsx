@@ -353,6 +353,12 @@ export function OpenAIPMap({
 
     const overlaysInteractive = currentMode !== "routePlanning" || !!inspectMode;
     const pointerEvents = overlaysInteractive ? "auto" : "none";
+    const container = map.getContainer();
+    if (currentMode === "routePlanning" && !inspectMode) {
+      container.classList.add("route-planning-active");
+    } else {
+      container.classList.remove("route-planning-active");
+    }
 
     ROUTE_PLANNING_NON_INTERACTIVE_PANES.forEach((paneName) => {
       const pane = map.getPane(paneName);
@@ -718,13 +724,6 @@ export function OpenAIPMap({
     });
 
     if (leafletMapRef.current) {
-      const map = leafletMapRef.current;
-      const container = map.getContainer();
-      if (mode === "routePlanning") {
-        container.classList.add("route-planning-active");
-      } else {
-        container.classList.remove("route-planning-active");
-      }
       syncRoutePlanningInteractivity(mode, routeInspectModeRef.current);
     }
 
