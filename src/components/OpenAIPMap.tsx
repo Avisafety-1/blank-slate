@@ -955,6 +955,7 @@ export function OpenAIPMap({
       }
       
       if (modeRef.current === "routePlanning") {
+        pushRouteHistory();
         routePointsRef.current.push({ lat, lng });
         setRoutePointCount(routePointsRef.current.length);
         updateRouteDisplay();
