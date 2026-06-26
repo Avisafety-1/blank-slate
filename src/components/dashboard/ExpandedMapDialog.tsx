@@ -300,6 +300,7 @@ export const ExpandedMapDialog = ({
 
       // Clean up any existing map
       if (leafletMapRef.current) {
+        try { leafletMapRef.current.stop(); } catch {}
         try { leafletMapRef.current.remove(); } catch {}
         leafletMapRef.current = null;
       }
@@ -456,6 +457,7 @@ export const ExpandedMapDialog = ({
   useEffect(() => {
     if (!open) {
       if (leafletMapRef.current) {
+        try { leafletMapRef.current.stop(); } catch {}
         try { leafletMapRef.current.remove(); } catch {}
         leafletMapRef.current = null;
       }

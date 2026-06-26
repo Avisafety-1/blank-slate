@@ -38,7 +38,8 @@ export const LocationPickerDialog = ({
     if (!open) {
       // Cleanup when closing
       if (mapRef.current) {
-        mapRef.current.remove();
+        try { mapRef.current.stop(); } catch {}
+        try { mapRef.current.remove(); } catch {}
         mapRef.current = null;
       }
       markerRef.current = null;
@@ -155,7 +156,8 @@ export const LocationPickerDialog = ({
 
     return () => {
       if (mapRef.current) {
-        mapRef.current.remove();
+        try { mapRef.current.stop(); } catch {}
+        try { mapRef.current.remove(); } catch {}
         mapRef.current = null;
       }
     };
