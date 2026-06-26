@@ -235,6 +235,8 @@ export function OpenAIPMap({
   const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
   const baseLayerRef = useRef<L.Layer | null>(null);
   const isPlacingPilotRef = useRef(isPlacingPilot);
+  const routeInspectModeRef = useRef(routeInspectMode);
+
   const onPilotPositionChangeRef = useRef(onPilotPositionChange);
   const weatherEnabledRef = useRef(false);
   const modeRef = useRef(mode);
