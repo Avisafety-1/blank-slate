@@ -485,6 +485,8 @@ export default function KartPage() {
     } else {
       // Started from /kart or editing existing mission route - exit route planning mode
       setIsRoutePlanning(false);
+      setRouteInspectMode(false);
+
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
       setPilotPosition(undefined);
       setAdjacentResult(null);
