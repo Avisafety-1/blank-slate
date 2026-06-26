@@ -474,14 +474,14 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <div className="border-t border-border pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-medium text-muted-foreground">Kartvisning</p>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setExpandedMapOpen(true)}>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openMissionInMap(currentMission.id)}>
                     <Maximize2 className="w-3.5 h-3.5 mr-1" />
                     Utvid
                   </Button>
                 </div>
                 <div
                   className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                  onClick={() => setExpandedMapOpen(true)}
+                  onClick={() => openMissionInMap(currentMission.id)}
                 >
                   <MissionMapPreview
                     latitude={effectiveLat}
