@@ -894,16 +894,6 @@ export default function KartPage() {
                 </span>
               </Button>
               <Button
-                variant={routeInspectMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setRouteInspectMode((v) => !v)}
-                className="h-8 px-2 sm:px-3"
-                title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
-              >
-                <MousePointer2 className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">{routeInspectMode ? "Tegn" : "Inspiser"}</span>
-              </Button>
-              <Button
                 data-tour="map-route-undo"
                 variant="outline"
                 size="sm"
