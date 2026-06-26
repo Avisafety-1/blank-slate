@@ -727,15 +727,6 @@ export default function KartPage() {
                     <MapPin className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant={routeInspectMode ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setRouteInspectMode((v) => !v)}
-                    className="h-8 px-2"
-                    title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
-                  >
-                    <MousePointer2 className="h-4 w-4" />
-                  </Button>
-                  <Button
                     data-tour="map-route-undo"
                     variant="outline"
                     size="sm"
@@ -901,16 +892,6 @@ export default function KartPage() {
                 <span className="hidden sm:inline ml-1">
                   {pilotPosition ? "Fjern pilot" : isPlacingPilot ? "Klikk..." : "Pilot"}
                 </span>
-              </Button>
-              <Button
-                variant={routeInspectMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setRouteInspectMode((v) => !v)}
-                className="h-8 px-2 sm:px-3"
-                title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
-              >
-                <MousePointer2 className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">{routeInspectMode ? "Tegn" : "Inspiser"}</span>
               </Button>
               <Button
                 data-tour="map-route-undo"
@@ -1152,6 +1133,18 @@ export default function KartPage() {
             </Button>
           );
 
+          const inspectModeBtn = isRoutePlanning && !is3D ? (
+            <Button
+              variant={routeInspectMode ? "default" : "secondary"}
+              size="icon"
+              onClick={() => setRouteInspectMode((v) => !v)}
+              className={cn("shadow-lg", routeInspectMode ? "" : "bg-card hover:bg-accent")}
+              title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
+            >
+              <MousePointer2 className="h-5 w-5" />
+            </Button>
+          ) : null;
+
           const routePlannerBtn3D = is3D && !isRoutePlanning ? (
             <Button
               onClick={handleStartRoutePlanning}
@@ -1209,14 +1202,14 @@ export default function KartPage() {
               adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
               populationDensityCells={mergedDensityCells}
               populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
-              stackSlotAboveLayers={toggle3DBtn}
-            routeHintOffsetClass={
-              isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
-                ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
-                : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
-                  ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
-                  : undefined
-            }
+              stackSlotAboveLayers={<>{toggle3DBtn}{inspectModeBtn}</>}
+              routeHintOffsetClass={
+                isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
+                  ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
+                  : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
+                    ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
+                    : undefined
+              }
             />
           );
         })()}
