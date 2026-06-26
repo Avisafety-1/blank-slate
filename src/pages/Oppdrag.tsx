@@ -117,8 +117,16 @@ const Oppdrag = () => {
     return () => clearTimeout(timer);
   }, [searchQuery, data.filterTab]);
 
+  // Route planner navigation state
+  const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
+  const [initialFormData, setInitialFormData] = useState<any>(null);
+  const [initialSelectedPersonnel, setInitialSelectedPersonnel] = useState<string[]>([]);
+  const [initialSelectedEquipment, setInitialSelectedEquipment] = useState<string[]>([]);
+  const [initialSelectedDrones, setInitialSelectedDrones] = useState<string[]>([]);
+  const [initialSelectedCustomer, setInitialSelectedCustomer] = useState<string>("");
 
   const handledScrollRef = useRef<string | null>(null);
+
 
   // Handle navigation state from route planner
   useEffect(() => {
