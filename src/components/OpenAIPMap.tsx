@@ -180,7 +180,9 @@ export function OpenAIPMap({
   stackSlotAboveLayers,
   onViewChange,
   routeUndoToken,
+  routeInspectMode,
 }: OpenAIPMapProps) {
+
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
   const mapRef = useRef<HTMLDivElement | null>(null);
