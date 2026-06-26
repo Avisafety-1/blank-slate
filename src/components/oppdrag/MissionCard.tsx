@@ -621,7 +621,7 @@ export const MissionCard = ({
               <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
               <div 
                 className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                onClick={() => setExpandedMapOpen(true)}
+                onClick={() => navigate(`/kart?missionId=${mission.id}`)}
               >
                 <MissionMapPreview
                   latitude={effectiveLat}
