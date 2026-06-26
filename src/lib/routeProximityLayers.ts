@@ -183,12 +183,24 @@ interface AisCacheEntry {
 
 const AIS_CACHE_TTL_MS = 30_000;
 
+interface ObstacleRecord {
+  openaip_id: string;
+  name: string | null;
+  type: string | null;
+  elevation: number | null;
+  height_agl: number | null;
+  lat: number;
+  lng: number;
+}
+
 interface SourceCache {
   naturvern: Map<string, any[]>;
   vern: Map<string, any[]>;
   caa: Map<string, any[]>;
   nve: Map<string, Array<{ def: KraftDef; feature: any }>>;
   ais: Map<string, AisCacheEntry>;
+  obstaclesAll: ObstacleRecord[] | null;
+  obstaclesPromise: Promise<ObstacleRecord[]> | null;
 }
 
 export function createProximityCache(): SourceCache {
@@ -198,6 +210,8 @@ export function createProximityCache(): SourceCache {
     caa: new Map(),
     nve: new Map(),
     ais: new Map(),
+    obstaclesAll: null,
+    obstaclesPromise: null,
   };
 }
 
