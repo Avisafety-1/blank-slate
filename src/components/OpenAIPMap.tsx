@@ -1323,6 +1323,7 @@ export function OpenAIPMap({
   // Display existing route
   useEffect(() => {
     if (existingRoute && existingRoute.coordinates.length > 0) {
+      routeHistoryRef.current = [];
       routePointsRef.current = [...existingRoute.coordinates];
       updateRouteDisplay();
     }
