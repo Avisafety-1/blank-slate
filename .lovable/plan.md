@@ -1,11 +1,19 @@
-## Endring i `src/pages/Kart.tsx`
+## Inspeksjons-modus i ruteplanleggeren
 
-I `handleCancelRoute` (linje 471), i `else`-grenen (når man redigerer et eksisterende oppdrags rute via `editingMissionId`), legg til:
+Legger til en ny meny-knapp (musepeker-ikon) i ruteplanlegger-kontrollene som lar brukeren midlertidig klikke i kartet (på geo-soner, etc.) uten å legge ned rutepunkter.
 
-- `setEditingMissionId(null)` — fjerner aktivt oppdrag, slik at "Tilbake til oppdrag"-knappen forsvinner.
-- `setEditingMissionStatus(null)` — rydder opp tilhørende status.
-- Nullstill eventuell initial rute-state (`initialRoute`/lignende) hvis den brukes for å re-fylle ruten ved ny redigering, slik at neste klikk på ruteplanleggeren starter på blank rute.
+### `src/pages/Kart.tsx`
+- Ny state `routeInspectMode: boolean` (default `false`).
+- Ny knapp plassert sammen med øvrige meny-knapper (undo / clear / cancel / save) i begge layoutene (desktop ~linje 720 og mobil ~linje 890), med `MousePointer2`-ikon fra `lucide-react`. Aktiv tilstand markeres visuelt (samme stil som andre toggle-knapper).
+- Toggle nullstilles automatisk når `isRoutePlanning` blir `false` (ved Avbryt/Lagre).
+- Send `routeInspectMode` videre til `<OpenAIPMap />` (og `<Map3D />` om relevant).
 
-Resultat: Klikk på "Avbryt" når et oppdrag redigeres tar brukeren tilbake til ren `/kart`-tilstand uten aktivt oppdrag. "Tilbake til oppdrag"-knappen forsvinner. Klikk på ruteplanleggeren igjen starter en ny, tom rute.
+### `src/components/OpenAIPMap.tsx`
+- Ny prop `routeInspectMode?: boolean` + tilhørende `inspectModeRef` som oppdateres i en `useEffect`.
+- I `handleMapClick` (linje 970): hvis `modeRef.current === "routePlanning"` OG `inspectModeRef.current === true`, returner uten å pushe rutepunkt — slik at popup-handlere på underliggende GeoJSON-lag (verneområder, CTR, NOTAM, m.fl.) får håndtere klikket normalt.
+- Endre kart-cursor i ruteplanlegging fra `crosshair` til `default`/`pointer` når inspect-modus er aktiv (CSS-klasse på map-containeren toggles).
 
-Eksisterende oppførsel for `routePlanningState` (nytt oppdrag opprettet fra dialog) endres ikke — den navigerer fortsatt tilbake til oppdragsdialogen.
+### Adferd
+- I inspect-modus: ingen nye rutepunkter, eksisterende rute beholdes, drag/slett av eksisterende punkter fungerer som før, alle øvrige knapper fungerer som før.
+- Klikk på en geo-sone åpner sonens popup som vanlig.
+- Knappen er kun synlig mens `isRoutePlanning` er aktiv.
