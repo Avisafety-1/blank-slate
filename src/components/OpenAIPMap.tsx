@@ -344,6 +344,8 @@ export function OpenAIPMap({
   useEffect(() => { onMissionClickRef.current = onMissionClick; }, [onMissionClick]);
   useEffect(() => { onRouteChangeRef.current = onRouteChange; }, [onRouteChange]);
   useEffect(() => { isPlacingPilotRef.current = isPlacingPilot; }, [isPlacingPilot]);
+  useEffect(() => { routeInspectModeRef.current = routeInspectMode; }, [routeInspectMode]);
+
   useEffect(() => { onPilotPositionChangeRef.current = onPilotPositionChange; }, [onPilotPositionChange]);
   useEffect(() => {
     plannedWindowHoursRef.current = plannedMissionsWindowHours;
