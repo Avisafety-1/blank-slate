@@ -1167,9 +1167,9 @@ export function OpenAIPMap({
     // Start ALL layers immediately — AuthContext handles session validity,
     // Supabase SDK auto-attaches the JWT from localStorage for RLS queries.
     safeSkyManager.start();
-    fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-    fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-    fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+    fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+    fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+    fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
     fetchObstacles({ layer: obstaclesLayer, mode: modeRef.current });
     fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
     fetchDroneTelemetry({ droneLayer, modeRef });
@@ -1395,9 +1395,9 @@ export function OpenAIPMap({
         safeSkyManager.start();
         
         // 4. Re-fetch ALL data layers (including RLS-protected ones)
-        fetchNsmData({ ...geoJsonParams, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-        fetchRpasData({ ...geoJsonParams, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-        fetchAllAipZones({ ...geoJsonParams, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+        fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+        fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+        fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
         fetchObstacles({ layer: obstaclesLayer, mode: modeRef.current });
         fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
         fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
