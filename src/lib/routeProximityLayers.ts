@@ -165,11 +165,30 @@ async function withTimeout<T>(
   });
 }
 
+interface AisVessel {
+  mmsi?: number | string;
+  name?: string;
+  lat: number;
+  lon: number;
+  cog?: number | null;
+  sog?: number | null;
+  shipType?: number | null;
+  destination?: string | null;
+}
+
+interface AisCacheEntry {
+  ts: number;
+  vessels: AisVessel[];
+}
+
+const AIS_CACHE_TTL_MS = 30_000;
+
 interface SourceCache {
   naturvern: Map<string, any[]>;
   vern: Map<string, any[]>;
   caa: Map<string, any[]>;
   nve: Map<string, Array<{ def: KraftDef; feature: any }>>;
+  ais: Map<string, AisCacheEntry>;
 }
 
 export function createProximityCache(): SourceCache {
@@ -178,6 +197,7 @@ export function createProximityCache(): SourceCache {
     vern: new Map(),
     caa: new Map(),
     nve: new Map(),
+    ais: new Map(),
   };
 }
 
