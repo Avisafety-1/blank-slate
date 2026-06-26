@@ -121,6 +121,8 @@ interface OpenAIPMapProps {
   existingRoute?: RouteData | null;
   onRouteChange?: (route: RouteData) => void;
   initialCenter?: [number, number];
+  /** If true, the map will not auto-center on the user's GPS position or company location on load. */
+  suppressGeolocationCenter?: boolean;
   controlledRoute?: RouteData | null;
   onStartRoutePlanning?: () => void;
   onPilotPositionChange?: (position: RoutePoint | undefined) => void;
@@ -149,6 +151,7 @@ export function OpenAIPMap({
   existingRoute,
   onRouteChange,
   initialCenter,
+  suppressGeolocationCenter,
   controlledRoute,
   onStartRoutePlanning,
   onPilotPositionChange,
@@ -178,6 +181,11 @@ export function OpenAIPMap({
   useEffect(() => {
     focusFlightIdRef.current = focusFlightId ?? null;
   }, [focusFlightId]);
+  // Keep the "entered from mission" flag stable for async geolocation callbacks.
+  const suppressGeolocationCenterRef = useRef(suppressGeolocationCenter);
+  useEffect(() => {
+    suppressGeolocationCenterRef.current = suppressGeolocationCenter;
+  }, [suppressGeolocationCenter]);
   const missionsLayerRef = useRef<L.LayerGroup | null>(null);
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
   const nsmGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
@@ -615,7 +623,11 @@ export function OpenAIPMap({
       setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
       if (controlled.length > 0 && leafletMapRef.current && (wasEmpty || firstChanged)) {
-        leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
+        // When an explicit mission center is supplied, let the initialCenter effect
+        // keep the map centered on the mission instead of snapping to the first point.
+        if (!initialCenter) {
+          leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
+        }
       }
     }
   }, [controlledRoute, updateRouteDisplay]);
@@ -818,7 +830,7 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "flyplasser", name: "Flyplasser", layer: [airportsLayer, caaFlyplasserLayer], enabled: true, icon: "planeLanding", group: "Infrastruktur" });
 
     // Geolocation
-    if (!initialCenter && navigator.geolocation) {
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
@@ -830,14 +842,15 @@ export function OpenAIPMap({
             }).addTo(map);
             userMarkerRef.current.bindPopup("Din posisjon");
           }
-          // Bare sentrer kartet hvis vi IKKE har en flight å fokusere på
-          if (!focusFlightIdRef.current) {
+          // Only center on the user's position if we have not been given an explicit
+          // mission center and we are not focusing on a specific flight.
+          if (!suppressGeolocationCenterRef.current && !initialCenter && !focusFlightIdRef.current) {
             map.setView(coords, 9);
           }
         },
         () => {
           console.log("Geolokasjon nektet");
-          if (!focusFlightIdRef.current && companyLat && companyLon) {
+          if (!suppressGeolocationCenterRef.current && !initialCenter && !focusFlightIdRef.current && companyLat && companyLon) {
             map.setView([companyLat, companyLon], 10);
           }
         },
