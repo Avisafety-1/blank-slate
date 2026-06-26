@@ -983,31 +983,6 @@ export const MissionCard = ({
       mission={mission}
       onSaved={fetchMissions}
     />
-    <ExpandedMapDialog
-      open={expandedMapOpen}
-      onOpenChange={setExpandedMapOpen}
-      latitude={mission.latitude ?? (mission.route as any)?.coordinates?.[0]?.lat ?? 0}
-      longitude={mission.longitude ?? (mission.route as any)?.coordinates?.[0]?.lng ?? 0}
-      route={mission.route as any}
-      flightTracks={
-        mission.flightLogs
-          ?.filter((log: any) => log.flight_track?.positions?.length > 0)
-          .map((log: any) => ({
-            positions: log.flight_track.positions,
-            flightLogId: log.id,
-            flightDate: log.flight_date,
-          })) || null
-      }
-      missionTitle={mission.tittel}
-      missionId={mission.id}
-      onSoraUpdated={fetchMissions}
-      notam={mission.notam_text ? {
-        lat: mission.notam_center_lat_wgs84 ?? mission.latitude,
-        lng: mission.notam_center_lon_wgs84 ?? mission.longitude,
-        radiusNm: mission.notam_radius_nm ?? 0.5,
-        text: mission.notam_text,
-      } : null}
-    />
     <UploadDroneLogDialog
       open={uploadLogOpen}
       onOpenChange={setUploadLogOpen}
