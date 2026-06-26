@@ -737,6 +737,7 @@ export function OpenAIPMap({
       }
     }
     ensurePopulationDensityPane(map);
+    ensureRouteProximityPane(map);
     populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' });
 
     // Sørg for at popup-bokser alltid ligger over alle kartlag
