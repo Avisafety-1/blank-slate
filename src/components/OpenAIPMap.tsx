@@ -867,6 +867,7 @@ export function OpenAIPMap({
       map.getPane('naisPane')!.style.zIndex = '695';
     }
     const naisLayer = L.layerGroup();
+    naisLayerRef.current = naisLayer;
 
     // NOTAM (live RSS + CAA-soner slått sammen)
     const notamLayer = L.layerGroup().addTo(map);
