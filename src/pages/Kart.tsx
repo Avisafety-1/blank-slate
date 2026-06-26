@@ -1170,6 +1170,7 @@ export default function KartPage() {
               existingRoute={routePlanningState?.existingRoute}
               onRouteChange={handleRouteChange}
               initialCenter={pendingInitialCenter ?? routePlanningState?.initialCenter ?? lastViewRef.current?.center}
+              suppressGeolocationCenter={searchParams.get("missionId") !== null}
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
               onStartRoutePlanning={handleStartRoutePlanning}
