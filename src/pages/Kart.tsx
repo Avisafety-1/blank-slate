@@ -1202,14 +1202,14 @@ export default function KartPage() {
               adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
               populationDensityCells={mergedDensityCells}
               populationDensityCoveragePolygons={soraSettings.enabled && showPopulationDensity ? soraDensityResult?.coveragePolygons : undefined}
-              stackSlotAboveLayers={toggle3DBtn}
-            routeHintOffsetClass={
-              isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
-                ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
-                : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
-                  ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
-                  : undefined
-            }
+              stackSlotAboveLayers={<>{toggle3DBtn}{inspectModeBtn}</>}
+              routeHintOffsetClass={
+                isRoutePlanning && soraOpen && adjacentOpen && soraSettings.enabled
+                  ? "left-[calc(1.25rem+min(66vw,920px)+0.5rem)]"
+                  : isRoutePlanning && (soraOpen || (adjacentOpen && soraSettings.enabled))
+                    ? "left-[calc(0.75rem+min(33vw,460px)+0.5rem)]"
+                    : undefined
+              }
             />
           );
         })()}
