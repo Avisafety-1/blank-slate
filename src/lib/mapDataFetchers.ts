@@ -1087,7 +1087,7 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
               fillOpacity: 0.12,
               pane: 'atzPane',
               interactive: mode !== 'routePlanning',
-              bubblingMouseEvents: false,
+              bubblingMouseEvents: true,
             });
             if (mode !== 'routePlanning') {
               circle.bindPopup(buildCaaSmallAirportPopupHtml(zone));
