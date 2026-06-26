@@ -223,6 +223,7 @@ export function OpenAIPMap({
   const populationDensityLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityRendererRef = useRef<L.Renderer | null>(null);
   const routeProximityLayerRef = useRef<L.LayerGroup | null>(null);
+  const naisLayerRef = useRef<L.LayerGroup | null>(null);
   const routeProximityCacheRef = useRef(createProximityCache());
   const routeProximityAbortRef = useRef<AbortController | null>(null);
   const routeProximityDebounceRef = useRef<number | null>(null);
