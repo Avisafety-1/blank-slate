@@ -1160,7 +1160,7 @@ export default function KartPage() {
               mode={isRoutePlanning ? "routePlanning" : "view"}
               existingRoute={routePlanningState?.existingRoute}
               onRouteChange={handleRouteChange}
-              initialCenter={routePlanningState?.initialCenter ?? lastViewRef.current?.center}
+              initialCenter={pendingInitialCenter ?? routePlanningState?.initialCenter ?? lastViewRef.current?.center}
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
               onStartRoutePlanning={handleStartRoutePlanning}
