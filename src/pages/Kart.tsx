@@ -1149,6 +1149,7 @@ export default function KartPage() {
                   existingRoute={routePlanningState?.existingRoute}
                   controlledRoute={currentRoute}
                   onRouteChange={handleRouteChange}
+                  routeUndoToken={routeUndoToken}
                   soraSettings={soraSettings}
                 />
               </Suspense>
