@@ -1759,19 +1759,19 @@ function createVesselIcon(cog: number | null, shipType: number | null): L.DivIco
   else if (shipType === 51 || shipType === 52) color = "#ea580c"; // SAR/tug = orange
 
   return L.divIcon({
-    className: "",
-    html: `<div style="
-      width: 20px; height: 20px;
+    className: "ais-vessel-icon",
+    html: `<div class="ais-vessel-icon-inner" style="
+      width: 30px; height: 30px;
       display: flex; align-items: center; justify-content: center;
-      transform: rotate(${rotation}deg);
+      transform: rotate(${rotation}deg) scale(var(--ais-vessel-scale, 1));
     ">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${color}" stroke="#fff" stroke-width="1">
+      <svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 24 24" fill="${color}" stroke="#fff" stroke-width="1">
         <path d="M12 2 L6 20 L12 16 L18 20 Z"/>
       </svg>
     </div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -10],
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -15],
   });
 }
 
