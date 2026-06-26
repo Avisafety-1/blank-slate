@@ -32,7 +32,7 @@ import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropd
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { downloadGpx, downloadKmz } from "@/lib/flightTrackExport";
-import { ExpandedMapDialog } from "@/components/dashboard/ExpandedMapDialog";
+
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { MissionNotesDialog } from "@/components/dashboard/MissionNotesDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
