@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
