@@ -803,6 +803,16 @@ export function OpenAIPMap({
       map.on('zoomend', emitView);
     }
 
+    // Dynamic scale for AIS vessel icons (manual NAIS + route-proximity)
+    const updateVesselScale = () => {
+      const container = map.getContainer();
+      if (container) {
+        container.style.setProperty('--ais-vessel-scale', String(computeVesselScale(map.getZoom())));
+      }
+    };
+    updateVesselScale();
+    map.on('zoomend', updateVesselScale);
+
     // Create panes
     const paneConfig: Record<string, string> = {
       safeskyPane: '750', liveFlightPane: '720', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
