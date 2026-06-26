@@ -135,19 +135,49 @@ const Oppdrag = () => {
     // Scroll-only return from /kart (no dialog open)
     if (state.scrollToMission && state.missionId) {
       const missionId = state.missionId;
-      const tryScroll = (attempt = 0) => {
+      let cancelled = false;
+
+      const headerOffset = () => {
+        const header = document.querySelector('header');
+        return (header?.getBoundingClientRect().height ?? 64) + 8;
+      };
+
+      const ensureVisibleAndScroll = async (attempt = 0) => {
+        if (cancelled || attempt > 20) return;
+
         const el = document.getElementById(`mission-${missionId}`);
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('ring-2', 'ring-primary');
-          setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2000);
-        } else if (attempt < 20) {
-          setTimeout(() => tryScroll(attempt + 1), 150);
+          requestAnimationFrame(() => {
+            if (cancelled) return;
+            const rect = el.getBoundingClientRect();
+            const top = rect.top + window.scrollY - headerOffset();
+            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            el.classList.add('ring-2', 'ring-primary');
+            setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2000);
+          });
+          return;
         }
+
+        // The mission is loaded but hidden by local slicing; expand the visible list
+        const index = filteredMissions.findIndex((m: Mission) => m.id === missionId);
+        if (index >= 0 && visibleCount <= index) {
+          setVisibleCount(index + 1);
+        } else if (data.hasMoreData && !data.isLoadingMore) {
+          // The mission is not loaded yet; fetch the next page
+          try {
+            await data.loadMore();
+          } catch {}
+        }
+
+        setTimeout(() => ensureVisibleAndScroll(attempt + 1), 200);
       };
-      tryScroll();
+
+      ensureVisibleAndScroll();
       data.navigate(data.location.pathname, { replace: true, state: null });
-      return;
+
+      return () => {
+        cancelled = true;
+      };
     }
 
     if (state?.routeData || state?.formData || state?.openDialog) {
