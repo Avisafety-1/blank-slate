@@ -1,19 +1,37 @@
-## Inspeksjons-modus i ruteplanleggeren
+## Mål
+Flytte "Inspiser"-knappen (musepeker-ikon) fra den øverste horisontale ruteplanlegger-verktøylinjen til høyre sidekartkontrollstack, rett under 2D/3D-knappen, slik brukerens markering i skjermbildet viser.
 
-Legger til en ny meny-knapp (musepeker-ikon) i ruteplanlegger-kontrollene som lar brukeren midlertidig klikke i kartet (på geo-soner, etc.) uten å legge ned rutepunkter.
+## Hva som skal endres
 
-### `src/pages/Kart.tsx`
-- Ny state `routeInspectMode: boolean` (default `false`).
-- Ny knapp plassert sammen med øvrige meny-knapper (undo / clear / cancel / save) i begge layoutene (desktop ~linje 720 og mobil ~linje 890), med `MousePointer2`-ikon fra `lucide-react`. Aktiv tilstand markeres visuelt (samme stil som andre toggle-knapper).
-- Toggle nullstilles automatisk når `isRoutePlanning` blir `false` (ved Avbryt/Lagre).
-- Send `routeInspectMode` videre til `<OpenAIPMap />` (og `<Map3D />` om relevant).
+### 1. `src/pages/Kart.tsx`
+- Fjern "Inspiser"-knappen fra den øverste horisontale ruteplanlegger-verktøylinjen (både mobil- og desktop-layout).
+- behold `routeInspectMode`-state og toggle-funksjonen.
+- Når 2D-kartet (`OpenAIPMap`) rendres og `isRoutePlanning` er aktiv, send en vertikal knappegruppe som `stackSlotAboveLayers` som inneholder:
+  - eksisterende 2D/3D-veksleknapp
+  - ny "Inspiser"-knapp under den
+- Knappen skal bare vises når `isRoutePlanning` er true.
 
-### `src/components/OpenAIPMap.tsx`
-- Ny prop `routeInspectMode?: boolean` + tilhørende `inspectModeRef` som oppdateres i en `useEffect`.
-- I `handleMapClick` (linje 970): hvis `modeRef.current === "routePlanning"` OG `inspectModeRef.current === true`, returner uten å pushe rutepunkt — slik at popup-handlere på underliggende GeoJSON-lag (verneområder, CTR, NOTAM, m.fl.) får håndtere klikket normalt.
-- Endre kart-cursor i ruteplanlegging fra `crosshair` til `default`/`pointer` når inspect-modus er aktiv (CSS-klasse på map-containeren toggles).
+### 2. `src/components/OpenAIPMap.tsx`
+- Ingen endring av funksjonalitet; `routeInspectMode`-prop og klikklogikk beholdes som i dag.
+- Høyre stack rendrer `stackSlotAboveLayers` på samme plassering (under kartlags-knappen), slik at knappen kommer på riktig sted.
 
-### Adferd
-- I inspect-modus: ingen nye rutepunkter, eksisterende rute beholdes, drag/slett av eksisterende punkter fungerer som før, alle øvrige knapper fungerer som før.
-- Klikk på en geo-sone åpner sonens popup som vanlig.
-- Knappen er kun synlig mens `isRoutePlanning` er aktiv.
+### 3. 3D-kart (`Map3D`)
+- Ingen endring for 3D-modus. 3D-kartet har ikke inspeksjonsmodus-implementasjon, så Inspiser-knappen vises kun i 2D-kartet for å unngå brukket eller forvirrende oppførsel.
+
+## Visuell plassering (2D-kart)
+
+```text
+[ Vær ]
+[ Grunnkart ]
+[ Kartlag ]
+[ 2D/3D-knapp ]  <- eksisterende
+[ Inspiser ]     <- ny plassering
+[ Planlegg rute ]  (kun i visningsmodus)
+```
+
+## Tekniske detaljer
+- `stackSlotAboveLayers` aksepterer `React.ReactNode` og rendres i `OpenAIPMap` ved linje 1681.
+- Vi pakker `toggle3DBtn` og en ny `routeInspectMode`-knapp inn i en `<>`-fragment med `flex flex-col gap-2` slik at de følger den samme visuelle stilen som resten av stacken.
+- Fjern `MousePointer2` fra mobil- og desktop-verktøylinjene i ruteplanleggeren.
+- Behold `import { MousePointer2 }` fordi ikonet skal brukes i den nye høyre-stack-knappen.
+- `routeInspectMode` prop sendes fortsatt til `OpenAIPMap` for at klikklogikken skal fungere som før.
