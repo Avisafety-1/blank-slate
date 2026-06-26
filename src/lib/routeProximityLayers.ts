@@ -547,37 +547,42 @@ function renderAisVessels(
 
 // ============ Luftfartshindre (openaip_obstacles) ============
 
-async function loadObstacles(cache: SourceCache): Promise<ObstacleRecord[]> {
-  if (cache.obstaclesAll) return cache.obstaclesAll;
-  if (cache.obstaclesPromise) return cache.obstaclesPromise;
-  cache.obstaclesPromise = (async () => {
-    const { data, error } = await supabase
-      .from("openaip_obstacles")
-      .select("openaip_id, name, type, geometry, elevation, height_agl");
-    if (error || !data) return [];
-    const records: ObstacleRecord[] = [];
-    for (const o of data as any[]) {
-      const geom = o.geometry as any;
-      const coords = geom?.coordinates;
-      if (!Array.isArray(coords) || coords.length < 2) continue;
-      const lng = Number(coords[0]);
-      const lat = Number(coords[1]);
-      if (!isFinite(lat) || !isFinite(lng)) continue;
-      records.push({
-        openaip_id: o.openaip_id,
-        name: o.name ?? null,
-        type: o.type ?? null,
-        elevation: o.elevation ?? null,
-        height_agl: o.height_agl ?? null,
-        lat,
-        lng,
-      });
-    }
-    cache.obstaclesAll = records;
-    return records;
-  })();
-  return cache.obstaclesPromise;
+async function loadObstacles(
+  bbox: BBox,
+  cache: SourceCache,
+): Promise<ObstacleRecord[]> {
+  const key = bboxKey(bbox);
+  const hit = cache.obstacles.get(key);
+  if (hit) return hit;
+  const { data, error } = await supabase.rpc("get_obstacles_in_bounds", {
+    min_lat: bbox.minLat,
+    min_lng: bbox.minLng,
+    max_lat: bbox.maxLat,
+    max_lng: bbox.maxLng,
+  });
+  if (error || !data) {
+    cache.obstacles.set(key, []);
+    return [];
+  }
+  const records: ObstacleRecord[] = [];
+  for (const o of data as any[]) {
+    const lat = Number(o.lat);
+    const lng = Number(o.lng);
+    if (!isFinite(lat) || !isFinite(lng)) continue;
+    records.push({
+      openaip_id: o.openaip_id,
+      name: o.name ?? null,
+      type: o.type ?? null,
+      elevation: o.elevation ?? null,
+      height_agl: o.height_agl ?? null,
+      lat,
+      lng,
+    });
+  }
+  cache.obstacles.set(key, records);
+  return records;
 }
+
 
 function renderObstacles(
   layer: L.LayerGroup,
