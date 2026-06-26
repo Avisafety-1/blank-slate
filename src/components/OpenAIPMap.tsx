@@ -151,6 +151,7 @@ export function OpenAIPMap({
   existingRoute,
   onRouteChange,
   initialCenter,
+  suppressGeolocationCenter,
   controlledRoute,
   onStartRoutePlanning,
   onPilotPositionChange,
