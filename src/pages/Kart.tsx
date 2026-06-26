@@ -42,6 +42,7 @@ export default function KartPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading, companyId } = useAuth();
   useAppHeartbeat();
   const [selectedMission, setSelectedMission] = useState<any>(null);
