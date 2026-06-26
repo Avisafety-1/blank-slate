@@ -1258,7 +1258,9 @@ export function OpenAIPMap({
       safeSkyManager.cleanup();
       map.off("click");
       mapChannel.unsubscribe();
-      map.remove();
+      leafletMapRef.current = null;
+      try { map.stop(); } catch {}
+      try { map.remove(); } catch {}
     };
   }, [profileLoaded, isTensioHierarchy]);
 

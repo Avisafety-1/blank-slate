@@ -151,7 +151,25 @@ const Oppdrag = () => {
 
       const headerOffset = () => {
         const header = document.querySelector('header');
-        return (header?.getBoundingClientRect().height ?? 64) + 8;
+        return (header?.getBoundingClientRect().height ?? 64) + 10;
+      };
+
+      const scrollMissionIntoPlace = (el: HTMLElement) => {
+        const target = el.querySelector('h3') || el;
+        const align = (behavior: ScrollBehavior = 'auto') => {
+          const rect = target.getBoundingClientRect();
+          const top = rect.top + window.scrollY - headerOffset();
+          window.scrollTo({ top: Math.max(0, top), behavior });
+        };
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            align('smooth');
+            // Re-align after late-rendering content above the target (maps, badges, async sections)
+            // has had a chance to settle, otherwise the viewport can stop on the previous card.
+            [180, 420, 750].forEach((delay) => setTimeout(() => align('auto'), delay));
+          });
+        });
       };
 
       const clearNavState = () => {
@@ -170,14 +188,10 @@ const Oppdrag = () => {
 
         const el = document.getElementById(`mission-${missionId}`);
         if (el) {
-          requestAnimationFrame(() => {
-            const rect = el.getBoundingClientRect();
-            const top = rect.top + window.scrollY - headerOffset();
-            window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-            el.classList.add('ring-2', 'ring-primary');
-            setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2000);
-            clearNavState();
-          });
+          scrollMissionIntoPlace(el);
+          el.classList.add('ring-2', 'ring-primary');
+          setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2000);
+          setTimeout(clearNavState, 900);
           return;
         }
 
