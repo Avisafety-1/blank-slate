@@ -45,6 +45,11 @@ import { resetCache } from "@/lib/viewportLayerCache";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
 import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
+import {
+  ensureRouteProximityPane,
+  createProximityCache,
+  updateRouteProximityLayers,
+} from "@/lib/routeProximityLayers";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 const TENSIO_WMS_URL = "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer";
