@@ -72,6 +72,7 @@ const ROUTE_PLANNING_NON_INTERACTIVE_PANES = [
   'powerPane',
   'naisPane',
   'liveFlightPane',
+  'routeProximityPane',
 ];
 
 const isTensioName = (name?: string | null) => name?.toLowerCase().includes("tensio") ?? false;
