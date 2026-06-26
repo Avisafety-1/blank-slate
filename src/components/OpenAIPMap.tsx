@@ -150,7 +150,10 @@ interface OpenAIPMapProps {
   onViewChange?: (center: [number, number], zoom: number) => void;
   /** Incrementing trigger from parent toolbar to undo the latest route mutation. */
   routeUndoToken?: number;
+  /** If true while in routePlanning mode, map clicks do NOT add waypoints (lets user click geo-zones for info). */
+  routeInspectMode?: boolean;
 }
+
 
 export function OpenAIPMap({ 
   onMissionClick, 
