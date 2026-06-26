@@ -54,6 +54,7 @@ export default function KartPage() {
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
+  const [routeUndoToken, setRouteUndoToken] = useState(0);
 
   // 3D-modus (MapLibre). Ruteplanlegging støttes nå også i 3D — ingen
   // automatisk deaktivering.
@@ -500,20 +501,7 @@ export default function KartPage() {
 
   const handleUndoPoint = () => {
     if (currentRoute.coordinates.length > 0) {
-      const newCoords = currentRoute.coordinates.slice(0, -1);
-      let totalDistance = 0;
-      for (let i = 1; i < newCoords.length; i++) {
-        const R = 6371;
-        const dLat = (newCoords[i].lat - newCoords[i-1].lat) * Math.PI / 180;
-        const dLng = (newCoords[i].lng - newCoords[i-1].lng) * Math.PI / 180;
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(newCoords[i-1].lat * Math.PI / 180) * Math.cos(newCoords[i].lat * Math.PI / 180) *
-          Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        totalDistance += R * c;
-      }
-      setCurrentRoute({ coordinates: newCoords, totalDistance });
+      setRouteUndoToken((value) => value + 1);
     }
   };
 
@@ -738,7 +726,7 @@ export default function KartPage() {
                     onClick={handleUndoPoint}
                     disabled={currentRoute.coordinates.length === 0}
                     className="h-8 px-2"
-                    title="Angre siste punkt"
+                    title="Angre siste endring"
                   >
                     <Undo className="h-4 w-4" />
                   </Button>
@@ -904,7 +892,7 @@ export default function KartPage() {
                 onClick={handleUndoPoint}
                 disabled={currentRoute.coordinates.length === 0}
                 className="h-8 px-2 sm:px-3"
-                title="Angre siste punkt"
+                title="Angre siste endring"
               >
                 <Undo className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Angre</span>
@@ -1177,6 +1165,7 @@ export default function KartPage() {
               suppressGeolocationCenter={searchParams.get("missionId") !== null}
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
+                  routeUndoToken={routeUndoToken}
               onStartRoutePlanning={handleStartRoutePlanning}
               onPilotPositionChange={handlePilotPositionChange}
               pilotPosition={pilotPosition}
