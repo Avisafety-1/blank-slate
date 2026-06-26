@@ -423,6 +423,50 @@ export default function KartPage() {
     setAdjacentResult((route?.adjacentAreaDocumentation as any) || null);
   }, [defaultSoraSettings]);
 
+  // Load mission from ?missionId=... URL param (from "Utvid"-knappen i oppdragskort)
+  const handledMissionParamRef = useRef<string | null>(null);
+  const [pendingInitialCenter, setPendingInitialCenter] = useState<[number, number] | undefined>(undefined);
+  useEffect(() => {
+    if (!user || !companyId) return;
+    const mid = searchParams.get("missionId");
+    if (!mid) return;
+    if (handledMissionParamRef.current === mid) return;
+    handledMissionParamRef.current = mid;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("missions")
+        .select("id, route, latitude, longitude")
+        .eq("id", mid)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Fant ikke oppdraget");
+      } else {
+        const route = (data.route as any) as RouteData | null;
+        const coords = route?.coordinates ?? [];
+        if (!coords.length) {
+          if (data.latitude && data.longitude) {
+            setPendingInitialCenter([data.latitude, data.longitude]);
+          }
+          toast.message("Oppdraget har ingen lagret rute");
+        } else {
+          // Centroid of route coordinates
+          const lat = coords.reduce((s, p) => s + p.lat, 0) / coords.length;
+          const lng = coords.reduce((s, p) => s + p.lng, 0) / coords.length;
+          setPendingInitialCenter([lat, lng]);
+          handleEditMissionRoute({ id: data.id, route });
+        }
+      }
+      // Clear the URL param so refresh doesn't re-trigger
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("missionId");
+        return next;
+      }, { replace: true });
+    })();
+  }, [user, companyId, searchParams, setSearchParams, handleEditMissionRoute]);
+
+
   const handleCancelRoute = () => {
     if (routePlanningState) {
       // Coming from mission edit - go back without saving
