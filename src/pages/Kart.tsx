@@ -1105,7 +1105,7 @@ export default function KartPage() {
             <Button
               variant="default"
               size="lg"
-              onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true } })}
+              onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true, missionStatus: editingMissionStatus } })}
               className="pointer-events-auto shadow-lg"
               title="Tilbake til oppdrag"
             >
