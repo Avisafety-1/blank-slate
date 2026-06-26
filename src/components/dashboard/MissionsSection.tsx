@@ -127,7 +127,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     const { data, error } = await supabase
       .from("mission_personnel")
       .select("mission_id")
-      .eq("user_id", user.id)
+      .eq("profile_id", user.id)
       .in("mission_id", missionIds);
     if (error) {
       console.error("Error fetching my mission ids:", error);
