@@ -826,7 +826,7 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "flyplasser", name: "Flyplasser", layer: [airportsLayer, caaFlyplasserLayer], enabled: true, icon: "planeLanding", group: "Infrastruktur" });
 
     // Geolocation
-    if (!initialCenter && navigator.geolocation) {
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
@@ -838,14 +838,15 @@ export function OpenAIPMap({
             }).addTo(map);
             userMarkerRef.current.bindPopup("Din posisjon");
           }
-          // Bare sentrer kartet hvis vi IKKE har en flight å fokusere på
-          if (!focusFlightIdRef.current) {
+          // Only center on the user's position if we have not been given an explicit
+          // mission center and we are not focusing on a specific flight.
+          if (!suppressGeolocationCenterRef.current && !initialCenter && !focusFlightIdRef.current) {
             map.setView(coords, 9);
           }
         },
         () => {
           console.log("Geolokasjon nektet");
-          if (!focusFlightIdRef.current && companyLat && companyLon) {
+          if (!suppressGeolocationCenterRef.current && !initialCenter && !focusFlightIdRef.current && companyLat && companyLon) {
             map.setView([companyLat, companyLon], 10);
           }
         },
