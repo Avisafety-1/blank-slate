@@ -304,6 +304,16 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
             <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.missions.title')}</h2>
           </div>
+          <Tabs value={missionFilter} onValueChange={(v) => setMissionFilter(v as 'mine' | 'all')} className="flex-1 sm:max-w-[240px] sm:mx-2">
+            <TabsList className="grid w-full grid-cols-2 h-7">
+              <TabsTrigger value="mine" className="text-xs px-2">
+                Mine ({missions.filter((m: any) => myMissionIds.has(m.id)).length})
+              </TabsTrigger>
+              <TabsTrigger value="all" className="text-xs px-2">
+                Alle ({missions.length})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="flex gap-2 flex-shrink-0">
             <Button size="sm" variant="outline" onClick={handleNewRiskAssessment} title={t('dashboard.missions.newRiskAssessment', 'Ny risikovurdering')}>
               <FileText className="w-4 h-4" />
@@ -314,16 +324,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
           </div>
         </div>
 
-        <Tabs value={missionFilter} onValueChange={(v) => setMissionFilter(v as 'mine' | 'all')} className="mb-2">
-          <TabsList className="grid w-full grid-cols-2 h-8">
-            <TabsTrigger value="mine" className="text-xs">
-              Mine ({missions.filter((m: any) => myMissionIds.has(m.id)).length})
-            </TabsTrigger>
-            <TabsTrigger value="all" className="text-xs">
-              Alle ({missions.length})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
 
         {(() => {
           const visibleMissions = missionFilter === 'mine'
