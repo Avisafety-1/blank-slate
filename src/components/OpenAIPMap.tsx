@@ -942,6 +942,7 @@ export function OpenAIPMap({
     // NOTAM (live RSS + CAA-soner slått sammen)
     const notamLayer = L.layerGroup().addTo(map);
     const obstaclesLayer = L.layerGroup();
+    obstaclesLayerRef.current = obstaclesLayer;
     const airportsLayer = L.layerGroup().addTo(map);
 
     // ============================================================
