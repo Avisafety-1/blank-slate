@@ -199,8 +199,7 @@ interface SourceCache {
   caa: Map<string, any[]>;
   nve: Map<string, Array<{ def: KraftDef; feature: any }>>;
   ais: Map<string, AisCacheEntry>;
-  obstaclesAll: ObstacleRecord[] | null;
-  obstaclesPromise: Promise<ObstacleRecord[]> | null;
+  obstacles: Map<string, ObstacleRecord[]>;
 }
 
 export function createProximityCache(): SourceCache {
@@ -210,10 +209,10 @@ export function createProximityCache(): SourceCache {
     caa: new Map(),
     nve: new Map(),
     ais: new Map(),
-    obstaclesAll: null,
-    obstaclesPromise: null,
+    obstacles: new Map(),
   };
 }
+
 
 async function loadNaturvern(bbox: BBox, cache: SourceCache): Promise<any[]> {
   const key = bboxKey(bbox);
@@ -548,37 +547,42 @@ function renderAisVessels(
 
 // ============ Luftfartshindre (openaip_obstacles) ============
 
-async function loadObstacles(cache: SourceCache): Promise<ObstacleRecord[]> {
-  if (cache.obstaclesAll) return cache.obstaclesAll;
-  if (cache.obstaclesPromise) return cache.obstaclesPromise;
-  cache.obstaclesPromise = (async () => {
-    const { data, error } = await supabase
-      .from("openaip_obstacles")
-      .select("openaip_id, name, type, geometry, elevation, height_agl");
-    if (error || !data) return [];
-    const records: ObstacleRecord[] = [];
-    for (const o of data as any[]) {
-      const geom = o.geometry as any;
-      const coords = geom?.coordinates;
-      if (!Array.isArray(coords) || coords.length < 2) continue;
-      const lng = Number(coords[0]);
-      const lat = Number(coords[1]);
-      if (!isFinite(lat) || !isFinite(lng)) continue;
-      records.push({
-        openaip_id: o.openaip_id,
-        name: o.name ?? null,
-        type: o.type ?? null,
-        elevation: o.elevation ?? null,
-        height_agl: o.height_agl ?? null,
-        lat,
-        lng,
-      });
-    }
-    cache.obstaclesAll = records;
-    return records;
-  })();
-  return cache.obstaclesPromise;
+async function loadObstacles(
+  bbox: BBox,
+  cache: SourceCache,
+): Promise<ObstacleRecord[]> {
+  const key = bboxKey(bbox);
+  const hit = cache.obstacles.get(key);
+  if (hit) return hit;
+  const { data, error } = await supabase.rpc("get_obstacles_in_bounds", {
+    min_lat: bbox.minLat,
+    min_lng: bbox.minLng,
+    max_lat: bbox.maxLat,
+    max_lng: bbox.maxLng,
+  });
+  if (error || !data) {
+    cache.obstacles.set(key, []);
+    return [];
+  }
+  const records: ObstacleRecord[] = [];
+  for (const o of data as any[]) {
+    const lat = Number(o.lat);
+    const lng = Number(o.lng);
+    if (!isFinite(lat) || !isFinite(lng)) continue;
+    records.push({
+      openaip_id: o.openaip_id,
+      name: o.name ?? null,
+      type: o.type ?? null,
+      elevation: o.elevation ?? null,
+      height_agl: o.height_agl ?? null,
+      lat,
+      lng,
+    });
+  }
+  cache.obstacles.set(key, records);
+  return records;
 }
+
 
 function renderObstacles(
   layer: L.LayerGroup,
@@ -678,9 +682,10 @@ export async function updateRouteProximityLayers(
         ),
     activeManualLayers?.obstacles
       ? Promise.resolve([] as ObstacleRecord[])
-      : withTimeout(loadObstacles(cache), 5000, signal).catch(
+      : withTimeout(loadObstacles(bbox, cache), 5000, signal).catch(
           () => [] as ObstacleRecord[],
         ),
+
   ]);
 
   if (signal.aborted) return;
