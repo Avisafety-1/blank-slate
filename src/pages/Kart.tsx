@@ -14,7 +14,7 @@ import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users, ArrowLeft } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -365,11 +365,7 @@ export default function KartPage() {
       }
       
       toast.success("Rute og SORA-grunnlag oppdatert");
-      setIsRoutePlanning(false);
-      setEditingMissionId(null);
-      setCurrentRoute({ coordinates: [], totalDistance: 0 });
-      setPilotPosition(undefined);
-      setSoraSettings(defaultSoraSettings);
+      // Hold brukeren i route-planning-modus så ruten fortsatt er synlig/redigerbar
       return;
     }
 
@@ -753,6 +749,17 @@ export default function KartPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                  {editingMissionId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true } })}
+                      className="h-8 px-2"
+                      title="Tilbake til oppdrag"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     data-tour="map-route-cancel"
                     variant="outline"
@@ -921,6 +928,18 @@ export default function KartPage() {
                 <Trash2 className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Nullstill</span>
               </Button>
+              {editingMissionId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true } })}
+                  className="h-8 px-2 sm:px-3"
+                  title="Tilbake til oppdrag"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Tilbake til oppdrag</span>
+                </Button>
+              )}
               <Button
                 data-tour="map-route-cancel"
                 variant="outline"
