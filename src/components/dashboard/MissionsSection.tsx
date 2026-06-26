@@ -206,19 +206,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     setRiskDialogOpen(true);
   };
 
-  const handleNewRiskAssessment = () => {
-    setRiskTypeDialogOpen(true);
-  };
-
-  const handleSelectAI = () => {
-    setRiskDialogInitialTab('input');
-    setRiskDialogOpen(true);
-  };
-
-  const handleSelectManualSORA = () => {
-    setRiskDialogInitialTab('manual-sora');
-    setRiskDialogOpen(true);
-  };
 
   const handleRiskAssessmentSaved = () => {
     fetchMissions();
@@ -315,9 +302,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
               </TabsList>
             </Tabs>
             <div className="flex gap-2 flex-shrink-0">
-              <Button size="sm" variant="outline" onClick={handleNewRiskAssessment} title={t('dashboard.missions.newRiskAssessment', 'Ny risikovurdering')}>
-                <FileText className="w-4 h-4" />
-              </Button>
               <Button size="sm" onClick={() => setAddDialogOpen(true)}>
                 <Plus className="w-4 h-4" />
               </Button>
@@ -481,12 +465,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         onMissionAdded={fetchMissions}
       />
 
-      <RiskAssessmentTypeDialog
-        open={riskTypeDialogOpen}
-        onOpenChange={setRiskTypeDialogOpen}
-        onSelectAI={handleSelectAI}
-        onSelectManualSORA={handleSelectManualSORA}
-      />
       
       <RiskAssessmentDialog
         open={riskDialogOpen}
