@@ -459,19 +459,27 @@ function vesselColor(shipType: number | null | undefined): string {
   return "#2563eb";
 }
 
-function createVesselIcon(cog: number | null | undefined, shipType: number | null | undefined): L.DivIcon {
+export function computeVesselScale(zoom: number): number {
+  // Scale 1x at zoom 8, 2x at zoom 16
+  return Math.max(1, 0.5 + zoom * 0.0625);
+}
+
+function createVesselIcon(
+  cog: number | null | undefined,
+  shipType: number | null | undefined,
+): L.DivIcon {
   const rotation = cog != null ? cog : 0;
   const color = vesselColor(shipType);
   return L.divIcon({
-    className: "",
-    html: `<div style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;transform:rotate(${rotation}deg);">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${color}" stroke="#fff" stroke-width="1">
+    className: "ais-vessel-icon",
+    html: `<div class="ais-vessel-icon-inner" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;transform:rotate(${rotation}deg) scale(var(--ais-vessel-scale, 1));">
+      <svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 24 24" fill="${color}" stroke="#fff" stroke-width="1">
         <path d="M12 2 L6 20 L12 16 L18 20 Z"/>
       </svg>
     </div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -10],
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -15],
   });
 }
 
@@ -646,7 +654,7 @@ export interface UpdateProximityParams {
 export async function updateRouteProximityLayers(
   params: UpdateProximityParams,
 ): Promise<void> {
-  const { layer, coordinates, signal, cache, activeManualLayers } = params;
+  const { map, layer, coordinates, signal, cache, activeManualLayers } = params;
 
   const bbox = computeRouteBbox(coordinates, ROUTE_PROXIMITY_BUFFER_M);
   if (!bbox) {
@@ -689,11 +697,12 @@ export async function updateRouteProximityLayers(
       : withTimeout(loadObstacles(cache), 8000, signal).catch(
           () => [] as ObstacleRecord[],
         ),
-
-
   ]);
 
   if (signal.aborted) return;
+
+  // Ensure vessel icons scale dynamically with map zoom
+  ensureVesselZoomListener(map);
 
   layer.clearLayers();
   renderNaturvern(layer, naturvern);
