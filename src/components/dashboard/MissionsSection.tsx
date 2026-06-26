@@ -462,7 +462,10 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
             ))
           )}
         </div>
+          );
+        })()}
     </GlassCard>
+    
     
       <MissionDetailDialog 
         open={dialogOpen}
