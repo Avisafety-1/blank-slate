@@ -1102,7 +1102,7 @@ export default function KartPage() {
               variant="default"
               size="lg"
               onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true } })}
-              className="pointer-events-auto shadow-lg bg-blue-500 hover:bg-blue-600 text-white"
+              className="pointer-events-auto shadow-lg"
               title="Tilbake til oppdrag"
             >
               <ArrowLeft className="h-5 w-5 mr-2" />
