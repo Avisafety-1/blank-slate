@@ -481,14 +481,17 @@ export default function KartPage() {
         }
       });
     } else {
-      // Started from /kart - just exit route planning mode
+      // Started from /kart or editing existing mission route - exit route planning mode
       setIsRoutePlanning(false);
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
       setPilotPosition(undefined);
       setAdjacentResult(null);
       setSoraDensityResult(null);
       soraDensityCacheRef.current.clear();
+      setEditingMissionId(null);
+      setEditingMissionStatus(null);
     }
+
   };
 
   const handleClearRoute = () => {
