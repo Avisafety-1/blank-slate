@@ -14,7 +14,7 @@ import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users, ArrowLeft } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
