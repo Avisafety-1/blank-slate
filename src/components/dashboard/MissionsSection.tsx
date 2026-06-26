@@ -314,11 +314,29 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
           </div>
         </div>
 
+        <Tabs value={missionFilter} onValueChange={(v) => setMissionFilter(v as 'mine' | 'all')} className="mb-2">
+          <TabsList className="grid w-full grid-cols-2 h-8">
+            <TabsTrigger value="mine" className="text-xs">
+              Mine ({missions.filter((m: any) => myMissionIds.has(m.id)).length})
+            </TabsTrigger>
+            <TabsTrigger value="all" className="text-xs">
+              Alle ({missions.length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {(() => {
+          const visibleMissions = missionFilter === 'mine'
+            ? missions.filter((m: any) => myMissionIds.has(m.id))
+            : missions;
+          return (
         <div className="space-y-1.5 sm:space-y-2 flex-1 overflow-y-auto">
-          {missions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">{t('dashboard.missions.noMissions')}</p>
+          {visibleMissions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {missionFilter === 'mine' ? 'Ingen oppdrag tildelt deg' : t('dashboard.missions.noMissions')}
+            </p>
           ) : (
-            missions.map((mission) => (
+            visibleMissions.map((mission) => (
               <div
                 key={mission.id}
                 onClick={() => handleMissionClick(mission)}
