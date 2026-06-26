@@ -662,6 +662,7 @@ export function OpenAIPMap({
     }
     if (lengthDiffers || contentDiffers || firstChanged) {
       const wasEmpty = current.length === 0;
+      routeHistoryRef.current = [];
       routePointsRef.current = [...controlled];
       setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
