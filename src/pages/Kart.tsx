@@ -749,17 +749,6 @@ export default function KartPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                  {editingMissionId && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true } })}
-                      className="h-8 px-2"
-                      title="Tilbake til oppdrag"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                  )}
                   <Button
                     data-tour="map-route-cancel"
                     variant="outline"
@@ -928,18 +917,6 @@ export default function KartPage() {
                 <Trash2 className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Nullstill</span>
               </Button>
-              {editingMissionId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true } })}
-                  className="h-8 px-2 sm:px-3"
-                  title="Tilbake til oppdrag"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1">Tilbake til oppdrag</span>
-                </Button>
-              )}
               <Button
                 data-tour="map-route-cancel"
                 variant="outline"
