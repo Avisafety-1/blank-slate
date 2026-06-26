@@ -11,7 +11,6 @@ import { MissionDetailDialog } from "./MissionDetailDialog";
 import { AirspaceConflictWarning } from "@/components/oppdrag/AirspaceConflictWarning";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
-import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,10 +58,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
   const [missionAIRisks, setMissionAIRisks] = useState<Record<string, MissionAIRisk>>({});
   
-  // Risk assessment states
-  const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
-  const [riskDialogOpen, setRiskDialogOpen] = useState(false);
-  const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const [selectedAIRiskMission, setSelectedAIRiskMission] = useState<Mission | null>(null);
   const [approvalConfirmMissionId, setApprovalConfirmMissionId] = useState<string | null>(null);
   const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
