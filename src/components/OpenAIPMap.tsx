@@ -245,6 +245,7 @@ export function OpenAIPMap({
   const populationDensityRendererRef = useRef<L.Renderer | null>(null);
   const routeProximityLayerRef = useRef<L.LayerGroup | null>(null);
   const naisLayerRef = useRef<L.LayerGroup | null>(null);
+  const obstaclesLayerRef = useRef<L.LayerGroup | null>(null);
   const routePlanningInteractiveLayerRefs = useRef<L.Layer[]>([]);
   const routeProximityCacheRef = useRef(createProximityCache());
   const routeProximityAbortRef = useRef<AbortController | null>(null);
@@ -942,6 +943,7 @@ export function OpenAIPMap({
     // NOTAM (live RSS + CAA-soner slått sammen)
     const notamLayer = L.layerGroup().addTo(map);
     const obstaclesLayer = L.layerGroup();
+    obstaclesLayerRef.current = obstaclesLayer;
     const airportsLayer = L.layerGroup().addTo(map);
 
     // ============================================================
@@ -1498,6 +1500,7 @@ export function OpenAIPMap({
         cache: routeProximityCacheRef.current,
         activeManualLayers: {
           ais: !!(naisLayerRef.current && map.hasLayer(naisLayerRef.current)),
+          obstacles: !!(obstaclesLayerRef.current && map.hasLayer(obstaclesLayerRef.current)),
         },
       })
         .then(() => {

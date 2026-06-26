@@ -183,12 +183,24 @@ interface AisCacheEntry {
 
 const AIS_CACHE_TTL_MS = 30_000;
 
+interface ObstacleRecord {
+  openaip_id: string;
+  name: string | null;
+  type: string | null;
+  elevation: number | null;
+  height_agl: number | null;
+  lat: number;
+  lng: number;
+}
+
 interface SourceCache {
   naturvern: Map<string, any[]>;
   vern: Map<string, any[]>;
   caa: Map<string, any[]>;
   nve: Map<string, Array<{ def: KraftDef; feature: any }>>;
   ais: Map<string, AisCacheEntry>;
+  obstaclesAll: ObstacleRecord[] | null;
+  obstaclesPromise: Promise<ObstacleRecord[]> | null;
 }
 
 export function createProximityCache(): SourceCache {
@@ -198,6 +210,8 @@ export function createProximityCache(): SourceCache {
     caa: new Map(),
     nve: new Map(),
     ais: new Map(),
+    obstaclesAll: null,
+    obstaclesPromise: null,
   };
 }
 
@@ -532,6 +546,78 @@ function renderAisVessels(
   }
 }
 
+// ============ Luftfartshindre (openaip_obstacles) ============
+
+async function loadObstacles(cache: SourceCache): Promise<ObstacleRecord[]> {
+  if (cache.obstaclesAll) return cache.obstaclesAll;
+  if (cache.obstaclesPromise) return cache.obstaclesPromise;
+  cache.obstaclesPromise = (async () => {
+    const { data, error } = await supabase
+      .from("openaip_obstacles")
+      .select("openaip_id, name, type, geometry, elevation, height_agl");
+    if (error || !data) return [];
+    const records: ObstacleRecord[] = [];
+    for (const o of data as any[]) {
+      const geom = o.geometry as any;
+      const coords = geom?.coordinates;
+      if (!Array.isArray(coords) || coords.length < 2) continue;
+      const lng = Number(coords[0]);
+      const lat = Number(coords[1]);
+      if (!isFinite(lat) || !isFinite(lng)) continue;
+      records.push({
+        openaip_id: o.openaip_id,
+        name: o.name ?? null,
+        type: o.type ?? null,
+        elevation: o.elevation ?? null,
+        height_agl: o.height_agl ?? null,
+        lat,
+        lng,
+      });
+    }
+    cache.obstaclesAll = records;
+    return records;
+  })();
+  return cache.obstaclesPromise;
+}
+
+function renderObstacles(
+  layer: L.LayerGroup,
+  obstacles: ObstacleRecord[],
+  bbox: BBox,
+  buffer: RoutePoint[] | null,
+) {
+  const icon = L.divIcon({
+    className: "",
+    html: `<div style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#ef4444" stroke="#991b1b" stroke-width="1.5">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"/>
+        <line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"/>
+      </svg>
+    </div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10],
+  });
+  for (const o of obstacles) {
+    if (o.lat < bbox.minLat || o.lat > bbox.maxLat || o.lng < bbox.minLng || o.lng > bbox.maxLng) continue;
+    if (buffer && !pointInRing(o.lat, o.lng, buffer)) continue;
+    try {
+      const typeName = o.type || "Ukjent";
+      const displayName = o.name || typeName;
+      let popup = `<div style="min-width:180px;"><strong>⚠️ Hindring</strong><br/><strong>${escapeHtml(displayName)}</strong><br/>Type: ${escapeHtml(typeName)}<br/>`;
+      if (o.elevation != null) popup += `Høyde (MSL): ${escapeHtml(o.elevation)} m<br/>`;
+      if (o.height_agl != null) popup += `Høyde (AGL): ${escapeHtml(o.height_agl)} m<br/>`;
+      popup += AUTO_BADGE + `</div>`;
+      L.marker([o.lat, o.lng], { icon, pane: PANE, interactive: true })
+        .bindPopup(popup)
+        .addTo(layer);
+    } catch {
+      /* skip */
+    }
+  }
+}
+
 export interface UpdateProximityParams {
   map: L.Map;
   layer: L.LayerGroup;
@@ -545,6 +631,7 @@ export interface UpdateProximityParams {
     caa?: boolean;
     nve?: boolean;
     ais?: boolean;
+    obstacles?: boolean;
   };
 }
 
@@ -566,10 +653,10 @@ export async function updateRouteProximityLayers(
     layer.clearLayers();
     return;
   }
-  // Buffer polygon used for precise 500 m filtering of AIS vessels
+  // Buffer polygon used for precise 500 m filtering of point features
   const bufferPolygon = bufferPolyline(validCoords, ROUTE_PROXIMITY_BUFFER_M);
 
-  const [naturvern, vern, caa, nve, ais] = await Promise.all([
+  const [naturvern, vern, caa, nve, ais, obstacles] = await Promise.all([
     activeManualLayers?.naturvern
       ? Promise.resolve([] as any[])
       : withTimeout(loadNaturvern(bbox, cache), 5000, signal).catch(() => []),
@@ -589,6 +676,11 @@ export async function updateRouteProximityLayers(
       : withTimeout(loadAisVessels(bbox, cache), 8000, signal).catch(
           () => [] as AisVessel[],
         ),
+    activeManualLayers?.obstacles
+      ? Promise.resolve([] as ObstacleRecord[])
+      : withTimeout(loadObstacles(cache), 5000, signal).catch(
+          () => [] as ObstacleRecord[],
+        ),
   ]);
 
   if (signal.aborted) return;
@@ -599,4 +691,5 @@ export async function updateRouteProximityLayers(
   renderCaaZones(layer, caa);
   renderPowerLines(layer, nve);
   renderAisVessels(layer, ais, bufferPolygon);
+  renderObstacles(layer, obstacles, bbox, bufferPolygon);
 }

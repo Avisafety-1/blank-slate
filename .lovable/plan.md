@@ -1,15 +1,21 @@
-## Problem
-Når ruten automatisk avslører lag (verneområder, fareområder, kraftlinjer, AIS, CAA-soner) tegnes disse i `routeProximityPane` (z-index 637) med `pointerEvents: "auto"`. Panet er ikke inkludert i `ROUTE_PLANNING_NON_INTERACTIVE_PANES`, så klikk over disse formene åpner popup i stedet for å legge ned rutepunkt.
+## Mål
+Når en rute tegnes i ruteplanleggeren skal luftfartshindre (master, vindturbiner, kabler, etc.) innenfor 500 m av ruten vises automatisk – på samme måte som naturvern, CAA-soner, NVE-kraftlinjer og AIS-skip allerede gjør.
 
-## Endringer (kun `src/components/OpenAIPMap.tsx` + `src/index.css`)
+## Endringer
 
-1. **`OpenAIPMap.tsx`** – legg `'routeProximityPane'` til `ROUTE_PLANNING_NON_INTERACTIVE_PANES`-konstanten. Da slår eksisterende `syncRoutePlanningInteractivity`-effekt automatisk pointer-events av i rutemodus og på igjen i Inspiser-modus / view-modus.
+### 1. `src/lib/routeProximityLayers.ts`
+- Legg til ny kilde `obstacles` i `SourceCache` og `activeManualLayers`.
+- Ny `loadObstacles(bbox, cache)`: spør `openaip_obstacles` (gjenbruker eksisterende tabell) filtrert via lat/lng-bbox. Siden tabellen kun har norske hindre og er liten, bruker vi `.select()` med klient-side bbox-filter (eller en enkel `range`-spørring på dekomponerte koordinater hvis nødvendig). Cache pr. bbox-key, ingen TTL (statiske data).
+- Ny `renderObstacles(layer, obstacles, bufferPolygon)`: bruker `pointInRing` (samme presise 500 m buffer-filtrering som AIS) for å vise kun hindre faktisk innenfor buffer. Bruker samme rød trekant-ikon og popup-format som `fetchObstacles` i `mapDataFetchers.ts`, pluss `AUTO_BADGE` ("📍 Auto-vist langs ruten"). Tegnes i `routeProximityPane`.
+- Inkluder i `Promise.all`-orkestrering med 5 s timeout, hopp over hvis `activeManualLayers.obstacles === true`.
 
-2. **`OpenAIPMap.tsx`** – etter at proximity-laget rendres, kall `setLeafletLayerInteractivity(routeProximityLayerRef.current, overlaysInteractive)` (eller registrer det i `routePlanningInteractiveLayerRefs`) slik at individuelle path/marker-elementer (AIS-markører, polygoner) også får `interactive: false` og `pointer-events: none` i rutemodus — samme mønster som CAA-sirklene.
+### 2. `src/components/OpenAIPMap.tsx`
+- Når `updateRouteProximityLayers` kalles, sett `activeManualLayers.obstacles` basert på om "luftfartshindre"-laget er aktivert i lag-menyen (samme mønster som de andre — finn eksisterende `activeManualLayers`-bygging og legg til `obstacles`-flagg ved å sjekke layer-toggle-state for `luftfartshindre`).
+- Ingen pane-/interaktivitetsendringer nødvendig — `routeProximityPane` er allerede i `ROUTE_PLANNING_NON_INTERACTIVE_PANES`, så klikk legger ned rutepunkt i rutemodus og viser popup i Inspiser-modus.
 
-3. **`src/index.css`** – legg til regler for `.route-planning-active .leaflet-route-proximity-pane path/.leaflet-interactive/.leaflet-marker-icon { pointer-events: none; }` så også markører (AIS-skip) slipper klikk gjennom.
-
-## Resultat
-- Rutemodus: klikk på et auto-avslørt verneområde/fareområde/AIS-skip legger ned rutepunkt som forventet.
-- Inspiser-modus: popup-er på samme lag fungerer som før.
-- View-modus: uendret.
+## Tekniske detaljer
+- Buffer: `ROUTE_PROXIMITY_BUFFER_M = 500 m` (gjenbrukt konstant).
+- Datakilde: eksisterende `public.openaip_obstacles`-tabell (allerede synkronisert via `sync-openaip-obstacles` edge function).
+- Ingen DB-migrasjon, ingen nye edge functions, ingen RLS-endringer.
+- Punkt-i-buffer-test: `pointInRing` (eksisterer allerede i fila).
+- Ikon/popup gjenspeiler manuelt "Luftfartshindre"-lag for visuell konsistens.
