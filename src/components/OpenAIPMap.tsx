@@ -1523,21 +1523,22 @@ export function OpenAIPMap({
   };
 
   const clearRoute = useCallback(() => {
+    if (routePointsRef.current.length > 0) pushRouteHistory();
     routePointsRef.current = [];
     setRoutePointCount(0);
     updateRouteDisplay();
     if (onRouteChange) onRouteChange({ coordinates: [], totalDistance: 0 });
-  }, [updateRouteDisplay, onRouteChange]);
+  }, [updateRouteDisplay, onRouteChange, pushRouteHistory]);
 
   const undoLastPoint = useCallback(() => {
-    if (routePointsRef.current.length > 0) {
-      routePointsRef.current.pop();
-      setRoutePointCount(routePointsRef.current.length);
-      updateRouteDisplay();
-      if (onRouteChange) {
-        const coords = [...routePointsRef.current];
-        onRouteChange({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
-      }
+    if (routeHistoryRef.current.length === 0) return;
+    const prev = routeHistoryRef.current.pop()!;
+    routePointsRef.current = prev;
+    setRoutePointCount(prev.length);
+    updateRouteDisplay();
+    if (onRouteChange) {
+      const coords = [...prev];
+      onRouteChange({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
     }
   }, [updateRouteDisplay, onRouteChange]);
 
