@@ -383,6 +383,7 @@ export function OpenAIPMap({
           hit.on('click', (e: any) => {
             L.DomEvent.stopPropagation(e);
             const { lat, lng } = e.latlng;
+            pushRouteHistory();
             routePointsRef.current.splice(insertIndex, 0, { lat, lng });
             updateRouteDisplay();
             const cb = onRouteChangeRef.current;
