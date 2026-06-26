@@ -192,6 +192,12 @@ export function OpenAIPMap({
   const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([]);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
+  const routeHistoryRef = useRef<RoutePoint[][]>([]);
+  const pushRouteHistory = useCallback(() => {
+    const snap = routePointsRef.current.map((p) => ({ ...p }));
+    routeHistoryRef.current.push(snap);
+    if (routeHistoryRef.current.length > 50) routeHistoryRef.current.shift();
+  }, []);
   const [routePointCount, setRoutePointCount] = useState(existingRoute?.coordinates?.length || 0);
   const pilotMarkerRef = useRef<L.Marker | null>(null);
   const pilotCircleRef = useRef<L.Circle | null>(null);
@@ -377,6 +383,7 @@ export function OpenAIPMap({
           hit.on('click', (e: any) => {
             L.DomEvent.stopPropagation(e);
             const { lat, lng } = e.latlng;
+            pushRouteHistory();
             routePointsRef.current.splice(insertIndex, 0, { lat, lng });
             updateRouteDisplay();
             const cb = onRouteChangeRef.current;
@@ -427,6 +434,7 @@ export function OpenAIPMap({
       if (modeRef.current === 'routePlanning') {
         marker.on('dragend', (e: any) => {
           const { lat, lng } = e.target.getLatLng();
+          pushRouteHistory();
           routePointsRef.current[index] = { lat, lng };
           updateRouteDisplay();
           const cb = onRouteChangeRef.current;
@@ -438,6 +446,7 @@ export function OpenAIPMap({
 
         marker.on('contextmenu', (e: any) => {
           L.DomEvent.stopPropagation(e);
+          pushRouteHistory();
           routePointsRef.current.splice(index, 1);
           updateRouteDisplay();
           const cb = onRouteChangeRef.current;
@@ -653,6 +662,7 @@ export function OpenAIPMap({
     }
     if (lengthDiffers || contentDiffers || firstChanged) {
       const wasEmpty = current.length === 0;
+      routeHistoryRef.current = [];
       routePointsRef.current = [...controlled];
       setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
@@ -946,6 +956,7 @@ export function OpenAIPMap({
       }
       
       if (modeRef.current === "routePlanning") {
+        pushRouteHistory();
         routePointsRef.current.push({ lat, lng });
         setRoutePointCount(routePointsRef.current.length);
         updateRouteDisplay();
@@ -1312,6 +1323,7 @@ export function OpenAIPMap({
   // Display existing route
   useEffect(() => {
     if (existingRoute && existingRoute.coordinates.length > 0) {
+      routeHistoryRef.current = [];
       routePointsRef.current = [...existingRoute.coordinates];
       updateRouteDisplay();
     }
@@ -1513,21 +1525,22 @@ export function OpenAIPMap({
   };
 
   const clearRoute = useCallback(() => {
+    if (routePointsRef.current.length > 0) pushRouteHistory();
     routePointsRef.current = [];
     setRoutePointCount(0);
     updateRouteDisplay();
     if (onRouteChange) onRouteChange({ coordinates: [], totalDistance: 0 });
-  }, [updateRouteDisplay, onRouteChange]);
+  }, [updateRouteDisplay, onRouteChange, pushRouteHistory]);
 
   const undoLastPoint = useCallback(() => {
-    if (routePointsRef.current.length > 0) {
-      routePointsRef.current.pop();
-      setRoutePointCount(routePointsRef.current.length);
-      updateRouteDisplay();
-      if (onRouteChange) {
-        const coords = [...routePointsRef.current];
-        onRouteChange({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
-      }
+    if (routeHistoryRef.current.length === 0) return;
+    const prev = routeHistoryRef.current.pop()!;
+    routePointsRef.current = prev;
+    setRoutePointCount(prev.length);
+    updateRouteDisplay();
+    if (onRouteChange) {
+      const coords = [...prev];
+      onRouteChange({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
     }
   }, [updateRouteDisplay, onRouteChange]);
 
