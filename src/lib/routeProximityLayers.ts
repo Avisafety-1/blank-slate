@@ -199,7 +199,7 @@ interface SourceCache {
   caa: Map<string, any[]>;
   nve: Map<string, Array<{ def: KraftDef; feature: any }>>;
   ais: Map<string, AisCacheEntry>;
-  obstacles: Map<string, ObstacleRecord[]>;
+  obstaclesAll: ObstacleRecord[] | null;
 }
 
 export function createProximityCache(): SourceCache {
@@ -209,9 +209,10 @@ export function createProximityCache(): SourceCache {
     caa: new Map(),
     nve: new Map(),
     ais: new Map(),
-    obstacles: new Map(),
+    obstaclesAll: null,
   };
 }
+
 
 
 async function loadNaturvern(bbox: BBox, cache: SourceCache): Promise<any[]> {
