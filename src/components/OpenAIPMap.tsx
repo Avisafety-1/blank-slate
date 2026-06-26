@@ -434,6 +434,7 @@ export function OpenAIPMap({
       if (modeRef.current === 'routePlanning') {
         marker.on('dragend', (e: any) => {
           const { lat, lng } = e.target.getLatLng();
+          pushRouteHistory();
           routePointsRef.current[index] = { lat, lng };
           updateRouteDisplay();
           const cb = onRouteChangeRef.current;
