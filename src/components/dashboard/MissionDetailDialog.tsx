@@ -16,7 +16,7 @@ import { AirspaceWarnings } from "./AirspaceWarnings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionMapPreview } from "./MissionMapPreview";
-import { ExpandedMapDialog } from "./ExpandedMapDialog";
+import { useNavigate } from "react-router-dom";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
