@@ -143,6 +143,8 @@ interface OpenAIPMapProps {
   stackSlotAboveLayers?: React.ReactNode;
   /** Notifies parent of viewport changes (center + zoom) so 2D/3D can stay in sync. */
   onViewChange?: (center: [number, number], zoom: number) => void;
+  /** Incrementing trigger from parent toolbar to undo the latest route mutation. */
+  routeUndoToken?: number;
 }
 
 export function OpenAIPMap({ 
@@ -169,6 +171,7 @@ export function OpenAIPMap({
   plannedMissionsWindowHours = 24,
   stackSlotAboveLayers,
   onViewChange,
+  routeUndoToken,
 }: OpenAIPMapProps) {
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
@@ -193,6 +196,7 @@ export function OpenAIPMap({
   const aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([]);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
   const routeHistoryRef = useRef<RoutePoint[][]>([]);
+  const lastRouteUndoTokenRef = useRef(routeUndoToken ?? 0);
   const pushRouteHistory = useCallback(() => {
     const snap = routePointsRef.current.map((p) => ({ ...p }));
     routeHistoryRef.current.push(snap);
@@ -377,11 +381,13 @@ export function OpenAIPMap({
             pane: 'routePane',
             interactive: true,
             className: 'route-segment-hit',
+            bubblingMouseEvents: false,
           }).addTo(routeLayerRef.current);
 
           const insertIndex = i + 1;
           hit.on('click', (e: any) => {
             L.DomEvent.stopPropagation(e);
+            if (e.originalEvent) L.DomEvent.stop(e.originalEvent);
             const { lat, lng } = e.latlng;
             pushRouteHistory();
             routePointsRef.current.splice(insertIndex, 0, { lat, lng });
@@ -681,7 +687,12 @@ export function OpenAIPMap({
     if (!mapRef.current || !profileLoaded) return;
 
     const startCenter = initialCenter || DEFAULT_POS;
-    const map = L.map(mapRef.current, { zoomControl: false }).setView(startCenter, initialCenter ? 13 : 8);
+    const map = L.map(mapRef.current, {
+      zoomControl: false,
+      zoomAnimation: false,
+      fadeAnimation: false,
+      markerZoomAnimation: false,
+    }).setView(startCenter, initialCenter ? 13 : 8);
     const zoomCtrl = L.control.zoom({ position: 'topright' }).addTo(map);
     // Push zoom control below the right-side action buttons
     // (vær + base + 3D + kartlag + rute = 5 × 40 px + 4 × 8 px gap + top-4 16 px ≈ 260 px)
@@ -945,7 +956,7 @@ export function OpenAIPMap({
 
     // Map click handler
     const handleMapClick = async (e: any) => {
-      if (e.originalEvent?.target?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-popup-content-wrapper')) return;
+      if (e.originalEvent?.target?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-popup-content-wrapper, .route-segment-hit')) return;
       
       const { lat, lng } = e.latlng;
       
@@ -1543,6 +1554,12 @@ export function OpenAIPMap({
       onRouteChange({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
     }
   }, [updateRouteDisplay, onRouteChange]);
+
+  useEffect(() => {
+    if (routeUndoToken == null || routeUndoToken === lastRouteUndoTokenRef.current) return;
+    lastRouteUndoTokenRef.current = routeUndoToken;
+    undoLastPoint();
+  }, [routeUndoToken, undoLastPoint]);
 
   return (
     <div className="relative w-full h-full overflow-hidden touch-manipulation select-none">
