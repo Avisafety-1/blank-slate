@@ -945,6 +945,8 @@ export function OpenAIPMap({
 
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
+    const routeProximityLayer = L.layerGroup().addTo(map);
+    routeProximityLayerRef.current = routeProximityLayer;
     if (routePointsRef.current.length > 0) {
       updateRouteDisplay();
     }
