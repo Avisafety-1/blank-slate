@@ -317,34 +317,38 @@ export function OpenAIPMap({
   );
 
   const setLeafletLayerInteractivity = useCallback((layer: L.Layer | null | undefined, enabled: boolean) => {
-    if (!layer) return;
+    const applyToLayer = (target: L.Layer | null | undefined) => {
+      if (!target) return;
 
-    const group = layer as L.LayerGroup;
-    if (typeof group.eachLayer === "function") {
-      group.eachLayer((child) => setLeafletLayerInteractivity(child, enabled));
-    }
-
-    const anyLayer = layer as any;
-    if (anyLayer.options) {
-      anyLayer.options.interactive = enabled;
-      anyLayer.options.bubblingMouseEvents = true;
-    }
-
-    const elements = [
-      typeof anyLayer.getElement === "function" ? anyLayer.getElement() : null,
-      anyLayer._path,
-      anyLayer._icon,
-      anyLayer._shadow,
-    ].filter(Boolean) as HTMLElement[];
-
-    elements.forEach((el) => {
-      el.style.pointerEvents = enabled ? "auto" : "none";
-      if (!enabled && typeof anyLayer.removeInteractiveTarget === "function") {
-        try { anyLayer.removeInteractiveTarget(el); } catch { /* ignore */ }
-      } else if (enabled && typeof anyLayer.addInteractiveTarget === "function" && anyLayer._map) {
-        try { anyLayer.addInteractiveTarget(el); } catch { /* ignore */ }
+      const group = target as L.LayerGroup;
+      if (typeof group.eachLayer === "function") {
+        group.eachLayer((child) => applyToLayer(child));
       }
-    });
+
+      const anyLayer = target as any;
+      if (anyLayer.options) {
+        anyLayer.options.interactive = enabled;
+        anyLayer.options.bubblingMouseEvents = true;
+      }
+
+      const elements = [
+        typeof anyLayer.getElement === "function" ? anyLayer.getElement() : null,
+        anyLayer._path,
+        anyLayer._icon,
+        anyLayer._shadow,
+      ].filter(Boolean) as HTMLElement[];
+
+      elements.forEach((el) => {
+        el.style.pointerEvents = enabled ? "auto" : "none";
+        if (!enabled && typeof anyLayer.removeInteractiveTarget === "function") {
+          try { anyLayer.removeInteractiveTarget(el); } catch { /* ignore */ }
+        } else if (enabled && typeof anyLayer.addInteractiveTarget === "function" && anyLayer._map) {
+          try { anyLayer.addInteractiveTarget(el); } catch { /* ignore */ }
+        }
+      });
+    };
+
+    applyToLayer(layer);
   }, []);
 
   const syncRoutePlanningInteractivity = useCallback((currentMode = modeRef.current, inspectMode = routeInspectModeRef.current) => {
