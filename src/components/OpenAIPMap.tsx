@@ -1393,6 +1393,9 @@ export function OpenAIPMap({
         coordinates: [...coords],
         signal: controller.signal,
         cache: routeProximityCacheRef.current,
+        activeManualLayers: {
+          ais: !!(naisLayerRef.current && map.hasLayer(naisLayerRef.current)),
+        },
       }).catch(() => { /* swallow */ });
     }, 300);
 
