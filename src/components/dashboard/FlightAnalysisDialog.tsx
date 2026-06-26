@@ -127,6 +127,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
   const destroyMap = useCallback(() => {
     clearTimers();
     if (mapRef.current) {
+      try { mapRef.current.stop(); } catch (_) {}
       try { mapRef.current.remove(); } catch (_) {}
       mapRef.current = null;
     }
