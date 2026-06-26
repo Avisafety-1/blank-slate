@@ -121,6 +121,8 @@ interface OpenAIPMapProps {
   existingRoute?: RouteData | null;
   onRouteChange?: (route: RouteData) => void;
   initialCenter?: [number, number];
+  /** If true, the map will not auto-center on the user's GPS position or company location on load. */
+  suppressGeolocationCenter?: boolean;
   controlledRoute?: RouteData | null;
   onStartRoutePlanning?: () => void;
   onPilotPositionChange?: (position: RoutePoint | undefined) => void;
