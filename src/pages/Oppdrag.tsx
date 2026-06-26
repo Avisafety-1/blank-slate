@@ -130,6 +130,26 @@ const Oppdrag = () => {
   // Handle navigation state from route planner
   useEffect(() => {
     const state = data.location.state as any;
+    if (!state) return;
+
+    // Scroll-only return from /kart (no dialog open)
+    if (state.scrollToMission && state.missionId) {
+      const missionId = state.missionId;
+      const tryScroll = (attempt = 0) => {
+        const el = document.getElementById(`mission-${missionId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-2', 'ring-primary');
+          setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2000);
+        } else if (attempt < 20) {
+          setTimeout(() => tryScroll(attempt + 1), 150);
+        }
+      };
+      tryScroll();
+      data.navigate(data.location.pathname, { replace: true, state: null });
+      return;
+    }
+
     if (state?.routeData || state?.formData || state?.openDialog) {
       setInitialRouteData(state.routeData || null);
       setInitialFormData(state.formData || null);
