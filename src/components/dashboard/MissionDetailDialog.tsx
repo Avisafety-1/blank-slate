@@ -56,12 +56,16 @@ interface MissionDetailDialogProps {
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { companyId } = useAuth();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
-  const [expandedMapOpen, setExpandedMapOpen] = useState(false);
+  const openMissionInMap = (missionId: string) => {
+    onOpenChange(false);
+    navigate(`/kart?missionId=${missionId}`);
+  };
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
   const [soraStatus, setSoraStatus] = useState<string | null>(null);
