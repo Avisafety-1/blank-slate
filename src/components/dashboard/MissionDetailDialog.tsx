@@ -116,23 +116,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
     fetchLatest();
   }, [open, mission?.id]);
 
-  // Fetch flight logs when expanded map opens
-  useEffect(() => {
-    if (!expandedMapOpen || !mission?.id) return;
-    if (mission.flightLogs) {
-      setFlightLogs(mission.flightLogs);
-      return;
-    }
-    const fetchLogs = async () => {
-      const { data } = await supabase
-        .from("flight_logs")
-        .select("id, flight_date, flight_track, flight_duration_minutes")
-        .eq("mission_id", mission.id)
-        .not("flight_track", "is", null);
-      setFlightLogs(data || []);
-    };
-    fetchLogs();
-  }, [expandedMapOpen, mission?.id, mission?.flightLogs]);
+
+
 
   const currentMission = liveMission ? { ...mission, ...liveMission } : mission;
 
