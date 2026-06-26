@@ -1,14 +1,15 @@
-Clarification from user: when navigating from an Oppdrag card to /kart via ?missionId=..., the map must be centered on the selected mission's route/area, not on the user's current GPS position. The geolocation marker may still be shown as today.
+Plan
 
-Current state:
-- Kart.tsx already loads the mission when `missionId` query param is present and enters route-planning mode.
-- The map has a `pilotPosition` / geolocation feature that presumably auto-centers on the user.
-- A previous plan already added: loading existing route, SORA buffer, zoom-to-centroid, save-without-reset, and a "Tilbake til oppdrag" button.
+1. Endre scroll-håndtering i src/pages/Oppdrag.tsx
+   - Erstatt dagens `el.scrollIntoView({ behavior: 'smooth', block: 'center' })` med en måling som legger oppdragskortets øvre kant rett under det sticky topphodet.
+   - Mål høyden på `<header>` runtime og trekk den fra med en liten margin (ca. 8 px) slik at kortets topp kant kommer akkurat under headeren, i likhet med skjermbildet.
+   - Hvis kortet ikke finnes i DOM ennå (fordi oppdraget ligger lenger nede i server-side paginering), kall `data.loadMore()` og prøv på nytt inntil elementet rendres.
+   - Når elementet finnes, sørg for at lokal `visibleCount` er stor nok til å vise kortet.
+   - Behold ring-animasjonen som markerer det aktive oppdraget.
 
-What this plan adds:
-1. Disable or skip the user-position auto-center when `editingMissionId` (or `missionId` query param) is present on initial load.
-2. Compute the mission route bounding box/center on load and set the map initial view to that area.
-3. Ensure the geolocation dot/marker still renders if the user has granted permission, but only centers the map on first fix when no mission is selected.
-4. Keep the existing "Tilbake til oppdrag" and save behaviour unchanged.
+2. Behold Kart.tsx uendret
+   - Knappen «Tilbake til oppdrag» sender fortsatt samme navigasjonstilstand: `{ missionId: editingMissionId, scrollToMission: true }`.
 
-No database or API changes. Frontend only.
+3. Verifisering
+   - Kjør build/typecheck.
+   - Bruk Playwright for å åpne /kart fra et oppdrag, trykk «Tilbake til oppdrag», og ta screenshot for å bekrefte at tittelen på oppdragskortet ligger øverst på skjermen.
