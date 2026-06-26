@@ -749,6 +749,17 @@ export default function KartPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                  {editingMissionId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true } })}
+                      className="h-8 px-2"
+                      title="Tilbake til oppdrag"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     data-tour="map-route-cancel"
                     variant="outline"
