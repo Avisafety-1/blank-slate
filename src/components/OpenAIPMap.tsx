@@ -1352,6 +1352,62 @@ export function OpenAIPMap({
     }
   }, [existingRoute, updateRouteDisplay]);
 
+  // Auto-vis kartlag-features langs ruten (verneområder, CAA-soner, NVE-kraftledninger)
+  // innenfor 500 m fra ruten – uavhengig av om laget er aktivert i lag-menyen.
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    const layer = routeProximityLayerRef.current;
+    if (!map || !layer) return;
+
+    if (routeProximityDebounceRef.current !== null) {
+      window.clearTimeout(routeProximityDebounceRef.current);
+      routeProximityDebounceRef.current = null;
+    }
+
+    const coords = routePointsRef.current;
+    if (coords.length < 2) {
+      try { layer.clearLayers(); } catch {}
+      routeProximityAbortRef.current?.abort();
+      routeProximityAbortRef.current = null;
+      return;
+    }
+
+    routeProximityDebounceRef.current = window.setTimeout(() => {
+      routeProximityAbortRef.current?.abort();
+      const controller = new AbortController();
+      routeProximityAbortRef.current = controller;
+      updateRouteProximityLayers({
+        map,
+        layer,
+        coordinates: [...coords],
+        signal: controller.signal,
+        cache: routeProximityCacheRef.current,
+      }).catch(() => { /* swallow */ });
+    }, 300);
+
+    return () => {
+      if (routeProximityDebounceRef.current !== null) {
+        window.clearTimeout(routeProximityDebounceRef.current);
+        routeProximityDebounceRef.current = null;
+      }
+    };
+  }, [routePointCount, routeUndoToken, controlledRoute, existingRoute]);
+
+  // Cleanup proximity layer on unmount
+  useEffect(() => {
+    return () => {
+      routeProximityAbortRef.current?.abort();
+      routeProximityAbortRef.current = null;
+      if (routeProximityDebounceRef.current !== null) {
+        window.clearTimeout(routeProximityDebounceRef.current);
+        routeProximityDebounceRef.current = null;
+      }
+      try { routeProximityLayerRef.current?.clearLayers(); } catch {}
+      routeProximityLayerRef.current = null;
+    };
+  }, []);
+
+
   // Focus on specific flight
   useEffect(() => {
     if (!focusFlightId || !leafletMapRef.current) return;
