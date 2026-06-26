@@ -112,11 +112,28 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         fetchMissionSoras(missionIds);
         fetchMissionDocumentCounts(missionIds);
         fetchMissionAIRisks(missionIds);
+        fetchMyMissionIds(missionIds);
+      } else {
+        setMyMissionIds(new Set());
       }
     } catch (error: any) {
       if (error?.name === 'AbortError' || abortSignal?.aborted) return;
       console.error("Error fetching missions:", error);
     }
+  };
+
+  const fetchMyMissionIds = async (missionIds: string[]) => {
+    if (!user?.id) { setMyMissionIds(new Set()); return; }
+    const { data, error } = await supabase
+      .from("mission_personnel")
+      .select("mission_id")
+      .eq("user_id", user.id)
+      .in("mission_id", missionIds);
+    if (error) {
+      console.error("Error fetching my mission ids:", error);
+      return;
+    }
+    setMyMissionIds(new Set((data || []).map((r: any) => r.mission_id)));
   };
 
   const fetchMissionDocumentCounts = async (missionIds: string[]) => {
