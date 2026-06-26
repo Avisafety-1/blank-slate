@@ -167,7 +167,7 @@ const Oppdrag = () => {
             align('smooth');
             // Re-align after late-rendering content above the target (maps, badges, async sections)
             // has had a chance to settle, otherwise the viewport can stop on the previous card.
-            [180, 420, 750].forEach((delay) => setTimeout(() => align('auto'), delay));
+            [180, 420, 750, 1200, 1600].forEach((delay) => setTimeout(() => align('auto'), delay));
           });
         });
       };
