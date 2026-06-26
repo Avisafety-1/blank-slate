@@ -119,7 +119,6 @@ export const MissionCard = ({
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
   const [ninoxApproved, setNinoxApproved] = useState(!!mission.ninox_approved);
-  const [expandedMapOpen, setExpandedMapOpen] = useState(false); void expandedMapOpen; void setExpandedMapOpen;
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
