@@ -1,25 +1,22 @@
-## Problem
-Angre-knappen i ruteplanleggeren kaller `routePointsRef.current.pop()`, som alltid fjerner siste punkt i arrayen. Etter at vi innførte innsetting mellom eksisterende punkter (og dra/slett), stemmer ikke «siste i arrayen» lenger med «sist lagt til», så feil punkt fjernes.
+## Plan
 
-## Løsning
-Erstatt pop-baserte angre med en historikk-stack som lagrer et snapshot av rutepunktene før hver mutasjon. Angre gjenoppretter forrige snapshot.
+1. **Flytt angre-ansvaret til kartkomponenten**
+   - `OpenAIPMap` har allerede en intern historikk (`routeHistoryRef`) som lagrer ruten før hver mutasjon.
+   - Eksponer en liten `undoToken`/trigger-prop fra `Kart.tsx` til `OpenAIPMap`, slik at toolbar-knappen kan be kartet kjøre `undoLastPoint()`.
 
-### Endringer i `src/components/OpenAIPMap.tsx`
+2. **Fjern gammel pop-logikk i `/kart`**
+   - Erstatt `handleUndoPoint`, som i dag gjør `slice(0, -1)`, fordi den alltid fjerner punktet med høyest nummer.
+   - Den skal i stedet bare trigge kartets historikk-baserte angre.
 
-1. Legg til `const routeHistoryRef = useRef<RoutePoint[][]>([])`.
-2. Lag en helper `pushHistory()` som pusher en dyp kopi (`routePointsRef.current.map(p => ({...p}))`) før hver mutasjon. Cap stacken på f.eks. 50 entries.
-3. Kall `pushHistory()` rett før hver av disse mutasjonene:
-   - Klikk i kart som legger til nytt punkt (linje ~949 `push`).
-   - Klikk på segment som setter inn punkt mellom to (linje ~380 `splice insert`).
-   - Marker-drag som flytter punkt (linje ~430).
-   - Høyreklikk/slett-punkt (linje ~441 `splice remove`).
-   - `clearRoute` (snapshot før tømming så man kan angre clear).
-   - Når `existingRoute` lastes første gang eller controlled-prop overskriver (linje 656, 1315): tøm historikk så angre ikke krysser oppdrag.
-4. Omskriv `undoLastPoint`:
-   - Hvis `routeHistoryRef.current.length === 0`: ingenting å gjøre.
-   - Pop forrige snapshot, sett `routePointsRef.current = snapshot`, oppdater `routePointCount`, kjør `updateRouteDisplay()` og `onRouteChange` med oppdaterte coords/distance/area.
-5. Behold knappen og tooltip, men oppdater tittel til «Angre siste endring».
+3. **Bevar korrekt state i parent**
+   - Når kartet angrer, skal `OpenAIPMap` fortsatt kalle `onRouteChange` med hele gjenopprettede ruten, total distanse og areal.
+   - Da oppdateres `currentRoute`, SORA-panel, lagring og statistikk som før.
 
-### Ikke-endringer
-- Ingen endringer i hvordan ruter lagres eller sendes til parent.
-- Ingen UI-restrukturering utover evt. tooltip-tekst.
+4. **Oppdater tekst/tilstand på knappen**
+   - Endre tooltip fra `Angre siste punkt` til `Angre siste endring`.
+   - Knappen kan fortsatt være disabled når ruten er tom.
+
+5. **Verifiser manuelt i preview**
+   - Lag punkt 1, 2, 3.
+   - Klikk mellom 1 og 2 for å sette inn et nytt punkt.
+   - Klikk Angre og bekreft at det innsatte punktet fjernes, ikke punktet med høyest nummer.
