@@ -45,6 +45,11 @@ import { resetCache } from "@/lib/viewportLayerCache";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
 import type { RouteMultiPolygon, SsbPopulationCell } from "@/lib/adjacentAreaCalculator";
+import {
+  ensureRouteProximityPane,
+  createProximityCache,
+  updateRouteProximityLayers,
+} from "@/lib/routeProximityLayers";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 const TENSIO_WMS_URL = "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer";
@@ -212,6 +217,10 @@ export function OpenAIPMap({
   const adjacentAreaLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityRendererRef = useRef<L.Renderer | null>(null);
+  const routeProximityLayerRef = useRef<L.LayerGroup | null>(null);
+  const routeProximityCacheRef = useRef(createProximityCache());
+  const routeProximityAbortRef = useRef<AbortController | null>(null);
+  const routeProximityDebounceRef = useRef<number | null>(null);
   const adjacentAreaRadiusMRef = useRef(adjacentAreaRadiusM);
   const populationDensityCellsRef = useRef<SsbPopulationCell[] | undefined>(populationDensityCells);
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
@@ -728,6 +737,7 @@ export function OpenAIPMap({
       }
     }
     ensurePopulationDensityPane(map);
+    ensureRouteProximityPane(map);
     populationDensityRendererRef.current = L.svg({ pane: 'populationDensityPane' });
 
     // Sørg for at popup-bokser alltid ligger over alle kartlag
@@ -935,6 +945,8 @@ export function OpenAIPMap({
 
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
+    const routeProximityLayer = L.layerGroup().addTo(map);
+    routeProximityLayerRef.current = routeProximityLayer;
     if (routePointsRef.current.length > 0) {
       updateRouteDisplay();
     }
@@ -1339,6 +1351,62 @@ export function OpenAIPMap({
       updateRouteDisplay();
     }
   }, [existingRoute, updateRouteDisplay]);
+
+  // Auto-vis kartlag-features langs ruten (verneområder, CAA-soner, NVE-kraftledninger)
+  // innenfor 500 m fra ruten – uavhengig av om laget er aktivert i lag-menyen.
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    const layer = routeProximityLayerRef.current;
+    if (!map || !layer) return;
+
+    if (routeProximityDebounceRef.current !== null) {
+      window.clearTimeout(routeProximityDebounceRef.current);
+      routeProximityDebounceRef.current = null;
+    }
+
+    const coords = routePointsRef.current;
+    if (coords.length < 2) {
+      try { layer.clearLayers(); } catch {}
+      routeProximityAbortRef.current?.abort();
+      routeProximityAbortRef.current = null;
+      return;
+    }
+
+    routeProximityDebounceRef.current = window.setTimeout(() => {
+      routeProximityAbortRef.current?.abort();
+      const controller = new AbortController();
+      routeProximityAbortRef.current = controller;
+      updateRouteProximityLayers({
+        map,
+        layer,
+        coordinates: [...coords],
+        signal: controller.signal,
+        cache: routeProximityCacheRef.current,
+      }).catch(() => { /* swallow */ });
+    }, 300);
+
+    return () => {
+      if (routeProximityDebounceRef.current !== null) {
+        window.clearTimeout(routeProximityDebounceRef.current);
+        routeProximityDebounceRef.current = null;
+      }
+    };
+  }, [routePointCount, routeUndoToken, controlledRoute, existingRoute]);
+
+  // Cleanup proximity layer on unmount
+  useEffect(() => {
+    return () => {
+      routeProximityAbortRef.current?.abort();
+      routeProximityAbortRef.current = null;
+      if (routeProximityDebounceRef.current !== null) {
+        window.clearTimeout(routeProximityDebounceRef.current);
+        routeProximityDebounceRef.current = null;
+      }
+      try { routeProximityLayerRef.current?.clearLayers(); } catch {}
+      routeProximityLayerRef.current = null;
+    };
+  }, []);
+
 
   // Focus on specific flight
   useEffect(() => {
