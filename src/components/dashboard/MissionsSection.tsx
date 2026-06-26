@@ -57,7 +57,9 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
   const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
   const [missionAIRisks, setMissionAIRisks] = useState<Record<string, MissionAIRisk>>({});
-  
+  // Risk assessment states
+  const [riskDialogOpen, setRiskDialogOpen] = useState(false);
+  const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const [selectedAIRiskMission, setSelectedAIRiskMission] = useState<Mission | null>(null);
   const [approvalConfirmMissionId, setApprovalConfirmMissionId] = useState<string | null>(null);
   const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
