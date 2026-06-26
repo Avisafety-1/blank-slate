@@ -587,7 +587,7 @@ function renderObstacles(
   layer: L.LayerGroup,
   obstacles: ObstacleRecord[],
   bbox: BBox,
-  buffer: RoutePoint[] | null,
+  _buffer: RoutePoint[] | null,
 ) {
   const icon = L.divIcon({
     className: "",
@@ -602,9 +602,9 @@ function renderObstacles(
     iconAnchor: [10, 10],
     popupAnchor: [0, -10],
   });
+  let rendered = 0;
   for (const o of obstacles) {
     if (o.lat < bbox.minLat || o.lat > bbox.maxLat || o.lng < bbox.minLng || o.lng > bbox.maxLng) continue;
-    if (buffer && !pointInRing(o.lat, o.lng, buffer)) continue;
     try {
       const typeName = o.type || "Ukjent";
       const displayName = o.name || typeName;
@@ -612,14 +612,19 @@ function renderObstacles(
       if (o.elevation != null) popup += `Høyde (MSL): ${escapeHtml(o.elevation)} m<br/>`;
       if (o.height_agl != null) popup += `Høyde (AGL): ${escapeHtml(o.height_agl)} m<br/>`;
       popup += AUTO_BADGE + `</div>`;
-      L.marker([o.lat, o.lng], { icon, pane: PANE, interactive: true })
+      L.marker([o.lat, o.lng], { icon, pane: "markerPane", interactive: true })
         .bindPopup(popup)
         .addTo(layer);
+      rendered++;
     } catch {
       /* skip */
     }
   }
+  if (rendered > 0) {
+    console.info(`[routeProximity] rendered ${rendered} obstacles along route`);
+  }
 }
+
 
 export interface UpdateProximityParams {
   map: L.Map;
