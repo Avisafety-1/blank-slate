@@ -1447,6 +1447,7 @@ export function OpenAIPMap({
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
       map.off('moveend', debouncedFetchNais);
+      map.off('zoomend', updateVesselScale);
       populationDensityRendererRef.current = null;
       
       safeSkyManager.cleanup();
