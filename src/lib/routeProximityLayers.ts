@@ -549,26 +549,23 @@ function renderAisVessels(
 // ============ Luftfartshindre (openaip_obstacles) ============
 
 async function loadObstacles(
-  bbox: BBox,
   cache: SourceCache,
 ): Promise<ObstacleRecord[]> {
-  const key = bboxKey(bbox);
-  const hit = cache.obstacles.get(key);
-  if (hit) return hit;
-  const { data, error } = await supabase.rpc("get_obstacles_in_bounds", {
-    min_lat: bbox.minLat,
-    min_lng: bbox.minLng,
-    max_lat: bbox.maxLat,
-    max_lng: bbox.maxLng,
-  });
+  if (cache.obstaclesAll) return cache.obstaclesAll;
+  const { data, error } = await supabase
+    .from("openaip_obstacles")
+    .select("openaip_id, name, type, geometry, elevation, height_agl");
   if (error || !data) {
-    cache.obstacles.set(key, []);
+    console.warn("[routeProximity] obstacle load failed", error);
+    cache.obstaclesAll = [];
     return [];
   }
   const records: ObstacleRecord[] = [];
   for (const o of data as any[]) {
-    const lat = Number(o.lat);
-    const lng = Number(o.lng);
+    const geom = o.geometry;
+    if (!geom || !geom.coordinates) continue;
+    const lng = Number(geom.coordinates[0]);
+    const lat = Number(geom.coordinates[1]);
     if (!isFinite(lat) || !isFinite(lng)) continue;
     records.push({
       openaip_id: o.openaip_id,
@@ -580,9 +577,10 @@ async function loadObstacles(
       lng,
     });
   }
-  cache.obstacles.set(key, records);
+  cache.obstaclesAll = records;
   return records;
 }
+
 
 
 function renderObstacles(
