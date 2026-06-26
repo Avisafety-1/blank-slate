@@ -192,6 +192,12 @@ export function OpenAIPMap({
   const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([]);
   const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
+  const routeHistoryRef = useRef<RoutePoint[][]>([]);
+  const pushRouteHistory = useCallback(() => {
+    const snap = routePointsRef.current.map((p) => ({ ...p }));
+    routeHistoryRef.current.push(snap);
+    if (routeHistoryRef.current.length > 50) routeHistoryRef.current.shift();
+  }, []);
   const [routePointCount, setRoutePointCount] = useState(existingRoute?.coordinates?.length || 0);
   const pilotMarkerRef = useRef<L.Marker | null>(null);
   const pilotCircleRef = useRef<L.Circle | null>(null);
