@@ -701,9 +701,6 @@ export async function updateRouteProximityLayers(
 
   if (signal.aborted) return;
 
-  // Ensure vessel icons scale dynamically with map zoom
-  ensureVesselZoomListener(map);
-
   layer.clearLayers();
   renderNaturvern(layer, naturvern);
   renderVernRestrictions(layer, vern);
