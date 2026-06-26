@@ -217,6 +217,10 @@ export function OpenAIPMap({
   const adjacentAreaLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityRendererRef = useRef<L.Renderer | null>(null);
+  const routeProximityLayerRef = useRef<L.LayerGroup | null>(null);
+  const routeProximityCacheRef = useRef(createProximityCache());
+  const routeProximityAbortRef = useRef<AbortController | null>(null);
+  const routeProximityDebounceRef = useRef<number | null>(null);
   const adjacentAreaRadiusMRef = useRef(adjacentAreaRadiusM);
   const populationDensityCellsRef = useRef<SsbPopulationCell[] | undefined>(populationDensityCells);
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
