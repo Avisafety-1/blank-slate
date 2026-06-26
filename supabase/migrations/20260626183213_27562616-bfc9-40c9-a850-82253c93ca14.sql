@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.get_obstacles_in_bounds(double precision, double precision, double precision, double precision);

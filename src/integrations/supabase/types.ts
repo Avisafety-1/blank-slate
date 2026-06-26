@@ -7210,23 +7210,6 @@ export type Database = {
           verneform: string
         }[]
       }
-      get_obstacles_in_bounds: {
-        Args: {
-          max_lat: number
-          max_lng: number
-          min_lat: number
-          min_lng: number
-        }
-        Returns: {
-          elevation: number
-          height_agl: number
-          lat: number
-          lng: number
-          name: string
-          openaip_id: string
-          type: string
-        }[]
-      }
       get_parent_company_id: { Args: { _company_id: string }; Returns: string }
       get_platform_statistics: {
         Args: { p_exclude_company_id?: string }
