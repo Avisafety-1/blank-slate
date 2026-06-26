@@ -181,6 +181,11 @@ export function OpenAIPMap({
   useEffect(() => {
     focusFlightIdRef.current = focusFlightId ?? null;
   }, [focusFlightId]);
+  // Keep the "entered from mission" flag stable for async geolocation callbacks.
+  const suppressGeolocationCenterRef = useRef(suppressGeolocationCenter);
+  useEffect(() => {
+    suppressGeolocationCenterRef.current = suppressGeolocationCenter;
+  }, [suppressGeolocationCenter]);
   const missionsLayerRef = useRef<L.LayerGroup | null>(null);
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
   const nsmGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
