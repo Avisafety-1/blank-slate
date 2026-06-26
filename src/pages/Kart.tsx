@@ -14,7 +14,7 @@ import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users, ArrowLeft } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users, ArrowLeft, MousePointer2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -52,6 +52,8 @@ export default function KartPage() {
   
   // Route planning state
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
+  const [routeInspectMode, setRouteInspectMode] = useState(false);
+
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
   const [routeUndoToken, setRouteUndoToken] = useState(0);
@@ -483,6 +485,8 @@ export default function KartPage() {
     } else {
       // Started from /kart or editing existing mission route - exit route planning mode
       setIsRoutePlanning(false);
+      setRouteInspectMode(false);
+
       setCurrentRoute({ coordinates: [], totalDistance: 0 });
       setPilotPosition(undefined);
       setAdjacentResult(null);
@@ -723,6 +727,15 @@ export default function KartPage() {
                     <MapPin className="h-4 w-4" />
                   </Button>
                   <Button
+                    variant={routeInspectMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setRouteInspectMode((v) => !v)}
+                    className="h-8 px-2"
+                    title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
+                  >
+                    <MousePointer2 className="h-4 w-4" />
+                  </Button>
+                  <Button
                     data-tour="map-route-undo"
                     variant="outline"
                     size="sm"
@@ -733,6 +746,7 @@ export default function KartPage() {
                   >
                     <Undo className="h-4 w-4" />
                   </Button>
+
                   <Button
                     data-tour="map-route-clear"
                     variant="outline"
@@ -889,6 +903,16 @@ export default function KartPage() {
                 </span>
               </Button>
               <Button
+                variant={routeInspectMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRouteInspectMode((v) => !v)}
+                className="h-8 px-2 sm:px-3"
+                title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
+              >
+                <MousePointer2 className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">{routeInspectMode ? "Tegn" : "Inspiser"}</span>
+              </Button>
+              <Button
                 data-tour="map-route-undo"
                 variant="outline"
                 size="sm"
@@ -900,6 +924,7 @@ export default function KartPage() {
                 <Undo className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">Angre</span>
               </Button>
+
               <Button
                 data-tour="map-route-clear"
                 variant="outline"
@@ -1170,6 +1195,8 @@ export default function KartPage() {
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
                   routeUndoToken={routeUndoToken}
+              routeInspectMode={routeInspectMode}
+
               onStartRoutePlanning={handleStartRoutePlanning}
               onPilotPositionChange={handlePilotPositionChange}
               pilotPosition={pilotPosition}

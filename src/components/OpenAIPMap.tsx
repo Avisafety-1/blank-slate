@@ -150,7 +150,10 @@ interface OpenAIPMapProps {
   onViewChange?: (center: [number, number], zoom: number) => void;
   /** Incrementing trigger from parent toolbar to undo the latest route mutation. */
   routeUndoToken?: number;
+  /** If true while in routePlanning mode, map clicks do NOT add waypoints (lets user click geo-zones for info). */
+  routeInspectMode?: boolean;
 }
+
 
 export function OpenAIPMap({ 
   onMissionClick, 
@@ -177,7 +180,9 @@ export function OpenAIPMap({
   stackSlotAboveLayers,
   onViewChange,
   routeUndoToken,
+  routeInspectMode,
 }: OpenAIPMapProps) {
+
   const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -230,6 +235,8 @@ export function OpenAIPMap({
   const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
   const baseLayerRef = useRef<L.Layer | null>(null);
   const isPlacingPilotRef = useRef(isPlacingPilot);
+  const routeInspectModeRef = useRef(routeInspectMode);
+
   const onPilotPositionChangeRef = useRef(onPilotPositionChange);
   const weatherEnabledRef = useRef(false);
   const modeRef = useRef(mode);
@@ -337,6 +344,8 @@ export function OpenAIPMap({
   useEffect(() => { onMissionClickRef.current = onMissionClick; }, [onMissionClick]);
   useEffect(() => { onRouteChangeRef.current = onRouteChange; }, [onRouteChange]);
   useEffect(() => { isPlacingPilotRef.current = isPlacingPilot; }, [isPlacingPilot]);
+  useEffect(() => { routeInspectModeRef.current = routeInspectMode; }, [routeInspectMode]);
+
   useEffect(() => { onPilotPositionChangeRef.current = onPilotPositionChange; }, [onPilotPositionChange]);
   useEffect(() => {
     plannedWindowHoursRef.current = plannedMissionsWindowHours;
@@ -978,7 +987,7 @@ export function OpenAIPMap({
         return;
       }
       
-      if (modeRef.current === "routePlanning") {
+      if (modeRef.current === "routePlanning" && !routeInspectModeRef.current) {
         pushRouteHistory();
         routePointsRef.current.push({ lat, lng });
         setRoutePointCount(routePointsRef.current.length);
