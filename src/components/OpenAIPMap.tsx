@@ -1500,6 +1500,7 @@ export function OpenAIPMap({
         cache: routeProximityCacheRef.current,
         activeManualLayers: {
           ais: !!(naisLayerRef.current && map.hasLayer(naisLayerRef.current)),
+          obstacles: !!(obstaclesLayerRef.current && map.hasLayer(obstaclesLayerRef.current)),
         },
       })
         .then(() => {
