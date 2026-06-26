@@ -49,6 +49,7 @@ import {
   ensureRouteProximityPane,
   createProximityCache,
   updateRouteProximityLayers,
+  computeVesselScale,
 } from "@/lib/routeProximityLayers";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
