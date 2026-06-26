@@ -20,7 +20,10 @@
 .route-planning-active .leaflet-overlay-pane path,
 .route-planning-active .leaflet-notam-pane path,
 .route-planning-active .leaflet-notam-pane .leaflet-interactive,
-.route-planning-active .leaflet-notam-pane .leaflet-marker-icon {
+.route-planning-active .leaflet-notam-pane .leaflet-marker-icon,
+.route-planning-active .leaflet-route-proximity-pane path,
+.route-planning-active .leaflet-route-proximity-pane .leaflet-interactive,
+.route-planning-active .leaflet-route-proximity-pane .leaflet-marker-icon {
   pointer-events: none !important;
 }
 

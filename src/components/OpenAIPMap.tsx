@@ -72,6 +72,7 @@ const ROUTE_PLANNING_NON_INTERACTIVE_PANES = [
   'powerPane',
   'naisPane',
   'liveFlightPane',
+  'routeProximityPane',
 ];
 
 const isTensioName = (name?: string | null) => name?.toLowerCase().includes("tensio") ?? false;
@@ -1053,6 +1054,7 @@ export function OpenAIPMap({
       plannedPublishedLayer,
       kraftledningerLayer,
       naisLayer,
+      routeProximityLayer,
     ];
     syncRoutePlanningInteractivity(modeRef.current, routeInspectModeRef.current);
     if (routePointsRef.current.length > 0) {
@@ -1497,7 +1499,11 @@ export function OpenAIPMap({
         activeManualLayers: {
           ais: !!(naisLayerRef.current && map.hasLayer(naisLayerRef.current)),
         },
-      }).catch(() => { /* swallow */ });
+      })
+        .then(() => {
+          syncRoutePlanningInteractivity(modeRef.current, routeInspectModeRef.current);
+        })
+        .catch(() => { /* swallow */ });
     }, 300);
 
     return () => {

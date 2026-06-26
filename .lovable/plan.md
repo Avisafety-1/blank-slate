@@ -1,20 +1,15 @@
-Plan:
+## Problem
+Når ruten automatisk avslører lag (verneområder, fareområder, kraftlinjer, AIS, CAA-soner) tegnes disse i `routeProximityPane` (z-index 637) med `pointerEvents: "auto"`. Panet er ikke inkludert i `ROUTE_PLANNING_NON_INTERACTIVE_PANES`, så klikk over disse formene åpner popup i stedet for å legge ned rutepunkt.
 
-1. Innfør én felles hjelpefunksjon i `OpenAIPMap.tsx` for rutemodus-interaktivitet
-   - Den skal sette `pointer-events: none/auto` på pane-nivå.
-   - Den skal også gå gjennom eksisterende Leaflet-lag og deaktivere/aktivere interaktive targets der Leaflet allerede har registrert markører, sirkler og GeoJSON-paths.
+## Endringer (kun `src/components/OpenAIPMap.tsx` + `src/index.css`)
 
-2. Bruk hjelpefunksjonen på alle kartlag som skal slippe klikk gjennom i ruteplanlegging
-   - Behold eksisterende oppførsel for lag som allerede fungerer.
-   - Utvid spesielt til `airportsLayer` og `caaFlyplasserLayer`, siden “Flyplasser” består av begge.
-   - Inkluder både `airportPane` og `atzPane`, men ikke stol bare på pane-stil, fordi Leaflet-markører kan ha egne event-targets.
+1. **`OpenAIPMap.tsx`** – legg `'routeProximityPane'` til `ROUTE_PLANNING_NON_INTERACTIVE_PANES`-konstanten. Da slår eksisterende `syncRoutePlanningInteractivity`-effekt automatisk pointer-events av i rutemodus og på igjen i Inspiser-modus / view-modus.
 
-3. Juster rendering av flyplasslagene til samme mønster som de andre lagene
-   - Sørg for at CAA-småflyplass-sirkler og flyplassmarkører får `interactive: false` når kartet er i rutemodus.
-   - Fjern/unngå `bubblingMouseEvents: false` i rutemodus der det kan stoppe kartklikk fra å nå map click handler.
-   - La “Inspiser”-modus fortsatt kunne åpne popup/info når brukeren aktivt velger inspeksjon.
+2. **`OpenAIPMap.tsx`** – etter at proximity-laget rendres, kall `setLeafletLayerInteractivity(routeProximityLayerRef.current, overlaysInteractive)` (eller registrer det i `routePlanningInteractiveLayerRefs`) slik at individuelle path/marker-elementer (AIS-markører, polygoner) også får `interactive: false` og `pointer-events: none` i rutemodus — samme mønster som CAA-sirklene.
 
-4. Verifiser manuelt med Playwright etter implementering
-   - Åpne `/kart`, aktiver ruteplanlegger, klikk på/innenfor småflyplasslaget.
-   - Bekreft at rutepunkt opprettes.
-   - Slå på Inspiser og bekreft at klikk ikke legger rutepunkt, men kan brukes til info på soner.
+3. **`src/index.css`** – legg til regler for `.route-planning-active .leaflet-route-proximity-pane path/.leaflet-interactive/.leaflet-marker-icon { pointer-events: none; }` så også markører (AIS-skip) slipper klikk gjennom.
+
+## Resultat
+- Rutemodus: klikk på et auto-avslørt verneområde/fareområde/AIS-skip legger ned rutepunkt som forventet.
+- Inspiser-modus: popup-er på samme lag fungerer som før.
+- View-modus: uendret.
