@@ -1499,7 +1499,11 @@ export function OpenAIPMap({
         activeManualLayers: {
           ais: !!(naisLayerRef.current && map.hasLayer(naisLayerRef.current)),
         },
-      }).catch(() => { /* swallow */ });
+      })
+        .then(() => {
+          syncRoutePlanningInteractivity(modeRef.current, routeInspectModeRef.current);
+        })
+        .catch(() => { /* swallow */ });
     }, 300);
 
     return () => {
