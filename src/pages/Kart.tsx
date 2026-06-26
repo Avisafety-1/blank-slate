@@ -1133,6 +1133,18 @@ export default function KartPage() {
             </Button>
           );
 
+          const inspectModeBtn = isRoutePlanning && !is3D ? (
+            <Button
+              variant={routeInspectMode ? "default" : "secondary"}
+              size="icon"
+              onClick={() => setRouteInspectMode((v) => !v)}
+              className={cn("shadow-lg", routeInspectMode ? "" : "bg-card hover:bg-accent")}
+              title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
+            >
+              <MousePointer2 className="h-5 w-5" />
+            </Button>
+          ) : null;
+
           const routePlannerBtn3D = is3D && !isRoutePlanning ? (
             <Button
               onClick={handleStartRoutePlanning}
