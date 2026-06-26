@@ -11,7 +11,6 @@ import { MissionDetailDialog } from "./MissionDetailDialog";
 import { AirspaceConflictWarning } from "@/components/oppdrag/AirspaceConflictWarning";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
-import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,9 +57,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
   const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
   const [missionAIRisks, setMissionAIRisks] = useState<Record<string, MissionAIRisk>>({});
-  
   // Risk assessment states
-  const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const [selectedAIRiskMission, setSelectedAIRiskMission] = useState<Mission | null>(null);
@@ -209,19 +206,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     setRiskDialogOpen(true);
   };
 
-  const handleNewRiskAssessment = () => {
-    setRiskTypeDialogOpen(true);
-  };
-
-  const handleSelectAI = () => {
-    setRiskDialogInitialTab('input');
-    setRiskDialogOpen(true);
-  };
-
-  const handleSelectManualSORA = () => {
-    setRiskDialogInitialTab('manual-sora');
-    setRiskDialogOpen(true);
-  };
 
   const handleRiskAssessmentSaved = () => {
     fetchMissions();
@@ -318,9 +302,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
               </TabsList>
             </Tabs>
             <div className="flex gap-2 flex-shrink-0">
-              <Button size="sm" variant="outline" onClick={handleNewRiskAssessment} title={t('dashboard.missions.newRiskAssessment', 'Ny risikovurdering')}>
-                <FileText className="w-4 h-4" />
-              </Button>
               <Button size="sm" onClick={() => setAddDialogOpen(true)}>
                 <Plus className="w-4 h-4" />
               </Button>
@@ -484,12 +465,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         onMissionAdded={fetchMissions}
       />
 
-      <RiskAssessmentTypeDialog
-        open={riskTypeDialogOpen}
-        onOpenChange={setRiskTypeDialogOpen}
-        onSelectAI={handleSelectAI}
-        onSelectManualSORA={handleSelectManualSORA}
-      />
       
       <RiskAssessmentDialog
         open={riskDialogOpen}
