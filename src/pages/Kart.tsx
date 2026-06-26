@@ -434,12 +434,13 @@ export default function KartPage() {
     (async () => {
       const { data, error } = await supabase
         .from("missions")
-        .select("id, route, latitude, longitude")
+        .select("id, route, latitude, longitude, status")
         .eq("id", mid)
         .maybeSingle();
       if (error || !data) {
         toast.error("Fant ikke oppdraget");
       } else {
+        setEditingMissionStatus((data as any).status ?? null);
         const route = (data.route as any) as RouteData | null;
         const coords = route?.coordinates ?? [];
         if (!coords.length) {
@@ -455,6 +456,7 @@ export default function KartPage() {
           handleEditMissionRoute({ id: data.id, route });
         }
       }
+
       // Clear the URL param so refresh doesn't re-trigger
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
