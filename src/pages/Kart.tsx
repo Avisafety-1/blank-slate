@@ -72,6 +72,8 @@ export default function KartPage() {
   
   // Editing existing mission route
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
+  const [editingMissionStatus, setEditingMissionStatus] = useState<string | null>(null);
+
   
   // KML import
   const kmlInputRef = useRef<HTMLInputElement>(null);
