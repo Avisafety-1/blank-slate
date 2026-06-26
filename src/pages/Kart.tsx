@@ -365,11 +365,7 @@ export default function KartPage() {
       }
       
       toast.success("Rute og SORA-grunnlag oppdatert");
-      setIsRoutePlanning(false);
-      setEditingMissionId(null);
-      setCurrentRoute({ coordinates: [], totalDistance: 0 });
-      setPilotPosition(undefined);
-      setSoraSettings(defaultSoraSettings);
+      // Hold brukeren i route-planning-modus så ruten fortsatt er synlig/redigerbar
       return;
     }
 
