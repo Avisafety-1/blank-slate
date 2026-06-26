@@ -544,6 +544,7 @@ export interface UpdateProximityParams {
     vern?: boolean;
     caa?: boolean;
     nve?: boolean;
+    ais?: boolean;
   };
 }
 
@@ -565,11 +566,10 @@ export async function updateRouteProximityLayers(
     layer.clearLayers();
     return;
   }
-  // Pre-compute buffer polygon (currently unused for additional filtering,
-  // but kept so we can tighten later without changing the call site).
-  bufferPolyline(validCoords, ROUTE_PROXIMITY_BUFFER_M);
+  // Buffer polygon used for precise 500 m filtering of AIS vessels
+  const bufferPolygon = bufferPolyline(validCoords, ROUTE_PROXIMITY_BUFFER_M);
 
-  const [naturvern, vern, caa, nve] = await Promise.all([
+  const [naturvern, vern, caa, nve, ais] = await Promise.all([
     activeManualLayers?.naturvern
       ? Promise.resolve([] as any[])
       : withTimeout(loadNaturvern(bbox, cache), 5000, signal).catch(() => []),
@@ -584,6 +584,11 @@ export async function updateRouteProximityLayers(
       : withTimeout(loadNvePowerLines(bbox, cache, signal), 5000, signal).catch(
           () => [] as Array<{ def: KraftDef; feature: any }>,
         ),
+    activeManualLayers?.ais
+      ? Promise.resolve([] as AisVessel[])
+      : withTimeout(loadAisVessels(bbox, cache), 8000, signal).catch(
+          () => [] as AisVessel[],
+        ),
   ]);
 
   if (signal.aborted) return;
@@ -593,4 +598,5 @@ export async function updateRouteProximityLayers(
   renderVernRestrictions(layer, vern);
   renderCaaZones(layer, caa);
   renderPowerLines(layer, nve);
+  renderAisVessels(layer, ais, bufferPolygon);
 }
