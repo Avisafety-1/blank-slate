@@ -446,6 +446,7 @@ export function OpenAIPMap({
 
         marker.on('contextmenu', (e: any) => {
           L.DomEvent.stopPropagation(e);
+          pushRouteHistory();
           routePointsRef.current.splice(index, 1);
           updateRouteDisplay();
           const cb = onRouteChangeRef.current;
