@@ -223,6 +223,7 @@ export function OpenAIPMap({
   const populationDensityLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityRendererRef = useRef<L.Renderer | null>(null);
   const routeProximityLayerRef = useRef<L.LayerGroup | null>(null);
+  const naisLayerRef = useRef<L.LayerGroup | null>(null);
   const routeProximityCacheRef = useRef(createProximityCache());
   const routeProximityAbortRef = useRef<AbortController | null>(null);
   const routeProximityDebounceRef = useRef<number | null>(null);
@@ -866,6 +867,7 @@ export function OpenAIPMap({
       map.getPane('naisPane')!.style.zIndex = '695';
     }
     const naisLayer = L.layerGroup();
+    naisLayerRef.current = naisLayer;
 
     // NOTAM (live RSS + CAA-soner slått sammen)
     const notamLayer = L.layerGroup().addTo(map);
@@ -1391,6 +1393,9 @@ export function OpenAIPMap({
         coordinates: [...coords],
         signal: controller.signal,
         cache: routeProximityCacheRef.current,
+        activeManualLayers: {
+          ais: !!(naisLayerRef.current && map.hasLayer(naisLayerRef.current)),
+        },
       }).catch(() => { /* swallow */ });
     }, 300);
 
