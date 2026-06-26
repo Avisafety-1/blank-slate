@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
@@ -43,8 +44,10 @@ type MissionAIRisk = { overall_score: number; recommendation: string };
 
 export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t, i18n } = useTranslation();
-  const { companyId, departmentsEnabled } = useAuth();
+  const { companyId, departmentsEnabled, user } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
+  const [myMissionIds, setMyMissionIds] = useState<Set<string>>(new Set());
+  const [missionFilter, setMissionFilter] = useState<'mine' | 'all'>('mine');
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
   const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
@@ -109,11 +112,28 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
         fetchMissionSoras(missionIds);
         fetchMissionDocumentCounts(missionIds);
         fetchMissionAIRisks(missionIds);
+        fetchMyMissionIds(missionIds);
+      } else {
+        setMyMissionIds(new Set());
       }
     } catch (error: any) {
       if (error?.name === 'AbortError' || abortSignal?.aborted) return;
       console.error("Error fetching missions:", error);
     }
+  };
+
+  const fetchMyMissionIds = async (missionIds: string[]) => {
+    if (!user?.id) { setMyMissionIds(new Set()); return; }
+    const { data, error } = await supabase
+      .from("mission_personnel")
+      .select("mission_id")
+      .eq("profile_id", user.id)
+      .in("mission_id", missionIds);
+    if (error) {
+      console.error("Error fetching my mission ids:", error);
+      return;
+    }
+    setMyMissionIds(new Set((data || []).map((r: any) => r.mission_id)));
   };
 
   const fetchMissionDocumentCounts = async (missionIds: string[]) => {
@@ -294,11 +314,29 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
           </div>
         </div>
 
+        <Tabs value={missionFilter} onValueChange={(v) => setMissionFilter(v as 'mine' | 'all')} className="mb-2">
+          <TabsList className="grid w-full grid-cols-2 h-8">
+            <TabsTrigger value="mine" className="text-xs">
+              Mine ({missions.filter((m: any) => myMissionIds.has(m.id)).length})
+            </TabsTrigger>
+            <TabsTrigger value="all" className="text-xs">
+              Alle ({missions.length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {(() => {
+          const visibleMissions = missionFilter === 'mine'
+            ? missions.filter((m: any) => myMissionIds.has(m.id))
+            : missions;
+          return (
         <div className="space-y-1.5 sm:space-y-2 flex-1 overflow-y-auto">
-          {missions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">{t('dashboard.missions.noMissions')}</p>
+          {visibleMissions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {missionFilter === 'mine' ? 'Ingen oppdrag tildelt deg' : t('dashboard.missions.noMissions')}
+            </p>
           ) : (
-            missions.map((mission) => (
+            visibleMissions.map((mission) => (
               <div
                 key={mission.id}
                 onClick={() => handleMissionClick(mission)}
@@ -424,7 +462,10 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
             ))
           )}
         </div>
+          );
+        })()}
     </GlassCard>
+    
     
       <MissionDetailDialog 
         open={dialogOpen}
