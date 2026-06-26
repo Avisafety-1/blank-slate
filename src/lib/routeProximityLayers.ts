@@ -199,7 +199,7 @@ interface SourceCache {
   caa: Map<string, any[]>;
   nve: Map<string, Array<{ def: KraftDef; feature: any }>>;
   ais: Map<string, AisCacheEntry>;
-  obstacles: Map<string, ObstacleRecord[]>;
+  obstaclesAll: ObstacleRecord[] | null;
 }
 
 export function createProximityCache(): SourceCache {
@@ -209,9 +209,10 @@ export function createProximityCache(): SourceCache {
     caa: new Map(),
     nve: new Map(),
     ais: new Map(),
-    obstacles: new Map(),
+    obstaclesAll: null,
   };
 }
+
 
 
 async function loadNaturvern(bbox: BBox, cache: SourceCache): Promise<any[]> {
@@ -548,26 +549,23 @@ function renderAisVessels(
 // ============ Luftfartshindre (openaip_obstacles) ============
 
 async function loadObstacles(
-  bbox: BBox,
   cache: SourceCache,
 ): Promise<ObstacleRecord[]> {
-  const key = bboxKey(bbox);
-  const hit = cache.obstacles.get(key);
-  if (hit) return hit;
-  const { data, error } = await supabase.rpc("get_obstacles_in_bounds", {
-    min_lat: bbox.minLat,
-    min_lng: bbox.minLng,
-    max_lat: bbox.maxLat,
-    max_lng: bbox.maxLng,
-  });
+  if (cache.obstaclesAll) return cache.obstaclesAll;
+  const { data, error } = await supabase
+    .from("openaip_obstacles")
+    .select("openaip_id, name, type, geometry, elevation, height_agl");
   if (error || !data) {
-    cache.obstacles.set(key, []);
+    console.warn("[routeProximity] obstacle load failed", error);
+    cache.obstaclesAll = [];
     return [];
   }
   const records: ObstacleRecord[] = [];
   for (const o of data as any[]) {
-    const lat = Number(o.lat);
-    const lng = Number(o.lng);
+    const geom = o.geometry;
+    if (!geom || !geom.coordinates) continue;
+    const lng = Number(geom.coordinates[0]);
+    const lat = Number(geom.coordinates[1]);
     if (!isFinite(lat) || !isFinite(lng)) continue;
     records.push({
       openaip_id: o.openaip_id,
@@ -579,16 +577,17 @@ async function loadObstacles(
       lng,
     });
   }
-  cache.obstacles.set(key, records);
+  cache.obstaclesAll = records;
   return records;
 }
+
 
 
 function renderObstacles(
   layer: L.LayerGroup,
   obstacles: ObstacleRecord[],
   bbox: BBox,
-  buffer: RoutePoint[] | null,
+  _buffer: RoutePoint[] | null,
 ) {
   const icon = L.divIcon({
     className: "",
@@ -603,9 +602,9 @@ function renderObstacles(
     iconAnchor: [10, 10],
     popupAnchor: [0, -10],
   });
+  let rendered = 0;
   for (const o of obstacles) {
     if (o.lat < bbox.minLat || o.lat > bbox.maxLat || o.lng < bbox.minLng || o.lng > bbox.maxLng) continue;
-    if (buffer && !pointInRing(o.lat, o.lng, buffer)) continue;
     try {
       const typeName = o.type || "Ukjent";
       const displayName = o.name || typeName;
@@ -613,14 +612,19 @@ function renderObstacles(
       if (o.elevation != null) popup += `Høyde (MSL): ${escapeHtml(o.elevation)} m<br/>`;
       if (o.height_agl != null) popup += `Høyde (AGL): ${escapeHtml(o.height_agl)} m<br/>`;
       popup += AUTO_BADGE + `</div>`;
-      L.marker([o.lat, o.lng], { icon, pane: PANE, interactive: true })
+      L.marker([o.lat, o.lng], { icon, pane: "markerPane", interactive: true })
         .bindPopup(popup)
         .addTo(layer);
+      rendered++;
     } catch {
       /* skip */
     }
   }
+  if (rendered > 0) {
+    console.info(`[routeProximity] rendered ${rendered} obstacles along route`);
+  }
 }
+
 
 export interface UpdateProximityParams {
   map: L.Map;
@@ -682,9 +686,10 @@ export async function updateRouteProximityLayers(
         ),
     activeManualLayers?.obstacles
       ? Promise.resolve([] as ObstacleRecord[])
-      : withTimeout(loadObstacles(bbox, cache), 5000, signal).catch(
+      : withTimeout(loadObstacles(cache), 8000, signal).catch(
           () => [] as ObstacleRecord[],
         ),
+
 
   ]);
 
