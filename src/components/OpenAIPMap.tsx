@@ -344,17 +344,51 @@ export function OpenAIPMap({
       return;
     }
 
-    // Draw polyline
+    // Draw polyline (per-segment so we can insert points between two markers)
     if (points.length > 1) {
-      const latLngs = points.map((p) => [p.lat, p.lng] as [number, number]);
-      L.polyline(latLngs, {
-        color: '#3b82f6',
-        weight: 3,
-        opacity: 0.8,
-        dashArray: '10, 5',
-        pane: 'routePane',
-      }).addTo(routeLayerRef.current);
+      const isPlanning = modeRef.current === 'routePlanning';
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const seg: [number, number][] = [[a.lat, a.lng], [b.lat, b.lng]];
+
+        // Visible segment
+        L.polyline(seg, {
+          color: '#3b82f6',
+          weight: 3,
+          opacity: 0.8,
+          dashArray: '10, 5',
+          pane: 'routePane',
+          interactive: false,
+        }).addTo(routeLayerRef.current);
+
+        if (isPlanning) {
+          // Invisible wider hit-area to make clicking the line forgiving
+          const hit = L.polyline(seg, {
+            color: '#3b82f6',
+            weight: 20,
+            opacity: 0,
+            pane: 'routePane',
+            interactive: true,
+            className: 'route-segment-hit',
+          }).addTo(routeLayerRef.current);
+
+          const insertIndex = i + 1;
+          hit.on('click', (e: any) => {
+            L.DomEvent.stopPropagation(e);
+            const { lat, lng } = e.latlng;
+            routePointsRef.current.splice(insertIndex, 0, { lat, lng });
+            updateRouteDisplay();
+            const cb = onRouteChangeRef.current;
+            if (cb) {
+              const coords = [...routePointsRef.current];
+              cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
+            }
+          });
+        }
+      }
     }
+
 
     // Add numbered markers
     points.forEach((point, index) => {
