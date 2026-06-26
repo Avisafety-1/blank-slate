@@ -623,7 +623,11 @@ export function OpenAIPMap({
       setRoutePointCount(routePointsRef.current.length);
       updateRouteDisplay();
       if (controlled.length > 0 && leafletMapRef.current && (wasEmpty || firstChanged)) {
-        leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
+        // When an explicit mission center is supplied, let the initialCenter effect
+        // keep the map centered on the mission instead of snapping to the first point.
+        if (!initialCenter) {
+          leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
+        }
       }
     }
   }, [controlledRoute, updateRouteDisplay]);
