@@ -49,6 +49,7 @@ import {
   ensureRouteProximityPane,
   createProximityCache,
   updateRouteProximityLayers,
+  computeVesselScale,
 } from "@/lib/routeProximityLayers";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
@@ -802,6 +803,16 @@ export function OpenAIPMap({
       map.on('zoomend', emitView);
     }
 
+    // Dynamic scale for AIS vessel icons (manual NAIS + route-proximity)
+    const updateVesselScale = () => {
+      const container = map.getContainer();
+      if (container) {
+        container.style.setProperty('--ais-vessel-scale', String(computeVesselScale(map.getZoom())));
+      }
+    };
+    updateVesselScale();
+    map.on('zoomend', updateVesselScale);
+
     // Create panes
     const paneConfig: Record<string, string> = {
       safeskyPane: '750', liveFlightPane: '720', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
@@ -1436,6 +1447,7 @@ export function OpenAIPMap({
       map.off('moveend', debouncedFetchVern);
       map.off('moveend', debouncedFetchKraft);
       map.off('moveend', debouncedFetchNais);
+      map.off('zoomend', updateVesselScale);
       populationDensityRendererRef.current = null;
       
       safeSkyManager.cleanup();
