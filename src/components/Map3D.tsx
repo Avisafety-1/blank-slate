@@ -54,6 +54,8 @@ interface Map3DProps {
   onRouteChange?: (route: RouteData) => void;
   /** SORA-innstillinger fra parent — driver 3D-buffer-extrusion. */
   soraSettings?: SoraSettings;
+  /** Incrementing trigger from parent toolbar to undo the latest route mutation. */
+  routeUndoToken?: number;
 }
 
 type BaseLayer = "osm" | "satellite" | "topo";
@@ -435,6 +437,7 @@ export default function Map3D({
   controlledRoute,
   onRouteChange,
   soraSettings,
+  routeUndoToken,
 }: Map3DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -468,6 +471,12 @@ export default function Map3D({
   const soraSettingsRef = useRef<SoraSettings | undefined>(soraSettings);
   soraSettingsRef.current = soraSettings;
   const routePointsRef = useRef<RoutePoint[]>([]);
+  const routeHistoryRef = useRef<RoutePoint[][]>([]);
+  const lastRouteUndoTokenRef = useRef(routeUndoToken ?? 0);
+  const pushRouteHistory = useCallback(() => {
+    routeHistoryRef.current.push(routePointsRef.current.map((p) => ({ ...p })));
+    if (routeHistoryRef.current.length > 50) routeHistoryRef.current.shift();
+  }, []);
   // DOM-overlay markører (ikke maplibregl.Marker) — projiseres via map.project
   // hver frame slik at de havner samme sted som SVG-rutelinja (terrengbevisst).
   const routeMarkerElsRef = useRef<HTMLDivElement[]>([]);
@@ -1340,10 +1349,12 @@ export default function Map3D({
       // Drag via pointer events — bruker map.unproject (terrengbevisst) slik
       // at markøren slippes nøyaktig der den vises på skjermen.
       let dragging = false;
+      let dragHistoryPushed = false;
       const onPointerDown = (ev: PointerEvent) => {
         ev.preventDefault();
         ev.stopPropagation();
         dragging = true;
+        dragHistoryPushed = false;
         el.style.cursor = "grabbing";
         try { el.setPointerCapture(ev.pointerId); } catch {}
         try { map.dragPan.disable(); } catch {}
@@ -1352,6 +1363,10 @@ export default function Map3D({
       const onPointerMove = (ev: PointerEvent) => {
         if (!dragging) return;
         ev.preventDefault();
+        if (!dragHistoryPushed) {
+          pushRouteHistory();
+          dragHistoryPushed = true;
+        }
         const rect = map.getContainer().getBoundingClientRect();
         const x = ev.clientX - rect.left;
         const y = ev.clientY - rect.top;
@@ -1377,6 +1392,7 @@ export default function Map3D({
       el.addEventListener("contextmenu", (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
+        pushRouteHistory();
         routePointsRef.current.splice(idx, 1);
         rebuildMarkersRef.current(map);
         rebuildRouteSourcesRef.current();
@@ -1759,6 +1775,7 @@ export default function Map3D({
     const handleClick = (e: maplibregl.MapMouseEvent) => {
       if (modeRef.current !== "routePlanning") return;
       const { lng, lat } = e.lngLat;
+      pushRouteHistory();
       routePointsRef.current.push({ lat, lng });
       rebuildMarkers(map);
       rebuildRouteSources();
@@ -1768,7 +1785,7 @@ export default function Map3D({
     return () => {
       try { map.off("click", handleClick); } catch {}
     };
-  }, [rebuildMarkers, rebuildRouteSources, emitRouteChange]);
+  }, [rebuildMarkers, rebuildRouteSources, emitRouteChange, pushRouteHistory]);
 
   // ===== Aktiver/deaktiver route-planning-lag når mode endres =====
   useEffect(() => {
@@ -1801,6 +1818,7 @@ export default function Map3D({
       areaKm2: route.areaKm2 ?? 0,
     });
     if (incomingJson === lastEmittedRouteJsonRef.current) return;
+    routeHistoryRef.current = [];
     routePointsRef.current = (route.coordinates ?? []).map((p) => ({ lat: p.lat, lng: p.lng }));
     lastEmittedRouteJsonRef.current = incomingJson;
     const map = mapRef.current;
@@ -1817,6 +1835,20 @@ export default function Map3D({
       });
     }
   }, [mode, controlledRoute, existingRoute, rebuildMarkers, rebuildRouteSources]);
+
+  useEffect(() => {
+    if (routeUndoToken == null || routeUndoToken === lastRouteUndoTokenRef.current) return;
+    lastRouteUndoTokenRef.current = routeUndoToken;
+    if (routeHistoryRef.current.length === 0) return;
+    routePointsRef.current = routeHistoryRef.current.pop()!;
+    const map = mapRef.current;
+    if (map?.isStyleLoaded()) {
+      rebuildMarkers(map);
+      rebuildRouteSources();
+      requestRouteOverlayUpdateRef.current();
+    }
+    emitRouteChange();
+  }, [routeUndoToken, rebuildMarkers, rebuildRouteSources, emitRouteChange]);
 
   // ===== Reager på soraSettings-endringer =====
   useEffect(() => {
