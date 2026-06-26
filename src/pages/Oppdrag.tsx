@@ -118,14 +118,7 @@ const Oppdrag = () => {
   }, [searchQuery, data.filterTab]);
 
 
-  // Route planner navigation state
-  const [initialRouteData, setInitialRouteData] = useState<RouteData | null>(null);
-  const [initialFormData, setInitialFormData] = useState<any>(null);
-  const [initialSelectedPersonnel, setInitialSelectedPersonnel] = useState<string[]>([]);
-  const [initialSelectedEquipment, setInitialSelectedEquipment] = useState<string[]>([]);
-  const [initialSelectedDrones, setInitialSelectedDrones] = useState<string[]>([]);
-  const [initialSelectedCustomer, setInitialSelectedCustomer] = useState<string>("");
-
+  const handledScrollRef = useRef<string | null>(null);
 
   // Handle navigation state from route planner
   useEffect(() => {
@@ -135,25 +128,33 @@ const Oppdrag = () => {
     // Scroll-only return from /kart (no dialog open)
     if (state.scrollToMission && state.missionId) {
       const missionId = state.missionId;
-      let cancelled = false;
+      if (handledScrollRef.current === missionId) return;
+      handledScrollRef.current = missionId;
 
       const headerOffset = () => {
         const header = document.querySelector('header');
         return (header?.getBoundingClientRect().height ?? 64) + 8;
       };
 
+      const clearNavState = () => {
+        data.navigate(data.location.pathname, { replace: true, state: null });
+      };
+
       const ensureVisibleAndScroll = async (attempt = 0) => {
-        if (cancelled || attempt > 20) return;
+        if (attempt > 20) {
+          clearNavState();
+          return;
+        }
 
         const el = document.getElementById(`mission-${missionId}`);
         if (el) {
           requestAnimationFrame(() => {
-            if (cancelled) return;
             const rect = el.getBoundingClientRect();
             const top = rect.top + window.scrollY - headerOffset();
             window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
             el.classList.add('ring-2', 'ring-primary');
             setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2000);
+            clearNavState();
           });
           return;
         }
@@ -173,11 +174,7 @@ const Oppdrag = () => {
       };
 
       ensureVisibleAndScroll();
-      data.navigate(data.location.pathname, { replace: true, state: null });
-
-      return () => {
-        cancelled = true;
-      };
+      return;
     }
 
     if (state?.routeData || state?.formData || state?.openDialog) {
@@ -209,6 +206,7 @@ const Oppdrag = () => {
       data.navigate(data.location.pathname, { replace: true, state: null });
     }
   }, [data.location.state]);
+
 
   // Computed filter options from current data source
   const displayMissions = data.missions;
