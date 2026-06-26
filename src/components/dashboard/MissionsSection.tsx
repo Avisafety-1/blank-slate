@@ -300,27 +300,31 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     <>
       <GlassCard className="h-[400px] flex flex-col overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 sm:mb-3 gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
-            <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.missions.title')}</h2>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+              <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.missions.title')}</h2>
+            </div>
           </div>
-          <Tabs value={missionFilter} onValueChange={(v) => setMissionFilter(v as 'mine' | 'all')} className="flex-1 sm:max-w-[240px] sm:mx-2">
-            <TabsList className="grid w-full grid-cols-2 h-7">
-              <TabsTrigger value="mine" className="text-xs px-2">
-                Mine ({missions.filter((m: any) => myMissionIds.has(m.id)).length})
-              </TabsTrigger>
-              <TabsTrigger value="all" className="text-xs px-2">
-                Alle ({missions.length})
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="flex gap-2 flex-shrink-0">
-            <Button size="sm" variant="outline" onClick={handleNewRiskAssessment} title={t('dashboard.missions.newRiskAssessment', 'Ny risikovurdering')}>
-              <FileText className="w-4 h-4" />
-            </Button>
-            <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-              <Plus className="w-4 h-4" />
-            </Button>
+          <div className="flex items-center gap-2 flex-1 sm:max-w-[360px] min-w-0">
+            <Tabs value={missionFilter} onValueChange={(v) => setMissionFilter(v as 'mine' | 'all')} className="flex-1 min-w-0">
+              <TabsList className="grid w-full grid-cols-2 h-8">
+                <TabsTrigger value="mine" className="text-xs px-1">
+                  Mine ({missions.filter((m: any) => myMissionIds.has(m.id)).length})
+                </TabsTrigger>
+                <TabsTrigger value="all" className="text-xs px-1">
+                  Alle ({missions.length})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="flex gap-2 flex-shrink-0">
+              <Button size="sm" variant="outline" onClick={handleNewRiskAssessment} title={t('dashboard.missions.newRiskAssessment', 'Ny risikovurdering')}>
+                <FileText className="w-4 h-4" />
+              </Button>
+              <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
