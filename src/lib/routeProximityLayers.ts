@@ -404,7 +404,133 @@ function renderPowerLines(
   }
 }
 
-// ============ Public orchestrator ============
+// ============ AIS (BarentsWatch) ============
+
+const SHIP_TYPE_NAMES: Record<number, string> = {
+  30: "Fiskefartøy",
+  31: "Sleping",
+  32: "Sleping",
+  33: "Mudring",
+  34: "Dykking",
+  35: "Militær",
+  36: "Seilbåt",
+  37: "Fritidsfartøy",
+  40: "Hurtiggående fartøy",
+  50: "Losfartøy",
+  51: "SAR",
+  52: "Taubåt",
+  53: "Havneassistanse",
+  55: "Politi",
+  58: "Medisinsk",
+  60: "Passasjerskip",
+  70: "Lasteskip",
+  80: "Tankskip",
+};
+
+function getShipTypeName(type: number | null | undefined): string {
+  if (type == null) return "Ukjent";
+  const base = Math.floor(type / 10) * 10;
+  return SHIP_TYPE_NAMES[type] || SHIP_TYPE_NAMES[base] || `Type ${type}`;
+}
+
+function vesselColor(shipType: number | null | undefined): string {
+  if (shipType == null) return "#2563eb";
+  const base = Math.floor(shipType / 10) * 10;
+  if (base === 30) return "#059669";
+  if (base === 60) return "#7c3aed";
+  if (base === 70) return "#d97706";
+  if (base === 80) return "#dc2626";
+  if (shipType === 35) return "#475569";
+  if (shipType === 51 || shipType === 52) return "#ea580c";
+  return "#2563eb";
+}
+
+function createVesselIcon(cog: number | null | undefined, shipType: number | null | undefined): L.DivIcon {
+  const rotation = cog != null ? cog : 0;
+  const color = vesselColor(shipType);
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;transform:rotate(${rotation}deg);">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${color}" stroke="#fff" stroke-width="1">
+        <path d="M12 2 L6 20 L12 16 L18 20 Z"/>
+      </svg>
+    </div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10],
+  });
+}
+
+async function loadAisVessels(
+  bbox: BBox,
+  cache: SourceCache,
+): Promise<AisVessel[]> {
+  const key = bboxKey(bbox);
+  const hit = cache.ais.get(key);
+  const now = Date.now();
+  if (hit && now - hit.ts < AIS_CACHE_TTL_MS) return hit.vessels;
+  const { data, error } = await supabase.functions.invoke("barentswatch-ais", {
+    body: {
+      bounds: {
+        minLat: bbox.minLat,
+        minLng: bbox.minLng,
+        maxLat: bbox.maxLat,
+        maxLng: bbox.maxLng,
+      },
+    },
+  });
+  if (error) return [];
+  const vessels = Array.isArray(data?.vessels) ? (data.vessels as AisVessel[]) : [];
+  const valid = vessels.filter((v) => v && isFinite(v.lat) && isFinite(v.lon));
+  cache.ais.set(key, { ts: now, vessels: valid });
+  return valid;
+}
+
+// Ray-casting point-in-polygon for a ring expressed as RoutePoint[]
+function pointInRing(lat: number, lng: number, ring: RoutePoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i].lng, yi = ring[i].lat;
+    const xj = ring[j].lng, yj = ring[j].lat;
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi + 1e-12) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function renderAisVessels(
+  layer: L.LayerGroup,
+  vessels: AisVessel[],
+  buffer: RoutePoint[] | null,
+) {
+  for (const v of vessels) {
+    if (buffer && !pointInRing(v.lat, v.lon, buffer)) continue;
+    try {
+      const marker = L.marker([v.lat, v.lon], {
+        icon: createVesselIcon(v.cog, v.shipType),
+        pane: PANE,
+        interactive: true,
+      });
+      const typeName = getShipTypeName(v.shipType);
+      const sog = v.sog != null ? `${v.sog.toFixed(1)} kn` : "–";
+      const cog = v.cog != null ? `${Math.round(v.cog)}°` : "–";
+      const name = escapeHtml(v.name || "Ukjent");
+      let popup = `<div style="min-width:180px;"><strong>🚢 ${name}</strong><br/>`;
+      popup += `MMSI: ${escapeHtml(v.mmsi ?? "–")}<br/>`;
+      popup += `Type: ${escapeHtml(typeName)}<br/>`;
+      popup += `Fart: ${sog}<br/>`;
+      popup += `Kurs: ${cog}`;
+      if (v.destination) popup += `<br/>Dest: ${escapeHtml(v.destination)}`;
+      popup += AUTO_BADGE + `</div>`;
+      marker.bindPopup(popup);
+      marker.addTo(layer);
+    } catch {
+      /* skip */
+    }
+  }
+}
 
 export interface UpdateProximityParams {
   map: L.Map;
