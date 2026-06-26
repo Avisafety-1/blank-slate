@@ -44,8 +44,10 @@ type MissionAIRisk = { overall_score: number; recommendation: string };
 
 export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
   const { t, i18n } = useTranslation();
-  const { companyId, departmentsEnabled } = useAuth();
+  const { companyId, departmentsEnabled, user } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
+  const [myMissionIds, setMyMissionIds] = useState<Set<string>>(new Set());
+  const [missionFilter, setMissionFilter] = useState<'mine' | 'all'>('mine');
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
   const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
