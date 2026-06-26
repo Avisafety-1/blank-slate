@@ -72,6 +72,8 @@ export default function KartPage() {
   
   // Editing existing mission route
   const [editingMissionId, setEditingMissionId] = useState<string | null>(null);
+  const [editingMissionStatus, setEditingMissionStatus] = useState<string | null>(null);
+
   
   // KML import
   const kmlInputRef = useRef<HTMLInputElement>(null);
@@ -432,12 +434,13 @@ export default function KartPage() {
     (async () => {
       const { data, error } = await supabase
         .from("missions")
-        .select("id, route, latitude, longitude")
+        .select("id, route, latitude, longitude, status")
         .eq("id", mid)
         .maybeSingle();
       if (error || !data) {
         toast.error("Fant ikke oppdraget");
       } else {
+        setEditingMissionStatus((data as any).status ?? null);
         const route = (data.route as any) as RouteData | null;
         const coords = route?.coordinates ?? [];
         if (!coords.length) {
@@ -453,6 +456,7 @@ export default function KartPage() {
           handleEditMissionRoute({ id: data.id, route });
         }
       }
+
       // Clear the URL param so refresh doesn't re-trigger
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
@@ -1101,7 +1105,7 @@ export default function KartPage() {
             <Button
               variant="default"
               size="lg"
-              onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true } })}
+              onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true, missionStatus: editingMissionStatus } })}
               className="pointer-events-auto shadow-lg"
               title="Tilbake til oppdrag"
             >

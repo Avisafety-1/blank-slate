@@ -135,9 +135,19 @@ const Oppdrag = () => {
 
     // Scroll-only return from /kart (no dialog open)
     if (state.scrollToMission && state.missionId) {
-      const missionId = state.missionId;
+      const missionId = state.missionId as string;
+      const missionStatus = state.missionStatus as string | undefined;
       if (handledScrollRef.current === missionId) return;
       handledScrollRef.current = missionId;
+
+      // Switch to correct tab up-front so we don't search/loadMore the wrong list
+      if (missionStatus) {
+        const targetTab: 'active' | 'completed' =
+          (missionStatus === 'Fullført' || missionStatus === 'Avbrutt') ? 'completed' : 'active';
+        if (data.filterTab !== targetTab) {
+          data.setFilterTab(targetTab);
+        }
+      }
 
       const headerOffset = () => {
         const header = document.querySelector('header');
@@ -148,8 +158,12 @@ const Oppdrag = () => {
         data.navigate(data.location.pathname, { replace: true, state: null });
       };
 
+      let loadMoreCalls = 0;
+      const MAX_LOAD_MORE = 2;
+      const MAX_ATTEMPTS = 40; // ~8s at 200ms
+
       const ensureVisibleAndScroll = async (attempt = 0) => {
-        if (attempt > 20) {
+        if (attempt > MAX_ATTEMPTS) {
           clearNavState();
           return;
         }
@@ -167,15 +181,27 @@ const Oppdrag = () => {
           return;
         }
 
-        // The mission is loaded but hidden by local slicing; expand the visible list
+        // Wait for initial load before doing anything expensive
+        if (data.isLoading || data.isLoadingMore) {
+          setTimeout(() => ensureVisibleAndScroll(attempt + 1), 200);
+          return;
+        }
+
         const index = filteredMissions.findIndex((m: Mission) => m.id === missionId);
-        if (index >= 0 && visibleCount <= index) {
-          setVisibleCount(index + 1);
-        } else if (data.hasMoreData && !data.isLoadingMore) {
-          // The mission is not loaded yet; fetch the next page
+        if (index >= 0) {
+          // Loaded but hidden by local slicing — expand only if needed
+          if (visibleCount <= index) {
+            setVisibleCount(index + 1);
+          }
+        } else if (data.hasMoreData && loadMoreCalls < MAX_LOAD_MORE) {
+          loadMoreCalls += 1;
           try {
             await data.loadMore();
           } catch {}
+        } else {
+          // Not found and nothing more to try
+          clearNavState();
+          return;
         }
 
         setTimeout(() => ensureVisibleAndScroll(attempt + 1), 200);
@@ -184,6 +210,8 @@ const Oppdrag = () => {
       ensureVisibleAndScroll();
       return;
     }
+
+
 
     if (state?.routeData || state?.formData || state?.openDialog) {
       setInitialRouteData(state.routeData || null);

@@ -1,34 +1,39 @@
 ## Problem
 
-I `src/pages/Oppdrag.tsx` kanselleres scroll-til-oppdrag-løkken umiddelbart etter at den startes:
+Når man kommer til `/oppdrag` via «Tilbake til oppdrag» starter scroll-løkken i `src/pages/Oppdrag.tsx` (linje ~143) før initial-fetchen er ferdig. Det fører til:
 
-1. Effekten leser `state.scrollToMission` og kaller `ensureVisibleAndScroll()`.
-2. Rett etterpå kalles `data.navigate(pathname, { replace: true, state: null })` for å rydde navigasjonsstaten.
-3. Det endrer `data.location.state`, som er dependency på `useEffect` → React kjører cleanup på forrige effekt-kjøring → `cancelled = true`.
-4. Løkken stopper før den rekker å finne kortet (eller laste neste side) → ingen scroll.
+1. `filteredMissions` er tom → koden hopper rett til `data.loadMore()` selv om initial-fetchen pågår. Dette starter en *ekstra* `fetchMissionsForTab(..., append=true)` (10+ DB-spørringer) parallelt med initial-lasten.
+2. Hvis oppdraget ikke ligger i synlig tab, lastes side etter side til løkken gir opp — fortsatt uten å finne det.
+3. Polleren respekterer ikke `data.isLoading` (kun `isLoadingMore`), så loadMore-kall kan stables.
+4. Stort `setVisibleCount` kan tvinge mange `MissionCard` å rendres på én gang.
+
+Resultat: lang spinner og høy DB-last for noe som egentlig bare skulle scrolle.
 
 ## Løsning
 
-Flytte scroll-håndteringen ut av effektens cancel-livssyklus og bruke en `ref` som idempotent vakt, slik at:
+Send nok kontekst fra `/kart` til at `/oppdrag` vet hvilken tab oppdraget hører til, og la scroll-løkken vente på første render-pass før den eventuelt eskalerer.
 
-- Vi behandler en gitt `missionId` bare én gang per navigasjon.
-- Cleanup ved re-render avbryter ikke en pågående scroll.
-- Navigasjonsstaten ryddes først *etter* at scroll er fullført (eller etter at maks antall forsøk er nådd), så ev. tilbakeknapp/refresh ikke gjenåpner state.
+### Endringer
 
-### Endringer i `src/pages/Oppdrag.tsx`
+**`src/pages/Kart.tsx`** (linje ~1104, «Tilbake til oppdrag»-knappen)
+- Når man navigerer tilbake, ta med `missionStatus` fra `editingMission` i state, slik:
+  `navigate('/oppdrag', { state: { missionId, scrollToMission: true, missionStatus: editingMission?.status } })`.
 
-1. Legg til `const handledScrollRef = useRef<string | null>(null);`
-2. I effekten:
-   - Hvis `state.scrollToMission && state.missionId` og `handledScrollRef.current !== state.missionId`:
-     - Sett `handledScrollRef.current = state.missionId`.
-     - Kjør `ensureVisibleAndScroll()` uten å returnere cleanup som setter `cancelled`.
-     - Fjern den umiddelbare `data.navigate(..., { state: null })`-kallet for scroll-grenen.
-   - Når `ensureVisibleAndScroll` enten har scrollet, eller gitt opp etter 20 forsøk, kall `data.navigate(pathname, { replace: true, state: null })` der inne.
-3. Behold dagens oppførsel for dialog-grenen (`routeData/formData/openDialog`) uendret.
-4. Sjekk at `headerOffset()` fortsatt bruker sticky `<header>` høyde + 8px.
+**`src/pages/Oppdrag.tsx`** (scroll-grenen i `useEffect`)
+- Hvis `state.missionStatus` indikerer Fullført/Avbrutt og `data.filterTab !== 'completed'`, sett `data.setFilterTab('completed')` før loop starter (og vice versa). Dette unngår å lete i feil tab.
+- Vent på at `data.isLoading === false` før første reelle lookup. Implementeres ved at `ensureVisibleAndScroll` ser på `data.isLoading` (via ref/closure) og bare re-poller hvis lasting pågår — uten å kalle `loadMore()`.
+- Kall `data.loadMore()` kun når:
+  - initial-load er ferdig (`!data.isLoading`), 
+  - `data.hasMoreData === true`, 
+  - `data.isLoadingMore === false`, 
+  - og oppdraget ikke ligger i den allerede lastede listen.
+- Maks 2 `loadMore()`-kall totalt før vi gir opp (og viser en kort `toast.info("Fant ikke oppdraget i listen")`). Hindrer endeløs paginering.
+- Behold `setVisibleCount(index + 1)`, men sjekk først at index > visibleCount slik at vi ikke trigger unødvendige re-renders.
+- Behold `handledScrollRef` så håndteringen er idempotent.
 
 ### Verifisering
 
-- Åpne et oppdrag → `/kart` → trykk «Tilbake til oppdrag» → siden skal scrolle slik at oppdragstittelen ligger rett under sticky-headeren, også når oppdraget ligger lenger ned i listen og må lastes via `loadMore()`.
-- Ringe-highlighten skal fortsatt vises i ~2 sekunder.
-- Gjenta for et oppdrag som allerede er synlig i viewportet.
+- Klikk «Tilbake til oppdrag» fra et **aktivt** oppdrag som er øverst i listen → /oppdrag åpnes, spinneren forsvinner like raskt som ved direkte navigasjon, og siden scroller til kortet.
+- Gjør samme for et **aktivt** oppdrag som ligger lenger ned (kreves `loadMore` én gang).
+- Gjør samme for et **fullført** oppdrag → tab byttes automatisk til Fullført før scroll.
+- Sjekk network-fanen: ingen dupliserte page-0-fetcher mot `missions`.
