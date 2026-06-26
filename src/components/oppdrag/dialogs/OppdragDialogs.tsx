@@ -164,43 +164,6 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         incident={props.selectedIncident}
       />
 
-      {/* Expanded Map Dialog */}
-      {props.expandedMapMission && (() => {
-        const routeCoords = (props.expandedMapMission.route as any)?.coordinates;
-        const effectiveLat = props.expandedMapMission.latitude ?? routeCoords?.[0]?.lat;
-        const effectiveLng = props.expandedMapMission.longitude ?? routeCoords?.[0]?.lng;
-        
-        const firstTrack = props.expandedMapMission.flightLogs?.find((log: any) => log.flight_track?.positions?.length > 0);
-        const trackLat = firstTrack?.flight_track?.positions?.[0]?.lat;
-        const trackLng = firstTrack?.flight_track?.positions?.[0]?.lng;
-        
-        const finalLat = effectiveLat ?? trackLat;
-        const finalLng = effectiveLng ?? trackLng;
-        
-        if (!finalLat || !finalLng) return null;
-        
-        return (
-          <ExpandedMapDialog
-            open={!!props.expandedMapMission}
-            onOpenChange={(open) => !open && props.setExpandedMapMission(null)}
-            latitude={finalLat}
-            longitude={finalLng}
-            route={props.expandedMapMission.route as any}
-            flightTracks={
-              props.expandedMapMission.flightLogs
-                ?.filter((log: any) => log.flight_track?.positions?.length > 0)
-                .map((log: any) => ({
-                  positions: log.flight_track.positions,
-                  flightLogId: log.id,
-                  flightDate: log.flight_date,
-                })) || null
-            }
-            missionTitle={props.expandedMapMission.tittel}
-            missionId={props.expandedMapMission.id}
-            onSoraUpdated={props.fetchMissions}
-          />
-        );
-      })()}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!props.deletingMission} onOpenChange={(open) => !open && props.setDeletingMission(null)}>
