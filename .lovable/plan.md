@@ -1,28 +1,25 @@
-## Mål
-Klikk på den blå rutelinjen mellom to rutepunkter skal sette inn et nytt rutepunkt akkurat der man klikket. Etterfølgende punkter renummereres automatisk (gammelt 3 → 4 osv.).
+## Problem
+Angre-knappen i ruteplanleggeren kaller `routePointsRef.current.pop()`, som alltid fjerner siste punkt i arrayen. Etter at vi innførte innsetting mellom eksisterende punkter (og dra/slett), stemmer ikke «siste i arrayen» lenger med «sist lagt til», så feil punkt fjernes.
 
-## Endring
-Kun i `src/components/OpenAIPMap.tsx`, inne i `updateRouteDisplay`:
+## Løsning
+Erstatt pop-baserte angre med en historikk-stack som lagrer et snapshot av rutepunktene før hver mutasjon. Angre gjenoppretter forrige snapshot.
 
-I dag tegnes hele ruten som én sammenhengende `L.polyline`. Vi bytter til å tegne ett segment per par av punkter, slik at vi vet hvilken indeks et klikk hører til.
+### Endringer i `src/components/OpenAIPMap.tsx`
 
-For hvert segment `i → i+1` (når `modeRef.current === 'routePlanning'`):
+1. Legg til `const routeHistoryRef = useRef<RoutePoint[][]>([])`.
+2. Lag en helper `pushHistory()` som pusher en dyp kopi (`routePointsRef.current.map(p => ({...p}))`) før hver mutasjon. Cap stacken på f.eks. 50 entries.
+3. Kall `pushHistory()` rett før hver av disse mutasjonene:
+   - Klikk i kart som legger til nytt punkt (linje ~949 `push`).
+   - Klikk på segment som setter inn punkt mellom to (linje ~380 `splice insert`).
+   - Marker-drag som flytter punkt (linje ~430).
+   - Høyreklikk/slett-punkt (linje ~441 `splice remove`).
+   - `clearRoute` (snapshot før tømming så man kan angre clear).
+   - Når `existingRoute` lastes første gang eller controlled-prop overskriver (linje 656, 1315): tøm historikk så angre ikke krysser oppdrag.
+4. Omskriv `undoLastPoint`:
+   - Hvis `routeHistoryRef.current.length === 0`: ingenting å gjøre.
+   - Pop forrige snapshot, sett `routePointsRef.current = snapshot`, oppdater `routePointCount`, kjør `updateRouteDisplay()` og `onRouteChange` med oppdaterte coords/distance/area.
+5. Behold knappen og tooltip, men oppdater tittel til «Angre siste endring».
 
-1. Tegn det synlige segmentet som i dag (blå, weight 3, dashed, `routePane`).
-2. Tegn en usynlig "hit-area"-polyline oppå:
-   - `weight: 20`, `opacity: 0`, `interactive: true`, samme pane.
-   - Cursor settes til `pointer` via `className`.
-3. Lytt på `click` på hit-area:
-   - `L.DomEvent.stopPropagation(e)` så kartets generelle klikk ikke også legger til punkt på enden.
-   - Sett inn `{ lat: e.latlng.lat, lng: e.latlng.lng }` i `routePointsRef.current` på posisjon `i + 1` via `splice(i + 1, 0, …)`.
-   - Kall `updateRouteDisplay()` og `onRouteChangeRef.current(...)` med oppdaterte koordinater/distanse/areal — samme pattern som `dragend`/`contextmenu` allerede bruker.
-
-Når `modeRef.current !== 'routePlanning'`: behold dagens enkle, ikke-interaktive polyline (ingen hit-area, ingen klikkinnsetting).
-
-Renummerering er automatisk siden markørene tegnes på nytt fra `points.forEach((p, index) => ...)` i samme funksjon — etiketten er `index + 1`, og first/last-farger (grønn/rød) regnes på nytt.
-
-## Ikke endret
-- Tegning av selve markørene, drag, høyreklikk-sletting, popup-innhold.
-- Klikk på tomt kart for å legge til punkt på enden (dagens `map.on('click', …)`-håndtering).
-- Områdeberegninger / SORA-oppdateringer (utløses fra `onRouteChange` som før).
-- Ingen endringer i `Kart.tsx` eller andre filer.
+### Ikke-endringer
+- Ingen endringer i hvordan ruter lagres eller sendes til parent.
+- Ingen UI-restrukturering utover evt. tooltip-tekst.
