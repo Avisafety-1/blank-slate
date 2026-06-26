@@ -52,6 +52,8 @@ export default function KartPage() {
   
   // Route planning state
   const [isRoutePlanning, setIsRoutePlanning] = useState(false);
+  const [routeInspectMode, setRouteInspectMode] = useState(false);
+
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
   const [routeUndoToken, setRouteUndoToken] = useState(0);
