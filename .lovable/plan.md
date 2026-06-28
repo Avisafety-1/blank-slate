@@ -1,24 +1,11 @@
-## Mål
-Superadmin skal kunne laste opp ett bilde per endringslogg-innlegg via opprett/rediger-dialogen. Bildet vises på innleggets kort i listen.
+## Problem
+I `src/pages/Changelog.tsx` bruker bilde-lightboxen `DialogContent` med `max-w-4xl p-2` og `<img className="w-full h-auto">`. For portrett-bilder (mobilscreenshots) blir bildet høyere enn skjermen, så dialogen vokser forbi viewport og Radix sin innebygde lukkeknapp (`X` plassert `top-4 right-4`) havner utenfor synlig område. Bildet dekker dessuten klikk-overlayen, så man får ikke lukket ved å klikke utenfor.
 
-## Endringer
+## Endringer i `src/pages/Changelog.tsx` (lightbox-dialogen nederst)
 
-### 1. Database (migration)
-- Legg til kolonne `image_url text` på `changelog_entries`.
-- Opprett offentlig storage-bucket `changelog-images` (public read).
-- Storage-policies: SELECT for alle, INSERT/UPDATE/DELETE kun for superadmin (via `has_role(auth.uid(), 'superadmin')`).
+- Begrens dialog-høyden: `max-w-4xl max-h-[90vh] p-2 flex items-center justify-center bg-background/95` slik at innholdet aldri overgår viewport.
+- Endre bildet til `max-h-[85vh] max-w-full w-auto h-auto object-contain` så portrett-bilder skaleres ned i stedet for å fylle siden.
+- Legg til en egen, alltid synlig lukkeknapp øverst i høyre hjørne av dialogen (absolutt posisjonert, `z-10`, halvtransparent bakgrunn) i tillegg til Radix sin innebygde — sikrer at brukeren ser en X uansett bildehøyde og touch-enhet.
+- Behold eksisterende `onOpenChange`-håndtering så Esc og klikk på overlay (utenfor det skalerte bildet) lukker dialogen.
 
-### 2. `src/pages/Changelog.tsx`
-- Utvid `ChangelogEntry` med `image_url: string | null`.
-- I entry-dialogen (kun redigeringsmodus / opprettmodus, som allerede er superadmin-gated):
-  - Nytt "Bilde"-felt: filinput + forhåndsvisning.
-  - Knapp "Fjern bilde" hvis bilde finnes.
-  - Ved valg av fil: last opp til `changelog-images/<entryId-eller-uuid>-<timestamp>.<ext>`, hent public URL, lagre i form-state.
-  - `saveEntry` lagrer `image_url` sammen med øvrige felter.
-- I listevisningen: hvis `entry.image_url` finnes, render en liten thumbnail (f.eks. `max-h-32 rounded-md`) under beskrivelsen. Klikk åpner full størrelse i en enkel `Dialog`.
-- Ingen visuelle endringer i lesemodus utover at bildet vises hvis det finnes.
-
-## Tekniske detaljer
-- Bruk eksisterende `supabase.storage.from('changelog-images').upload(...)` + `getPublicUrl`.
-- Filvalidering: kun `image/*`, maks ~5 MB; ellers `toast.error`.
-- Gamle bilder slettes ikke automatisk ved bytte (enkelhet) — kan utvides senere.
+Ingen andre filer eller logikk endres.
