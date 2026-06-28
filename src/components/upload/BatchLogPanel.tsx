@@ -46,11 +46,15 @@ interface RowState {
   droneId: string;
   equipmentIds: string[];
   missionId: string;
+  missionUserOverride: boolean;
+  autoMatchedMissionId: string | null;
   operationType: OpType;
   missions: MissionOption[];
+  missionsLoaded: boolean;
   status: "idle" | "saving" | "saved" | "error";
   errorMessage?: string;
 }
+
 
 interface Props {
   pendingLogs: PendingLog[];
