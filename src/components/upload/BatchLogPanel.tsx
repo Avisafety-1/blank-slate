@@ -614,3 +614,103 @@ export const BatchLogPanel = ({
     </div>
   );
 };
+
+interface MissionPickerProps {
+  value: string;
+  sameDayMissions: MissionOption[];
+  allMissions: MissionOption[];
+  autoMatchedId: string | null;
+  onChange: (value: string) => void;
+}
+
+const MissionPicker = ({ value, sameDayMissions, allMissions, autoMatchedId, onChange }: MissionPickerProps) => {
+  const [open, setOpen] = useState(false);
+
+  const sameDayIds = new Set(sameDayMissions.map(m => m.id));
+  const otherMissions = allMissions.filter(m => !sameDayIds.has(m.id));
+
+  const selected = value
+    ? (sameDayMissions.find(m => m.id === value) || allMissions.find(m => m.id === value))
+    : null;
+
+  const triggerLabel = selected
+    ? `${selected.tittel} · ${format(new Date(selected.tidspunkt), "dd.MM HH:mm", { locale: nb })}`
+    : "Opprett nytt oppdrag";
+
+  const renderItem = (m: MissionOption) => {
+    const searchValue = `${m.tittel} ${m.lokasjon || ""} ${format(new Date(m.tidspunkt), "dd.MM.yyyy HH:mm", { locale: nb })}`;
+    return (
+      <CommandItem
+        key={m.id}
+        value={`${m.id}__${searchValue}`}
+        onSelect={() => { onChange(m.id); setOpen(false); }}
+        className="text-xs"
+      >
+        <Check className={cn("mr-2 h-3 w-3 shrink-0", value === m.id ? "opacity-100" : "opacity-0")} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="truncate font-medium">{m.tittel}</span>
+            {autoMatchedId === m.id && (
+              <Sparkles className="w-2.5 h-2.5 text-primary shrink-0" />
+            )}
+          </div>
+          <div className="text-[10px] text-muted-foreground truncate">
+            {format(new Date(m.tidspunkt), "dd.MM.yyyy HH:mm", { locale: nb })}
+            {m.lokasjon ? ` · ${m.lokasjon}` : ""}
+          </div>
+        </div>
+      </CommandItem>
+    );
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-8 text-xs font-normal"
+        >
+          <span className="truncate">{triggerLabel}</span>
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Søk oppdrag…" className="h-9 text-xs" />
+          <CommandList className="max-h-64">
+            <CommandEmpty className="text-xs py-3 text-center text-muted-foreground">Ingen treff</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__new__opprett nytt oppdrag"
+                onSelect={() => { onChange(""); setOpen(false); }}
+                className="text-xs"
+              >
+                <Check className={cn("mr-2 h-3 w-3 shrink-0", value === "" ? "opacity-100" : "opacity-0")} />
+                <span className="font-medium">Opprett nytt oppdrag</span>
+              </CommandItem>
+            </CommandGroup>
+            {sameDayMissions.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="Samme dag">
+                  {sameDayMissions.map(renderItem)}
+                </CommandGroup>
+              </>
+            )}
+            {otherMissions.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="Alle oppdrag">
+                  {otherMissions.map(renderItem)}
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
