@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Clock, Plane, CheckCircle, XCircle, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
