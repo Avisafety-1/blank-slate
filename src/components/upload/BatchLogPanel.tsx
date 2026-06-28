@@ -4,16 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Plane, X, Save, AlertTriangle, CheckCircle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+import { Loader2, Plane, X, Save, AlertTriangle, CheckCircle, Check, ChevronsUpDown, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import { isBatteryType } from "@/config/equipmentCategories";
+import { cn } from "@/lib/utils";
 
 interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; }
 interface Personnel { id: string; full_name: string | null; email: string | null; }
 interface EquipmentItem { id: string; navn: string; serienummer: string; internal_serial: string | null; type: string; }
-interface MissionOption { id: string; tittel: string; tidspunkt: string; }
+interface MissionOption { id: string; tittel: string; tidspunkt: string; lokasjon?: string | null; status?: string | null; }
+
 
 type OpType = "VLOS" | "BVLOS" | "EVLOS";
 
@@ -42,11 +46,15 @@ interface RowState {
   droneId: string;
   equipmentIds: string[];
   missionId: string;
+  missionUserOverride: boolean;
+  autoMatchedMissionId: string | null;
   operationType: OpType;
   missions: MissionOption[];
+  missionsLoaded: boolean;
   status: "idle" | "saving" | "saved" | "error";
   errorMessage?: string;
 }
+
 
 interface Props {
   pendingLogs: PendingLog[];
@@ -80,6 +88,25 @@ export const BatchLogPanel = ({
 }: Props) => {
   const [rows, setRows] = useState<RowState[]>([]);
   const [savingAll, setSavingAll] = useState(false);
+  const [allMissions, setAllMissions] = useState<MissionOption[]>([]);
+
+  // Fetch all missions for override list (last 180d + future)
+  useEffect(() => {
+    if (!companyId) return;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 180);
+    (async () => {
+      const { data } = await supabase
+        .from("missions")
+        .select("id, tittel, tidspunkt, lokasjon, status")
+        .eq("company_id", companyId)
+        .gte("tidspunkt", cutoff.toISOString())
+        .order("tidspunkt", { ascending: false })
+        .limit(500);
+      if (data) setAllMissions(data as any);
+    })();
+  }, [companyId]);
+
 
   // Initialize rows when selection changes
   useEffect(() => {
@@ -100,36 +127,62 @@ export const BatchLogPanel = ({
           droneId: log.matched_drone_id || "",
           equipmentIds: eq,
           missionId: "",
+          missionUserOverride: false,
+          autoMatchedMissionId: null,
           operationType: "VLOS",
           missions: [],
+          missionsLoaded: false,
           status: "idle",
         };
       });
     });
   }, [pendingLogs, defaultPilotId]);
 
+
   // Parse missing logs + fetch same-day missions
   useEffect(() => {
     rows.forEach(async (row, idx) => {
       if (!row.parsing && row.parsed) {
-        if (row.missions.length === 0 && row.log.flight_date) {
-          const day = new Date(row.log.flight_date);
-          const start = new Date(day); start.setHours(0,0,0,0);
-          const end = new Date(day); end.setHours(23,59,59,999);
+        if (!row.missionsLoaded) {
+          const baseDate = row.parsed?.startTime
+            ? new Date(row.parsed.startTime)
+            : (row.log.flight_date ? new Date(row.log.flight_date) : null);
+          if (!baseDate || isNaN(baseDate.getTime())) {
+            setRows(prev => prev.map(r => r.pendingLogId === row.pendingLogId ? { ...r, missionsLoaded: true } : r));
+            return;
+          }
+          const start = new Date(baseDate); start.setHours(0,0,0,0);
+          const end = new Date(baseDate); end.setHours(23,59,59,999);
           const { data } = await supabase
             .from("missions")
-            .select("id, tittel, tidspunkt")
+            .select("id, tittel, tidspunkt, lokasjon, status")
             .eq("company_id", companyId)
             .gte("tidspunkt", start.toISOString())
             .lte("tidspunkt", end.toISOString())
             .order("tidspunkt", { ascending: true })
             .limit(20);
-          if (data) {
-            setRows(prev => prev.map(r => r.pendingLogId === row.pendingLogId ? { ...r, missions: data as any } : r));
-          }
+          // Sort by closest to flight start
+          const sorted = (data || []).slice().sort((a: any, b: any) => {
+            const dA = Math.abs(new Date(a.tidspunkt).getTime() - baseDate.getTime());
+            const dB = Math.abs(new Date(b.tidspunkt).getTime() - baseDate.getTime());
+            return dA - dB;
+          });
+          const autoId = sorted.length > 0 ? sorted[0].id : null;
+          setRows(prev => prev.map(r => {
+            if (r.pendingLogId !== row.pendingLogId) return r;
+            return {
+              ...r,
+              missions: sorted as any,
+              missionsLoaded: true,
+              autoMatchedMissionId: autoId,
+              // Only preselect if user hasn't manually overridden
+              missionId: r.missionUserOverride ? r.missionId : (autoId || ""),
+            };
+          }));
         }
         return;
       }
+
       if (row.parsed || row.parseError) return;
       try {
         const { data, error } = await supabase.functions.invoke("dji-process-single", {
@@ -161,7 +214,7 @@ export const BatchLogPanel = ({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows.map(r => `${r.pendingLogId}:${r.parsing}:${!!r.parsed}`).join(",")]);
+  }, [rows.map(r => `${r.pendingLogId}:${r.parsing}:${!!r.parsed}:${r.missionsLoaded}`).join(",")]);
 
   const updateRow = (id: string, patch: Partial<RowState>) =>
     setRows(prev => prev.map(r => r.pendingLogId === id ? { ...r, ...patch } : r));
@@ -516,24 +569,23 @@ export const BatchLogPanel = ({
                       </Select>
                     </div>
                     <div className="space-y-0.5">
-                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Oppdrag {row.missions.length === 0 && <span className="normal-case">(opprettes auto.)</span>}
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        Oppdrag
+                        {row.autoMatchedMissionId && row.missionId === row.autoMatchedMissionId && !row.missionUserOverride && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
+                            <Sparkles className="w-2.5 h-2.5" /> auto-matchet
+                          </span>
+                        )}
                       </label>
-                      <Select
-                        value={row.missionId || "__new__"}
-                        onValueChange={(v) => updateRow(row.pendingLogId, { missionId: v === "__new__" ? "" : v })}
-                      >
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__new__" className="text-xs">Opprett nytt oppdrag</SelectItem>
-                          {row.missions.map(m => (
-                            <SelectItem key={m.id} value={m.id} className="text-xs">
-                              {m.tittel} ({format(new Date(m.tidspunkt), "HH:mm")})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <MissionPicker
+                        value={row.missionId}
+                        sameDayMissions={row.missions}
+                        allMissions={allMissions}
+                        autoMatchedId={row.autoMatchedMissionId}
+                        onChange={(v) => updateRow(row.pendingLogId, { missionId: v, missionUserOverride: true })}
+                      />
                     </div>
+
                   </div>
                 )}
 
@@ -562,3 +614,103 @@ export const BatchLogPanel = ({
     </div>
   );
 };
+
+interface MissionPickerProps {
+  value: string;
+  sameDayMissions: MissionOption[];
+  allMissions: MissionOption[];
+  autoMatchedId: string | null;
+  onChange: (value: string) => void;
+}
+
+const MissionPicker = ({ value, sameDayMissions, allMissions, autoMatchedId, onChange }: MissionPickerProps) => {
+  const [open, setOpen] = useState(false);
+
+  const sameDayIds = new Set(sameDayMissions.map(m => m.id));
+  const otherMissions = allMissions.filter(m => !sameDayIds.has(m.id));
+
+  const selected = value
+    ? (sameDayMissions.find(m => m.id === value) || allMissions.find(m => m.id === value))
+    : null;
+
+  const triggerLabel = selected
+    ? `${selected.tittel} · ${format(new Date(selected.tidspunkt), "dd.MM HH:mm", { locale: nb })}`
+    : "Opprett nytt oppdrag";
+
+  const renderItem = (m: MissionOption) => {
+    const searchValue = `${m.tittel} ${m.lokasjon || ""} ${format(new Date(m.tidspunkt), "dd.MM.yyyy HH:mm", { locale: nb })}`;
+    return (
+      <CommandItem
+        key={m.id}
+        value={`${m.id}__${searchValue}`}
+        onSelect={() => { onChange(m.id); setOpen(false); }}
+        className="text-xs"
+      >
+        <Check className={cn("mr-2 h-3 w-3 shrink-0", value === m.id ? "opacity-100" : "opacity-0")} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="truncate font-medium">{m.tittel}</span>
+            {autoMatchedId === m.id && (
+              <Sparkles className="w-2.5 h-2.5 text-primary shrink-0" />
+            )}
+          </div>
+          <div className="text-[10px] text-muted-foreground truncate">
+            {format(new Date(m.tidspunkt), "dd.MM.yyyy HH:mm", { locale: nb })}
+            {m.lokasjon ? ` · ${m.lokasjon}` : ""}
+          </div>
+        </div>
+      </CommandItem>
+    );
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-8 text-xs font-normal"
+        >
+          <span className="truncate">{triggerLabel}</span>
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Søk oppdrag…" className="h-9 text-xs" />
+          <CommandList className="max-h-64">
+            <CommandEmpty className="text-xs py-3 text-center text-muted-foreground">Ingen treff</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__new__opprett nytt oppdrag"
+                onSelect={() => { onChange(""); setOpen(false); }}
+                className="text-xs"
+              >
+                <Check className={cn("mr-2 h-3 w-3 shrink-0", value === "" ? "opacity-100" : "opacity-0")} />
+                <span className="font-medium">Opprett nytt oppdrag</span>
+              </CommandItem>
+            </CommandGroup>
+            {sameDayMissions.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="Samme dag">
+                  {sameDayMissions.map(renderItem)}
+                </CommandGroup>
+              </>
+            )}
+            {otherMissions.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="Alle oppdrag">
+                  {otherMissions.map(renderItem)}
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
