@@ -171,7 +171,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
           {onlyMine ? "Ingen ventende logger på deg. Skru av «Kun mine» for å se andres." : "Ingen logger til behandling"}
         </p>
       )}
-      <div className={`space-y-1.5 overflow-y-auto overflow-x-hidden min-w-0 max-w-full ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px]'}`}>
+      <div className={`space-y-1.5 overflow-y-auto overflow-x-hidden min-w-0 max-w-full ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px] sm:max-h-[260px]'}`}>
         {displayedLogs.map(log => {
           const ownerName = log.ownerName;
           const isArdu = log.source_file_type === 'ardupilot' || log.parsed_result?.source === 'ardupilot';
