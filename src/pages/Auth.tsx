@@ -745,34 +745,36 @@ const Auth = () => {
       await ensureFreshCaptcha();
 
       // Wait for Turnstile captcha token if needed (same as password flow).
-      const needsWait =
-        (captchaStatusRef.current as string) === "loading" ||
-        (captchaStatusRef.current as string) === "expired";
-      if (needsWait && !captchaTokenRef.current) {
-        setWaitingForCaptcha(true);
-        const start = Date.now();
-        while (
-          Date.now() - start < 4000 &&
-          !captchaTokenRef.current &&
-          (captchaStatusRef.current as string) !== "ready" &&
-          (captchaStatusRef.current as string) !== "skipped" &&
-          (captchaStatusRef.current as string) !== "error"
-        ) {
-          await new Promise((r) => setTimeout(r, 100));
-        }
-        setWaitingForCaptcha(false);
-        if (
-          !captchaTokenRef.current &&
-          (captchaStatusRef.current as string) !== "skipped" &&
-          (captchaStatusRef.current as string) !== "error"
-        ) {
-          setShowCaptchaFallback(true);
-          toast.error("Bekreft at du ikke er en robot og prøv igjen");
-          return;
+      if (CAPTCHA_ENABLED) {
+        const needsWait =
+          (captchaStatusRef.current as string) === "loading" ||
+          (captchaStatusRef.current as string) === "expired";
+        if (needsWait && !captchaTokenRef.current) {
+          setWaitingForCaptcha(true);
+          const start = Date.now();
+          while (
+            Date.now() - start < 4000 &&
+            !captchaTokenRef.current &&
+            (captchaStatusRef.current as string) !== "ready" &&
+            (captchaStatusRef.current as string) !== "skipped" &&
+            (captchaStatusRef.current as string) !== "error"
+          ) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+          setWaitingForCaptcha(false);
+          if (
+            !captchaTokenRef.current &&
+            (captchaStatusRef.current as string) !== "skipped" &&
+            (captchaStatusRef.current as string) !== "error"
+          ) {
+            setShowCaptchaFallback(true);
+            toast.error("Bekreft at du ikke er en robot og prøv igjen");
+            return;
+          }
         }
       }
 
-      const tokenToSend = captchaTokenRef.current;
+      const tokenToSend = CAPTCHA_ENABLED ? captchaTokenRef.current : null;
       if (tokenToSend) usedCaptchaRef.current = true;
       // Supabase native discoverable-credential sign-in.
       // Runs the full WebAuthn ceremony and creates a session on success.
