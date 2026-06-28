@@ -263,6 +263,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                   </p>
                 )}
               </div>
+              </button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -276,7 +277,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                   <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
               </Button>
-            </button>
+            </div>
           );
         })}
       </div>
