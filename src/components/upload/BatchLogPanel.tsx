@@ -716,3 +716,53 @@ const MissionPicker = ({ value, sameDayMissions, allMissions, autoMatchedId, onC
   );
 };
 
+interface ComboOption { id: string; label: string; search: string; }
+interface ComboPickerProps {
+  value: string;
+  options: ComboOption[];
+  placeholder: string;
+  searchPlaceholder: string;
+  onChange: (value: string) => void;
+}
+
+const ComboPicker = ({ value, options, placeholder, searchPlaceholder, onChange }: ComboPickerProps) => {
+  const [open, setOpen] = useState(false);
+  const selected = value ? options.find(o => o.id === value) : null;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-8 text-xs font-normal"
+        >
+          <span className="truncate">{selected ? selected.label : placeholder}</span>
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} className="h-9 text-xs" />
+          <CommandList className="max-h-64">
+            <CommandEmpty className="text-xs py-3 text-center text-muted-foreground">Ingen treff</CommandEmpty>
+            <CommandGroup>
+              {options.map(o => (
+                <CommandItem
+                  key={o.id}
+                  value={`${o.id}__${o.search}`}
+                  onSelect={() => { onChange(o.id); setOpen(false); }}
+                  className="text-xs"
+                >
+                  <Check className={cn("mr-2 h-3 w-3 shrink-0", value === o.id ? "opacity-100" : "opacity-0")} />
+                  <span className="truncate">{o.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
