@@ -100,6 +100,10 @@ const Changelog = () => {
   const [formEntryStatus, setFormEntryStatus] = useState("ikke_startet");
   const [formCompletedAt, setFormCompletedAt] = useState("");
   const [formPriority, setFormPriority] = useState("medium");
+  const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const fetchAll = async () => {
