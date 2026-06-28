@@ -194,21 +194,38 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
             : log.error_code === "login_failed" ? "Innlogging mot DJI feilet"
             : log.error_code === "download_failed" ? "Kunne ikke laste ned loggfilen fra DJI"
             : log.error_message || null;
+          const isSelected = selectedIds?.has(log.id) ?? false;
           return (
-            <button
+            <div
               key={log.id}
-              onClick={() => onSelectLog(log)}
-              disabled={isRateLimited}
-              title={errorLabel || undefined}
-              className={`w-full flex items-center gap-3 p-2.5 rounded-lg border transition-all text-left group ${
+              className={`w-full flex items-center gap-2 p-2.5 rounded-lg border transition-all ${
                 isRateLimited
-                  ? "border-yellow-500/40 bg-yellow-500/5 cursor-not-allowed opacity-70"
-                  : hasError
-                    ? "border-destructive/40 hover:border-destructive/60 hover:bg-muted/30"
-                    : "border-border hover:border-primary/50 hover:bg-muted/30"
+                  ? "border-yellow-500/40 bg-yellow-500/5 opacity-70"
+                  : isSelected
+                    ? "border-primary/60 bg-primary/5"
+                    : hasError
+                      ? "border-destructive/40 hover:border-destructive/60 hover:bg-muted/30"
+                      : "border-border hover:border-primary/50 hover:bg-muted/30"
               }`}
             >
-              <Plane className="w-4 h-4 text-muted-foreground shrink-0" />
+              {onToggleSelect && !isArdu && !hasError && (
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => onToggleSelect(log)}
+                  disabled={isRateLimited}
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0"
+                  aria-label="Velg for batch"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => onSelectLog(log)}
+                disabled={isRateLimited}
+                title={errorLabel || undefined}
+                className="flex-1 min-w-0 flex items-center gap-3 text-left disabled:cursor-not-allowed group"
+              >
+                <Plane className="w-4 h-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                   <p className="text-xs font-medium truncate min-w-0 flex-1">
