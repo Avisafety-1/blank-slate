@@ -8,7 +8,7 @@ import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
 import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
-import { enrichNatureArea, getStatusPresentation, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
+import { buildNatureZonePopupHtml, enrichNatureArea, getStatusPresentation, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
 
 
 
@@ -955,68 +955,18 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
           style: { color, weight: 1.5, fillColor: color, fillOpacity: 0.15 },
           onEachFeature: mode !== 'routePlanning' ? (feature, lyr) => {
             const p = feature.properties || {};
-            const rule = getVerneformRule(p.verneform);
-            const enrich = enrichNatureArea(p.props);
-            const esc = (s: any) => escapePopupHtml(s);
-            const badgeColor = verneformColors[p.verneform || ''] || rule.color || '#16a34a';
-
-            let popup = `<div style="max-width:300px;font-size:12px;line-height:1.45">`;
-            popup += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">`;
-            popup += `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${badgeColor}"></span>`;
-            popup += `<span style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.03em">${esc(rule.label)}</span>`;
-            popup += `</div>`;
-            popup += `<div style="font-weight:600;font-size:13px;margin-bottom:6px">${esc(p.name || 'Ukjent')}</div>`;
-
-            const status = getStatusPresentation(rule.status);
-            popup += `<div style="background:${status.bg};border-left:3px solid ${status.border};padding:7px 9px;border-radius:3px;margin-bottom:6px">`;
-            popup += `<div style="font-weight:700;color:${status.color};margin-bottom:3px;font-size:12px">${status.icon} ${esc(status.label)}</div>`;
-            popup += `<div style="color:#1f2937;margin-bottom:4px">${esc(rule.pilotAdvice)}</div>`;
-            popup += `<div style="color:#475569;font-size:11px;border-top:1px solid ${status.border}33;padding-top:4px;margin-top:4px">📄 Åpne faktaarket for verneforskriftens fulle ordlyd</div>`;
-            popup += `<div style="color:#64748b;font-size:10px;margin-top:3px">Hjemmel: ${esc(rule.legalBasis)}</div>`;
-            popup += `</div>`;
-
-
-            const metaRows: string[] = [];
-            if (enrich.forvaltningsmyndighet) {
-              metaRows.push(`<div><strong>Forvaltning:</strong> ${esc(enrich.forvaltningsmyndighet)}</div>`);
-            }
-            if (enrich.kommune) {
-              metaRows.push(`<div><strong>Kommune:</strong> ${esc(enrich.kommune)}</div>`);
-            }
-            if (enrich.vernedatoFormatted) {
-              metaRows.push(`<div><strong>Vernet:</strong> ${esc(enrich.vernedatoFormatted)}</div>`);
-            }
-            if (enrich.iucn) {
-              metaRows.push(`<div><strong>IUCN:</strong> ${esc(enrich.iucn)}</div>`);
-            }
-            if (metaRows.length) {
-              popup += `<div style="margin-bottom:6px;color:#334155">${metaRows.join('')}</div>`;
-            }
-
-            const linkStyle = 'display:inline-block;padding:5px 9px;margin:2px 4px 2px 0;background:#0f172a;color:#fff;text-decoration:none;border-radius:4px;font-size:11px;font-weight:500';
-            const linkStyleAlt = 'display:inline-block;padding:5px 9px;margin:2px 4px 2px 0;background:#e2e8f0;color:#0f172a;text-decoration:none;border-radius:4px;font-size:11px;font-weight:500';
-            popup += `<div style="margin-top:6px">`;
-            if (enrich.faktaarkUrl) {
-              popup += `<a href="${esc(enrich.faktaarkUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyle}">📄 Åpne faktaark</a>`;
-            }
-            if (enrich.dispensasjonUrl) {
-              popup += `<a href="${esc(enrich.dispensasjonUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">📘 ${esc(enrich.dispensasjonLabel)}</a>`;
-            }
-            if (enrich.sikkerMeldingUrl) {
-              popup += `<a href="${esc(enrich.sikkerMeldingUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">✉️ Send søknad via sikker melding</a>`;
-            }
-
-
-            popup += `<a href="${esc(MILJODIR_DRONE_RULES_URL)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">ℹ️ Regler for droner</a>`;
-            popup += `</div>`;
-            popup += `</div>`;
-
+            const popup = buildNatureZonePopupHtml({
+              name: p.name,
+              verneform: p.verneform,
+              properties: p.props,
+            });
             lyr.bindPopup(popup, { maxWidth: 320, autoPan: true });
             attachHoverPromotion(lyr, {
               paneName: 'overlayPane',
               baseStyle: { color, weight: 1.5, fillColor: color, fillOpacity: 0.15 },
             });
           } : undefined,
+
         });
       },
     );
