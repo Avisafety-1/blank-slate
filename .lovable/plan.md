@@ -1,22 +1,24 @@
-## Problem
-Når batch-behandling oppretter et nytt oppdrag, blir dronen ikke koblet til oppdraget under «Droner», selv om `flight_logs.drone_id` settes korrekt.
-
-## Årsak
-`BatchLogPanel.tsx` bruker `supabase.from("mission_drones").upsert(..., { onConflict: "mission_id,drone_id" })`, men tabellen `mission_drones` har ingen UNIQUE-constraint på `(mission_id, drone_id)`. PostgREST returnerer derfor en feil som ignoreres (vi sjekker ikke `error`), og raden blir aldri lagt inn. `mission_equipment` og `mission_personnel` har slike unique-constraints, og fungerer derfor.
-
-Bekreftet i databasen: ett nylig batch-opprettet oppdrag har `flight_logs.drone_id` satt (MAVIC 2) men `mission_drones`-tabellen har 0 rader for oppdraget.
+## Mål
+Superadmin skal kunne laste opp ett bilde per endringslogg-innlegg via opprett/rediger-dialogen. Bildet vises på innleggets kort i listen.
 
 ## Endringer
 
-1. **Migrasjon** — legg til manglende unik constraint:
-   ```sql
-   ALTER TABLE public.mission_drones
-     ADD CONSTRAINT mission_drones_mission_id_drone_id_key
-     UNIQUE (mission_id, drone_id);
-   ```
-   (Først rydde eventuelle duplikater hvis de finnes.)
+### 1. Database (migration)
+- Legg til kolonne `image_url text` på `changelog_entries`.
+- Opprett offentlig storage-bucket `changelog-images` (public read).
+- Storage-policies: SELECT for alle, INSERT/UPDATE/DELETE kun for superadmin (via `has_role(auth.uid(), 'superadmin')`).
 
-2. **`src/components/upload/BatchLogPanel.tsx`** — sjekk `error` fra mission_drones/mission_personnel/mission_equipment upsertene og kast feilen så lagringen merkes som feilet i stedet for å gå videre stille.
+### 2. `src/pages/Changelog.tsx`
+- Utvid `ChangelogEntry` med `image_url: string | null`.
+- I entry-dialogen (kun redigeringsmodus / opprettmodus, som allerede er superadmin-gated):
+  - Nytt "Bilde"-felt: filinput + forhåndsvisning.
+  - Knapp "Fjern bilde" hvis bilde finnes.
+  - Ved valg av fil: last opp til `changelog-images/<entryId-eller-uuid>-<timestamp>.<ext>`, hent public URL, lagre i form-state.
+  - `saveEntry` lagrer `image_url` sammen med øvrige felter.
+- I listevisningen: hvis `entry.image_url` finnes, render en liten thumbnail (f.eks. `max-h-32 rounded-md`) under beskrivelsen. Klikk åpner full størrelse i en enkel `Dialog`.
+- Ingen visuelle endringer i lesemodus utover at bildet vises hvis det finnes.
 
-## Effekt
-Nye batch-lagrede oppdrag vil ha dronen synlig under «Droner» på oppdragskortet. Eksisterende oppdrag uten kobling må evt. rettes manuelt (åpne oppdraget og legg til dronen) — si fra hvis du vil at jeg lager en backfill basert på `flight_logs.drone_id`.
+## Tekniske detaljer
+- Bruk eksisterende `supabase.storage.from('changelog-images').upload(...)` + `getPublicUrl`.
+- Filvalidering: kun `image/*`, maks ~5 MB; ellers `toast.error`.
+- Gamle bilder slettes ikke automatisk ved bytte (enkelhet) — kan utvides senere.
