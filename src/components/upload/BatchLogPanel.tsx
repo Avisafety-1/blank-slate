@@ -492,49 +492,51 @@ export const BatchLogPanel = ({
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-0.5">
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Pilot</label>
-                      <Select value={row.pilotId} onValueChange={(v) => updateRow(row.pendingLogId, { pilotId: v })}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Velg pilot" /></SelectTrigger>
-                        <SelectContent>
-                          {personnel.map(p => (
-                            <SelectItem key={p.id} value={p.id} className="text-xs">{p.full_name || p.email}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ComboPicker
+                        value={row.pilotId}
+                        placeholder="Velg pilot"
+                        searchPlaceholder="Søk pilot…"
+                        options={personnel.map(p => ({
+                          id: p.id,
+                          label: p.full_name || p.email || "Ukjent",
+                          search: `${p.full_name || ""} ${p.email || ""}`,
+                        }))}
+                        onChange={(v) => updateRow(row.pendingLogId, { pilotId: v })}
+                      />
                     </div>
                     <div className="space-y-0.5">
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Drone</label>
-                      <Select value={row.droneId} onValueChange={(v) => updateRow(row.pendingLogId, { droneId: v })}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Velg drone" /></SelectTrigger>
-                        <SelectContent>
-                          {drones.map(d => (
-                            <SelectItem key={d.id} value={d.id} className="text-xs">
-                              {d.modell} {d.serienummer ? `(${d.serienummer})` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ComboPicker
+                        value={row.droneId}
+                        placeholder="Velg drone"
+                        searchPlaceholder="Søk drone…"
+                        options={drones.map(d => ({
+                          id: d.id,
+                          label: `${d.modell}${d.serienummer ? ` (${d.serienummer})` : ""}`,
+                          search: `${d.modell} ${d.serienummer || ""} ${d.internal_serial || ""}`,
+                        }))}
+                        onChange={(v) => updateRow(row.pendingLogId, { droneId: v })}
+                      />
                     </div>
                     <div className="space-y-0.5 col-span-2">
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Utstyr / batteri</label>
-                      <Select
+                      <ComboPicker
                         value=""
-                        onValueChange={(v) => {
+                        placeholder="Legg til utstyr"
+                        searchPlaceholder="Søk utstyr…"
+                        options={equipmentList
+                          .filter(e => !row.equipmentIds.includes(e.id))
+                          .map(e => ({
+                            id: e.id,
+                            label: `${e.navn}${e.serienummer ? ` (${e.serienummer})` : ""}`,
+                            search: `${e.navn} ${e.serienummer || ""} ${e.internal_serial || ""} ${e.type}`,
+                          }))}
+                        onChange={(v) => {
                           if (v && !row.equipmentIds.includes(v)) {
                             updateRow(row.pendingLogId, { equipmentIds: [...row.equipmentIds, v] });
                           }
                         }}
-                      >
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Legg til utstyr" /></SelectTrigger>
-                        <SelectContent>
-                          {equipmentList
-                            .filter(e => !row.equipmentIds.includes(e.id))
-                            .map(e => (
-                              <SelectItem key={e.id} value={e.id} className="text-xs">
-                                {e.navn} {e.serienummer ? `(${e.serienummer})` : ""}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                      />
                       {row.equipmentIds.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-1">
                           {row.equipmentIds.map(eqId => {
@@ -707,6 +709,56 @@ const MissionPicker = ({ value, sameDayMissions, allMissions, autoMatchedId, onC
                 </CommandGroup>
               </>
             )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+interface ComboOption { id: string; label: string; search: string; }
+interface ComboPickerProps {
+  value: string;
+  options: ComboOption[];
+  placeholder: string;
+  searchPlaceholder: string;
+  onChange: (value: string) => void;
+}
+
+const ComboPicker = ({ value, options, placeholder, searchPlaceholder, onChange }: ComboPickerProps) => {
+  const [open, setOpen] = useState(false);
+  const selected = value ? options.find(o => o.id === value) : null;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-8 text-xs font-normal"
+        >
+          <span className="truncate">{selected ? selected.label : placeholder}</span>
+          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} className="h-9 text-xs" />
+          <CommandList className="max-h-64">
+            <CommandEmpty className="text-xs py-3 text-center text-muted-foreground">Ingen treff</CommandEmpty>
+            <CommandGroup>
+              {options.map(o => (
+                <CommandItem
+                  key={o.id}
+                  value={`${o.id}__${o.search}`}
+                  onSelect={() => { onChange(o.id); setOpen(false); }}
+                  className="text-xs"
+                >
+                  <Check className={cn("mr-2 h-3 w-3 shrink-0", value === o.id ? "opacity-100" : "opacity-0")} />
+                  <span className="truncate">{o.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>
