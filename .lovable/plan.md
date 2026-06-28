@@ -1,27 +1,31 @@
-## Mål
-Skru av captcha-verifisering i innlogging uten å fjerne eksisterende kode, så det enkelt kan slås på igjen senere.
+## Problem
 
-## Endringer (kun `src/pages/Auth.tsx`)
+På DJI RC Plus 1 (Chromium 70) krasjer appen når man åpner en PDF-sjekkliste:
+`TypeError: Promise.withResolvers is not a function`
 
-1. Legg til én feature-flagg øverst i filen:
-   ```ts
-   const CAPTCHA_ENABLED = false;
-   ```
+Dette er en ES2024-funksjon som `pdfjs-dist@4.4.168` (brukt via `react-pdf` i bl.a. `ChecklistExecutionDialog`) kaller internt. Chromium 70 mangler den, så hele React-treet kastes til ErrorBoundary. Andre enheter (iPad, telefon) har moderne nettlesere og ser ikke feilen.
 
-2. Bruk flagget til å hoppe over captcha-logikken — selve koden står urørt:
-   - I `ensureFreshCaptcha`: `return` tidlig hvis `!CAPTCHA_ENABLED`.
-   - I passord-login-flyten (rundt linje 400–445): hopp over vente-løkken og send aldri `captchaToken` til `supabase.auth.signInWithPassword` når flagget er av (`options: undefined`).
-   - I passkey-login-flyten (rundt linje 736–795): samme — hopp over vente-løkken og kall `signInWithPassword`/passkey-kallet uten `captchaToken`.
-   - Ikke vis `<TurnstileWidget>` og "venter på captcha"-tekst (linje ~1060–1070) når flagget er av.
+## Løsning
 
-3. Behold:
-   - `TurnstileWidget`-komponenten, `shouldSkipCaptcha` i `deviceDetection.ts`, all state (`captchaToken`, `captchaStatus`, `showCaptchaFallback`, `waitingForCaptcha`), refs og hjelpefunksjoner.
-   - Captcha-feilmeldings-håndteringen (`isCaptchaIsh`) som no-op sikkerhetsnett.
+Last en liten polyfill helt øverst i `src/main.tsx` (før noen andre imports), slik at den finnes når pdf.js initialiseres. Polyfillen er no-op på moderne nettlesere.
+
+## Endringer
+
+**Ny fil: `src/lib/legacyPolyfills.ts`**
+- Definer `Promise.withResolvers` hvis den mangler (standard implementasjon: returner `{ promise, resolve, reject }`).
+- Samme fil får også en sikkerhetsnett-polyfill for `Array.prototype.at` (ES2022) som pdf.js og andre nyere libs ofte bruker. No-op hvis allerede definert.
+- Ingen avhengigheter, ingen sideeffekter på moderne nettlesere.
+
+**Oppdater `src/main.tsx`**
+- Legg til `import "./lib/legacyPolyfills";` som aller første linje, før alle andre imports, slik at polyfillen er på plass før React, pdf.js eller andre moduler evalueres.
 
 ## Hva som IKKE endres
-- Ingen sletting av filer eller komponenter.
-- Ingen endringer i `TurnstileWidget.tsx` eller `deviceDetection.ts`.
-- Ingen Supabase-migrasjoner.
 
-## Reaktivering senere
-Sett `CAPTCHA_ENABLED = true` igjen, så er flyten tilbake som før.
+- Ingen oppgradering/nedgradering av `pdfjs-dist` eller `react-pdf`.
+- Ingen endring i PDF-renderingslogikken (`ChecklistExecutionDialog`, `TrainingCourseEditor`, `AICourseGeneratorDialog`).
+- Ingen build-config-endringer (Vite target, browserslist).
+
+## Verifisering
+
+- På moderne nettlesere: ingen synlig endring (polyfill hopper over når funksjonen finnes).
+- På DJI RC Plus: sjekklist-PDF skal nå åpnes uten ErrorBoundary-krasj.
