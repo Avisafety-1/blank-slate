@@ -8,7 +8,7 @@ import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
 import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
-import { enrichNatureArea, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
+import { enrichNatureArea, getStatusPresentation, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
 
 
 
@@ -967,11 +967,14 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
             popup += `</div>`;
             popup += `<div style="font-weight:600;font-size:13px;margin-bottom:6px">${esc(p.name || 'Ukjent')}</div>`;
 
-            popup += `<div style="background:#f1f5f9;border-left:3px solid ${badgeColor};padding:6px 8px;border-radius:3px;margin-bottom:6px">`;
-            popup += `<div style="font-weight:600;color:#0f172a;margin-bottom:2px">🚁 Droneregler</div>`;
-            popup += `<div style="color:#334155">${esc(rule.rule)}</div>`;
-            popup += `<div style="color:#64748b;font-size:11px;margin-top:4px">Hjemmel: ${esc(rule.legalBasis)}</div>`;
+            const status = getStatusPresentation(rule.status);
+            popup += `<div style="background:${status.bg};border-left:3px solid ${status.border};padding:7px 9px;border-radius:3px;margin-bottom:6px">`;
+            popup += `<div style="font-weight:700;color:${status.color};margin-bottom:3px;font-size:12px">${status.icon} ${esc(status.label)}</div>`;
+            popup += `<div style="color:#1f2937;margin-bottom:4px">${esc(rule.pilotAdvice)}</div>`;
+            popup += `<div style="color:#475569;font-size:11px;border-top:1px solid ${status.border}33;padding-top:4px;margin-top:4px">📄 Åpne faktaarket for verneforskriftens fulle ordlyd</div>`;
+            popup += `<div style="color:#64748b;font-size:10px;margin-top:3px">Hjemmel: ${esc(rule.legalBasis)}</div>`;
             popup += `</div>`;
+
 
             const metaRows: string[] = [];
             if (enrich.forvaltningsmyndighet) {

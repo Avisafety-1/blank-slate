@@ -13,20 +13,73 @@
 export const MILJODIR_DRONE_RULES_URL =
   'https://www.miljodirektoratet.no/ansvarsomrader/vernet-natur/regler-for-droner-i-naturen/';
 
+export type VerneformStatus = 'FORBUDT' | 'SJEKK_FORSKRIFT' | 'BEGRENSET' | 'AKTSOMHET';
+
 export interface VerneformRule {
   /** Visningsnavn på norsk (æøå). */
   label: string;
-  /** Kort hovedregel for droneflyging. */
+  /** Kort hovedregel for droneflyging (bakoverkompatibel — vises ikke i ny popup). */
   rule: string;
   /** Lovhjemmel-referanse i klartekst (ingen Lovdata-URL). */
   legalBasis: string;
   /** Farge for badge — matcher eksisterende verneformColors. */
   color: string;
+  /** Status-nivå som driver fargen/overskriften på popup-badgen. */
+  status: VerneformStatus;
+  /** Kort, handlingsrettet råd til droneflygeren — 1–2 setninger. */
+  pilotAdvice: string;
+}
+
+export interface StatusPresentation {
+  label: string;
+  icon: string;
+  /** Tekstfarge (mørk). */
+  color: string;
+  /** Bakgrunnsfarge (lys). */
+  bg: string;
+  /** Border/accent-farge. */
+  border: string;
+}
+
+const STATUS_PRESENTATION: Record<VerneformStatus, StatusPresentation> = {
+  FORBUDT: {
+    label: 'Droneflyging forbudt',
+    icon: '🚫',
+    color: '#7f1d1d',
+    bg: '#fee2e2',
+    border: '#dc2626',
+  },
+  SJEKK_FORSKRIFT: {
+    label: 'Sjekk verneforskriften',
+    icon: '⚠️',
+    color: '#78350f',
+    bg: '#fef3c7',
+    border: '#d97706',
+  },
+  BEGRENSET: {
+    label: 'Begrenset — krever dispensasjon',
+    icon: '⚠️',
+    color: '#7c2d12',
+    bg: '#ffedd5',
+    border: '#ea580c',
+  },
+  AKTSOMHET: {
+    label: 'Aktsomhetsplikt',
+    icon: 'ℹ️',
+    color: '#1e3a8a',
+    bg: '#dbeafe',
+    border: '#2563eb',
+  },
+};
+
+export function getStatusPresentation(status: VerneformStatus): StatusPresentation {
+  return STATUS_PRESENTATION[status];
 }
 
 /**
  * Sentralt regelsett per `verneform`-verdi fra Naturbase.
- * Nøklene matcher rå-verdier i DB (uten æøå for noen, jf. Naturbase-skjema).
+ * Råd er basert på Miljødirektoratets veileder
+ * (https://www.miljodirektoratet.no/ansvarsomrader/vernet-natur/regler-for-droner-i-naturen/).
  */
 export const VERNEFORM_RULES: Record<string, VerneformRule> = {
   Nasjonalpark: {
@@ -34,132 +87,189 @@ export const VERNEFORM_RULES: Record<string, VerneformRule> = {
     rule: 'Droneflyging er som hovedregel forbudt. Krever dispensasjon fra forvaltningsmyndigheten.',
     legalBasis: 'Naturmangfoldloven § 35 og verneforskriften for området.',
     color: '#15803d',
+    status: 'FORBUDT',
+    pilotAdvice:
+      'Droneflyging er forbudt — også å fly inn fra utsiden eller lette like utenfor grensen. Du må ha tillatelse fra nasjonalparkstyret før du flyr.',
   },
   NasjonalparkSvalbard: {
     label: 'Nasjonalpark (Svalbard)',
     rule: 'Droneflyging er forbudt uten tillatelse fra Sysselmesteren.',
     legalBasis: 'Svalbardmiljøloven og verneforskriften.',
     color: '#15803d',
+    status: 'FORBUDT',
+    pilotAdvice: 'Droneflyging krever tillatelse fra Sysselmesteren på Svalbard.',
   },
   Naturreservat: {
     label: 'Naturreservat',
     rule: 'Droneflyging er normalt forbudt. Krever dispensasjon fra forvaltningsmyndigheten.',
     legalBasis: 'Naturmangfoldloven § 37 og verneforskriften for området.',
     color: '#166534',
+    status: 'SJEKK_FORSKRIFT',
+    pilotAdvice:
+      'Sjekk verneforskriften i faktaarket. Står «modellfly o.l.» nevnt, er droner forbudt. Forstyrrelse av dyreliv er uansett ulovlig — særlig ved hekking eller raste-/yngletid.',
   },
   NaturreservatSvalbard: {
     label: 'Naturreservat (Svalbard)',
     rule: 'Droneflyging er forbudt uten tillatelse fra Sysselmesteren.',
     legalBasis: 'Svalbardmiljøloven og verneforskriften.',
     color: '#166534',
+    status: 'FORBUDT',
+    pilotAdvice: 'Droneflyging krever tillatelse fra Sysselmesteren på Svalbard.',
   },
   NaturreservatJanMayen: {
     label: 'Naturreservat (Jan Mayen)',
     rule: 'Droneflyging er forbudt uten særskilt tillatelse.',
     legalBasis: 'Verneforskrift for Jan Mayen.',
     color: '#166534',
+    status: 'FORBUDT',
+    pilotAdvice: 'Hele Jan Mayen er naturreservat — droneflyging krever særskilt tillatelse.',
   },
   Landskapsvernomraade: {
     label: 'Landskapsvernområde',
     rule: 'Droneflyging er ofte begrenset og kan kreve dispensasjon. Sjekk verneforskriften.',
     legalBasis: 'Naturmangfoldloven § 36 og verneforskriften for området.',
     color: '#4ade80',
+    status: 'SJEKK_FORSKRIFT',
+    pilotAdvice:
+      'I større landskapsvernområder er droner forbudt. I mindre kan det være tillatt — sjekk verneforskriften i faktaarket før du flyr.',
   },
   LandskapsvernomraadeDyrelivsfredning: {
     label: 'Landskapsvernområde med dyrelivsfredning',
     rule: 'Droneflyging er begrenset, særlig i hekkesesongen. Krever ofte dispensasjon.',
     legalBasis: 'Naturmangfoldloven § 36 og verneforskriften.',
     color: '#4ade80',
+    status: 'BEGRENSET',
+    pilotAdvice:
+      'Forstyrrelse av dyreliv er forbudt — særlig i hekke-/yngletid. Krever som regel dispensasjon.',
   },
   LandskapsvernomraadePlantelivsfredning: {
     label: 'Landskapsvernområde med plantelivsfredning',
     rule: 'Droneflyging er begrenset. Sjekk verneforskriften.',
     legalBasis: 'Naturmangfoldloven § 36 og verneforskriften.',
     color: '#4ade80',
+    status: 'SJEKK_FORSKRIFT',
+    pilotAdvice: 'Landing og oppstart er ofte forbudt. Sjekk verneforskriften i faktaarket.',
   },
   LandskapsvernomraadePlanteOgDyrelivsfredning: {
     label: 'Landskapsvernområde med plante- og dyrelivsfredning',
     rule: 'Droneflyging er begrenset, særlig i hekkesesongen. Krever ofte dispensasjon.',
     legalBasis: 'Naturmangfoldloven § 36 og verneforskriften.',
     color: '#4ade80',
+    status: 'BEGRENSET',
+    pilotAdvice:
+      'Forstyrrelse av dyre- og planteliv er forbudt — særlig i hekke-/yngletid. Krever som regel dispensasjon.',
   },
   LandskapsvernomraadeBiotopvern: {
     label: 'Landskapsvernområde med biotopvern',
     rule: 'Droneflyging er begrenset. Krever ofte dispensasjon.',
     legalBasis: 'Naturmangfoldloven § 36 og verneforskriften.',
     color: '#4ade80',
+    status: 'BEGRENSET',
+    pilotAdvice: 'Biotopen er sårbar — droneflyging krever som regel dispensasjon.',
   },
   Biotopvern: {
     label: 'Biotopvernområde',
     rule: 'Droneflyging er forbudt eller sterkt begrenset, særlig i hekke-/yngletid.',
     legalBasis: 'Naturmangfoldloven § 38 og verneforskriften.',
     color: '#22c55e',
+    status: 'BEGRENSET',
+    pilotAdvice:
+      'Forstyrrelse av fugleliv er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.',
   },
   BiotopvernVilt: {
     label: 'Biotopvernområde (vilt)',
     rule: 'Droneflyging er forbudt eller sterkt begrenset, særlig i hekke-/yngletid.',
     legalBasis: 'Viltloven § 7 og verneforskriften.',
     color: '#22c55e',
+    status: 'BEGRENSET',
+    pilotAdvice:
+      'Forstyrrelse av vilt er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.',
   },
   MarintVerneomraade: {
     label: 'Marint verneområde',
-    rule: 'Droneflyging kan være begrenset over hekkekolonier og marine fuglearter. Sjekk verneforskriften.',
+    rule: 'Ingen egne droneregler, men sjekk nærliggende verneområder.',
     legalBasis: 'Naturmangfoldloven § 39 og verneforskriften.',
     color: '#0ea5e9',
+    status: 'AKTSOMHET',
+    pilotAdvice:
+      'Ingen egne droneregler her, men aktsomhetsplikt etter nml § 6. Marine verneområder grenser ofte til naturreservat eller nasjonalpark — sjekk nabosonene.',
   },
   Dyrefredningsomrade: {
     label: 'Dyrefredningsområde',
     rule: 'Droneflyging er som hovedregel forbudt i hekke-/yngletid. Krever dispensasjon.',
     legalBasis: 'Naturmangfoldloven og verneforskriften.',
     color: '#a3e635',
+    status: 'BEGRENSET',
+    pilotAdvice:
+      'Forstyrrelse av dyreliv er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.',
   },
   Dyrelivsfredning: {
     label: 'Dyrelivsfredning',
     rule: 'Droneflyging er begrenset, særlig i hekke-/yngletid.',
     legalBasis: 'Naturmangfoldloven og verneforskriften.',
     color: '#a3e635',
+    status: 'BEGRENSET',
+    pilotAdvice:
+      'Forstyrrelse av dyreliv er forbudt — særlig hekke-/yngletid. Hold god avstand eller søk dispensasjon.',
   },
   Plantefredningsomraade: {
     label: 'Plantefredningsområde',
-    rule: 'Landing og oppstart er ofte forbudt. Overflyging kan være tillatt — sjekk verneforskriften.',
+    rule: 'Landing og oppstart er ofte forbudt. Overflyging kan være tillatt.',
     legalBasis: 'Naturmangfoldloven og verneforskriften.',
     color: '#84cc16',
+    status: 'SJEKK_FORSKRIFT',
+    pilotAdvice: 'Landing og oppstart er ofte forbudt. Overflyging kan være tillatt — sjekk verneforskriften.',
   },
   Plantelivsfredning: {
     label: 'Plantelivsfredning',
     rule: 'Landing og oppstart er ofte forbudt. Sjekk verneforskriften.',
     legalBasis: 'Naturmangfoldloven og verneforskriften.',
     color: '#84cc16',
+    status: 'SJEKK_FORSKRIFT',
+    pilotAdvice: 'Landing og oppstart er ofte forbudt. Sjekk verneforskriften i faktaarket.',
   },
   PlanteOgDyrefredningsomraade: {
     label: 'Plante- og dyrefredningsområde',
     rule: 'Droneflyging er begrenset, særlig i hekke-/yngletid. Krever ofte dispensasjon.',
     legalBasis: 'Naturmangfoldloven og verneforskriften.',
     color: '#a3e635',
+    status: 'BEGRENSET',
+    pilotAdvice:
+      'Forstyrrelse av dyre- og planteliv er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.',
   },
   PlanteOgDyrelivsfredning: {
     label: 'Plante- og dyrelivsfredning',
     rule: 'Droneflyging er begrenset, særlig i hekke-/yngletid.',
     legalBasis: 'Naturmangfoldloven og verneforskriften.',
     color: '#a3e635',
+    status: 'BEGRENSET',
+    pilotAdvice:
+      'Forstyrrelse av dyre- og planteliv er forbudt — særlig hekke-/yngletid. Hold god avstand eller søk dispensasjon.',
   },
   Naturminne: {
     label: 'Naturminne',
     rule: 'Området er fredet — sjekk verneforskriften før droneflyging.',
     legalBasis: 'Naturmangfoldloven og verneforskriften.',
     color: '#16a34a',
+    status: 'SJEKK_FORSKRIFT',
+    pilotAdvice: 'Lite, fredet objekt. Sjekk verneforskriften i faktaarket før du flyr.',
   },
   GeotopvernSvalbard: {
     label: 'Geotopvern (Svalbard)',
     rule: 'Droneflyging krever tillatelse fra Sysselmesteren.',
     legalBasis: 'Svalbardmiljøloven.',
     color: '#16a34a',
+    status: 'FORBUDT',
+    pilotAdvice: 'Droneflyging krever tillatelse fra Sysselmesteren på Svalbard.',
   },
   MidlertidigVernaOmraade: {
     label: 'Midlertidig vernet område',
     rule: 'Området har midlertidig vern — antas å ha samme restriksjoner som tilsvarende permanente vern.',
     legalBasis: 'Naturmangfoldloven § 45.',
     color: '#16a34a',
+    status: 'SJEKK_FORSKRIFT',
+    pilotAdvice:
+      'Midlertidig vernet — behandles som tilsvarende permanent vern. Sjekk forskriften i faktaarket.',
   },
 };
 
@@ -168,12 +278,15 @@ const DEFAULT_RULE: VerneformRule = {
   rule: 'Droneflyging kan være begrenset. Sjekk verneforskriften før flyging.',
   legalBasis: 'Naturmangfoldloven og verneforskriften for området.',
   color: '#16a34a',
+  status: 'SJEKK_FORSKRIFT',
+  pilotAdvice: 'Verneform er ukjent — sjekk verneforskriften i faktaarket før du flyr.',
 };
 
 export function getVerneformRule(verneform: string | null | undefined): VerneformRule {
   if (!verneform) return DEFAULT_RULE;
   return VERNEFORM_RULES[verneform] ?? DEFAULT_RULE;
 }
+
 
 export interface NatureAreaEnrichment {
   faktaarkUrl: string | null;
