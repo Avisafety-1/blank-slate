@@ -7,6 +7,7 @@ import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTria
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { isDjiController } from "@/lib/deviceDetection";
 // Use local worker bundled with react-pdf's nested pdfjs-dist to guarantee version match
 import pdfWorkerUrl from "react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -84,6 +85,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const checkedItems: Set<string> = checkedByTab[activeChecklistId] ?? new Set();
 
   const isFileMode = fileUrl !== null && items.length === 0;
+  const useLegacyPdfFallback = fileMode === "pdf" && isDjiController();
 
   const prevOpenRef = useRef(false);
   useEffect(() => {
@@ -458,6 +460,22 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     className="w-full h-auto cursor-pointer"
                     onClick={() => window.open(fileUrl!, '_blank')}
                   />
+                </div>
+              ) : fileMode === "pdf" && useLegacyPdfFallback ? (
+                <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
+                  <FileText className="w-12 h-12 text-primary" />
+                  <div className="text-center space-y-1">
+                    <p className="font-medium text-sm">{fileName || checklistTitles[activeChecklistId] || "PDF-sjekkliste"}</p>
+                    <p className="text-xs text-muted-foreground">Åpne PDF-en i ny fane for å gjennomgå sjekklisten på DJI-kontrolleren.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={handleOpenFile}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Åpne PDF
+                  </Button>
                 </div>
               ) : fileMode === "pdf" ? (
                 <div className="space-y-2">

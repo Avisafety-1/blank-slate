@@ -43,3 +43,14 @@ if (typeof String.prototype.at !== "function") {
     configurable: true,
   });
 }
+
+// URL.parse (newer URL API) – used by recent pdf.js builds, missing in Chromium 70
+if (typeof URL !== "undefined" && typeof (URL as any).parse !== "function") {
+  (URL as any).parse = function (url: string | URL, base?: string | URL) {
+    try {
+      return new URL(url as string, base as string | undefined);
+    } catch {
+      return null;
+    }
+  };
+}
