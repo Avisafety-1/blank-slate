@@ -74,6 +74,7 @@ const Auth = () => {
   // token allerede er forbrukt. Returnerer når en ny token er klar eller timeout
   // er nådd. Kaller selv resetTurnstile + nullstiller state.
   const ensureFreshCaptcha = async (): Promise<void> => {
+    if (!CAPTCHA_ENABLED) return;
     if (!usedCaptchaRef.current) return;
     if (captchaStatusRef.current === "skipped" || captchaStatusRef.current === "error") return;
     try { resetTurnstile(); } catch {}
