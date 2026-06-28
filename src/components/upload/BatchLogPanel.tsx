@@ -143,24 +143,46 @@ export const BatchLogPanel = ({
   useEffect(() => {
     rows.forEach(async (row, idx) => {
       if (!row.parsing && row.parsed) {
-        if (row.missions.length === 0 && row.log.flight_date) {
-          const day = new Date(row.log.flight_date);
-          const start = new Date(day); start.setHours(0,0,0,0);
-          const end = new Date(day); end.setHours(23,59,59,999);
+        if (!row.missionsLoaded) {
+          const baseDate = row.parsed?.startTime
+            ? new Date(row.parsed.startTime)
+            : (row.log.flight_date ? new Date(row.log.flight_date) : null);
+          if (!baseDate || isNaN(baseDate.getTime())) {
+            setRows(prev => prev.map(r => r.pendingLogId === row.pendingLogId ? { ...r, missionsLoaded: true } : r));
+            return;
+          }
+          const start = new Date(baseDate); start.setHours(0,0,0,0);
+          const end = new Date(baseDate); end.setHours(23,59,59,999);
           const { data } = await supabase
             .from("missions")
-            .select("id, tittel, tidspunkt")
+            .select("id, tittel, tidspunkt, lokasjon, status")
             .eq("company_id", companyId)
             .gte("tidspunkt", start.toISOString())
             .lte("tidspunkt", end.toISOString())
             .order("tidspunkt", { ascending: true })
             .limit(20);
-          if (data) {
-            setRows(prev => prev.map(r => r.pendingLogId === row.pendingLogId ? { ...r, missions: data as any } : r));
-          }
+          // Sort by closest to flight start
+          const sorted = (data || []).slice().sort((a: any, b: any) => {
+            const dA = Math.abs(new Date(a.tidspunkt).getTime() - baseDate.getTime());
+            const dB = Math.abs(new Date(b.tidspunkt).getTime() - baseDate.getTime());
+            return dA - dB;
+          });
+          const autoId = sorted.length > 0 ? sorted[0].id : null;
+          setRows(prev => prev.map(r => {
+            if (r.pendingLogId !== row.pendingLogId) return r;
+            return {
+              ...r,
+              missions: sorted as any,
+              missionsLoaded: true,
+              autoMatchedMissionId: autoId,
+              // Only preselect if user hasn't manually overridden
+              missionId: r.missionUserOverride ? r.missionId : (autoId || ""),
+            };
+          }));
         }
         return;
       }
+
       if (row.parsed || row.parseError) return;
       try {
         const { data, error } = await supabase.functions.invoke("dji-process-single", {
