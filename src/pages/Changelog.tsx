@@ -515,6 +515,43 @@ const Changelog = () => {
               <Label>{t("changelog.dialog.completedDateOptional")}</Label>
               <Input type="date" value={formCompletedAt} onChange={(e) => setFormCompletedAt(e.target.value)} />
             </div>
+            <div className="space-y-2">
+              <Label>Bilde (valgfritt)</Label>
+              {formImageUrl && signedUrls[formImageUrl] ? (
+                <div className="relative inline-block">
+                  <img
+                    src={signedUrls[formImageUrl]}
+                    alt="Forhåndsvisning"
+                    className="max-h-40 rounded-md border border-border/50"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-1 right-1 h-6 w-6 p-0"
+                    onClick={() => setFormImageUrl(null)}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground border border-dashed border-border rounded-md px-3 py-2 hover:bg-accent w-fit">
+                  {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                  <span>{uploadingImage ? "Laster opp..." : "Last opp bilde"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingImage}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleImageUpload(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={saveEntry} disabled={!formTitle || saving}>
