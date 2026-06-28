@@ -1065,7 +1065,7 @@ const Auth = () => {
                 )}
                 {!isLogin && <PasswordRequirements password={password} className="mt-2" />}
               </div>
-              {isLogin && (
+              {CAPTCHA_ENABLED && isLogin && (
                 <TurnstileWidget
                   onVerify={setCaptchaToken}
                   onStatusChange={setCaptchaStatus}
