@@ -39,11 +39,14 @@ interface PendingDjiLog {
 interface PendingDjiLogsSectionProps {
   onSelectLog: (log: PendingDjiLog) => void;
   expanded?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (log: PendingDjiLog) => void;
 }
 
 export interface PendingDjiLogsSectionRef {
   refresh: () => void;
   updateLog: (id: string, patch: Partial<PendingDjiLog>) => void;
+  getLogs: () => PendingDjiLog[];
 }
 
 const PAGE_SIZE = 200;
