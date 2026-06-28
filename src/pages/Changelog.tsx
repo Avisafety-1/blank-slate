@@ -231,13 +231,14 @@ const Changelog = () => {
     const completedAt = formCompletedAt ? new Date(formCompletedAt).toISOString() : null;
     if (entryDialog.entry) {
       const { error } = await supabase.from("changelog_entries")
-        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_url: formImageUrl, updated_at: new Date().toISOString() })
+        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_urls: formImageUrls, image_url: formImageUrls[0] ?? null, updated_at: new Date().toISOString() })
         .eq("id", entryDialog.entry.id);
       if (error) toast.error(t("changelog.toast.saveError"));
       else toast.success(t("changelog.toast.entryUpdated"));
     } else {
       const { error } = await supabase.from("changelog_entries")
-        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_url: formImageUrl });
+        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_urls: formImageUrls, image_url: formImageUrls[0] ?? null });
+
       if (error) toast.error(t("changelog.toast.createError"));
       else toast.success(t("changelog.toast.entryAdded"));
     }
