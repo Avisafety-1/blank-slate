@@ -213,6 +213,7 @@ const Changelog = () => {
     setFormEntryStatus(entry?.status || "ikke_startet");
     setFormPriority(entry?.priority || "medium");
     setFormCompletedAt(entry?.completed_at ? entry.completed_at.slice(0, 10) : "");
+    setFormImageUrl(entry?.image_url || null);
     setEntryDialog({ open: true, entry });
   };
 
@@ -221,13 +222,13 @@ const Changelog = () => {
     const completedAt = formCompletedAt ? new Date(formCompletedAt).toISOString() : null;
     if (entryDialog.entry) {
       const { error } = await supabase.from("changelog_entries")
-        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, updated_at: new Date().toISOString() })
+        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_url: formImageUrl, updated_at: new Date().toISOString() })
         .eq("id", entryDialog.entry.id);
       if (error) toast.error(t("changelog.toast.saveError"));
       else toast.success(t("changelog.toast.entryUpdated"));
     } else {
       const { error } = await supabase.from("changelog_entries")
-        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt });
+        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_url: formImageUrl });
       if (error) toast.error(t("changelog.toast.createError"));
       else toast.success(t("changelog.toast.entryAdded"));
     }
