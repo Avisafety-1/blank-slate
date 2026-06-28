@@ -88,6 +88,25 @@ export const BatchLogPanel = ({
 }: Props) => {
   const [rows, setRows] = useState<RowState[]>([]);
   const [savingAll, setSavingAll] = useState(false);
+  const [allMissions, setAllMissions] = useState<MissionOption[]>([]);
+
+  // Fetch all missions for override list (last 180d + future)
+  useEffect(() => {
+    if (!companyId) return;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 180);
+    (async () => {
+      const { data } = await supabase
+        .from("missions")
+        .select("id, tittel, tidspunkt, lokasjon, status")
+        .eq("company_id", companyId)
+        .gte("tidspunkt", cutoff.toISOString())
+        .order("tidspunkt", { ascending: false })
+        .limit(500);
+      if (data) setAllMissions(data as any);
+    })();
+  }, [companyId]);
+
 
   // Initialize rows when selection changes
   useEffect(() => {
