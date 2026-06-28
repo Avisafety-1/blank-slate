@@ -316,22 +316,25 @@ export const BatchLogPanel = ({
       // Link mission resources
       if (missionId) {
         if (row.droneId) {
-          await supabase.from("mission_drones").upsert(
+          const { error: mdErr } = await supabase.from("mission_drones").upsert(
             { mission_id: missionId, drone_id: row.droneId },
             { onConflict: "mission_id,drone_id" }
           );
+          if (mdErr) throw mdErr;
         }
         if (row.pilotId) {
-          await supabase.from("mission_personnel").upsert(
+          const { error: mpErr } = await supabase.from("mission_personnel").upsert(
             { mission_id: missionId, profile_id: row.pilotId },
             { onConflict: "mission_id,profile_id" }
           );
+          if (mpErr) throw mpErr;
         }
         if (row.equipmentIds.length) {
-          await supabase.from("mission_equipment").upsert(
+          const { error: meErr } = await supabase.from("mission_equipment").upsert(
             row.equipmentIds.map(eqId => ({ mission_id: missionId!, equipment_id: eqId })),
             { onConflict: "mission_id,equipment_id" }
           );
+          if (meErr) throw meErr;
         }
       }
 
