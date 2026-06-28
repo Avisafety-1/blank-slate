@@ -120,6 +120,43 @@ const Changelog = () => {
 
   useEffect(() => { fetchAll(); }, []);
 
+  // Resolve signed URLs for entry images (private bucket)
+  useEffect(() => {
+    const paths = entries.map(e => e.image_url).filter((p): p is string => !!p && !signedUrls[p]);
+    if (paths.length === 0) return;
+    (async () => {
+      const { data } = await supabase.storage
+        .from("changelog-images")
+        .createSignedUrls(paths, 3600);
+      if (data) {
+        setSignedUrls(prev => {
+          const next = { ...prev };
+          data.forEach((d, i) => { if (d.signedUrl) next[paths[i]] = d.signedUrl; });
+          return next;
+        });
+      }
+    })();
+  }, [entries]);
+
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) { toast.error("Kun bildefiler er tillatt"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Maks 5 MB"); return; }
+    setUploadingImage(true);
+    const ext = file.name.split(".").pop() || "png";
+    const path = `entries/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("changelog-images").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type,
+    });
+    setUploadingImage(false);
+    if (error) { toast.error("Kunne ikke laste opp bilde"); return; }
+    setFormImageUrl(path);
+    const { data } = await supabase.storage.from("changelog-images").createSignedUrl(path, 3600);
+    if (data?.signedUrl) setSignedUrls(prev => ({ ...prev, [path]: data.signedUrl }));
+  };
+
+
   // Maintenance toggle
   const toggleMaintenance = async () => {
     if (!maintenance) return;
