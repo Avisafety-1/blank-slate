@@ -125,7 +125,12 @@ const Changelog = () => {
 
   // Resolve signed URLs for entry images (private bucket)
   useEffect(() => {
-    const paths = entries.map(e => e.image_url).filter((p): p is string => !!p && !signedUrls[p]);
+    const all = new Set<string>();
+    entries.forEach(e => {
+      (e.image_urls || []).forEach(p => { if (p && !signedUrls[p]) all.add(p); });
+      if (e.image_url && !signedUrls[e.image_url]) all.add(e.image_url);
+    });
+    const paths = Array.from(all);
     if (paths.length === 0) return;
     (async () => {
       const { data } = await supabase.storage
@@ -140,6 +145,7 @@ const Changelog = () => {
       }
     })();
   }, [entries]);
+
 
   const handleImageUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) { toast.error("Kun bildefiler er tillatt"); return; }
