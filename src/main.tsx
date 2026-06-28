@@ -1,3 +1,6 @@
+// Polyfills for legacy browsers (DJI RC Plus Chromium 70) – must be first
+import "./lib/legacyPolyfills";
+
 // Initialize Sentry before anything else
 import "./lib/sentry";
 
