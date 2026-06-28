@@ -73,10 +73,3 @@ if (typeof URL !== "undefined") {
     };
   }
 }
-    try {
-      return new URL(url as string, base as string | undefined);
-    } catch {
-      return null;
-    }
-  };
-}
