@@ -20,6 +20,9 @@ import { isPasskeyLogin } from "@/lib/authMethod";
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 import { TurnstileWidget, resetTurnstile } from "@/components/auth/TurnstileWidget";
 
+// Feature flag: skru av captcha-verifisering uten å fjerne kode.
+// Sett til true igjen for å reaktivere Turnstile-flyten.
+const CAPTCHA_ENABLED = false;
 
 const Auth = () => {
   const { t } = useTranslation();
