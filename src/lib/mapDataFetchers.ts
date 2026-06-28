@@ -997,8 +997,9 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
               popup += `<a href="${esc(enrich.faktaarkUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyle}">📄 Åpne faktaark</a>`;
             }
             if (enrich.dispensasjonUrl) {
-              popup += `<a href="${esc(enrich.dispensasjonUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">✉️ Søk dispensasjon</a>`;
+              popup += `<a href="${esc(enrich.dispensasjonUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">✉️ ${esc(enrich.dispensasjonLabel)}</a>`;
             }
+
             popup += `<a href="${esc(MILJODIR_DRONE_RULES_URL)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">ℹ️ Regler for droner</a>`;
             popup += `</div>`;
             popup += `</div>`;
