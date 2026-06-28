@@ -20,6 +20,9 @@ import { isPasskeyLogin } from "@/lib/authMethod";
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 import { TurnstileWidget, resetTurnstile } from "@/components/auth/TurnstileWidget";
 
+// Feature flag: skru av captcha-verifisering uten å fjerne kode.
+// Sett til true igjen for å reaktivere Turnstile-flyten.
+const CAPTCHA_ENABLED = false;
 
 const Auth = () => {
   const { t } = useTranslation();
@@ -71,6 +74,7 @@ const Auth = () => {
   // token allerede er forbrukt. Returnerer når en ny token er klar eller timeout
   // er nådd. Kaller selv resetTurnstile + nullstiller state.
   const ensureFreshCaptcha = async (): Promise<void> => {
+    if (!CAPTCHA_ENABLED) return;
     if (!usedCaptchaRef.current) return;
     if (captchaStatusRef.current === "skipped" || captchaStatusRef.current === "error") return;
     try { resetTurnstile(); } catch {}
@@ -401,34 +405,36 @@ const Auth = () => {
         // før vi sender. Turnstile-tokener er engangstokener.
         await ensureFreshCaptcha();
         // Vent på captcha hvis den ikke er klar ennå (maks 4s).
-        const needsWait =
-          (captchaStatusRef.current as string) === "loading" ||
-          (captchaStatusRef.current as string) === "expired";
-        if (needsWait && !captchaTokenRef.current) {
-          setWaitingForCaptcha(true);
-          const start = Date.now();
-          while (
-            Date.now() - start < 4000 &&
-            !captchaTokenRef.current &&
-            (captchaStatusRef.current as string) !== "ready" &&
-            (captchaStatusRef.current as string) !== "skipped" &&
-            (captchaStatusRef.current as string) !== "error"
-          ) {
-            await new Promise((r) => setTimeout(r, 100));
-          }
-          setWaitingForCaptcha(false);
-          if (
-            !captchaTokenRef.current &&
-            (captchaStatusRef.current as string) !== "skipped" &&
-            (captchaStatusRef.current as string) !== "error"
-          ) {
-            setShowCaptchaFallback(true);
-            toast.error("Bekreft at du ikke er en robot og prøv igjen");
-            setLoading(false);
-            return;
+        if (CAPTCHA_ENABLED) {
+          const needsWait =
+            (captchaStatusRef.current as string) === "loading" ||
+            (captchaStatusRef.current as string) === "expired";
+          if (needsWait && !captchaTokenRef.current) {
+            setWaitingForCaptcha(true);
+            const start = Date.now();
+            while (
+              Date.now() - start < 4000 &&
+              !captchaTokenRef.current &&
+              (captchaStatusRef.current as string) !== "ready" &&
+              (captchaStatusRef.current as string) !== "skipped" &&
+              (captchaStatusRef.current as string) !== "error"
+            ) {
+              await new Promise((r) => setTimeout(r, 100));
+            }
+            setWaitingForCaptcha(false);
+            if (
+              !captchaTokenRef.current &&
+              (captchaStatusRef.current as string) !== "skipped" &&
+              (captchaStatusRef.current as string) !== "error"
+            ) {
+              setShowCaptchaFallback(true);
+              toast.error("Bekreft at du ikke er en robot og prøv igjen");
+              setLoading(false);
+              return;
+            }
           }
         }
-        const tokenToSend = captchaTokenRef.current;
+        const tokenToSend = CAPTCHA_ENABLED ? captchaTokenRef.current : null;
         if (tokenToSend) usedCaptchaRef.current = true;
         const {
           data,
@@ -739,34 +745,36 @@ const Auth = () => {
       await ensureFreshCaptcha();
 
       // Wait for Turnstile captcha token if needed (same as password flow).
-      const needsWait =
-        (captchaStatusRef.current as string) === "loading" ||
-        (captchaStatusRef.current as string) === "expired";
-      if (needsWait && !captchaTokenRef.current) {
-        setWaitingForCaptcha(true);
-        const start = Date.now();
-        while (
-          Date.now() - start < 4000 &&
-          !captchaTokenRef.current &&
-          (captchaStatusRef.current as string) !== "ready" &&
-          (captchaStatusRef.current as string) !== "skipped" &&
-          (captchaStatusRef.current as string) !== "error"
-        ) {
-          await new Promise((r) => setTimeout(r, 100));
-        }
-        setWaitingForCaptcha(false);
-        if (
-          !captchaTokenRef.current &&
-          (captchaStatusRef.current as string) !== "skipped" &&
-          (captchaStatusRef.current as string) !== "error"
-        ) {
-          setShowCaptchaFallback(true);
-          toast.error("Bekreft at du ikke er en robot og prøv igjen");
-          return;
+      if (CAPTCHA_ENABLED) {
+        const needsWait =
+          (captchaStatusRef.current as string) === "loading" ||
+          (captchaStatusRef.current as string) === "expired";
+        if (needsWait && !captchaTokenRef.current) {
+          setWaitingForCaptcha(true);
+          const start = Date.now();
+          while (
+            Date.now() - start < 4000 &&
+            !captchaTokenRef.current &&
+            (captchaStatusRef.current as string) !== "ready" &&
+            (captchaStatusRef.current as string) !== "skipped" &&
+            (captchaStatusRef.current as string) !== "error"
+          ) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+          setWaitingForCaptcha(false);
+          if (
+            !captchaTokenRef.current &&
+            (captchaStatusRef.current as string) !== "skipped" &&
+            (captchaStatusRef.current as string) !== "error"
+          ) {
+            setShowCaptchaFallback(true);
+            toast.error("Bekreft at du ikke er en robot og prøv igjen");
+            return;
+          }
         }
       }
 
-      const tokenToSend = captchaTokenRef.current;
+      const tokenToSend = CAPTCHA_ENABLED ? captchaTokenRef.current : null;
       if (tokenToSend) usedCaptchaRef.current = true;
       // Supabase native discoverable-credential sign-in.
       // Runs the full WebAuthn ceremony and creates a session on success.
@@ -1057,7 +1065,7 @@ const Auth = () => {
                 )}
                 {!isLogin && <PasswordRequirements password={password} className="mt-2" />}
               </div>
-              {isLogin && (
+              {CAPTCHA_ENABLED && isLogin && (
                 <TurnstileWidget
                   onVerify={setCaptchaToken}
                   onStatusChange={setCaptchaStatus}
