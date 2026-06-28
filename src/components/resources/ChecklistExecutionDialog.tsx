@@ -80,12 +80,22 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const panRef = useRef<{ startX: number; startY: number; startOffset: { x: number; y: number } } | null>(null);
   const [docxHtml, setDocxHtml] = useState<string | null>(null);
   const [docxLoading, setDocxLoading] = useState(false);
+  const autoOpenedPdfKeyRef = useRef<string | null>(null);
 
   const completedChecklistIds = new Set(completedIds);
   const checkedItems: Set<string> = checkedByTab[activeChecklistId] ?? new Set();
 
   const isFileMode = fileUrl !== null && items.length === 0;
-  const useLegacyPdfFallback = fileMode === "pdf" && isDjiController();
+  const hasLegacyAndroidPdfBrowser = typeof navigator !== "undefined"
+    && /(android|linux)/i.test(navigator.userAgent || "")
+    && /chrome\/(6\d|7\d|8\d)\b/i.test(navigator.userAgent || "")
+    && !/mobile/i.test(navigator.userAgent || "");
+  const useLegacyPdfFallback = fileMode === "pdf" && (isDjiController() || hasLegacyAndroidPdfBrowser);
+  const showExternalPdfFallback = fileMode === "pdf" && (useLegacyPdfFallback || loadError !== null);
+
+  const openFileInBrowser = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   const prevOpenRef = useRef(false);
   useEffect(() => {
@@ -95,6 +105,10 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
       setActiveChecklistId(firstIncomplete);
       setCheckedByTab({});
       setPdfNumPages(0);
+      autoOpenedPdfKeyRef.current = null;
+    }
+    if (!open) {
+      autoOpenedPdfKeyRef.current = null;
     }
     prevOpenRef.current = open;
   }, [open]);
@@ -197,6 +211,20 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
     gestureRef.current = null;
     panRef.current = null;
   }, [fileUrl, fileMode]);
+
+  useEffect(() => {
+    if (!open || !fileUrl || !showExternalPdfFallback || !activeChecklistId) return;
+
+    const autoOpenKey = `${activeChecklistId}:${fileUrl}`;
+    if (autoOpenedPdfKeyRef.current === autoOpenKey) return;
+
+    autoOpenedPdfKeyRef.current = autoOpenKey;
+    const timeoutId = window.setTimeout(() => {
+      openFileInBrowser(fileUrl);
+    }, 150);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [open, fileUrl, showExternalPdfFallback, activeChecklistId]);
 
   const clampScale = (s: number) => Math.min(5, Math.max(0.5, s));
 
@@ -332,7 +360,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
   const handleOpenFile = () => {
     if (!fileUrl) return;
     if (isBrowserViewable(fileMode)) {
-      window.open(fileUrl, "_blank");
+      openFileInBrowser(fileUrl);
       return;
     }
     try {
@@ -351,7 +379,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
       a.remove();
     } catch (err) {
       console.error("[ChecklistExecutionDialog] download failed:", err);
-      window.open(fileUrl, "_blank");
+      openFileInBrowser(fileUrl);
     }
   };
 
@@ -458,15 +486,17 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     src={fileUrl!}
                     alt={checklistTitles[activeChecklistId] || "Sjekkliste"}
                     className="w-full h-auto cursor-pointer"
-                    onClick={() => window.open(fileUrl!, '_blank')}
+                    onClick={() => openFileInBrowser(fileUrl!)}
                   />
                 </div>
-              ) : fileMode === "pdf" && useLegacyPdfFallback ? (
+              ) : showExternalPdfFallback ? (
                 <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
                   <FileText className="w-12 h-12 text-primary" />
                   <div className="text-center space-y-1">
                     <p className="font-medium text-sm">{fileName || checklistTitles[activeChecklistId] || "PDF-sjekkliste"}</p>
-                    <p className="text-xs text-muted-foreground">Åpne PDF-en i ny fane for å gjennomgå sjekklisten på DJI-kontrolleren.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Sjekklisten åpnes automatisk. Hvis ingenting skjer, trykk under.
+                    </p>
                   </div>
                   <Button
                     variant="outline"
@@ -474,7 +504,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={handleOpenFile}
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Åpne PDF
+                    Åpne sjekkliste
                   </Button>
                 </div>
               ) : fileMode === "pdf" ? (
