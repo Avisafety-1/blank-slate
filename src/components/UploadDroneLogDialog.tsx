@@ -3378,12 +3378,58 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
             {/* Pending auto-synced logs */}
             <div data-tour="upload-log-pending">
-              <PendingDjiLogsSection ref={pendingLogsRef} onSelectLog={handleSelectPendingLog} expanded={!!(selectedPendingLogId && result)} />
+              <PendingDjiLogsSection
+                ref={pendingLogsRef}
+                onSelectLog={(log) => {
+                  // Single-select takes precedence; clear batch selection
+                  setBatchSelectedIds(new Set());
+                  handleSelectPendingLog(log);
+                }}
+                expanded={!!((selectedPendingLogId && result) || batchSelectedIds.size > 0)}
+                selectedIds={batchSelectedIds}
+                onToggleSelect={(log) => {
+                  setBatchSelectedIds(prev => {
+                    const next = new Set(prev);
+                    if (next.has(log.id)) next.delete(log.id);
+                    else next.add(log.id);
+                    return next;
+                  });
+                  // Clear single-log view when entering batch mode
+                  if (selectedPendingLogId) {
+                    setSelectedPendingLogId(null);
+                    setResult(null);
+                  }
+                }}
+              />
             </div>
             </div>
 
-            {/* Right panel: result details (split view) */}
-            {selectedPendingLogId && result && (
+            {/* Right panel: batch logging */}
+            {batchSelectedIds.size > 0 && companyId && user && (
+              <div className="flex-1 min-w-0 border-l border-border pl-6 flex flex-col min-h-0">
+                <BatchLogPanel
+                  pendingLogs={(pendingLogsRef.current?.getLogs() || []).filter(l => batchSelectedIds.has(l.id)) as any}
+                  drones={drones}
+                  personnel={personnel}
+                  equipmentList={equipmentList}
+                  companyId={companyId}
+                  userId={user.id}
+                  defaultPilotId={pilotId || user.id}
+                  onDeselect={(id) => setBatchSelectedIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(id);
+                    return next;
+                  })}
+                  onClose={() => setBatchSelectedIds(new Set())}
+                  onSaved={() => {
+                    pendingLogsRef.current?.refresh();
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Right panel: single result details (split view) */}
+            {batchSelectedIds.size === 0 && selectedPendingLogId && result && (
               <div className="flex-1 min-w-0 border-l border-border pl-6 flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-3 shrink-0">
                   <p className="text-sm font-semibold">Flylogg-detaljer</p>
