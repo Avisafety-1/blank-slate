@@ -602,12 +602,21 @@ const Changelog = () => {
 
       {/* Image Lightbox */}
       <Dialog open={!!lightboxUrl} onOpenChange={(o) => !o && setLightboxUrl(null)}>
-        <DialogContent className="max-w-4xl p-2">
+        <DialogContent className="max-w-4xl max-h-[90vh] p-2 bg-background/95 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            aria-label="Lukk"
+            className="absolute top-2 right-2 z-10 rounded-full bg-background/80 hover:bg-background border border-border/50 p-1.5 shadow-md"
+          >
+            <X className="w-4 h-4" />
+          </button>
           {lightboxUrl && (
-            <img src={lightboxUrl} alt="" className="w-full h-auto rounded-md" />
+            <img src={lightboxUrl} alt="" className="max-h-[85vh] max-w-full w-auto h-auto object-contain rounded-md" />
           )}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };
