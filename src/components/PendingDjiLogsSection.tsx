@@ -67,6 +67,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     updateLog: (id, patch) => {
       setLogs(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
     },
+    getLogs: () => logs,
   }));
 
   useEffect(() => {
