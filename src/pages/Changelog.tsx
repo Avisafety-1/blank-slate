@@ -575,6 +575,15 @@ const Changelog = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image Lightbox */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(o) => !o && setLightboxUrl(null)}>
+        <DialogContent className="max-w-4xl p-2">
+          {lightboxUrl && (
+            <img src={lightboxUrl} alt="" className="w-full h-auto rounded-md" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
