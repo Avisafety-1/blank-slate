@@ -214,7 +214,7 @@ export const BatchLogPanel = ({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows.map(r => `${r.pendingLogId}:${r.parsing}:${!!r.parsed}`).join(",")]);
+  }, [rows.map(r => `${r.pendingLogId}:${r.parsing}:${!!r.parsed}:${r.missionsLoaded}`).join(",")]);
 
   const updateRow = (id: string, patch: Partial<RowState>) =>
     setRows(prev => prev.map(r => r.pendingLogId === id ? { ...r, ...patch } : r));
