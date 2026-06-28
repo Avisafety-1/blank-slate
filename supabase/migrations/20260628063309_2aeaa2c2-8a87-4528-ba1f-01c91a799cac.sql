@@ -1,0 +1,1 @@
+ALTER TABLE public.mission_drones ADD CONSTRAINT mission_drones_mission_id_drone_id_key UNIQUE (mission_id, drone_id);
