@@ -381,6 +381,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [syncJustTriggered, setSyncJustTriggered] = useState(false);
   const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
   const [selectedPendingLogId, setSelectedPendingLogId] = useState<string | null>(null);
+  const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
   const isMobile = useIsMobile();
 
   // Logbook state
