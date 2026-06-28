@@ -47,7 +47,9 @@ interface ChangelogEntry {
   updated_at: string;
   completed_at: string | null;
   image_url: string | null;
+  image_urls: string[] | null;
 }
+
 
 interface Maintenance {
   id: string;
@@ -100,11 +102,12 @@ const Changelog = () => {
   const [formEntryStatus, setFormEntryStatus] = useState("ikke_startet");
   const [formCompletedAt, setFormCompletedAt] = useState("");
   const [formPriority, setFormPriority] = useState("medium");
-  const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
+  const [formImageUrls, setFormImageUrls] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
 
   const fetchAll = async () => {
     const [sysRes, entRes, maintRes] = await Promise.all([
@@ -122,7 +125,12 @@ const Changelog = () => {
 
   // Resolve signed URLs for entry images (private bucket)
   useEffect(() => {
-    const paths = entries.map(e => e.image_url).filter((p): p is string => !!p && !signedUrls[p]);
+    const all = new Set<string>();
+    entries.forEach(e => {
+      (e.image_urls || []).forEach(p => { if (p && !signedUrls[p]) all.add(p); });
+      if (e.image_url && !signedUrls[e.image_url]) all.add(e.image_url);
+    });
+    const paths = Array.from(all);
     if (paths.length === 0) return;
     (async () => {
       const { data } = await supabase.storage
@@ -138,6 +146,7 @@ const Changelog = () => {
     })();
   }, [entries]);
 
+
   const handleImageUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) { toast.error("Kun bildefiler er tillatt"); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error("Maks 5 MB"); return; }
@@ -151,7 +160,7 @@ const Changelog = () => {
     });
     setUploadingImage(false);
     if (error) { toast.error("Kunne ikke laste opp bilde"); return; }
-    setFormImageUrl(path);
+    setFormImageUrls(prev => [...prev, path]);
     const { data } = await supabase.storage.from("changelog-images").createSignedUrl(path, 3600);
     if (data?.signedUrl) setSignedUrls(prev => ({ ...prev, [path]: data.signedUrl }));
   };
@@ -213,7 +222,7 @@ const Changelog = () => {
     setFormEntryStatus(entry?.status || "ikke_startet");
     setFormPriority(entry?.priority || "medium");
     setFormCompletedAt(entry?.completed_at ? entry.completed_at.slice(0, 10) : "");
-    setFormImageUrl(entry?.image_url || null);
+    setFormImageUrls(entry?.image_urls?.length ? entry.image_urls : (entry?.image_url ? [entry.image_url] : []));
     setEntryDialog({ open: true, entry });
   };
 
@@ -222,13 +231,14 @@ const Changelog = () => {
     const completedAt = formCompletedAt ? new Date(formCompletedAt).toISOString() : null;
     if (entryDialog.entry) {
       const { error } = await supabase.from("changelog_entries")
-        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_url: formImageUrl, updated_at: new Date().toISOString() })
+        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_urls: formImageUrls, image_url: formImageUrls[0] ?? null, updated_at: new Date().toISOString() })
         .eq("id", entryDialog.entry.id);
       if (error) toast.error(t("changelog.toast.saveError"));
       else toast.success(t("changelog.toast.entryUpdated"));
     } else {
       const { error } = await supabase.from("changelog_entries")
-        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_url: formImageUrl });
+        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_urls: formImageUrls, image_url: formImageUrls[0] ?? null });
+
       if (error) toast.error(t("changelog.toast.createError"));
       else toast.success(t("changelog.toast.entryAdded"));
     }
@@ -395,20 +405,25 @@ const Changelog = () => {
                   {entry.description && (
                     <p className="text-xs text-muted-foreground mt-1">{entry.description}</p>
                   )}
-                  {entry.image_url && signedUrls[entry.image_url] && (
-                    <button
-                      type="button"
-                      onClick={() => setLightboxUrl(signedUrls[entry.image_url!])}
-                      className="mt-2 block rounded-md overflow-hidden border border-border/50 hover:opacity-90 transition-opacity"
-                    >
-                      <img
-                        src={signedUrls[entry.image_url]}
-                        alt={entry.title}
-                        className="max-h-40 object-cover"
-                        loading="lazy"
-                      />
-                    </button>
-                  )}
+                  {(() => {
+                    const imgs = (entry.image_urls && entry.image_urls.length ? entry.image_urls : (entry.image_url ? [entry.image_url] : []));
+                    if (imgs.length === 0) return null;
+                    return (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {imgs.map((p) => signedUrls[p] && (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setLightboxUrl(signedUrls[p])}
+                            className="block rounded-md overflow-hidden border border-border/50 hover:opacity-90 transition-opacity"
+                          >
+                            <img src={signedUrls[p]} alt={entry.title} className="max-h-40 object-cover" loading="lazy" />
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
                     <span>{t("changelog.createdLabel")}: {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}</span>
                     {entry.completed_at && (
@@ -516,42 +531,51 @@ const Changelog = () => {
               <Input type="date" value={formCompletedAt} onChange={(e) => setFormCompletedAt(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Bilde (valgfritt)</Label>
-              {formImageUrl && signedUrls[formImageUrl] ? (
-                <div className="relative inline-block">
-                  <img
-                    src={signedUrls[formImageUrl]}
-                    alt="Forhåndsvisning"
-                    className="max-h-40 rounded-md border border-border/50"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-1 right-1 h-6 w-6 p-0"
-                    onClick={() => setFormImageUrl(null)}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
+              <Label>Bilder (valgfritt)</Label>
+              {formImageUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formImageUrls.map((p) => (
+                    <div key={p} className="relative inline-block">
+                      {signedUrls[p] ? (
+                        <img src={signedUrls[p]} alt="Forhåndsvisning" className="max-h-40 rounded-md border border-border/50" />
+                      ) : (
+                        <div className="h-24 w-24 rounded-md border border-border/50 flex items-center justify-center">
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1 h-6 w-6 p-0"
+                        onClick={() => setFormImageUrls(prev => prev.filter(x => x !== p))}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground border border-dashed border-border rounded-md px-3 py-2 hover:bg-accent w-fit">
-                  {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                  <span>{uploadingImage ? "Laster opp..." : "Last opp bilde"}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploadingImage}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleImageUpload(f);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
               )}
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground border border-dashed border-border rounded-md px-3 py-2 hover:bg-accent w-fit">
+                {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                <span>{uploadingImage ? "Laster opp..." : (formImageUrls.length > 0 ? "Legg til flere bilder" : "Last opp bilde")}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  disabled={uploadingImage}
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    for (const f of files) {
+                      await handleImageUpload(f);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </label>
             </div>
+
           </div>
           <DialogFooter>
             <Button onClick={saveEntry} disabled={!formTitle || saving}>
