@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   Loader2, Plus, Pencil, Trash2, Wrench, CheckCircle2,
   Clock, FlaskConical, Circle, Settings2, Save, ArrowUpDown,
-  ArrowUp, ArrowDown, Minus, Search
+  ArrowUp, ArrowDown, Minus, Search, ImagePlus, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +46,7 @@ interface ChangelogEntry {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  image_url: string | null;
 }
 
 interface Maintenance {
@@ -99,6 +100,10 @@ const Changelog = () => {
   const [formEntryStatus, setFormEntryStatus] = useState("ikke_startet");
   const [formCompletedAt, setFormCompletedAt] = useState("");
   const [formPriority, setFormPriority] = useState("medium");
+  const [formImageUrl, setFormImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const fetchAll = async () => {
@@ -114,6 +119,43 @@ const Changelog = () => {
   };
 
   useEffect(() => { fetchAll(); }, []);
+
+  // Resolve signed URLs for entry images (private bucket)
+  useEffect(() => {
+    const paths = entries.map(e => e.image_url).filter((p): p is string => !!p && !signedUrls[p]);
+    if (paths.length === 0) return;
+    (async () => {
+      const { data } = await supabase.storage
+        .from("changelog-images")
+        .createSignedUrls(paths, 3600);
+      if (data) {
+        setSignedUrls(prev => {
+          const next = { ...prev };
+          data.forEach((d, i) => { if (d.signedUrl) next[paths[i]] = d.signedUrl; });
+          return next;
+        });
+      }
+    })();
+  }, [entries]);
+
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) { toast.error("Kun bildefiler er tillatt"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Maks 5 MB"); return; }
+    setUploadingImage(true);
+    const ext = file.name.split(".").pop() || "png";
+    const path = `entries/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("changelog-images").upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type,
+    });
+    setUploadingImage(false);
+    if (error) { toast.error("Kunne ikke laste opp bilde"); return; }
+    setFormImageUrl(path);
+    const { data } = await supabase.storage.from("changelog-images").createSignedUrl(path, 3600);
+    if (data?.signedUrl) setSignedUrls(prev => ({ ...prev, [path]: data.signedUrl }));
+  };
+
 
   // Maintenance toggle
   const toggleMaintenance = async () => {
@@ -171,6 +213,7 @@ const Changelog = () => {
     setFormEntryStatus(entry?.status || "ikke_startet");
     setFormPriority(entry?.priority || "medium");
     setFormCompletedAt(entry?.completed_at ? entry.completed_at.slice(0, 10) : "");
+    setFormImageUrl(entry?.image_url || null);
     setEntryDialog({ open: true, entry });
   };
 
@@ -179,13 +222,13 @@ const Changelog = () => {
     const completedAt = formCompletedAt ? new Date(formCompletedAt).toISOString() : null;
     if (entryDialog.entry) {
       const { error } = await supabase.from("changelog_entries")
-        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, updated_at: new Date().toISOString() })
+        .update({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_url: formImageUrl, updated_at: new Date().toISOString() })
         .eq("id", entryDialog.entry.id);
       if (error) toast.error(t("changelog.toast.saveError"));
       else toast.success(t("changelog.toast.entryUpdated"));
     } else {
       const { error } = await supabase.from("changelog_entries")
-        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt });
+        .insert({ title: formTitle, description: formEntryDesc || null, status: formEntryStatus, priority: formPriority, completed_at: completedAt, image_url: formImageUrl });
       if (error) toast.error(t("changelog.toast.createError"));
       else toast.success(t("changelog.toast.entryAdded"));
     }
@@ -352,6 +395,20 @@ const Changelog = () => {
                   {entry.description && (
                     <p className="text-xs text-muted-foreground mt-1">{entry.description}</p>
                   )}
+                  {entry.image_url && signedUrls[entry.image_url] && (
+                    <button
+                      type="button"
+                      onClick={() => setLightboxUrl(signedUrls[entry.image_url!])}
+                      className="mt-2 block rounded-md overflow-hidden border border-border/50 hover:opacity-90 transition-opacity"
+                    >
+                      <img
+                        src={signedUrls[entry.image_url]}
+                        alt={entry.title}
+                        className="max-h-40 object-cover"
+                        loading="lazy"
+                      />
+                    </button>
+                  )}
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
                     <span>{t("changelog.createdLabel")}: {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}</span>
                     {entry.completed_at && (
@@ -458,6 +515,43 @@ const Changelog = () => {
               <Label>{t("changelog.dialog.completedDateOptional")}</Label>
               <Input type="date" value={formCompletedAt} onChange={(e) => setFormCompletedAt(e.target.value)} />
             </div>
+            <div className="space-y-2">
+              <Label>Bilde (valgfritt)</Label>
+              {formImageUrl && signedUrls[formImageUrl] ? (
+                <div className="relative inline-block">
+                  <img
+                    src={signedUrls[formImageUrl]}
+                    alt="Forhåndsvisning"
+                    className="max-h-40 rounded-md border border-border/50"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-1 right-1 h-6 w-6 p-0"
+                    onClick={() => setFormImageUrl(null)}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground border border-dashed border-border rounded-md px-3 py-2 hover:bg-accent w-fit">
+                  {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                  <span>{uploadingImage ? "Laster opp..." : "Last opp bilde"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingImage}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleImageUpload(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={saveEntry} disabled={!formTitle || saving}>
@@ -481,6 +575,15 @@ const Changelog = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Image Lightbox */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(o) => !o && setLightboxUrl(null)}>
+        <DialogContent className="max-w-4xl p-2">
+          {lightboxUrl && (
+            <img src={lightboxUrl} alt="" className="w-full h-auto rounded-md" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
