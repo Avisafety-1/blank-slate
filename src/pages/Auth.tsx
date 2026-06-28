@@ -405,31 +405,33 @@ const Auth = () => {
         // før vi sender. Turnstile-tokener er engangstokener.
         await ensureFreshCaptcha();
         // Vent på captcha hvis den ikke er klar ennå (maks 4s).
-        const needsWait =
-          (captchaStatusRef.current as string) === "loading" ||
-          (captchaStatusRef.current as string) === "expired";
-        if (needsWait && !captchaTokenRef.current) {
-          setWaitingForCaptcha(true);
-          const start = Date.now();
-          while (
-            Date.now() - start < 4000 &&
-            !captchaTokenRef.current &&
-            (captchaStatusRef.current as string) !== "ready" &&
-            (captchaStatusRef.current as string) !== "skipped" &&
-            (captchaStatusRef.current as string) !== "error"
-          ) {
-            await new Promise((r) => setTimeout(r, 100));
-          }
-          setWaitingForCaptcha(false);
-          if (
-            !captchaTokenRef.current &&
-            (captchaStatusRef.current as string) !== "skipped" &&
-            (captchaStatusRef.current as string) !== "error"
-          ) {
-            setShowCaptchaFallback(true);
-            toast.error("Bekreft at du ikke er en robot og prøv igjen");
-            setLoading(false);
-            return;
+        if (CAPTCHA_ENABLED) {
+          const needsWait =
+            (captchaStatusRef.current as string) === "loading" ||
+            (captchaStatusRef.current as string) === "expired";
+          if (needsWait && !captchaTokenRef.current) {
+            setWaitingForCaptcha(true);
+            const start = Date.now();
+            while (
+              Date.now() - start < 4000 &&
+              !captchaTokenRef.current &&
+              (captchaStatusRef.current as string) !== "ready" &&
+              (captchaStatusRef.current as string) !== "skipped" &&
+              (captchaStatusRef.current as string) !== "error"
+            ) {
+              await new Promise((r) => setTimeout(r, 100));
+            }
+            setWaitingForCaptcha(false);
+            if (
+              !captchaTokenRef.current &&
+              (captchaStatusRef.current as string) !== "skipped" &&
+              (captchaStatusRef.current as string) !== "error"
+            ) {
+              setShowCaptchaFallback(true);
+              toast.error("Bekreft at du ikke er en robot og prøv igjen");
+              setLoading(false);
+              return;
+            }
           }
         }
         const tokenToSend = captchaTokenRef.current;
