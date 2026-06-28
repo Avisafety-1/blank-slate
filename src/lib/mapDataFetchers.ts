@@ -8,6 +8,8 @@ import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
 import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
+import { enrichNatureArea, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
+import { escapePopupHtml } from "@/lib/zonePopups";
 
 // ---- Avinor RPAS 5km dedupe ----
 // Modul-lokal cache av sentroider for de ~50 Avinor-flyplassene som tegnes
