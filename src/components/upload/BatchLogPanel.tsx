@@ -108,13 +108,17 @@ export const BatchLogPanel = ({
           droneId: log.matched_drone_id || "",
           equipmentIds: eq,
           missionId: "",
+          missionUserOverride: false,
+          autoMatchedMissionId: null,
           operationType: "VLOS",
           missions: [],
+          missionsLoaded: false,
           status: "idle",
         };
       });
     });
   }, [pendingLogs, defaultPilotId]);
+
 
   // Parse missing logs + fetch same-day missions
   useEffect(() => {
