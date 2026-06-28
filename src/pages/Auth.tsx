@@ -434,7 +434,7 @@ const Auth = () => {
             }
           }
         }
-        const tokenToSend = captchaTokenRef.current;
+        const tokenToSend = CAPTCHA_ENABLED ? captchaTokenRef.current : null;
         if (tokenToSend) usedCaptchaRef.current = true;
         const {
           data,
