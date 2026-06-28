@@ -51,7 +51,7 @@ export interface PendingDjiLogsSectionRef {
 
 const PAGE_SIZE = 200;
 
-export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog, expanded }, ref) => {
+export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog, expanded, selectedIds, onToggleSelect }, ref) => {
   const { companyId, user } = useAuth();
   const { hasAddon } = usePlanGating();
   const [logs, setLogs] = useState<PendingDjiLog[]>([]);
