@@ -492,49 +492,51 @@ export const BatchLogPanel = ({
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-0.5">
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Pilot</label>
-                      <Select value={row.pilotId} onValueChange={(v) => updateRow(row.pendingLogId, { pilotId: v })}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Velg pilot" /></SelectTrigger>
-                        <SelectContent>
-                          {personnel.map(p => (
-                            <SelectItem key={p.id} value={p.id} className="text-xs">{p.full_name || p.email}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ComboPicker
+                        value={row.pilotId}
+                        placeholder="Velg pilot"
+                        searchPlaceholder="Søk pilot…"
+                        options={personnel.map(p => ({
+                          id: p.id,
+                          label: p.full_name || p.email || "Ukjent",
+                          search: `${p.full_name || ""} ${p.email || ""}`,
+                        }))}
+                        onChange={(v) => updateRow(row.pendingLogId, { pilotId: v })}
+                      />
                     </div>
                     <div className="space-y-0.5">
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Drone</label>
-                      <Select value={row.droneId} onValueChange={(v) => updateRow(row.pendingLogId, { droneId: v })}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Velg drone" /></SelectTrigger>
-                        <SelectContent>
-                          {drones.map(d => (
-                            <SelectItem key={d.id} value={d.id} className="text-xs">
-                              {d.modell} {d.serienummer ? `(${d.serienummer})` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <ComboPicker
+                        value={row.droneId}
+                        placeholder="Velg drone"
+                        searchPlaceholder="Søk drone…"
+                        options={drones.map(d => ({
+                          id: d.id,
+                          label: `${d.modell}${d.serienummer ? ` (${d.serienummer})` : ""}`,
+                          search: `${d.modell} ${d.serienummer || ""} ${d.internal_serial || ""}`,
+                        }))}
+                        onChange={(v) => updateRow(row.pendingLogId, { droneId: v })}
+                      />
                     </div>
                     <div className="space-y-0.5 col-span-2">
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Utstyr / batteri</label>
-                      <Select
+                      <ComboPicker
                         value=""
-                        onValueChange={(v) => {
+                        placeholder="Legg til utstyr"
+                        searchPlaceholder="Søk utstyr…"
+                        options={equipmentList
+                          .filter(e => !row.equipmentIds.includes(e.id))
+                          .map(e => ({
+                            id: e.id,
+                            label: `${e.navn}${e.serienummer ? ` (${e.serienummer})` : ""}`,
+                            search: `${e.navn} ${e.serienummer || ""} ${e.internal_serial || ""} ${e.type}`,
+                          }))}
+                        onChange={(v) => {
                           if (v && !row.equipmentIds.includes(v)) {
                             updateRow(row.pendingLogId, { equipmentIds: [...row.equipmentIds, v] });
                           }
                         }}
-                      >
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Legg til utstyr" /></SelectTrigger>
-                        <SelectContent>
-                          {equipmentList
-                            .filter(e => !row.equipmentIds.includes(e.id))
-                            .map(e => (
-                              <SelectItem key={e.id} value={e.id} className="text-xs">
-                                {e.navn} {e.serienummer ? `(${e.serienummer})` : ""}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                      />
                       {row.equipmentIds.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-1">
                           {row.equipmentIds.map(eqId => {
