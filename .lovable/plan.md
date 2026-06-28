@@ -1,38 +1,33 @@
-## Mål
-Gjøre «Søk dispensasjon»-lenken i naturvern-popup mer presis basert på `forvaltningsmyndighet` og `forvaltningsmyndighetType` som allerede ligger i `naturvern_zones.properties`.
+## Problem
+Lenken `/tl/miljo-og-klima/verneomrader/dispensasjoner/` finnes ikke. To feil:
+1. Slugen `tl` er feil — Statsforvalteren i Trøndelag bruker `trondelag`. Mappingen min brukte korte koder som ikke gjelder for nettsiden.
+2. Stien `/dispensasjoner/` finnes ikke som standard underside. Hver Statsforvalter har egen URL-struktur for søknadsskjemaer.
 
-## Ingen databaseendringer
-Alt i forrige runde var frontend. Også denne endringen blir kun frontend — `forvaltningsmyndighet` og `forvaltningsmyndighetType` ligger allerede i JSONB-en.
+## Faktisk søknadsprosess
+Etter undersøkelse av Statsforvalteren-sidene:
+- Det finnes **ingen nasjonalt felles elektronisk dispensasjonsskjema** for verneområder.
+- Søknad sendes via **Sikker melding** (`https://www.statsforvalteren.no/melding`), e-post eller brevpost til riktig embete.
+- Hvert embete har en **verneområde-side** (`/<slug>/miljo-og-klima/verneomrader/`) med kontaktinfo og praktisk veiledning. Noen (Nordland, Troms og Finnmark) har egne droneunderssider.
+- For nasjonalpark-/verneområdestyrer går søknad via styrets nettside på `nasjonalparkstyre.no/<Områdenavn>/soknader/droner` eller hovedside.
 
-## Strategi for presis lenke
+## Endring (kun frontend, én fil: `src/lib/natureProtectionRules.ts`)
 
-I `src/lib/natureProtectionRules.ts`, utvid `enrichNatureArea` til å returnere en mer spesifikk `dispensationUrl` ut fra `forvaltningsmyndighetType`:
+1. **Rett opp STATSFORVALTER_SLUGS** til faktiske URL-slugger:
+   - `oslo-og-viken`, `innlandet`, `vestfold-og-telemark`, `agder`, `rogaland`, `vestland`, `more-og-romsdal`, `trondelag`, `nordland`, `troms-finnmark`, `ostfold-buskerud-oslo-og-akershus`.
 
-1. **Statsforvalter** → map navnet til fylkes-slug på `statsforvalteren.no/<slug>/miljo-og-klima/verneomrader/dispensasjon-fra-vernebestemmelser/`. Eksempler:
-   - "Statsforvalteren i Rogaland" → `rogaland`
-   - "Statsforvalteren i Nordland" → `nordland`
-   - "Statsforvalteren i Østfold, Buskerud, Oslo og Akershus" → `ostfold-buskerud-oslo-og-akershus`
-   - "Statsforvalteren i Troms og Finnmark" → `troms-finnmark` osv.
-   Vi vedlikeholder en hardkodet mapping for alle 10 embeter (kort, statisk liste).
+2. **Endre dispensasjonssti** til `/<slug>/miljo-og-klima/verneomrader/` (stabil side med kontaktinfo og veiledning, ikke en spesifikk dispensasjonsside som kan flyttes).
 
-2. **Verneomraadestyre / Nasjonalparkstyre** → bygg slug fra navnet og pek til `nasjonalparkstyre.no/<slug>/` (forvaltningsmyndigheten har egen styreside der). Eksempel: "Verneområdestyret for Skardsfjella og Hyllingsdalen" → `skardsfjella-og-hyllingsdalen`. Vi normaliserer (lowercase, fjern "Verneområdestyret for"/"Nasjonalparkstyret for", erstatt æøå, mellomrom → bindestrek). Hvis slug ikke kan utledes trygt, fall tilbake til søk: `https://www.nasjonalparkstyre.no/sok/?q=<navn>`.
+3. **Legg til Sikker melding-lenke** som tilleggsknapp i popup (`https://www.statsforvalteren.no/melding`) når myndighet er Statsforvalter — det er der man faktisk sender søknaden.
 
-3. **Kommune** → `https://www.<kommune>.kommune.no/` er upålitelig. I stedet pek til Miljødirektoratets innsynsside for vernet natur + en søkelenke. Konkret: lenk til `https://faktaark.naturbase.no/?id=<naturvernId>` (Faktaark har kontaktinfo for forvalter) og vis teksten «Kontakt {kommunenavn} kommune» — knappen bruker Naturbase-faktaark som primær lenke når forvaltningsmyndighet er kommune.
+4. **Forbedre verneområdestyre-strategi**: lenk til hovedsiden `nasjonalparkstyre.no` med søkeparameter når slug ikke kan utledes trygt, ellers behold slug-bygging. Vi prøver ikke å gjette `/soknader/droner`-stien siden capitalization varierer.
 
-4. **Sysselmesteren (Svalbard)** → `https://www.sysselmesteren.no/miljovern/verneomrader/`.
+5. **Endre knappetekst** fra «Søk dispensasjon hos X» til «Veiledning hos X» når lenken peker til veilednings-/oversiktsside, og behold «Søk dispensasjon» kun når URL faktisk er et søknadsskjema. Sikker melding-knappen får tekst «Send søknad via sikker melding».
 
-5. **Ukjent/manglende** → fall tilbake til dagens generiske `https://www.statsforvalteren.no/`.
-
-## Implementasjon
-
-Kun én fil endres: `src/lib/natureProtectionRules.ts`.
-
-- Legg til konstant `STATSFORVALTER_SLUGS: Record<string,string>` med de 10 embetene.
-- Legg til hjelper `slugifyNorwegian(name)` (æ→a, ø→o, å→a, lowercase, ikke-alfanumerisk → `-`).
-- Utvid `enrichNatureArea` slik at `dispensationUrl` og `dispensationLabel` settes ut fra `forvaltningsmyndighetType` + `forvaltningsmyndighet`.
-- `mapDataFetchers.ts` trenger ingen endring siden den allerede bruker `dispensationUrl`/`dispensationLabel` fra enrich-resultatet (knappetekst kan bli f.eks. «Søk dispensasjon hos Statsforvalteren i Rogaland»).
+## Påvirkede filer
+- `src/lib/natureProtectionRules.ts` — slug-mapping, ny `sikkerMeldingUrl` på enrichment-objektet.
+- `src/lib/mapDataFetchers.ts` — legg til ekstra knapp for Sikker melding når feltet er satt.
 
 ## Verifisering
-- Klikk på et naturreservat under Statsforvalteren i Rogaland → lenke peker til rogaland-siden.
-- Klikk på et område under et verneområdestyre → lenke peker til riktig styreside på nasjonalparkstyre.no.
-- Klikk på et kommunalt forvaltet område → lenke åpner Naturbase-faktaark.
+- Gaulosen marint verneområde (forvaltet av Statsforvalteren i Trøndelag) skal nå gi `https://www.statsforvalteren.no/trondelag/miljo-og-klima/verneomrader/` + Sikker melding-knapp.
+- Område forvaltet av Statsforvalteren i Rogaland gir `/rogaland/miljo-og-klima/verneomrader/`.
+- Kommunalt forvaltet område: åpner Naturbase-faktaark (uendret).

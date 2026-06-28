@@ -184,36 +184,40 @@ export interface NatureAreaEnrichment {
   iucn: string | null;
   kommune: string | null;
   verneplan: string | null;
-  /** URL til søknad om dispensasjon — bygges fra myndighet hvis kjent. */
+  /** URL til veiledning/søknad om dispensasjon hos forvaltningsmyndighet. */
   dispensasjonUrl: string | null;
-  /** Knappetekst tilpasset myndigheten (f.eks. «Søk dispensasjon hos Statsforvalteren i Rogaland»). */
+  /** Knappetekst tilpasset myndigheten (f.eks. «Veiledning hos Statsforvalteren i Trøndelag»). */
   dispensasjonLabel: string;
-  /** Generisk telefon/e-post utledet fra myndighet (kun for nasjonalparkstyre/sysselmester). */
+  /** Sikker melding-lenke for å faktisk sende søknad (kun for Statsforvalter). */
+  sikkerMeldingUrl: string | null;
   kontaktTlf: string | null;
   kontaktEpost: string | null;
 }
 
 /**
- * Slug-mapping for de 10 statsforvalterembetene.
- * Brukes til å bygge presis lenke til miljø- og klimaseksjonen hos riktig embete.
+ * Faktiske URL-slugger til statsforvalterembetene på statsforvalteren.no.
+ * Verifisert ved oppslag på live-sidene desember 2024 / juni 2026.
  */
 const STATSFORVALTER_SLUGS: Record<string, string> = {
-  'statsforvalteren i oslo og viken': 'ov',
-  'statsforvalteren i østfold, buskerud, oslo og akershus': 'ostfoldbuskerudosloogakershus',
-  'statsforvalteren i innlandet': 'in',
-  'statsforvalteren i vestfold og telemark': 'vt',
-  'statsforvalteren i agder': 'ag',
-  'statsforvalteren i rogaland': 'ro',
-  'statsforvalteren i vestland': 'vl',
-  'statsforvalteren i møre og romsdal': 'mr',
-  'statsforvalteren i trøndelag': 'tl',
-  'statsforvalteren i nordland': 'no',
-  'statsforvalteren i troms og finnmark': 'tf',
-  'statsforvalteren i troms': 'tf',
-  'statsforvalteren i finnmark': 'tf',
+  'statsforvalteren i oslo og viken': 'oslo-og-viken',
+  'statsforvalteren i østfold, buskerud, oslo og akershus': 'ostfold-buskerud-oslo-og-akershus',
+  'statsforvalteren i innlandet': 'innlandet',
+  'statsforvalteren i vestfold og telemark': 'vestfold-og-telemark',
+  'statsforvalteren i agder': 'agder',
+  'statsforvalteren i rogaland': 'rogaland',
+  'statsforvalteren i vestland': 'vestland',
+  'statsforvalteren i møre og romsdal': 'more-og-romsdal',
+  'statsforvalteren i trøndelag': 'trondelag',
+  'statsforvalteren i nordland': 'nordland',
+  'statsforvalteren i troms og finnmark': 'troms-finnmark',
+  'statsforvalteren i troms': 'troms-finnmark',
+  'statsforvalteren i finnmark': 'troms-finnmark',
 };
 
-const STATSFORVALTER_DISP_PATH = '/miljo-og-klima/verneomrader/dispensasjoner/';
+/** Stabil verneområde-side hos hvert embete — inneholder kontaktinfo og veiledning. */
+const STATSFORVALTER_VERNE_PATH = '/miljo-og-klima/verneomrader/';
+/** Felles Sikker melding-portal for innsending av søknader. */
+const STATSFORVALTER_SIKKER_MELDING = 'https://www.statsforvalteren.no/melding';
 const NASJONALPARKSTYRE_BASE = 'https://www.nasjonalparkstyre.no/';
 const SYSSELMESTER_URL = 'https://www.sysselmesteren.no/miljovern/verneomrader/';
 const STATSFORVALTER_FALLBACK = 'https://www.statsforvalteren.no/';
@@ -228,15 +232,14 @@ function slugifyNorwegian(name: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-function statsforvalterUrl(forvaltningsmyndighet: string): string {
+function statsforvalterVerneUrl(forvaltningsmyndighet: string): string {
   const key = forvaltningsmyndighet.trim().toLowerCase();
   const slug = STATSFORVALTER_SLUGS[key];
   if (!slug) return STATSFORVALTER_FALLBACK;
-  return `https://www.statsforvalteren.no/${slug}${STATSFORVALTER_DISP_PATH}`;
+  return `https://www.statsforvalteren.no/${slug}${STATSFORVALTER_VERNE_PATH}`;
 }
 
 function nasjonalparkstyreUrl(forvaltningsmyndighet: string): string {
-  // Strip vanlige prefikser før vi slugifiserer
   const cleaned = forvaltningsmyndighet
     .replace(/^verneområdestyret?\s+for\s+/i, '')
     .replace(/^nasjonalparkstyret?\s+for\s+/i, '')
@@ -258,16 +261,22 @@ function formatVernedato(value: unknown): string | null {
   return d.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+interface DispensasjonResult {
+  url: string | null;
+  label: string;
+  sikkerMeldingUrl: string | null;
+}
+
 function resolveDispensasjon(
   forvaltningsmyndighet: string | null,
   type: string | null,
   faktaarkUrl: string | null,
-): { url: string | null; label: string } {
+): DispensasjonResult {
   const t = (type || '').toLowerCase();
   const m = (forvaltningsmyndighet || '').toLowerCase();
 
   if (t.includes('sysselmester') || m.includes('sysselmester')) {
-    return { url: SYSSELMESTER_URL, label: 'Søk dispensasjon hos Sysselmesteren' };
+    return { url: SYSSELMESTER_URL, label: 'Veiledning hos Sysselmesteren', sikkerMeldingUrl: null };
   }
   if (
     t.includes('verneomraadestyre') ||
@@ -277,23 +286,25 @@ function resolveDispensasjon(
   ) {
     return {
       url: forvaltningsmyndighet ? nasjonalparkstyreUrl(forvaltningsmyndighet) : NASJONALPARKSTYRE_BASE,
-      label: forvaltningsmyndighet ? `Søk dispensasjon hos ${forvaltningsmyndighet}` : 'Søk dispensasjon hos verneområdestyret',
+      label: forvaltningsmyndighet ? `Veiledning hos ${forvaltningsmyndighet}` : 'Veiledning hos verneområdestyret',
+      sikkerMeldingUrl: null,
     };
   }
   if (t.includes('statsforvalter') || m.includes('statsforvalteren')) {
     return {
-      url: forvaltningsmyndighet ? statsforvalterUrl(forvaltningsmyndighet) : STATSFORVALTER_FALLBACK,
-      label: forvaltningsmyndighet ? `Søk dispensasjon hos ${forvaltningsmyndighet}` : 'Søk dispensasjon hos Statsforvalteren',
+      url: forvaltningsmyndighet ? statsforvalterVerneUrl(forvaltningsmyndighet) : STATSFORVALTER_FALLBACK,
+      label: forvaltningsmyndighet ? `Veiledning hos ${forvaltningsmyndighet}` : 'Veiledning hos Statsforvalteren',
+      sikkerMeldingUrl: STATSFORVALTER_SIKKER_MELDING,
     };
   }
   if (t.includes('kommune') || m.includes(' kommune')) {
-    // Kommunenes nettsider er upålitelige å utlede — pek heller til Naturbase-faktaark som har kontaktinfo.
     return {
       url: faktaarkUrl,
       label: forvaltningsmyndighet ? `Kontakt ${forvaltningsmyndighet}` : 'Kontakt forvaltningsmyndighet',
+      sikkerMeldingUrl: null,
     };
   }
-  return { url: STATSFORVALTER_FALLBACK, label: 'Søk dispensasjon' };
+  return { url: STATSFORVALTER_FALLBACK, label: 'Veiledning hos Statsforvalteren', sikkerMeldingUrl: null };
 }
 
 export function enrichNatureArea(properties: Record<string, any> | null | undefined): NatureAreaEnrichment {
@@ -317,8 +328,10 @@ export function enrichNatureArea(properties: Record<string, any> | null | undefi
     verneplan: p.verneplan || null,
     dispensasjonUrl: disp.url,
     dispensasjonLabel: disp.label,
+    sikkerMeldingUrl: disp.sikkerMeldingUrl,
     kontaktTlf: null,
     kontaktEpost: null,
   };
 }
+
 
