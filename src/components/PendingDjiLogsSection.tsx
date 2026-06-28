@@ -198,7 +198,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
           return (
             <div
               key={log.id}
-              className={`w-full flex items-center gap-2 p-2.5 rounded-lg border transition-all ${
+              className={`group w-full flex items-center gap-2 p-2.5 rounded-lg border transition-all ${
                 isRateLimited
                   ? "border-yellow-500/40 bg-yellow-500/5 opacity-70"
                   : isSelected
