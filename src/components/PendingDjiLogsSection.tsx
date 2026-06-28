@@ -62,6 +62,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [onlyMine, setOnlyMine] = useState(true);
   const djiEnabled = hasAddon('dji');
+  const isMobile = useIsMobile();
 
   useImperativeHandle(ref, () => ({
     refresh: () => { if (companyId) fetchPendingLogs(0, true); },
@@ -209,7 +210,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
                       : "border-border hover:border-primary/50 hover:bg-muted/30"
               }`}
             >
-              {onToggleSelect && !isArdu && !hasError && (
+              {onToggleSelect && !isArdu && !hasError && !isMobile && (
                 <Checkbox
                   checked={isSelected}
                   onCheckedChange={() => onToggleSelect(log)}
