@@ -1,7 +1,9 @@
 import L from "leaflet";
 import { supabase } from "@/integrations/supabase/client";
 import { bufferPolyline } from "@/lib/soraGeometry";
+import { buildNatureZonePopupHtml } from "@/lib/natureProtectionRules";
 import type { RoutePoint } from "@/types/map";
+
 
 /**
  * Auto-vis kartlag-features langs den tegnede ruten.
