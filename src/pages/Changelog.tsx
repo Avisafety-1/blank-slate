@@ -531,42 +531,51 @@ const Changelog = () => {
               <Input type="date" value={formCompletedAt} onChange={(e) => setFormCompletedAt(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Bilde (valgfritt)</Label>
-              {formImageUrl && signedUrls[formImageUrl] ? (
-                <div className="relative inline-block">
-                  <img
-                    src={signedUrls[formImageUrl]}
-                    alt="Forhåndsvisning"
-                    className="max-h-40 rounded-md border border-border/50"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-1 right-1 h-6 w-6 p-0"
-                    onClick={() => setFormImageUrl(null)}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
+              <Label>Bilder (valgfritt)</Label>
+              {formImageUrls.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formImageUrls.map((p) => (
+                    <div key={p} className="relative inline-block">
+                      {signedUrls[p] ? (
+                        <img src={signedUrls[p]} alt="Forhåndsvisning" className="max-h-40 rounded-md border border-border/50" />
+                      ) : (
+                        <div className="h-24 w-24 rounded-md border border-border/50 flex items-center justify-center">
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1 h-6 w-6 p-0"
+                        onClick={() => setFormImageUrls(prev => prev.filter(x => x !== p))}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground border border-dashed border-border rounded-md px-3 py-2 hover:bg-accent w-fit">
-                  {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                  <span>{uploadingImage ? "Laster opp..." : "Last opp bilde"}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploadingImage}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleImageUpload(f);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
               )}
+              <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground border border-dashed border-border rounded-md px-3 py-2 hover:bg-accent w-fit">
+                {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                <span>{uploadingImage ? "Laster opp..." : (formImageUrls.length > 0 ? "Legg til flere bilder" : "Last opp bilde")}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  disabled={uploadingImage}
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    for (const f of files) {
+                      await handleImageUpload(f);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </label>
             </div>
+
           </div>
           <DialogFooter>
             <Button onClick={saveEntry} disabled={!formTitle || saving}>
