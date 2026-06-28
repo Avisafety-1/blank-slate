@@ -302,9 +302,12 @@ async function loadNvePowerLines(
 function renderNaturvern(layer: L.LayerGroup, zones: any[]) {
   for (const zone of zones) {
     const color = NATURVERN_COLORS[zone.verneform || ""] || "#16a34a";
-    const popup = `<div style="min-width:180px;"><strong>🌿 Naturvernområde</strong><br/><strong>${escapeHtml(
-      zone.name || "Ukjent",
-    )}</strong>${zone.verneform ? `<br/>Verneform: ${escapeHtml(zone.verneform)}` : ""}${AUTO_BADGE}</div>`;
+    const popup = buildNatureZonePopupHtml({
+      name: zone.name,
+      verneform: zone.verneform,
+      properties: zone.properties,
+      extraFooterHtml: AUTO_BADGE,
+    });
     try {
       L.geoJSON(
         { type: "Feature", geometry: zone.geometry, properties: {} } as any,
@@ -314,13 +317,14 @@ function renderNaturvern(layer: L.LayerGroup, zones: any[]) {
           style: { color, weight: 2, fillColor: color, fillOpacity: 0.2 },
         },
       )
-        .bindPopup(popup)
+        .bindPopup(popup, { maxWidth: 320, autoPan: true })
         .addTo(layer);
     } catch {
       /* skip broken geometry */
     }
   }
 }
+
 
 function renderVernRestrictions(layer: L.LayerGroup, zones: any[]) {
   for (const zone of zones) {
