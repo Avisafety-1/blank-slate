@@ -447,4 +447,82 @@ export function enrichNatureArea(properties: Record<string, any> | null | undefi
   };
 }
 
+// ============ Delt popup-bygger ============
+
+const VERNEFORM_BADGE_COLORS: Record<string, string> = {
+  Nasjonalpark: '#15803d',
+  Naturreservat: '#166534',
+  Landskapsvernområde: '#4ade80',
+  Biotopvernområde: '#22c55e',
+  'Marint verneområde': '#0ea5e9',
+  Dyrefredningsområde: '#a3e635',
+  Plantefredningsområde: '#84cc16',
+};
+
+const escNatureHtml = (s: unknown) =>
+  String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+export interface NatureZonePopupInput {
+  name?: string | null;
+  verneform?: string | null;
+  /** Naturbase `properties`-JSONB (input til enrichNatureArea). */
+  properties?: Record<string, any> | null;
+  /** Ekstra HTML som legges nederst i popupen (f.eks. "Auto-vist langs ruten"-merke). */
+  extraFooterHtml?: string;
+}
+
+/**
+ * Bygger den fulle naturvern-popupen (statusbadge, droneråd, metadata,
+ * faktaark/dispensasjon-knapper). Brukes både fra hovedkartets verneområde-lag
+ * og fra ruteplanleggerens auto-vis-lag, slik at faktaboksen er identisk.
+ */
+export function buildNatureZonePopupHtml(input: NatureZonePopupInput): string {
+  const { name, verneform, properties, extraFooterHtml } = input;
+  const rule = getVerneformRule(verneform);
+  const enrich = enrichNatureArea(properties);
+  const status = getStatusPresentation(rule.status);
+  const badgeColor = VERNEFORM_BADGE_COLORS[verneform || ''] || rule.color || '#16a34a';
+  const esc = escNatureHtml;
+
+  let popup = `<div style="max-width:300px;font-size:12px;line-height:1.45">`;
+  popup += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">`;
+  popup += `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${badgeColor}"></span>`;
+  popup += `<span style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.03em">${esc(rule.label)}</span>`;
+  popup += `</div>`;
+  popup += `<div style="font-weight:600;font-size:13px;margin-bottom:6px">${esc(name || 'Ukjent')}</div>`;
+
+  popup += `<div style="background:${status.bg};border-left:3px solid ${status.border};padding:7px 9px;border-radius:3px;margin-bottom:6px">`;
+  popup += `<div style="font-weight:700;color:${status.color};margin-bottom:3px;font-size:12px">${status.icon} ${esc(status.label)}</div>`;
+  popup += `<div style="color:#1f2937;margin-bottom:4px">${esc(rule.pilotAdvice)}</div>`;
+  popup += `<div style="color:#475569;font-size:11px;border-top:1px solid ${status.border}33;padding-top:4px;margin-top:4px">📄 Åpne faktaarket for verneforskriftens fulle ordlyd</div>`;
+  popup += `<div style="color:#64748b;font-size:10px;margin-top:3px">Hjemmel: ${esc(rule.legalBasis)}</div>`;
+  popup += `</div>`;
+
+  const metaRows: string[] = [];
+  if (enrich.forvaltningsmyndighet) metaRows.push(`<div><strong>Forvaltning:</strong> ${esc(enrich.forvaltningsmyndighet)}</div>`);
+  if (enrich.kommune) metaRows.push(`<div><strong>Kommune:</strong> ${esc(enrich.kommune)}</div>`);
+  if (enrich.vernedatoFormatted) metaRows.push(`<div><strong>Vernet:</strong> ${esc(enrich.vernedatoFormatted)}</div>`);
+  if (enrich.iucn) metaRows.push(`<div><strong>IUCN:</strong> ${esc(enrich.iucn)}</div>`);
+  if (metaRows.length) popup += `<div style="margin-bottom:6px;color:#334155">${metaRows.join('')}</div>`;
+
+  const linkStyle = 'display:inline-block;padding:5px 9px;margin:2px 4px 2px 0;background:#0f172a;color:#fff;text-decoration:none;border-radius:4px;font-size:11px;font-weight:500';
+  const linkStyleAlt = 'display:inline-block;padding:5px 9px;margin:2px 4px 2px 0;background:#e2e8f0;color:#0f172a;text-decoration:none;border-radius:4px;font-size:11px;font-weight:500';
+  popup += `<div style="margin-top:6px">`;
+  if (enrich.faktaarkUrl) popup += `<a href="${esc(enrich.faktaarkUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyle}">📄 Åpne faktaark</a>`;
+  if (enrich.dispensasjonUrl) popup += `<a href="${esc(enrich.dispensasjonUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">📘 ${esc(enrich.dispensasjonLabel)}</a>`;
+  if (enrich.sikkerMeldingUrl) popup += `<a href="${esc(enrich.sikkerMeldingUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">✉️ Send søknad via sikker melding</a>`;
+  popup += `<a href="${esc(MILJODIR_DRONE_RULES_URL)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">ℹ️ Regler for droner</a>`;
+  popup += `</div>`;
+
+  if (extraFooterHtml) popup += extraFooterHtml;
+  popup += `</div>`;
+  return popup;
+}
+
+
 
