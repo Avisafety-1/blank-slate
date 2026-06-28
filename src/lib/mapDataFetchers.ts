@@ -948,16 +948,61 @@ export async function fetchNaturvernZones(params: BoundsFetchParams) {
       (z) => hashString(`nv|${z.name ?? ''}|${z.verneform ?? ''}|${JSON.stringify(z.geometry)}`),
       (zone) => {
         const color = verneformColors[zone.verneform || ''] || '#16a34a';
-        return L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: { name: zone.name, verneform: zone.verneform } } as any, {
+        return L.geoJSON({ type: 'Feature' as const, geometry: zone.geometry, properties: { name: zone.name, verneform: zone.verneform, props: zone.properties } } as any, {
           interactive: mode !== 'routePlanning',
           pane: 'overlayPane',
           style: { color, weight: 1.5, fillColor: color, fillOpacity: 0.15 },
           onEachFeature: mode !== 'routePlanning' ? (feature, lyr) => {
             const p = feature.properties || {};
-            let popup = `<strong>🌿 Naturvernområde</strong><br/>`;
-            popup += `<strong>${p.name || 'Ukjent'}</strong><br/>`;
-            if (p.verneform) popup += `Verneform: ${p.verneform}<br/>`;
-            lyr.bindPopup(popup);
+            const rule = getVerneformRule(p.verneform);
+            const enrich = enrichNatureArea(p.props);
+            const esc = (s: any) => escapePopupHtml(s);
+            const badgeColor = verneformColors[p.verneform || ''] || rule.color || '#16a34a';
+
+            let popup = `<div style="max-width:300px;font-size:12px;line-height:1.45">`;
+            popup += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">`;
+            popup += `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${badgeColor}"></span>`;
+            popup += `<span style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.03em">${esc(rule.label)}</span>`;
+            popup += `</div>`;
+            popup += `<div style="font-weight:600;font-size:13px;margin-bottom:6px">${esc(p.name || 'Ukjent')}</div>`;
+
+            popup += `<div style="background:#f1f5f9;border-left:3px solid ${badgeColor};padding:6px 8px;border-radius:3px;margin-bottom:6px">`;
+            popup += `<div style="font-weight:600;color:#0f172a;margin-bottom:2px">🚁 Droneregler</div>`;
+            popup += `<div style="color:#334155">${esc(rule.rule)}</div>`;
+            popup += `<div style="color:#64748b;font-size:11px;margin-top:4px">Hjemmel: ${esc(rule.legalBasis)}</div>`;
+            popup += `</div>`;
+
+            const metaRows: string[] = [];
+            if (enrich.forvaltningsmyndighet) {
+              metaRows.push(`<div><strong>Forvaltning:</strong> ${esc(enrich.forvaltningsmyndighet)}</div>`);
+            }
+            if (enrich.kommune) {
+              metaRows.push(`<div><strong>Kommune:</strong> ${esc(enrich.kommune)}</div>`);
+            }
+            if (enrich.vernedatoFormatted) {
+              metaRows.push(`<div><strong>Vernet:</strong> ${esc(enrich.vernedatoFormatted)}</div>`);
+            }
+            if (enrich.iucn) {
+              metaRows.push(`<div><strong>IUCN:</strong> ${esc(enrich.iucn)}</div>`);
+            }
+            if (metaRows.length) {
+              popup += `<div style="margin-bottom:6px;color:#334155">${metaRows.join('')}</div>`;
+            }
+
+            const linkStyle = 'display:inline-block;padding:5px 9px;margin:2px 4px 2px 0;background:#0f172a;color:#fff;text-decoration:none;border-radius:4px;font-size:11px;font-weight:500';
+            const linkStyleAlt = 'display:inline-block;padding:5px 9px;margin:2px 4px 2px 0;background:#e2e8f0;color:#0f172a;text-decoration:none;border-radius:4px;font-size:11px;font-weight:500';
+            popup += `<div style="margin-top:6px">`;
+            if (enrich.faktaarkUrl) {
+              popup += `<a href="${esc(enrich.faktaarkUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyle}">📄 Åpne faktaark</a>`;
+            }
+            if (enrich.dispensasjonUrl) {
+              popup += `<a href="${esc(enrich.dispensasjonUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">✉️ Søk dispensasjon</a>`;
+            }
+            popup += `<a href="${esc(MILJODIR_DRONE_RULES_URL)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">ℹ️ Regler for droner</a>`;
+            popup += `</div>`;
+            popup += `</div>`;
+
+            lyr.bindPopup(popup, { maxWidth: 320, autoPan: true });
             attachHoverPromotion(lyr, {
               paneName: 'overlayPane',
               baseStyle: { color, weight: 1.5, fillColor: color, fillOpacity: 0.15 },
