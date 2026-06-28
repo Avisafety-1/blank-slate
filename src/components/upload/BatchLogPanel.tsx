@@ -569,24 +569,23 @@ export const BatchLogPanel = ({
                       </Select>
                     </div>
                     <div className="space-y-0.5">
-                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Oppdrag {row.missions.length === 0 && <span className="normal-case">(opprettes auto.)</span>}
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        Oppdrag
+                        {row.autoMatchedMissionId && row.missionId === row.autoMatchedMissionId && !row.missionUserOverride && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
+                            <Sparkles className="w-2.5 h-2.5" /> auto-matchet
+                          </span>
+                        )}
                       </label>
-                      <Select
-                        value={row.missionId || "__new__"}
-                        onValueChange={(v) => updateRow(row.pendingLogId, { missionId: v === "__new__" ? "" : v })}
-                      >
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__new__" className="text-xs">Opprett nytt oppdrag</SelectItem>
-                          {row.missions.map(m => (
-                            <SelectItem key={m.id} value={m.id} className="text-xs">
-                              {m.tittel} ({format(new Date(m.tidspunkt), "HH:mm")})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <MissionPicker
+                        value={row.missionId}
+                        sameDayMissions={row.missions}
+                        allMissions={allMissions}
+                        autoMatchedId={row.autoMatchedMissionId}
+                        onChange={(v) => updateRow(row.pendingLogId, { missionId: v, missionUserOverride: true })}
+                      />
                     </div>
+
                   </div>
                 )}
 
