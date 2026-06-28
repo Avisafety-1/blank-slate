@@ -186,25 +186,68 @@ export interface NatureAreaEnrichment {
   verneplan: string | null;
   /** URL til søknad om dispensasjon — bygges fra myndighet hvis kjent. */
   dispensasjonUrl: string | null;
+  /** Knappetekst tilpasset myndigheten (f.eks. «Søk dispensasjon hos Statsforvalteren i Rogaland»). */
+  dispensasjonLabel: string;
   /** Generisk telefon/e-post utledet fra myndighet (kun for nasjonalparkstyre/sysselmester). */
   kontaktTlf: string | null;
   kontaktEpost: string | null;
 }
 
 /**
- * Statsforvalter-domener for søknad om dispensasjon.
- * Mappingen er konservativ og brukes som «mer info»-lenke.
+ * Slug-mapping for de 10 statsforvalterembetene.
+ * Brukes til å bygge presis lenke til miljø- og klimaseksjonen hos riktig embete.
  */
-const STATSFORVALTER_URL = 'https://www.statsforvalteren.no/';
+const STATSFORVALTER_SLUGS: Record<string, string> = {
+  'statsforvalteren i oslo og viken': 'ov',
+  'statsforvalteren i østfold, buskerud, oslo og akershus': 'ostfoldbuskerudosloogakershus',
+  'statsforvalteren i innlandet': 'in',
+  'statsforvalteren i vestfold og telemark': 'vt',
+  'statsforvalteren i agder': 'ag',
+  'statsforvalteren i rogaland': 'ro',
+  'statsforvalteren i vestland': 'vl',
+  'statsforvalteren i møre og romsdal': 'mr',
+  'statsforvalteren i trøndelag': 'tl',
+  'statsforvalteren i nordland': 'no',
+  'statsforvalteren i troms og finnmark': 'tf',
+  'statsforvalteren i troms': 'tf',
+  'statsforvalteren i finnmark': 'tf',
+};
 
-/**
- * Nasjonalparkstyre / verneområdestyre har sine forvaltningsplaner publisert
- * på nasjonalparkstyre.no. Vi lenker til hovedsiden — bruker finner sitt
- * styre derfra. Mer presis mapping kan legges til senere.
- */
-const NASJONALPARKSTYRE_URL = 'https://www.nasjonalparkstyre.no/';
+const STATSFORVALTER_DISP_PATH = '/miljo-og-klima/verneomrader/dispensasjoner/';
+const NASJONALPARKSTYRE_BASE = 'https://www.nasjonalparkstyre.no/';
+const SYSSELMESTER_URL = 'https://www.sysselmesteren.no/miljovern/verneomrader/';
+const STATSFORVALTER_FALLBACK = 'https://www.statsforvalteren.no/';
 
-const SYSSELMESTER_URL = 'https://www.sysselmesteren.no/';
+function slugifyNorwegian(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/æ/g, 'a')
+    .replace(/ø/g, 'o')
+    .replace(/å/g, 'a')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function statsforvalterUrl(forvaltningsmyndighet: string): string {
+  const key = forvaltningsmyndighet.trim().toLowerCase();
+  const slug = STATSFORVALTER_SLUGS[key];
+  if (!slug) return STATSFORVALTER_FALLBACK;
+  return `https://www.statsforvalteren.no/${slug}${STATSFORVALTER_DISP_PATH}`;
+}
+
+function nasjonalparkstyreUrl(forvaltningsmyndighet: string): string {
+  // Strip vanlige prefikser før vi slugifiserer
+  const cleaned = forvaltningsmyndighet
+    .replace(/^verneområdestyret?\s+for\s+/i, '')
+    .replace(/^nasjonalparkstyret?\s+for\s+/i, '')
+    .replace(/\s+(nasjonalparkstyre|verneområdestyre)$/i, '')
+    .replace(/\s+(landskapsvernområde|nasjonalpark|naturreservat)$/i, '')
+    .trim();
+  if (!cleaned) return NASJONALPARKSTYRE_BASE;
+  const slug = slugifyNorwegian(cleaned);
+  if (!slug) return NASJONALPARKSTYRE_BASE;
+  return `${NASJONALPARKSTYRE_BASE}${slug}/`;
+}
 
 function formatVernedato(value: unknown): string | null {
   if (value == null) return null;
@@ -215,16 +258,42 @@ function formatVernedato(value: unknown): string | null {
   return d.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function dispensasjonUrlFor(forvaltningsmyndighet: string | null, type: string | null): string | null {
-  if (!forvaltningsmyndighet && !type) return null;
+function resolveDispensasjon(
+  forvaltningsmyndighet: string | null,
+  type: string | null,
+  faktaarkUrl: string | null,
+): { url: string | null; label: string } {
   const t = (type || '').toLowerCase();
   const m = (forvaltningsmyndighet || '').toLowerCase();
-  if (t.includes('sysselmester') || m.includes('sysselmester')) return SYSSELMESTER_URL;
-  if (t.includes('nasjonalparkstyre') || m.includes('nasjonalparkstyre') || m.includes('verneområdestyre')) {
-    return NASJONALPARKSTYRE_URL;
+
+  if (t.includes('sysselmester') || m.includes('sysselmester')) {
+    return { url: SYSSELMESTER_URL, label: 'Søk dispensasjon hos Sysselmesteren' };
   }
-  if (t.includes('statsforvalter') || m.includes('statsforvalteren')) return STATSFORVALTER_URL;
-  return null;
+  if (
+    t.includes('verneomraadestyre') ||
+    t.includes('nasjonalparkstyre') ||
+    m.includes('verneområdestyre') ||
+    m.includes('nasjonalparkstyre')
+  ) {
+    return {
+      url: forvaltningsmyndighet ? nasjonalparkstyreUrl(forvaltningsmyndighet) : NASJONALPARKSTYRE_BASE,
+      label: forvaltningsmyndighet ? `Søk dispensasjon hos ${forvaltningsmyndighet}` : 'Søk dispensasjon hos verneområdestyret',
+    };
+  }
+  if (t.includes('statsforvalter') || m.includes('statsforvalteren')) {
+    return {
+      url: forvaltningsmyndighet ? statsforvalterUrl(forvaltningsmyndighet) : STATSFORVALTER_FALLBACK,
+      label: forvaltningsmyndighet ? `Søk dispensasjon hos ${forvaltningsmyndighet}` : 'Søk dispensasjon hos Statsforvalteren',
+    };
+  }
+  if (t.includes('kommune') || m.includes(' kommune')) {
+    // Kommunenes nettsider er upålitelige å utlede — pek heller til Naturbase-faktaark som har kontaktinfo.
+    return {
+      url: faktaarkUrl,
+      label: forvaltningsmyndighet ? `Kontakt ${forvaltningsmyndighet}` : 'Kontakt forvaltningsmyndighet',
+    };
+  }
+  return { url: STATSFORVALTER_FALLBACK, label: 'Søk dispensasjon' };
 }
 
 export function enrichNatureArea(properties: Record<string, any> | null | undefined): NatureAreaEnrichment {
@@ -236,6 +305,7 @@ export function enrichNatureArea(properties: Record<string, any> | null | undefi
 
   const forvaltningsmyndighet: string | null = p.forvaltningsmyndighet || null;
   const forvaltningsmyndighetType: string | null = p.forvaltningsmyndighetType || null;
+  const disp = resolveDispensasjon(forvaltningsmyndighet, forvaltningsmyndighetType, faktaarkUrl);
 
   return {
     faktaarkUrl,
@@ -245,9 +315,10 @@ export function enrichNatureArea(properties: Record<string, any> | null | undefi
     iucn: typeof p.iucn === 'string' ? p.iucn.replace(/^IUCN_/, '') : null,
     kommune: p.kommune || null,
     verneplan: p.verneplan || null,
-    dispensasjonUrl: dispensasjonUrlFor(forvaltningsmyndighet, forvaltningsmyndighetType),
-    // Kontakt-info ligger ikke i Naturbase. Lenker fungerer som inngang.
+    dispensasjonUrl: disp.url,
+    dispensasjonLabel: disp.label,
     kontaktTlf: null,
     kontaktEpost: null,
   };
 }
+
