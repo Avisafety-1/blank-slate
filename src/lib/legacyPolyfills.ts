@@ -4,8 +4,20 @@
  */
 
 // Promise.withResolvers (ES2024) – used internally by pdfjs-dist v4+
-if (typeof (Promise as any).withResolvers !== "function") {
-  (Promise as any).withResolvers = function <T>() {
+type PromiseWithResolvers<T> = {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: unknown) => void;
+};
+
+type PromiseConstructorWithResolvers = PromiseConstructor & {
+  withResolvers?: <T>() => PromiseWithResolvers<T>;
+};
+
+const PromiseCtor = Promise as PromiseConstructorWithResolvers;
+
+if (typeof PromiseCtor.withResolvers !== "function") {
+  PromiseCtor.withResolvers = function <T>() {
     let resolve!: (value: T | PromiseLike<T>) => void;
     let reject!: (reason?: unknown) => void;
     const promise = new Promise<T>((res, rej) => {
@@ -45,8 +57,22 @@ if (typeof String.prototype.at !== "function") {
 }
 
 // URL.parse (newer URL API) – used by recent pdf.js builds, missing in Chromium 70
-if (typeof URL !== "undefined" && typeof (URL as any).parse !== "function") {
-  (URL as any).parse = function (url: string | URL, base?: string | URL) {
+type URLConstructorWithParse = typeof URL & {
+  parse?: (url: string | URL, base?: string | URL) => URL | null;
+};
+
+if (typeof URL !== "undefined") {
+  const URLCtor = URL as URLConstructorWithParse;
+  if (typeof URLCtor.parse !== "function") {
+    URLCtor.parse = function (url: string | URL, base?: string | URL) {
+      try {
+        return new URL(url, base);
+      } catch {
+        return null;
+      }
+    };
+  }
+}
     try {
       return new URL(url as string, base as string | undefined);
     } catch {
