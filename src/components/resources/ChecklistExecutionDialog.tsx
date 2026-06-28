@@ -314,7 +314,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
             ],
             includeDefaultStyleMap: true,
             ignoreEmptyParagraphs: false,
-          } as any,
+          },
         );
         if (!cancelled) setDocxHtml(value);
       } catch (err) {

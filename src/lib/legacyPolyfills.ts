@@ -30,7 +30,6 @@ if (typeof PromiseCtor.withResolvers !== "function") {
 
 // Array.prototype.at (ES2022) – safety net for older Chromium
 if (typeof Array.prototype.at !== "function") {
-  // eslint-disable-next-line no-extend-native
   Object.defineProperty(Array.prototype, "at", {
     value: function (n: number) {
       const len = this.length;
@@ -44,7 +43,6 @@ if (typeof Array.prototype.at !== "function") {
 
 // String.prototype.at – same era as Array.prototype.at
 if (typeof String.prototype.at !== "function") {
-  // eslint-disable-next-line no-extend-native
   Object.defineProperty(String.prototype, "at", {
     value: function (n: number) {
       const len = this.length;
