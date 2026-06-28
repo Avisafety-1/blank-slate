@@ -505,7 +505,14 @@ export const BatchLogPanel = ({
                       />
                     </div>
                     <div className="space-y-0.5">
-                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Drone</label>
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        Drone
+                        {row.log.matched_drone_id && row.droneId === row.log.matched_drone_id && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
+                            <Sparkles className="w-2.5 h-2.5" /> auto-matchet
+                          </span>
+                        )}
+                      </label>
                       <ComboPicker
                         value={row.droneId}
                         placeholder="Velg drone"
@@ -519,7 +526,14 @@ export const BatchLogPanel = ({
                       />
                     </div>
                     <div className="space-y-0.5 col-span-2">
-                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Utstyr / batteri</label>
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        Utstyr / batteri
+                        {row.log.matched_battery_id && row.equipmentIds.includes(row.log.matched_battery_id) && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
+                            <Sparkles className="w-2.5 h-2.5" /> auto-matchet
+                          </span>
+                        )}
+                      </label>
                       <ComboPicker
                         value=""
                         placeholder="Legg til utstyr"
@@ -541,8 +555,10 @@ export const BatchLogPanel = ({
                         <div className="flex flex-wrap gap-1 pt-1">
                           {row.equipmentIds.map(eqId => {
                             const eq = equipmentList.find(e => e.id === eqId);
+                            const isAuto = row.log.matched_battery_id === eqId;
                             return (
                               <Badge key={eqId} variant="secondary" className="text-[10px] gap-1 pr-1">
+                                {isAuto && <Sparkles className="w-2.5 h-2.5 text-primary" />}
                                 {eq?.navn || eqId}
                                 <button
                                   type="button"
