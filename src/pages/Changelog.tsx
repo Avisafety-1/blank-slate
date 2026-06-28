@@ -222,7 +222,7 @@ const Changelog = () => {
     setFormEntryStatus(entry?.status || "ikke_startet");
     setFormPriority(entry?.priority || "medium");
     setFormCompletedAt(entry?.completed_at ? entry.completed_at.slice(0, 10) : "");
-    setFormImageUrl(entry?.image_url || null);
+    setFormImageUrls(entry?.image_urls?.length ? entry.image_urls : (entry?.image_url ? [entry.image_url] : []));
     setEntryDialog({ open: true, entry });
   };
 
