@@ -46,6 +46,7 @@ interface ChangelogEntry {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  image_url: string | null;
 }
 
 interface Maintenance {
