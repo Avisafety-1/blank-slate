@@ -1,33 +1,44 @@
-## Problem
-Lenken `/tl/miljo-og-klima/verneomrader/dispensasjoner/` finnes ikke. To feil:
-1. Slugen `tl` er feil — Statsforvalteren i Trøndelag bruker `trondelag`. Mappingen min brukte korte koder som ikke gjelder for nettsiden.
-2. Stien `/dispensasjoner/` finnes ikke som standard underside. Hver Statsforvalter har egen URL-struktur for søknadsskjemaer.
+## Mål
+Gi droneflygeren en kort, handlingsrettet status pr. verneområde i kart-popupen, basert på Miljødirektoratets veileder. Skille klart mellom typene (nasjonalpark = forbudt, naturreservat = sjekk forskrift, marint/lite landskapsvern = ingen egne droneregler men aktsomhetsplikt, biotopvern/dyrefredning = forstyrrelsesforbud).
 
-## Faktisk søknadsprosess
-Etter undersøkelse av Statsforvalteren-sidene:
-- Det finnes **ingen nasjonalt felles elektronisk dispensasjonsskjema** for verneområder.
-- Søknad sendes via **Sikker melding** (`https://www.statsforvalteren.no/melding`), e-post eller brevpost til riktig embete.
-- Hvert embete har en **verneområde-side** (`/<slug>/miljo-og-klima/verneomrader/`) med kontaktinfo og praktisk veiledning. Noen (Nordland, Troms og Finnmark) har egne droneunderssider.
-- For nasjonalpark-/verneområdestyrer går søknad via styrets nettside på `nasjonalparkstyre.no/<Områdenavn>/soknader/droner` eller hovedside.
+## Endringer (kun frontend)
 
-## Endring (kun frontend, én fil: `src/lib/natureProtectionRules.ts`)
+### 1. `src/lib/natureProtectionRules.ts` — utvid `VerneformRule`
 
-1. **Rett opp STATSFORVALTER_SLUGS** til faktiske URL-slugger:
-   - `oslo-og-viken`, `innlandet`, `vestfold-og-telemark`, `agder`, `rogaland`, `vestland`, `more-og-romsdal`, `trondelag`, `nordland`, `troms-finnmark`, `ostfold-buskerud-oslo-og-akershus`.
+Legg til to nye felt pr. verneform:
+- `status`: `'FORBUDT' | 'SJEKK_FORSKRIFT' | 'BEGRENSET' | 'AKTSOMHET'` — driver fargen og overskriften på status-badgen.
+- `pilotAdvice`: kort tekst (1–2 setninger) rettet til droneflygeren — hva må jeg gjøre _her_?
 
-2. **Endre dispensasjonssti** til `/<slug>/miljo-og-klima/verneomrader/` (stabil side med kontaktinfo og veiledning, ikke en spesifikk dispensasjonsside som kan flyttes).
+Eksempler:
+- **Nasjonalpark**: status=FORBUDT, advice=«Droneflyging er forbudt — også å fly inn fra utsiden. Du må ha tillatelse fra nasjonalparkstyret før du flyr.»
+- **Naturreservat**: status=SJEKK_FORSKRIFT, advice=«Sjekk verneforskriften i faktaarket. Står 'modellfly o.l.' der, er droner forbudt. Forstyrrelse av dyreliv er uansett ulovlig.»
+- **Marint verneområde / lite landskapsvern**: status=AKTSOMHET, advice=«Ingen egne droneregler, men aktsomhetsplikt (nml § 6). Sjekk om området grenser til naturreservat eller nasjonalpark.»
+- **Biotopvern / dyrefredning**: status=BEGRENSET, advice=«Forstyrrelse av fugleliv er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.»
+- **Svalbard/Jan Mayen**: status=FORBUDT, advice=«Tillatelse fra Sysselmesteren kreves.»
 
-3. **Legg til Sikker melding-lenke** som tilleggsknapp i popup (`https://www.statsforvalteren.no/melding`) når myndighet er Statsforvalter — det er der man faktisk sender søknaden.
+Legg til en helper `getStatusPresentation(status)` som returnerer `{ label, color, bg }`:
+- FORBUDT → rød badge «Droneflyging forbudt»
+- SJEKK_FORSKRIFT → gul badge «Sjekk verneforskriften»
+- BEGRENSET → oransje badge «Begrenset — krever dispensasjon»
+- AKTSOMHET → blå badge «Aktsomhetsplikt»
 
-4. **Forbedre verneområdestyre-strategi**: lenk til hovedsiden `nasjonalparkstyre.no` med søkeparameter når slug ikke kan utledes trygt, ellers behold slug-bygging. Vi prøver ikke å gjette `/soknader/droner`-stien siden capitalization varierer.
+### 2. `src/lib/mapDataFetchers.ts` — oppdater popup-blokken (linje 970–974)
 
-5. **Endre knappetekst** fra «Søk dispensasjon hos X» til «Veiledning hos X» når lenken peker til veilednings-/oversiktsside, og behold «Søk dispensasjon» kun når URL faktisk er et søknadsskjema. Sikker melding-knappen får tekst «Send søknad via sikker melding».
+Erstatt nåværende «🚁 Droneregler»-boks med:
+1. **Status-badge øverst** med farge fra `getStatusPresentation` og kort tittel (f.eks. «🚫 Droneflyging forbudt»).
+2. **Pilot-rådet** (`pilotAdvice`) som hovedtekst — kort og handlingsrettet.
+3. **Hjemmel** i mindre tekst under (uendret innhold).
+4. Lite tips: «📄 Sjekk faktaarket for verneforskriftens fulle ordlyd» — peker øyet mot faktaark-knappen som allerede finnes.
 
-## Påvirkede filer
-- `src/lib/natureProtectionRules.ts` — slug-mapping, ny `sikkerMeldingUrl` på enrichment-objektet.
-- `src/lib/mapDataFetchers.ts` — legg til ekstra knapp for Sikker melding når feltet er satt.
+### 3. Behold eksisterende
+- Metaboks, faktaark-knapp, dispensasjons-/sikker melding-knapper og Miljødirektoratet-lenke beholdes uendret.
+- VERNEFORM_RULES sitt eksisterende `rule`-felt beholdes for bakoverkompatibilitet (kan brukes andre steder).
+
+## Begrensninger / ærlighet
+- Naturbase-properties har **ikke** strukturert «ferdselsforbud-periode»-felt. Vi kan ikke automatisk vise hekketider per område — kun generell formulering. Brukeren må fortsatt åpne faktaarket for periode-spesifikke forbud.
+- Pilot-rådet er generisk pr. verneform, ikke pr. enkeltområde, fordi enkeltområdenes forskrifter er fritekst i Lovdata-lenken.
 
 ## Verifisering
-- Gaulosen marint verneområde (forvaltet av Statsforvalteren i Trøndelag) skal nå gi `https://www.statsforvalteren.no/trondelag/miljo-og-klima/verneomrader/` + Sikker melding-knapp.
-- Område forvaltet av Statsforvalteren i Rogaland gir `/rogaland/miljo-og-klima/verneomrader/`.
-- Kommunalt forvaltet område: åpner Naturbase-faktaark (uendret).
+- Klikk på en nasjonalpark → rød «Droneflyging forbudt»-badge + forbud-tekst + nasjonalparkstyre-knapp.
+- Klikk på et naturreservat → gul «Sjekk verneforskriften»-badge.
+- Klikk på et marint verneområde → blå «Aktsomhetsplikt»-badge.
