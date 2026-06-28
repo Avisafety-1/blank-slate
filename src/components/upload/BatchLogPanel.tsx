@@ -4,16 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Plane, X, Save, AlertTriangle, CheckCircle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+import { Loader2, Plane, X, Save, AlertTriangle, CheckCircle, Check, ChevronsUpDown, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import { isBatteryType } from "@/config/equipmentCategories";
+import { cn } from "@/lib/utils";
 
 interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; }
 interface Personnel { id: string; full_name: string | null; email: string | null; }
 interface EquipmentItem { id: string; navn: string; serienummer: string; internal_serial: string | null; type: string; }
-interface MissionOption { id: string; tittel: string; tidspunkt: string; }
+interface MissionOption { id: string; tittel: string; tidspunkt: string; lokasjon?: string | null; status?: string | null; }
+
 
 type OpType = "VLOS" | "BVLOS" | "EVLOS";
 
