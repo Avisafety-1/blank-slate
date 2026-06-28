@@ -1,24 +1,27 @@
-## Plan
+# Plan: Direkte åpning av PDF-sjekklister på DJI RC Pro/Plus
 
-1. **Legg til legacy-deteksjon for DJI/Chromium 70**
-   - Bruk eksisterende DJI-deteksjon hvis den allerede finnes i `deviceDetection`, ellers legg til en liten robust sjekk for DJI RC Pro/Plus og eldre Chromium.
+## Mål
+Gjør PDF-sjekklister på DJI mye enklere å bruke:
+- unngå «Failed to load PDF file»-opplevelsen i dialogen
+- åpne PDF-en direkte automatisk på DJI RC Pro/Plus
+- beholde en tydelig reserveknapp hvis autoåpning blir blokkert
 
-2. **Unngå `react-pdf` på DJI RC Pro/Plus**
-   - `react-pdf/pdf.js` er sannsynlig kilde til krasjen (`TypeError: URL.parse is not a function`).
-   - For PDF-sjekklister på DJI skal dialogen ikke rendere `<Document>`/`<Page>` i det hele tatt.
+## Hva jeg vil endre
+1. Oppdatere `ChecklistExecutionDialog.tsx` slik at DJI-fallbacken ikke prøver å late som PDF-en skal vises inne i dialogen.
+2. Når en PDF-sjekkliste åpnes på DJI, trigge automatisk åpning av den signed PDF-URL-en i ny fane/systemviser så snart fil-URL-en er klar.
+3. Erstatte dagens mellomskjerm med en enkel, bevisst DJI-visning som bare sier at sjekklisten åpnes og viser én tydelig knapp: «Åpne sjekkliste».
+4. Sikre at autoåpning bare skjer én gang per valgt sjekkliste, så brukeren ikke får gjentatte faner ved re-render.
+5. La eksisterende moderne PDF-visning med `react-pdf` være uendret på iPad, mobil og desktop.
 
-3. **Vis trygg fallback for PDF-sjekklister på DJI**
-   - Vis filnavn og tydelig knapp for å åpne/laste ned PDF i ny fane i stedet for innebygd PDF-visning.
-   - Behold “Fullfør sjekkliste”-flyten slik at piloten fortsatt kan markere sjekklisten som gjennomgått.
+## Forventet resultat
+- På DJI åpnes PDF-en direkte uten ekstra klikk i de fleste tilfeller.
+- Hvis nettleseren ikke åpner automatisk, har brukeren fortsatt en enkel knapp for manuell åpning.
+- Ingen «Failed to load PDF file»-tekst i denne flyten.
+- Mindre friksjon og færre steg for piloten.
 
-4. **Behold dagens PDF-visning på moderne enheter**
-   - iPad, telefon og PC skal fortsatt bruke den innebygde PDF-visningen med zoom/pan.
-
-5. **Utvid polyfill kun hvis nødvendig**
-   - Legg eventuelt til en enkel `URL.parse`-polyfill som sikkerhetsnett, men hovedfiksen blir å ikke laste PDF-rendereren på legacy DJI der biblioteket uansett er for moderne.
-
-## Teknisk
-
-- Endres primært i `src/components/resources/ChecklistExecutionDialog.tsx`.
-- Eventuelt liten tilleggsendring i `src/lib/legacyPolyfills.ts` eller bruk av eksisterende `src/lib/deviceDetection.ts`.
-- Ingen databaseendringer.
+## Tekniske detaljer
+- Fil: `src/components/resources/ChecklistExecutionDialog.tsx`
+- Beholder `isDjiController()`-deteksjonen.
+- Bruker den signed URL-en som allerede genereres fra Supabase Storage.
+- Legger inn en liten guard med `useRef`/state for å unngå dobbel autoåpning per dokument.
+- Endrer kun frontend-flyten for DJI-PDF; ingen database- eller backend-endringer.
