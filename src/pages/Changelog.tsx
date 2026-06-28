@@ -395,6 +395,20 @@ const Changelog = () => {
                   {entry.description && (
                     <p className="text-xs text-muted-foreground mt-1">{entry.description}</p>
                   )}
+                  {entry.image_url && signedUrls[entry.image_url] && (
+                    <button
+                      type="button"
+                      onClick={() => setLightboxUrl(signedUrls[entry.image_url!])}
+                      className="mt-2 block rounded-md overflow-hidden border border-border/50 hover:opacity-90 transition-opacity"
+                    >
+                      <img
+                        src={signedUrls[entry.image_url]}
+                        alt={entry.title}
+                        className="max-h-40 object-cover"
+                        loading="lazy"
+                      />
+                    </button>
+                  )}
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-1">
                     <span>{t("changelog.createdLabel")}: {format(new Date(entry.created_at), "d. MMM yyyy", { locale: nb })}</span>
                     {entry.completed_at && (
