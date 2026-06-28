@@ -3228,7 +3228,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && selectedPendingLogId && result ? 'max-w-5xl max-h-[95vh] h-[95vh] flex flex-col overflow-x-hidden' : 'max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden'} transition-all`}>
+      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl max-h-[95vh] h-[95vh] flex flex-col overflow-x-hidden' : 'max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden'} transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
@@ -3238,9 +3238,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* ── Step: Method selection ── */}
          {step === 'method' && (
-          <div className={`min-w-0 max-w-full overflow-x-hidden ${selectedPendingLogId && result ? 'flex gap-6 h-full flex-1 min-h-0' : ''}`}>
+          <div className={`min-w-0 max-w-full overflow-x-hidden ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'flex gap-6 h-full flex-1 min-h-0' : ''}`}>
             {/* Left panel: method + pending logs */}
-            <div className={`space-y-3 min-w-0 max-w-full ${selectedPendingLogId && result ? 'w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto pr-1' : ''}`}>
+            <div className={`space-y-3 min-w-0 max-w-full ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto pr-1' : ''}`}>
+
 
             <p className="text-sm text-muted-foreground">
               {t('dronelog.chooseMethod', 'Velg hvordan du vil importere flyloggen:')}
