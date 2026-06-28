@@ -160,7 +160,7 @@ const Changelog = () => {
     });
     setUploadingImage(false);
     if (error) { toast.error("Kunne ikke laste opp bilde"); return; }
-    setFormImageUrl(path);
+    setFormImageUrls(prev => [...prev, path]);
     const { data } = await supabase.storage.from("changelog-images").createSignedUrl(path, 3600);
     if (data?.signedUrl) setSignedUrls(prev => ({ ...prev, [path]: data.signedUrl }));
   };
