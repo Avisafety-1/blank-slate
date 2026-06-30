@@ -1,16 +1,16 @@
-## Problem
-Lange filnavn med understreker (f.eks. `SORA_Assessment_BVLOS_Lifting_operations.pdf`) brytes ikke, så `DialogTitle` i `src/components/dashboard/DocumentDetailDialog.tsx` presser dialogen utenfor mobilskjermen.
+## Plan
 
-Samme mønster gjelder også titler i listevisningen (`DocumentsList`) hvor de avkortes med `...`.
+1. **Begrens dialogen hardt til mobilskjermen**
+   - Oppdater `DocumentDetailDialog` slik at dialogen bruker en trygg mobilbredde (`calc(100vw - margin)`) og skjuler horisontal overflow.
+   - Sørg for at interne flex-rader kan krympe (`min-w-0`) i stedet for å presse dialogen bredere.
 
-## Endring
-**`src/components/dashboard/DocumentDetailDialog.tsx` (linje 277):**
-Legg til `break-words [overflow-wrap:anywhere] pr-2` på `DialogTitle` slik at lange filnavn uten mellomrom brytes over 2+ linjer på smal skjerm.
+2. **Del lange dokumenttitler korrekt**
+   - Gjør tittelen til et eget krympbart tekstfelt med `max-w-full`, `whitespace-normal`, `break-all`/`overflow-wrap:anywhere` og maks 2 linjer på mobil.
+   - Lange filnavn med `_`, punktum og uten mellomrom skal brytes inne i ordet, slik at tittelen ikke skyver lukkeknappen eller dialogbredden.
 
-```tsx
-<DialogTitle className="text-lg sm:text-xl break-words [overflow-wrap:anywhere] pr-2">
-  {document.tittel}
-</DialogTitle>
-```
+3. **Fiks filnavn og knapperekke nederst**
+   - Gjør filnavn-linjen krympbar og trunkert innenfor dialogen.
+   - På små skjermer skal “Åpne” og “Last ned” kunne stables eller krympe uten å lage horisontal scroll.
 
-Ingen andre endringer – listevisningens `truncate` beholdes som i dag siden brukeren kun rapporterte detaljdialogen.
+4. **Verifiser mot skjermbildet**
+   - Test med et langt SORA/PDF-filnavn på mobilbredde og bekreft at dialogen holder seg innenfor skjermen, tittelen brytes i to linjer, og knappene ikke presses utenfor.

@@ -271,10 +271,12 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader className="pr-8">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-            <DialogTitle className="text-lg sm:text-xl break-words [overflow-wrap:anywhere] pr-2">{document.tittel}</DialogTitle>
+      <DialogContent className="!w-[calc(100vw-2rem)] sm:!w-[95vw] max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+        <DialogHeader className="min-w-0 pr-8">
+          <div className="flex min-w-0 flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+            <DialogTitle className="min-w-0 max-w-full pr-2 text-lg sm:text-xl leading-snug whitespace-normal line-clamp-2 break-all [overflow-wrap:anywhere] [word-break:break-all]">
+              {document.tittel}
+            </DialogTitle>
             <StatusBadge status={status as any} />
           </div>
         </DialogHeader>
@@ -452,16 +454,16 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
             <div className="space-y-3 pt-4 border-t border-border">
               {/* File type indicator */}
               {document.fil_url && !document.nettside_url && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <fileTypeInfo.icon className="w-4 h-4" />
-                  <span>{fileTypeInfo.label}</span>
+                <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                  <fileTypeInfo.icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-shrink-0">{fileTypeInfo.label}</span>
                   {document.fil_navn && (
-                    <span className="text-xs truncate max-w-[200px]">({document.fil_navn})</span>
+                    <span className="min-w-0 truncate text-xs">({document.fil_navn})</span>
                   )}
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 {document.nettside_url && (
                   <Button
                     variant="default"
@@ -478,7 +480,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                     {canOpenInBrowser(document.fil_navn) && (
                       <Button
                         variant="default"
-                        className="flex-1"
+                        className="w-full sm:flex-1"
                         onClick={handleOpenDocument}
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />
@@ -488,7 +490,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                     {/* Download button */}
                     <Button
                       variant={canOpenInBrowser(document.fil_navn) ? "outline" : "default"}
-                      className="flex-1"
+                      className="w-full sm:flex-1"
                       onClick={handleDownloadDocument}
                       disabled={downloading}
                     >
@@ -519,7 +521,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
           <AlertDialogHeader>
             <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dette vil permanent slette dokumentet "{document.tittel}". Denne handlingen kan ikke angres.
+              Dette vil permanent slette dokumentet <span className="break-all [overflow-wrap:anywhere]">"{document.tittel}"</span>. Denne handlingen kan ikke angres.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
