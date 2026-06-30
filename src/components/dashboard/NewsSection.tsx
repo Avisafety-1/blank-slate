@@ -18,7 +18,7 @@ type News = any;
 
 export const NewsSection = () => {
   const { t, i18n } = useTranslation();
-  const { companyId } = useAuth();
+  const { companyId, isAdmin } = useAuth();
   const { registerMain } = useDashboardRealtimeContext();
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -98,14 +98,16 @@ export const NewsSection = () => {
             <Newspaper className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
             <h2 className="text-sm sm:text-base font-semibold truncate">{t('dashboard.news.title')}</h2>
           </div>
-          <Button
-            size="sm"
-            onClick={() => setAddDialogOpen(true)}
-            className="h-7 sm:h-8 px-2 sm:px-3"
-          >
-            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-            <span className="text-xs sm:text-sm">{t('dashboard.news.addNew')}</span>
-          </Button>
+          {isAdmin && (
+            <Button
+              size="sm"
+              onClick={() => setAddDialogOpen(true)}
+              className="h-7 sm:h-8 px-2 sm:px-3"
+            >
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+              <span className="text-xs sm:text-sm">{t('dashboard.news.addNew')}</span>
+            </Button>
+          )}
         </div>
 
       <div className="flex gap-2 sm:gap-3 flex-1 overflow-x-auto pb-2">
