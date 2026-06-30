@@ -1,22 +1,17 @@
-## Plan
+## Problem
+Dokumentdialogen på `/dokumenter` (`DocumentCardModal.tsx`) presses utenfor mobilskjermen. Årsaken er at `DialogContent` bruker `max-w-2xl` uten en eksplisitt mobilbredde-cap, og at "Eksisterende fil ({langt_filnavn})"-spanen ikke bryter lange filnavn — så den utvider flex-raden og dermed dialogen.
 
-1. **Del dokumenttittelen kontrollert**
-   - Lage en liten formatteringshjelper som deler lange filnavn omtrent på midten, helst ved naturlige skilletegn som `_`, `-`, mellomrom eller `.` nær midten.
-   - Vise tittelen som to separate linjer i stedet for å stole på browserens automatiske linjebryting.
-   - Sørge for at hver linje har `min-w-0`, `max-w-full` og hard word wrapping slik at ingen av linjene kan trekke dialogen bredere enn skjermen.
+## Endringer (kun `src/components/documents/DocumentCardModal.tsx`)
 
-2. **Behold dialogen innenfor mobilskjermen**
-   - Justere `DialogContent` slik at den har trygg mobilbredde og interne elementer kan krympe.
-   - Unngå at header, statusbadge eller lukkeknapp presses ut av skjermen.
+1. **DialogContent (linje 403)**: Legg til mobil-bredde-cap som matcher fixen i `DocumentDetailDialog`:
+   `className="max-w-2xl w-[calc(100vw-2rem)] sm:w-full max-h-[90vh] overflow-y-auto"`
 
-3. **Gjenopprett horisontal scroll der innholdet faktisk er bredere**
-   - Fjerne den globale `overflow-x-hidden` som gjør at du ikke kan scrolle høyre/venstre i dokumentkortet.
-   - I stedet begrense bare de elementene som lager uønsket overflow, spesielt tittel og filnavn-linjen.
+2. **"Eksisterende fil"-rad (linje 676–689)**: La filnavnet brytes og knappen ikke krympes bort:
+   - Bytt ytre `flex items-center gap-2` til `flex flex-wrap items-center gap-2`
+   - Legg `break-all min-w-0` på `<span>Eksisterende fil ({document.fil_navn || "fil"}):</span>`
 
-4. **Fiks filnavn-linjen nederst**
-   - Gjøre PDF/filnavn-raden mobiltrygg med `min-w-0` og truncation innenfor dialogen.
-   - Knappene “Åpne”, “Last ned” og “Slett dokument” skal ikke presse dialogen horisontalt.
+3. **"Eksisterende URL"-rad (linje 622–633)**: Samme behandling — `flex-wrap` + `break-all` på span — så lange URLer ikke utvider dialogen.
 
-5. **Verifiser mot eksempelet**
-   - Teste med filnavn som `3.SORA_Assessment_BVLOS_powerline_...AS_1_m.pdf` på mobilbredde.
-   - Bekrefte at tittelen deles omtrent likt over to linjer, dialogen ikke blir bredere enn skjermen, og horisontal scroll ikke blokkeres unødvendig.
+4. **DialogFooter (linje 742)**: Legg til `flex-col sm:flex-row` så Slett/Avbryt/Lagre-knappene stables på mobil i stedet for å presse bredden.
+
+Ingen logikkendringer; kun layout/wrap-klasser.

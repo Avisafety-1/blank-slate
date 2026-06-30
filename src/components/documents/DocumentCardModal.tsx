@@ -400,7 +400,7 @@ const DocumentCardModal = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] sm:w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isCreating ? "Nytt dokument" : readOnly ? "Dokument" : "Rediger dokument"}
@@ -619,8 +619,8 @@ const DocumentCardModal = ({
                       <Input {...field} disabled={readOnly} placeholder="https://..." />
                     </FormControl>
                     {!readOnly && document?.nettside_url && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Eksisterende URL:</span>
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <span className="break-all min-w-0">Eksisterende URL:</span>
                         <Button
                           type="button"
                           variant="link"
@@ -674,8 +674,8 @@ const DocumentCardModal = ({
                     </p>
                   )}
                   {document?.fil_url && !selectedFile && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Eksisterende fil ({document.fil_navn || "fil"}):</span>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <span className="break-all min-w-0">Eksisterende fil ({document.fil_navn || "fil"}):</span>
                       <Button
                         type="button"
                         variant="link"
@@ -739,7 +739,7 @@ const DocumentCardModal = ({
                 </div>
               )}
 
-              <DialogFooter className="gap-2">
+              <DialogFooter className="gap-2 flex-col sm:flex-row">
                 {canManageDocument && !isCreating && (
                   <Button
                     type="button"
