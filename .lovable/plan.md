@@ -1,16 +1,22 @@
 ## Plan
 
-1. **Begrens dialogen hardt til mobilskjermen**
-   - Oppdater `DocumentDetailDialog` slik at dialogen bruker en trygg mobilbredde (`calc(100vw - margin)`) og skjuler horisontal overflow.
-   - Sørg for at interne flex-rader kan krympe (`min-w-0`) i stedet for å presse dialogen bredere.
+1. **Del dokumenttittelen kontrollert**
+   - Lage en liten formatteringshjelper som deler lange filnavn omtrent på midten, helst ved naturlige skilletegn som `_`, `-`, mellomrom eller `.` nær midten.
+   - Vise tittelen som to separate linjer i stedet for å stole på browserens automatiske linjebryting.
+   - Sørge for at hver linje har `min-w-0`, `max-w-full` og hard word wrapping slik at ingen av linjene kan trekke dialogen bredere enn skjermen.
 
-2. **Del lange dokumenttitler korrekt**
-   - Gjør tittelen til et eget krympbart tekstfelt med `max-w-full`, `whitespace-normal`, `break-all`/`overflow-wrap:anywhere` og maks 2 linjer på mobil.
-   - Lange filnavn med `_`, punktum og uten mellomrom skal brytes inne i ordet, slik at tittelen ikke skyver lukkeknappen eller dialogbredden.
+2. **Behold dialogen innenfor mobilskjermen**
+   - Justere `DialogContent` slik at den har trygg mobilbredde og interne elementer kan krympe.
+   - Unngå at header, statusbadge eller lukkeknapp presses ut av skjermen.
 
-3. **Fiks filnavn og knapperekke nederst**
-   - Gjør filnavn-linjen krympbar og trunkert innenfor dialogen.
-   - På små skjermer skal “Åpne” og “Last ned” kunne stables eller krympe uten å lage horisontal scroll.
+3. **Gjenopprett horisontal scroll der innholdet faktisk er bredere**
+   - Fjerne den globale `overflow-x-hidden` som gjør at du ikke kan scrolle høyre/venstre i dokumentkortet.
+   - I stedet begrense bare de elementene som lager uønsket overflow, spesielt tittel og filnavn-linjen.
 
-4. **Verifiser mot skjermbildet**
-   - Test med et langt SORA/PDF-filnavn på mobilbredde og bekreft at dialogen holder seg innenfor skjermen, tittelen brytes i to linjer, og knappene ikke presses utenfor.
+4. **Fiks filnavn-linjen nederst**
+   - Gjøre PDF/filnavn-raden mobiltrygg med `min-w-0` og truncation innenfor dialogen.
+   - Knappene “Åpne”, “Last ned” og “Slett dokument” skal ikke presse dialogen horisontalt.
+
+5. **Verifiser mot eksempelet**
+   - Teste med filnavn som `3.SORA_Assessment_BVLOS_powerline_...AS_1_m.pdf` på mobilbredde.
+   - Bekrefte at tittelen deles omtrent likt over to linjer, dialogen ikke blir bredere enn skjermen, og horisontal scroll ikke blokkeres unødvendig.

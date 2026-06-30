@@ -36,6 +36,34 @@ interface DocumentDetailDialogProps {
   canManage?: boolean;
 }
 
+const splitLongTitle = (title: string): string[] => {
+  const cleanTitle = title.trim();
+  if (cleanTitle.length <= 36) return [cleanTitle];
+
+  const middle = Math.floor(cleanTitle.length / 2);
+  const breakChars = ["_", "-", " ", "."];
+  let bestIndex = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  breakChars.forEach((char) => {
+    let index = cleanTitle.indexOf(char);
+    while (index !== -1) {
+      const splitAfter = char === " " ? index : index + 1;
+      if (splitAfter > 8 && splitAfter < cleanTitle.length - 8) {
+        const distance = Math.abs(splitAfter - middle);
+        if (distance < bestDistance) {
+          bestIndex = splitAfter;
+          bestDistance = distance;
+        }
+      }
+      index = cleanTitle.indexOf(char, index + 1);
+    }
+  });
+
+  const splitIndex = bestIndex === -1 ? middle : bestIndex;
+  return [cleanTitle.slice(0, splitIndex).trim(), cleanTitle.slice(splitIndex).trim()].filter(Boolean);
+};
+
 export const DocumentDetailDialog = ({ open, onOpenChange, document, status, canManage }: DocumentDetailDialogProps) => {
   const { user, ensureValidToken, isAdmin, isSuperAdmin, companyId } = useAuth();
   const [downloading, setDownloading] = useState(false);
@@ -268,20 +296,27 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
   };
 
   const daysUntilExpiry = getDaysUntilExpiry();
+  const titleLines = splitLongTitle(document.tittel);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!w-[calc(100vw-2rem)] sm:!w-[95vw] max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-        <DialogHeader className="min-w-0 pr-8">
-          <div className="flex min-w-0 flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-            <DialogTitle className="min-w-0 max-w-full pr-2 text-lg sm:text-xl leading-snug whitespace-normal line-clamp-2 break-all [overflow-wrap:anywhere] [word-break:break-all]">
-              {document.tittel}
+      <DialogContent className="!w-[calc(100vw-2rem)] sm:!w-[95vw] max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="min-w-0 max-w-full pr-8">
+          <div className="flex min-w-0 max-w-full flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+            <DialogTitle className="min-w-0 max-w-full pr-2 text-lg sm:text-xl leading-snug whitespace-normal">
+              <span className="block min-w-0 max-w-full">
+                {titleLines.map((line, index) => (
+                  <span key={`${line}-${index}`} className="block min-w-0 max-w-full break-all [overflow-wrap:anywhere] [word-break:break-all]">
+                    {line}
+                  </span>
+                ))}
+              </span>
             </DialogTitle>
             <StatusBadge status={status as any} />
           </div>
         </DialogHeader>
         
-        <div className="space-y-3 sm:space-y-4">
+        <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs sm:text-sm">
               {document.kategori}
@@ -454,7 +489,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
             <div className="space-y-3 pt-4 border-t border-border">
               {/* File type indicator */}
               {document.fil_url && !document.nettside_url && (
-                <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex min-w-0 max-w-full items-center gap-2 text-sm text-muted-foreground">
                   <fileTypeInfo.icon className="w-4 h-4 flex-shrink-0" />
                   <span className="flex-shrink-0">{fileTypeInfo.label}</span>
                   {document.fil_navn && (
@@ -463,7 +498,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex min-w-0 max-w-full flex-col gap-2 sm:flex-row">
                 {document.nettside_url && (
                   <Button
                     variant="default"
