@@ -803,7 +803,7 @@ export function OpenAIPMap({
 
   // ==================== MAIN MAP INIT useEffect ====================
   useEffect(() => {
-    if (!mapRef.current || !profileLoaded) return;
+    if (!mapRef.current || !profileLoaded || !companyDefaultLayersLoaded) return;
 
     const startCenter = initialCenter || DEFAULT_POS;
     const map = L.map(mapRef.current, {
