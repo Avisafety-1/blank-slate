@@ -2049,6 +2049,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
               </SubSection>
 
+              <SubSection title="Standard kartlag" icon={MapIcon}>
+                <MapLayerDefaultsSection
+                  companyId={companyId}
+                  disabled={savingSettings}
+                  locked={isChildDept && !!inherited?.propagate_default_map_layers}
+                />
+              </SubSection>
+
               <SubSection title="Oppdragstyper" icon={Settings}>
                 <MissionTypesSection companyId={companyId} disabled={savingSettings} />
               </SubSection>
