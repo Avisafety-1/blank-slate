@@ -1108,7 +1108,27 @@ export function OpenAIPMap({
     const activeAdvisoryLayer = L.layerGroup().addTo(map);
     const pilotPositionsLayer = L.layerGroup().addTo(map);
 
-    setLayers(layerConfigs);
+    // Apply company-level "Standard kartlag" overrides. For each catalog entry the
+    // company has explicitly set, sync both the LayerConfig.enabled flag and the
+    // underlying Leaflet layer's presence on the map so `/kart` opens with the
+    // admin-chosen defaults instead of the hardcoded ones.
+    const companyDefaults = companyDefaultLayersRef.current;
+    const applyCompanyDefaults = (cfg: LayerConfig): LayerConfig => {
+      const catalogEntry = MAP_LAYER_CATALOG.find((e) => e.id === cfg.id);
+      if (!catalogEntry) return cfg; // dynamic/mode-controlled layer — never overridden
+      if (!Object.prototype.hasOwnProperty.call(companyDefaults, cfg.id)) return cfg;
+      const override = !!companyDefaults[cfg.id];
+      if (override === cfg.enabled) return cfg;
+      const arr = Array.isArray(cfg.layer) ? cfg.layer : [cfg.layer];
+      if (override) {
+        arr.forEach((l) => { if (!map.hasLayer(l)) l.addTo(map); });
+      } else {
+        arr.forEach((l) => { if (map.hasLayer(l)) map.removeLayer(l); });
+      }
+      return { ...cfg, enabled: override };
+    };
+    const reconciledLayerConfigs = layerConfigs.map(applyCompanyDefaults);
+    setLayers(reconciledLayerConfigs);
 
     // Common fetch params
     const geoJsonParams = {
