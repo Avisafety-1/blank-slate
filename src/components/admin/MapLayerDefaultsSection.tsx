@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MAP_LAYER_CATALOG, MAP_LAYER_GROUP_ORDER, isLayerAvailableForCompany } from "@/config/mapLayers";
+import { resolveRootCompanyName } from "@/lib/companyHierarchy";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   layers: Layers, ban: Ban, alertTriangle: AlertTriangle, treePine: TreePine,
