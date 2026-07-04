@@ -1486,7 +1486,7 @@ export function OpenAIPMap({
       try { map.stop(); } catch {}
       try { map.remove(); } catch {}
     };
-  }, [profileLoaded, isTensioHierarchy]);
+  }, [profileLoaded, isTensioHierarchy, companyDefaultLayersLoaded]);
 
   // Recenter map when initialCenter changes — guard with tolerance so a parent
   // that mirrors moveend back into this prop does not snap the user back.
