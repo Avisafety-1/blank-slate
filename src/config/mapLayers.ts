@@ -84,17 +84,16 @@ export function resolveLayerDefault(
 }
 
 /**
- * Returns true when the layer is available for the given company (and its parent).
- * Layers without a restriction are always available.
+ * Returns true when the layer is available for the company hierarchy identified
+ * by `rootCompanyName` (i.e. the name of the top-most ancestor). Restriction
+ * matches on substring, case-insensitive. Layers without a restriction are
+ * always available.
  */
 export function isLayerAvailableForCompany(
   entry: MapLayerCatalogEntry,
-  companyName: string | null | undefined,
-  parentCompanyName: string | null | undefined,
+  rootCompanyName: string | null | undefined,
 ): boolean {
   const needle = entry.restrictedToCompanyNameContains?.toLowerCase();
   if (!needle) return true;
-  const a = companyName?.toLowerCase() ?? "";
-  const b = parentCompanyName?.toLowerCase() ?? "";
-  return a.includes(needle) || b.includes(needle);
+  return (rootCompanyName?.toLowerCase() ?? "").includes(needle);
 }
