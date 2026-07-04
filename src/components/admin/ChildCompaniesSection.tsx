@@ -33,6 +33,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { MapPublicationDefaultsCard } from "@/components/admin/MapPublicationDefaultsCard";
+import { MapLayerDefaultsSection } from "@/components/admin/MapLayerDefaultsSection";
 import { MissionTypesSection } from "@/components/admin/MissionTypesSection";
 
 interface ChildCompany {
@@ -184,6 +185,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_flight_alerts: boolean;
     propagate_fh2_credentials: boolean;
     propagate_currency_requirement: boolean;
+    propagate_default_map_layers: boolean;
     currency_requirement_enabled: boolean;
     currency_requirement_hours: number;
     currency_requirement_days: number;
@@ -470,7 +472,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
           (supabase as any)
             .from("companies")
-            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, safesky_callsign_test_mode, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement")
+            .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, safesky_callsign_test_mode, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement, propagate_default_map_layers")
             .eq("id", parentId)
             .maybeSingle(),
           (supabase as any)
@@ -533,6 +535,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             propagate_flight_alerts: parent.propagate_flight_alerts ?? false,
             propagate_fh2_credentials: parent.propagate_fh2_credentials ?? false,
             propagate_currency_requirement: parent.propagate_currency_requirement ?? false,
+            propagate_default_map_layers: parent.propagate_default_map_layers ?? false,
             currency_requirement_enabled: parent.currency_requirement_enabled ?? false,
             currency_requirement_hours: Number(parent.currency_requirement_hours ?? 2),
             currency_requirement_days: Number(parent.currency_requirement_days ?? 90),
@@ -2044,6 +2047,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
               <SubSection title="Kartpublisering" icon={MapIcon}>
                 <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
+              </SubSection>
+
+              <SubSection title="Standard kartlag" icon={MapIcon}>
+                <MapLayerDefaultsSection
+                  companyId={companyId}
+                  disabled={savingSettings}
+                  locked={isChildDept && !!inherited?.propagate_default_map_layers}
+                />
               </SubSection>
 
               <SubSection title="Oppdragstyper" icon={Settings}>

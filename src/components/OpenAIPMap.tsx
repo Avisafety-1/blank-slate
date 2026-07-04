@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
+import { MAP_LAYER_CATALOG } from "@/config/mapLayers";
 
 // Re-export types for backward compatibility
 export type { RoutePoint, RouteData, SoraSettings } from "@/types/map";
@@ -205,7 +206,34 @@ export function OpenAIPMap({
   routeInspectMode,
 }: OpenAIPMapProps) {
 
-  const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
+  const { user, companyId, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
+  // Company-level default map layer toggles (jsonb map of layer_id → boolean).
+  // Loaded once when the map mounts; used to override hardcoded per-layer defaults.
+  const companyDefaultLayersRef = useRef<Record<string, boolean>>({});
+  const [companyDefaultLayersLoaded, setCompanyDefaultLayersLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    if (!companyId) {
+      companyDefaultLayersRef.current = {};
+      setCompanyDefaultLayersLoaded(true);
+      return;
+    }
+    supabase
+      .from("companies")
+      .select("default_map_layers")
+      .eq("id", companyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const raw = (data as any)?.default_map_layers;
+        companyDefaultLayersRef.current =
+          raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, boolean>) : {};
+        setCompanyDefaultLayersLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId]);
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -775,7 +803,7 @@ export function OpenAIPMap({
 
   // ==================== MAIN MAP INIT useEffect ====================
   useEffect(() => {
-    if (!mapRef.current || !profileLoaded) return;
+    if (!mapRef.current || !profileLoaded || !companyDefaultLayersLoaded) return;
 
     const startCenter = initialCenter || DEFAULT_POS;
     const map = L.map(mapRef.current, {
@@ -1080,7 +1108,27 @@ export function OpenAIPMap({
     const activeAdvisoryLayer = L.layerGroup().addTo(map);
     const pilotPositionsLayer = L.layerGroup().addTo(map);
 
-    setLayers(layerConfigs);
+    // Apply company-level "Standard kartlag" overrides. For each catalog entry the
+    // company has explicitly set, sync both the LayerConfig.enabled flag and the
+    // underlying Leaflet layer's presence on the map so `/kart` opens with the
+    // admin-chosen defaults instead of the hardcoded ones.
+    const companyDefaults = companyDefaultLayersRef.current;
+    const applyCompanyDefaults = (cfg: LayerConfig): LayerConfig => {
+      const catalogEntry = MAP_LAYER_CATALOG.find((e) => e.id === cfg.id);
+      if (!catalogEntry) return cfg; // dynamic/mode-controlled layer — never overridden
+      if (!Object.prototype.hasOwnProperty.call(companyDefaults, cfg.id)) return cfg;
+      const override = !!companyDefaults[cfg.id];
+      if (override === cfg.enabled) return cfg;
+      const arr = Array.isArray(cfg.layer) ? cfg.layer : [cfg.layer];
+      if (override) {
+        arr.forEach((l) => { if (!map.hasLayer(l)) l.addTo(map); });
+      } else {
+        arr.forEach((l) => { if (map.hasLayer(l)) map.removeLayer(l); });
+      }
+      return { ...cfg, enabled: override };
+    };
+    const reconciledLayerConfigs = layerConfigs.map(applyCompanyDefaults);
+    setLayers(reconciledLayerConfigs);
 
     // Common fetch params
     const geoJsonParams = {
@@ -1186,6 +1234,8 @@ export function OpenAIPMap({
     // Start ALL layers immediately — AuthContext handles session validity,
     // Supabase SDK auto-attaches the JWT from localStorage for RLS queries.
     safeSkyManager.start();
+    // Honor company "Standard kartlag" override for SafeSky (special side-effect layer).
+    if (companyDefaults.safesky === false) safeSkyManager.stop();
     fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
     fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
     fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
@@ -1458,7 +1508,7 @@ export function OpenAIPMap({
       try { map.stop(); } catch {}
       try { map.remove(); } catch {}
     };
-  }, [profileLoaded, isTensioHierarchy]);
+  }, [profileLoaded, isTensioHierarchy, companyDefaultLayersLoaded]);
 
   // Recenter map when initialCenter changes — guard with tolerance so a parent
   // that mirrors moveend back into this prop does not snap the user back.

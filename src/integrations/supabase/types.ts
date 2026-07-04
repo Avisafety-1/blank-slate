@@ -631,6 +631,7 @@ export type Database = {
           currency_requirement_enabled: boolean
           currency_requirement_hours: number
           default_anonymous_publish: boolean
+          default_map_layers: Json
           default_publish_planned_missions: boolean
           default_share_contact_email: boolean
           default_share_contact_info: boolean
@@ -658,6 +659,7 @@ export type Database = {
           propagate_airspace_warnings: boolean
           propagate_all_users_can_acknowledge_maintenance: boolean
           propagate_currency_requirement: boolean
+          propagate_default_map_layers: boolean
           propagate_deviation_report: boolean
           propagate_fh2_credentials: boolean
           propagate_flight_alerts: boolean
@@ -703,6 +705,7 @@ export type Database = {
           currency_requirement_enabled?: boolean
           currency_requirement_hours?: number
           default_anonymous_publish?: boolean
+          default_map_layers?: Json
           default_publish_planned_missions?: boolean
           default_share_contact_email?: boolean
           default_share_contact_info?: boolean
@@ -730,6 +733,7 @@ export type Database = {
           propagate_airspace_warnings?: boolean
           propagate_all_users_can_acknowledge_maintenance?: boolean
           propagate_currency_requirement?: boolean
+          propagate_default_map_layers?: boolean
           propagate_deviation_report?: boolean
           propagate_fh2_credentials?: boolean
           propagate_flight_alerts?: boolean
@@ -775,6 +779,7 @@ export type Database = {
           currency_requirement_enabled?: boolean
           currency_requirement_hours?: number
           default_anonymous_publish?: boolean
+          default_map_layers?: Json
           default_publish_planned_missions?: boolean
           default_share_contact_email?: boolean
           default_share_contact_info?: boolean
@@ -802,6 +807,7 @@ export type Database = {
           propagate_airspace_warnings?: boolean
           propagate_all_users_can_acknowledge_maintenance?: boolean
           propagate_currency_requirement?: boolean
+          propagate_default_map_layers?: boolean
           propagate_deviation_report?: boolean
           propagate_fh2_credentials?: boolean
           propagate_flight_alerts?: boolean
