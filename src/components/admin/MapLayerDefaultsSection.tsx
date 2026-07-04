@@ -72,7 +72,7 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
       .concat(
         [...byGroup.entries()].filter(([g]) => !MAP_LAYER_GROUP_ORDER.includes(g)),
       );
-  }, []);
+  }, [companyName, parentCompanyName]);
 
   const effectiveEnabled = (id: string, fallback: boolean) =>
     Object.prototype.hasOwnProperty.call(overrides, id) ? !!overrides[id] : fallback;
