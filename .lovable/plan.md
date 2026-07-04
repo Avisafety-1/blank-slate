@@ -1,28 +1,32 @@
-## Mål
-Skjule kartlaget "Luftnett Tensio" fra alle selskaper unntatt Tensio-hierarkiet, både i kartet og i selskapsinnstillingen "Standard kartlag".
+## Problem
+Nåværende Tensio-gate (både i kartet og i "Standard kartlag"-innstillingen) sjekker kun om selskapets eget navn eller direkte forelder-navn inneholder "tensio". Underavdelinger av Tensio som ikke har "tensio" i navnet — og spesielt avdelinger to nivåer ned — vil dermed ikke se laget. Svaret på brukerens spørsmål er altså: nei, ikke alltid.
 
-## Situasjon i dag
-- `OpenAIPMap.tsx` bygger allerede Tensio-laget kun når `isTensioHierarchy` er sant (sjekker `companyName`/`parentCompanyName` for "tensio"). Andre selskaper ser aldri knappen i kartmenyen — så kartsiden er allerede riktig.
-- `src/config/mapLayers.ts` lister `tensio_luftnett` uten begrensning, så det vises i admin-innstillingen "Standard kartlag" for alle selskaper.
-- `MapLayerDefaultsSection.tsx` bruker hele katalogen som den er.
+## Løsning
+Bytt sjekken fra "navn på meg eller direkte parent" til "navn på rot-selskapet i hierarkiet". Rot-selskapet finnes allerede via SQL-funksjonen `public.get_parent_company_id(_company_id)` (returnerer rot for et gitt selskap, eller `null` hvis selskapet selv er rot).
 
-## Endringer
+### 1. `src/config/mapLayers.ts`
+- Behold `restrictedToCompanyNameContains` og `isLayerAvailableForCompany(entry, rootCompanyName)` — men endre signatur/semantikk til å ta ett enkelt "rot-navn" (kaller kan sende inn selskapets eget navn hvis det er rot).
 
-1. **`src/config/mapLayers.ts`**
-   - Utvid `MapLayerCatalogEntry` med et valgfritt felt `restrictedToCompanyNameContains?: string` (kan senere gjenbrukes for andre restriksjoner).
-   - Sett `restrictedToCompanyNameContains: "tensio"` på `tensio_luftnett`-oppføringen.
-   - Ekstra hjelper `isLayerAvailableForCompany(entry, companyName, parentCompanyName)` som returnerer `true` når feltet mangler, ellers krever at navnet matcher (case-insensitive) på selskap eller foreldreselskap.
+### 2. Ny hjelper `src/lib/companyHierarchy.ts` (liten)
+- `resolveRootCompanyName(companyId): Promise<string | null>`
+  - Kaller `supabase.rpc('get_parent_company_id', { _company_id: companyId })`.
+  - Hvis RPC returnerer `null` → hent `companies.name` for `companyId`.
+  - Ellers → hent `companies.name` for det returnerte rot-id-et.
+- Enkel modul-nivå cache (Map<companyId, name>) for å unngå gjentatte kall i samme økt.
 
-2. **`src/components/admin/MapLayerDefaultsSection.tsx`**
-   - Hent i tillegg `name` og `parent:companies!parent_company_id(name)` fra `companies`-raden som allerede lastes.
-   - Filtrer `MAP_LAYER_CATALOG` gjennom `isLayerAvailableForCompany(...)` før gruppering, slik at Tensio-laget kun vises for Tensio-selskaper og deres underavdelinger.
-   - Ingen andre endringer i UI, propagering, eller lagring.
+### 3. `src/components/admin/MapLayerDefaultsSection.tsx`
+- Erstatt uthenting av `parent:companies!parent_company_id(name)` med kall til `resolveRootCompanyName(companyId)`.
+- Filtrer `MAP_LAYER_CATALOG` via `isLayerAvailableForCompany(entry, rootCompanyName)`.
+- Ingen endring i lagring, propagering eller UI-struktur.
 
-3. **Ingen migrasjon / ingen kartendringer**
-   - Kartsiden gater allerede laget korrekt via `isTensioHierarchy`; propagert `default_map_layers` fra et Tensio-morselskap ned til Tensio-avdelinger fungerer uendret.
-   - Ikke-Tensio-selskaper kan uansett ikke aktivere laget i kartet, og etter denne endringen kan de heller ikke se eller togle det i admin-innstillingen.
+### 4. `src/components/OpenAIPMap.tsx`
+- Erstatt `isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName)` med sjekk mot rot-navn via samme `resolveRootCompanyName(...)`-hjelper (eller inline RPC-kall bak en `useEffect` som setter en `isTensioHierarchy`-state).
+- All annen kart-logikk (WMS-lag, pane, popups, propagert `default_map_layers`) er uendret.
+
+## Ingen migrasjon
+Bruker eksisterende `get_parent_company_id` og `companies.name`. Ingen skjema-, RLS- eller propageringsendringer.
 
 ## Verifisering
-- Åpne selskapsinnstillinger som ikke-Tensio-selskap → "Luftnett Tensio" skal ikke være i listen under "Standard kartlag" › "Infrastruktur".
-- Åpne som Tensio (eller Tensio-underavdeling) → laget vises og kan togles/propageres som før.
-- `/kart` uendret for alle.
+- Tensio (rot) → ser laget i admin og i /kart.
+- Tensio-underavdeling uten "tensio" i navnet → ser og kan togle laget begge steder (dette var det brutte scenariet).
+- Selskap uten Tensio i noen del av hierarkiet → ser aldri laget verken i admin eller på /kart.
