@@ -534,6 +534,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             propagate_flight_alerts: parent.propagate_flight_alerts ?? false,
             propagate_fh2_credentials: parent.propagate_fh2_credentials ?? false,
             propagate_currency_requirement: parent.propagate_currency_requirement ?? false,
+            propagate_default_map_layers: parent.propagate_default_map_layers ?? false,
             currency_requirement_enabled: parent.currency_requirement_enabled ?? false,
             currency_requirement_hours: Number(parent.currency_requirement_hours ?? 2),
             currency_requirement_days: Number(parent.currency_requirement_days ?? 90),
