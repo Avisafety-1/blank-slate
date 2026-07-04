@@ -206,7 +206,34 @@ export function OpenAIPMap({
   routeInspectMode,
 }: OpenAIPMapProps) {
 
-  const { user, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
+  const { user, companyId, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
+  // Company-level default map layer toggles (jsonb map of layer_id → boolean).
+  // Loaded once when the map mounts; used to override hardcoded per-layer defaults.
+  const companyDefaultLayersRef = useRef<Record<string, boolean>>({});
+  const [companyDefaultLayersLoaded, setCompanyDefaultLayersLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    if (!companyId) {
+      companyDefaultLayersRef.current = {};
+      setCompanyDefaultLayersLoaded(true);
+      return;
+    }
+    supabase
+      .from("companies")
+      .select("default_map_layers")
+      .eq("id", companyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const raw = (data as any)?.default_map_layers;
+        companyDefaultLayersRef.current =
+          raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, boolean>) : {};
+        setCompanyDefaultLayersLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId]);
   const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
