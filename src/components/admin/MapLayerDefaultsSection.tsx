@@ -27,6 +27,8 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [propagate, setPropagate] = useState(false);
   const [isRoot, setIsRoot] = useState(true);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  const [parentCompanyName, setParentCompanyName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -35,7 +37,7 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
     setLoading(true);
     (supabase
       .from("companies")
-      .select("default_map_layers, propagate_default_map_layers, parent_company_id")
+      .select("name, default_map_layers, propagate_default_map_layers, parent_company_id, parent:companies!parent_company_id(name)")
       .eq("id", companyId)
       .maybeSingle() as any).then(({ data }: any) => {
         if (data) {
@@ -47,6 +49,8 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
           );
           setPropagate(!!data.propagate_default_map_layers);
           setIsRoot(!data.parent_company_id);
+          setCompanyName(data.name ?? null);
+          setParentCompanyName(data.parent?.name ?? null);
         }
         setLoading(false);
       });
