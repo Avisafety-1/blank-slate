@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MAP_LAYER_CATALOG, MAP_LAYER_GROUP_ORDER, isLayerAvailableForCompany } from "@/config/mapLayers";
+import { resolveRootCompanyName } from "@/lib/companyHierarchy";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   layers: Layers, ban: Ban, alertTriangle: AlertTriangle, treePine: TreePine,
@@ -27,38 +28,43 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [propagate, setPropagate] = useState(false);
   const [isRoot, setIsRoot] = useState(true);
-  const [companyName, setCompanyName] = useState<string | null>(null);
-  const [parentCompanyName, setParentCompanyName] = useState<string | null>(null);
+  const [rootCompanyName, setRootCompanyName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
+    let cancelled = false;
     setLoading(true);
-    (supabase
-      .from("companies")
-      .select("name, default_map_layers, propagate_default_map_layers, parent_company_id, parent:companies!parent_company_id(name)")
-      .eq("id", companyId)
-      .maybeSingle() as any).then(({ data }: any) => {
-        if (data) {
-          const raw = data.default_map_layers;
-          setOverrides(
-            raw && typeof raw === "object" && !Array.isArray(raw)
-              ? (raw as Record<string, boolean>)
-              : {},
-          );
-          setPropagate(!!data.propagate_default_map_layers);
-          setIsRoot(!data.parent_company_id);
-          setCompanyName(data.name ?? null);
-          setParentCompanyName(data.parent?.name ?? null);
-        }
-        setLoading(false);
-      });
+    (async () => {
+      const { data } = await (supabase
+        .from("companies")
+        .select("default_map_layers, propagate_default_map_layers, parent_company_id")
+        .eq("id", companyId)
+        .maybeSingle() as any);
+      const rootName = await resolveRootCompanyName(companyId);
+      if (cancelled) return;
+      if (data) {
+        const raw = data.default_map_layers;
+        setOverrides(
+          raw && typeof raw === "object" && !Array.isArray(raw)
+            ? (raw as Record<string, boolean>)
+            : {},
+        );
+        setPropagate(!!data.propagate_default_map_layers);
+        setIsRoot(!data.parent_company_id);
+      }
+      setRootCompanyName(rootName);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [companyId]);
 
   const grouped = useMemo(() => {
     const available = MAP_LAYER_CATALOG.filter((e) =>
-      isLayerAvailableForCompany(e, companyName, parentCompanyName),
+      isLayerAvailableForCompany(e, rootCompanyName),
     );
     const byGroup = new Map<string, typeof MAP_LAYER_CATALOG>();
     for (const entry of available) {
@@ -72,7 +78,7 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
       .concat(
         [...byGroup.entries()].filter(([g]) => !MAP_LAYER_GROUP_ORDER.includes(g)),
       );
-  }, [companyName, parentCompanyName]);
+  }, [rootCompanyName]);
 
   const effectiveEnabled = (id: string, fallback: boolean) =>
     Object.prototype.hasOwnProperty.call(overrides, id) ? !!overrides[id] : fallback;

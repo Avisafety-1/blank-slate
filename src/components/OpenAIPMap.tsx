@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { openAipConfig } from "@/lib/openaip";
+import { resolveRootCompanyName } from "@/lib/companyHierarchy";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
@@ -234,7 +235,26 @@ export function OpenAIPMap({
       cancelled = true;
     };
   }, [companyId]);
-  const isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName);
+  // Tensio-laget skal være tilgjengelig for hele Tensio-hierarkiet, også
+  // avdelinger som ikke har "tensio" i sitt eget/direkte forelder-navn.
+  // Vi resolver derfor rot-selskapets navn (via get_parent_company_id).
+  const [isTensioHierarchy, setIsTensioHierarchy] = useState<boolean>(
+    isTensioName(companyName) || isTensioName(parentCompanyName),
+  );
+  useEffect(() => {
+    let cancelled = false;
+    if (!companyId) {
+      setIsTensioHierarchy(false);
+      return;
+    }
+    resolveRootCompanyName(companyId).then((rootName) => {
+      if (cancelled) return;
+      setIsTensioHierarchy(isTensioName(rootName));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, companyName, parentCompanyName]);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
