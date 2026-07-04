@@ -1,61 +1,71 @@
-## Problem
+## Ny selskapsinnstilling: "Standard kartlag"
 
-Etter innlogging (og på /reset-password) refresher appen ~10 sekunder etter last. Årsaken er ikke Stripe/abonnement-sjekken, men service worker-registreringen.
+Legger til en ny `SubSection` under Selskapsinnstillinger i `ChildCompaniesSection.tsx` som lar admins bestemme hvilke kartlag/knapper som er togget på som standard når brukere åpner `/kart`. Innstillingen skal kunne propageres til underavdelinger (samme mønster som SORA-buffersone, roller, flylogg-varsler osv.).
 
-### Rotårsak
+Listen som vises i selskapsinnstillingen er **eksakt den samme** som vises i `MapLayerControl` på `/kart` — samme id, samme visningsnavn, samme gruppe, samme rekkefølge, samme ikon. Én knapp = én toggle, selv når den knappen internt aktiverer flere Leaflet-lag (f.eks. `restriksjonsomrader` = `caaRestriksjonerLayer + dkRodLayer`, `notam` = `notamLayer + caaNotamSonerLayer`). Det er nettopp knappene fra `MapLayerControl` som togges — ikke de underliggende Leaflet-lagene.
 
-`src/sw.ts` bruker `self.skipWaiting()` + `self.clients.claim()`, og `src/main.tsx` har:
+## Datamodell
 
-```ts
-navigator.serviceWorker.addEventListener("controllerchange", () => {
-  if (hasReloaded) return;
-  hasReloaded = true;
-  window.location.reload();
-});
-```
+Migrasjon som legger til to kolonner på `public.companies`:
 
-`controllerchange` fyres i to helt forskjellige situasjoner:
+- `default_map_layers jsonb NOT NULL DEFAULT '{}'` — map `{ [layer_id]: boolean }` der `layer_id` er den samme id-en som `MapLayerControl` bruker (`airspace`, `rpas`, `notam`, `verneomrader`, …). Nøkler som mangler = arv fra hardkodet default (bakoverkompat + nye lag får sin naturlige default uten migrering).
+- `propagate_default_map_layers boolean NOT NULL DEFAULT false`.
 
-1. **Ekte oppdatering** — ny SW-versjon tar over fra en eksisterende controller. Reload er ønsket.
-2. **Første gangs claim** — siden lastet uten controller (hard refresh, ny fane, første besøk, private mode, eller etter at cache/SW ble tømt) og SW-en claimer den etter ~5–10 sek. Da er den "nye" SW-en helt lik koden som allerede kjører, men vi tvinger likevel en full reload.
+Utvid `public.propagate_company_settings_to_children()` med en blokk som — når `propagate_default_map_layers` er på og enten `default_map_layers` eller togglen selv endret seg — kopierer `default_map_layers` til alle direkte barn (`parent_company_id = NEW.id`). Samme SECURITY DEFINER-mønster som eksisterende blokker; ingen RLS-endring nødvendig.
 
-Case 2 forklarer begge symptomene:
-- **Innlogging:** `signIn` navigerer til `/` → siden re-lastes fra nettverk uten controller → SW claimer → reload → "blink".
-- **/reset-password:** Bruker åpner e-postlenken i ny fane. Siden starter uten controller, `verifyOtp` kjører, og midt i flyten claimer SW-en → reload. Token er allerede konsumert (engangs-token) → lenken framstår som ugyldig.
+## Delt kartlag-katalog (én kilde til sannhet)
 
-Stripe-sjekken (`checkSubscription` i `Index.tsx`) kjører også rundt samme tidspunkt, men den utløser ingen reload — den oppdaterer bare state. Så det er tilfeldig samtidighet.
-
-## Endring
-
-Kun `src/main.tsx`. Skill mellom "første claim" og "ekte SW-oppdatering", og hopp helt over reload på `/reset-password`.
+Ny fil `src/config/mapLayers.ts` med én kanonisk liste over alle knappene som `MapLayerControl` viser, ekstrahert 1:1 fra dagens `layerConfigs.push(...)`-kall i `src/components/OpenAIPMap.tsx`:
 
 ```ts
-if ("serviceWorker" in navigator) {
-  // Snapshot om vi allerede hadde en aktiv controller ved oppstart.
-  // Hvis ikke, betyr controllerchange bare "SW claimet siden første gang"
-  // — koden er identisk med det som allerede kjører, ingen reload trengs.
-  const hadControllerAtLoad = !!navigator.serviceWorker.controller;
-  let hasReloaded = false;
-
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (hasReloaded) return;
-    if (!hadControllerAtLoad) return;               // første-gangs claim — ikke reload
-    if (location.pathname.startsWith("/reset-password")) return;  // ikke avbryt recovery-flyt
-    hasReloaded = true;
-    window.location.reload();
-  });
+export interface MapLayerCatalogEntry {
+  id: string;              // "airspace", "rpas", "notam", …  (samme id som i MapLayerControl)
+  name: string;            // "Luftrom", "RPAS 5 km", …       (samme visningsnavn)
+  group: string;           // "Luftrom", "Restriksjoner", …    (samme gruppe)
+  icon: string;            // eksisterende iconMap-nøkler
+  defaultEnabled: boolean; // fallback når selskapet ikke har overstyrt
 }
+export const MAP_LAYER_CATALOG: MapLayerCatalogEntry[] = [ … ];
 ```
 
-Ekte SW-oppdateringer (deploy av ny versjon) fungerer fortsatt: da finnes det en `controller` ved sidelast, en ny SW installeres, `controllerchange` fyres, og reload skjer som før. `useForceReload`-banneret er også uendret.
+Katalogen inkluderer alle knappene som pushes i OpenAIPMap i dag: `airspace`, `rpas`, `nsm`, `aip`, `rmz_tmz_atz`, `restriksjonsomrader`, `fareomrader`, `sikringsobjekter`, `notam`, `verneomrader`, `befolkning`, `tettsteder`, `arealbruk`, `luftfartshindre`, `kraftledninger`, `eiendomsgrenser`, `tensio_luftnett`, `flyplasser`, `drones`, `safesky`, `nais`.
 
-## Ingen andre filer trengs å endres
+**Ikke inkludert** (styres av mode/kontekst, ikke av admin): `missions`, `completed_missions`, `planned_published`.
 
-- `src/sw.ts`, `useForceReload.ts`, `AuthContext.tsx`, `Index.tsx`, `ResetPassword.tsx`: uendret.
-- Ingen backend/RLS-endringer.
+Admin-UI-et og OpenAIPMap importerer **samme** `MAP_LAYER_CATALOG`, så navn/rekkefølge/gruppering kan ikke drifte fra hverandre.
+
+## OpenAIPMap: bruk selskapets defaults
+
+I `src/components/OpenAIPMap.tsx`:
+
+1. Hent selskapets `default_map_layers` én gang når kartet initialiseres (`useQuery` mot `companies.default_map_layers` for `companyId` fra `useAuth()`).
+2. Erstatt hardkodet `enabled: true/false` i alle `layerConfigs.push({ … })`-kall (linje 857–1038) med en helper `initialEnabled(id)` som gjør `companyDefaults[id] ?? MAP_LAYER_CATALOG.find(e => e.id === id)?.defaultEnabled ?? false`.
+3. Behold dagens spesialtilfeller uendret: `tensio_luftnett` pushes fortsatt kun når selskapet er norsk, og `missions/completed_missions/planned_published` beholder `modeRef.current === "view"`-logikken.
+4. `MapLayerControl` og `handleLayerToggle` er uendret — brukerens run-time toggle er fortsatt lokal state (påvirker ikke selskapets standard).
+
+## Admin-UI
+
+Ny komponent `src/components/admin/MapLayerDefaultsSection.tsx` (samme struktur som `MapPublicationDefaultsCard`):
+
+- Leser `companies.default_map_layers` og `propagate_default_map_layers` for gjeldende selskap.
+- Rendrer katalogen gruppert etter `group` i **samme rekkefølge** som `MapLayerControl.GROUP_ORDER` (`Luftrom`, `Restriksjoner`, `Natur & befolkning`, `Infrastruktur`, `Live trafikk`, `Annet`).
+- Hver rad: ikon + navn (identisk med `/kart`) + `Switch` som viser effektiv verdi (`default_map_layers[id] ?? defaultEnabled`).
+- Toggle skriver full jsonb inkl. den endrede nøkkelen tilbake, invalidér relevant query, bump `updated_at`.
+- Nederst: `Switch` "Del med underavdelinger" bundet til `propagate_default_map_layers`. Når moderavdelingen har propagering på, låses hele seksjonen for barn (samme UX som `fh2Locked` / `parentPropagatesRoles`).
+
+Registrer den som ny `SubSection title="Standard kartlag"` med `Layers`-ikonet i `ChildCompaniesSection.tsx`, plassert rett etter "Kartpublisering" (linje ~2045). Utvid `select(...)`-kallene på linje 427 og 473, og `parent.propagate_*`-mappingen ved linje 512–535, med de to nye feltene slik at barn-status og inherit-lås oppdages likt som for de andre feltene.
+
+## Ingen andre endringer
+
+- Ingen RLS-endring.
+- Ingen ny edge function.
+- Ingen endring i `AuthContext` (kartsiden gjør sin egen fetch).
+- Ingen endring i `MapLayerControl.tsx`.
 
 ## Verifisering
 
-1. Logg inn — ingen blink ~10 sek etter.
-2. Åpne en fersk passord-tilbakestillingslenke — verifiser og sett nytt passord uten reload.
-3. Deploy en ny versjon — banneret / reload på ekte oppdatering fungerer fortsatt.
+1. Åpne selskapsinnstilling → "Standard kartlag" viser nøyaktig samme knapper/grupper/navn som `/kart`-menyen.
+2. Skru av "Verneområder" og på "Kraftledninger" → lagres i `default_map_layers`.
+3. Refresh `/kart`: knappen for kraftledninger står togglet på, verneområder av; menyen viser samme navn.
+4. Skru på "Del med underavdelinger" → trigger propagerer JSON-en til alle barn; brukere i underavdeling får samme oppsett.
+5. Ny bruker uten override: alle knapper oppfører seg som før (fallback til `defaultEnabled`).
