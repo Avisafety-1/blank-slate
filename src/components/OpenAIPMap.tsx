@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { openAipConfig } from "@/lib/openaip";
+import { resolveRootCompanyName } from "@/lib/companyHierarchy";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
