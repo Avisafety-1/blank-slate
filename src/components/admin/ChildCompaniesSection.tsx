@@ -184,6 +184,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     propagate_flight_alerts: boolean;
     propagate_fh2_credentials: boolean;
     propagate_currency_requirement: boolean;
+    propagate_default_map_layers: boolean;
     currency_requirement_enabled: boolean;
     currency_requirement_hours: number;
     currency_requirement_days: number;
