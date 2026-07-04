@@ -19,6 +19,11 @@ export interface MapLayerCatalogEntry {
   icon: string;
   /** Fallback default when the company has not overridden this layer. */
   defaultEnabled: boolean;
+  /**
+   * Optional restriction: only companies whose name (or their parent company's name)
+   * contains this substring (case-insensitive) may see/toggle the layer.
+   */
+  restrictedToCompanyNameContains?: string;
 }
 
 export const MAP_LAYER_CATALOG: MapLayerCatalogEntry[] = [
