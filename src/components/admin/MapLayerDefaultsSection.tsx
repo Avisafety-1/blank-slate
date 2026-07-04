@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MAP_LAYER_CATALOG, MAP_LAYER_GROUP_ORDER } from "@/config/mapLayers";
+import { MAP_LAYER_CATALOG, MAP_LAYER_GROUP_ORDER, isLayerAvailableForCompany } from "@/config/mapLayers";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   layers: Layers, ban: Ban, alertTriangle: AlertTriangle, treePine: TreePine,
@@ -27,6 +27,8 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [propagate, setPropagate] = useState(false);
   const [isRoot, setIsRoot] = useState(true);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  const [parentCompanyName, setParentCompanyName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -35,7 +37,7 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
     setLoading(true);
     (supabase
       .from("companies")
-      .select("default_map_layers, propagate_default_map_layers, parent_company_id")
+      .select("name, default_map_layers, propagate_default_map_layers, parent_company_id, parent:companies!parent_company_id(name)")
       .eq("id", companyId)
       .maybeSingle() as any).then(({ data }: any) => {
         if (data) {
@@ -47,14 +49,19 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
           );
           setPropagate(!!data.propagate_default_map_layers);
           setIsRoot(!data.parent_company_id);
+          setCompanyName(data.name ?? null);
+          setParentCompanyName(data.parent?.name ?? null);
         }
         setLoading(false);
       });
   }, [companyId]);
 
   const grouped = useMemo(() => {
+    const available = MAP_LAYER_CATALOG.filter((e) =>
+      isLayerAvailableForCompany(e, companyName, parentCompanyName),
+    );
     const byGroup = new Map<string, typeof MAP_LAYER_CATALOG>();
-    for (const entry of MAP_LAYER_CATALOG) {
+    for (const entry of available) {
       const arr = byGroup.get(entry.group) ?? [];
       arr.push(entry);
       byGroup.set(entry.group, arr);
@@ -65,7 +72,7 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
       .concat(
         [...byGroup.entries()].filter(([g]) => !MAP_LAYER_GROUP_ORDER.includes(g)),
       );
-  }, []);
+  }, [companyName, parentCompanyName]);
 
   const effectiveEnabled = (id: string, fallback: boolean) =>
     Object.prototype.hasOwnProperty.call(overrides, id) ? !!overrides[id] : fallback;

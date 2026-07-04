@@ -1,45 +1,28 @@
-## Ny selskapsinnstilling: "Standard kartlag" (revidert migrasjon)
+## Mål
+Skjule kartlaget "Luftnett Tensio" fra alle selskaper unntatt Tensio-hierarkiet, både i kartet og i selskapsinnstillingen "Standard kartlag".
 
-Endringen fra forrige plan er kun i migrasjonen: `propagate_company_settings_to_children()` gjenskapes ordrett fra dagens versjon i databasen, og den nye `default_map_layers`-blokken legges til rett før `RETURN NEW`. Ingen andre blokker røres — SafeSky-blokken beholder sin nåværende `COALESCE(...test_mode, false)`-sammenligning og sin `AND (...)`-filtrering på barnerekkene.
+## Situasjon i dag
+- `OpenAIPMap.tsx` bygger allerede Tensio-laget kun når `isTensioHierarchy` er sant (sjekker `companyName`/`parentCompanyName` for "tensio"). Andre selskaper ser aldri knappen i kartmenyen — så kartsiden er allerede riktig.
+- `src/config/mapLayers.ts` lister `tensio_luftnett` uten begrensning, så det vises i admin-innstillingen "Standard kartlag" for alle selskaper.
+- `MapLayerDefaultsSection.tsx` bruker hele katalogen som den er.
 
-## Datamodell
+## Endringer
 
-Migrasjon på `public.companies`:
+1. **`src/config/mapLayers.ts`**
+   - Utvid `MapLayerCatalogEntry` med et valgfritt felt `restrictedToCompanyNameContains?: string` (kan senere gjenbrukes for andre restriksjoner).
+   - Sett `restrictedToCompanyNameContains: "tensio"` på `tensio_luftnett`-oppføringen.
+   - Ekstra hjelper `isLayerAvailableForCompany(entry, companyName, parentCompanyName)` som returnerer `true` når feltet mangler, ellers krever at navnet matcher (case-insensitive) på selskap eller foreldreselskap.
 
-- `default_map_layers jsonb NOT NULL DEFAULT '{}'::jsonb` — `{ [layer_id]: boolean }` med samme id-er som `MapLayerControl` bruker.
-- `propagate_default_map_layers boolean NOT NULL DEFAULT false`.
+2. **`src/components/admin/MapLayerDefaultsSection.tsx`**
+   - Hent i tillegg `name` og `parent:companies!parent_company_id(name)` fra `companies`-raden som allerede lastes.
+   - Filtrer `MAP_LAYER_CATALOG` gjennom `isLayerAvailableForCompany(...)` før gruppering, slik at Tensio-laget kun vises for Tensio-selskaper og deres underavdelinger.
+   - Ingen andre endringer i UI, propagering, eller lagring.
 
-Deretter `CREATE OR REPLACE FUNCTION public.propagate_company_settings_to_children()` med **eksakt** dagens body (verifisert via `pg_get_functiondef`), utvidet med denne blokken plassert rett før `RETURN NEW`:
-
-```sql
--- default_map_layers (NEW)
-IF COALESCE(NEW.propagate_default_map_layers, false) AND (
-     NEW.default_map_layers IS DISTINCT FROM OLD.default_map_layers
-     OR COALESCE(NEW.propagate_default_map_layers, false)
-        IS DISTINCT FROM COALESCE(OLD.propagate_default_map_layers, false)
-) THEN
-  UPDATE public.companies
-     SET default_map_layers = NEW.default_map_layers
-   WHERE parent_company_id = NEW.id
-     AND default_map_layers IS DISTINCT FROM NEW.default_map_layers;
-END IF;
-```
-
-SafeSky-blokken forblir uendret (med `COALESCE(NEW.safesky_callsign_test_mode, false)` i sammenligningen, `COALESCE(..., false)` ved UPDATE av `test_mode`, og full `AND (...)`-filtrering på barnerekkene). Ingen andre blokker endres.
-
-## Delt kartlag-katalog (uendret fra forrige plan)
-
-Ny fil `src/config/mapLayers.ts` med én kanonisk liste over alle knappene i `MapLayerControl`, ekstrahert 1:1 fra `layerConfigs.push(...)` i `src/components/OpenAIPMap.tsx`: `airspace`, `rpas`, `nsm`, `aip`, `rmz_tmz_atz`, `restriksjonsomrader`, `fareomrader`, `sikringsobjekter`, `notam`, `verneomrader`, `befolkning`, `tettsteder`, `arealbruk`, `luftfartshindre`, `kraftledninger`, `eiendomsgrenser`, `tensio_luftnett`, `flyplasser`, `drones`, `safesky`, `nais`. `missions/completed_missions/planned_published` er ikke i katalogen (styres av mode).
-
-## OpenAIPMap: bruk selskapets defaults
-
-Uendret fra forrige plan: hent `default_map_layers` for `companyId` én gang ved init, bruk `initialEnabled(id) = companyDefaults[id] ?? MAP_LAYER_CATALOG.find(e => e.id === id)?.defaultEnabled ?? false` i alle `layerConfigs.push({ enabled: … })`-kall. Ingen endring i `MapLayerControl`, `handleLayerToggle` eller de dynamiske mode-styrte lagene.
-
-## Admin-UI
-
-Uendret fra forrige plan: ny `src/components/admin/MapLayerDefaultsSection.tsx`, registrert som `SubSection title="Standard kartlag"` med `Layers`-ikonet i `ChildCompaniesSection.tsx` rett etter "Kartpublisering". Utvid `select(...)`-kallene og `parent.propagate_*`-mappingen med `default_map_layers` og `propagate_default_map_layers` slik at barn-lås og inherit-oppdages likt.
+3. **Ingen migrasjon / ingen kartendringer**
+   - Kartsiden gater allerede laget korrekt via `isTensioHierarchy`; propagert `default_map_layers` fra et Tensio-morselskap ned til Tensio-avdelinger fungerer uendret.
+   - Ikke-Tensio-selskaper kan uansett ikke aktivere laget i kartet, og etter denne endringen kan de heller ikke se eller togle det i admin-innstillingen.
 
 ## Verifisering
-
-1. `pg_get_functiondef` etter migrasjonen viser alle eksisterende blokker uendret + én ny `default_map_layers`-blokk rett før `RETURN NEW`.
-2. UI-flyt: admin togger lag → lagres i `default_map_layers`; med propagering på blir barn oppdatert; `/kart` viser samme knapper/navn med togglene som selskapets standard.
+- Åpne selskapsinnstillinger som ikke-Tensio-selskap → "Luftnett Tensio" skal ikke være i listen under "Standard kartlag" › "Infrastruktur".
+- Åpne som Tensio (eller Tensio-underavdeling) → laget vises og kan togles/propageres som før.
+- `/kart` uendret for alle.

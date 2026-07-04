@@ -19,6 +19,11 @@ export interface MapLayerCatalogEntry {
   icon: string;
   /** Fallback default when the company has not overridden this layer. */
   defaultEnabled: boolean;
+  /**
+   * Optional restriction: only companies whose name (or their parent company's name)
+   * contains this substring (case-insensitive) may see/toggle the layer.
+   */
+  restrictedToCompanyNameContains?: string;
 }
 
 export const MAP_LAYER_CATALOG: MapLayerCatalogEntry[] = [
@@ -45,7 +50,7 @@ export const MAP_LAYER_CATALOG: MapLayerCatalogEntry[] = [
   { id: "luftfartshindre",      name: "Luftfartshindre",      group: "Infrastruktur",       icon: "alertTriangle",  defaultEnabled: false },
   { id: "kraftledninger",       name: "Kraftledninger",       group: "Infrastruktur",       icon: "zap",            defaultEnabled: false },
   { id: "eiendomsgrenser",      name: "Eiendomsgrenser",      group: "Infrastruktur",       icon: "mapPin",         defaultEnabled: false },
-  { id: "tensio_luftnett",      name: "Luftnett Tensio",      group: "Infrastruktur",       icon: "zap",            defaultEnabled: true },
+  { id: "tensio_luftnett",      name: "Luftnett Tensio",      group: "Infrastruktur",       icon: "zap",            defaultEnabled: true, restrictedToCompanyNameContains: "tensio" },
   { id: "flyplasser",           name: "Flyplasser",           group: "Infrastruktur",       icon: "planeLanding",   defaultEnabled: true },
 
   // Live trafikk
@@ -76,4 +81,20 @@ export function resolveLayerDefault(
   }
   const entry = MAP_LAYER_CATALOG.find((e) => e.id === id);
   return entry ? entry.defaultEnabled : hardcodedFallback;
+}
+
+/**
+ * Returns true when the layer is available for the given company (and its parent).
+ * Layers without a restriction are always available.
+ */
+export function isLayerAvailableForCompany(
+  entry: MapLayerCatalogEntry,
+  companyName: string | null | undefined,
+  parentCompanyName: string | null | undefined,
+): boolean {
+  const needle = entry.restrictedToCompanyNameContains?.toLowerCase();
+  if (!needle) return true;
+  const a = companyName?.toLowerCase() ?? "";
+  const b = parentCompanyName?.toLowerCase() ?? "";
+  return a.includes(needle) || b.includes(needle);
 }
