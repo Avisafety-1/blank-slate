@@ -1234,6 +1234,8 @@ export function OpenAIPMap({
     // Start ALL layers immediately — AuthContext handles session validity,
     // Supabase SDK auto-attaches the JWT from localStorage for RLS queries.
     safeSkyManager.start();
+    // Honor company "Standard kartlag" override for SafeSky (special side-effect layer).
+    if (companyDefaults.safesky === false) safeSkyManager.stop();
     fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
     fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
     fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
