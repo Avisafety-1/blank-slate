@@ -82,3 +82,19 @@ export function resolveLayerDefault(
   const entry = MAP_LAYER_CATALOG.find((e) => e.id === id);
   return entry ? entry.defaultEnabled : hardcodedFallback;
 }
+
+/**
+ * Returns true when the layer is available for the given company (and its parent).
+ * Layers without a restriction are always available.
+ */
+export function isLayerAvailableForCompany(
+  entry: MapLayerCatalogEntry,
+  companyName: string | null | undefined,
+  parentCompanyName: string | null | undefined,
+): boolean {
+  const needle = entry.restrictedToCompanyNameContains?.toLowerCase();
+  if (!needle) return true;
+  const a = companyName?.toLowerCase() ?? "";
+  const b = parentCompanyName?.toLowerCase() ?? "";
+  return a.includes(needle) || b.includes(needle);
+}
