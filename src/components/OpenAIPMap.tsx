@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
+import { MAP_LAYER_CATALOG } from "@/config/mapLayers";
 
 // Re-export types for backward compatibility
 export type { RoutePoint, RouteData, SoraSettings } from "@/types/map";
