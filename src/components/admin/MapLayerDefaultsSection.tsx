@@ -57,8 +57,11 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
   }, [companyId]);
 
   const grouped = useMemo(() => {
+    const available = MAP_LAYER_CATALOG.filter((e) =>
+      isLayerAvailableForCompany(e, companyName, parentCompanyName),
+    );
     const byGroup = new Map<string, typeof MAP_LAYER_CATALOG>();
-    for (const entry of MAP_LAYER_CATALOG) {
+    for (const entry of available) {
       const arr = byGroup.get(entry.group) ?? [];
       arr.push(entry);
       byGroup.set(entry.group, arr);
