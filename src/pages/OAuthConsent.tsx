@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { GlassCard } from "@/components/GlassCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   Check,
@@ -118,7 +118,13 @@ export default function OAuthConsent() {
         <div className="absolute -bottom-1/3 -left-1/3 w-[60vw] h-[60vw] rounded-full bg-accent/10 blur-[100px]" />
       </div>
 
-      <GlassCard className="relative z-10 w-full max-w-lg p-6 sm:p-8 space-y-6">
+      <div
+        className={cn(
+          "relative z-10 w-full max-w-lg p-6 sm:p-8 rounded-xl border space-y-6",
+          "bg-popover/95 border-border/60 shadow-2xl backdrop-blur-sm",
+          "text-popover-foreground",
+        )}
+      >
         {/* Logo */}
         <div className="flex justify-center">
           <img
@@ -194,7 +200,7 @@ export default function OAuthConsent() {
                 {permissions.map((perm, idx) => (
                   <li
                     key={idx}
-                    className="flex items-start gap-3 p-3 rounded-lg border border-border/60 bg-muted/30"
+                    className="flex items-start gap-3 p-3 rounded-lg border border-border/60 bg-muted/40"
                   >
                     <div className="mt-0.5 w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
                       <Check className="w-3.5 h-3.5 text-primary" />
@@ -233,7 +239,7 @@ export default function OAuthConsent() {
             </p>
           </div>
         )}
-      </GlassCard>
+      </div>
     </main>
   );
 }
