@@ -5,6 +5,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 // Compute a release identifier for Sentry: <package.version>+<short-git-sha>
 // Falls back gracefully when git isn't available (e.g. some build environments).
@@ -40,6 +41,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    mcpPlugin(),
     mode === "development" && componentTagger(),
     VitePWA({
       strategies: "injectManifest",

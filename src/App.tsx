@@ -29,6 +29,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 // Synchronous imports — needed immediately
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import OAuthConsent from "./pages/OAuthConsent";
 
 // Lazy-loaded pages — loaded on demand for smaller initial bundle
 const Index = React.lazy(() => import("./pages/Index"));
@@ -228,6 +229,7 @@ const App = () => {
                   {/* Public routes - login domain */}
                   <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
                   <Route path="/reset-password" element={<DomainGuard requireAuth={false}><Suspense fallback={<LoadingSpinner />}><ResetPassword /></Suspense></DomainGuard>} />
+                  <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                   <Route path="/installer" element={<Suspense fallback={<LoadingSpinner />}><Installer /></Suspense>} />
                   <Route path="/priser" element={<Suspense fallback={<LoadingSpinner />}><Priser /></Suspense>} />
                   <Route path="/sora-prosess" element={<Suspense fallback={<LoadingSpinner />}><SoraProcess /></Suspense>} />
