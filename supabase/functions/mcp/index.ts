@@ -158,14 +158,14 @@ var list_drones_default = defineTool5({
   inputSchema: {
     limit: z5.number().int().min(1).max(200).default(50).describe("Maximum number of drones to return (1-200)."),
     status: z5.string().optional().describe("Optional status filter (e.g. 'aktiv', 'inaktiv')."),
-    search: z5.string().optional().describe("Optional case-insensitive substring match on navn, modell or serienummer.")
+    search: z5.string().optional().describe("Optional case-insensitive substring match on modell, serienummer, internal_serial or registration_number.")
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
   handler: async ({ limit, status, search }, ctx) => {
     if (!ctx.isAuthenticated()) return notAuthed();
-    let q = supabaseForUser(ctx).from("drones").select("id, navn, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, company_id, flyvetimer, vekt, aktiv").limit(limit ?? 50);
+    let q = supabaseForUser(ctx).from("drones").select("id, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, company_id, flyvetimer, vekt, aktiv").limit(limit ?? 50);
     if (status) q = q.eq("status", status);
-    if (search) q = q.or(`navn.ilike.%${search}%,modell.ilike.%${search}%,serienummer.ilike.%${search}%`);
+    if (search) q = q.or(`modell.ilike.%${search}%,serienummer.ilike.%${search}%,internal_serial.ilike.%${search}%,registration_number.ilike.%${search}%`);
     const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {

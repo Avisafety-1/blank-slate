@@ -195,7 +195,7 @@
             },
             "search": {
               "type": "string",
-              "description": "Optional case-insensitive substring match on navn, modell or serienummer."
+              "description": "Optional case-insensitive substring match on modell, serienummer, internal_serial or registration_number."
             }
           },
           "additionalProperties": false,
