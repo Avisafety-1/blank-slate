@@ -136,10 +136,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.marketing-ai]
-verify_jwt = true
+verify_jwt = false
 
 [functions.marketing-visual]
-verify_jwt = true
+verify_jwt = false
 
 [functions.publish-facebook]
 verify_jwt = false
