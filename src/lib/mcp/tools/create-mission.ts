@@ -84,7 +84,6 @@ export default defineTool({
       longitude: input.longitude,
       beskrivelse: input.beskrivelse ?? null,
       oppdragstype: input.oppdragstype ?? null,
-      estimert_varighet: input.estimert_varighet ?? null,
       company_id: companyId,
       user_id: userId,
       // Explicit safety: always draft, never published, never anonymous.
@@ -122,7 +121,7 @@ export default defineTool({
       if (error) warnings.push(`Kunne ikke koble alle droner: ${error.message}`);
     }
     if (input.personnel_ids.length > 0) {
-      const rows = input.personnel_ids.map((user_id) => ({ mission_id: mission.id, user_id }));
+      const rows = input.personnel_ids.map((profile_id) => ({ mission_id: mission.id, profile_id }));
       const { error } = await supabase.from("mission_personnel").insert(rows);
       if (error) warnings.push(`Kunne ikke koble alt personell: ${error.message}`);
     }
