@@ -1,32 +1,24 @@
-## Problem
-Nåværende Tensio-gate (både i kartet og i "Standard kartlag"-innstillingen) sjekker kun om selskapets eget navn eller direkte forelder-navn inneholder "tensio". Underavdelinger av Tensio som ikke har "tensio" i navnet — og spesielt avdelinger to nivåer ned — vil dermed ikke se laget. Svaret på brukerens spørsmål er altså: nei, ikke alltid.
+## Situasjon
+
+Consent-siden finnes allerede (`src/pages/OAuthConsent.tsx`) og er rutet på `/.lovable/oauth/consent` i `src/App.tsx`. Men i Supabase OAuth Server-innstillingene (skjermbilde) er **Authorization Path** satt til `/oauth/consent`. Supabase vil dermed redirecte brukere til `https://app.avisafe.no/oauth/consent`, som i dag ikke finnes → 404/NotFound.
 
 ## Løsning
-Bytt sjekken fra "navn på meg eller direkte parent" til "navn på rot-selskapet i hierarkiet". Rot-selskapet finnes allerede via SQL-funksjonen `public.get_parent_company_id(_company_id)` (returnerer rot for et gitt selskap, eller `null` hvis selskapet selv er rot).
 
-### 1. `src/config/mapLayers.ts`
-- Behold `restrictedToCompanyNameContains` og `isLayerAvailableForCompany(entry, rootCompanyName)` — men endre signatur/semantikk til å ta ett enkelt "rot-navn" (kaller kan sende inn selskapets eget navn hvis det er rot).
+Registrer samme `OAuthConsent`-komponent også på `/oauth/consent` i `src/App.tsx`, slik at Supabases konfigurerte sti fungerer. Behold den eksisterende `/.lovable/oauth/consent`-ruten som alias for bakoverkompatibilitet.
 
-### 2. Ny hjelper `src/lib/companyHierarchy.ts` (liten)
-- `resolveRootCompanyName(companyId): Promise<string | null>`
-  - Kaller `supabase.rpc('get_parent_company_id', { _company_id: companyId })`.
-  - Hvis RPC returnerer `null` → hent `companies.name` for `companyId`.
-  - Ellers → hent `companies.name` for det returnerte rot-id-et.
-- Enkel modul-nivå cache (Map<companyId, name>) for å unngå gjentatte kall i samme økt.
+### Endring
 
-### 3. `src/components/admin/MapLayerDefaultsSection.tsx`
-- Erstatt uthenting av `parent:companies!parent_company_id(name)` med kall til `resolveRootCompanyName(companyId)`.
-- Filtrer `MAP_LAYER_CATALOG` via `isLayerAvailableForCompany(entry, rootCompanyName)`.
-- Ingen endring i lagring, propagering eller UI-struktur.
+**`src/App.tsx`** — legg til én linje ved siden av den eksisterende consent-ruten:
 
-### 4. `src/components/OpenAIPMap.tsx`
-- Erstatt `isTensioHierarchy = isTensioName(companyName) || isTensioName(parentCompanyName)` med sjekk mot rot-navn via samme `resolveRootCompanyName(...)`-hjelper (eller inline RPC-kall bak en `useEffect` som setter en `isTensioHierarchy`-state).
-- All annen kart-logikk (WMS-lag, pane, popups, propagert `default_map_layers`) er uendret.
+```tsx
+<Route path="/oauth/consent" element={<OAuthConsent />} />
+<Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+```
 
-## Ingen migrasjon
-Bruker eksisterende `get_parent_company_id` og `companies.name`. Ingen skjema-, RLS- eller propageringsendringer.
+Ingen endringer i selve `OAuthConsent.tsx`, MCP-server, Supabase-innstillinger eller migrasjoner. Consent-komponenten håndterer allerede innlogging via `?next=`, henting av autorisasjonsdetaljer, og godkjenn/avvis-flyten.
 
 ## Verifisering
-- Tensio (rot) → ser laget i admin og i /kart.
-- Tensio-underavdeling uten "tensio" i navnet → ser og kan togle laget begge steder (dette var det brutte scenariet).
-- Selskap uten Tensio i noen del av hierarkiet → ser aldri laget verken i admin eller på /kart.
+
+- Åpne `https://app.avisafe.no/oauth/consent?authorization_id=...` fra en MCP-klient → consent-siden vises i stedet for 404.
+- Godkjenn → redirect tilbake til klienten fullføres.
+- Gammel `/.lovable/oauth/consent`-URL virker fortsatt.
