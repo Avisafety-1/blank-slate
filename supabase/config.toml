@@ -193,16 +193,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.process-manual]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-course]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-narration]
-verify_jwt = true
+verify_jwt = false
 
 [functions.suggest-course-topics]
-verify_jwt = true
+verify_jwt = false
 
 [functions.weekly-company-report]
 verify_jwt = false
