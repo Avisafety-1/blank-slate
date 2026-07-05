@@ -229,6 +229,7 @@ const App = () => {
                   {/* Public routes - login domain */}
                   <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
                   <Route path="/reset-password" element={<DomainGuard requireAuth={false}><Suspense fallback={<LoadingSpinner />}><ResetPassword /></Suspense></DomainGuard>} />
+                  <Route path="/oauth/consent" element={<OAuthConsent />} />
                   <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                   <Route path="/installer" element={<Suspense fallback={<LoadingSpinner />}><Installer /></Suspense>} />
                   <Route path="/priser" element={<Suspense fallback={<LoadingSpinner />}><Priser /></Suspense>} />
