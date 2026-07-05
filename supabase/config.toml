@@ -67,7 +67,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-search]
-verify_jwt = true
+verify_jwt = false
 
 [functions.auto-complete-missions]
 verify_jwt = false
