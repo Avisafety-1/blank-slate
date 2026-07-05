@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "avisafe-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "AviSafe"
     },
     "tools": [
@@ -45,7 +45,7 @@
       {
         "name": "list_missions",
         "title": "List missions",
-        "description": "List the signed-in user's visible drone missions (oppdrag), most recent first. Respects company/department visibility via RLS.",
+        "description": "List the signed-in user's visible drone missions (oppdrag), most recent by planned time first. Respects company/department visibility via RLS.",
         "annotations": {
           "readOnlyHint": true,
           "openWorldHint": false
@@ -62,7 +62,11 @@
             },
             "status": {
               "type": "string",
-              "description": "Optional approval_status filter (e.g. 'pending', 'approved')."
+              "description": "Optional approval_status filter (e.g. 'not_approved', 'pending_approval', 'approved')."
+            },
+            "search": {
+              "type": "string",
+              "description": "Optional case-insensitive substring match on tittel or lokasjon."
             }
           },
           "additionalProperties": false,
@@ -73,7 +77,7 @@
       {
         "name": "get_mission",
         "title": "Get mission",
-        "description": "Fetch a single mission (oppdrag) by id. Respects RLS visibility for the signed-in user.",
+        "description": "Fetch a single mission (oppdrag) by id with its planning and approval metadata. Respects RLS visibility for the signed-in user.",
         "annotations": {
           "readOnlyHint": true,
           "openWorldHint": false
@@ -90,6 +94,41 @@
           "required": [
             "id"
           ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_upcoming_missions",
+        "title": "List upcoming missions",
+        "description": "List missions with tidspunkt in the future (or within the last hour), sorted by soonest first. Respects RLS visibility.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "days_ahead": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90,
+              "default": 14,
+              "description": "Only include missions scheduled within this many days ahead (1-90)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "description": "Maximum number of missions to return (1-100)."
+            },
+            "approval_status": {
+              "type": "string",
+              "description": "Optional approval_status filter (e.g. 'not_approved', 'pending_approval', 'approved')."
+            }
+          },
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -116,6 +155,15 @@
             "severity": {
               "type": "string",
               "description": "Optional alvorlighetsgrad filter (e.g. 'lav', 'medium', 'hoy')."
+            },
+            "category": {
+              "type": "string",
+              "description": "Optional kategori filter."
+            },
+            "mission_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Only incidents linked to this mission id."
             }
           },
           "additionalProperties": false,
@@ -140,8 +188,282 @@
               "maximum": 200,
               "default": 50,
               "description": "Maximum number of drones to return (1-200)."
+            },
+            "status": {
+              "type": "string",
+              "description": "Optional status filter (e.g. 'aktiv', 'inaktiv')."
+            },
+            "search": {
+              "type": "string",
+              "description": "Optional case-insensitive substring match on navn, modell or serienummer."
             }
           },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_drones",
+        "title": "Search drones",
+        "description": "Search the signed-in user's visible drones by name, model or serial. Returns a compact list intended for picking drone_ids when creating a mission.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Substring to match against navn, modell, internal_serial or serienummer (case-insensitive)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "description": "Maximum number of results (1-50)."
+            },
+            "only_active": {
+              "type": "boolean",
+              "default": true,
+              "description": "If true, only include drones where aktiv=true."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_personnel",
+        "title": "Search personnel",
+        "description": "Search users (personnel) visible to the signed-in user by full_name or email. Returns id + display fields intended for picking personnel_ids when creating a mission.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Substring to match against full_name or email (case-insensitive)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "description": "Maximum number of results (1-50)."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_risk_assessment",
+        "title": "Get risk assessment",
+        "description": "Fetch the most recent stored AI-generated risk assessment for a mission. Respects RLS visibility. The assessment is an AI draft — it is not an approval.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "mission_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Mission UUID."
+            }
+          },
+          "required": [
+            "mission_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_mission",
+        "title": "Create mission (draft)",
+        "description": "Create a new mission (oppdrag) as an unapproved draft (approval_status='not_approved'). Never publishes to the shared map and never marks the mission as approved. The signed-in user must belong to a company; the mission is created inside that company via RLS. Latitude/longitude must be provided by the user — do NOT guess coordinates.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "tittel": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Mission title."
+            },
+            "lokasjon": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Human-readable location name (e.g. 'Brekstad')."
+            },
+            "tidspunkt": {
+              "type": "string",
+              "description": "Planned start time as ISO 8601 timestamp with timezone (e.g. '2026-07-06T12:00:00+02:00')."
+            },
+            "slutt_tidspunkt": {
+              "type": "string",
+              "description": "Optional planned end time as ISO 8601 timestamp."
+            },
+            "latitude": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90,
+              "description": "Latitude in decimal degrees. Must be confirmed by the user."
+            },
+            "longitude": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180,
+              "description": "Longitude in decimal degrees. Must be confirmed by the user."
+            },
+            "beskrivelse": {
+              "type": "string",
+              "description": "Free-text description / mission brief."
+            },
+            "oppdragstype": {
+              "type": "string",
+              "description": "Mission type label (e.g. 'Inspeksjon', 'Foto')."
+            },
+            "estimert_varighet": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1440,
+              "description": "Estimated duration in minutes."
+            },
+            "drone_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "default": [],
+              "description": "Drone UUIDs to assign. Look up via search_drones first."
+            },
+            "personnel_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "default": [],
+              "description": "Personnel (profile) UUIDs to assign. Look up via search_personnel first."
+            }
+          },
+          "required": [
+            "tittel",
+            "lokasjon",
+            "tidspunkt",
+            "latitude",
+            "longitude"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "request_risk_assessment",
+        "title": "Request AI risk assessment",
+        "description": "Trigger the AviSafe AI risk assessment for an existing mission. The result is an AI-GENERATED DRAFT — it is guidance, NOT an approval. The pilot/mission approver is still responsible for the operation.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "mission_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Mission UUID to assess."
+            },
+            "drone_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Optional specific drone_id from the mission's assigned drones."
+            },
+            "flight_height_m": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 500,
+              "description": "Planned flight height in meters AGL (default 120)."
+            },
+            "operation_type": {
+              "type": "string",
+              "description": "Operation type label (default 'Inspeksjon')."
+            },
+            "is_vlos": {
+              "type": "boolean",
+              "description": "Flight kept in visual line of sight (default true)."
+            },
+            "observer_count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20,
+              "description": "Number of trained observers (default 0)."
+            },
+            "proximity_to_people": {
+              "type": "string",
+              "enum": [
+                "controlled",
+                "sparsely_populated",
+                "populated",
+                "gathering"
+              ],
+              "description": "Density of uninvolved people (default 'sparsely_populated')."
+            },
+            "critical_infrastructure": {
+              "type": "boolean",
+              "description": "Operation is close to critical infrastructure (default false)."
+            },
+            "atc_required": {
+              "type": "boolean",
+              "description": "Coordination with ATC required (default false)."
+            },
+            "backup_landing_available": {
+              "type": "boolean",
+              "description": "A backup landing site is available (default true)."
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "no",
+                "en"
+              ],
+              "description": "Preferred language for the assessment prose (default 'no')."
+            }
+          },
+          "required": [
+            "mission_id"
+          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },

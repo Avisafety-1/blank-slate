@@ -1,13 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
-import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
+import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-
-function supabaseForUser(ctx: ToolContext) {
-  return createClient(process.env.SUPABASE_URL!, (process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY)!, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
+import { supabaseForUser, notAuthed } from "./_shared";
 
 export default defineTool({
   name: "list_incidents",
@@ -17,20 +10,22 @@ export default defineTool({
   inputSchema: {
     limit: z.number().int().min(1).max(100).default(20).describe("Maximum number of incidents to return (1-100)."),
     severity: z.string().optional().describe("Optional alvorlighetsgrad filter (e.g. 'lav', 'medium', 'hoy')."),
+    category: z.string().optional().describe("Optional kategori filter."),
+    mission_id: z.string().uuid().optional().describe("Only incidents linked to this mission id."),
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
-  handler: async ({ limit, severity }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
+  handler: async ({ limit, severity, category, mission_id }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
     let q = supabaseForUser(ctx)
       .from("incidents")
       .select(
-        "id, tittel, beskrivelse, alvorlighetsgrad, status, kategori, hendelsestidspunkt, lokasjon, incident_number",
+        "id, incident_number, tittel, beskrivelse, alvorlighetsgrad, status, kategori, hendelsestidspunkt, lokasjon, mission_id, drone_id, pilot_id, company_id, reported_anonymously",
       )
       .order("hendelsestidspunkt", { ascending: false })
       .limit(limit ?? 20);
     if (severity) q = q.eq("alvorlighetsgrad", severity);
+    if (category) q = q.eq("kategori", category);
+    if (mission_id) q = q.eq("mission_id", mission_id);
     const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {

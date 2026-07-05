@@ -18,31 +18,41 @@ var echo_default = defineTool({
 });
 
 // src/lib/mcp/tools/list-missions.ts
-import { createClient } from "npm:@supabase/supabase-js@^2.105.0";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z2 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/tools/_shared.ts
+import { createClient } from "npm:@supabase/supabase-js@^2.105.0";
 function supabaseForUser(ctx) {
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY, {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  return createClient(url, key, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
+function notAuthed() {
+  return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+}
+
+// src/lib/mcp/tools/list-missions.ts
 var list_missions_default = defineTool2({
   name: "list_missions",
   title: "List missions",
-  description: "List the signed-in user's visible drone missions (oppdrag), most recent first. Respects company/department visibility via RLS.",
+  description: "List the signed-in user's visible drone missions (oppdrag), most recent by planned time first. Respects company/department visibility via RLS.",
   inputSchema: {
     limit: z2.number().int().min(1).max(100).default(20).describe("Maximum number of missions to return (1-100)."),
-    status: z2.string().optional().describe("Optional approval_status filter (e.g. 'pending', 'approved').")
+    status: z2.string().optional().describe("Optional approval_status filter (e.g. 'not_approved', 'pending_approval', 'approved')."),
+    search: z2.string().optional().describe("Optional case-insensitive substring match on tittel or lokasjon.")
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
-  handler: async ({ limit, status }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    const supabase = supabaseForUser(ctx);
-    let q = supabase.from("missions").select("id, lokasjon, beskrivelse, approval_status, company_id, latitude, longitude").order("id", { ascending: false }).limit(limit ?? 20);
+  handler: async ({ limit, status, search }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    let q = supabaseForUser(ctx).from("missions").select(
+      "id, tittel, lokasjon, beskrivelse, oppdragstype, tidspunkt, slutt_tidspunkt, status, approval_status, risk_niv\xE5, company_id, latitude, longitude, opprettet_dato"
+    ).order("tidspunkt", { ascending: false, nullsFirst: false }).limit(limit ?? 20);
     if (status) q = q.eq("approval_status", status);
+    if (search) q = q.or(`tittel.ilike.%${search}%,lokasjon.ilike.%${search}%`);
     const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
@@ -53,64 +63,82 @@ var list_missions_default = defineTool2({
 });
 
 // src/lib/mcp/tools/get-mission.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.105.0";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z3 } from "npm:zod@^3.25.76";
-function supabaseForUser2(ctx) {
-  return createClient2(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
+var FIELDS = [
+  "id",
+  "tittel",
+  "lokasjon",
+  "beskrivelse",
+  "oppdragstype",
+  "tidspunkt",
+  "slutt_tidspunkt",
+  "status",
+  "approval_status",
+  "approval_comment",
+  "approved_at",
+  "approved_by",
+  "submitted_for_approval_at",
+  "risk_niv\xE5",
+  "risk_score",
+  "company_id",
+  "user_id",
+  "latitude",
+  "longitude",
+  "publish_to_map",
+  "anonymous_publish",
+  "opprettet_dato",
+  "oppdatert_dato",
+  "estimert_varighet"
+].join(", ");
 var get_mission_default = defineTool3({
   name: "get_mission",
   title: "Get mission",
-  description: "Fetch a single mission (oppdrag) by id. Respects RLS visibility for the signed-in user.",
+  description: "Fetch a single mission (oppdrag) by id with its planning and approval metadata. Respects RLS visibility for the signed-in user.",
   inputSchema: {
     id: z3.string().uuid().describe("Mission UUID.")
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
   handler: async ({ id }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    const { data, error } = await supabaseForUser2(ctx).from("missions").select("*").eq("id", id).maybeSingle();
+    if (!ctx.isAuthenticated()) return notAuthed();
+    const supabase = supabaseForUser(ctx);
+    const { data, error } = await supabase.from("missions").select(FIELDS).eq("id", id).maybeSingle();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!data) return { content: [{ type: "text", text: "Mission not found" }], isError: true };
+    const [{ data: drones }, { data: personnel }] = await Promise.all([
+      supabase.from("mission_drones").select("drone_id, drones(navn, modell, serienummer)").eq("mission_id", id),
+      supabase.from("mission_personnel").select("user_id, role, profiles(full_name, email)").eq("mission_id", id)
+    ]);
+    const enriched = { ...data, drones: drones ?? [], personnel: personnel ?? [] };
     return {
-      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-      structuredContent: { mission: data }
+      content: [{ type: "text", text: JSON.stringify(enriched, null, 2) }],
+      structuredContent: { mission: enriched }
     };
   }
 });
 
 // src/lib/mcp/tools/list-incidents.ts
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.105.0";
 import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z4 } from "npm:zod@^3.25.76";
-function supabaseForUser3(ctx) {
-  return createClient3(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
 var list_incidents_default = defineTool4({
   name: "list_incidents",
   title: "List incidents",
   description: "List the signed-in user's visible incidents (hendelser), most recent first. Respects company/department visibility via RLS.",
   inputSchema: {
     limit: z4.number().int().min(1).max(100).default(20).describe("Maximum number of incidents to return (1-100)."),
-    severity: z4.string().optional().describe("Optional alvorlighetsgrad filter (e.g. 'lav', 'medium', 'hoy').")
+    severity: z4.string().optional().describe("Optional alvorlighetsgrad filter (e.g. 'lav', 'medium', 'hoy')."),
+    category: z4.string().optional().describe("Optional kategori filter."),
+    mission_id: z4.string().uuid().optional().describe("Only incidents linked to this mission id.")
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
-  handler: async ({ limit, severity }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    let q = supabaseForUser3(ctx).from("incidents").select(
-      "id, tittel, beskrivelse, alvorlighetsgrad, status, kategori, hendelsestidspunkt, lokasjon, incident_number"
+  handler: async ({ limit, severity, category, mission_id }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    let q = supabaseForUser(ctx).from("incidents").select(
+      "id, incident_number, tittel, beskrivelse, alvorlighetsgrad, status, kategori, hendelsestidspunkt, lokasjon, mission_id, drone_id, pilot_id, company_id, reported_anonymously"
     ).order("hendelsestidspunkt", { ascending: false }).limit(limit ?? 20);
     if (severity) q = q.eq("alvorlighetsgrad", severity);
+    if (category) q = q.eq("kategori", category);
+    if (mission_id) q = q.eq("mission_id", mission_id);
     const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
@@ -121,32 +149,439 @@ var list_incidents_default = defineTool4({
 });
 
 // src/lib/mcp/tools/list-drones.ts
-import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.105.0";
 import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z5 } from "npm:zod@^3.25.76";
-function supabaseForUser4(ctx) {
-  return createClient4(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
 var list_drones_default = defineTool5({
   name: "list_drones",
   title: "List drones",
   description: "List the signed-in user's visible drones. Respects company/department visibility via RLS.",
   inputSchema: {
-    limit: z5.number().int().min(1).max(200).default(50).describe("Maximum number of drones to return (1-200).")
+    limit: z5.number().int().min(1).max(200).default(50).describe("Maximum number of drones to return (1-200)."),
+    status: z5.string().optional().describe("Optional status filter (e.g. 'aktiv', 'inaktiv')."),
+    search: z5.string().optional().describe("Optional case-insensitive substring match on navn, modell or serienummer.")
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
-  handler: async ({ limit }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    const { data, error } = await supabaseForUser4(ctx).from("drones").select("*").limit(limit ?? 50);
+  handler: async ({ limit, status, search }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    let q = supabaseForUser(ctx).from("drones").select("id, navn, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, company_id, flyvetimer, vekt, aktiv").limit(limit ?? 50);
+    if (status) q = q.eq("status", status);
+    if (search) q = q.or(`navn.ilike.%${search}%,modell.ilike.%${search}%,serienummer.ilike.%${search}%`);
+    const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
       structuredContent: { drones: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/search-drones.ts
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { z as z6 } from "npm:zod@^3.25.76";
+var search_drones_default = defineTool6({
+  name: "search_drones",
+  title: "Search drones",
+  description: "Search the signed-in user's visible drones by name, model or serial. Returns a compact list intended for picking drone_ids when creating a mission.",
+  inputSchema: {
+    query: z6.string().trim().min(1).describe("Substring to match against navn, modell, internal_serial or serienummer (case-insensitive)."),
+    limit: z6.number().int().min(1).max(50).default(20).describe("Maximum number of results (1-50)."),
+    only_active: z6.boolean().default(true).describe("If true, only include drones where aktiv=true.")
+  },
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  handler: async ({ query, limit, only_active }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    let q = supabaseForUser(ctx).from("drones").select("id, navn, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, aktiv, company_id").or(
+      `navn.ilike.%${query}%,modell.ilike.%${query}%,serienummer.ilike.%${query}%,internal_serial.ilike.%${query}%,registration_number.ilike.%${query}%`
+    ).limit(limit ?? 20);
+    if (only_active) q = q.eq("aktiv", true);
+    const { data, error } = await q;
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+      structuredContent: { drones: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/search-personnel.ts
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { z as z7 } from "npm:zod@^3.25.76";
+var search_personnel_default = defineTool7({
+  name: "search_personnel",
+  title: "Search personnel",
+  description: "Search users (personnel) visible to the signed-in user by full_name or email. Returns id + display fields intended for picking personnel_ids when creating a mission.",
+  inputSchema: {
+    query: z7.string().trim().min(1).describe("Substring to match against full_name or email (case-insensitive)."),
+    limit: z7.number().int().min(1).max(50).default(20).describe("Maximum number of results (1-50).")
+  },
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  handler: async ({ query, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    const { data, error } = await supabaseForUser(ctx).from("profiles").select("id, full_name, email, tittel, company_id, approved, under_training").or(`full_name.ilike.%${query}%,email.ilike.%${query}%`).limit(limit ?? 20);
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+      structuredContent: { personnel: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-upcoming-missions.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { z as z8 } from "npm:zod@^3.25.76";
+var list_upcoming_missions_default = defineTool8({
+  name: "list_upcoming_missions",
+  title: "List upcoming missions",
+  description: "List missions with tidspunkt in the future (or within the last hour), sorted by soonest first. Respects RLS visibility.",
+  inputSchema: {
+    days_ahead: z8.number().int().min(1).max(90).default(14).describe("Only include missions scheduled within this many days ahead (1-90)."),
+    limit: z8.number().int().min(1).max(100).default(25).describe("Maximum number of missions to return (1-100)."),
+    approval_status: z8.string().optional().describe("Optional approval_status filter (e.g. 'not_approved', 'pending_approval', 'approved').")
+  },
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  handler: async ({ days_ahead, limit, approval_status }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    const from = new Date(Date.now() - 60 * 60 * 1e3).toISOString();
+    const to = new Date(Date.now() + (days_ahead ?? 14) * 24 * 60 * 60 * 1e3).toISOString();
+    let q = supabaseForUser(ctx).from("missions").select(
+      "id, tittel, lokasjon, oppdragstype, tidspunkt, slutt_tidspunkt, status, approval_status, risk_niv\xE5, latitude, longitude, company_id"
+    ).gte("tidspunkt", from).lte("tidspunkt", to).order("tidspunkt", { ascending: true }).limit(limit ?? 25);
+    if (approval_status) q = q.eq("approval_status", approval_status);
+    const { data, error } = await q;
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+      structuredContent: { missions: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/get-risk-assessment.ts
+import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { z as z9 } from "npm:zod@^3.25.76";
+var get_risk_assessment_default = defineTool9({
+  name: "get_risk_assessment",
+  title: "Get risk assessment",
+  description: "Fetch the most recent stored AI-generated risk assessment for a mission. Respects RLS visibility. The assessment is an AI draft \u2014 it is not an approval.",
+  inputSchema: {
+    mission_id: z9.string().uuid().describe("Mission UUID.")
+  },
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  handler: async ({ mission_id }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    const { data, error } = await supabaseForUser(ctx).from("mission_risk_assessments").select("*").eq("mission_id", mission_id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    if (!data) {
+      return {
+        content: [{ type: "text", text: "No risk assessment found for this mission." }],
+        structuredContent: { assessment: null }
+      };
+    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: "AI-generated risk assessment (draft \u2014 not an approval):\n" + JSON.stringify(data, null, 2)
+        }
+      ],
+      structuredContent: { assessment: data, disclaimer: "AI-generated draft \u2014 not an approval." }
+    };
+  }
+});
+
+// src/lib/mcp/tools/create-mission.ts
+import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { z as z10 } from "npm:zod@^3.25.76";
+
+// src/lib/mcp/tools/_audit.ts
+async function writeAudit(ctx, entry) {
+  try {
+    const userId = ctx.getUserId();
+    if (!userId) return;
+    const summary = truncateJson(entry.inputSummary, 2e3);
+    await supabaseForUser(ctx).from("mcp_write_audit").insert({
+      user_id: userId,
+      company_id: entry.companyId ?? null,
+      tool_name: entry.toolName,
+      mission_id: entry.missionId ?? null,
+      input_summary: summary,
+      result_status: entry.resultStatus,
+      error_message: entry.errorMessage ?? null
+    });
+  } catch (e) {
+    console.error("[mcp_write_audit] failed", e);
+  }
+}
+function truncateJson(obj, max) {
+  try {
+    const s = JSON.stringify(obj);
+    if (s.length <= max) return obj;
+    return { _truncated: true, preview: s.slice(0, max) };
+  } catch {
+    return { _unserializable: true };
+  }
+}
+
+// src/lib/mcp/tools/create-mission.ts
+var create_mission_default = defineTool10({
+  name: "create_mission",
+  title: "Create mission (draft)",
+  description: "Create a new mission (oppdrag) as an unapproved draft (approval_status='not_approved'). Never publishes to the shared map and never marks the mission as approved. The signed-in user must belong to a company; the mission is created inside that company via RLS. Latitude/longitude must be provided by the user \u2014 do NOT guess coordinates.",
+  inputSchema: {
+    tittel: z10.string().trim().min(1).max(200).describe("Mission title."),
+    lokasjon: z10.string().trim().min(1).max(200).describe("Human-readable location name (e.g. 'Brekstad')."),
+    tidspunkt: z10.string().describe("Planned start time as ISO 8601 timestamp with timezone (e.g. '2026-07-06T12:00:00+02:00')."),
+    slutt_tidspunkt: z10.string().optional().describe("Optional planned end time as ISO 8601 timestamp."),
+    latitude: z10.number().min(-90).max(90).describe("Latitude in decimal degrees. Must be confirmed by the user."),
+    longitude: z10.number().min(-180).max(180).describe("Longitude in decimal degrees. Must be confirmed by the user."),
+    beskrivelse: z10.string().optional().describe("Free-text description / mission brief."),
+    oppdragstype: z10.string().optional().describe("Mission type label (e.g. 'Inspeksjon', 'Foto')."),
+    estimert_varighet: z10.number().int().min(1).max(1440).optional().describe("Estimated duration in minutes."),
+    drone_ids: z10.array(z10.string().uuid()).default([]).describe("Drone UUIDs to assign. Look up via search_drones first."),
+    personnel_ids: z10.array(z10.string().uuid()).default([]).describe("Personnel (profile) UUIDs to assign. Look up via search_personnel first.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    const userId = ctx.getUserId();
+    if (!userId) return notAuthed();
+    const supabase = supabaseForUser(ctx);
+    const { data: profile, error: profErr } = await supabase.from("profiles").select("company_id").eq("id", userId).maybeSingle();
+    if (profErr) {
+      await writeAudit(ctx, {
+        toolName: "create_mission",
+        inputSummary: summarize(input),
+        resultStatus: "error",
+        errorMessage: profErr.message
+      });
+      return { content: [{ type: "text", text: `Could not load profile: ${profErr.message}` }], isError: true };
+    }
+    const companyId = profile?.company_id;
+    if (!companyId) {
+      await writeAudit(ctx, {
+        toolName: "create_mission",
+        inputSummary: summarize(input),
+        resultStatus: "error",
+        errorMessage: "No company_id on profile"
+      });
+      return {
+        content: [{ type: "text", text: "The signed-in user is not linked to a company; cannot create mission." }],
+        isError: true
+      };
+    }
+    const startIso = safeIso(input.tidspunkt);
+    if (!startIso) {
+      return { content: [{ type: "text", text: "tidspunkt is not a valid ISO 8601 timestamp." }], isError: true };
+    }
+    const endIso = input.slutt_tidspunkt ? safeIso(input.slutt_tidspunkt) : null;
+    if (input.slutt_tidspunkt && !endIso) {
+      return { content: [{ type: "text", text: "slutt_tidspunkt is not a valid ISO 8601 timestamp." }], isError: true };
+    }
+    const insertRow = {
+      tittel: input.tittel,
+      lokasjon: input.lokasjon,
+      tidspunkt: startIso,
+      slutt_tidspunkt: endIso,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      beskrivelse: input.beskrivelse ?? null,
+      oppdragstype: input.oppdragstype ?? null,
+      estimert_varighet: input.estimert_varighet ?? null,
+      company_id: companyId,
+      user_id: userId,
+      // Explicit safety: always draft, never published, never anonymous.
+      approval_status: "not_approved",
+      status: "Planlagt",
+      publish_to_map: false,
+      anonymous_publish: false
+    };
+    const { data: mission, error: insErr } = await supabase.from("missions").insert(insertRow).select("id, tittel, lokasjon, tidspunkt, approval_status, status, company_id").single();
+    if (insErr || !mission) {
+      await writeAudit(ctx, {
+        toolName: "create_mission",
+        companyId,
+        inputSummary: summarize(input),
+        resultStatus: "error",
+        errorMessage: insErr?.message ?? "insert returned no row"
+      });
+      return {
+        content: [{ type: "text", text: `Failed to create mission: ${insErr?.message ?? "unknown error"}` }],
+        isError: true
+      };
+    }
+    const warnings = [];
+    if (input.drone_ids.length > 0) {
+      const rows = input.drone_ids.map((drone_id) => ({ mission_id: mission.id, drone_id }));
+      const { error } = await supabase.from("mission_drones").insert(rows);
+      if (error) warnings.push(`Kunne ikke koble alle droner: ${error.message}`);
+    }
+    if (input.personnel_ids.length > 0) {
+      const rows = input.personnel_ids.map((user_id) => ({ mission_id: mission.id, user_id }));
+      const { error } = await supabase.from("mission_personnel").insert(rows);
+      if (error) warnings.push(`Kunne ikke koble alt personell: ${error.message}`);
+    }
+    await writeAudit(ctx, {
+      toolName: "create_mission",
+      missionId: mission.id,
+      companyId,
+      inputSummary: summarize(input),
+      resultStatus: "ok"
+    });
+    const note = "Mission created as DRAFT (approval_status='not_approved'). It is NOT approved and NOT published to the shared map.";
+    const payload = { mission, warnings, note };
+    return {
+      content: [{ type: "text", text: `${note}
+
+${JSON.stringify(payload, null, 2)}` }],
+      structuredContent: payload
+    };
+  }
+});
+function safeIso(v) {
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+function summarize(input) {
+  return {
+    tittel: input.tittel,
+    lokasjon: input.lokasjon,
+    tidspunkt: input.tidspunkt,
+    slutt_tidspunkt: input.slutt_tidspunkt,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    oppdragstype: input.oppdragstype,
+    drone_ids: Array.isArray(input.drone_ids) ? input.drone_ids.length : 0,
+    personnel_ids: Array.isArray(input.personnel_ids) ? input.personnel_ids.length : 0
+  };
+}
+
+// src/lib/mcp/tools/request-risk-assessment.ts
+import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@0.20.0";
+import { z as z11 } from "npm:zod@^3.25.76";
+var DEFAULT_PILOT_INPUTS = {
+  flightHeight: 120,
+  operationType: "Inspeksjon",
+  isVlos: true,
+  observerCount: 0,
+  atcRequired: false,
+  proximityToPeople: "sparsely_populated",
+  criticalInfrastructure: false,
+  backupLandingAvailable: true,
+  skipWeatherEvaluation: false
+};
+var request_risk_assessment_default = defineTool11({
+  name: "request_risk_assessment",
+  title: "Request AI risk assessment",
+  description: "Trigger the AviSafe AI risk assessment for an existing mission. The result is an AI-GENERATED DRAFT \u2014 it is guidance, NOT an approval. The pilot/mission approver is still responsible for the operation.",
+  inputSchema: {
+    mission_id: z11.string().uuid().describe("Mission UUID to assess."),
+    drone_id: z11.string().uuid().optional().describe("Optional specific drone_id from the mission's assigned drones."),
+    flight_height_m: z11.number().min(1).max(500).optional().describe("Planned flight height in meters AGL (default 120)."),
+    operation_type: z11.string().optional().describe("Operation type label (default 'Inspeksjon')."),
+    is_vlos: z11.boolean().optional().describe("Flight kept in visual line of sight (default true)."),
+    observer_count: z11.number().int().min(0).max(20).optional().describe("Number of trained observers (default 0)."),
+    proximity_to_people: z11.enum(["controlled", "sparsely_populated", "populated", "gathering"]).optional().describe("Density of uninvolved people (default 'sparsely_populated')."),
+    critical_infrastructure: z11.boolean().optional().describe("Operation is close to critical infrastructure (default false)."),
+    atc_required: z11.boolean().optional().describe("Coordination with ATC required (default false)."),
+    backup_landing_available: z11.boolean().optional().describe("A backup landing site is available (default true)."),
+    language: z11.enum(["no", "en"]).optional().describe("Preferred language for the assessment prose (default 'no').")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  handler: async (input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthed();
+    let companyId = null;
+    try {
+      const { data } = await supabaseForUser(ctx).from("profiles").select("company_id").eq("id", ctx.getUserId()).maybeSingle();
+      companyId = data?.company_id ?? null;
+    } catch {
+    }
+    const pilotInputs = {
+      ...DEFAULT_PILOT_INPUTS,
+      ...input.flight_height_m !== void 0 ? { flightHeight: input.flight_height_m } : {},
+      ...input.operation_type ? { operationType: input.operation_type } : {},
+      ...input.is_vlos !== void 0 ? { isVlos: input.is_vlos } : {},
+      ...input.observer_count !== void 0 ? { observerCount: input.observer_count } : {},
+      ...input.proximity_to_people ? { proximityToPeople: input.proximity_to_people } : {},
+      ...input.critical_infrastructure !== void 0 ? { criticalInfrastructure: input.critical_infrastructure } : {},
+      ...input.atc_required !== void 0 ? { atcRequired: input.atc_required } : {},
+      ...input.backup_landing_available !== void 0 ? { backupLandingAvailable: input.backup_landing_available } : {}
+    };
+    const url = `${process.env.SUPABASE_URL.replace(/\/$/, "")}/functions/v1/ai-risk-assessment`;
+    const apikey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+    let responseText = "";
+    let httpStatus = 0;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ctx.getToken()}`,
+          "apikey": apikey
+        },
+        body: JSON.stringify({
+          missionId: input.mission_id,
+          droneId: input.drone_id,
+          pilotInputs,
+          language: input.language ?? "no"
+        }),
+        signal: AbortSignal.timeout(9e4)
+      });
+      httpStatus = res.status;
+      responseText = await res.text();
+      if (!res.ok) {
+        await writeAudit(ctx, {
+          toolName: "request_risk_assessment",
+          missionId: input.mission_id,
+          companyId,
+          inputSummary: { pilotInputs, drone_id: input.drone_id, language: input.language ?? "no" },
+          resultStatus: "error",
+          errorMessage: `HTTP ${httpStatus}: ${responseText.slice(0, 500)}`
+        });
+        return {
+          content: [{ type: "text", text: `Risk assessment failed (HTTP ${httpStatus}): ${responseText}` }],
+          isError: true
+        };
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await writeAudit(ctx, {
+        toolName: "request_risk_assessment",
+        missionId: input.mission_id,
+        companyId,
+        inputSummary: { pilotInputs, drone_id: input.drone_id, language: input.language ?? "no" },
+        resultStatus: "error",
+        errorMessage: msg
+      });
+      return { content: [{ type: "text", text: `Risk assessment request failed: ${msg}` }], isError: true };
+    }
+    let parsed = responseText;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch {
+    }
+    await writeAudit(ctx, {
+      toolName: "request_risk_assessment",
+      missionId: input.mission_id,
+      companyId,
+      inputSummary: { pilotInputs, drone_id: input.drone_id, language: input.language ?? "no" },
+      resultStatus: "ok"
+    });
+    const disclaimer = "AI-GENERATED DRAFT \u2014 this risk assessment is guidance, not an approval. The pilot/mission approver is still responsible for the operation.";
+    return {
+      content: [
+        {
+          type: "text",
+          text: `${disclaimer}
+
+${typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2)}`
+        }
+      ],
+      structuredContent: {
+        disclaimer,
+        is_ai_generated: true,
+        is_draft: true,
+        result: parsed
+      }
     };
   }
 });
@@ -156,13 +591,39 @@ var projectRef = "pmucsvrypogtttrajqxq";
 var mcp_default = defineMcp({
   name: "avisafe-mcp",
   title: "AviSafe",
-  version: "0.1.0",
-  instructions: "Tools for AviSafe \u2014 the safety management system for drone operations. Use `list_missions` and `get_mission` to inspect oppdrag, `list_incidents` for hendelser, and `list_drones` for the drone fleet. All tools return data scoped to the signed-in user's company/department visibility via RLS. Use `echo` to verify connectivity.",
+  version: "0.2.0",
+  instructions: [
+    "Tools for AviSafe \u2014 the safety management system for drone operations.",
+    "",
+    "READ tools (safe): `list_missions`, `get_mission`, `list_upcoming_missions`, `list_incidents`, `list_drones`, `search_drones`, `search_personnel`, `get_risk_assessment`. All are scoped to the signed-in user's company/department visibility via RLS.",
+    "",
+    "WRITE tools: `create_mission` and `request_risk_assessment`.",
+    "",
+    "Mission creation flow: (1) Use `search_drones` and `search_personnel` to resolve names to UUIDs. (2) ALWAYS ask the user to confirm latitude/longitude before calling `create_mission` \u2014 never guess coordinates from a place name. (3) `create_mission` always creates the mission as an unapproved DRAFT (approval_status='not_approved'), never published to the shared map. It cannot approve missions. (4) After creation you can call `request_risk_assessment` to produce an AI-generated risk assessment draft, then `get_risk_assessment` to fetch the stored result.",
+    "",
+    "IMPORTANT: `request_risk_assessment` returns an AI-generated DRAFT. It is guidance only and is NOT an approval \u2014 always communicate this to the user.",
+    "",
+    "This server does NOT support updating, deleting, approving or publishing missions, nor submitting incidents to ECCAIRS. Those actions must be done in the AviSafe app by an authorized user.",
+    "",
+    "All write actions are audit-logged (user, tool, mission, timestamp, input summary)."
+  ].join("\n"),
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [echo_default, list_missions_default, get_mission_default, list_incidents_default, list_drones_default]
+  tools: [
+    echo_default,
+    list_missions_default,
+    get_mission_default,
+    list_upcoming_missions_default,
+    list_incidents_default,
+    list_drones_default,
+    search_drones_default,
+    search_personnel_default,
+    get_risk_assessment_default,
+    create_mission_default,
+    request_risk_assessment_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts

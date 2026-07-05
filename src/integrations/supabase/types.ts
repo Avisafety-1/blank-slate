@@ -4135,6 +4135,42 @@ export type Database = {
           },
         ]
       }
+      mcp_write_audit: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          input_summary: Json
+          mission_id: string | null
+          result_status: string
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_summary?: Json
+          mission_id?: string | null
+          result_status?: string
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_summary?: Json
+          mission_id?: string | null
+          result_status?: string
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mission_approval_reminders: {
         Row: {
           id: string
