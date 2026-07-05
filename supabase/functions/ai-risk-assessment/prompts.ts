@@ -1229,7 +1229,7 @@ Du har ABSOLUTT FORBUD mot å:
 - Hente fakta fra eksempler, sjekklister eller standardfraser i denne systempromten (f.eks. "DJI's motorstopp", "Ninox drone", "SafeSky") og bruke dem som om de gjelder oppdraget. Slike fraser er kun forklarende eksempler.
 - "Oppgradere" konklusjonen fra den opprinnelige vurderingen uten konkret dekning i brukerens kommentar. Hvis opprinnelig vurdering hadde hard stop og kommentaren ikke konkret løser den, skal hard stop bestå.
 
-Hvis en kommentar er tom eller bare en bekreftelse ("ok"/"ja"/"greit"): behandle kategorien som UENDRET. Behold opprinnelig score, hard stops og bekymringer. Skriv eksplisitt i `fgrc_adjustments` og `summary` at "brukerens kommentarer ga ingen nye mitigeringer".
+Hvis en kommentar er tom eller bare en bekreftelse ("ok"/"ja"/"greit"): behandle kategorien som UENDRET. Behold opprinnelig score, hard stops og bekymringer. Skriv eksplisitt i \`fgrc_adjustments\` og \`summary\` at "brukerens kommentarer ga ingen nye mitigeringer".
 
 Hvis du er i tvil om en faktapåstand har dekning i input: IKKE skriv den. Skriv heller "ikke spesifisert" eller utelat detaljen.
 
