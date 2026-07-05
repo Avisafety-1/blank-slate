@@ -44,7 +44,7 @@ export default defineTool({
       .from("missions")
       .select(FIELDS)
       .eq("id", id)
-      .maybeSingle();
+      .maybeSingle<Record<string, unknown>>();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!data) return { content: [{ type: "text", text: "Mission not found" }], isError: true };
 
