@@ -40,7 +40,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.push-subscribe]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-push-notification]
 verify_jwt = false
@@ -52,7 +52,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-risk-assessment]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-customer-welcome-email]
 verify_jwt = false
@@ -67,7 +67,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ai-search]
-verify_jwt = true
+verify_jwt = false
 
 [functions.auto-complete-missions]
 verify_jwt = false
@@ -103,7 +103,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.drone-regulations-ai]
-verify_jwt = true
+verify_jwt = false
 
 [functions.process-dronelog]
 verify_jwt = false
@@ -136,10 +136,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.marketing-ai]
-verify_jwt = true
+verify_jwt = false
 
 [functions.marketing-visual]
-verify_jwt = true
+verify_jwt = false
 
 [functions.publish-facebook]
 verify_jwt = false
@@ -193,16 +193,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.process-manual]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-course]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-narration]
-verify_jwt = true
+verify_jwt = false
 
 [functions.suggest-course-topics]
-verify_jwt = true
+verify_jwt = false
 
 [functions.weekly-company-report]
 verify_jwt = false
