@@ -17,7 +17,6 @@ const FIELDS = [
   "approved_by",
   "submitted_for_approval_at",
   "risk_nivå",
-  "risk_score",
   "company_id",
   "user_id",
   "latitude",
@@ -26,7 +25,6 @@ const FIELDS = [
   "anonymous_publish",
   "opprettet_dato",
   "oppdatert_dato",
-  "estimert_varighet",
 ].join(", ");
 
 export default defineTool({
@@ -49,8 +47,8 @@ export default defineTool({
     if (!data) return { content: [{ type: "text", text: "Mission not found" }], isError: true };
 
     const [{ data: drones }, { data: personnel }] = await Promise.all([
-      supabase.from("mission_drones").select("drone_id, drones(navn, modell, serienummer)").eq("mission_id", id),
-      supabase.from("mission_personnel").select("user_id, role, profiles(full_name, email)").eq("mission_id", id),
+      supabase.from("mission_drones").select("drone_id, drones(modell, serienummer, internal_serial, registration_number)").eq("mission_id", id),
+      supabase.from("mission_personnel").select("profile_id, role_id, profiles(full_name, email)").eq("mission_id", id),
     ]);
 
     const enriched = { ...data, drones: drones ?? [], personnel: personnel ?? [] };

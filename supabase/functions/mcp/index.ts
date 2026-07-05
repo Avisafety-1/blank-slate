@@ -80,7 +80,6 @@ var FIELDS = [
   "approved_by",
   "submitted_for_approval_at",
   "risk_niv\xE5",
-  "risk_score",
   "company_id",
   "user_id",
   "latitude",
@@ -88,8 +87,7 @@ var FIELDS = [
   "publish_to_map",
   "anonymous_publish",
   "opprettet_dato",
-  "oppdatert_dato",
-  "estimert_varighet"
+  "oppdatert_dato"
 ].join(", ");
 var get_mission_default = defineTool3({
   name: "get_mission",
@@ -106,8 +104,8 @@ var get_mission_default = defineTool3({
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!data) return { content: [{ type: "text", text: "Mission not found" }], isError: true };
     const [{ data: drones }, { data: personnel }] = await Promise.all([
-      supabase.from("mission_drones").select("drone_id, drones(navn, modell, serienummer)").eq("mission_id", id),
-      supabase.from("mission_personnel").select("user_id, role, profiles(full_name, email)").eq("mission_id", id)
+      supabase.from("mission_drones").select("drone_id, drones(modell, serienummer, internal_serial, registration_number)").eq("mission_id", id),
+      supabase.from("mission_personnel").select("profile_id, role_id, profiles(full_name, email)").eq("mission_id", id)
     ]);
     const enriched = { ...data, drones: drones ?? [], personnel: personnel ?? [] };
     return {
