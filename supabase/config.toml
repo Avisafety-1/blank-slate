@@ -103,7 +103,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.drone-regulations-ai]
-verify_jwt = true
+verify_jwt = false
 
 [functions.process-dronelog]
 verify_jwt = false
