@@ -206,7 +206,7 @@
       {
         "name": "search_drones",
         "title": "Search drones",
-        "description": "Search the signed-in user's visible drones by name, model or serial. Returns a compact list intended for picking drone_ids when creating a mission.",
+        "description": "Search the signed-in user's visible drones by model, serial or registration. Returns a compact list intended for picking drone_ids when creating a mission.",
         "annotations": {
           "readOnlyHint": true,
           "openWorldHint": false
@@ -217,7 +217,7 @@
             "query": {
               "type": "string",
               "minLength": 1,
-              "description": "Substring to match against navn, modell, internal_serial or serienummer (case-insensitive)."
+              "description": "Substring to match against modell, serienummer, internal_serial or registration_number (case-insensitive)."
             },
             "limit": {
               "type": "integer",
