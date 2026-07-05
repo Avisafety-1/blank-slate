@@ -6,9 +6,9 @@ export default defineTool({
   name: "search_drones",
   title: "Search drones",
   description:
-    "Search the signed-in user's visible drones by name, model or serial. Returns a compact list intended for picking drone_ids when creating a mission.",
+    "Search the signed-in user's visible drones by model, serial or registration. Returns a compact list intended for picking drone_ids when creating a mission.",
   inputSchema: {
-    query: z.string().trim().min(1).describe("Substring to match against navn, modell, internal_serial or serienummer (case-insensitive)."),
+    query: z.string().trim().min(1).describe("Substring to match against modell, serienummer, internal_serial or registration_number (case-insensitive)."),
     limit: z.number().int().min(1).max(50).default(20).describe("Maximum number of results (1-50)."),
     only_active: z.boolean().default(true).describe("If true, only include drones where aktiv=true."),
   },
@@ -17,9 +17,9 @@ export default defineTool({
     if (!ctx.isAuthenticated()) return notAuthed();
     let q = supabaseForUser(ctx)
       .from("drones")
-      .select("id, navn, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, aktiv, company_id")
+      .select("id, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, aktiv, company_id")
       .or(
-        `navn.ilike.%${query}%,modell.ilike.%${query}%,serienummer.ilike.%${query}%,internal_serial.ilike.%${query}%,registration_number.ilike.%${query}%`,
+        `modell.ilike.%${query}%,serienummer.ilike.%${query}%,internal_serial.ilike.%${query}%,registration_number.ilike.%${query}%`,
       )
       .limit(limit ?? 20);
     if (only_active) q = q.eq("aktiv", true);

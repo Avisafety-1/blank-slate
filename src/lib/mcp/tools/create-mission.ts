@@ -22,7 +22,6 @@ export default defineTool({
     longitude: z.number().min(-180).max(180).describe("Longitude in decimal degrees. Must be confirmed by the user."),
     beskrivelse: z.string().optional().describe("Free-text description / mission brief."),
     oppdragstype: z.string().optional().describe("Mission type label (e.g. 'Inspeksjon', 'Foto')."),
-    estimert_varighet: z.number().int().min(1).max(1440).optional().describe("Estimated duration in minutes."),
     drone_ids: z.array(z.string().uuid()).default([]).describe("Drone UUIDs to assign. Look up via search_drones first."),
     personnel_ids: z
       .array(z.string().uuid())
@@ -85,7 +84,6 @@ export default defineTool({
       longitude: input.longitude,
       beskrivelse: input.beskrivelse ?? null,
       oppdragstype: input.oppdragstype ?? null,
-      estimert_varighet: input.estimert_varighet ?? null,
       company_id: companyId,
       user_id: userId,
       // Explicit safety: always draft, never published, never anonymous.
@@ -123,7 +121,7 @@ export default defineTool({
       if (error) warnings.push(`Kunne ikke koble alle droner: ${error.message}`);
     }
     if (input.personnel_ids.length > 0) {
-      const rows = input.personnel_ids.map((user_id) => ({ mission_id: mission.id, user_id }));
+      const rows = input.personnel_ids.map((profile_id) => ({ mission_id: mission.id, profile_id }));
       const { error } = await supabase.from("mission_personnel").insert(rows);
       if (error) warnings.push(`Kunne ikke koble alt personell: ${error.message}`);
     }

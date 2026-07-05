@@ -80,7 +80,6 @@ var FIELDS = [
   "approved_by",
   "submitted_for_approval_at",
   "risk_niv\xE5",
-  "risk_score",
   "company_id",
   "user_id",
   "latitude",
@@ -88,8 +87,7 @@ var FIELDS = [
   "publish_to_map",
   "anonymous_publish",
   "opprettet_dato",
-  "oppdatert_dato",
-  "estimert_varighet"
+  "oppdatert_dato"
 ].join(", ");
 var get_mission_default = defineTool3({
   name: "get_mission",
@@ -106,8 +104,8 @@ var get_mission_default = defineTool3({
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     if (!data) return { content: [{ type: "text", text: "Mission not found" }], isError: true };
     const [{ data: drones }, { data: personnel }] = await Promise.all([
-      supabase.from("mission_drones").select("drone_id, drones(navn, modell, serienummer)").eq("mission_id", id),
-      supabase.from("mission_personnel").select("user_id, role, profiles(full_name, email)").eq("mission_id", id)
+      supabase.from("mission_drones").select("drone_id, drones(modell, serienummer, internal_serial, registration_number)").eq("mission_id", id),
+      supabase.from("mission_personnel").select("profile_id, role_id, profiles(full_name, email)").eq("mission_id", id)
     ]);
     const enriched = { ...data, drones: drones ?? [], personnel: personnel ?? [] };
     return {
@@ -158,14 +156,14 @@ var list_drones_default = defineTool5({
   inputSchema: {
     limit: z5.number().int().min(1).max(200).default(50).describe("Maximum number of drones to return (1-200)."),
     status: z5.string().optional().describe("Optional status filter (e.g. 'aktiv', 'inaktiv')."),
-    search: z5.string().optional().describe("Optional case-insensitive substring match on navn, modell or serienummer.")
+    search: z5.string().optional().describe("Optional case-insensitive substring match on modell, serienummer, internal_serial or registration_number.")
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
   handler: async ({ limit, status, search }, ctx) => {
     if (!ctx.isAuthenticated()) return notAuthed();
-    let q = supabaseForUser(ctx).from("drones").select("id, navn, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, company_id, flyvetimer, vekt, aktiv").limit(limit ?? 50);
+    let q = supabaseForUser(ctx).from("drones").select("id, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, company_id, flyvetimer, vekt, aktiv").limit(limit ?? 50);
     if (status) q = q.eq("status", status);
-    if (search) q = q.or(`navn.ilike.%${search}%,modell.ilike.%${search}%,serienummer.ilike.%${search}%`);
+    if (search) q = q.or(`modell.ilike.%${search}%,serienummer.ilike.%${search}%,internal_serial.ilike.%${search}%,registration_number.ilike.%${search}%`);
     const { data, error } = await q;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
@@ -181,17 +179,17 @@ import { z as z6 } from "npm:zod@^3.25.76";
 var search_drones_default = defineTool6({
   name: "search_drones",
   title: "Search drones",
-  description: "Search the signed-in user's visible drones by name, model or serial. Returns a compact list intended for picking drone_ids when creating a mission.",
+  description: "Search the signed-in user's visible drones by model, serial or registration. Returns a compact list intended for picking drone_ids when creating a mission.",
   inputSchema: {
-    query: z6.string().trim().min(1).describe("Substring to match against navn, modell, internal_serial or serienummer (case-insensitive)."),
+    query: z6.string().trim().min(1).describe("Substring to match against modell, serienummer, internal_serial or registration_number (case-insensitive)."),
     limit: z6.number().int().min(1).max(50).default(20).describe("Maximum number of results (1-50)."),
     only_active: z6.boolean().default(true).describe("If true, only include drones where aktiv=true.")
   },
   annotations: { readOnlyHint: true, openWorldHint: false },
   handler: async ({ query, limit, only_active }, ctx) => {
     if (!ctx.isAuthenticated()) return notAuthed();
-    let q = supabaseForUser(ctx).from("drones").select("id, navn, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, aktiv, company_id").or(
-      `navn.ilike.%${query}%,modell.ilike.%${query}%,serienummer.ilike.%${query}%,internal_serial.ilike.%${query}%,registration_number.ilike.%${query}%`
+    let q = supabaseForUser(ctx).from("drones").select("id, modell, serienummer, internal_serial, registration_number, klasse, status, tilgjengelig, aktiv, company_id").or(
+      `modell.ilike.%${query}%,serienummer.ilike.%${query}%,internal_serial.ilike.%${query}%,registration_number.ilike.%${query}%`
     ).limit(limit ?? 20);
     if (only_active) q = q.eq("aktiv", true);
     const { data, error } = await q;
@@ -336,7 +334,6 @@ var create_mission_default = defineTool10({
     longitude: z10.number().min(-180).max(180).describe("Longitude in decimal degrees. Must be confirmed by the user."),
     beskrivelse: z10.string().optional().describe("Free-text description / mission brief."),
     oppdragstype: z10.string().optional().describe("Mission type label (e.g. 'Inspeksjon', 'Foto')."),
-    estimert_varighet: z10.number().int().min(1).max(1440).optional().describe("Estimated duration in minutes."),
     drone_ids: z10.array(z10.string().uuid()).default([]).describe("Drone UUIDs to assign. Look up via search_drones first."),
     personnel_ids: z10.array(z10.string().uuid()).default([]).describe("Personnel (profile) UUIDs to assign. Look up via search_personnel first.")
   },
@@ -386,7 +383,6 @@ var create_mission_default = defineTool10({
       longitude: input.longitude,
       beskrivelse: input.beskrivelse ?? null,
       oppdragstype: input.oppdragstype ?? null,
-      estimert_varighet: input.estimert_varighet ?? null,
       company_id: companyId,
       user_id: userId,
       // Explicit safety: always draft, never published, never anonymous.
@@ -416,7 +412,7 @@ var create_mission_default = defineTool10({
       if (error) warnings.push(`Kunne ikke koble alle droner: ${error.message}`);
     }
     if (input.personnel_ids.length > 0) {
-      const rows = input.personnel_ids.map((user_id) => ({ mission_id: mission.id, user_id }));
+      const rows = input.personnel_ids.map((profile_id) => ({ mission_id: mission.id, profile_id }));
       const { error } = await supabase.from("mission_personnel").insert(rows);
       if (error) warnings.push(`Kunne ikke koble alt personell: ${error.message}`);
     }
