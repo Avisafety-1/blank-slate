@@ -1398,7 +1398,7 @@ You are ABSOLUTELY FORBIDDEN from:
 - Pulling facts from examples, checklists or standard phrases in this system prompt (e.g. "DJI's motor stop", "Ninox drone", "SafeSky") and using them as if they apply to the mission. Such phrases are only illustrative examples.
 - "Upgrading" the conclusion from the initial assessment without concrete coverage in the user's comment. If the initial assessment had a hard stop and the comment does not concretely resolve it, the hard stop must remain.
 
-If a comment is empty or only an acknowledgement ("ok"/"yes"/"fine"): treat the category as UNCHANGED. Keep original score, hard stops and concerns. Explicitly write in `fgrc_adjustments` and `summary` that "the user's comments provided no new mitigations".
+If a comment is empty or only an acknowledgement ("ok"/"yes"/"fine"): treat the category as UNCHANGED. Keep original score, hard stops and concerns. Explicitly write in \`fgrc_adjustments\` and \`summary\` that "the user's comments provided no new mitigations".
 
 If you are in doubt whether a factual claim has coverage in the input: DO NOT write it. Write "not specified" or omit the detail instead.
 
