@@ -111,7 +111,7 @@ export default function OAuthConsent() {
   const clientName = details?.client?.name ?? "En tredjepart";
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-background relative overflow-hidden">
+    <main className="dark min-h-screen flex flex-col items-center justify-center p-6 bg-background relative overflow-hidden">
       {/* Subtle background glow */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-1/3 -right-1/3 w-[80vw] h-[80vw] rounded-full bg-primary/10 blur-[120px]" />
