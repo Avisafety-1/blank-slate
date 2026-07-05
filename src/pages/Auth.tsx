@@ -119,6 +119,28 @@ const Auth = () => {
   const isDevEnv = isDevelopment();
   const googleProfileCheckedRef = useRef(false);
 
+  // If we arrived here with ?next=/relative/path (e.g. from the MCP OAuth
+  // consent screen), return the user there instead of the default app domain
+  // after a successful sign-in. Only same-origin relative paths are honored.
+  const getNextTarget = (): string | null => {
+    try {
+      const raw = new URLSearchParams(window.location.search).get("next");
+      if (!raw) return null;
+      if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+      return raw;
+    } catch {
+      return null;
+    }
+  };
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const next = getNextTarget();
+    if (next) {
+      window.location.assign(next);
+    }
+  }, [authLoading, user]);
+
+
   // Show "session expired" toast when redirected here by forceFullSignOut / idle timeout
   useEffect(() => {
     try {
