@@ -334,7 +334,6 @@ var create_mission_default = defineTool10({
     longitude: z10.number().min(-180).max(180).describe("Longitude in decimal degrees. Must be confirmed by the user."),
     beskrivelse: z10.string().optional().describe("Free-text description / mission brief."),
     oppdragstype: z10.string().optional().describe("Mission type label (e.g. 'Inspeksjon', 'Foto')."),
-    estimert_varighet: z10.number().int().min(1).max(1440).optional().describe("Estimated duration in minutes."),
     drone_ids: z10.array(z10.string().uuid()).default([]).describe("Drone UUIDs to assign. Look up via search_drones first."),
     personnel_ids: z10.array(z10.string().uuid()).default([]).describe("Personnel (profile) UUIDs to assign. Look up via search_personnel first.")
   },

@@ -22,7 +22,6 @@ export default defineTool({
     longitude: z.number().min(-180).max(180).describe("Longitude in decimal degrees. Must be confirmed by the user."),
     beskrivelse: z.string().optional().describe("Free-text description / mission brief."),
     oppdragstype: z.string().optional().describe("Mission type label (e.g. 'Inspeksjon', 'Foto')."),
-    estimert_varighet: z.number().int().min(1).max(1440).optional().describe("Estimated duration in minutes."),
     drone_ids: z.array(z.string().uuid()).default([]).describe("Drone UUIDs to assign. Look up via search_drones first."),
     personnel_ids: z
       .array(z.string().uuid())

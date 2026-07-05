@@ -350,12 +350,6 @@
               "type": "string",
               "description": "Mission type label (e.g. 'Inspeksjon', 'Foto')."
             },
-            "estimert_varighet": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1440,
-              "description": "Estimated duration in minutes."
-            },
             "drone_ids": {
               "type": "array",
               "items": {
