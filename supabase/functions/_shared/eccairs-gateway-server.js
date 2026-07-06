@@ -55,33 +55,99 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "2mb" }));
 
 // -------------------------
-// Supabase setup
+// Supabase multi-tenant setup
 // -------------------------
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://pmucsvrypogtttrajqxq.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+// Prosjekter defineres via env-suffikser. "base" bruker de umerkede variablene,
+// øvrige bruker <VAR>_<SUFFIX> (f.eks. SUPABASE_URL_MIL).
+const PROJECT_SUFFIXES = ["", "MIL"]; // legg til flere suffikser her ved behov
 
-let supabaseAdmin = null;
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn("SUPABASE_SERVICE_ROLE_KEY mangler! Gateway kan ikke skrive til Supabase.");
-} else {
-  supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
+function refFromUrl(url) {
+  if (!url) return null;
+  const m = String(url).match(/^https?:\/\/([^.]+)\.supabase\.(co|in)/i);
+  return m ? m[1] : null;
 }
 
-const requireAdminSupabase = (res) => {
-  if (!supabaseAdmin) {
-    res.status(503).json({ ok: false, error: "Supabase (service role) er ikke konfigurert" });
+const adminByRef = new Map();  // ref -> service-role client
+const anonByRef = new Map();   // ref -> { url, key }
+const projectMeta = [];        // for oppstartslogg
+
+for (const suffix of PROJECT_SUFFIXES) {
+  const s = suffix ? `_${suffix}` : "";
+  const url = process.env[`SUPABASE_URL${s}`];
+  const service = process.env[`SUPABASE_SERVICE_ROLE_KEY${s}`];
+  const anon = process.env[`SUPABASE_ANON_KEY${s}`];
+  if (!url || !service) {
+    if (suffix) console.warn(`[gateway] Hopper over prosjekt-suffiks '${suffix}': mangler URL eller SERVICE_ROLE_KEY`);
+    continue;
+  }
+  const ref = refFromUrl(url);
+  if (!ref) {
+    console.warn(`[gateway] Kunne ikke utlede project-ref fra URL for suffiks '${suffix || "base"}'`);
+    continue;
+  }
+  adminByRef.set(ref, createClient(url, service, { auth: { persistSession: false } }));
+  if (anon) anonByRef.set(ref, { url, key: anon });
+  else console.warn(`[gateway] Mangler SUPABASE_ANON_KEY${s} for ${ref} — RLS-sjekk vil feile for dette prosjektet`);
+  projectMeta.push({ suffix: suffix || "base", ref });
+}
+
+if (adminByRef.size === 0) {
+  console.warn("[gateway] Ingen Supabase-prosjekter registrert! Sjekk Fly-secrets.");
+} else {
+  console.log(`[gateway] Registrerte Supabase-prosjekt: ${projectMeta.map((p) => `${p.ref} (${p.suffix})`).join(", ")}`);
+}
+
+// Default-prosjekt for API-key-shortcut (ingen JWT å utlede fra)
+const DEFAULT_PROJECT_REF = refFromUrl(process.env.SUPABASE_URL) || (projectMeta[0]?.ref ?? null);
+
+function decodeJwtPayload(jwt) {
+  try {
+    const part = jwt.split(".")[1];
+    if (!part) return null;
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "=");
+    return JSON.parse(Buffer.from(b64, "base64").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function refFromJwt(jwt) {
+  const payload = decodeJwtPayload(jwt);
+  if (!payload?.iss) return null;
+  const m = String(payload.iss).match(/^https?:\/\/([^.]+)\.supabase\.(co|in)/i);
+  return m ? m[1] : null;
+}
+
+function pickProjectByRef(ref) {
+  if (!ref) return null;
+  const admin = adminByRef.get(ref);
+  const anon = anonByRef.get(ref);
+  if (!admin) return null;
+  return { ref, admin, anonUrl: anon?.url || null, anonKey: anon?.key || null };
+}
+
+function pickProjectByHeader(req) {
+  const raw = String(req.headers["x-supabase-project"] || "").trim();
+  if (!raw) return null;
+  const direct = pickProjectByRef(raw);
+  if (direct) return direct;
+  const aliasSuffix = raw.toLowerCase() === "base" ? "" : raw.toUpperCase();
+  const url = process.env[`SUPABASE_URL${aliasSuffix ? "_" + aliasSuffix : ""}`];
+  return pickProjectByRef(refFromUrl(url));
+}
+
+const requireAdminSupabase = (req, res) => {
+  if (!req.supabase?.admin) {
+    res.status(503).json({ ok: false, error: "Supabase (service role) er ikke konfigurert for prosjektet" });
     return false;
   }
   return true;
 };
 
-// user-scoped client (RLS)
-const makeUserSupabase = (jwt) => {
-  if (!SUPABASE_ANON_KEY) return null;
-  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// user-scoped client (RLS) for prosjektet valgt i requireAuth
+const makeUserSupabase = (proj, jwt) => {
+  if (!proj?.anonUrl || !proj?.anonKey) return null;
+  return createClient(proj.anonUrl, proj.anonKey, {
     auth: { persistSession: false },
     global: { headers: { Authorization: `Bearer ${jwt}` } },
   });
@@ -97,26 +163,36 @@ const getBearerToken = (req) => {
 const requireAuth = async (req, res, next) => {
   const apiKey = req.headers["x-api-key"];
   const expectedApiKey = process.env.GATEWAY_API_KEY;
-  if (expectedApiKey && apiKey && apiKey === expectedApiKey) return next();
+  if (expectedApiKey && apiKey && apiKey === expectedApiKey) {
+    const proj = pickProjectByHeader(req) || pickProjectByRef(DEFAULT_PROJECT_REF);
+    if (!proj) return res.status(503).json({ ok: false, error: "Ingen Supabase-prosjekt tilgjengelig" });
+    req.supabase = proj;
+    return next();
+  }
 
   const jwt = getBearerToken(req);
   if (!jwt) return res.status(401).json({ ok: false, error: "Missing Authorization: Bearer <token>" });
 
-  if (!requireAdminSupabase(res)) return;
+  const ref = refFromJwt(jwt);
+  const proj = pickProjectByRef(ref);
+  if (!proj) {
+    return res.status(401).json({ ok: false, error: `Unknown Supabase project (iss ref=${ref || "?"})` });
+  }
 
-  const { data, error } = await supabaseAdmin.auth.getUser(jwt);
+  const { data, error } = await proj.admin.auth.getUser(jwt);
   if (error || !data?.user) return res.status(401).json({ ok: false, error: "Invalid session token" });
 
   req.user = data.user;
   req.jwt = jwt;
+  req.supabase = proj;
   return next();
 };
 
-// RLS access check: must be able to read incident via anon+jwt
-async function assertIncidentAccess({ jwt, incident_id }) {
-  const userSb = makeUserSupabase(jwt);
+// RLS access check: must be able to read incident via anon+jwt for the request's project
+async function assertIncidentAccess({ req, incident_id }) {
+  const userSb = makeUserSupabase(req.supabase, req.jwt);
   if (!userSb) {
-    return { ok: false, status: 500, error: "SUPABASE_ANON_KEY mangler i Fly secrets (trengs for RLS-sjekk)" };
+    return { ok: false, status: 500, error: "SUPABASE_ANON_KEY mangler for prosjektet (trengs for RLS-sjekk)" };
   }
 
   const { data, error } = await userSb.from("incidents").select("id, company_id").eq("id", incident_id).single();
