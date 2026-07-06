@@ -1,45 +1,83 @@
-
 ## Mål
 
-Unngå at "Test tilkobling" i ECCAIRS-innstillingene viser grønt "Tilkobling vellykket" etter at brukernavn/passord er endret til noe feil. Årsak: gateway-serveren (Fly.io) cacher access-token per `company_id` i minnet, og cachen invalideres ikke når nye credentials lagres.
+Utvide ECCAIRS-gatewayen (Fly.io) slik at den betjener BÅDE eksisterende Supabase-prosjekt (`pmucsvrypogtttrajqxq`) og det nye "MIL"-prosjektet. Riktig Supabase-klient (admin + user/RLS) må velges per innkommende request, slik at JWT valideres mot rett prosjekt og `eccairs_integrations` / `incidents` leses fra rett database.
 
-Vi implementerer punkt 1–3. Punkt 4 (skjule "environment" fallback i UI) hoppes over — globale env-variabler er bevisst feil/tomme per prosjekt for å hindre at selskaper deler ECCAIRS-credentials.
+Fly-secrets er allerede satt av brukeren:
+- Eksisterende: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- Nytt prosjekt: `SUPABASE_URL_MIL`, `SUPABASE_ANON_KEY_MIL`, `SUPABASE_SERVICE_ROLE_KEY_MIL`
 
-## Endringer
+## Løsning: rute basert på JWT-issuer
 
-### 1. Gateway: alltid frisk token i test-endepunktet
-Fil: `supabase/functions/_shared/eccairs-gateway-server.js`
+Supabase-JWTer inneholder en `iss`-claim på formen `https://<project-ref>.supabase.co/auth/v1`. Vi bruker `iss` (eventuelt project-ref) til å velge rett Supabase-klient per request. Ingen endring i frontend kreves.
 
-I `POST /api/eccairs/test-connection`, før `getE2AccessToken(result.integration)`:
-- Kall `clearTokenCache(company_id)` slik at cached token forkastes og credentials i DB brukes på nytt mot ECCAIRS IdP.
-- `clearTokenCache` er allerede eksportert fra `./e2Client`.
+## Endringer (kun `supabase/functions/_shared/eccairs-gateway-server.js`)
 
-Ingen andre endepunkter endres — vanlig API-trafikk beholder cachen (ytelse).
+### 1. Bygg et prosjekt-register ved oppstart
+Erstatt de globale `SUPABASE_URL/ANON/SERVICE_ROLE`-variablene med et register bygget fra env:
 
-### 2. Gateway: nytt endepunkt for å tømme cache ved lagring
-Fil: `supabase/functions/_shared/eccairs-gateway-server.js`
+```
+projects = [
+  { key: 'base', url: SUPABASE_URL,      anon: SUPABASE_ANON_KEY,      service: SUPABASE_SERVICE_ROLE_KEY },
+  { key: 'mil',  url: SUPABASE_URL_MIL,  anon: SUPABASE_ANON_KEY_MIL,  service: SUPABASE_SERVICE_ROLE_KEY_MIL },
+]
+```
+- Filtrer bort prosjekter som mangler url + service_role.
+- Bygg to Maps: `adminByRef` (project-ref → service-role client) og `anonByRef` (project-ref → anon key + url for RLS-klient).
+- Utled `project-ref` fra url (`https://<ref>.supabase.co`).
+- Logg ved oppstart: `[gateway] Registrerte Supabase-prosjekt: <ref1>, <ref2>` (samme format som brukerens screenshot).
 
-Legg til `POST /api/eccairs/clear-token-cache` (bak `requireAuth` + `requireAdminSupabase`):
-- Body: `{ company_id, environment }` (environment logges, cache er per company).
-- Kaller `clearTokenCache(company_id)` og returnerer `{ ok: true }`.
-- Feiler stille (200) hvis ingen cache finnes — best-effort.
+### 2. Ny helper: velg prosjekt fra JWT
+```
+function pickProjectFromJwt(jwt) { ... }
+```
+- Dekod JWT-payload (base64url, ingen signaturverifisering — Supabase gjør det via `auth.getUser`).
+- Les `iss`, trekk ut project-ref (regex `https://([^.]+)\.supabase\.co`).
+- Slå opp i `adminByRef` / `anonByRef`. Returner `{ admin, anon: { url, key }, ref }` eller `null` hvis ukjent.
 
-### 3. Dialog: tøm cache etter vellykket lagring
-Fil: `src/components/eccairs/EccairsSettingsDialog.tsx`
+### 3. Refaktorer `requireAuth`
+- Erstatt bruken av singleton `supabaseAdmin` med prosjekt valgt fra JWT.
+- Hvis prosjekt ikke gjenkjennes: 401 `Unknown Supabase project (iss)`.
+- Kall `admin.auth.getUser(jwt)` for validering (fungerer for både prosjekt fordi vi bruker prosjektets egen service role).
+- Legg `req.supabase = { admin, anonUrl, anonKey, ref }` for bruk i handlere.
+- Behold API-key-shortcut (`GATEWAY_API_KEY`) — men da må vi velge prosjekt annerledes (se punkt 6).
 
-I `handleSave`, etter at `update_eccairs_credentials`-RPC returnerer uten feil og før `toast.success(...)`:
-- Best-effort `fetch(`${ECCAIRS_GATEWAY}/api/eccairs/clear-token-cache`, ...)` med Bearer-token fra `supabase.auth.getSession()`.
-- Feil ignoreres (kun `console.warn`) — lagringen skal aldri fremstå som feilet på grunn av cache-kall.
-- Nullstill `setTestResult(null)` som i dag.
+### 4. Refaktorer helpers til å ta `req.supabase`
+Erstatt globalt `supabaseAdmin` og `makeUserSupabase(jwt)`:
+- `assertIncidentAccess({ req, incident_id })` bruker `req.supabase.anonUrl/Key` for RLS-klient og `req.jwt`.
+- `loadIntegration({ admin, company_id, environment })` tar admin-klient som parameter i stedet for å bruke global.
+- `requireAdminSupabase(res)` erstattes av sjekk på `req.supabase?.admin`.
 
-## Ikke i denne iterasjonen
+### 5. Oppdater alle route-handlere
+Alle `/api/eccairs/*`-handlere:
+- Bytt `supabaseAdmin` → `req.supabase.admin`.
+- Send admin-klient inn i `loadIntegration` og `assertIncidentAccess`.
+- Ingen endring i forretningslogikk, payload, E2-kall eller cache — kun kilden til Supabase-klienten endres.
 
-- Punkt 4 (endre visning når `credentials_source === 'environment'`): ikke aktuelt, siden globale env på Fly.io er bevisst tomme/feil per prosjekt. Håndteres eventuelt separat senere hvis nødvendig.
-- Ingen DB-endringer, ingen endringer i `update_eccairs_credentials` eller `get_eccairs_credentials`.
-- Ingen endringer i `e2Client.js`.
+`/api/eccairs/clear-token-cache` og `/api/eccairs/test-connection` beholder eksisterende oppførsel; de går også via `req.supabase.admin` for å laste integrasjon.
+
+### 6. API-key-fallback (GATEWAY_API_KEY)
+Dette er en server-to-server-shortcut uten JWT. Siden vi ikke kan utlede prosjekt fra JWT der, krever vi enten:
+- ny valgfri header `x-supabase-project: base|mil` (eller project-ref), eller
+- default til `base` for bakoverkompatibilitet.
+
+Implementering: hvis `x-api-key` matcher, les `x-supabase-project`-header og slå opp i registeret; ellers bruk `base`. Frontend bruker aldri denne pathen, så det er lav risiko.
+
+### 7. E2 token-cache
+`clearTokenCache(company_id)` bruker company_id som key. Ulike prosjekter kan (i teorien) ha kolliderende UUID-er, men i praksis er UUID unikt. Ingen endring nødvendig — men vi kan prefikse cache-key med project-ref for å være trygg. **Foreslått:** prefikse cache-key i `e2Client.js` med prosjekt-ref → skjer i eget lite grep i `e2Client.js` (kun endring i cache-key-bygging, ingen API-endring). Alternativt: hoppe over dette hvis brukeren vil holde `e2Client.js` uendret.
+
+### 8. Ingen endringer utenfor gatewayen
+- Ingen endringer i frontend (`EccairsSettingsDialog.tsx`, Supabase-klient osv.).
+- Ingen DB-migrasjoner.
+- Ingen endringer i `eccairsPayload.js`.
 
 ## Verifisering
 
-1. Lagre gyldige credentials → Test → grønt.
-2. Endre passord til feil verdi → Lagre → Test → rødt med feilmelding fra IdP (ikke lenger falsk grønt).
-3. Rett passord tilbake → Lagre → Test → grønt igjen.
+1. Fly-oppstartslogg viser begge prosjekt-refs registrert.
+2. Bruker i `base`-prosjekt: Test tilkobling fungerer som før.
+3. Bruker i `mil`-prosjekt: Test tilkobling henter integrasjon fra MIL-DB og returnerer riktig `credentials_source`.
+4. JWT fra ukjent prosjekt → 401 med tydelig feilmelding.
+5. Lagre credentials i MIL-prosjekt → clear-token-cache-kall lykkes → neste test bruker fersk token.
+
+## Åpent spørsmål
+
+Skal jeg også prefikse token-cache-key med project-ref i `e2Client.js` (punkt 7)? Anbefaler ja for å være helt trygg mot UUID-kollisjoner mellom prosjekter, men det er en minimal endring i en fil du kanskje vil holde uendret.
