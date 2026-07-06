@@ -209,8 +209,8 @@ function getDefaultBaseUrl(environment) {
 }
 
 // Load active integration for company+env with per-company credentials support
-async function loadIntegration({ company_id, environment }) {
-  const { data, error } = await supabaseAdmin
+async function loadIntegration({ admin, company_id, environment }) {
+  const { data, error } = await admin
     .from("eccairs_integrations")
     .select("*")
     .eq("company_id", company_id)
