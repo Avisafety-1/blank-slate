@@ -246,8 +246,11 @@ app.post("/api/eccairs/test-connection", async (req, res) => {
     }
 
     try {
+      // Force fresh token fetch so a saved-but-wrong password isn't hidden by cache
+      try { clearTokenCache(company_id); } catch (_) {}
       // Try to get a token using the integration's credentials
       const token = await getE2AccessToken(result.integration);
+      
       
       return res.json({ 
         ok: true, 
