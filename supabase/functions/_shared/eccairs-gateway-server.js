@@ -417,7 +417,7 @@ app.post("/api/eccairs/drafts", async (req, res) => {
 
     // 2) upsert export row
     const nowIso = new Date().toISOString();
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await req.supabase.admin
       .from("eccairs_exports")
       .select("id, attempts")
       .eq("incident_id", incident_id)
@@ -426,7 +426,7 @@ app.post("/api/eccairs/drafts", async (req, res) => {
 
     const nextAttempts = (existing?.attempts || 0) + 1;
 
-    const { data: exportRow, error: upErr } = await supabaseAdmin
+    const { data: exportRow, error: upErr } = await req.supabase.admin
       .from("eccairs_exports")
       .upsert(
         {
@@ -447,7 +447,7 @@ app.post("/api/eccairs/drafts", async (req, res) => {
 
     // 3) build payload
     const { payload, meta } = await buildE2Payload({
-      supabase: supabaseAdmin,
+      supabase: req.supabase.admin,
       incident: { id: incident_id },
       exportRow,
       integration,
@@ -479,7 +479,7 @@ app.post("/api/eccairs/drafts", async (req, res) => {
     if (!createResp.ok) {
       const errMsg = createJson?.errorDetails || createJson?.message || createJson?.error || `E2 create failed (${createResp.status})`;
 
-      await supabaseAdmin
+      await req.supabase.admin
         .from("eccairs_exports")
         .update({
           status: "failed",
@@ -496,7 +496,7 @@ app.post("/api/eccairs/drafts", async (req, res) => {
     const e2Id = createJson?.data?.e2Id || createJson?.e2Id || null;
     const e2Version = createJson?.data?.version || createJson?.version || null;
 
-    const { data: updatedExport, error: updErr } = await supabaseAdmin
+    const { data: updatedExport, error: updErr } = await req.supabase.admin
       .from("eccairs_exports")
       .update({
         status: "draft_created",
@@ -538,7 +538,7 @@ app.post("/api/eccairs/drafts/update", async (req, res) => {
     if (!access.ok) return res.status(access.status).json({ ok: false, error: access.error });
 
     // 1) fetch export row
-    const { data: exportRow, error: expErr } = await supabaseAdmin
+    const { data: exportRow, error: expErr } = await req.supabase.admin
       .from("eccairs_exports")
       .select("*")
       .eq("incident_id", incident_id)
@@ -556,14 +556,14 @@ app.post("/api/eccairs/drafts/update", async (req, res) => {
 
     // 3) mark pending attempt
     const nextAttempts = (exportRow.attempts || 0) + 1;
-    await supabaseAdmin
+    await req.supabase.admin
       .from("eccairs_exports")
       .update({ status: "pending", attempts: nextAttempts, last_attempt_at: new Date().toISOString(), last_error: null })
       .eq("id", exportRow.id);
 
     // 4) build payload (edit mode)
     const { payload, meta } = await buildE2Payload({
-      supabase: supabaseAdmin,
+      supabase: req.supabase.admin,
       incident: { id: incident_id },
       exportRow,
       integration,
@@ -599,7 +599,7 @@ app.post("/api/eccairs/drafts/update", async (req, res) => {
 
       console.error("E2 EDIT FAILED", { status: editResp.status, errMsg, editJson });
 
-      await supabaseAdmin
+      await req.supabase.admin
         .from("eccairs_exports")
         .update({
           status: "failed",
@@ -615,7 +615,7 @@ app.post("/api/eccairs/drafts/update", async (req, res) => {
 
     const newVersion = editJson?.data?.version ?? editJson?.version ?? exportRow.e2_version ?? null;
 
-    const { data: updatedExport, error: updErr } = await supabaseAdmin
+    const { data: updatedExport, error: updErr } = await req.supabase.admin
       .from("eccairs_exports")
       .update({
         status: "draft_updated",
@@ -701,7 +701,7 @@ app.post("/api/eccairs/drafts/delete", async (req, res) => {
       const errMsg = deleteJson?.errorDetails || deleteJson?.message || deleteJson?.error || `E2 delete failed (${deleteResp.status})`;
       
       if (incident_id) {
-        await supabaseAdmin
+        await req.supabase.admin
           .from("eccairs_exports")
           .update({
             status: "delete_failed",
@@ -725,7 +725,7 @@ app.post("/api/eccairs/drafts/delete", async (req, res) => {
     // returnCode 1 = success i ECCAIRS
     if (deleteJson?.returnCode === 1 || deleteResp.ok) {
       if (incident_id) {
-        await supabaseAdmin
+        await req.supabase.admin
           .from("eccairs_exports")
           .delete()
           .eq("incident_id", incident_id)
@@ -813,7 +813,7 @@ app.post("/api/eccairs/submit", async (req, res) => {
     const access = await assertIncidentAccess({ req, incident_id });
     if (!access.ok) return res.status(access.status).json({ ok: false, error: access.error });
 
-    const { data: exp, error: expErr } = await supabaseAdmin
+    const { data: exp, error: expErr } = await req.supabase.admin
       .from("eccairs_exports")
       .select("*")
       .eq("incident_id", incident_id)
@@ -829,7 +829,7 @@ app.post("/api/eccairs/submit", async (req, res) => {
     const integration = integrationRes.integration;
 
     const nextAttempts = (exp.attempts || 0) + 1;
-    await supabaseAdmin
+    await req.supabase.admin
       .from("eccairs_exports")
       .update({ status: "pending", attempts: nextAttempts, last_attempt_at: new Date().toISOString(), last_error: null })
       .eq("id", exp.id);
@@ -851,7 +851,7 @@ app.post("/api/eccairs/submit", async (req, res) => {
     if (!r.ok) {
       const errMsg = j?.errorDetails || j?.message || j?.error || `E2 change-status failed (${r.status})`;
 
-      await supabaseAdmin
+      await req.supabase.admin
         .from("eccairs_exports")
         .update({ status: "failed", last_error: errMsg, response: j, payload, last_attempt_at: new Date().toISOString() })
         .eq("id", exp.id);
@@ -859,7 +859,7 @@ app.post("/api/eccairs/submit", async (req, res) => {
       return res.status(r.status).json({ ok: false, error: "E2 change-status failed", status: r.status, message: errMsg, details: j });
     }
 
-    const { data: updated, error: updErr } = await supabaseAdmin
+    const { data: updated, error: updErr } = await req.supabase.admin
       .from("eccairs_exports")
       .update({ status: "submitted", last_error: null, response: j, payload, last_attempt_at: new Date().toISOString() })
       .eq("id", exp.id)
@@ -908,7 +908,7 @@ app.post("/api/eccairs/attachments/:e2Id", upload.array("files", 10), async (req
     // Try to get integration credentials if incident_id is provided
     let integration = null;
     if (incident_id) {
-      const { data: exp } = await supabaseAdmin
+      const { data: exp } = await req.supabase.admin
         .from("eccairs_exports")
         .select("company_id")
         .eq("incident_id", incident_id)
