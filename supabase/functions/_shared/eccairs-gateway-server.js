@@ -303,7 +303,7 @@ app.use("/api/eccairs", requireAuth);
 // -------------------------
 app.post("/api/eccairs/test-connection", async (req, res) => {
   try {
-    if (!requireAdminSupabase(res)) return;
+    if (!requireAdminSupabase(req, res)) return;
 
     const { company_id, environment } = req.body;
 
@@ -312,7 +312,7 @@ app.post("/api/eccairs/test-connection", async (req, res) => {
     }
 
     // Load integration with credentials
-    const result = await loadIntegration({ company_id, environment });
+    const result = await loadIntegration({ admin: req.supabase.admin, company_id, environment });
     if (!result.ok) {
       return res.status(result.status).json({ 
         ok: false, 
@@ -355,7 +355,7 @@ app.post("/api/eccairs/test-connection", async (req, res) => {
 // -------------------------
 app.post("/api/eccairs/clear-token-cache", async (req, res) => {
   try {
-    if (!requireAdminSupabase(res)) return;
+    if (!requireAdminSupabase(req, res)) return;
     const { company_id, environment } = req.body || {};
     if (!company_id) {
       return res.status(400).json({ ok: false, error: "company_id er påkrevd" });
@@ -397,7 +397,7 @@ const deleteSchema = Joi.object({
 // -------------------------
 app.post("/api/eccairs/drafts", async (req, res) => {
   try {
-    if (!requireAdminSupabase(res)) return;
+    if (!requireAdminSupabase(req, res)) return;
 
     const { error, value } = baseSchema.validate(req.body || {});
     if (error) return res.status(400).json({ ok: false, error: error.details[0].message });
@@ -405,13 +405,13 @@ app.post("/api/eccairs/drafts", async (req, res) => {
     const { incident_id, environment } = value;
 
     // 0) RLS access
-    const access = await assertIncidentAccess({ jwt: req.jwt, incident_id });
+    const access = await assertIncidentAccess({ req, incident_id });
     if (!access.ok) return res.status(access.status).json({ ok: false, error: access.error });
 
     const company_id = access.incident.company_id;
 
     // 1) integration with credentials
-    const integrationRes = await loadIntegration({ company_id, environment });
+    const integrationRes = await loadIntegration({ admin: req.supabase.admin, company_id, environment });
     if (!integrationRes.ok) return res.status(integrationRes.status).json({ ok: false, error: integrationRes.error, details: integrationRes.details });
     const integration = integrationRes.integration;
 
@@ -526,7 +526,7 @@ app.post("/api/eccairs/drafts", async (req, res) => {
 // -------------------------
 app.post("/api/eccairs/drafts/update", async (req, res) => {
   try {
-    if (!requireAdminSupabase(res)) return;
+    if (!requireAdminSupabase(req, res)) return;
 
     const { error, value } = baseSchema.validate(req.body || {});
     if (error) return res.status(400).json({ ok: false, error: error.details[0].message });
@@ -534,7 +534,7 @@ app.post("/api/eccairs/drafts/update", async (req, res) => {
     const { incident_id, environment } = value;
 
     // 0) RLS access
-    const access = await assertIncidentAccess({ jwt: req.jwt, incident_id });
+    const access = await assertIncidentAccess({ req, incident_id });
     if (!access.ok) return res.status(access.status).json({ ok: false, error: access.error });
 
     // 1) fetch export row
@@ -550,7 +550,7 @@ app.post("/api/eccairs/drafts/update", async (req, res) => {
     if (!exportRow?.e2_version) return res.status(400).json({ ok: false, error: "Ingen e2_version funnet. Opprett draft på nytt eller hent korrekt versjon." });
 
     // 2) integration with credentials
-    const integrationRes = await loadIntegration({ company_id: exportRow.company_id, environment });
+    const integrationRes = await loadIntegration({ admin: req.supabase.admin, company_id: exportRow.company_id, environment });
     if (!integrationRes.ok) return res.status(integrationRes.status).json({ ok: false, error: integrationRes.error, details: integrationRes.details });
     const integration = integrationRes.integration;
 
@@ -644,7 +644,7 @@ app.post("/api/eccairs/drafts/update", async (req, res) => {
 // -------------------------
 app.post("/api/eccairs/drafts/delete", async (req, res) => {
   try {
-    if (!requireAdminSupabase(res)) return;
+    if (!requireAdminSupabase(req, res)) return;
 
     const { error, value } = deleteSchema.validate(req.body || {});
     if (error) return res.status(400).json({ ok: false, error: error.details[0].message });
@@ -654,7 +654,7 @@ app.post("/api/eccairs/drafts/delete", async (req, res) => {
     // Hvis incident_id er gitt, sjekk RLS-tilgang og hent company_id
     let company_id = null;
     if (incident_id) {
-      const access = await assertIncidentAccess({ jwt: req.jwt, incident_id });
+      const access = await assertIncidentAccess({ req, incident_id });
       if (!access.ok) return res.status(access.status).json({ ok: false, error: access.error });
       company_id = access.incident.company_id;
     }
@@ -662,7 +662,7 @@ app.post("/api/eccairs/drafts/delete", async (req, res) => {
     // Load integration for credentials if we have company_id
     let integration = null;
     if (company_id) {
-      const integrationRes = await loadIntegration({ company_id, environment });
+      const integrationRes = await loadIntegration({ admin: req.supabase.admin, company_id, environment });
       if (integrationRes.ok) {
         integration = integrationRes.integration;
       }
@@ -766,10 +766,10 @@ app.get("/api/eccairs/get-url", async (req, res) => {
 
     let integration = null;
     if (incident_id) {
-      const access = await assertIncidentAccess({ jwt: req.jwt, incident_id });
+      const access = await assertIncidentAccess({ req, incident_id });
       if (!access.ok) return res.status(access.status).json({ ok: false, error: access.error });
 
-      const integrationRes = await loadIntegration({ company_id: access.incident.company_id, environment });
+      const integrationRes = await loadIntegration({ admin: req.supabase.admin, company_id: access.incident.company_id, environment });
       if (!integrationRes.ok) {
         return res.status(integrationRes.status).json({ ok: false, error: integrationRes.error, details: integrationRes.details });
       }
@@ -803,14 +803,14 @@ app.get("/api/eccairs/get-url", async (req, res) => {
 // -------------------------
 app.post("/api/eccairs/submit", async (req, res) => {
   try {
-    if (!requireAdminSupabase(res)) return;
+    if (!requireAdminSupabase(req, res)) return;
 
     const { error, value } = baseSchema.validate(req.body || {});
     if (error) return res.status(400).json({ ok: false, error: error.details[0].message });
 
     const { incident_id, environment } = value;
 
-    const access = await assertIncidentAccess({ jwt: req.jwt, incident_id });
+    const access = await assertIncidentAccess({ req, incident_id });
     if (!access.ok) return res.status(access.status).json({ ok: false, error: access.error });
 
     const { data: exp, error: expErr } = await supabaseAdmin
@@ -824,7 +824,7 @@ app.post("/api/eccairs/submit", async (req, res) => {
     if (!exp?.e2_id) return res.status(400).json({ ok: false, error: "Ingen e2_id funnet. Opprett draft først." });
 
     // Load integration with credentials
-    const integrationRes = await loadIntegration({ company_id: exp.company_id, environment });
+    const integrationRes = await loadIntegration({ admin: req.supabase.admin, company_id: exp.company_id, environment });
     if (!integrationRes.ok) return res.status(integrationRes.status).json({ ok: false, error: integrationRes.error });
     const integration = integrationRes.integration;
 
@@ -882,7 +882,7 @@ app.post("/api/eccairs/submit", async (req, res) => {
 // -------------------------
 app.post("/api/eccairs/attachments/:e2Id", upload.array("files", 10), async (req, res) => {
   try {
-    if (!requireAdminSupabase(res)) return;
+    if (!requireAdminSupabase(req, res)) return;
 
     const { e2Id } = req.params;
     if (!e2Id) {
@@ -916,7 +916,7 @@ app.post("/api/eccairs/attachments/:e2Id", upload.array("files", 10), async (req
       
       if (exp?.company_id) {
         const environment = req.body.environment || "sandbox";
-        const integrationRes = await loadIntegration({ company_id: exp.company_id, environment });
+        const integrationRes = await loadIntegration({ admin: req.supabase.admin, company_id: exp.company_id, environment });
         if (integrationRes.ok) {
           integration = integrationRes.integration;
         }
