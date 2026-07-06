@@ -132,6 +132,27 @@ export function EccairsSettingsDialog({
 
       if (error) throw error;
 
+      // Best-effort: invalidate cached E2 token on gateway so a wrong password
+      // isn't hidden by an old cached token on the next "Test tilkobling".
+      if (ECCAIRS_GATEWAY) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const accessToken = session?.access_token;
+          if (accessToken) {
+            await fetch(`${ECCAIRS_GATEWAY}/api/eccairs/clear-token-cache`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ company_id: companyId, environment }),
+            });
+          }
+        } catch (cacheErr) {
+          console.warn("Kunne ikke tømme token-cache:", cacheErr);
+        }
+      }
+
       toast.success("ECCAIRS-innstillinger lagret");
       setHasExistingSecret(true);
       setTestResult(null);

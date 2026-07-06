@@ -246,8 +246,11 @@ app.post("/api/eccairs/test-connection", async (req, res) => {
     }
 
     try {
+      // Force fresh token fetch so a saved-but-wrong password isn't hidden by cache
+      try { clearTokenCache(company_id); } catch (_) {}
       // Try to get a token using the integration's credentials
       const token = await getE2AccessToken(result.integration);
+      
       
       return res.json({ 
         ok: true, 
@@ -269,6 +272,28 @@ app.post("/api/eccairs/test-connection", async (req, res) => {
     return res.status(500).json({ ok: false, error: String(err.message || err) });
   }
 });
+
+// -------------------------
+// Clear cached E2 token for a company (call after credential save)
+// POST /api/eccairs/clear-token-cache
+// -------------------------
+app.post("/api/eccairs/clear-token-cache", async (req, res) => {
+  try {
+    if (!requireAdminSupabase(res)) return;
+    const { company_id, environment } = req.body || {};
+    if (!company_id) {
+      return res.status(400).json({ ok: false, error: "company_id er påkrevd" });
+    }
+    try { clearTokenCache(company_id); } catch (_) {}
+    console.log(`[clear-token-cache] company=${company_id} env=${environment || 'n/a'}`);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Feil i /api/eccairs/clear-token-cache:", err);
+    return res.status(200).json({ ok: false, error: String(err.message || err) });
+  }
+});
+
+
 
 // -------------------------
 // Schemas
