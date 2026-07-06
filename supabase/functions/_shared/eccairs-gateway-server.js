@@ -222,7 +222,7 @@ async function loadIntegration({ admin, company_id, environment }) {
   if (!data) return { ok: false, status: 400, error: "ECCAIRS integrasjon er ikke konfigurert for dette selskapet/miljøet" };
 
   // Try to get per-company credentials from Supabase RPC (decrypted)
-  const { data: creds, error: credErr } = await supabaseAdmin
+  const { data: creds, error: credErr } = await admin
     .rpc("get_eccairs_credentials", {
       p_company_id: company_id,
       p_environment: environment,
