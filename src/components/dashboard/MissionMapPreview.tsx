@@ -250,37 +250,50 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
         ]);
 
         if (nsmResponse.ok && isMounted) {
-          const nsmData = await nsmResponse.json();
-          L.geoJSON(nsmData, {
-            style: { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.15 },
-            onEachFeature: (feature, layer) => {
-              const name = feature.properties?.navn || feature.properties?.name || 'NSM Forbudsområde';
-              layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
-            }
-          }).addTo(zonesLayer);
+          const nsmData = sanitizeArcgisGeoJson(await nsmResponse.json());
+          if (nsmData) {
+            try {
+              L.geoJSON(nsmData, {
+                style: { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.15 },
+                onEachFeature: (feature, layer) => {
+                  const name = feature.properties?.navn || feature.properties?.name || 'NSM Forbudsområde';
+                  layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
+                }
+              }).addTo(zonesLayer);
+            } catch (e) { console.warn('NSM-lag hoppet over:', e); }
+          }
         }
 
         if (rpasResponse.ok && isMounted) {
-          const rpasData = await rpasResponse.json();
-          L.geoJSON(rpasData, {
-            style: { color: '#f97316', weight: 2, fillColor: '#f97316', fillOpacity: 0.15 },
-            onEachFeature: (feature, layer) => {
-              const name = feature.properties?.navn || feature.properties?.name || 'RPAS 5km sone';
-              layer.bindPopup(`<strong>RPAS 5km</strong><br/>${name}`);
-            }
-          }).addTo(zonesLayer);
+          const rpasData = sanitizeArcgisGeoJson(await rpasResponse.json());
+          if (rpasData) {
+            try {
+              L.geoJSON(rpasData, {
+                style: { color: '#f97316', weight: 2, fillColor: '#f97316', fillOpacity: 0.15 },
+                onEachFeature: (feature, layer) => {
+                  const name = feature.properties?.navn || feature.properties?.name || 'RPAS 5km sone';
+                  layer.bindPopup(`<strong>RPAS 5km</strong><br/>${name}`);
+                }
+              }).addTo(zonesLayer);
+            } catch (e) { console.warn('RPAS-lag hoppet over:', e); }
+          }
         }
 
         if (ctrResponse.ok && isMounted) {
-          const ctrData = await ctrResponse.json();
-          L.geoJSON(ctrData, {
-            style: { color: '#ec4899', weight: 2, fillColor: '#ec4899', fillOpacity: 0.15 },
-            onEachFeature: (feature, layer) => {
-              const name = feature.properties?.navn || feature.properties?.name || 'CTR/TIZ';
-              layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
-            }
-          }).addTo(zonesLayer);
+          const ctrData = sanitizeArcgisGeoJson(await ctrResponse.json());
+          if (ctrData) {
+            try {
+              L.geoJSON(ctrData, {
+                style: { color: '#ec4899', weight: 2, fillColor: '#ec4899', fillOpacity: 0.15 },
+                onEachFeature: (feature, layer) => {
+                  const name = feature.properties?.navn || feature.properties?.name || 'CTR/TIZ';
+                  layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
+                }
+              }).addTo(zonesLayer);
+            } catch (e) { console.warn('CTR/TIZ-lag hoppet over:', e); }
+          }
         }
+
 
         // AIP zones from shared cache (eliminates N+1)
         try {
