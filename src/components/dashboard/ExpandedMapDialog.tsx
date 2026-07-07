@@ -15,6 +15,8 @@ import { FlightAltitudeProfile } from "./FlightAltitudeProfile";
 import { fetchTerrainElevations, buildTerrainProfile, downsamplePositions, interpolateElevations, type TerrainPoint } from "@/lib/terrainElevation";
 import { renderSoraZones, type SoraSettings } from "@/lib/soraGeometry";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
+import { sanitizeArcgisGeoJson } from "@/lib/mapDataFetchers";
+
 
 interface RoutePoint {
   lat: number;
