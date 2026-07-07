@@ -870,7 +870,7 @@ export function OpenAIPMap({
 
     // Create panes
     const paneConfig: Record<string, string> = {
-      safeskyPane: '750', liveFlightPane: '720', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
+      safeskyPane: '750', liveFlightPane: '720', historicalFlightPane: '715', missionPane: '680', notamPinPane: '675', airportPane: '670', routePane: '665',
       powerPane: '700', tensioPowerPane: '699', obstaclePane: '660', nsmPane: '650', atzPane: '645', notamPane: '640', populationDensityPane: '635',
       rpasPane: '630', aipPane: '625', rmzPane: '620',
     };
