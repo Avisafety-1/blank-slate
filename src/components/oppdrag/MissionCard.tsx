@@ -128,6 +128,13 @@ export const MissionCard = ({
   const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
   const approvalStatus = mission.approval_status || 'not_approved';
   const approvalClickable = canSubmitForApproval(mission.approval_status);
+  const routeCoords = Array.isArray((mission.route as any)?.coordinates)
+    ? (mission.route as any).coordinates
+    : [];
+  const hasRouteCoords = routeCoords.length > 0;
+  const effectiveLat = typeof mission.latitude === 'number' ? mission.latitude : (routeCoords[0]?.lat ?? null);
+  const effectiveLng = typeof mission.longitude === 'number' ? mission.longitude : (routeCoords[0]?.lng ?? null);
+  const airspaceRoutePoints = hasRouteCoords ? routeCoords : undefined;
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
@@ -169,8 +176,8 @@ export const MissionCard = ({
               onStatusChanged={fetchMissions}
               statusColors={statusColors}
               className="text-xs"
-              latitude={mission.latitude}
-              longitude={mission.longitude}
+              latitude={effectiveLat}
+              longitude={effectiveLng}
             />
             {shouldShowApprovalBadge(showApproval, mission.approval_status) && (
               <Badge
@@ -344,9 +351,9 @@ export const MissionCard = ({
           <div>
             <p className="text-muted-foreground">Lokasjon</p>
             <p className="text-foreground">{mission.lokasjon}</p>
-            {mission.latitude && mission.longitude && (
+            {effectiveLat != null && effectiveLng != null && (
               <p className="text-xs text-muted-foreground">
-                {mission.latitude.toFixed(5)}, {mission.longitude.toFixed(5)}
+                {effectiveLat.toFixed(5)}, {effectiveLng.toFixed(5)}
               </p>
             )}
           </div>
@@ -403,8 +410,8 @@ export const MissionCard = ({
         tidspunkt={mission.tidspunkt}
         sluttTidspunkt={mission.slutt_tidspunkt}
         route={mission.route}
-        latitude={mission.latitude}
-        longitude={mission.longitude}
+        latitude={effectiveLat}
+        longitude={effectiveLng}
         status={mission.status}
       />
 
@@ -583,9 +590,6 @@ export const MissionCard = ({
 
       {/* Weather and Map Data */}
       {(() => {
-        const routeCoords = (mission.route as any)?.coordinates;
-        const effectiveLat = mission.latitude ?? routeCoords?.[0]?.lat;
-        const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
         const isCompleted = mission.status === "Fullført";
         const hasWeatherSnapshot = mission.weather_data_snapshot;
         const isHistoricalNoSnapshot =
@@ -597,7 +601,7 @@ export const MissionCard = ({
             ? { unavailable: true, reason: 'historical', captured_at: new Date().toISOString() }
             : undefined;
 
-        if (!effectiveLat || !effectiveLng) return null;
+        if (effectiveLat == null || effectiveLng == null) return null;
         
         return (
           <div className="pt-2 border-t border-border/50 space-y-3 sm:space-y-4">
@@ -609,7 +613,7 @@ export const MissionCard = ({
             <AirspaceWarnings
               latitude={effectiveLat}
               longitude={effectiveLng}
-              routePoints={routeCoords}
+              routePoints={airspaceRoutePoints}
               showAll={companySettings.show_all_airspace_warnings}
               onAirspaceResult={(warnings) => {
                 const found = warnings.some(w => w.zone_type === '5KM' && w.is_inside);
