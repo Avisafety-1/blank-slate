@@ -212,6 +212,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [approvalCompanyIds, setApprovalCompanyIds] = useState<string[] | null>(null);
   const [incidentResponsibleCompanyIds, setIncidentResponsibleCompanyIds] = useState<string[] | null>(null);
 
+  // Keep the current-token ref synced with session so the cross-tab handler
+  // can cheaply detect pure echoes of the token it already holds.
+  useEffect(() => {
+    currentAccessTokenRef.current = session?.access_token ?? null;
+  }, [session]);
+
+
   const resetAuthState = () => {
     setSession(null);
     setUser(null);
