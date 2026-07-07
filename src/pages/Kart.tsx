@@ -427,6 +427,9 @@ export default function KartPage() {
   // Load mission from ?missionId=... URL param (from "Utvid"-knappen i oppdragskort)
   const handledMissionParamRef = useRef<string | null>(null);
   const [pendingInitialCenter, setPendingInitialCenter] = useState<[number, number] | undefined>(undefined);
+  const [missionFlightTracks, setMissionFlightTracks] = useState<
+    Array<{ flightLogId: string; flightDate?: string; positions: any[] }> | null
+  >(null);
   useEffect(() => {
     if (!user || !companyId) return;
     const mid = searchParams.get("missionId");
@@ -435,11 +438,27 @@ export default function KartPage() {
     handledMissionParamRef.current = mid;
 
     (async () => {
-      const { data, error } = await supabase
-        .from("missions")
-        .select("id, route, latitude, longitude, status")
-        .eq("id", mid)
-        .maybeSingle();
+      const [{ data, error }, { data: logs }] = await Promise.all([
+        supabase
+          .from("missions")
+          .select("id, route, latitude, longitude, status")
+          .eq("id", mid)
+          .maybeSingle(),
+        supabase
+          .from("flight_logs")
+          .select("id, flight_date, flight_track")
+          .eq("mission_id", mid),
+      ]);
+
+      const tracks = (logs ?? [])
+        .filter((l: any) => l.flight_track?.positions?.length >= 2)
+        .map((l: any) => ({
+          flightLogId: l.id,
+          flightDate: l.flight_date,
+          positions: l.flight_track.positions,
+        }));
+      setMissionFlightTracks(tracks.length ? tracks : null);
+
       if (error || !data) {
         toast.error("Fant ikke oppdraget");
       } else {
@@ -449,8 +468,13 @@ export default function KartPage() {
         if (!coords.length) {
           if (data.latitude && data.longitude) {
             setPendingInitialCenter([data.latitude, data.longitude]);
+          } else if (tracks.length) {
+            const first = tracks[0].positions[0];
+            if (first) setPendingInitialCenter([first.lat, first.lng]);
           }
-          toast.message("Oppdraget har ingen lagret rute");
+          if (!tracks.length) {
+            toast.message("Oppdraget har ingen lagret rute");
+          }
         } else {
           // Centroid of route coordinates
           const lat = coords.reduce((s, p) => s + p.lat, 0) / coords.length;
