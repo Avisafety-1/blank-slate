@@ -1222,6 +1222,7 @@ export default function KartPage() {
               isPlacingPilot={isPlacingPilot}
               focusFlightId={focusFlightId}
               onFocusFlightHandled={() => setFocusFlightId(null)}
+              historicalFlightTracks={missionFlightTracks}
               soraSettings={soraSettings}
               adjacentAreaRadiusM={showAdjacentArea ? calculateAdjacentRadius(soraSettings.groundSpeedMps ?? soraDroneMaxSpeed) : undefined}
               populationDensityCells={mergedDensityCells}
