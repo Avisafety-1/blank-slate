@@ -1,44 +1,30 @@
+# Fix uendelig cross-tab auth-løkke (BroadcastChannel echo)
+
 ## Problem
+To parallelle faner pinger samme sesjon frem og tilbake via BroadcastChannel i det uendelige ("Received session from another tab" / "Applied cross-tab session" i loop). Dette trigger en storm av `GET /user`-kall.
 
-Når man klikker på kartforhåndsvisningen i et oppdragskort, navigeres man til `/kart?missionId=...`. `Kart.tsx` henter da bare `missions.route` (planlagt rute) og sentrerer kartet. Flydde ruter fra tilknyttede `flight_logs.flight_track` vises ikke, selv om de vises fint i `MissionMapPreview` inne på selve oppdragskortet.
+**Årsak:** `supabase.auth.setSession()` kan emitere flere `onAuthStateChange`-hendelser. Dagens enkle `ignoreNextAuthEventRef`-flagg undertrykker bare én — de resterende hendelsene kaller `broadcastSession()` på nytt, som gir ekko til andre faner, som igjen kaller `setSession`, osv.
 
-## Løsning
+## Løsning — token-basert idempotens
 
-Utvide `missionId`-lasteren i `Kart.tsx` til også å hente `flight_logs.flight_track` for oppdraget, og rendre disse som grønne polylines i `OpenAIPMap` — samme visuelle stil som brukes i `MissionMapPreview` (grønt spor, grønn start-, oransje sluttmarkør, popup med høyde/hastighet).
+### `src/lib/authTabSync.ts`
+- Legg til modul-variabel `let lastSyncedToken: string | null = null`.
+- `broadcastSession(session)`: return tidlig (no-op) hvis `session.access_token === lastSyncedToken`. Ellers sett `lastSyncedToken = session.access_token` før postMessage.
+- Ny eksport `noteSyncedToken(token: string)` som setter `lastSyncedToken = token` — kalles av mottaker-fane før den anvender en innkommende sesjon, slik at den ikke ekkoer tokenet tilbake.
 
-### Endringer
+### `src/contexts/AuthContext.tsx`
+- Ny `currentAccessTokenRef = useRef<string | null>(null)`, synket via `useEffect` på `session`.
+- I `SESSION_UPDATE`-handleren fra `onTabMessage`:
+  1. Return umiddelbart hvis `msg.access_token === currentAccessTokenRef.current` (rent ekko).
+  2. Ellers: kall `noteSyncedToken(msg.access_token)` FØR `supabase.auth.setSession(...)`.
+  3. Oppdater `currentAccessTokenRef.current = msg.access_token` når anvendt.
+- Behold eksisterende `ignoreNextAuthEventRef` som sekundær sikring mot dobbelbroadcast fra egen `setSession`-triggede events.
 
-1. **`src/pages/Kart.tsx`**
-   - I `useEffect`-en som håndterer `?missionId=...`, gjør en parallell henting:
-     ```ts
-     supabase.from("flight_logs")
-       .select("id, flight_date, flight_track")
-       .eq("mission_id", mid)
-     ```
-   - Filtrer ut logger uten `flight_track.positions`, lagre i ny state `missionFlightTracks: FlightTrack[] | null`.
-   - Nullstill state når man forlater visningen (samme sted som `handledMissionParamRef` ryddes / ved cancel).
-   - Hvis oppdraget ikke har lagret rute, men har fly-track: bruk første/sentroide fra flysporet som `pendingInitialCenter` i stedet for bare `lokasjon`, så kartet zoomer riktig.
+## Verifisering
+- Åpne to faner på samme bruker → logg skal vise maks én "Applied cross-tab session" per faktisk token-refresh, ikke kontinuerlig loop.
+- Ingen storm av `GET /auth/v1/user` i nettverksfanen.
+- Token-refresh fra én fane propagerer fortsatt til den andre (én gang).
+- Sign-out fra én fane logger fortsatt ut alle faner.
 
-2. **`src/components/OpenAIPMap.tsx`**
-   - Legg til ny valgfri prop `historicalFlightTracks?: FlightTrack[] | null`.
-   - Ved endringer i prop-en: tegn hvert spor på et dedikert `historicalFlightsPane` (z-index rett under `flightTrackPane` som brukes for live-fly, ~695) inne i en `L.layerGroup` som ryddes ved re-render/unmount.
-   - Stil: grønn polyline (`#22c55e`, weight 4, opacity 0.9), grønn `circleMarker` for start, oransje for slutt, popup med tidspunkt + `flight_date` — gjenbruk mønsteret fra `MissionMapPreview`. Ikke hent terrenghøyder her (unngår ekstra kall); popup viser MSL/AGL bare hvis feltene finnes på posisjonen.
-   - Sporene skal være synlige uavhengig av kart-modus (både `view` og når mission-ruten redigeres via `handleEditMissionRoute`), slik at brukeren ser planlagt (blå stiplet) + flydd (grønn heltrukket) samtidig.
-   - Ved første tegning: hvis ingen `initialCenter` er satt fra ruten, `fitBounds` til sporene.
-
-3. **Sende prop-en**
-   - I `Kart.tsx` der `<OpenAIPMap ... />` rendres (linje ~1187), send `historicalFlightTracks={missionFlightTracks}`.
-
-### Ikke i scope
-
-- Ingen DB-endringer, ingen nye RPC-er.
-- Endrer ikke `MissionMapPreview` (som allerede fungerer).
-- Rører ikke live/aktive-flyt-visning eller `focusFlightId`-logikken.
-
-### Verifisering
-
-1. Åpne et fullført oppdrag med minst én flylogg fra `/oppdrag`.
-2. Klikk på kartforhåndsvisningen i oppdragskortet.
-3. Forvent: `/kart` åpner, sentrert på oppdraget, med både planlagt rute (blå stiplet, hvis lagret) og flydd rute (grønn heltrukket) synlig, samt grønn start- og oransje sluttmarkør.
-4. Åpne et oppdrag uten flylogg → oppfører seg som i dag (kun planlagt rute eller lokasjon).
-5. Åpne et oppdrag med flylogg men uten planlagt rute → kartet zoomer til flysporet.
+## Scope
+Kun `src/lib/authTabSync.ts` og `src/contexts/AuthContext.tsx`. Ingen DB-endringer, ingen andre komponenter.

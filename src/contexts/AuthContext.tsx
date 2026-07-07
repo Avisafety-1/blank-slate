@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
-import { broadcastSession, broadcastSignOut, onTabMessage, type TabSyncMessage } from "@/lib/authTabSync";
+import { broadcastSession, broadcastSignOut, noteSyncedToken, onTabMessage, type TabSyncMessage } from "@/lib/authTabSync";
 import { forceFullSignOut, isPermanentAuthError } from "@/lib/forceSignOut";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
 import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
@@ -169,6 +169,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
   // Flag to suppress onAuthStateChange echoes caused by cross-tab setSession
   const ignoreNextAuthEventRef = useRef(false);
+  // Track the current access token so cross-tab SESSION_UPDATE echoes (same
+  // token we already have) can be ignored without touching supabase.auth.
+  const currentAccessTokenRef = useRef<string | null>(null);
   // Track repeated transient-null events — if Supabase pingpongs, force sign-out
   const transientNullTimestampsRef = useRef<number[]>([]);
   // Hydrate i18n from profiles.preferred_language only once per session,
@@ -208,6 +211,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
   const [approvalCompanyIds, setApprovalCompanyIds] = useState<string[] | null>(null);
   const [incidentResponsibleCompanyIds, setIncidentResponsibleCompanyIds] = useState<string[] | null>(null);
+
+  // Keep the current-token ref synced with session so the cross-tab handler
+  // can cheaply detect pure echoes of the token it already holds.
+  useEffect(() => {
+    currentAccessTokenRef.current = session?.access_token ?? null;
+  }, [session]);
+
 
   const resetAuthState = () => {
     setSession(null);
@@ -1004,7 +1014,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // --- Cross-tab auth sync via BroadcastChannel ---
     const cleanupTabSync = onTabMessage(async (msg: TabSyncMessage) => {
       if (msg.type === 'SESSION_UPDATE') {
+        // Pure echo — we already hold this exact token. Do NOT call setSession
+        // (it would emit onAuthStateChange, which re-broadcasts, causing loop).
+        if (msg.access_token === currentAccessTokenRef.current) {
+          return;
+        }
         console.log('AuthContext: Received session from another tab via BroadcastChannel');
+        // Register the incoming token as already-synced BEFORE applying it,
+        // so the resulting onAuthStateChange won't echo it back to the sender.
+        noteSyncedToken(msg.access_token);
         // Mark that the next onAuthStateChange event is from our setSession call
         ignoreNextAuthEventRef.current = true;
         try {
@@ -1016,6 +1034,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.warn('AuthContext: Failed to apply cross-tab session:', error.message);
             ignoreNextAuthEventRef.current = false;
           } else if (data.session) {
+            currentAccessTokenRef.current = data.session.access_token;
             setSession(data.session);
             setUser(data.session.user);
             cacheSession(data.session.user);
@@ -1027,6 +1046,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else if (msg.type === 'SIGNED_OUT') {
         console.log('AuthContext: Received sign-out from another tab');
+        currentAccessTokenRef.current = null;
         resetAuthState();
         setLoading(false);
         setAuthInitialized(true);

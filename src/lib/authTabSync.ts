@@ -23,6 +23,22 @@ export type TabSyncMessage =
 
 let channel: BroadcastChannel | null = null;
 
+/**
+ * Last access_token we broadcast OR applied from another tab.
+ * Prevents echo loops: if setSession() fires multiple onAuthStateChange
+ * events for the same token, broadcastSession() no-ops after the first.
+ */
+let lastSyncedToken: string | null = null;
+
+/**
+ * Mark a token as already-synced without broadcasting it. Called by a
+ * receiving tab BEFORE applying an incoming session, so the resulting
+ * onAuthStateChange doesn't echo the token back to the sender.
+ */
+export function noteSyncedToken(token: string): void {
+  lastSyncedToken = token;
+}
+
 function getChannel(): BroadcastChannel | null {
   if (channel) return channel;
   try {
@@ -39,6 +55,14 @@ function getChannel(): BroadcastChannel | null {
  * Also sets the localStorage refresh lock so other tabs know not to refresh.
  */
 export function broadcastSession(session: Session): void {
+  // Idempotens: hvis vi allerede har broadcast/anvendt dette tokenet, hopp over.
+  // Uten dette gir Supabase sine dupliserte onAuthStateChange-events for samme
+  // token en uendelig ping-pong-løkke mellom faner.
+  if (lastSyncedToken === session.access_token) {
+    return;
+  }
+  lastSyncedToken = session.access_token;
+
   try {
     localStorage.setItem(REFRESH_LOCK_KEY, Date.now().toString());
   } catch { /* ignore */ }
