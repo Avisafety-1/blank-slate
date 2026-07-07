@@ -672,6 +672,26 @@ export const AddMissionDialog = ({
       }
 
       const routeForStorage = routeData;
+      const routeFirstPoint = routeData?.coordinates?.[0];
+      let missionCoordinates: MissionCoordinates = {
+        latitude: formData.latitude ?? routeFirstPoint?.lat ?? null,
+        longitude: formData.longitude ?? routeFirstPoint?.lng ?? null,
+      };
+
+      if ((missionCoordinates.latitude == null || missionCoordinates.longitude == null) && formData.lokasjon?.trim()) {
+        try {
+          const geocoded = await geocodeMissionLocation(formData.lokasjon);
+          if (geocoded) {
+            missionCoordinates = geocoded;
+            setFormData(prev => ({ ...prev, ...geocoded }));
+          } else {
+            toast.warning("Fant ikke koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data.");
+          }
+        } catch (geocodeError) {
+          console.error("Could not geocode mission location:", geocodeError);
+          toast.warning("Kunne ikke finne koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data.");
+        }
+      }
 
       if (mission) {
         // UPDATE mode
@@ -680,8 +700,8 @@ export const AddMissionDialog = ({
         const statusChangingToFullført = formData.status === "Fullført" && mission.status !== "Fullført";
 
         if (statusChangingToFullført) {
-          const lat = formData.latitude || (routeData?.coordinates?.[0]?.lat);
-          const lng = formData.longitude || (routeData?.coordinates?.[0]?.lng);
+          const lat = missionCoordinates.latitude;
+          const lng = missionCoordinates.longitude;
           weatherSnapshot = await buildMissionWeatherSnapshot({
             flightDate: new Date(formData.tidspunkt),
             latitude: lat ?? null,
@@ -700,8 +720,8 @@ export const AddMissionDialog = ({
           status: formData.status,
           risk_nivå: formData.risk_nivå,
           customer_id: selectedCustomer || null,
-          latitude: formData.latitude,
-          longitude: formData.longitude,
+          latitude: missionCoordinates.latitude,
+          longitude: missionCoordinates.longitude,
           route: routeForStorage,
           oppdragstype: formData.oppdragstype || null,
           oppdragstype_annet: formData.oppdragstype === "Annet" ? (formData.oppdragstype_annet || null) : null,
@@ -864,8 +884,8 @@ export const AddMissionDialog = ({
             customer_id: selectedCustomer || null,
             user_id: user.id,
             company_id: profile.company_id,
-            latitude: formData.latitude,
-            longitude: formData.longitude,
+            latitude: missionCoordinates.latitude,
+            longitude: missionCoordinates.longitude,
             route: routeForStorage,
             oppdragstype: formData.oppdragstype || null,
             oppdragstype_annet: formData.oppdragstype === "Annet" ? (formData.oppdragstype_annet || null) : null,
