@@ -1007,7 +1007,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // --- Cross-tab auth sync via BroadcastChannel ---
     const cleanupTabSync = onTabMessage(async (msg: TabSyncMessage) => {
       if (msg.type === 'SESSION_UPDATE') {
+        // Pure echo — we already hold this exact token. Do NOT call setSession
+        // (it would emit onAuthStateChange, which re-broadcasts, causing loop).
+        if (msg.access_token === currentAccessTokenRef.current) {
+          return;
+        }
         console.log('AuthContext: Received session from another tab via BroadcastChannel');
+        // Register the incoming token as already-synced BEFORE applying it,
+        // so the resulting onAuthStateChange won't echo it back to the sender.
+        noteSyncedToken(msg.access_token);
         // Mark that the next onAuthStateChange event is from our setSession call
         ignoreNextAuthEventRef.current = true;
         try {
@@ -1019,6 +1027,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.warn('AuthContext: Failed to apply cross-tab session:', error.message);
             ignoreNextAuthEventRef.current = false;
           } else if (data.session) {
+            currentAccessTokenRef.current = data.session.access_token;
             setSession(data.session);
             setUser(data.session.user);
             cacheSession(data.session.user);
@@ -1030,6 +1039,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else if (msg.type === 'SIGNED_OUT') {
         console.log('AuthContext: Received sign-out from another tab');
+        currentAccessTokenRef.current = null;
         resetAuthState();
         setLoading(false);
         setAuthInitialized(true);
