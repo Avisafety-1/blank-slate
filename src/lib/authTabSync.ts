@@ -55,6 +55,14 @@ function getChannel(): BroadcastChannel | null {
  * Also sets the localStorage refresh lock so other tabs know not to refresh.
  */
 export function broadcastSession(session: Session): void {
+  // Idempotens: hvis vi allerede har broadcast/anvendt dette tokenet, hopp over.
+  // Uten dette gir Supabase sine dupliserte onAuthStateChange-events for samme
+  // token en uendelig ping-pong-løkke mellom faner.
+  if (lastSyncedToken === session.access_token) {
+    return;
+  }
+  lastSyncedToken = session.access_token;
+
   try {
     localStorage.setItem(REFRESH_LOCK_KEY, Date.now().toString());
   } catch { /* ignore */ }
