@@ -176,6 +176,12 @@ interface OpenAIPMapProps {
   routeUndoToken?: number;
   /** If true while in routePlanning mode, map clicks do NOT add waypoints (lets user click geo-zones for info). */
   routeInspectMode?: boolean;
+  /** Historical flight tracks to render as green polylines (e.g. flown routes from mission's flight_logs). */
+  historicalFlightTracks?: Array<{
+    flightLogId?: string;
+    flightDate?: string;
+    positions: Array<{ lat: number; lng: number; alt?: number; alt_msl?: number; alt_agl?: number; speed?: number; heading?: number; timestamp?: string }>;
+  }> | null;
 }
 
 
