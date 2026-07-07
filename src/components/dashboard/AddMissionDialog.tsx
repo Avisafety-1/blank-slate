@@ -158,8 +158,8 @@ export const AddMissionDialog = ({
     merknader: initialFormData?.merknader || "",
     status: initialFormData?.status || "Planlagt",
     risk_nivå: initialFormData?.risk_nivå || "Lav",
-    latitude: initialFormData?.latitude || null as number | null,
-    longitude: initialFormData?.longitude || null as number | null,
+    latitude: initialFormData?.latitude ?? null as number | null,
+    longitude: initialFormData?.longitude ?? null as number | null,
     oppdragstype: (initialFormData as any)?.oppdragstype || "",
     oppdragstype_annet: (initialFormData as any)?.oppdragstype_annet || "",
   });
@@ -273,8 +273,8 @@ export const AddMissionDialog = ({
           merknader: mission.merknader || "",
           status: mission.status || "Planlagt",
           risk_nivå: mission.risk_nivå || "Lav",
-          latitude: mission.latitude || null,
-          longitude: mission.longitude || null,
+          latitude: mission.latitude ?? null,
+          longitude: mission.longitude ?? null,
           oppdragstype: (mission as any).oppdragstype || "",
           oppdragstype_annet: (mission as any).oppdragstype_annet || "",
         });
@@ -299,8 +299,8 @@ export const AddMissionDialog = ({
       } else if (initialFormData || initialRouteData) {
         // Restore form data from navigation state (returning from route planner)
         const firstCoord = initialRouteData?.coordinates?.[0];
-        const autoLat = initialFormData?.latitude || firstCoord?.lat || null;
-        const autoLng = initialFormData?.longitude || firstCoord?.lng || null;
+        const autoLat = initialFormData?.latitude ?? firstCoord?.lat ?? null;
+        const autoLng = initialFormData?.longitude ?? firstCoord?.lng ?? null;
         const autoLokasjon = initialFormData?.lokasjon || "";
 
         setFormData({
