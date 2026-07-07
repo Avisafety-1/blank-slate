@@ -211,6 +211,7 @@ export function OpenAIPMap({
   onViewChange,
   routeUndoToken,
   routeInspectMode,
+  historicalFlightTracks,
 }: OpenAIPMapProps) {
 
   const { user, companyId, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
