@@ -70,6 +70,7 @@ type Profile = Tables<"profiles">;
 type Equipment = any;
 type Customer = any;
 type Drone = any;
+type MissionCoordinates = { latitude: number | null; longitude: number | null };
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -82,6 +83,24 @@ const extractMentionedProfileIds = (text: string, profiles: Profile[]) => {
     if (pattern.test(text)) mentioned.add(profile.id);
   });
   return mentioned;
+};
+
+const geocodeMissionLocation = async (location: string): Promise<MissionCoordinates | null> => {
+  const query = location.trim();
+  if (query.length < 3) return null;
+
+  const response = await fetch(
+    `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(query)}&treffPerSide=1&asciiKompatibel=true`,
+    { headers: { Accept: "application/json" } }
+  );
+
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  const point = data?.adresser?.[0]?.representasjonspunkt;
+  if (typeof point?.lat !== "number" || typeof point?.lon !== "number") return null;
+
+  return { latitude: point.lat, longitude: point.lon };
 };
 
 export const AddMissionDialog = ({ 
