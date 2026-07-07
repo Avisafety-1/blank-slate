@@ -1,30 +1,39 @@
-# Fix uendelig cross-tab auth-løkke (BroadcastChannel echo)
-
 ## Problem
-To parallelle faner pinger samme sesjon frem og tilbake via BroadcastChannel i det uendelige ("Received session from another tab" / "Applied cross-tab session" i loop). Dette trigger en storm av `GET /user`-kall.
 
-**Årsak:** `supabase.auth.setSession()` kan emitere flere `onAuthStateChange`-hendelser. Dagens enkle `ignoreNextAuthEventRef`-flagg undertrykker bare én — de resterende hendelsene kaller `broadcastSession()` på nytt, som gir ekko til andre faner, som igjen kaller `setSession`, osv.
+`L.geoJSON()` kaster `Invalid GeoJSON object` når:
+- ArcGIS-endepunktene sporadisk svarer med et feilobjekt (`{ error: {...} }`) med HTTP 200 i stedet for GeoJSON.
+- Enkelt-features har `geometry: null` (vanlig for tomme flyplassrader).
 
-## Løsning — token-basert idempotens
+Dette skjer på to steder som brukeren ser i konsollen:
+- `/kart` → `fetchAirportsData` (flyplasser ArcGIS)
+- `/oppdrag` (mission map preview) → `fetchZones` (NSM / RPAS / CTR ArcGIS)
 
-### `src/lib/authTabSync.ts`
-- Legg til modul-variabel `let lastSyncedToken: string | null = null`.
-- `broadcastSession(session)`: return tidlig (no-op) hvis `session.access_token === lastSyncedToken`. Ellers sett `lastSyncedToken = session.access_token` før postMessage.
-- Ny eksport `noteSyncedToken(token: string)` som setter `lastSyncedToken = token` — kalles av mottaker-fane før den anvender en innkommende sesjon, slik at den ikke ekkoer tokenet tilbake.
+Ett dårlig svar dropper hele laget i dag.
 
-### `src/contexts/AuthContext.tsx`
-- Ny `currentAccessTokenRef = useRef<string | null>(null)`, synket via `useEffect` på `session`.
-- I `SESSION_UPDATE`-handleren fra `onTabMessage`:
-  1. Return umiddelbart hvis `msg.access_token === currentAccessTokenRef.current` (rent ekko).
-  2. Ellers: kall `noteSyncedToken(msg.access_token)` FØR `supabase.auth.setSession(...)`.
-  3. Oppdater `currentAccessTokenRef.current = msg.access_token` når anvendt.
-- Behold eksisterende `ignoreNextAuthEventRef` som sekundær sikring mot dobbelbroadcast fra egen `setSession`-triggede events.
+## Endringer
+
+Legg til en liten helper og bruk den før hvert `L.geoJSON()`-kall på ArcGIS-data.
+
+### 1. `src/lib/mapDataFetchers.ts`
+- Ny lokal helper `sanitizeArcgisGeoJson(data)`:
+  - Returnerer `null` hvis `data` ikke er objekt, mangler `type`, er `{ error: ... }`, eller ikke er `FeatureCollection`/`Feature`.
+  - For FeatureCollection: filtrerer bort features uten gyldig `geometry`/`geometry.type`/`geometry.coordinates`.
+  - Returnerer `null` hvis ingen gyldige features gjenstår.
+- `fetchAirportsData` (linje ~397): kjør svar gjennom helperen; hopp over `L.geoJSON` hvis `null`. Beholder eksisterende `coordinateFixes`-logikk.
+
+### 2. `src/components/dashboard/MissionMapPreview.tsx` (`fetchZones`, linje ~243)
+- Bruk samme helper (importert fra `mapDataFetchers` eller duplisert lokalt — enklest å eksportere fra `mapDataFetchers`).
+- Sanitér `nsmData`, `rpasData`, `ctrData` før `L.geoJSON`. Hopp over det respektive laget stille hvis svaret er ugyldig, i stedet for å la hele `fetchZones` catche og logge feil.
+- Wrap hvert `L.geoJSON`-kall i try/catch som siste sikring, slik at ett dårlig lag ikke tar ned de andre.
+
+### 3. `src/components/dashboard/ExpandedMapDialog.tsx` (`fetchZones`, linje ~742)
+- Samme sanitering på `nsmData` og `ctrData` (ArcGIS-svar).
+- Wrap hvert `L.geoJSON` i try/catch for å isolere feil.
+
+## Ikke i scope
+- AIP-soner, NOTAM-er, naturvern-soner o.l. har allerede `try/catch` rundt hver `L.geoJSON` — ingen endring der.
+- Ingen endring i design, ikoner eller stiler.
 
 ## Verifisering
-- Åpne to faner på samme bruker → logg skal vise maks én "Applied cross-tab session" per faktisk token-refresh, ikke kontinuerlig loop.
-- Ingen storm av `GET /auth/v1/user` i nettverksfanen.
-- Token-refresh fra én fane propagerer fortsatt til den andre (én gang).
-- Sign-out fra én fane logger fortsatt ut alle faner.
-
-## Scope
-Kun `src/lib/authTabSync.ts` og `src/contexts/AuthContext.tsx`. Ingen DB-endringer, ingen andre komponenter.
+- Reload `/kart` og `/oppdrag`, sjekk at ingen "Invalid GeoJSON object"-feil vises i konsollen selv når ArcGIS returnerer feilobjekt.
+- Bekreft at flyplass-, NSM-, RPAS- og CTR-lag fortsatt tegnes når svaret er OK.
