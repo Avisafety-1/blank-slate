@@ -789,15 +789,20 @@ async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
       "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_CTR_TIZ/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
     );
     if (ctrResponse.ok) {
-      const ctrData = await ctrResponse.json();
-      L.geoJSON(ctrData, {
-        style: { color: "#ec4899", weight: 2, fillColor: "#ec4899", fillOpacity: 0.15 },
-        onEachFeature: (feature, layer) => {
-          const name = feature.properties?.navn || feature.properties?.name || "CTR/TIZ";
-          layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
-        },
-      }).addTo(zonesLayer);
+      const ctrData = sanitizeArcgisGeoJson(await ctrResponse.json());
+      if (ctrData) {
+        try {
+          L.geoJSON(ctrData, {
+            style: { color: "#ec4899", weight: 2, fillColor: "#ec4899", fillOpacity: 0.15 },
+            onEachFeature: (feature, layer) => {
+              const name = feature.properties?.navn || feature.properties?.name || "CTR/TIZ";
+              layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
+            },
+          }).addTo(zonesLayer);
+        } catch (e) { console.warn("CTR/TIZ-lag hoppet over:", e); }
+      }
     }
+
 
     // Live NOTAMs from database
     try {
