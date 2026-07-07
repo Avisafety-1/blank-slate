@@ -4,6 +4,8 @@ import "leaflet/dist/leaflet.css";
 import { fetchTerrainElevations } from "@/lib/terrainElevation";
 import { renderSoraZones } from "@/lib/soraGeometry";
 import { getAipZones } from "@/lib/aipZoneCache";
+import { sanitizeArcgisGeoJson } from "@/lib/mapDataFetchers";
+
 
 interface RoutePoint {
   lat: number;
