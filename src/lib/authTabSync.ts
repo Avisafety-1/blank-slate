@@ -23,6 +23,22 @@ export type TabSyncMessage =
 
 let channel: BroadcastChannel | null = null;
 
+/**
+ * Last access_token we broadcast OR applied from another tab.
+ * Prevents echo loops: if setSession() fires multiple onAuthStateChange
+ * events for the same token, broadcastSession() no-ops after the first.
+ */
+let lastSyncedToken: string | null = null;
+
+/**
+ * Mark a token as already-synced without broadcasting it. Called by a
+ * receiving tab BEFORE applying an incoming session, so the resulting
+ * onAuthStateChange doesn't echo the token back to the sender.
+ */
+export function noteSyncedToken(token: string): void {
+  lastSyncedToken = token;
+}
+
 function getChannel(): BroadcastChannel | null {
   if (channel) return channel;
   try {
