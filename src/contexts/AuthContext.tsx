@@ -169,6 +169,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const getUserCacheRef = useRef<{ data: any; timestamp: number } | null>(null);
   // Flag to suppress onAuthStateChange echoes caused by cross-tab setSession
   const ignoreNextAuthEventRef = useRef(false);
+  // Track the current access token so cross-tab SESSION_UPDATE echoes (same
+  // token we already have) can be ignored without touching supabase.auth.
+  const currentAccessTokenRef = useRef<string | null>(null);
   // Track repeated transient-null events — if Supabase pingpongs, force sign-out
   const transientNullTimestampsRef = useRef<number[]>([]);
   // Hydrate i18n from profiles.preferred_language only once per session,
