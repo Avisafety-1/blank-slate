@@ -1548,6 +1548,84 @@ export function OpenAIPMap({
     leafletMapRef.current.setView(initialCenter, 13);
   }, [initialCenter]);
 
+  // Render historical flight tracks (e.g. flown routes from a mission's flight_logs)
+  const historicalTracksLayerRef = useRef<L.LayerGroup | null>(null);
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    // Clear previous layer
+    if (historicalTracksLayerRef.current) {
+      try { historicalTracksLayerRef.current.remove(); } catch {}
+      historicalTracksLayerRef.current = null;
+    }
+
+    const tracks = (historicalFlightTracks ?? []).filter(t => t?.positions && t.positions.length >= 2);
+    if (!tracks.length) return;
+
+    if (!map.getPane('historicalFlightPane')) {
+      map.createPane('historicalFlightPane');
+      const p = map.getPane('historicalFlightPane');
+      if (p) { p.style.zIndex = '715'; p.style.pointerEvents = 'auto'; }
+    }
+
+    const layer = L.layerGroup().addTo(map);
+    historicalTracksLayerRef.current = layer;
+
+    const allPoints: [number, number][] = [];
+    tracks.forEach((track, trackIndex) => {
+      const latLngs = track.positions.map(p => [p.lat, p.lng] as [number, number]);
+      const trackLine = L.polyline(latLngs, { color: '#22c55e', weight: 4, opacity: 0.9, pane: 'historicalFlightPane' }).addTo(layer);
+      latLngs.forEach(ll => allPoints.push(ll));
+
+      trackLine.on('click', (e: L.LeafletMouseEvent) => {
+        const clickLatLng = e.latlng;
+        let nearestIdx = 0;
+        let minDist = Infinity;
+        track.positions.forEach((pos, idx) => {
+          const dist = clickLatLng.distanceTo(L.latLng(pos.lat, pos.lng));
+          if (dist < minDist) { minDist = dist; nearestIdx = idx; }
+        });
+        const pos = track.positions[nearestIdx];
+        const altitude = pos.alt_msl ?? pos.alt ?? null;
+        const content = `<div style="font-size:12px;line-height:1.5">
+          <strong>Flydd rute${track.flightDate ? ' — ' + new Date(track.flightDate).toLocaleDateString('nb-NO') : ''}</strong><hr style="margin:4px 0"/>
+          Punkt ${nearestIdx + 1} av ${track.positions.length}<br/>
+          ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
+          ${pos.alt_agl != null ? `Høyde (AGL): ${Math.round(pos.alt_agl)} m<br/>` : ''}
+          ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
+          ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
+          ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
+        </div>`;
+        L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
+      });
+
+      const startPos = track.positions[0];
+      L.circleMarker([startPos.lat, startPos.lng], {
+        radius: 8, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1, pane: 'historicalFlightPane',
+      }).addTo(layer).bindPopup(`Flytur ${trackIndex + 1} — Start`);
+
+      const endPos = track.positions[track.positions.length - 1];
+      L.circleMarker([endPos.lat, endPos.lng], {
+        radius: 8, fillColor: '#f97316', color: '#fff', weight: 2, fillOpacity: 1, pane: 'historicalFlightPane',
+      }).addTo(layer).bindPopup(`Flytur ${trackIndex + 1} — Slutt`);
+    });
+
+    // Fit bounds if no explicit initial center from route
+    if (allPoints.length > 1 && !initialCenter) {
+      try {
+        map.fitBounds(L.latLngBounds(allPoints), { padding: [40, 40], maxZoom: 16 });
+      } catch {}
+    }
+
+    return () => {
+      if (historicalTracksLayerRef.current) {
+        try { historicalTracksLayerRef.current.remove(); } catch {}
+        historicalTracksLayerRef.current = null;
+      }
+    };
+  }, [historicalFlightTracks, initialCenter, profileLoaded, companyDefaultLayersLoaded]);
+
   // Display existing route
   useEffect(() => {
     if (existingRoute && existingRoute.coordinates.length > 0) {
