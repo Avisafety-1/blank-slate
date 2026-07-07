@@ -394,6 +394,36 @@ export async function fetchObstacles(params: FetchParams) {
   }
 }
 
+/**
+ * Sanitize a response that is supposed to be GeoJSON.
+ * ArcGIS-endepunkter kan sporadisk svare med `{ error: {...} }` eller features med `geometry: null`.
+ * Returnerer `null` når data ikke kan brukes med `L.geoJSON()`.
+ */
+export function sanitizeArcgisGeoJson(data: any): any | null {
+  if (!data || typeof data !== "object") return null;
+  if ((data as any).error) return null;
+  const type = (data as any).type;
+  if (type === "FeatureCollection") {
+    const features = Array.isArray((data as any).features) ? (data as any).features : [];
+    const cleaned = features.filter(
+      (f: any) =>
+        f &&
+        f.geometry &&
+        typeof f.geometry.type === "string" &&
+        f.geometry.coordinates != null,
+    );
+    if (cleaned.length === 0) return null;
+    return { ...(data as any), features: cleaned };
+  }
+  if (type === "Feature") {
+    if (!(data as any).geometry || !(data as any).geometry.type) return null;
+    return data;
+  }
+  // Bare geometry
+  if (typeof type === "string" && (data as any).coordinates != null) return data;
+  return null;
+}
+
 export async function fetchAirportsData(params: FetchParams) {
   const { layer, mode } = params;
   try {
@@ -401,7 +431,12 @@ export async function fetchAirportsData(params: FetchParams) {
     const response = await fetch(url);
     if (!response.ok) return;
     
-    const geojson = await response.json();
+    const rawGeojson = await response.json();
+    const geojson = sanitizeArcgisGeoJson(rawGeojson);
+    if (!geojson) {
+      console.warn("Flyplass-endepunkt returnerte ugyldig GeoJSON, hopper over lag.");
+      return;
+    }
    
     const coordinateFixes: Record<string, [number, number]> = {
       'ENKJ': [11.0364, 59.9753],
@@ -416,6 +451,7 @@ export async function fetchAirportsData(params: FetchParams) {
         return feature;
       });
     }
+
    
     const geoJsonLayer = L.geoJSON(geojson, {
       pointToLayer: (feature, latlng) => {

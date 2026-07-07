@@ -15,6 +15,8 @@ import { FlightAltitudeProfile } from "./FlightAltitudeProfile";
 import { fetchTerrainElevations, buildTerrainProfile, downsamplePositions, interpolateElevations, type TerrainPoint } from "@/lib/terrainElevation";
 import { renderSoraZones, type SoraSettings } from "@/lib/soraGeometry";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
+import { sanitizeArcgisGeoJson } from "@/lib/mapDataFetchers";
+
 
 interface RoutePoint {
   lat: number;
@@ -746,15 +748,20 @@ async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
       "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
     );
     if (nsmResponse.ok) {
-      const nsmData = await nsmResponse.json();
-      L.geoJSON(nsmData, {
-        style: { color: "#ef4444", weight: 2, fillColor: "#ef4444", fillOpacity: 0.15 },
-        onEachFeature: (feature, layer) => {
-          const name = feature.properties?.navn || feature.properties?.name || "NSM Forbudsområde";
-          layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
-        },
-      }).addTo(zonesLayer);
+      const nsmData = sanitizeArcgisGeoJson(await nsmResponse.json());
+      if (nsmData) {
+        try {
+          L.geoJSON(nsmData, {
+            style: { color: "#ef4444", weight: 2, fillColor: "#ef4444", fillOpacity: 0.15 },
+            onEachFeature: (feature, layer) => {
+              const name = feature.properties?.navn || feature.properties?.name || "NSM Forbudsområde";
+              layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
+            },
+          }).addTo(zonesLayer);
+        } catch (e) { console.warn("NSM-lag hoppet over:", e); }
+      }
     }
+
 
     // RPAS 5km zones (orange) — Avinor Dronerestriksjonsomraader_gdb via egen tabell
     const { data: rpasZones } = await supabase
@@ -784,15 +791,20 @@ async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
       "https://services.arcgis.com/a8CwScMFSS2ljjgn/ArcGIS/rest/services/RPAS_CTR_TIZ/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
     );
     if (ctrResponse.ok) {
-      const ctrData = await ctrResponse.json();
-      L.geoJSON(ctrData, {
-        style: { color: "#ec4899", weight: 2, fillColor: "#ec4899", fillOpacity: 0.15 },
-        onEachFeature: (feature, layer) => {
-          const name = feature.properties?.navn || feature.properties?.name || "CTR/TIZ";
-          layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
-        },
-      }).addTo(zonesLayer);
+      const ctrData = sanitizeArcgisGeoJson(await ctrResponse.json());
+      if (ctrData) {
+        try {
+          L.geoJSON(ctrData, {
+            style: { color: "#ec4899", weight: 2, fillColor: "#ec4899", fillOpacity: 0.15 },
+            onEachFeature: (feature, layer) => {
+              const name = feature.properties?.navn || feature.properties?.name || "CTR/TIZ";
+              layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
+            },
+          }).addTo(zonesLayer);
+        } catch (e) { console.warn("CTR/TIZ-lag hoppet over:", e); }
+      }
     }
+
 
     // Live NOTAMs from database
     try {
