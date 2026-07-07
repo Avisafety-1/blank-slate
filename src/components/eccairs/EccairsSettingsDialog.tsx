@@ -213,16 +213,24 @@ export function EccairsSettingsDialog({
           message: `Tilkobling vellykket (${data.credentials_source === "database" ? "per-selskap credentials" : "globale credentials"})`,
         });
       } else {
+        const raw = data.error || "";
+        const friendly = /invalid_client|invalid_grant|401/i.test(raw)
+          ? "Feil brukernavn eller passord"
+          : raw || "Tilkobling feilet";
         setTestResult({
           ok: false,
-          message: data.error || "Tilkobling feilet",
+          message: friendly,
         });
       }
     } catch (err: any) {
       console.error("Test connection error:", err);
+      const raw = err?.message || "";
+      const friendly = /invalid_client|invalid_grant|401/i.test(raw)
+        ? "Feil brukernavn eller passord"
+        : raw || "Nettverksfeil";
       setTestResult({
         ok: false,
-        message: err.message || "Nettverksfeil",
+        message: friendly,
       });
     } finally {
       setTesting(false);
