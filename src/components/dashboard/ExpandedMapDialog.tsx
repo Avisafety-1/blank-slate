@@ -746,15 +746,20 @@ async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
       "https://services9.arcgis.com/qCxEdsGu1A7NwfY1/ArcGIS/rest/services/Forbudsomr%c3%a5derNSM_v/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
     );
     if (nsmResponse.ok) {
-      const nsmData = await nsmResponse.json();
-      L.geoJSON(nsmData, {
-        style: { color: "#ef4444", weight: 2, fillColor: "#ef4444", fillOpacity: 0.15 },
-        onEachFeature: (feature, layer) => {
-          const name = feature.properties?.navn || feature.properties?.name || "NSM Forbudsområde";
-          layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
-        },
-      }).addTo(zonesLayer);
+      const nsmData = sanitizeArcgisGeoJson(await nsmResponse.json());
+      if (nsmData) {
+        try {
+          L.geoJSON(nsmData, {
+            style: { color: "#ef4444", weight: 2, fillColor: "#ef4444", fillOpacity: 0.15 },
+            onEachFeature: (feature, layer) => {
+              const name = feature.properties?.navn || feature.properties?.name || "NSM Forbudsområde";
+              layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
+            },
+          }).addTo(zonesLayer);
+        } catch (e) { console.warn("NSM-lag hoppet over:", e); }
+      }
     }
+
 
     // RPAS 5km zones (orange) — Avinor Dronerestriksjonsomraader_gdb via egen tabell
     const { data: rpasZones } = await supabase
