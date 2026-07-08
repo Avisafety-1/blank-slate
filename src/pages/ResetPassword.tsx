@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ShieldCheck, Send, ArrowLeft } from "lucide-react";
+
 import droneBackground from "@/assets/drone-background.png";
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 
 const avisafeLogoText = "/avisafe-logo-text.png";
 
 type Stage = "idle" | "verifying" | "verified" | "resend";
+
+const RESET_FLAG_KEY = "avisafe_password_reset_active";
+
+const setResetFlag = () => {
+  try { sessionStorage.setItem(RESET_FLAG_KEY, "1"); } catch {}
+};
+const clearResetFlag = () => {
+  try { sessionStorage.removeItem(RESET_FLAG_KEY); } catch {}
+};
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -30,6 +40,11 @@ const ResetPassword = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const tokenHash = urlParams.get("token_hash");
 
+  // Defensive cleanup: clear the flag if the user navigates away mid-flow
+  useEffect(() => {
+    return () => { clearResetFlag(); };
+  }, []);
+
   const startVerification = async () => {
     if (!tokenHash) {
       toast.error("Ingen gyldig token funnet i lenken.");
@@ -38,6 +53,7 @@ const ResetPassword = () => {
     }
 
     setStage("verifying");
+    setResetFlag();
 
     try {
       const { error } = await supabase.auth.verifyOtp({
@@ -48,6 +64,7 @@ const ResetPassword = () => {
       if (error) {
         console.error("verifyOtp error:", error);
         toast.error("Lenken er ugyldig eller utløpt. Prøv å sende en ny link.");
+        clearResetFlag();
         setStage("resend");
       } else {
         setStage("verified");
@@ -55,9 +72,11 @@ const ResetPassword = () => {
     } catch (err: any) {
       console.error("verifyOtp exception:", err);
       toast.error("En feil oppstod. Prøv å sende en ny link.");
+      clearResetFlag();
       setStage("resend");
     }
   };
+
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,18 +90,39 @@ const ResetPassword = () => {
       return;
     }
     setLoading(true);
+    let updateSucceeded = false;
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      toast.success("Passord oppdatert! Du kan nå logge inn med ditt nye passord.");
-      navigate("/auth");
+      updateSucceeded = true;
     } catch (error: any) {
       console.error("Reset password error:", error);
-      toast.error(error.message || "En feil oppstod ved tilbakestilling av passord");
+      toast.error(
+        error?.message
+          ? `Kunne ikke oppdatere passord: ${error.message}. Lenken er brukt opp — be om ny.`
+          : "Kunne ikke oppdatere passord. Lenken er brukt opp — be om ny."
+      );
     } finally {
+      // Always tear down the transient recovery session so the user is NOT auto-logged in.
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch (signOutErr) {
+        console.warn("signOut after password reset failed:", signOutErr);
+      }
+      clearResetFlag();
       setLoading(false);
+
+      if (updateSucceeded) {
+        toast.success("Passord oppdatert! Logg inn med ditt nye passord.");
+        navigate("/auth");
+      } else {
+        setPassword("");
+        setConfirmPassword("");
+        setStage("resend");
+      }
     }
   };
+
 
   const handleResendLink = async (e: React.FormEvent) => {
     e.preventDefault();

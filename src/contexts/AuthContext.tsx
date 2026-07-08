@@ -856,12 +856,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // If a password reset flow is active in this tab, ignore all auth events.
+        // verifyOtp({type:'recovery'}) emits SIGNED_IN which would otherwise auto-login
+        // the app and broadcast the transient recovery session to other tabs.
+        try {
+          if (sessionStorage.getItem('avisafe_password_reset_active') === '1') {
+            console.log('AuthContext: Ignoring auth event during password reset flow', event);
+            return;
+          }
+        } catch {}
+
         // If this event was triggered by a cross-tab setSession, skip to avoid loops
         if (ignoreNextAuthEventRef.current) {
           ignoreNextAuthEventRef.current = false;
           console.log('AuthContext: Ignoring auth event triggered by cross-tab sync');
           return;
         }
+
 
         if (event === 'SIGNED_IN' && session?.user) {
           setSession(session);
