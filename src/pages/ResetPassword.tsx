@@ -90,18 +90,39 @@ const ResetPassword = () => {
       return;
     }
     setLoading(true);
+    let updateSucceeded = false;
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      toast.success("Passord oppdatert! Du kan nå logge inn med ditt nye passord.");
-      navigate("/auth");
+      updateSucceeded = true;
     } catch (error: any) {
       console.error("Reset password error:", error);
-      toast.error(error.message || "En feil oppstod ved tilbakestilling av passord");
+      toast.error(
+        error?.message
+          ? `Kunne ikke oppdatere passord: ${error.message}. Lenken er brukt opp — be om ny.`
+          : "Kunne ikke oppdatere passord. Lenken er brukt opp — be om ny."
+      );
     } finally {
+      // Always tear down the transient recovery session so the user is NOT auto-logged in.
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch (signOutErr) {
+        console.warn("signOut after password reset failed:", signOutErr);
+      }
+      clearResetFlag();
       setLoading(false);
+
+      if (updateSucceeded) {
+        toast.success("Passord oppdatert! Logg inn med ditt nye passord.");
+        navigate("/auth");
+      } else {
+        setPassword("");
+        setConfirmPassword("");
+        setStage("resend");
+      }
     }
   };
+
 
   const handleResendLink = async (e: React.FormEvent) => {
     e.preventDefault();
