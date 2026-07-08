@@ -15,6 +15,15 @@ const avisafeLogoText = "/avisafe-logo-text.png";
 
 type Stage = "idle" | "verifying" | "verified" | "resend";
 
+const RESET_FLAG_KEY = "avisafe_password_reset_active";
+
+const setResetFlag = () => {
+  try { sessionStorage.setItem(RESET_FLAG_KEY, "1"); } catch {}
+};
+const clearResetFlag = () => {
+  try { sessionStorage.removeItem(RESET_FLAG_KEY); } catch {}
+};
+
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [stage, setStage] = useState<Stage>(() => {
@@ -31,6 +40,11 @@ const ResetPassword = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const tokenHash = urlParams.get("token_hash");
 
+  // Defensive cleanup: clear the flag if the user navigates away mid-flow
+  useEffect(() => {
+    return () => { clearResetFlag(); };
+  }, []);
+
   const startVerification = async () => {
     if (!tokenHash) {
       toast.error("Ingen gyldig token funnet i lenken.");
@@ -39,6 +53,7 @@ const ResetPassword = () => {
     }
 
     setStage("verifying");
+    setResetFlag();
 
     try {
       const { error } = await supabase.auth.verifyOtp({
@@ -49,6 +64,7 @@ const ResetPassword = () => {
       if (error) {
         console.error("verifyOtp error:", error);
         toast.error("Lenken er ugyldig eller utløpt. Prøv å sende en ny link.");
+        clearResetFlag();
         setStage("resend");
       } else {
         setStage("verified");
@@ -56,9 +72,11 @@ const ResetPassword = () => {
     } catch (err: any) {
       console.error("verifyOtp exception:", err);
       toast.error("En feil oppstod. Prøv å sende en ny link.");
+      clearResetFlag();
       setStage("resend");
     }
   };
+
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
