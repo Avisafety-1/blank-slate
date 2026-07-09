@@ -170,7 +170,8 @@ export const Header = () => {
               <SheetPortal>
                 <SheetOverlay className="bg-transparent" />
                 <SheetPrimitive.Content
-                  className="fixed inset-y-0 right-0 z-[1200] h-full w-72 sm:max-w-sm border-l border-border bg-popover text-popover-foreground p-4 pt-10 pb-4 shadow-2xl flex flex-col gap-1 overflow-y-auto overscroll-contain transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right data-[state=closed]:duration-300 data-[state=open]:duration-300"
+                  className="fixed inset-y-0 right-0 z-[1200] h-full w-72 sm:max-w-sm border-l border-border bg-popover text-popover-foreground p-4 pb-4 shadow-2xl flex flex-col gap-1 overflow-y-auto overscroll-contain transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right data-[state=closed]:duration-300 data-[state=open]:duration-300"
+                  style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 2.5rem)' }}
                   onPointerDownOutside={(e) => {
                     if (document.body.getAttribute('data-tour-id') === 'system-overview') e.preventDefault();
                   }}
@@ -265,7 +266,10 @@ export const Header = () => {
                       <a href="https://avisafe.no" target="_blank" rel="noopener noreferrer" className="hover:text-primary">avisafe.no</a>
                     </div>
                   </div>
-                  <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring">
+                  <SheetPrimitive.Close
+                    className="absolute right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+                    style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
+                  >
                     <span aria-hidden className="text-lg leading-none">×</span>
                     <span className="sr-only">Lukk</span>
                   </SheetPrimitive.Close>
