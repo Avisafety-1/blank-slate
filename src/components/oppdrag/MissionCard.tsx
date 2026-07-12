@@ -265,7 +265,7 @@ export const MissionCard = ({
                 }}
               >
                 <ShieldCheck className="h-3 w-3 mr-1" />
-                {ninoxApproved ? 'Godkjent i Ninox' : 'Ikke godkjent i Ninox'}
+                {ninoxApproved ? t('pages.missions.card.ninoxApproved') : t('pages.missions.card.ninoxNotApproved')}
               </Badge>
             )}
           </div>
