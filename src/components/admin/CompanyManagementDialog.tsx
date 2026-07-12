@@ -390,7 +390,7 @@ export const CompanyManagementDialog = ({
               )}
             />
 
-            {isSuperAdmin && (
+            {isSuperAdmin && !(isCreating && forceParentCompanyId) && (
               <FormField
                 control={form.control}
                 name="default_language"
