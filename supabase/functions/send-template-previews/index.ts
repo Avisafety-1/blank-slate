@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { defaultTemplates, replaceTemplateVariables } from "../_shared/template-utils.ts";
+import { defaultTemplatesByLang, replaceTemplateVariables } from "../_shared/template-utils.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { requireUser, requireRole, getUserCompanyId, authErrorResponse } from "../_shared/auth.ts";
 import { hasValidCronSecret } from "../_shared/cron.ts";
+import { resolveLanguage, type EmailLanguage } from "../_shared/email-i18n.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -82,30 +83,35 @@ serve(async (req) => {
 
   try {
     let cid: string;
+    let recipient: string;
+    let language: EmailLanguage = 'no';
     if (hasValidCronSecret(req)) {
-      const { recipient: r2, company_id: c2 } = await req.json().catch(() => ({}));
+      const cronBody = await req.json().catch(() => ({}));
+      const { recipient: r2, company_id: c2 } = cronBody;
+      language = resolveLanguage(req, cronBody);
       if (!c2) {
-        // pick any company id
         const supa = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
         const { data } = await supa.from('companies').select('id').limit(1).maybeSingle();
         cid = c2 || data?.id;
       } else {
         cid = c2;
       }
-      var recipient = r2 || 'hauggard@gmail.com';
+      recipient = r2 || 'hauggard@gmail.com';
     } else {
       const user = await requireUser(req);
       await requireRole(user, ['superadmin']);
       const body = await req.json().catch(() => ({}));
-      var recipient = body.recipient || 'hauggard@gmail.com';
+      recipient = body.recipient || 'hauggard@gmail.com';
       cid = body.company_id || (await getUserCompanyId(user));
+      language = resolveLanguage(req, body);
     }
 
     const cfg = await getEmailConfig(cid);
     const from = formatSenderAddress(cfg.fromName || 'AviSafe', cfg.fromEmail);
 
+    const templatesForLang = defaultTemplatesByLang[language] || defaultTemplatesByLang.no;
     const all: Record<string, { subject: string; content: string }> = {
-      ...defaultTemplates,
+      ...templatesForLang,
       ...EXTRA_TEMPLATES,
     };
 
