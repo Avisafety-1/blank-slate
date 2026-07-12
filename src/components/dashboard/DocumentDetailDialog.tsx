@@ -207,10 +207,10 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
       window.document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      toast.success('Dokumentet ble lastet ned');
+      toast.success(t('dashboard.documents.downloaded'));
     } catch (error: any) {
       console.error('Error downloading document:', error);
-      toast.error('Kunne ikke laste ned dokumentet');
+      toast.error(t('dashboard.documents.downloadError'));
     } finally {
       setDownloading(false);
     }
