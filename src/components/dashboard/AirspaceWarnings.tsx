@@ -308,7 +308,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-2 cursor-pointer"
             >
               {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span>+{remainingCount} {remainingCount === 1 ? 'annen advarsel' : 'andre advarsler'}</span>
+              <span>+{remainingCount} {remainingCount === 1 ? t('dashboard.airspaceWarnings.otherWarning') : t('dashboard.airspaceWarnings.otherWarnings')}</span>
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-2 mt-2 overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
