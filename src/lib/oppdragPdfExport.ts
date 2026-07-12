@@ -15,10 +15,12 @@ import {
 
 type Mission = any;
 
+const dateLocale = () => (i18n.language?.toLowerCase().startsWith("en") ? enUS : nb);
+
 const fmtRouteDocNumber = (value: unknown, decimals = 0, unit = "") => {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return "-";
-  return `${n.toLocaleString("nb-NO", { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit}`;
+  return `${n.toLocaleString(getIntlLocale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit}`;
 };
 
 const getRouteSoraRows = (route: any): string[][] => {
