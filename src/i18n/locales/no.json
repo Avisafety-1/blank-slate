@@ -1242,7 +1242,10 @@
   },
   "pages": {
     "missions": {
-      "title": "Oppdrag"
+      "title": "Oppdrag",
+      "noMissionsFound": "Ingen oppdrag funnet",
+      "noMissions": "Ingen oppdrag",
+      "loadMore": "Last flere oppdrag"
     },
     "incidents": {
       "title": "Hendelser",
