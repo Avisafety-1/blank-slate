@@ -307,14 +307,14 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
           for (const zone of aipZones) {
             if (!zone.geometry || !isMounted) continue;
             let color = '#f59e0b';
-            let label = 'Fareområde';
+            let label = t("dashboard.missionMapPreview.aipDanger");
             let dashArray: string | undefined = undefined;
-            if (zone.zone_type === 'P') { color = '#dc2626'; label = 'Forbudsområde'; }
-            else if (zone.zone_type === 'R') { color = '#8b5cf6'; label = 'Restriksjonsområde'; }
+            if (zone.zone_type === 'P') { color = '#dc2626'; label = t("dashboard.missionMapPreview.aipProhibited"); }
+            else if (zone.zone_type === 'R') { color = '#8b5cf6'; label = t("dashboard.missionMapPreview.aipRestricted"); }
             else if (zone.zone_type === 'D') { dashArray = '5, 5'; }
             else if (zone.zone_type === 'RMZ') { color = '#22c55e'; label = 'RMZ'; dashArray = '8, 6'; }
             else if (zone.zone_type === 'TMZ') { color = '#06b6d4'; label = 'TMZ'; dashArray = '8, 6'; }
-            else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = 'Småflyplass — 5 km'; }
+            else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = t("dashboard.missionMapPreview.aipAtz"); }
             else if (zone.zone_type === 'CTR') { color = '#ec4899'; label = 'CTR'; }
             else if (zone.zone_type === 'TIZ') { color = '#a78bfa'; label = 'TIZ'; dashArray = '8, 6'; }
 
