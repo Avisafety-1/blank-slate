@@ -350,7 +350,10 @@
       "expiringSoonTitle": "Document is nearing expiry",
       "expiringSoonMessage": "Please ensure renewal before the expiry date.",
       "openWebsite": "Open website",
-      "open": "Open"
+      "open": "Open",
+      "delete": "Delete document",
+      "downloading": "Downloading...",
+      "confirmDeleteTitle": "Are you sure?"
     },
     "calendar": {
       "title": "Calendar",
@@ -553,7 +556,59 @@
       "batteryCapacity": "Capacity",
       "batteryMinVoltage": "Min voltage",
       "batteryMaxTemp": "Max temp",
-      "batteryCellDeviation": "Cell deviation"
+      "batteryCellDeviation": "Cell deviation",
+      "title": "Flight analysis",
+      "description": "Detailed flight analysis with map and telemetry",
+      "dataPoints": "{{count}} data points",
+      "events": "{{count}} events",
+      "appWarnings": "APP_WARNING ({{count}} events)",
+      "limitedTelemetry": "Limited telemetry (imported before extended analysis)",
+      "flightEvents": "Events during flight ({{count}})",
+      "rthTriggered": "Return to Home (RTH) was triggered during this flight",
+      "mapLoadError": "The map could not be loaded — try opening the analysis again",
+      "colorRouteBySpeed": "Color route by speed",
+      "showAlerts": "Show alerts on map",
+      "slow": "Slow",
+      "fast": "Fast",
+      "loading3DModel": "Loading 3D model…",
+      "labels": {
+        "flightTime": "Flight time",
+        "maxSpeed": "Max speed",
+        "minBattery": "Min. battery",
+        "dataPoints": "Data points",
+        "distance": "Distance",
+        "maxAltitude": "Max altitude",
+        "gpsSat": "GPS sat.",
+        "batteryTemp": "Batt. temp",
+        "minVoltage": "Min. voltage",
+        "maxDistance": "Max distance",
+        "maxVSpeed": "Max V-speed",
+        "cellDeviation": "Cell deviation"
+      }
+    },
+    "missionDetail": {
+      "riskAssessment": "Risk assessment",
+      "notam": "NOTAM",
+      "edit": "Edit",
+      "editRoute": "Edit route",
+      "location": "Location",
+      "time": "Time",
+      "notes": "Notes",
+      "noNotes": "No notes",
+      "addNote": "Add note",
+      "pendingApproval": "Pending approval",
+      "approved": "Approved",
+      "notApproved": "Not approved",
+      "ninoxApproved": "Approved in Ninox",
+      "ninoxNotApproved": "Not approved in Ninox",
+      "flightLogs": "Flight logs"
+    },
+    "airspaceWarnings": {
+      "warning": "WARNING",
+      "caution": "CAUTION",
+      "information": "INFORMATION",
+      "otherWarning": "other warning",
+      "otherWarnings": "other warnings"
     },
     "missionMapPreview": {
       "missionPosition": "Mission position",
@@ -2418,7 +2473,12 @@
       "purchasePriceEur": "Purchase price (EUR)"
     }
   },
-  "riskAssessment": {
+   "riskAssessment": {
+    "flightMode": "Flight mode",
+    "vlosDesc": "Visual contact with the drone throughout the flight",
+    "bvlosDesc": "Flight beyond visual line of sight — requires SORA, C2 link and DAA",
+    "weatherOptions": "Weather options",
+    "skipWeather": "Skip weather evaluation",
     "title": "AI Risk Assessment",
     "inputTab": "Input",
     "resultTab": "Result",

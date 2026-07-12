@@ -532,7 +532,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                       disabled={downloading}
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      {downloading ? "Laster ned..." : "Last ned"}
+                      {downloading ? t('dashboard.documents.downloading') : t('dashboard.documents.download', 'Download')}
                     </Button>
                   </>
                 )}
