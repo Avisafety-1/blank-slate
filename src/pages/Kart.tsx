@@ -681,7 +681,7 @@ export default function KartPage() {
                       size="sm"
                       onClick={() => setFh2DialogOpen(true)}
                       className="h-8 px-1.5 text-[10px]"
-                      title="Send rute og SORA-korridor til DJI FlightHub 2"
+                      title={t('pages.map.fh2Title')}
                     >
                       <Send className="mr-0.5 h-3 w-3" />
                       FH2
