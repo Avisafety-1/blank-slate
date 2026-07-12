@@ -496,9 +496,9 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
                   <FileText className="w-12 h-12 text-primary" />
                   <div className="text-center space-y-1">
-                    <p className="font-medium text-sm">{fileName || checklistTitles[activeChecklistId] || "PDF-sjekkliste"}</p>
+                    <p className="font-medium text-sm">{fileName || checklistTitles[activeChecklistId] || t('resourceDialogs.checklistExecution.pdfTittel')}</p>
                     <p className="text-xs text-muted-foreground">
-                      Sjekklisten åpnes automatisk. Hvis ingenting skjer, trykk under.
+                      {t('resourceDialogs.checklistExecution.pdfAutoOpen')}
                     </p>
                   </div>
                   <Button
@@ -507,7 +507,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={handleOpenFile}
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Åpne sjekkliste
+                    {t('resourceDialogs.checklistExecution.openChecklist')}
                   </Button>
                 </div>
               ) : fileMode === "pdf" ? (
