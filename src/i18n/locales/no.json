@@ -1563,6 +1563,86 @@
           "toStandard": "Bytt til standard kart",
           "baseAria": "Bytt grunnkart"
         }
+      },
+      "layers": {
+        "groups": {
+          "airspace": "Luftrom",
+          "restrictions": "Restriksjoner",
+          "natureAndPopulation": "Natur & befolkning",
+          "infrastructure": "Infrastruktur",
+          "missions": "Oppdrag",
+          "liveTraffic": "Live trafikk"
+        },
+        "airspace": "Luftrom",
+        "rpas": "RPAS 5 km",
+        "nsm": "NSM forbudsområder",
+        "prd": "P/R/D-soner",
+        "rmzTmzAtz": "RMZ / TMZ / ATZ",
+        "restrictedAreas": "Restriksjonsområder",
+        "dangerAreas": "Fareområder",
+        "securityObjects": "Sikringsobjekter",
+        "notam": "NOTAM",
+        "protectedAreas": "Verneområder",
+        "population": "Befolkning",
+        "urbanAreas": "Tettsteder",
+        "landUse": "Arealbruk",
+        "aviationObstacles": "Luftfartshindre",
+        "powerLines": "Kraftledninger",
+        "propertyBoundaries": "Eiendomsgrenser",
+        "tensioPowerGrid": "Luftnett Tensio",
+        "airports": "Flyplasser",
+        "drones": "Droner",
+        "missions_": "Oppdrag",
+        "completedMissions": "Utførte oppdrag",
+        "plannedShared": "Planlagte oppdrag (delt)",
+        "airTraffic": "Lufttrafikk",
+        "shipTraffic": "Skipstrafikk"
+      },
+      "pilotPopup": {
+        "title": "👤 Pilotposisjon",
+        "dragToMove": "Dra for å flytte",
+        "vlosRadius": "VLOS-radius: {{r}}m",
+        "alos": "ALOS: {{v}}",
+        "alosDefault": "(standard 120 m – velg drone i SORA for ALOS)"
+      },
+      "routePointPopup": {
+        "title": "Punkt {{n}}",
+        "distanceFromPrev": "Avstand fra forrige: {{d}} km",
+        "dragOrRight": "Dra for å flytte, høyreklikk for å slette",
+        "total": "Total: {{d}} km"
+      },
+      "density": {
+        "sourceEurostat": "Eurostat 2021 · 1 km-rute",
+        "sourceSsb": "SSB 250 m-rute",
+        "peopleInRoute": "{{n}} personer i ruten",
+        "eurostatCalc": "{{n}} pers/km² (1 km² rute)",
+        "ssbCalc": "{{n}} pers/km² (pop × 16, 250 m rute)",
+        "driverForCalc": "Pådriver for utregning",
+        "driverTooltip": "Pådriver · {{label}}"
+      },
+      "flightTrackPopup": {
+        "flownRoute": "Flydd rute",
+        "flownRouteOn": "Flydd rute — {{date}}",
+        "pointOf": "Punkt {{i}} av {{n}}",
+        "altMsl": "Høyde (MSL): {{v}} m",
+        "altAgl": "Høyde (AGL): {{v}} m",
+        "speed": "Hastighet: {{v}} m/s",
+        "heading": "Retning: {{v}}°",
+        "time": "Tid: {{v}}",
+        "flightStart": "Flytur {{i}} — Start",
+        "flightEnd": "Flytur {{i}} — Slutt"
+      },
+      "weatherToggle": {
+        "unavailable": "Værvisning er ikke tilgjengelig under ruteplanlegging",
+        "off": "Slå av værvisning",
+        "on": "Slå på værvisning (klikk i kartet)",
+        "hint": "Klikk på kartet for å se værdata",
+        "clickToAddPoints": "Klikk på kartet for å legge til punkter"
+      },
+      "baseToggle": {
+        "toSatellite": "Bytt til satellittkart",
+        "toTopo": "Bytt til topografisk kart",
+        "toStandard": "Bytt til standard kart"
       }
     },
     "stats": {
