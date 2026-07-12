@@ -14,6 +14,7 @@ import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck, ArrowRightLeft } from "lucide-react";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
@@ -88,6 +89,8 @@ interface DroneDetailDialogProps {
 }
 
 export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onDroneUpdated }: DroneDetailDialogProps) => {
+  const { t } = useTranslation();
+  const tt = (k: string, opts?: any) => t(`resourceDialogs.droneDetail.${k}`, opts) as string;
   const { user, companyId, isAdmin } = useAuth();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
@@ -334,7 +337,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       .select("full_name")
       .eq("id", drone.technical_responsible_id)
       .single();
-    setTechnicalResponsibleName(data?.full_name || "Ukjent");
+    setTechnicalResponsibleName(data?.full_name || tt("unknown"));
   };
 
   const fetchMaintenanceAcknowledgementSetting = async () => {
@@ -536,9 +539,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       .insert(rows);
     if (error) {
       console.error("Error linking documents:", error);
-      toast.error("Kunne ikke legge til dokumenter");
+      toast.error(tt("linkedDocuments.addFailure"));
     } else {
-      toast.success(`${newDocs.length} dokument(er) tilknyttet`);
+      toast.success(tt("linkedDocuments.addedCount", { count: newDocs.length }));
       fetchLinkedDocuments();
       checkVisibilityAfterAdd();
     }
@@ -551,9 +554,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       .eq("id", linkId);
     if (error) {
       console.error("Error removing document link:", error);
-      toast.error("Kunne ikke fjerne dokument");
+      toast.error(tt("linkedDocuments.removeFailure"));
     } else {
-      toast.success(`${docTitle} fjernet`);
+      toast.success(tt("linkedDocuments.removedToast", { name: docTitle }));
       fetchLinkedDocuments();
     }
   };
@@ -569,7 +572,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       newWindow.location.href = data.signedUrl;
     } else {
       newWindow?.close();
-      toast.error("Kunne ikke åpne dokument");
+      toast.error(tt("linkedDocuments.cannotOpen"));
     }
   };
 
@@ -592,7 +595,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   const handleAddAccessory = async () => {
     if (!drone || !user || !companyId || !newAccessory.navn.trim()) {
-      toast.error("Fyll inn navn på utstyret");
+      toast.error(tt("accessories.nameRequired"));
       return;
     }
 
@@ -622,13 +625,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       // Log to equipment history
       await logEquipmentHistory('added', 'accessory', data?.id || null, newAccessory.navn.trim());
 
-      toast.success("Utstyr lagt til");
+      toast.success(tt("accessories.addSuccess"));
       setNewAccessory({ navn: "", vedlikeholdsintervall_dager: "", sist_vedlikehold: "" });
       setShowAddAccessory(false);
       fetchAccessories();
     } catch (error: any) {
       console.error("Error adding accessory:", error);
-      toast.error(`Kunne ikke legge til utstyr: ${error.message}`);
+      toast.error(tt("accessories.addFailure", { message: error.message }));
     }
   };
 
@@ -644,11 +647,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       // Log to equipment history
       await logEquipmentHistory('removed', 'accessory', accessory.id, accessory.navn);
 
-      toast.success(`${accessory.navn} slettet`);
+      toast.success(tt("accessories.deleteSuccess", { name: accessory.navn }));
       fetchAccessories();
     } catch (error: any) {
       console.error("Error deleting accessory:", error);
-      toast.error(`Kunne ikke slette utstyr: ${error.message}`);
+      toast.error(tt("accessories.deleteFailure", { message: error.message }));
     }
   };
 
@@ -673,11 +676,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
       if (error) throw error;
 
-      toast.success(`Vedlikehold utført for ${accessory.navn}`);
+      toast.success(tt("accessories.maintenanceDone", { name: accessory.navn }));
       fetchAccessories();
     } catch (error: any) {
       console.error("Error updating accessory inspection:", error);
-      toast.error(`Kunne ikke oppdatere vedlikehold: ${error.message}`);
+      toast.error(tt("accessories.maintenanceFailure", { message: error.message }));
     }
   };
 
@@ -701,11 +704,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
       if (error) throw error;
 
-      toast.success(`${personName} fjernet`);
+      toast.success(tt("toasts.personnelRemoved", { name: personName }));
       fetchLinkedPersonnel();
     } catch (error: any) {
       console.error("Error removing personnel:", error);
-      toast.error(`Kunne ikke fjerne personell: ${error.message}`);
+      toast.error(tt("toasts.personnelRemoveFailure", { message: error.message }));
     }
   };
 
@@ -721,11 +724,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       // Log to equipment history
       await logEquipmentHistory('removed', 'equipment', equipmentId || null, equipmentName);
 
-      toast.success(`${equipmentName} fjernet`);
+      toast.success(tt("toasts.equipmentRemoved", { name: equipmentName }));
       fetchLinkedEquipment();
     } catch (error: any) {
       console.error("Error removing equipment:", error);
-      toast.error(`Kunne ikke fjerne utstyr: ${error.message}`);
+      toast.error(tt("toasts.equipmentRemoveFailure", { message: error.message }));
     }
   };
 
@@ -741,11 +744,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       // Log to equipment history
       await logEquipmentHistory('removed', 'dronetag', dronetagId, dronetagName);
 
-      toast.success(`${dronetagName} fjernet`);
+      toast.success(tt("toasts.dronetagRemoved", { name: dronetagName }));
       fetchLinkedDronetags();
     } catch (error: any) {
       console.error("Error removing dronetag:", error);
-      toast.error(`Kunne ikke fjerne DroneTag: ${error.message}`);
+      toast.error(tt("toasts.dronetagRemoveFailure", { message: error.message }));
     }
   };
 
@@ -817,12 +820,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         await deptVis.saveVisibility();
       }
 
-      toast.success(`${terminology.vehicle} oppdatert`);
+      toast.success(tt("toasts.updated", { name: terminology.vehicle }));
       setIsEditing(false);
       onDroneUpdated();
     } catch (error: any) {
       console.error("Error updating drone:", error);
-      toast.error(`Kunne ikke oppdatere ${terminology.vehicleLower}: ${error.message}`);
+      toast.error(tt("toasts.updateFailure", { name: terminology.vehicleLower, message: error.message }));
     } finally {
       setIsSubmitting(false);
     }
@@ -839,12 +842,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
       if (error) throw error;
 
-      toast.success(`${terminology.vehicle} slettet`);
+      toast.success(tt("toasts.deleted", { name: terminology.vehicle }));
       onOpenChange(false);
       onDroneUpdated();
     } catch (error: any) {
       console.error("Error deleting drone:", error);
-      toast.error(`Kunne ikke slette ${terminology.vehicleLower}: ${error.message}`);
+      toast.error(tt("toasts.deleteFailure", { name: terminology.vehicleLower, message: error.message }));
     }
   };
 
@@ -882,6 +885,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     : "ok";
 
   const isSharedFromParent = !!drone.company_id && !!companyId && drone.company_id !== companyId;
+  const sharedFromSource = drone.companies?.navn
+    ? tt("sharedFromParentWithName", { name: drone.companies.navn })
+    : tt("sharedFromParentFallback");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -889,7 +895,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            <span className="truncate">{isEditing ? `Rediger ${terminology.vehicleLower}` : drone.modell}</span>
+            <span className="truncate">{isEditing ? tt("editTitle", { name: terminology.vehicleLower }) : drone.modell}</span>
           </DialogTitle>
           {!isEditing && (
             <div className="flex flex-col sm:flex-row gap-2 mt-2">
@@ -901,26 +907,26 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 className="flex-1"
               >
                 <Book className="w-4 h-4 mr-2" />
-                Loggbok
+                {tt("logbook")}
               </Button>
             </div>
           )}
           {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
             <p className="text-xs text-muted-foreground mt-1">
-              ⚠️ Status påvirket av: {affectedItems.join(", ")}
+              {tt("statusAffectedBy", { items: affectedItems.join(", ") })}
             </p>
           )}
           {!isEditing && payloadStatus !== "ok" && drone.payload !== null && (
             <p className={`text-xs mt-1 ${payloadStatus === "exceeded" ? "text-destructive" : "text-amber-600 dark:text-amber-400"}`}>
-              {payloadStatus === "exceeded" 
-                ? `⚠️ Payload overskredet! Utstyrsvekt: ${totalEquipmentWeight.toFixed(2)} kg / Payload: ${drone.payload} kg`
-                : `⚠️ Nær payload-grense. Utstyrsvekt: ${totalEquipmentWeight.toFixed(2)} kg / Payload: ${drone.payload} kg`
+              {payloadStatus === "exceeded"
+                ? tt("payloadExceeded", { weight: totalEquipmentWeight.toFixed(2), payload: drone.payload })
+                : tt("payloadNearLimit", { weight: totalEquipmentWeight.toFixed(2), payload: drone.payload })
               }
             </p>
           )}
           {isSharedFromParent && (
             <p className="text-xs text-muted-foreground mt-1 rounded-md bg-muted px-2 py-1.5">
-              🔒 Denne {terminology.vehicleLower} er delt fra {drone.companies?.navn ? `mor-selskapet «${drone.companies.navn}»` : "mor-selskapet"} og kan kun redigeres derfra.
+              {tt("sharedFromParent", { name: terminology.vehicleLower, source: sharedFromSource })}
             </p>
           )}
         </DialogHeader>
@@ -930,48 +936,48 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             <>
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Modell</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.model")}</p>
                   <p className="text-sm sm:text-base">{drone.modell}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Serienummer</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.serial")}</p>
                   <p className="text-sm sm:text-base">{drone.serienummer}</p>
                 </div>
               </div>
 
               {drone.internal_serial && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Internt serienummer</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.internalSerial")}</p>
                   <p className="text-sm sm:text-base">{drone.internal_serial}</p>
                 </div>
               )}
 
               {(drone as any).registration_number && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Registreringsnummer</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.registrationNumber")}</p>
                   <p className="text-sm sm:text-base">{(drone as any).registration_number}</p>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Klasse</p>
-                  <p className="text-sm sm:text-base">{drone.klasse || "-"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.class")}</p>
+                  <p className="text-sm sm:text-base">{drone.klasse || tt("dash")}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Kjøpsdato</p>
-                  <p className="text-sm sm:text-base">{drone.kjøpsdato ? new Date(drone.kjøpsdato).toLocaleDateString('nb-NO') : "-"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.purchaseDate")}</p>
+                  <p className="text-sm sm:text-base">{drone.kjøpsdato ? new Date(drone.kjøpsdato).toLocaleDateString('nb-NO') : tt("dash")}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Vekt MTOM</p>
-                  <p className="text-sm sm:text-base">{drone.vekt !== null ? `${drone.vekt} kg` : "-"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.weightMTOM")}</p>
+                  <p className="text-sm sm:text-base">{drone.vekt !== null ? `${drone.vekt} ${tt("kgSuffix")}` : tt("dash")}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Payload</p>
-                  <p className="text-sm sm:text-base">{drone.payload !== null ? `${drone.payload} kg` : "-"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.payload")}</p>
+                  <p className="text-sm sm:text-base">{drone.payload !== null ? `${drone.payload} ${tt("kgSuffix")}` : tt("dash")}</p>
                 </div>
               </div>
 
@@ -979,32 +985,32 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
                   {catalogModel.weight_without_payload_kg != null && (
                     <div>
-                      <span className="font-medium">Vekt uten payload:</span> {catalogModel.weight_without_payload_kg} kg
+                      <span className="font-medium">{tt("catalog.weightNoPayload")}</span> {catalogModel.weight_without_payload_kg} {tt("kgSuffix")}
                     </div>
                   )}
                   {catalogModel.standard_takeoff_weight_kg != null && (
                     <div>
-                      <span className="font-medium">Standard takeoff:</span> {catalogModel.standard_takeoff_weight_kg} kg
+                      <span className="font-medium">{tt("catalog.standardTakeoff")}</span> {catalogModel.standard_takeoff_weight_kg} {tt("kgSuffix")}
                     </div>
                   )}
                   {catalogModel.endurance_min != null && (
                     <div>
-                      <span className="font-medium">Flygetid:</span> {catalogModel.endurance_min} min
+                      <span className="font-medium">{tt("catalog.endurance")}</span> {catalogModel.endurance_min} {tt("catalog.enduranceUnit")}
                     </div>
                   )}
                   {catalogModel.max_wind_mps != null && (
                     <div>
-                      <span className="font-medium">Maks vind:</span> {catalogModel.max_wind_mps} m/s
+                      <span className="font-medium">{tt("catalog.maxWind")}</span> {catalogModel.max_wind_mps} {tt("catalog.maxWindUnit")}
                     </div>
                   )}
                   {catalogModel.sensor_type && (
                     <div>
-                      <span className="font-medium">Sensor:</span> {catalogModel.sensor_type}
+                      <span className="font-medium">{tt("catalog.sensor")}</span> {catalogModel.sensor_type}
                     </div>
                   )}
                   {catalogModel.category && (
                     <div>
-                      <span className="font-medium">Kategori:</span> {catalogModel.category}
+                      <span className="font-medium">{tt("catalog.category")}</span> {catalogModel.category}
                     </div>
                   )}
                 </div>
@@ -1012,15 +1018,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Flyvetimer</p>
-                  <p className="text-sm sm:text-base">{Number(drone.flyvetimer).toFixed(2)} timer</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.flightHours")}</p>
+                  <p className="text-sm sm:text-base">{Number(drone.flyvetimer).toFixed(2)} {tt("hoursSuffix")}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Sist flydd</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.lastFlown")}</p>
                   <p className="text-sm sm:text-base">{lastFlown ? format(new Date(lastFlown), "dd.MM.yyyy") : "–"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Status</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.status")}</p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
                       {aggregatedStatus}
@@ -1031,12 +1037,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     <div className="mt-1.5 space-y-1">
                       {maintenanceAggregated !== "Grønn" && (
                         <p className="text-xs text-muted-foreground">
-                          🔧 Vedlikehold {maintenanceAggregated === "Rød" ? "forfalt" : "nærmer seg"}
+                          {maintenanceAggregated === "Rød" ? tt("statusHints.maintenanceDue") : tt("statusHints.maintenanceSoon")}
                         </p>
                       )}
                       {dbStatus !== "Grønn" && (
                         <p className="text-xs text-muted-foreground">
-                          ⚠️ {latestWarning ? `Advarsel: ${latestWarning.title}` : "Advarsel fra flylogg"}
+                          {latestWarning ? tt("statusHints.warningFromLog", { title: latestWarning.title }) : tt("statusHints.warningFromLogFallback")}
                         </p>
                       )}
                     </div>
@@ -1046,42 +1052,43 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
-                          Kvitter ut advarsel
+                          {tt("acknowledge.button")}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
+                          <AlertDialogTitle>{tt("acknowledge.dialogTitle")}</AlertDialogTitle>
                           <AlertDialogDescription>
                             {latestWarning
-                              ? `Advarsel: «${latestWarning.title}» (${new Date(latestWarning.entry_date).toLocaleDateString('nb-NO')}). Vil du kvittere ut og sette status tilbake til Grønn?`
-                              : "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?"
+                              ? tt("acknowledge.dialogDescWithWarning", { title: latestWarning.title, date: new Date(latestWarning.entry_date).toLocaleDateString('nb-NO') })
+                              : tt("acknowledge.dialogDescNoWarning")
                             }
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                          <AlertDialogCancel>{tt("acknowledge.cancel")}</AlertDialogCancel>
                           <AlertDialogAction onClick={async () => {
                             if (!user || !companyId) return;
                             const { error } = await supabase.from('drones').update({ status: 'Grønn' }).eq('id', drone.id);
                             if (error) {
-                              toast.error(`Kunne ikke kvittere ut: ${error.message}`);
+                              toast.error(tt("acknowledge.toastFailure", { message: error.message }));
                               return;
                             }
+                            const suffix = latestWarning ? tt("acknowledge.logDescriptionSuffix", { title: latestWarning.title }) : "";
                             await supabase.from('drone_log_entries').insert({
                               drone_id: drone.id,
                               company_id: companyId,
                               user_id: user.id,
                               entry_date: new Date().toISOString().split('T')[0],
                               entry_type: 'Kvittering',
-                              title: 'Advarsel kvittert ut',
-                              description: `Status endret fra ${drone.status} til Grønn${latestWarning ? ` (${latestWarning.title})` : ''}`,
+                              title: tt("acknowledge.logTitle"),
+                              description: tt("acknowledge.logDescription", { from: drone.status, suffix }),
                             });
                             queryClient.invalidateQueries({ queryKey: ['drones'] });
                             onDroneUpdated();
-                            toast.success('Advarsel kvittert ut — status satt til Grønn');
+                            toast.success(tt("acknowledge.toastSuccess"));
                           }}>
-                            Kvitter ut
+                            {tt("acknowledge.confirm")}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -1090,7 +1097,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   {/* If DB warning exists but maintenance is already worse or equal */}
                   {dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] <= STATUS_PRIORITY[maintenanceAggregated] && (
                     <p className="text-xs text-muted-foreground mt-1.5 italic">
-                      Advarsel fra flylogg kan kvitteres ut etter at vedlikehold er utført
+                      {tt("acknowledge.afterMaintenanceHint")}
                     </p>
                   )}
                 </div>
@@ -1100,8 +1107,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               {drone.technical_responsible_id && (
                 <div className="flex items-center gap-2">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Teknisk ansvarlig</p>
-                    <p className="text-sm">{technicalResponsibleName || "Laster..."}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{tt("labels.technicalResponsible")}</p>
+                    <p className="text-sm">{technicalResponsibleName || tt("loading")}</p>
                   </div>
                 </div>
               )}
@@ -1111,7 +1118,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                     <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      Inspeksjon
+                      {tt("inspection.sectionTitle")}
                     </p>
                     {(() => {
                       const isTechRestricted = drone.technical_responsible_id && !allUsersCanAcknowledgeMaintenance && user?.id !== drone.technical_responsible_id;
@@ -1135,13 +1142,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                                   }}
                                 >
                                   <Wrench className="w-4 h-4 mr-1" />
-                                  Utfør inspeksjon
+                                  {tt("inspection.doButton")}
                                 </Button>
                               </span>
                             </TooltipTrigger>
                             {isTechRestricted && (
                               <TooltipContent>
-                                <p>Kun teknisk ansvarlig ({technicalResponsibleName}) kan utføre inspeksjon</p>
+                                <p>{tt("inspection.techRestricted", { name: technicalResponsibleName })}</p>
                               </TooltipContent>
                             )}
                           </Tooltip>
@@ -1154,7 +1161,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       <div className="flex items-start gap-2">
                         <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Sist inspeksjon</p>
+                          <p className="text-sm font-medium text-muted-foreground">{tt("inspection.lastInspection")}</p>
                           <p className="text-base">{new Date(drone.sist_inspeksjon).toLocaleDateString('nb-NO')} {new Date(drone.sist_inspeksjon).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                       </div>
@@ -1163,7 +1170,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       <div className="flex items-start gap-2">
                         <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Neste inspeksjon</p>
+                          <p className="text-sm font-medium text-muted-foreground">{tt("inspection.nextInspection")}</p>
                           <p className="text-base">{new Date(drone.neste_inspeksjon).toLocaleDateString('nb-NO')}</p>
                         </div>
                       </div>
@@ -1171,7 +1178,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </div>
                   {drone.inspection_interval_days && (
                     <p className="text-sm text-muted-foreground mt-2">
-                      Inspeksjonsintervall: {drone.inspection_interval_days} dager
+                      {tt("inspection.intervalDays", { days: drone.inspection_interval_days })}
                     </p>
                   )}
 
@@ -1186,9 +1193,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         return (
                           <div>
                             <div className="flex justify-between text-sm mb-1">
-                              <span className="text-muted-foreground">Flytimer siden inspeksjon</span>
+                              <span className="text-muted-foreground">{tt("inspection.hoursSinceInspection")}</span>
                               <span className={`font-medium ${getStatusColorClasses(status).split(' ').find(c => c.startsWith('text-')) || ''}`}>
-                                {hoursSince.toFixed(1)} / {limit} t
+                                {hoursSince.toFixed(1)} / {limit} {tt("inspection.hoursUnit")}
                               </span>
                             </div>
                             <Progress value={pct} className={`h-2 ${status === 'Rød' ? '[&>div]:bg-destructive' : status === 'Gul' ? '[&>div]:bg-yellow-500' : ''}`} />
@@ -1208,7 +1215,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         return (
                           <div>
                             <div className="flex justify-between text-sm mb-1">
-                              <span className="text-muted-foreground">Oppdrag siden inspeksjon</span>
+                              <span className="text-muted-foreground">{tt("inspection.missionsSinceInspection")}</span>
                               <span className={`font-medium ${getStatusColorClasses(status).split(' ').find(c => c.startsWith('text-')) || ''}`}>
                                 {missionsSinceInspection} / {limit}
                               </span>
@@ -1227,7 +1234,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Merknader</p>
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{tt("labels.notes")}</p>
                       <p className="text-sm mt-1 text-amber-900 dark:text-amber-100 whitespace-pre-wrap">{drone.merknader}</p>
                     </div>
                   </div>
@@ -1239,7 +1246,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <Package className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground">Tilknyttet utstyr</p>
+                    <p className="text-sm font-medium text-muted-foreground">{tt("linkedEquipment.title")}</p>
                   </div>
                   <Button 
                     size="sm" 
@@ -1249,13 +1256,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
-                    Legg til
+                    {tt("linkedEquipment.add")}
                   </Button>
                 </div>
                 
                 {linkedEquipment.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen utstyr tilknyttet
+                    {tt("linkedEquipment.none")}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -1274,7 +1281,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                                 {calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14)}
                               </Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground">{eq.type} • SN: {eq.serienummer}</p>
+                            <p className="text-xs text-muted-foreground">{eq.type} • {tt("linkedEquipment.snPrefix")}: {eq.serienummer}</p>
                           </div>
                           <Button
                             size="sm"
@@ -1296,7 +1303,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground">Tilknyttet DroneTag</p>
+                    <p className="text-sm font-medium text-muted-foreground">{tt("linkedDronetag.title")}</p>
                   </div>
                   <Button 
                     size="sm" 
@@ -1306,13 +1313,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
-                    Legg til
+                    {tt("linkedDronetag.add")}
                   </Button>
                 </div>
                 
                 {linkedDronetags.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen DroneTag tilknyttet
+                    {tt("linkedDronetag.none")}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -1327,8 +1334,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             <p className="text-sm font-medium">{dt.name || dt.device_id}</p>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Device: {dt.device_id}
-                            {dt.callsign && ` • Callsign: ${dt.callsign}`}
+                            {tt("linkedDronetag.devicePrefix")}: {dt.device_id}
+                            {dt.callsign && ` • ${tt("linkedDronetag.callsignPrefix")}: ${dt.callsign}`}
                           </p>
                         </div>
                         <Button
@@ -1349,7 +1356,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground">Tilknyttet personell</p>
+                    <p className="text-sm font-medium text-muted-foreground">{tt("linkedPersonnel.title")}</p>
                   </div>
                   <Button 
                     size="sm" 
@@ -1359,13 +1366,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
-                    Legg til
+                    {tt("linkedPersonnel.add")}
                   </Button>
                 </div>
                 
                 {linkedPersonnel.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen personell tilknyttet
+                    {tt("linkedPersonnel.none")}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -1378,7 +1385,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           className="flex items-center justify-between p-2 bg-background/50 rounded border border-border"
                         >
                           <div className="flex-1">
-                            <p className="text-sm font-medium">{person.full_name || "Ukjent"}</p>
+                            <p className="text-sm font-medium">{person.full_name || tt("unknown")}</p>
                             <p className="text-xs text-muted-foreground">
                               {person.tittel || person.email || ""}
                             </p>
@@ -1398,12 +1405,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 )}
               </div>
 
-              {/* Tilknyttede dokumenter Section */}
+              {/* Linked documents Section */}
               <div className="border-t border-border pt-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground">Tilknyttede dokumenter</p>
+                    <p className="text-sm font-medium text-muted-foreground">{tt("linkedDocuments.title")}</p>
                   </div>
                   <Button
                     size="sm"
@@ -1413,13 +1420,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
-                    Legg til
+                    {tt("linkedDocuments.add")}
                   </Button>
                 </div>
 
                 {linkedDocuments.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen dokumenter tilknyttet
+                    {tt("linkedDocuments.none")}
                   </p>
                 ) : (
                   <div className="space-y-2 w-full max-w-full overflow-x-hidden">
@@ -1447,7 +1454,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                                 variant="ghost"
                                 onClick={() => handleOpenDocument(doc.fil_url)}
                                 className="h-8 w-8 p-0"
-                                title="Åpne dokument"
+                                title={tt("linkedDocuments.openTitle")}
                               >
                                 <ExternalLink className="w-4 h-4" />
                               </Button>
@@ -1468,12 +1475,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 )}
               </div>
 
-              {/* Valgfritt utstyr Section */}
+              {/* Accessories Section */}
               <div className="border-t border-border pt-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground">Valgfritt utstyr</p>
+                    <p className="text-sm font-medium text-muted-foreground">{tt("accessories.title")}</p>
                   </div>
                   <Button 
                     size="sm" 
@@ -1483,35 +1490,35 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     disabled={isSharedFromParent}
                   >
                     <Plus className="w-4 h-4" />
-                    Legg til
+                    {tt("accessories.add")}
                   </Button>
                 </div>
 
                 {showAddAccessory && (
                   <div className="p-3 border border-border rounded-lg bg-background/50 mb-3 space-y-3">
                     <div>
-                      <Label htmlFor="acc-navn" className="text-xs">Navn</Label>
+                      <Label htmlFor="acc-navn" className="text-xs">{tt("accessories.nameLabel")}</Label>
                       <Input
                         id="acc-navn"
-                        placeholder="f.eks. ND-filter, Ekstra propeller"
+                        placeholder={tt("accessories.namePlaceholder")}
                         value={newAccessory.navn}
                         onChange={(e) => setNewAccessory({ ...newAccessory, navn: e.target.value })}
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="flex-1 min-w-0">
-                        <Label htmlFor="acc-interval" className="text-xs">Vedlikeholdsintervall (dager)</Label>
+                        <Label htmlFor="acc-interval" className="text-xs">{tt("accessories.intervalLabel")}</Label>
                         <Input
                           id="acc-interval"
                           type="number"
                           className="block w-full max-w-full min-w-0"
-                          placeholder="f.eks. 90"
+                          placeholder={tt("accessories.intervalPlaceholder")}
                           value={newAccessory.vedlikeholdsintervall_dager}
                           onChange={(e) => setNewAccessory({ ...newAccessory, vedlikeholdsintervall_dager: e.target.value })}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <Label htmlFor="acc-sist" className="text-xs">Sist vedlikehold</Label>
+                        <Label htmlFor="acc-sist" className="text-xs">{tt("accessories.lastMaintenanceLabel")}</Label>
                         <Input
                           id="acc-sist"
                           type="date"
@@ -1526,10 +1533,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         setShowAddAccessory(false);
                         setNewAccessory({ navn: "", vedlikeholdsintervall_dager: "", sist_vedlikehold: "" });
                       }}>
-                        Avbryt
+                        {tt("accessories.cancel")}
                       </Button>
                       <Button size="sm" onClick={handleAddAccessory}>
-                        Legg til
+                        {tt("accessories.add")}
                       </Button>
                     </div>
                   </div>
@@ -1537,7 +1544,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 
                 {accessories.length === 0 && !showAddAccessory ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen valgfritt utstyr lagt til
+                    {tt("accessories.none")}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -1550,11 +1557,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           <p className="text-sm font-medium">{acc.navn}</p>
                           <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                             {acc.vedlikeholdsintervall_dager && (
-                              <span>Intervall: {acc.vedlikeholdsintervall_dager} dager</span>
+                              <span>{tt("accessories.intervalShort", { days: acc.vedlikeholdsintervall_dager })}</span>
                             )}
                             {acc.neste_vedlikehold && (
                               <span className={getMaintenanceStatusColor(acc.neste_vedlikehold)}>
-                                Neste: {new Date(acc.neste_vedlikehold).toLocaleDateString('nb-NO')}
+                                {tt("accessories.nextShort", { date: new Date(acc.neste_vedlikehold).toLocaleDateString('nb-NO') })}
                               </span>
                             )}
                           </div>
@@ -1568,7 +1575,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                               className="h-8 text-xs px-2"
                             >
                               <Wrench className="w-3 h-3 mr-1" />
-                              Utfør
+                              {tt("accessories.doButton")}
                             </Button>
                           )}
                           <Button
@@ -1590,13 +1597,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             <>
               {/* Drone catalog selector */}
               <div className="border-b pb-4 mb-4">
-                <Label>Velg fra katalog (valgfritt)</Label>
+                <Label>{tt("catalogSelector.label")}</Label>
                 <Select value={selectedModelId} onValueChange={handleModelSelect}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Velg dronemodell eller angi manuelt" />
+                    <SelectValue placeholder={tt("catalogSelector.placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="manual">Angi manuelt</SelectItem>
+                    <SelectItem value="manual">{tt("catalogSelector.manual")}</SelectItem>
                     {droneModels.map((model) => (
                       <SelectItem key={model.id} value={model.id}>
                         {model.name} ({model.eu_class})
@@ -1605,13 +1612,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Velg en modell for å auto-fylle vekt, payload og klasse
+                  {tt("catalogSelector.autofillHint")}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="modell">Modell</Label>
+                  <Label htmlFor="modell">{tt("labels.model")}</Label>
                   <Input
                     id="modell"
                     value={formData.modell}
@@ -1619,7 +1626,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   />
                 </div>
                 <div>
-                  <Label htmlFor="serienummer">Serienummer</Label>
+                  <Label htmlFor="serienummer">{tt("labels.serial")}</Label>
                   <Input
                     id="serienummer"
                     value={formData.serienummer}
@@ -1629,30 +1636,30 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               </div>
 
               <div>
-                <Label htmlFor="internal_serial">Internt serienummer</Label>
+                <Label htmlFor="internal_serial">{tt("labels.internalSerial")}</Label>
                 <Input
                   id="internal_serial"
                   value={formData.internal_serial}
                   onChange={(e) => setFormData({ ...formData, internal_serial: e.target.value })}
-                  placeholder="Valgfritt"
+                  placeholder={tt("form.internalSerialPlaceholder")}
                 />
               </div>
               <div>
-                <Label htmlFor="registration_number">Registreringsnummer</Label>
+                <Label htmlFor="registration_number">{tt("labels.registrationNumber")}</Label>
                 <Input
                   id="registration_number"
                   value={formData.registration_number}
                   onChange={(e) => setFormData({ ...formData, registration_number: e.target.value })}
-                  placeholder="Valgfritt"
+                  placeholder={tt("form.registrationNumberPlaceholder")}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="klasse">Klasse</Label>
+                  <Label htmlFor="klasse">{tt("labels.class")}</Label>
                   <Select value={formData.klasse || ""} onValueChange={(value) => setFormData({ ...formData, klasse: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg klasse" />
+                      <SelectValue placeholder={tt("form.chooseClass")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="C0">C0</SelectItem>
@@ -1665,7 +1672,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="kjøpsdato">Kjøpsdato</Label>
+                  <Label htmlFor="kjøpsdato">{tt("labels.purchaseDate")}</Label>
                   <Input
                     id="kjøpsdato"
                     type="date"
@@ -1677,32 +1684,32 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="vekt">Vekt MTOM (kg)</Label>
+                  <Label htmlFor="vekt">{tt("labels.weightMTOM")} ({tt("kgSuffix")})</Label>
                   <Input
                     id="vekt"
                     type="number"
                     step="0.01"
                     value={formData.vekt}
                     onChange={(e) => setFormData({ ...formData, vekt: e.target.value })}
-                    placeholder="f.eks. 0.9"
+                    placeholder={tt("form.weightPlaceholder")}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="payload">Payload (kg)</Label>
+                  <Label htmlFor="payload">{tt("labels.payload")} ({tt("kgSuffix")})</Label>
                   <Input
                     id="payload"
                     type="number"
                     step="0.01"
                     value={formData.payload}
                     onChange={(e) => setFormData({ ...formData, payload: e.target.value })}
-                    placeholder="f.eks. 0.5"
+                    placeholder={tt("form.payloadPlaceholder")}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="flyvetimer">Flyvetimer</Label>
+                  <Label htmlFor="flyvetimer">{tt("labels.flightHours")}</Label>
                   <Input
                     id="flyvetimer"
                     type="number"
@@ -1713,7 +1720,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   />
                 </div>
                 <div>
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="status">{tt("labels.status")}</Label>
                   <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                     <SelectTrigger>
                       <SelectValue />
@@ -1732,14 +1739,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <CollapsibleTrigger asChild>
                   <button type="button" className="flex items-center gap-2 w-full border-t pt-4 mt-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                     <Calendar className="w-4 h-4" />
-                    Inspeksjon og vedlikeholdsintervall
+                    {tt("inspectionForm.sectionTitle")}
                     <ChevronDown className="w-4 h-4 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-4 pt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="sist_inspeksjon">Sist inspeksjon</Label>
+                      <Label htmlFor="sist_inspeksjon">{tt("inspection.lastInspection")}</Label>
                       <Input
                         id="sist_inspeksjon"
                         type="date"
@@ -1748,7 +1755,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       />
                     </div>
                     <div>
-                      <Label htmlFor="neste_inspeksjon">Neste inspeksjon</Label>
+                      <Label htmlFor="neste_inspeksjon">{tt("inspection.nextInspection")}</Label>
                       <Input
                         id="neste_inspeksjon"
                         type="date"
@@ -1761,7 +1768,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="inspection_start_date">Startdato</Label>
+                      <Label htmlFor="inspection_start_date">{tt("inspectionForm.startDate")}</Label>
                       <Input 
                         id="inspection_start_date" 
                         type="date" 
@@ -1770,11 +1777,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       />
                     </div>
                     <div>
-                      <Label htmlFor="inspection_interval_days">Intervall (dager)</Label>
+                      <Label htmlFor="inspection_interval_days">{tt("inspectionForm.intervalDays")}</Label>
                       <Input 
                         id="inspection_interval_days" 
                         type="number" 
-                        placeholder="f.eks. 90"
+                        placeholder={tt("inspectionForm.intervalDaysPlaceholder")}
                         value={formData.inspection_interval_days}
                         onChange={(e) => setFormData({ ...formData, inspection_interval_days: e.target.value })}
                       />
@@ -1782,22 +1789,22 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="inspection_interval_hours">Flytimer mellom inspeksjoner</Label>
+                      <Label htmlFor="inspection_interval_hours">{tt("inspectionForm.intervalHours")}</Label>
                       <Input 
                         id="inspection_interval_hours" 
                         type="number" 
                         step="0.1"
-                        placeholder="f.eks. 50"
+                        placeholder={tt("inspectionForm.intervalHoursPlaceholder")}
                         value={formData.inspection_interval_hours}
                         onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="inspection_interval_missions">Oppdrag mellom inspeksjoner</Label>
+                      <Label htmlFor="inspection_interval_missions">{tt("inspectionForm.intervalMissions")}</Label>
                       <Input 
                         id="inspection_interval_missions" 
                         type="number" 
-                        placeholder="f.eks. 100"
+                        placeholder={tt("inspectionForm.intervalMissionsPlaceholder")}
                         value={formData.inspection_interval_missions}
                         onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
                       />
@@ -1805,32 +1812,32 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="varsel_dager">Varsel dager før gul</Label>
+                      <Label htmlFor="varsel_dager">{tt("inspectionForm.warnDays")}</Label>
                       <Input 
                         id="varsel_dager" 
                         type="number" 
-                        placeholder="14"
+                        placeholder={tt("inspectionForm.warnDaysPlaceholder")}
                         value={formData.varsel_dager}
                         onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="varsel_timer">Varsel timer før gul</Label>
+                      <Label htmlFor="varsel_timer">{tt("inspectionForm.warnHours")}</Label>
                       <Input 
                         id="varsel_timer" 
                         type="number" 
                         step="0.1"
-                        placeholder="f.eks. 10"
+                        placeholder={tt("inspectionForm.warnHoursPlaceholder")}
                         value={formData.varsel_timer}
                         onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="varsel_oppdrag">Varsel oppdrag før gul</Label>
+                      <Label htmlFor="varsel_oppdrag">{tt("inspectionForm.warnMissions")}</Label>
                       <Input 
                         id="varsel_oppdrag" 
                         type="number" 
-                        placeholder="f.eks. 20"
+                        placeholder={tt("inspectionForm.warnMissionsPlaceholder")}
                         value={formData.varsel_oppdrag}
                         onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
                       />
@@ -1838,11 +1845,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </div>
                   {formData.inspection_start_date && formData.inspection_interval_days && (
                     <p className="text-sm text-muted-foreground">
-                      Neste inspeksjon beregnes automatisk basert på dagsintervall
+                      {tt("inspectionForm.autoCalcHint")}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Status trigges av det som kommer først av dager, flytimer eller oppdrag
+                    {tt("inspectionForm.statusTriggerHint")}
                   </p>
                 </CollapsibleContent>
               </Collapsible>
@@ -1851,13 +1858,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                {isEditing && checklists.length > 0 && (
                 <>
                   <div className="border-t pt-4">
-                    <Label htmlFor="sjekkliste">Sjekkliste for inspeksjon</Label>
+                    <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
                     <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                        <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
                         {checklists.map((checklist) => (
                           <SelectItem key={checklist.id} value={checklist.id}>
                             {checklist.tittel}
@@ -1866,26 +1873,26 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Hvis valgt, må sjekklisten fullføres før inspeksjon registreres
+                      {tt("checklists.inspectionHint")}
                     </p>
                   </div>
                   <div className="border-t pt-4">
-                    <Label>Operasjonssjekklister</Label>
+                    <Label>{tt("checklists.operationsLabel")}</Label>
                     {isMobile ? (
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
                             <span className="min-w-0 flex-1 truncate text-left">
                               {(formData.operations_checklist_ids || []).length > 0
-                                ? `${(formData.operations_checklist_ids || []).length} sjekkliste(r) valgt`
-                                : "Velg sjekklister (valgfritt)"}
+                                ? tt("checklists.operationsSelected", { count: (formData.operations_checklist_ids || []).length })
+                                : tt("checklists.operationsPlaceholder")}
                             </span>
                             <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="w-[95vw] max-w-md p-0 gap-0">
                           <DialogHeader className="px-4 py-3 border-b">
-                            <DialogTitle className="text-base">Operasjonssjekklister</DialogTitle>
+                            <DialogTitle className="text-base">{tt("checklists.operationsLabel")}</DialogTitle>
                           </DialogHeader>
                           <div className="max-h-[60vh] overflow-y-auto overscroll-contain px-2 py-2" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
                             {checklists.map((checklist) => (
@@ -1913,8 +1920,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
                             <span className="min-w-0 flex-1 truncate text-left">
                               {(formData.operations_checklist_ids || []).length > 0
-                                ? `${(formData.operations_checklist_ids || []).length} sjekkliste(r) valgt`
-                                : "Velg sjekklister (valgfritt)"}
+                                ? tt("checklists.operationsSelected", { count: (formData.operations_checklist_ids || []).length })
+                                : tt("checklists.operationsPlaceholder")}
                             </span>
                             <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
@@ -1942,17 +1949,17 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       </Popover>
                     )}
                     <p className="text-xs text-muted-foreground mt-1">
-                      Kobles automatisk til oppdrag når dronen legges til
+                      {tt("checklists.operationsHint")}
                     </p>
                   </div>
                   <div className="border-t pt-4">
-                    <Label htmlFor="post_flight_checklist">Post flight sjekkliste</Label>
+                    <Label htmlFor="post_flight_checklist">{tt("checklists.postFlightLabel")}</Label>
                     <Select value={formData.post_flight_checklist_id} onValueChange={(value) => setFormData({ ...formData, post_flight_checklist_id: value })}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Velg post flight sjekkliste (valgfritt)" />
+                        <SelectValue placeholder={tt("checklists.postFlightPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
                         {checklists.map((checklist) => (
                           <SelectItem key={checklist.id} value={checklist.id}>
                             {checklist.tittel}
@@ -1961,7 +1968,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Vises som bekreftelsesdialog når oppdrag fullføres
+                      {tt("checklists.postFlightHint")}
                     </p>
                   </div>
                 </>
@@ -1969,24 +1976,24 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
               {/* Technical responsible dropdown in edit mode */}
               <div className="border-t pt-4">
-                <Label>Teknisk ansvarlig</Label>
+                <Label>{tt("techResponsible.label")}</Label>
                 <SearchablePersonSelect
                   persons={technicalResponsiblePersons}
                   value={formTechnicalResponsibleId}
                   onValueChange={setFormTechnicalResponsibleId}
-                  placeholder="Velg teknisk ansvarlig..."
-                  searchPlaceholder="Søk teknisk ansvarlig..."
-                  emptyText="Ingen med rollen «Teknisk ansvarlig» funnet."
+                  placeholder={tt("techResponsible.placeholder")}
+                  searchPlaceholder={tt("techResponsible.searchPlaceholder")}
+                  emptyText={tt("techResponsible.emptyText")}
                   allowNone
-                  noneLabel="Ingen"
+                  noneLabel={tt("techResponsible.noneLabel")}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Denne personen mottar vedlikeholdsvarsel. Kvittering kan begrenses til teknisk ansvarlig eller åpnes for alle via selskapsinnstillinger.
+                  {tt("techResponsible.hint")}
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="merknader">Merknader</Label>
+                <Label htmlFor="merknader">{tt("labels.notes")}</Label>
                 <Textarea
                   id="merknader"
                   value={formData.merknader}
@@ -2000,21 +2007,21 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
         {isEditing && isAdmin && deptVis.hasDepartments && (
           <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">Synlig for avdelinger</Label>
+            <Label className="text-sm font-medium mb-2 block">{tt("deptVisibility.label")}</Label>
             <DepartmentChecklist
               departments={deptVis.childDepartments}
               selectedIds={deptVis.selectedDeptIds}
               onToggle={deptVis.handleToggle}
               allSelected={deptVis.allSelected}
               onToggleAll={deptVis.handleToggleAll}
-              allLabel="Alle avdelinger"
+              allLabel={tt("deptVisibility.allLabel")}
             />
           </div>
         )}
 
         {isEditing && isAdmin && !isSharedFromParent && drone?.company_id && (
           <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">Flytt drone</Label>
+            <Label className="text-sm font-medium mb-2 block">{tt("moveDrone.label")}</Label>
             <Button
               type="button"
               variant="outline"
@@ -2023,10 +2030,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               className="w-full sm:w-auto"
             >
               <ArrowRightLeft className="w-4 h-4 mr-2" />
-              Flytt til annen avdeling
+              {tt("moveDrone.button")}
             </Button>
             <p className="text-xs text-muted-foreground mt-1">
-              Flytt drona til en annen avdeling i samme hierarki. Velg hva som skal følge med.
+              {tt("moveDrone.hint")}
             </p>
           </div>
         )}
@@ -2037,20 +2044,20 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm" className="gap-2" disabled={isSharedFromParent}>
                   <Trash2 className="w-4 h-4" />
-                  Slett
+                  {tt("delete.button")}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                  <AlertDialogTitle>{tt("delete.dialogTitle")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Dette vil permanent slette dronen "{drone.modell}". Denne handlingen kan ikke angres.
+                    {tt("delete.dialogDesc", { name: drone.modell })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogCancel>{tt("delete.cancel")}</AlertDialogCancel>
                   <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Slett
+                    {tt("delete.confirm")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -2059,14 +2066,14 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           
           <div className="flex gap-2 ml-auto">
             {!isEditing ? (
-              <Button data-tour="drone-detail-edit" onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>Rediger</Button>
+              <Button data-tour="drone-detail-edit" onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>{tt("actions.edit")}</Button>
             ) : (
               <>
                 <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
-                  Avbryt
+                  {tt("actions.cancel")}
                 </Button>
                 <Button onClick={handleSave} disabled={isSubmitting}>
-                  {isSubmitting ? "Lagrer..." : "Lagre"}
+                  {isSubmitting ? tt("actions.saving") : tt("actions.save")}
                 </Button>
               </>
             )}
@@ -2153,11 +2160,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               userId: user.id,
               currentFlyvetimer: drone.flyvetimer,
               inspectionIntervalDays: drone.inspection_interval_days,
-              inspectionType: 'Manuell inspeksjon',
-              notes: 'Utført via sjekkliste fra dronekort',
+              inspectionType: tt("inspectionMeta.type"),
+              notes: tt("inspectionMeta.notesChecklist"),
             });
             
-            toast.success('Inspeksjon fullført');
+            toast.success(tt("toasts.inspectionDone"));
             setMissionsSinceInspection(0);
             queryClient.invalidateQueries({ queryKey: ['drones'] });
             onDroneUpdated();
@@ -2169,18 +2176,18 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       <AlertDialog open={!!accessoryToMaintain} onOpenChange={(open) => !open && setAccessoryToMaintain(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogTitle>{tt("accessoryConfirm.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil markere vedlikehold som utført for "{accessoryToMaintain?.navn}"?
+              {tt("accessoryConfirm.description", { name: accessoryToMaintain?.navn })}
               {accessoryToMaintain?.vedlikeholdsintervall_dager && (
                 <span className="block mt-2">
-                  Neste vedlikehold vil bli satt til om {accessoryToMaintain.vedlikeholdsintervall_dager} dager.
+                  {tt("accessoryConfirm.nextInDays", { days: accessoryToMaintain.vedlikeholdsintervall_dager })}
                 </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{tt("accessoryConfirm.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (accessoryToMaintain) {
@@ -2189,7 +2196,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 }
               }}
             >
-              Bekreft
+              {tt("accessoryConfirm.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2197,13 +2204,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       <AlertDialog open={confirmInspectionOpen} onOpenChange={setConfirmInspectionOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft inspeksjon</AlertDialogTitle>
+            <AlertDialogTitle>{tt("inspectionConfirm.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil registrere inspeksjon for {drone.modell}?
+              {tt("inspectionConfirm.description", { name: drone.modell })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{tt("inspectionConfirm.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 try {
@@ -2214,19 +2221,19 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     userId: user!.id,
                     currentFlyvetimer: drone.flyvetimer,
                     inspectionIntervalDays: drone.inspection_interval_days,
-                    inspectionType: 'Manuell inspeksjon',
-                    notes: 'Utført fra dronekort',
+                    inspectionType: tt("inspectionMeta.type"),
+                    notes: tt("inspectionMeta.notesCard"),
                   });
-                  toast.success('Inspeksjon registrert');
+                  toast.success(tt("toasts.inspectionRegistered"));
                   setMissionsSinceInspection(0);
                   queryClient.invalidateQueries({ queryKey: ['drones'] });
                   onDroneUpdated();
                 } catch (error: any) {
-                  toast.error(`Kunne ikke registrere inspeksjon: ${error.message}`);
+                  toast.error(tt("toasts.inspectionFailure", { message: error.message }));
                 }
               }}
             >
-              Bekreft
+              {tt("inspectionConfirm.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
