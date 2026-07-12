@@ -67,6 +67,7 @@ const splitLongTitle = (title: string): string[] => {
 
 export const DocumentDetailDialog = ({ open, onOpenChange, document, status, canManage }: DocumentDetailDialogProps) => {
   const { user, ensureValidToken, isAdmin, isSuperAdmin, companyId } = useAuth();
+  const { t } = useTranslation();
   const [downloading, setDownloading] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
