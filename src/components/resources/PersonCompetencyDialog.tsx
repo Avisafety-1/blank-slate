@@ -225,8 +225,8 @@ export function PersonCompetencyDialog({
     
     if (!newType || !newName || !person) {
       toast({
-        title: "Feil",
-        description: "Type og navn er påkrevd",
+        title: t('resourceDialogs.personCompetency.error'),
+        description: t('resourceDialogs.personCompetency.typeAndNameRequired'),
         variant: "destructive",
       });
       return;
@@ -246,9 +246,9 @@ export function PersonCompetencyDialog({
     if (error) {
       console.error("Error adding competency:", error);
       if (error.code === "42501" || error.message?.includes("policy")) {
-        toast({ title: "Ingen tillatelse", description: "Du har ikke tillatelse til å legge til kompetanse for denne personen", variant: "destructive" });
+        toast({ title: t('resourceDialogs.personCompetency.noPermission'), description: t('resourceDialogs.personCompetency.cannotAdd'), variant: "destructive" });
       } else {
-        toast({ title: "Feil", description: error.message || "Kunne ikke legge til kompetanse", variant: "destructive" });
+        toast({ title: t('resourceDialogs.personCompetency.error'), description: error.message || t('resourceDialogs.personCompetency.couldNotAdd'), variant: "destructive" });
       }
       return;
     }
@@ -262,7 +262,7 @@ export function PersonCompetencyDialog({
       await (supabase as any).from("personnel_competencies").update({ fil_url: filUrl }).eq("id", data.id);
     }
 
-    toast({ title: "Suksess", description: "Kompetanse lagt til" });
+    toast({ title: t('resourceDialogs.personCompetency.success'), description: t('resourceDialogs.personCompetency.added') });
 
     // Reset form
     setNewType("");
