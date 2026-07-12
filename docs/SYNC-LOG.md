@@ -1,5 +1,15 @@
 # Sync-logg
 
+## 2026-07-12 — i18n Fase 1.1: kalender-eksport og abonnement
+
+**Migrert:**
+- `src/components/dashboard/CalendarExportDialog.tsx` – alle JSX-strenger, select-alternativer, toasts og genererte event-titler/typer → `dashboard.calendarExport.*` (med interpolasjon `{{model}}`, `{{name}}`, `{{value}}`, `{{count}}`).
+- `src/components/dashboard/CalendarSubscriptionSection.tsx` – hele UI-en inkl. AlertDialog-tekst, verktøytips, e-postresultat, "Slik legger du til"-liste og lokalisert `toLocaleString` → `dashboard.calendarSubscription.*`.
+
+Nye nøkler under `dashboard.calendarExport` og `dashboard.calendarSubscription` i `no.json`+`en.json`. Ingen eksisterende nøkler flyttet. `tsgo --noEmit` OK.
+
+
+
 ## 2026-07-12 — i18n Fase 1.1: dashboard-dialoger
 
 **Migrert:**
