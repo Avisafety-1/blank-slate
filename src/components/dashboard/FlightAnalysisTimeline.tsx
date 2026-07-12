@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { BatterySummary } from "./FlightAnalysisDialog";
 import { Slider } from "@/components/ui/slider";
@@ -38,7 +39,7 @@ interface FlightAnalysisTimelineProps {
   batterySummary?: BatterySummary;
 }
 
-const formatTime = (idx: number, positions: TelemetryPoint[]) => {
+const formatTime = (idx: number, positions: TelemetryPoint[], locale: string = "nb-NO") => {
   const ts = positions[idx]?.timestamp;
   if (!ts) return `#${idx}`;
   const match = ts.match(/PT(\d+)S/);
@@ -49,7 +50,7 @@ const formatTime = (idx: number, positions: TelemetryPoint[]) => {
     return `${m}:${String(s).padStart(2, '0')}`;
   }
   try {
-    return new Date(ts).toLocaleTimeString("nb-NO", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return new Date(ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   } catch { return `#${idx}`; }
 };
 
@@ -70,6 +71,8 @@ const hasData = (positions: TelemetryPoint[], key: keyof TelemetryPoint) =>
   positions.some(p => p[key] !== undefined && p[key] !== null);
 
 export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange, events, showWarnings = true, batterySummary }: FlightAnalysisTimelineProps) => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === "en" ? "en-GB" : "nb-NO";
   const [activeChart, setActiveChart] = useState("altitude");
   const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
 
@@ -85,36 +88,34 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
   const isDualBattery = useMemo(() => hasData(positions, 'battery1'), [positions]);
 
   const chartData = useMemo(() => 
-    positions.map((p, i) => ({ ...p, idx: i, time: formatTime(i, positions) })),
-    [positions]
+    positions.map((p, i) => ({ ...p, idx: i, time: formatTime(i, positions, locale) })),
+    [positions, locale]
   );
 
   const current = positions[currentIndex];
 
   const availableTabs = useMemo(() => {
     const tabs: Array<{ id: string; label: string; icon: any; always?: boolean; key?: keyof TelemetryPoint; custom?: boolean }> = [
-      { id: "altitude", label: "Høyde", icon: Mountain, always: true },
-      { id: "speed", label: "Hastighet", icon: Gauge, key: "speed" as keyof TelemetryPoint },
-      { id: "gps", label: "GPS", icon: Satellite, key: "gpsNum" as keyof TelemetryPoint },
-      { id: "rc", label: "RC", icon: Gamepad2, key: "rcAileron" as keyof TelemetryPoint },
-      { id: "gimbal", label: "Gimbal", icon: Navigation, key: "gimbalPitch" as keyof TelemetryPoint },
-      { id: "distance", label: "Avstand", icon: Radio, key: "dist2D" as keyof TelemetryPoint },
-      { id: "wind", label: "Vind", icon: Wind, key: "windSpeed" as keyof TelemetryPoint },
+      { id: "altitude", label: t("dashboard.flightAnalysis.tabAltitude"), icon: Mountain, always: true },
+      { id: "speed", label: t("dashboard.flightAnalysis.tabSpeed"), icon: Gauge, key: "speed" as keyof TelemetryPoint },
+      { id: "gps", label: t("dashboard.flightAnalysis.tabGps"), icon: Satellite, key: "gpsNum" as keyof TelemetryPoint },
+      { id: "rc", label: t("dashboard.flightAnalysis.tabRc"), icon: Gamepad2, key: "rcAileron" as keyof TelemetryPoint },
+      { id: "gimbal", label: t("dashboard.flightAnalysis.tabGimbal"), icon: Navigation, key: "gimbalPitch" as keyof TelemetryPoint },
+      { id: "distance", label: t("dashboard.flightAnalysis.tabDistance"), icon: Radio, key: "dist2D" as keyof TelemetryPoint },
+      { id: "wind", label: t("dashboard.flightAnalysis.tabWind"), icon: Wind, key: "windSpeed" as keyof TelemetryPoint },
     ];
-    const result = tabs.filter(t => t.always || (t.key && hasData(positions, t.key)));
-    // Add unified battery tab if ANY battery field exists
+    const result = tabs.filter(tab => tab.always || (tab.key && hasData(positions, tab.key)));
     const hasBattData = ['battery', 'battery1', 'battery2', 'temp', 'voltage', 'current', 'temp1', 'temp2', 'voltage1', 'voltage2', 'current1', 'current2']
       .some(k => hasData(positions, k as keyof TelemetryPoint));
     if (hasBattData) {
-      const insertIdx = result.findIndex(t => t.id === 'speed');
-      result.splice(insertIdx >= 0 ? insertIdx + 1 : result.length, 0, { id: "batteryInfo", label: "Batteri", icon: Battery, custom: true });
+      const insertIdx = result.findIndex(tab => tab.id === 'speed');
+      result.splice(insertIdx >= 0 ? insertIdx + 1 : result.length, 0, { id: "batteryInfo", label: t("dashboard.flightAnalysis.tabBattery"), icon: Battery, custom: true });
     }
-    // Add warnings tab if events exist
     if (events && events.length > 0) {
-      result.push({ id: "warnings", label: "Varsler", icon: AlertTriangle, custom: true });
+      result.push({ id: "warnings", label: t("dashboard.flightAnalysis.tabWarnings"), icon: AlertTriangle, custom: true });
     }
     return result;
-  }, [positions, events]);
+  }, [positions, events, t]);
 
   const eventIndices = useMemo(() => {
     if (!events?.length || !positions.length) return [];
@@ -138,9 +139,9 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
       {/* Scrubber */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatTime(0, positions)}</span>
-          <span className="font-medium text-foreground">{formatTime(currentIndex, positions)}</span>
-          <span>{formatTime(positions.length - 1, positions)}</span>
+          <span>{formatTime(0, positions, locale)}</span>
+          <span className="font-medium text-foreground">{formatTime(currentIndex, positions, locale)}</span>
+          <span>{formatTime(positions.length - 1, positions, locale)}</span>
         </div>
         <div className="relative">
           <Slider
@@ -178,43 +179,43 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
       {/* Current values info panel */}
       {current && (
         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-1.5 text-[10px] sm:text-xs">
-          <InfoCell label="Høyde" value={`${current.height?.toFixed(0) ?? '—'}m`} />
-          <InfoCell label="MSL" value={`${current.alt?.toFixed(0) ?? '—'}m`} />
-          {current.speed !== undefined && <InfoCell label="Hast." value={`${current.speed.toFixed(1)} m/s`} />}
-          {current.vSpeed !== undefined && <InfoCell label="V.hast" value={`${current.vSpeed.toFixed(1)} m/s`} />}
-          {current.battery !== undefined && <InfoCell label="Batteri" value={`${current.battery.toFixed(0)}%`} />}
-          {current.gpsNum !== undefined && <InfoCell label="GPS" value={`${current.gpsNum} sat`} />}
-          {current.dist2D !== undefined && <InfoCell label="Avstand" value={`${current.dist2D.toFixed(0)}m`} />}
-          {current.gimbalPitch !== undefined && <InfoCell label="Gimbal" value={`${current.gimbalPitch.toFixed(0)}°`} />}
-          {current.windSpeed !== undefined && <InfoCell label="Vind" value={`${current.windSpeed.toFixed(1)} m/s`} />}
-          {current.flycState && <InfoCell label="Modus" value={current.flycState} />}
-          {current.yaw !== undefined && <InfoCell label="Heading" value={`${current.yaw.toFixed(0)}°`} />}
+          <InfoCell label={t("dashboard.flightAnalysis.cellHeight")} value={`${current.height?.toFixed(0) ?? '—'}m`} />
+          <InfoCell label={t("dashboard.flightAnalysis.cellMsl")} value={`${current.alt?.toFixed(0) ?? '—'}m`} />
+          {current.speed !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellSpeed")} value={`${current.speed.toFixed(1)} m/s`} />}
+          {current.vSpeed !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellVSpeed")} value={`${current.vSpeed.toFixed(1)} m/s`} />}
+          {current.battery !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellBattery")} value={`${current.battery.toFixed(0)}%`} />}
+          {current.gpsNum !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellGps")} value={`${current.gpsNum} ${t("dashboard.flightAnalysis.gpsSatShort")}`} />}
+          {current.dist2D !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellDistance")} value={`${current.dist2D.toFixed(0)}m`} />}
+          {current.gimbalPitch !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellGimbal")} value={`${current.gimbalPitch.toFixed(0)}°`} />}
+          {current.windSpeed !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellWind")} value={`${current.windSpeed.toFixed(1)} m/s`} />}
+          {current.flycState && <InfoCell label={t("dashboard.flightAnalysis.cellMode")} value={current.flycState} />}
+          {current.yaw !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellHeading")} value={`${current.yaw.toFixed(0)}°`} />}
         </div>
       )}
 
       {/* Charts */}
       <Tabs value={activeChart} onValueChange={setActiveChart}>
         <TabsList className="flex flex-wrap w-full h-auto gap-0.5 sm:gap-0 sm:flex-nowrap sm:h-8">
-          {availableTabs.map(t => (
-            <TabsTrigger key={t.id} value={t.id} className="flex-1 min-w-[60px] text-[10px] sm:text-xs gap-1 px-1.5 h-7 sm:h-8">
-              <t.icon className="w-3 h-3 hidden sm:block" />
-              {t.label}
+          {availableTabs.map(tab => (
+            <TabsTrigger key={tab.id} value={tab.id} className="flex-1 min-w-[60px] text-[10px] sm:text-xs gap-1 px-1.5 h-7 sm:h-8">
+              <tab.icon className="w-3 h-3 hidden sm:block" />
+              {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
 
         <TabsContent value="altitude" className="mt-2">
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            <Area type="monotone" dataKey="elevation" stroke="#8B7355" fill="#8B7355" fillOpacity={0.3} strokeWidth={1} name="Terreng" dot={false} isAnimationActive={false} />
-            <Area type="monotone" dataKey="alt" stroke="hsl(210 80% 50%)" fill="hsl(210 80% 50%)" fillOpacity={0.1} strokeWidth={2} name="MSL" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="height" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name="AGL" dot={false} isAnimationActive={false} />
+            <Area type="monotone" dataKey="elevation" stroke="#8B7355" fill="#8B7355" fillOpacity={0.3} strokeWidth={1} name={t("dashboard.flightAnalysis.seriesTerrain")} dot={false} isAnimationActive={false} />
+            <Area type="monotone" dataKey="alt" stroke="hsl(210 80% 50%)" fill="hsl(210 80% 50%)" fillOpacity={0.1} strokeWidth={2} name={t("dashboard.flightAnalysis.seriesMsl")} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="height" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.seriesAgl")} dot={false} isAnimationActive={false} />
           </MiniChart>
         </TabsContent>
 
         <TabsContent value="speed" className="mt-2">
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            <Line type="monotone" dataKey="speed" stroke="hsl(210 80% 50%)" strokeWidth={2} name="H.hastighet" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="vSpeed" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name="V.hastighet" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="speed" stroke="hsl(210 80% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesHSpeed")} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="vSpeed" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.seriesVSpeed")} dot={false} isAnimationActive={false} />
           </MiniChart>
         </TabsContent>
 
@@ -222,74 +223,74 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
         <TabsContent value="batteryInfo" className="mt-2 space-y-2">
           {batterySummary && (
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px] sm:text-xs">
-              {batterySummary.cycles != null && <InfoCell label="Sykluser" value={`${batterySummary.cycles}`} />}
-              {batterySummary.healthPct != null && <InfoCell label="Helse" value={`${batterySummary.healthPct}%`} />}
-              {batterySummary.fullCapacityMah != null && <InfoCell label="Kapasitet" value={`${batterySummary.fullCapacityMah} mAh`} />}
-              {batterySummary.voltageMinV != null && <InfoCell label="Min spenning" value={`${batterySummary.voltageMinV.toFixed(2)} V`} />}
-              {batterySummary.tempMaxC != null && <InfoCell label="Maks temp" value={`${batterySummary.tempMaxC}°C`} />}
-              {batterySummary.cellDeviationV != null && <InfoCell label="Celleavvik" value={`${batterySummary.cellDeviationV.toFixed(3)} V`} />}
+              {batterySummary.cycles != null && <InfoCell label={t("dashboard.flightAnalysis.batteryCycles")} value={`${batterySummary.cycles}`} />}
+              {batterySummary.healthPct != null && <InfoCell label={t("dashboard.flightAnalysis.batteryHealth")} value={`${batterySummary.healthPct}%`} />}
+              {batterySummary.fullCapacityMah != null && <InfoCell label={t("dashboard.flightAnalysis.batteryCapacity")} value={`${batterySummary.fullCapacityMah} mAh`} />}
+              {batterySummary.voltageMinV != null && <InfoCell label={t("dashboard.flightAnalysis.batteryMinVoltage")} value={`${batterySummary.voltageMinV.toFixed(2)} V`} />}
+              {batterySummary.tempMaxC != null && <InfoCell label={t("dashboard.flightAnalysis.batteryMaxTemp")} value={`${batterySummary.tempMaxC}°C`} />}
+              {batterySummary.cellDeviationV != null && <InfoCell label={t("dashboard.flightAnalysis.batteryCellDeviation")} value={`${batterySummary.cellDeviationV.toFixed(3)} V`} />}
             </div>
           )}
           {(hasData(positions, 'battery') || hasData(positions, 'battery1')) && (
             <div>
-              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Batteri %</p>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">{t("dashboard.flightAnalysis.seriesBatteryPctHeader")}</p>
               <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
                 {isDualBattery && hasData(positions, 'battery1') && (
-                  <Line type="monotone" dataKey="battery1" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri 1 %" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="battery1" stroke="hsl(142 76% 36%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesBattery1Pct")} dot={false} isAnimationActive={false} />
                 )}
                 {isDualBattery && hasData(positions, 'battery2') && (
-                  <Line type="monotone" dataKey="battery2" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Batteri 2 %" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="battery2" stroke="hsl(210 80% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesBattery2Pct")} dot={false} isAnimationActive={false} />
                 )}
                 {!isDualBattery && hasData(positions, 'battery') && (
-                  <Line type="monotone" dataKey="battery" stroke="hsl(142 76% 36%)" strokeWidth={2} name="Batteri %" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="battery" stroke="hsl(142 76% 36%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesBatteryPct")} dot={false} isAnimationActive={false} />
                 )}
               </MiniChart>
             </div>
           )}
           {(hasData(positions, 'temp') || hasData(positions, 'temp1') || hasData(positions, 'temp2')) && (
             <div>
-              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Temperatur °C</p>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">{t("dashboard.flightAnalysis.seriesTempHeader")}</p>
               <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
                 {hasData(positions, 'temp') && !isDualBattery && (
-                  <Line type="monotone" dataKey="temp" stroke="hsl(0 84% 60%)" strokeWidth={2} name="Temp" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="temp" stroke="hsl(0 84% 60%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesTemp")} dot={false} isAnimationActive={false} />
                 )}
                 {hasData(positions, 'temp1') && (
-                  <Line type="monotone" dataKey="temp1" stroke="hsl(0 84% 60%)" strokeWidth={2} name="Temp B1" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="temp1" stroke="hsl(0 84% 60%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesTempB1")} dot={false} isAnimationActive={false} />
                 )}
                 {hasData(positions, 'temp2') && (
-                  <Line type="monotone" dataKey="temp2" stroke="hsl(25 95% 53%)" strokeWidth={2} name="Temp B2" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="temp2" stroke="hsl(25 95% 53%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesTempB2")} dot={false} isAnimationActive={false} />
                 )}
               </MiniChart>
             </div>
           )}
           {(hasData(positions, 'current') || hasData(positions, 'current1') || hasData(positions, 'current2')) && (
             <div>
-              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Strøm A</p>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">{t("dashboard.flightAnalysis.seriesCurrentHeader")}</p>
               <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
                 {hasData(positions, 'current') && !isDualBattery && (
-                  <Line type="monotone" dataKey="current" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Strøm" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="current" stroke="hsl(210 80% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesCurrent")} dot={false} isAnimationActive={false} />
                 )}
                 {hasData(positions, 'current1') && (
-                  <Line type="monotone" dataKey="current1" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Strøm B1" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="current1" stroke="hsl(210 80% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesCurrentB1")} dot={false} isAnimationActive={false} />
                 )}
                 {hasData(positions, 'current2') && (
-                  <Line type="monotone" dataKey="current2" stroke="hsl(280 65% 60%)" strokeWidth={2} name="Strøm B2" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="current2" stroke="hsl(280 65% 60%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesCurrentB2")} dot={false} isAnimationActive={false} />
                 )}
               </MiniChart>
             </div>
           )}
           {(hasData(positions, 'voltage') || hasData(positions, 'voltage1') || hasData(positions, 'voltage2')) && (
             <div>
-              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">Spenning V</p>
+              <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">{t("dashboard.flightAnalysis.seriesVoltageHeader")}</p>
               <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []} height={100}>
                 {hasData(positions, 'voltage') && !isDualBattery && (
-                  <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={2} name="Spenning" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="voltage" stroke="hsl(38 92% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesVoltage")} dot={false} isAnimationActive={false} />
                 )}
                 {hasData(positions, 'voltage1') && (
-                  <Line type="monotone" dataKey="voltage1" stroke="hsl(38 92% 50%)" strokeWidth={2} name="Spenning B1" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="voltage1" stroke="hsl(38 92% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesVoltageB1")} dot={false} isAnimationActive={false} />
                 )}
                 {hasData(positions, 'voltage2') && (
-                  <Line type="monotone" dataKey="voltage2" stroke="hsl(280 65% 60%)" strokeWidth={2} name="Spenning B2" dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="voltage2" stroke="hsl(280 65% 60%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesVoltageB2")} dot={false} isAnimationActive={false} />
                 )}
               </MiniChart>
             </div>
@@ -298,8 +299,8 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
 
         <TabsContent value="gps" className="mt-2">
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            <Line type="stepAfter" dataKey="gpsNum" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Satellitter" dot={false} isAnimationActive={false} />
-            <ReferenceLine y={6} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label={{ value: "Min 6", fill: "hsl(var(--destructive))", fontSize: 10 }} />
+            <Line type="stepAfter" dataKey="gpsNum" stroke="hsl(210 80% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesSatellites")} dot={false} isAnimationActive={false} />
+            <ReferenceLine y={6} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label={{ value: t("dashboard.flightAnalysis.seriesMin6"), fill: "hsl(var(--destructive))", fontSize: 10 }} />
           </MiniChart>
         </TabsContent>
 
@@ -310,7 +311,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               <StickWidget
                 x={current.rcRudder ?? 0}
                 y={current.rcThrottle ?? 0}
-                label="Venstre stikke"
+                label={t("dashboard.flightAnalysis.stickLeft")}
                 xLabel="Rudder"
                 yLabel="Throttle"
                 inputRange={rcInputRange}
@@ -318,7 +319,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
               <StickWidget
                 x={current.rcAileron ?? 0}
                 y={current.rcElevator ?? 0}
-                label="Høyre stikke"
+                label={t("dashboard.flightAnalysis.stickRight")}
                 xLabel="Aileron"
                 yLabel="Elevator"
                 inputRange={rcInputRange}
@@ -326,31 +327,31 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
             </div>
           )}
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            <Line type="monotone" dataKey="rcElevator" stroke="hsl(210 80% 50%)" strokeWidth={1.5} name="Elevator" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="rcAileron" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name="Aileron" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="rcThrottle" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Throttle" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="rcRudder" stroke="hsl(280 65% 60%)" strokeWidth={1.5} name="Rudder" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="rcElevator" stroke="hsl(210 80% 50%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.seriesElevator")} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="rcAileron" stroke="hsl(142 76% 36%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.seriesAileron")} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="rcThrottle" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.seriesThrottle")} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="rcRudder" stroke="hsl(280 65% 60%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.seriesRudder")} dot={false} isAnimationActive={false} />
           </MiniChart>
         </TabsContent>
 
         <TabsContent value="gimbal" className="mt-2">
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            <Line type="monotone" dataKey="gimbalPitch" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Tilt" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="gimbalYaw" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Pan" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="gimbalPitch" stroke="hsl(210 80% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesTilt")} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="gimbalYaw" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.seriesPan")} dot={false} isAnimationActive={false} />
           </MiniChart>
         </TabsContent>
 
         <TabsContent value="distance" className="mt-2">
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            <Line type="monotone" dataKey="dist2D" stroke="hsl(210 80% 50%)" strokeWidth={2} name="2D avstand" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="dist3D" stroke="hsl(280 65% 60%)" strokeWidth={1.5} name="3D avstand" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="dist2D" stroke="hsl(210 80% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.series2D")} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="dist3D" stroke="hsl(280 65% 60%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.series3D")} dot={false} isAnimationActive={false} />
           </MiniChart>
         </TabsContent>
 
         <TabsContent value="wind" className="mt-2">
           <MiniChart data={chartData} currentIndex={currentIndex} onIndexChange={onIndexChange} eventIndices={showWarnings ? eventIndices : []}>
-            <Line type="monotone" dataKey="windSpeed" stroke="hsl(210 80% 50%)" strokeWidth={2} name="Vindstyrke m/s" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="windDir" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name="Retning °" dot={false} isAnimationActive={false} yAxisId="right" />
+            <Line type="monotone" dataKey="windSpeed" stroke="hsl(210 80% 50%)" strokeWidth={2} name={t("dashboard.flightAnalysis.seriesWindSpeed")} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="windDir" stroke="hsl(38 92% 50%)" strokeWidth={1.5} name={t("dashboard.flightAnalysis.seriesWindDir")} dot={false} isAnimationActive={false} yAxisId="right" />
           </MiniChart>
         </TabsContent>
 
@@ -359,7 +360,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
           <ScrollArea className="h-[160px]">
             <div className="space-y-1">
               {eventIndices.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">Ingen hendelser registrert</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{t("dashboard.flightAnalysis.noEvents")}</p>
               ) : (
                 eventIndices.map((e, i) => {
                   const time = formatTime(e.index, positions);

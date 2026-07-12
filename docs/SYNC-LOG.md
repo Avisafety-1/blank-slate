@@ -1,5 +1,15 @@
 # Sync-logg
 
+## 2026-07-12 — i18n Fase 1.1: FlightAnalysisTimeline + MissionMapPreview
+
+**Migrert:**
+- `src/components/dashboard/FlightAnalysisTimeline.tsx` – tab-etiketter, InfoCell-labels, recharts `name`-props, seksjonstitler, StickWidget-labels, batterisammendrag, "Ingen hendelser registrert" og lokalisert tid → `dashboard.flightAnalysis.*`.
+- `src/components/dashboard/MissionMapPreview.tsx` – Leaflet-popups (oppdragsmarkør, flytrack-detaljer, NSM/RPAS/CTR/AIP-soner, ATZ-flyplass), start/slutt-markører, tidsformatering → `dashboard.missionMapPreview.*` med interpolasjon.
+
+Nye nøkler under `dashboard.flightAnalysis` og `dashboard.missionMapPreview` i `no.json`+`en.json`. Ingen eksisterende nøkler flyttet. `tsgo --noEmit` OK.
+
+
+
 ## 2026-07-12 — i18n Fase 1.1: kalender-eksport og abonnement
 
 **Migrert:**

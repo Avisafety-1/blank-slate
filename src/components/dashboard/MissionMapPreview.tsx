@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchTerrainElevations } from "@/lib/terrainElevation";
@@ -60,6 +61,8 @@ interface MissionMapPreviewProps {
 }
 
 export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, notam }: MissionMapPreviewProps) => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === "en" ? "en-GB" : "nb-NO";
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
@@ -115,7 +118,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
       iconAnchor: [20, 40],
     });
 
-    L.marker([latitude, longitude], { icon }).addTo(map).bindPopup("Oppdragsposisjon");
+    L.marker([latitude, longitude], { icon }).addTo(map).bindPopup(t("dashboard.missionMapPreview.missionPosition"));
 
     const allPoints: [number, number][] = [[latitude, longitude]];
 
@@ -193,14 +196,14 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
           const terrainElev = terrainElevationsRef.current.get(terrainKey);
           const aglValue = altitude != null && terrainElev != null ? altitude - terrainElev : null;
           const content = `<div style="font-size:12px;line-height:1.5">
-            <strong>Punkt ${nearestIdx + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
-            ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
-            ${aglValue != null ? `<strong>Høyde (AGL): ${Math.round(aglValue)} m</strong><br/>` : ''}
-            ${terrainElev != null ? `Terreng: ${Math.round(terrainElev)} m<br/>` : ''}
-            ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
-            ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
-            ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
-            ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
+            <strong>${t("dashboard.missionMapPreview.pointOf", { n: nearestIdx + 1, total: track.positions.length })}</strong><hr style="margin:4px 0"/>
+            ${altitude != null ? t("dashboard.missionMapPreview.heightMsl", { m: Math.round(altitude) }) + '<br/>' : ''}
+            ${aglValue != null ? '<strong>' + t("dashboard.missionMapPreview.heightAgl", { m: Math.round(aglValue) }) + '</strong><br/>' : ''}
+            ${terrainElev != null ? t("dashboard.missionMapPreview.terrain", { m: Math.round(terrainElev) }) + '<br/>' : ''}
+            ${pos.speed != null ? t("dashboard.missionMapPreview.speed", { v: pos.speed.toFixed(1) }) + '<br/>' : ''}
+            ${pos.heading != null ? t("dashboard.missionMapPreview.heading", { deg: Math.round(pos.heading) }) + '<br/>' : ''}
+            ${pos.vert_speed != null ? t("dashboard.missionMapPreview.vertSpeed", { v: pos.vert_speed.toFixed(1) }) + '<br/>' : ''}
+            ${pos.timestamp ? t("dashboard.missionMapPreview.time", { t: new Date(pos.timestamp).toLocaleTimeString(locale) }) : ''}
           </div>`;
           L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
         });
@@ -208,12 +211,12 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
         const startPos = track.positions[0];
         L.circleMarker([startPos.lat, startPos.lng], {
           radius: 8, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1, pane: 'flightTrackPane',
-        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Start`);
+        }).addTo(tracksLayer).bindPopup(t("dashboard.missionMapPreview.flightStart", { n: trackIndex + 1 }));
 
         const endPos = track.positions[track.positions.length - 1];
         L.circleMarker([endPos.lat, endPos.lng], {
           radius: 8, fillColor: '#f97316', color: '#fff', weight: 2, fillOpacity: 1, pane: 'flightTrackPane',
-        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Slutt`);
+        }).addTo(tracksLayer).bindPopup(t("dashboard.missionMapPreview.flightEnd", { n: trackIndex + 1 }));
       });
     }
 
@@ -258,7 +261,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               L.geoJSON(nsmData, {
                 style: { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.15 },
                 onEachFeature: (feature, layer) => {
-                  const name = feature.properties?.navn || feature.properties?.name || 'NSM Forbudsområde';
+                  const name = feature.properties?.navn || feature.properties?.name || t("dashboard.missionMapPreview.nsmZoneDefault");
                   layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
                 }
               }).addTo(zonesLayer);
@@ -273,7 +276,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               L.geoJSON(rpasData, {
                 style: { color: '#f97316', weight: 2, fillColor: '#f97316', fillOpacity: 0.15 },
                 onEachFeature: (feature, layer) => {
-                  const name = feature.properties?.navn || feature.properties?.name || 'RPAS 5km sone';
+                  const name = feature.properties?.navn || feature.properties?.name || t("dashboard.missionMapPreview.rpasZoneDefault");
                   layer.bindPopup(`<strong>RPAS 5km</strong><br/>${name}`);
                 }
               }).addTo(zonesLayer);
@@ -288,7 +291,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               L.geoJSON(ctrData, {
                 style: { color: '#ec4899', weight: 2, fillColor: '#ec4899', fillOpacity: 0.15 },
                 onEachFeature: (feature, layer) => {
-                  const name = feature.properties?.navn || feature.properties?.name || 'CTR/TIZ';
+                  const name = feature.properties?.navn || feature.properties?.name || t("dashboard.missionMapPreview.ctrTizDefault");
                   layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
                 }
               }).addTo(zonesLayer);
@@ -304,14 +307,14 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
           for (const zone of aipZones) {
             if (!zone.geometry || !isMounted) continue;
             let color = '#f59e0b';
-            let label = 'Fareområde';
+            let label = t("dashboard.missionMapPreview.aipDanger");
             let dashArray: string | undefined = undefined;
-            if (zone.zone_type === 'P') { color = '#dc2626'; label = 'Forbudsområde'; }
-            else if (zone.zone_type === 'R') { color = '#8b5cf6'; label = 'Restriksjonsområde'; }
+            if (zone.zone_type === 'P') { color = '#dc2626'; label = t("dashboard.missionMapPreview.aipProhibited"); }
+            else if (zone.zone_type === 'R') { color = '#8b5cf6'; label = t("dashboard.missionMapPreview.aipRestricted"); }
             else if (zone.zone_type === 'D') { dashArray = '5, 5'; }
             else if (zone.zone_type === 'RMZ') { color = '#22c55e'; label = 'RMZ'; dashArray = '8, 6'; }
             else if (zone.zone_type === 'TMZ') { color = '#06b6d4'; label = 'TMZ'; dashArray = '8, 6'; }
-            else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = 'Småflyplass — 5 km'; }
+            else if (zone.zone_type === 'ATZ') { color = '#38bdf8'; label = t("dashboard.missionMapPreview.aipAtz"); }
             else if (zone.zone_type === 'CTR') { color = '#ec4899'; label = 'CTR'; }
             else if (zone.zone_type === 'TIZ') { color = '#a78bfa'; label = 'TIZ'; dashArray = '8, 6'; }
 
@@ -320,18 +323,18 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               if (zone.zone_type === 'ATZ') {
                 const tmp = L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any);
                 const center = tmp.getBounds().getCenter();
-                const displayName = zone.name || zone.zone_id || 'Ukjent småflyplass';
+                const displayName = zone.name || zone.zone_id || t("dashboard.missionMapPreview.airfieldUnknown");
                 L.circle(center, {
                   radius: 5000,
                   color, weight: 2, fillColor: color, fillOpacity: 0.15,
-                }).bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>Kontakt flyplassen — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a>`).addTo(zonesLayer);
+                }).bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${t("dashboard.missionMapPreview.contactAirfield")} <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a>`).addTo(zonesLayer);
                 continue;
               }
               L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
                 style: { color, weight: 2, fillColor: color, fillOpacity: 0.15, dashArray },
                 onEachFeature: (_feature, layer) => {
-                  const displayName = zone.name || zone.zone_id || 'Ukjent';
-                  layer.bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${zone.upper_limit ? 'Øvre: ' + zone.upper_limit : ''}`);
+                  const displayName = zone.name || zone.zone_id || t("dashboard.missionMapPreview.unknown");
+                  layer.bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${zone.upper_limit ? t("dashboard.missionMapPreview.upperLimit", { v: zone.upper_limit }) : ''}`);
                 }
               }).addTo(zonesLayer);
             } catch {}
@@ -355,7 +358,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
         // Suppress Leaflet _leaflet_pos errors during rapid unmount
       }
     };
-  }, [isVisible, latitude, longitude, route, flightTracks, notam]);
+  }, [isVisible, latitude, longitude, route, flightTracks, notam, t, locale]);
 
   return (
     <div ref={containerRef} className="relative w-full h-full rounded-lg overflow-hidden border border-border">
