@@ -521,6 +521,25 @@
       "aipProhibited": "Forbudsområde",
       "aipRestricted": "Restriksjonsområde",
       "aipAtz": "Småflyplass — 5 km"
+    },
+    "expandedMap": {
+      "titleFallback": "Oppdragskart",
+      "saveSora": "Lagre SORA-innstillinger",
+      "savingSora": "Lagrer…",
+      "soraSaveError": "Kunne ikke lagre SORA-innstillinger",
+      "soraSaved": "SORA-innstillinger lagret",
+      "waypoint": "Rutepunkt {{n}}",
+      "flightStartWithDate": "Flytur {{n}} - Start",
+      "flightStartDatePrefix": "",
+      "flightEnd": "Flytur {{n}} - Slutt",
+      "satellite": "Satellitt",
+      "standardMap": "Standard kart",
+      "plannedRoute": "Planlagt rute",
+      "actualFlight": "Faktisk flytur (farge = høyde)",
+      "maxAltitude": "Maks høyde: {{v}} m MSL",
+      "maxSpeed": "Maks hastighet: {{v}} m/s",
+      "maxAgl": "Maks AGL: {{v}} m",
+      "avgAgl": "Snitt AGL: {{v}} m"
     }
   },
   "resources": {

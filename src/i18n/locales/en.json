@@ -519,6 +519,25 @@
       "aipProhibited": "Prohibited area",
       "aipRestricted": "Restricted area",
       "aipAtz": "Airfield — 5 km"
+    },
+    "expandedMap": {
+      "titleFallback": "Mission map",
+      "saveSora": "Save SORA settings",
+      "savingSora": "Saving…",
+      "soraSaveError": "Could not save SORA settings",
+      "soraSaved": "SORA settings saved",
+      "waypoint": "Waypoint {{n}}",
+      "flightStartWithDate": "Flight {{n}} - Start",
+      "flightStartDatePrefix": "",
+      "flightEnd": "Flight {{n}} - End",
+      "satellite": "Satellite",
+      "standardMap": "Standard map",
+      "plannedRoute": "Planned route",
+      "actualFlight": "Actual flight (color = altitude)",
+      "maxAltitude": "Max altitude: {{v}} m MSL",
+      "maxSpeed": "Max speed: {{v}} m/s",
+      "maxAgl": "Max AGL: {{v}} m",
+      "avgAgl": "Avg AGL: {{v}} m"
     }
   },
   "resources": {
