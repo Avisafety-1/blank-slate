@@ -145,7 +145,8 @@ const getEccairsStatusClass = (status?: string): string => {
 };
 
 const Hendelser = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading, companyId, parentCompanyId, departmentsEnabled, isAdmin } = useAuth();
