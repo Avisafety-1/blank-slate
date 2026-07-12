@@ -1009,21 +1009,22 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" className="gap-2">
                         <Trash2 className="w-4 h-4" />
-                        Slett
+                        {t('resourceDialogs.equipmentDetail.delete')}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('resourceDialogs.equipmentDetail.deleteConfirmTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Dette vil permanent slette utstyret "{equipment.navn}". Denne handlingen kan ikke angres.
+                          {t('resourceDialogs.equipmentDetail.deleteConfirmDescription', { name: equipment.navn })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogCancel>{t('resourceDialogs.equipmentDetail.cancel')}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          Slett
+                          {t('resourceDialogs.equipmentDetail.delete')}
                         </AlertDialogAction>
+
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
