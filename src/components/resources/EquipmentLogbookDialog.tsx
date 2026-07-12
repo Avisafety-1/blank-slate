@@ -451,26 +451,32 @@ export const EquipmentLogbookDialog = ({
       const timeStr = format(new Date(), 'HH:mm');
       
       pdf.setFontSize(18);
-      pdf.text(sanitizeForPdf(`Loggbok - ${equipmentNavn}`), 14, 20);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.equipmentLogbook.pdf.title', { name: equipmentNavn })), 14, 20);
       pdf.setFontSize(11);
-      pdf.text(`Totalt ${Number(flyvetimer).toFixed(2)} flyvetimer`, 14, 28);
-      pdf.text(`Eksportert: ${dateStr} ${timeStr}`, 14, 35);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.equipmentLogbook.pdf.totalHours', { hours: Number(flyvetimer).toFixed(2) })), 14, 28);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.equipmentLogbook.pdf.exportedAt', { date: dateStr, time: timeStr })), 14, 35);
       
       if (allLogs.length === 0) {
         pdf.setFontSize(10);
-        pdf.text("Ingen oppføringer i loggboken.", 14, 55);
+        pdf.text(sanitizeForPdf(t('resourceDialogs.equipmentLogbook.pdf.noEntries')), 14, 55);
       } else {
         const tableData = allLogs.map(log => [
           formatDateForPdf(log.date, 'dd.MM.yyyy HH:mm'),
           sanitizeForPdf(log.badgeText),
           sanitizeForPdf(log.title),
           sanitizeForPdf(log.description) || '',
-          sanitizeForPdf(log.userName) || 'Ukjent'
+          sanitizeForPdf(log.userName) || t('resourceDialogs.equipmentLogbook.unknownUser'),
         ]);
 
         autoTable(pdf, {
           startY: 45,
-          head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utført av']],
+          head: [[
+            t('resourceDialogs.equipmentLogbook.pdf.columns.date'),
+            t('resourceDialogs.equipmentLogbook.pdf.columns.type'),
+            t('resourceDialogs.equipmentLogbook.pdf.columns.title'),
+            t('resourceDialogs.equipmentLogbook.pdf.columns.description'),
+            t('resourceDialogs.equipmentLogbook.pdf.columns.user'),
+          ]],
           body: tableData,
           styles: { fontSize: 8, cellPadding: 2, font: getPdfFontName() },
           headStyles: { fillColor: [59, 130, 246], font: getPdfFontName() },
@@ -483,6 +489,7 @@ export const EquipmentLogbookDialog = ({
           },
         });
       }
+
 
       if (signatureUrl) {
         const finalY = allLogs.length > 0 ? ((pdf as any).lastAutoTable?.finalY || 150) : 70;
