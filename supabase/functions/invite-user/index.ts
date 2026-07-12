@@ -44,12 +44,36 @@ serve(async (req) => {
 
     const body = await req.json();
     const { email, companyName, registrationCode } = body;
-    const language = resolveLanguage(req, body);
     if (!email || !registrationCode) {
       return new Response(JSON.stringify({ error: 'email and registrationCode are required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    // Resolve target company + its default language BEFORE picking email language,
+    // so invited users get the email in the target company's language even if the
+    // sender's UI is set to a different one.
+    let targetCompanyId: string | null = null;
+    let targetCompanyLang: 'no' | 'en' | null = null;
+    try {
+      const { data: targetCompany } = await supabase.rpc('get_company_by_registration_code', { p_code: registrationCode });
+      targetCompanyId = Array.isArray(targetCompany) && targetCompany.length > 0 ? targetCompany[0].company_id : null;
+      if (targetCompanyId) {
+        const { data: langRow } = await supabase
+          .from('companies')
+          .select('default_language')
+          .eq('id', targetCompanyId)
+          .maybeSingle();
+        const dl = (langRow as any)?.default_language;
+        targetCompanyLang = dl === 'en' ? 'en' : dl === 'no' ? 'no' : null;
+      }
+    } catch (resolveErr) {
+      console.warn('Could not resolve target company language:', resolveErr);
+    }
+
+    // Explicit body.language wins; otherwise use the target company's default; else header/default.
+    const bodyForLang = { ...body, language: body?.language ?? targetCompanyLang ?? undefined };
+    const language = resolveLanguage(req, bodyForLang);
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -78,10 +102,8 @@ serve(async (req) => {
 
     await sendEmail({ from: senderAddress, to: email, subject: sanitizeSubject(template.subject), html: template.content });
 
-    // Resolve target company from registration code
+    // Log invitation using the already-resolved target company id
     try {
-      const { data: targetCompany } = await supabase.rpc('get_company_by_registration_code', { p_code: registrationCode });
-      const targetCompanyId = Array.isArray(targetCompany) && targetCompany.length > 0 ? targetCompany[0].company_id : null;
       if (targetCompanyId) {
         await supabase.from('user_invitations').insert({
           email: email.toLowerCase(),

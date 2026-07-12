@@ -631,6 +631,7 @@ export type Database = {
           currency_requirement_enabled: boolean
           currency_requirement_hours: number
           default_anonymous_publish: boolean
+          default_language: string
           default_map_layers: Json
           default_publish_planned_missions: boolean
           default_share_contact_email: boolean
@@ -705,6 +706,7 @@ export type Database = {
           currency_requirement_enabled?: boolean
           currency_requirement_hours?: number
           default_anonymous_publish?: boolean
+          default_language?: string
           default_map_layers?: Json
           default_publish_planned_missions?: boolean
           default_share_contact_email?: boolean
@@ -779,6 +781,7 @@ export type Database = {
           currency_requirement_enabled?: boolean
           currency_requirement_hours?: number
           default_anonymous_publish?: boolean
+          default_language?: string
           default_map_layers?: Json
           default_publish_planned_missions?: boolean
           default_share_contact_email?: boolean

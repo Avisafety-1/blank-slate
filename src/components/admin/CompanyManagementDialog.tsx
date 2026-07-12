@@ -82,6 +82,7 @@ const companySchema = z.object({
     .optional()
     .or(z.literal("")),
   parent_company_id: z.string().nullable().optional(),
+  default_language: z.enum(['no', 'en']).default('no'),
 });
 
 type CompanyFormData = z.infer<typeof companySchema>;
@@ -113,6 +114,7 @@ export const CompanyManagementDialog = ({
       kontakt_epost: "",
       kontakt_telefon: "",
       parent_company_id: null,
+      default_language: 'no',
     },
   });
 
@@ -142,6 +144,7 @@ export const CompanyManagementDialog = ({
           kontakt_epost: company.kontakt_epost || "",
           kontakt_telefon: company.kontakt_telefon || "",
           parent_company_id: company.parent_company_id || null,
+          default_language: ((company as any).default_language as 'no' | 'en') || 'no',
         });
       } else {
         setStripeExempt(false);
@@ -156,6 +159,7 @@ export const CompanyManagementDialog = ({
           kontakt_epost: "",
           kontakt_telefon: "",
           parent_company_id: null,
+          default_language: 'no',
         });
       }
     }
@@ -197,6 +201,7 @@ export const CompanyManagementDialog = ({
         stripe_exempt: inheritedStripeExempt,
         parent_company_id: parentId,
         departments_enabled: departmentsEnabled,
+        default_language: data.default_language || 'no',
       };
 
       if (isCreating) {
@@ -381,6 +386,48 @@ export const CompanyManagementDialog = ({
                 </FormItem>
               )}
             />
+
+            {isSuperAdmin && (
+              <FormField
+                control={form.control}
+                name="default_language"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>{t("admin.companyDialog.defaultLanguageLabel")}</FormLabel>
+                    <p className="text-xs text-muted-foreground">
+                      {t("admin.companyDialog.defaultLanguageDesc")}
+                    </p>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="grid grid-cols-2 gap-4"
+                      >
+                        <div className="relative">
+                          <RadioGroupItem value="no" id="lang-no" className="peer sr-only" />
+                          <label
+                            htmlFor="lang-no"
+                            className="flex items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                          >
+                            <span className="font-medium">{t("admin.companyDialog.languageNorwegian")}</span>
+                          </label>
+                        </div>
+                        <div className="relative">
+                          <RadioGroupItem value="en" id="lang-en" className="peer sr-only" />
+                          <label
+                            htmlFor="lang-en"
+                            className="flex items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                          >
+                            <span className="font-medium">{t("admin.companyDialog.languageEnglish")}</span>
+                          </label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {isSuperAdmin && !forceParentCompanyId && (
               <FormField

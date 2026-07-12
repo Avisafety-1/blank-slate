@@ -20,6 +20,7 @@ import { isPasskeyLogin } from "@/lib/authMethod";
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 import { TurnstileWidget, resetTurnstile } from "@/components/auth/TurnstileWidget";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
+import i18n from "@/i18n";
 
 // Feature flag: skru av captcha-verifisering uten å fjerne kode.
 // Sett til true igjen for å reaktivere Turnstile-flyten.
@@ -38,7 +39,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [registrationCode, setRegistrationCode] = useState("");
-  const [validatedCompany, setValidatedCompany] = useState<{ id: string; name: string } | null>(null);
+  const [validatedCompany, setValidatedCompany] = useState<{ id: string; name: string; defaultLanguage?: 'no' | 'en' } | null>(null);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -108,7 +109,7 @@ const Auth = () => {
   const [googleUser, setGoogleUser] = useState<User | null>(null);
   const [googleFullName, setGoogleFullName] = useState("");
   const [googleRegistrationCode, setGoogleRegistrationCode] = useState("");
-  const [googleValidatedCompany, setGoogleValidatedCompany] = useState<{ id: string; name: string } | null>(null);
+  const [googleValidatedCompany, setGoogleValidatedCompany] = useState<{ id: string; name: string; defaultLanguage?: 'no' | 'en' } | null>(null);
   const [googleRegMode, setGoogleRegMode] = useState<'code' | 'new'>('code');
   const [googleNewCompanyName, setGoogleNewCompanyName] = useState("");
   const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
@@ -359,7 +360,15 @@ const Auth = () => {
         });
         
         if (!error && data && data.length > 0) {
-          setValidatedCompany({ id: data[0].company_id, name: data[0].company_name });
+          const companyId = data[0].company_id;
+          const { data: companyLang } = await supabase
+            .from('companies')
+            .select('default_language')
+            .eq('id', companyId)
+            .maybeSingle();
+          const lang = ((companyLang as any)?.default_language === 'en' ? 'en' : 'no') as 'no' | 'en';
+          setValidatedCompany({ id: companyId, name: data[0].company_name, defaultLanguage: lang });
+          try { await i18n.changeLanguage(lang); } catch {}
         } else {
           setValidatedCompany(null);
         }
@@ -382,7 +391,15 @@ const Auth = () => {
         });
         
         if (!error && data && data.length > 0) {
-          setGoogleValidatedCompany({ id: data[0].company_id, name: data[0].company_name });
+          const companyId = data[0].company_id;
+          const { data: companyLang } = await supabase
+            .from('companies')
+            .select('default_language')
+            .eq('id', companyId)
+            .maybeSingle();
+          const lang = ((companyLang as any)?.default_language === 'en' ? 'en' : 'no') as 'no' | 'en';
+          setGoogleValidatedCompany({ id: companyId, name: data[0].company_name, defaultLanguage: lang });
+          try { await i18n.changeLanguage(lang); } catch {}
         } else {
           setGoogleValidatedCompany(null);
         }
@@ -537,7 +554,8 @@ const Auth = () => {
             emailRedirectTo: 'https://app.avisafe.no/auth',
             data: {
               full_name: fullName,
-              company_id: validatedCompany!.id
+              company_id: validatedCompany!.id,
+              preferred_language: validatedCompany!.defaultLanguage || 'no'
             }
           }
         });
@@ -550,7 +568,8 @@ const Auth = () => {
               full_name: fullName,
               company_id: validatedCompany!.id,
               email: email,
-              approved: false
+              approved: false,
+              preferred_language: validatedCompany!.defaultLanguage || 'no'
             }, {
               onConflict: 'id'
             });
@@ -686,7 +705,8 @@ const Auth = () => {
             full_name: googleFullName.trim(),
             company_id: googleValidatedCompany!.id,
             email: googleUser.email,
-            approved: false
+            approved: false,
+            preferred_language: googleValidatedCompany!.defaultLanguage || 'no'
           });
 
         if (profileError) {
