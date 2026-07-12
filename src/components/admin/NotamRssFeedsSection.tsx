@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Rss, RefreshCw, Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { useTranslation } from "react-i18next";
 
 interface RssFeed {
   id: string;
@@ -18,6 +19,7 @@ interface RssFeed {
 }
 
 export function NotamRssFeedsSection() {
+  const { t } = useTranslation();
   const [feeds, setFeeds] = useState<RssFeed[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -44,7 +46,7 @@ export function NotamRssFeedsSection() {
 
   const addFeed = async () => {
     if (!newName.trim() || !newUrl.trim()) {
-      toast.error("Fyll inn navn og URL");
+      toast.error(t('admin.notamRss.fillNameAndUrl'));
       return;
     }
     setAdding(true);
@@ -52,9 +54,9 @@ export function NotamRssFeedsSection() {
       .from("notam_rss_feeds" as any)
       .insert({ name: newName.trim(), feed_url: newUrl.trim() } as any);
     if (error) {
-      toast.error("Kunne ikke legge til feed: " + error.message);
+      toast.error(t('admin.notamRss.addFeedError', { message: error.message }));
     } else {
-      toast.success("RSS-feed lagt til");
+      toast.success(t('admin.notamRss.feedAdded'));
       setNewName("");
       setNewUrl("");
       fetchFeeds();
@@ -68,7 +70,7 @@ export function NotamRssFeedsSection() {
       .update({ enabled } as any)
       .eq("id", id);
     if (error) {
-      toast.error("Kunne ikke oppdatere feed");
+      toast.error(t('admin.notamRss.updateFeedError'));
     } else {
       setFeeds(prev => prev.map(f => f.id === id ? { ...f, enabled } : f));
     }
@@ -80,10 +82,10 @@ export function NotamRssFeedsSection() {
       .delete()
       .eq("id", id);
     if (error) {
-      toast.error("Kunne ikke slette feed");
+      toast.error(t('admin.notamRss.deleteFeedError'));
     } else {
       setFeeds(prev => prev.filter(f => f.id !== id));
-      toast.success("Feed slettet");
+      toast.success(t('admin.notamRss.feedDeleted'));
     }
   };
 
@@ -92,9 +94,9 @@ export function NotamRssFeedsSection() {
     try {
       const { data, error } = await supabase.functions.invoke("fetch-notams");
       if (error) throw error;
-      toast.success(`NOTAM-synk fullført: ${data?.upserted || 0} oppdatert (kilde: ${data?.source || "ukjent"})`);
+      toast.success(t('admin.notamRss.syncComplete', { count: data?.upserted || 0, source: data?.source || t('admin.notamRss.unknownSource') }));
     } catch (err: any) {
-      toast.error("Synkronisering feilet: " + (err?.message || String(err)));
+      toast.error(t('admin.notamRss.syncError', { message: err?.message || String(err) }));
     }
     setSyncing(false);
   };
@@ -116,21 +118,21 @@ export function NotamRssFeedsSection() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Rss className="h-5 w-5" />
-              NOTAM RSS-feeder
+              {t('admin.notamRss.title')}
             </CardTitle>
             <CardDescription>
-              Konfigurer RSS-feeder fra notaminfo.com for å hente NOTAMs. Legg til flere feeder for å dekke hele Norge.
+              {t('admin.notamRss.description')}
             </CardDescription>
           </div>
           <Button onClick={syncNow} disabled={syncing} size="sm" variant="outline">
             {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Synk nå
+            {t('admin.notamRss.syncNow')}
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {feeds.length === 0 && (
-          <p className="text-sm text-muted-foreground">Ingen feeder konfigurert. Legg til minst én RSS-feed for å hente NOTAMs.</p>
+          <p className="text-sm text-muted-foreground">{t('admin.notamRss.noFeeds')}</p>
         )}
         {feeds.map(feed => (
           <div key={feed.id} className="flex items-center gap-3 p-3 border rounded-lg">
@@ -142,7 +144,7 @@ export function NotamRssFeedsSection() {
               <div className="flex items-center gap-2">
                 <span className="font-medium text-sm">{feed.name}</span>
                 <Badge variant={feed.enabled ? "default" : "secondary"} className="text-xs">
-                  {feed.enabled ? "Aktiv" : "Inaktiv"}
+                  {feed.enabled ? t('admin.notamRss.active') : t('admin.notamRss.inactive')}
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground truncate">{feed.feed_url}</p>
@@ -159,10 +161,10 @@ export function NotamRssFeedsSection() {
         ))}
 
         <div className="border-t pt-4 space-y-3">
-          <Label className="text-sm font-medium">Legg til ny feed</Label>
+          <Label className="text-sm font-medium">{t('admin.notamRss.addNewFeed')}</Label>
           <div className="flex gap-2">
             <Input
-              placeholder="Navn (f.eks. Nord-Norge)"
+              placeholder={t('admin.notamRss.namePlaceholder')}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="flex-1"
@@ -178,7 +180,7 @@ export function NotamRssFeedsSection() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Opprett kontoer på notaminfo.com med ulike dekningsområder, og legg til RSS-feed-URLene her.
+            {t('admin.notamRss.helpText')}
           </p>
         </div>
       </CardContent>

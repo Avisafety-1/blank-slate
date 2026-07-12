@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Copy, RefreshCw, Loader2, Plane, Info } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const FEED_FN = "flighthub2-airspace-feed";
 
@@ -24,6 +25,7 @@ interface LogRow {
 }
 
 export const FH2AirspaceFeedSection = () => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID as
     | string
@@ -83,11 +85,11 @@ export const FH2AirspaceFeedSection = () => {
     );
     setRotating(false);
     if (error || !data?.api_key) {
-      toast.error("Kunne ikke generere ny API-nøkkel");
+      toast.error(t("admin.fh2Feed.errorGenerateKey"));
       return;
     }
     setShowKey(data.api_key);
-    toast.success("Ny API-nøkkel generert — kopier den nå");
+    toast.success(t("admin.fh2Feed.keyGenerated"));
     load();
   };
 
@@ -98,22 +100,22 @@ export const FH2AirspaceFeedSection = () => {
       { body: { action: "set_enabled", enabled: val } },
     );
     if (error) {
-      toast.error("Kunne ikke oppdatere status");
+      toast.error(t("admin.fh2Feed.errorUpdateStatus"));
       setEnabled(!val);
     }
   };
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(`${label} kopiert`);
+    toast.success(t("admin.fh2Feed.copiedLabel", { label }));
   };
 
   return (
     <div className="relative space-y-4 rounded-lg border-2 border-destructive/50 bg-destructive/10 p-4 backdrop-blur-sm">
       <Alert variant="destructive" className="bg-destructive/20 border-destructive">
-        <AlertTitle className="font-bold uppercase tracking-wide">Under utvikling!</AlertTitle>
+        <AlertTitle className="font-bold uppercase tracking-wide">{t("admin.fh2Feed.underDevelopment")}</AlertTitle>
         <AlertDescription>
-          Denne funksjonen er ikke produksjonsklar og kan endre seg eller slutte å virke uten varsel.
+          {t("admin.fh2Feed.underDevelopmentDesc")}
         </AlertDescription>
       </Alert>
       <div className="flex items-start justify-between gap-3">
@@ -123,29 +125,26 @@ export const FH2AirspaceFeedSection = () => {
             FlightHub 2 — Third-Party Airspace Data (pull)
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            DJI FlightHub 2 henter sivil flytrafikk fra dette endepunktet og
-            viser den i FH2-kartet. Skill fra "Airspace Management" som er
-            push-mottak.
+            {t("admin.fh2Feed.description")}
           </p>
         </div>
         <Badge variant={enabled ? "default" : "secondary"}>
-          {enabled ? "Aktiv" : "Deaktivert"}
+          {enabled ? t("admin.common.active") : t("admin.common.deactivated")}
         </Badge>
       </div>
 
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Slik konfigurerer du i FH2</AlertTitle>
+        <AlertTitle>{t("admin.fh2Feed.howToConfigure")}</AlertTitle>
         <AlertDescription className="text-xs space-y-1">
-          <div>1. Generér en API-nøkkel under, kopier den.</div>
-          <div>2. I FH2 → Data Management → Airspace Data Configuration:
-            sett <b>Service provider URL</b> = URL under, og lim inn nøkkelen som <b>API Key</b>.</div>
-          <div>3. Trykk <b>Verify</b> i FH2. Forespørsler vises i loggen nederst.</div>
+          <div>{t("admin.fh2Feed.step1")}</div>
+          <div dangerouslySetInnerHTML={{ __html: t("admin.fh2Feed.step2") }} />
+          <div dangerouslySetInnerHTML={{ __html: t("admin.fh2Feed.step3") }} />
         </AlertDescription>
       </Alert>
 
       <div className="space-y-2">
-        <Label className="text-xs">Service provider URL</Label>
+        <Label className="text-xs">{t("admin.fh2Feed.serviceProviderUrl")}</Label>
         <div className="flex gap-2">
           <Input value={feedUrl} readOnly className="font-mono text-xs" />
           <Button variant="outline" size="icon" onClick={() => copy(feedUrl, "URL")}>
@@ -155,20 +154,20 @@ export const FH2AirspaceFeedSection = () => {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs">API-nøkkel</Label>
+        <Label className="text-xs">{t("admin.fh2Feed.apiKey")}</Label>
         {showKey ? (
           <Alert>
-            <AlertTitle>Vises kun nå</AlertTitle>
+            <AlertTitle>{t("admin.fh2Feed.shownOnceOnly")}</AlertTitle>
             <AlertDescription className="space-y-2">
               <code className="block break-all rounded bg-muted p-2 text-xs">
                 {showKey}
               </code>
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => copy(showKey, "Nøkkel")}>
-                  <Copy className="h-3 w-3 mr-1" /> Kopier
+                  <Copy className="h-3 w-3 mr-1" /> {t("admin.common.copy")}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setShowKey(null)}>
-                  Lukk
+                  {t("admin.common.close")}
                 </Button>
               </div>
             </AlertDescription>
@@ -179,7 +178,7 @@ export const FH2AirspaceFeedSection = () => {
               value={
                 keyPrefix
                   ? `${keyPrefix}••••••••••••••••••••••••••••••••••`
-                  : "Ingen nøkkel"
+                  : t("admin.fh2Feed.noKey")
               }
               readOnly
               className="font-mono text-xs"
@@ -190,7 +189,7 @@ export const FH2AirspaceFeedSection = () => {
               ) : (
                 <RefreshCw className="h-3 w-3 mr-1" />
               )}
-              {keyPrefix ? "Roter" : "Generér"}
+              {keyPrefix ? t("admin.common.rotate") : t("admin.common.generate")}
             </Button>
           </div>
         )}
@@ -198,9 +197,9 @@ export const FH2AirspaceFeedSection = () => {
 
       <div className="flex items-center justify-between rounded-md border border-border/50 p-3">
         <div>
-          <Label className="text-sm">Aktiver feed</Label>
+          <Label className="text-sm">{t("admin.fh2Feed.enableFeed")}</Label>
           <p className="text-xs text-muted-foreground">
-            Når av: DJI får 401 selv med korrekt nøkkel.
+            {t("admin.fh2Feed.enableFeedDesc")}
           </p>
         </div>
         <Switch checked={enabled} onCheckedChange={toggle} />
@@ -208,32 +207,32 @@ export const FH2AirspaceFeedSection = () => {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs">Siste 20 forespørsler fra DJI</Label>
+          <Label className="text-xs">{t("admin.fh2Feed.last20Requests")}</Label>
           <span className="text-xs text-muted-foreground">
             {lastRequestAt
-              ? `Sist: ${new Date(lastRequestAt).toLocaleString("no-NO")}`
-              : "Ingen ennå"}
+              ? t("admin.fh2Feed.lastAt", { time: new Date(lastRequestAt).toLocaleString("no-NO") })
+              : t("admin.fh2Feed.noneYet")}
           </span>
         </div>
         <div className="rounded-md border border-border/50 overflow-hidden">
           {loading ? (
             <div className="p-3 text-center text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> Laster…
+              <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> {t("admin.common.loadingEllipsis")}
             </div>
           ) : logs.length === 0 ? (
             <div className="p-3 text-center text-xs text-muted-foreground">
-              Ingen requests logget ennå. Trykk <b>Verify</b> i FH2.
+              {t("admin.fh2Feed.noRequestsLogged")}
             </div>
           ) : (
             <table className="w-full text-xs">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left p-2">Tid</th>
-                  <th className="text-left p-2">Metode</th>
-                  <th className="text-left p-2">Path</th>
-                  <th className="text-left p-2">Query</th>
-                  <th className="text-left p-2">Status</th>
-                  <th className="text-left p-2">Nøkkel</th>
+                  <th className="text-left p-2">{t("admin.fh2Feed.colTime")}</th>
+                  <th className="text-left p-2">{t("admin.fh2Feed.colMethod")}</th>
+                  <th className="text-left p-2">{t("admin.fh2Feed.colPath")}</th>
+                  <th className="text-left p-2">{t("admin.fh2Feed.colQuery")}</th>
+                  <th className="text-left p-2">{t("admin.fh2Feed.colStatus")}</th>
+                  <th className="text-left p-2">{t("admin.fh2Feed.colKey")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,9 +265,7 @@ export const FH2AirspaceFeedSection = () => {
           )}
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Loggen oppdateres hvert 10. sekund. Bruk denne til å se eksakt hva DJI
-          sender (path, query-parametre, headers) før vi kobler på faktisk
-          trafikk-data.
+          {t("admin.fh2Feed.logFooter")}
         </p>
       </div>
     </div>

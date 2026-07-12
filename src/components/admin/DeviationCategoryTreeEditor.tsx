@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Check, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const AVISAFE_PRESET: { label: string; children?: string[] }[] = [
   
@@ -58,6 +59,7 @@ function buildTree(rows: DbCategory[]): CategoryNode[] {
 }
 
 export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Props) => {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<DbCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -74,7 +76,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
         _company_id: companyId,
       });
       if (error) {
-        toast.error("Kunne ikke laste kategorier");
+        toast.error(t("admin.deviationCategory.errorLoading"));
       } else {
         setRows(data || []);
       }
@@ -84,7 +86,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
         .select("id, parent_id, label, sort_order, company_id")
         .eq("company_id", companyId);
       if (error) {
-        toast.error("Kunne ikke laste kategorier");
+        toast.error(t("admin.deviationCategory.errorLoading"));
       } else {
         setRows(data || []);
       }
@@ -117,9 +119,9 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
       sort_order: sortOrder,
     });
     if (error) {
-      toast.error("Kunne ikke legge til");
+      toast.error(t("admin.deviationCategory.errorAdding"));
     } else {
-      toast.success("Kategori lagt til");
+      toast.success(t("admin.deviationCategory.categoryAdded"));
       setNewLabel("");
       setAddingUnder(null);
       if (parentId) setExpanded((p) => new Set(p).add(parentId));
@@ -134,7 +136,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
       .update({ label: editValue.trim() })
       .eq("id", id);
     if (error) {
-      toast.error("Kunne ikke lagre");
+      toast.error(t("admin.deviationCategory.errorSaving"));
     } else {
       setEditingId(null);
       fetchRows();
@@ -142,15 +144,15 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
   };
 
   const deleteNode = async (id: string) => {
-    if (!confirm("Slette kategorien og alle underkategorier?")) return;
+    if (!confirm(t("admin.deviationCategory.confirmDelete"))) return;
     const { error } = await (supabase as any)
       .from("deviation_report_categories")
       .delete()
       .eq("id", id);
     if (error) {
-      toast.error("Kunne ikke slette");
+      toast.error(t("admin.deviationCategory.errorDeleting"));
     } else {
-      toast.success("Slettet");
+      toast.success(t("admin.deviationCategory.deleted"));
       fetchRows();
     }
   };
@@ -177,7 +179,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
 
   const applyAviSafePreset = async () => {
     if (rows.length > 0) {
-      if (!confirm("Dette legger til AviSafe-forslagene som nye kategorier. Eksisterende kategorier beholdes. Fortsette?")) return;
+      if (!confirm(t("admin.deviationCategory.confirmApplyPreset"))) return;
     }
     const existingRoots = rows.filter((r) => r.parent_id === null).length;
     const rootRows = AVISAFE_PRESET.map((p, i) => ({
@@ -191,7 +193,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
       .insert(rootRows)
       .select("id, label, sort_order");
     if (rootErr || !insertedRoots) {
-      toast.error("Kunne ikke legge til forslag");
+      toast.error(t("admin.deviationCategory.errorAddingPreset"));
       return;
     }
     const childRows: any[] = [];
@@ -206,12 +208,12 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
     if (childRows.length) {
       const { error: childErr } = await (supabase as any).from("deviation_report_categories").insert(childRows);
       if (childErr) {
-        toast.error("Rotkategorier lagt til, men feilet på underkategorier");
+        toast.error(t("admin.deviationCategory.rootAddedChildFailed"));
         fetchRows();
         return;
       }
     }
-    toast.success("AviSafe-forslag lagt til");
+    toast.success(t("admin.deviationCategory.presetAdded"));
     fetchRows();
   };
 
@@ -260,10 +262,10 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
               <span className="flex-1 text-sm">{node.label}</span>
               {!readOnly && (
                 <>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, -1)} title="Flytt opp">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, -1)} title={t("admin.deviationCategory.moveUp")}>
                     <ArrowUp className="w-3.5 h-3.5" />
                   </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, 1)} title="Flytt ned">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, 1)} title={t("admin.deviationCategory.moveDown")}>
                     <ArrowDown className="w-3.5 h-3.5" />
                   </Button>
                   <Button
@@ -271,7 +273,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
                     variant="ghost"
                     className="h-7 w-7"
                     onClick={() => setAddingUnder(node.id)}
-                    title="Legg til underkategori"
+                    title={t("admin.deviationCategory.addSubcategory")}
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </Button>
@@ -283,7 +285,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
                       setEditingId(node.id);
                       setEditValue(node.label);
                     }}
-                    title="Rediger"
+                    title={t("admin.common.edit")}
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </Button>
@@ -292,7 +294,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
                     variant="ghost"
                     className="h-7 w-7 text-destructive"
                     onClick={() => deleteNode(node.id)}
-                    title="Slett"
+                    title={t("admin.common.delete")}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -307,7 +309,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
             <Input
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
-              placeholder="Ny underkategori"
+              placeholder={t("admin.deviationCategory.newSubcategory")}
               className="h-7 text-sm flex-1"
               autoFocus
               onKeyDown={(e) => {
@@ -319,7 +321,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
               }}
             />
             <Button size="sm" className="h-7" onClick={() => addCategory(node.id)}>
-              Legg til
+              {t("admin.common.add")}
             </Button>
             <Button
               size="icon"
@@ -340,13 +342,13 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
     );
   };
 
-  if (loading) return <p className="text-xs text-muted-foreground">Laster…</p>;
+  if (loading) return <p className="text-xs text-muted-foreground">{t("admin.common.loadingEllipsis")}</p>;
 
   return (
     <div className="space-y-2">
       {tree.length === 0 && addingUnder !== "root" && (
         <p className="text-xs text-muted-foreground">
-          Ingen kategorier definert. Legg til en rotkategori for å komme i gang.
+          {t("admin.deviationCategory.noCategoriesDefined")}
         </p>
       )}
       <div className="border rounded-md p-2 bg-background/50 max-h-80 overflow-y-auto">
@@ -356,7 +358,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
             <Input
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
-              placeholder="Ny rotkategori"
+              placeholder={t("admin.deviationCategory.newRootCategory")}
               className="h-7 text-sm flex-1"
               autoFocus
               onKeyDown={(e) => {
@@ -368,7 +370,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
               }}
             />
             <Button size="sm" className="h-7" onClick={() => addCategory(null)}>
-              Legg til
+              {t("admin.common.add")}
             </Button>
             <Button
               size="icon"
@@ -388,11 +390,11 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
         <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" onClick={() => setAddingUnder("root")}>
             <Plus className="w-3.5 h-3.5 mr-1" />
-            Legg til rotkategori
+            {t("admin.deviationCategory.addRootCategory")}
           </Button>
           <Button size="sm" variant="outline" onClick={applyAviSafePreset}>
             <Sparkles className="w-3.5 h-3.5 mr-1" />
-            Bruk forslag fra AviSafe
+            {t("admin.deviationCategory.useAvisafePreset")}
           </Button>
         </div>
       )}

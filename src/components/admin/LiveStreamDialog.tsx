@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Radio, Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { WhepPlayer } from "./WhepPlayer";
+import { useTranslation } from "react-i18next";
 
 interface CameraOption {
   index: string;
@@ -36,6 +37,7 @@ const QUALITY_OPTIONS = [
 export const LiveStreamDialog = ({
   open, onOpenChange, deviceSn, deviceName, cameras, projectUuid,
 }: LiveStreamDialogProps) => {
+  const { t } = useTranslation();
   const [cameraIndex, setCameraIndex] = useState<string>("");
   const [quality, setQuality] = useState<string>("adaptive");
   const [starting, setStarting] = useState(false);
@@ -67,7 +69,7 @@ export const LiveStreamDialog = ({
 
   const start = async () => {
     if (!cameraIndex) {
-      toast.error("Velg et kamera");
+      toast.error(t("admin.liveStream.selectCamera"));
       return;
     }
     setStarting(true);
@@ -92,13 +94,13 @@ export const LiveStreamDialog = ({
       if (data?.ok && data?.url) {
         setStreamUrl(data.url);
         setExpireTs(data.expireTs ?? null);
-        toast.success("Live stream startet");
+        toast.success(t("admin.liveStream.streamStarted"));
       } else {
         setDebugAttempts(data?.attempts ?? data);
-        toast.error(data?.error || "Kunne ikke starte live stream");
+        toast.error(data?.error || t("admin.liveStream.errorStarting"));
       }
     } catch (err: any) {
-      toast.error(err?.message || "Feil ved start av live stream");
+      toast.error(err?.message || t("admin.liveStream.errorStarting"));
     } finally {
       setStarting(false);
     }
@@ -112,7 +114,7 @@ export const LiveStreamDialog = ({
   const copyUrl = () => {
     if (!streamUrl) return;
     navigator.clipboard.writeText(streamUrl);
-    toast.success("URL kopiert");
+    toast.success(t("admin.liveStream.urlCopied"));
   };
 
   const isHttp = streamUrl?.startsWith("http://");
@@ -127,17 +129,17 @@ export const LiveStreamDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Radio className="h-4 w-4" />
-            Live stream — {deviceName || deviceSn}
+            {t("admin.liveStream.title")} — {deviceName || deviceSn}
           </DialogTitle>
         </DialogHeader>
 
         {!streamUrl && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Kamera</Label>
+              <Label>{t("admin.liveStream.camera")}</Label>
               <Select value={cameraIndex} onValueChange={setCameraIndex} disabled={cameras.length === 0}>
                 <SelectTrigger>
-                  <SelectValue placeholder={cameras.length === 0 ? "Ingen kameraer funnet" : "Velg kamera"} />
+                  <SelectValue placeholder={cameras.length === 0 ? t("admin.liveStream.noCamerasFound") : t("admin.liveStream.selectCamera")} />
                 </SelectTrigger>
                 <SelectContent>
                   {cameras.map((c) => (
@@ -147,7 +149,7 @@ export const LiveStreamDialog = ({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Kvalitet</Label>
+              <Label>{t("admin.liveStream.quality")}</Label>
               <Select value={quality} onValueChange={setQuality}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -160,10 +162,10 @@ export const LiveStreamDialog = ({
 
             <div className="text-xs text-muted-foreground space-y-0.5 border rounded p-2">
               <div><span className="font-medium">SN:</span> <span className="font-mono">{deviceSn}</span></div>
-              <div><span className="font-medium">Camera index:</span> <span className="font-mono">{cameraIndex || "(ikke valgt)"}</span></div>
+              <div><span className="font-medium">Camera index:</span> <span className="font-mono">{cameraIndex || t("admin.liveStream.notSelected")}</span></div>
               <div>
                 <span className="font-medium">Project UUID (UI):</span>{" "}
-                <span className="font-mono">{projectUuid || <span className="text-muted-foreground">(ikke satt — proxy auto-løser)</span>}</span>
+                <span className="font-mono">{projectUuid || <span className="text-muted-foreground">{t("admin.liveStream.notSetAutoResolve")}</span>}</span>
               </div>
               {resolvedProjectUuid && (
                 <div>
@@ -175,7 +177,7 @@ export const LiveStreamDialog = ({
 
             {projectResolve && (
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Auto-resolve av prosjekt:</p>
+                <p className="text-xs text-muted-foreground">{t("admin.liveStream.autoResolveProject")}</p>
                 <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-40 whitespace-pre-wrap break-all">
                   {JSON.stringify(projectResolve, null, 2)}
                 </pre>
@@ -184,7 +186,7 @@ export const LiveStreamDialog = ({
 
             {debugAttempts && (
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Forsøk:</p>
+                <p className="text-xs text-muted-foreground">{t("admin.liveStream.attempts")}</p>
                 <pre className="text-[10px] bg-muted p-2 rounded overflow-x-auto max-h-60 whitespace-pre-wrap break-all">
                   {JSON.stringify(debugAttempts, null, 2)}
                 </pre>
@@ -197,17 +199,17 @@ export const LiveStreamDialog = ({
           <div className="space-y-3">
             {isHttp ? (
               <div className="space-y-2 p-3 border border-amber-500/30 bg-amber-500/10 rounded-md">
-                <p className="text-sm font-medium">Strøm-URL er HTTP (ikke HTTPS)</p>
+                <p className="text-sm font-medium">{t("admin.liveStream.httpWarningTitle")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Nettleseren blokkerer ofte blandet innhold. Bruk «Åpne i ny fane» eller kopier URL-en til VLC.
+                  {t("admin.liveStream.httpWarningDesc")}
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   <Button size="sm" variant="outline" onClick={copyUrl}>
-                    <Copy className="h-3.5 w-3.5 mr-1" /> Kopier URL
+                    <Copy className="h-3.5 w-3.5 mr-1" /> {t("admin.liveStream.copyUrl")}
                   </Button>
                   <Button size="sm" variant="outline" asChild>
                     <a href={streamUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> Åpne i ny fane
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> {t("admin.liveStream.openInNewTab")}
                     </a>
                   </Button>
                 </div>
@@ -220,9 +222,9 @@ export const LiveStreamDialog = ({
             )}
 
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              {remainingFmt && <span>Utløper om: {remainingFmt}</span>}
+              {remainingFmt && <span>{t("admin.liveStream.expiresIn", { time: remainingFmt })}</span>}
               <Button size="sm" variant="outline" onClick={copyUrl}>
-                <Copy className="h-3.5 w-3.5 mr-1" /> Kopier URL
+                <Copy className="h-3.5 w-3.5 mr-1" /> {t("admin.liveStream.copyUrl")}
               </Button>
             </div>
           </div>
@@ -231,16 +233,16 @@ export const LiveStreamDialog = ({
         <DialogFooter>
           {!streamUrl ? (
             <>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>{t("admin.common.cancel")}</Button>
               <Button onClick={start} disabled={starting || !cameraIndex}>
                 {starting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Radio className="h-4 w-4 mr-1" />}
-                Start strøm
+                {t("admin.liveStream.startStream")}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={stop}>Stopp</Button>
-              <Button onClick={() => onOpenChange(false)}>Lukk</Button>
+              <Button variant="outline" onClick={stop}>{t("admin.liveStream.stop")}</Button>
+              <Button onClick={() => onOpenChange(false)}>{t("admin.common.close")}</Button>
             </>
           )}
         </DialogFooter>
