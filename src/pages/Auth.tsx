@@ -670,7 +670,7 @@ const Auth = () => {
           role: 'administrator' as any
         });
 
-        toast.success('Selskap opprettet! Du er nå logget inn.');
+        toast.success(t('auth.companyCreatedLoggedIn'));
         
         // Redirect to app
         setShowGoogleRegistration(false);
