@@ -2161,7 +2161,88 @@
       "colActions": "Handlinger",
       "deleteChildTitle": "Slett avdeling",
       "cancel": "Avbryt",
-      "delete": "Slett"
+      "delete": "Slett",
+      "sectionTitle": "Selskapsinnstillinger — {{name}}",
+      "sectionSubtitle": "Innstillinger som gjelder for ditt selskap",
+      "inheritedBanner": "Du ser innstillinger for {{name}}",
+      "inheritedBannerDesc": "Felt merket med lås «Arvet fra {{name}}» styres av morselskapet og kan ikke endres her. Andre felt kan du overstyre selv.",
+      "inheritedFrom": "Arvet fra {{name}}",
+      "managedBy": "Styres av {{name}}",
+      "managedByParent": "Styres av morselskapet ({{name}})",
+      "generalSettings": "Generelle innstillinger",
+      "showAllAirspaceWarnings": "Vis alle luftromsadvarsler på oppdragskortene",
+      "showAllAirspaceWarningsDesc": "Når aktivert vises alle advarsler direkte i stedet for kun den viktigste med resten i en ekspanderbar liste",
+      "hideReporterIdentity": "Skjul identitet til rapportør av hendelser",
+      "hideReporterIdentityDesc": "Når aktivert vises ikke navnet på den som rapporterte hendelsen. Administratorer i moderselskapet kan fortsatt se rapportørens identitet.",
+      "incidentReportsVisibleAll": "Hendelsesrapporter synlig for alle selskaper",
+      "incidentReportsVisibleAllDesc": "Når aktivert kan morselskapet og alle avdelinger se hendelsesrapporter fra hverandre.",
+      "requireMissionApproval": "Oppdrag krever godkjenning",
+      "requireMissionApprovalDesc": "SORA-spesifikk godkjenningslogikk overstyrer dette valget",
+      "preventSelfApproval": "Kan ikke godkjenne egne oppdrag",
+      "preventSelfApprovalDesc": "Når oppdrag sendes til godkjenning kan flyger/personell på oppdraget ikke godkjenne det selv.",
+      "allUsersCanAckMaintenance": "Alle brukere kan kvittere ut vedlikehold på ressurser",
+      "allUsersCanAckMaintenanceDesc": "Når aktivert kan alle brukere med tilgang til ressursen utføre vedlikehold/inspeksjon selv om teknisk ansvarlig er satt. Teknisk ansvarlig styrer fortsatt hvem i avdelingen som får vedlikeholdsvarsel.",
+      "currencyTitle": "Krav til flytid (currency)",
+      "currencyDesc": "Sett minimum flytimer i én eller to perioder. Påvirker grønn/gul/rød-status på personell (rød = krav ikke oppfylt, gul = innenfor men nær terskelen).",
+      "ruleN": "Regel {{n}}",
+      "propagateCurrencyDesc": "Når aktivert overstyrer kravet avdelingenes egne verdier — endringer her oppdateres automatisk hos avdelingene.",
+      "requireSora": "Krev SORA på alle oppdrag",
+      "requireSoraDesc": "Alle oppdrag må ha gjennomført SORA-analyse for å kunne startes eller godkjennes. Gjelder ikke når SORA-basert godkjenning er aktivert.",
+      "settingsApplyDesc": "Når aktivert settes innstillingene over på alle avdelinger og avdelingene kan ikke overstyre dem",
+      "deviationReport": "Aktiver avviksrapport",
+      "deviationReportDescLocked": "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her.",
+      "deviationReportDescUnlocked": "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste.",
+      "categoriesUnlimited": "Kategorier (ubegrenset antall nivåer):",
+      "categoriesInherited": "Kategorier (arvet — kun lesetilgang):",
+      "chooseBufferMode": "Velg buffermodus",
+      "chooseBufferModeDesc": "Velg standard buffermodus for nye oppdrag og ruteplanlegger",
+      "flightGeoTooltip": "Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).",
+      "flightAltTooltip": "Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.",
+      "soraDefaultsApplyDesc": "Når aktivert kopieres SORA-standardverdier til alle avdelinger og låses",
+      "safeskyDesc": "Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.",
+      "callsignPrefixPlaceholder": "f.eks. nordavind (tomt = bruk selskapsnavn)",
+      "testModeDesc": "All trafikk publiseres til SafeSky med høyde 0 ft og status «on ground». Bruk for testing uten å vise drone i lufta.",
+      "propagatePrefixVariable": "Propager prefix og variabel til alle avdelinger",
+      "savingCallsign": "Lagrer…",
+      "saveCallsign": "Lagre callsign-innstillinger",
+      "newRolePlaceholder": "Ny rolle (f.eks. Ansvarlig pilot)",
+      "addRole": "Legg til",
+      "rolesPropagateDesc": "Når aktivert kopieres rollene til alle avdelinger i selskapet",
+      "soraStep1Label": "1 steg (AI-vurdering)",
+      "soraStep2Label": "2 steg (+ revurdering)",
+      "addRecipientPlaceholder": "Legg til mottaker...",
+      "searchPerson": "Søk person...",
+      "noAvailablePersons": "Ingen tilgjengelige personer.",
+      "unknownUser": "Ukjent bruker",
+      "alertsPropagateDesc": "Når aktivert kopieres varsler og mottakere til alle avdelinger",
+      "mapPublication": "Kartpublisering",
+      "defaultMapLayers": "Standard kartlag",
+      "missionTypes": "Oppdragstyper",
+      "fh2Desc": "Send rutefiler og SORA-korridorer til DJI FlightHub 2",
+      "fh2Connected": "Tilkoblet",
+      "fh2ConnectedInherited": "Arvet tilkobling",
+      "fh2OrgKeyLabel": "Organisasjonsnøkkel (FlightHub Sync)",
+      "fh2InheritedPlaceholder": "Arves fra morselskapet",
+      "fh2Placeholder": "Lim inn FlightHub Sync-nøkkel...",
+      "hide": "Skjul",
+      "show": "Vis",
+      "fh2Hint": "Bruk nøkkelen fra FlightHub 2 → Organisasjonsinnstillinger → FlightHub Sync → Organisasjonsnøkkel.",
+      "saving": "Lagrer...",
+      "save": "Lagre",
+      "testing": "Tester...",
+      "testConnection": "Test tilkobling",
+      "delete2": "Slett",
+      "fh2PropagateDesc": "Når aktivert arver underavdelinger FlightHub 2-nøkkelen fra morselskapet og kan ikke overstyre den.",
+      "fh2SuccessInherited": "Tilkoblet via morselskapet med {{count}} prosjekter",
+      "fh2SuccessOwn": "Gratulerer! Du er tilkoblet din FH2-konto med {{count}} prosjekter",
+      "departments": "Avdelinger",
+      "departmentsDesc": "Opprett og administrer avdelinger tilknyttet ditt selskap",
+      "newDepartment": "Ny avdeling",
+      "noDepartments": "Ingen avdelinger opprettet ennå.",
+      "active": "Aktiv",
+      "inactive": "Inaktiv",
+      "edit": "Rediger",
+      "deleteConfirmDesc": "Er du sikker på at du vil slette «{{name}}»? Denne handlingen kan ikke angres."
     },
     "revenueCalculator": {
       "toastSaved": "Scenarioer lagret",
@@ -6100,55 +6181,204 @@
       "birdstrike": "Fuglekollisjon (Birdstrike)"
     },
     "fields": {
-      "438": { "label": "Lokalt hendelsesnummer (File Number)", "helpText": "Lokalt referansenummer for hendelsen (autogenerert)" },
-      "601": { "label": "Overskrift (Headline)", "helpText": "Kort beskrivelse av hendelsen på engelsk (fylles automatisk fra tittel)" },
-      "433": { "label": "Lokal dato", "helpText": "Lokal dato for hendelsen (YYYY-MM-DD)" },
-      "477": { "label": "UTC dato", "helpText": "UTC-dato beregnet fra lokal dato" },
-      "457": { "label": "Lokal tid", "helpText": "Klokkeslett for hendelsen (HH:MM)" },
-      "440": { "label": "Stedsnavn (Location Name)", "helpText": "Navn på stedet hvor hendelsen skjedde" },
-      "454": { "label": "Stat/område for hendelse", "helpText": "Land/region hvor hendelsen skjedde (VL454)" },
-      "453": { "label": "Ansvarlig enhet (Responsible Entity)", "helpText": "Myndighet ansvarlig for hendelsesoppfølging (2133 = Norway CAA)" },
-      "431": { "label": "Hendelsesklasse", "helpText": "Obligatorisk for alle ECCAIRS-rapporter" },
-      "430": { "label": "Hendelseskategori (CICTT)", "helpText": "CICTT-kategori som CFIT, LOC-I, MAC, etc. (VL430)" },
-      "390": { "label": "Hendelsestype", "helpText": "Velg hendelsestype fra ECCAIRS VL390-liste (Events entity)" },
-      "1072": { "label": "Deteksjonsfase", "helpText": "Fase da hendelsen ble oppdaget" },
-      "1088": { "label": "Luftfartssektor (Aviation Sector)", "helpText": "Relatert luftfartssektor (VL1088)" },
-      "455": { "label": "Hendelsesstatus (Occurrence Status)", "helpText": "Status på hendelsen (VL455)" },
-      "32": { "label": "Luftfartøykategori", "helpText": "Kategori luftfartøy (VL32)" },
-      "244": { "label": "Serienummer (Aircraft Serial Number)", "helpText": "ECCAIRS krever numerisk serienummer, maks 11 siffer. Hentes fra tilknyttet drone når mulig, ellers settes en numerisk standardverdi." },
-      "1376": { "label": "UAS driftstillatelsestype (Operation Authorization)", "helpText": "Type driftstillatelse for UAS-operasjonen (VL1376)" },
-      "1388": { "label": "Kontrollmodus RPAS/UAS (Control Mode)", "helpText": "Kontrollmodus for RPAS/UAS under hendelsen (VL1388)" },
-      "1238": { "label": "RPAS/UAS karakteristisk dimensjon", "helpText": "Karakteristisk dimensjon på RPAS/UAS (VL1238)" },
-      "1243": { "label": "RPAS/UAS driftskategori (Operations Category)", "helpText": "EU-driftskategori: Open, Specific, Certified (VL1243)" },
-      "1246": { "label": "RPAS/UAS operasjonstype (Type of Operation)", "helpText": "Type operasjon: VLOS, BVLOS, EVLOS, FPV (VL1246)" },
-      "215": { "label": "Operatør (Operator)", "helpText": "Operatør (VL215) — standard: Norway → Other. Skriv inn operatørens navn i tekstfeltet.", "additionalTextField": "Operatørnavn" },
-      "13": { "label": "Luftromsklasse (Airspace Class)", "helpText": "Luftromsklasse - G (ukontrollert) er standard. Bruk C for hendelser innenfor TIZ/CTR." },
-      "15": { "label": "Luftromstype (Airspace Type)", "helpText": "Type luftrom (TMA, CTA, ATZ, RMZ, TMZ, etc.)" },
-      "1241": { "label": "RPAS/UAS luftromstype", "helpText": "Type luftrom for RPAS/UAS-operasjon (VL1241)" },
-      "432": { "label": "Skade på luftfartøy (Damage to Aircraft)", "helpText": "Skadegrad på luftfartøyet (Destroyed, Substantial, Minor, None, Unknown)" },
-      "448": { "label": "Skade på tredjepart (3rd Party Damage)", "helpText": "Skade på tredjepart (Substantial, Minor, None)" },
-      "456": { "label": "Tredjepart berørt", "helpText": "Om tredjepart ble berørt av hendelsen (VL456)" },
-      "451": { "label": "Skadegrad (Injury Level)", "helpText": "Alvorlighetsgrad på personskade (VL451)" },
-      "424": { "label": "Narrativspråk", "helpText": "Språket narrativet er skrevet på (VL424) - Norwegian = 43" },
-      "425": { "label": "Narrativ (beskrivelse)", "helpText": "Detaljert beskrivelse av hendelsen" },
-      "1091": { "label": "Rapportørens språk", "helpText": "Språket rapportørens beskrivelse er skrevet på (VL1091)" },
-      "1092": { "label": "Rapportørens beskrivelse", "helpText": "Rapportørens egen beskrivelse av hendelsen" },
-      "447": { "label": "Rapporteringsenhet (Reporting Entity)", "helpText": "Organisasjon/enhet som rapporterer hendelsen (VL447) — Operatøren som sender rapporten. Skriv inn selskapsnavn i tekstfeltet.", "additionalTextField": "Selskapsnavn" },
-      "476": { "label": "Rapportkilde (Report Source)", "helpText": "Kilde for rapporten (VL476)" },
-      "495": { "label": "Rapportskjematype (Reporting Form Type)", "helpText": "Type rapporteringsskjema (VL495)" },
-      "800": { "label": "Rapportstatus (Report Status)", "helpText": "Status på rapporten (VL800) - Draft = 7" },
-      "801": { "label": "Rapporteringsdato (Reporting Date)", "helpText": "Dato for rapportering" },
-      "802": { "label": "Rapport (vedlegg)", "helpText": "Vedlegg/ressurslenker til rapporten (Eccairs Resource Locator)" },
-      "1064": { "label": "Parter informert (Parties Informed)", "helpText": "Parter som er informert om hendelsen (VL1064)" },
-      "391": { "label": "Risikoklassifisering (Risk Classification)", "helpText": "Risikoklassifisering av hendelsen — kun RPAS-relevante verdier (VL391)" },
-      "1065": { "label": "Risikoklassifisering (intern)", "helpText": "Intern risikoklassifisering fra rapporterende organisasjon (maks 200 tegn)" },
-      "1068": { "label": "Risikovurdering (Risk Assessment)", "helpText": "Detaljert risikovurdering av hendelsen" },
-      "1070": { "label": "Konklusjoner (Conclusions)", "helpText": "Konklusjoner fra organisasjonen" },
-      "1069": { "label": "Risikoreduserende tiltak (Risk Mitigation Action)", "helpText": "Forebyggende, korrigerende eller utbedrende tiltak for å redusere risiko" },
-      "646": { "label": "Fugler/dyr observert", "helpText": "Antall fugler/dyr observert (VL646)" },
-      "647": { "label": "Fugler/dyr truffet", "helpText": "Antall fugler/dyr truffet (VL647)" },
-      "648": { "label": "Fuglestørrelse", "helpText": "Estimert størrelse på fugl (VL648)" },
-      "649": { "label": "Pilot varslet om fugler", "helpText": "Om piloten ble varslet om fugler (VL649)" }
+      "438": {
+        "label": "Lokalt hendelsesnummer (File Number)",
+        "helpText": "Lokalt referansenummer for hendelsen (autogenerert)"
+      },
+      "601": {
+        "label": "Overskrift (Headline)",
+        "helpText": "Kort beskrivelse av hendelsen på engelsk (fylles automatisk fra tittel)"
+      },
+      "433": {
+        "label": "Lokal dato",
+        "helpText": "Lokal dato for hendelsen (YYYY-MM-DD)"
+      },
+      "477": {
+        "label": "UTC dato",
+        "helpText": "UTC-dato beregnet fra lokal dato"
+      },
+      "457": {
+        "label": "Lokal tid",
+        "helpText": "Klokkeslett for hendelsen (HH:MM)"
+      },
+      "440": {
+        "label": "Stedsnavn (Location Name)",
+        "helpText": "Navn på stedet hvor hendelsen skjedde"
+      },
+      "454": {
+        "label": "Stat/område for hendelse",
+        "helpText": "Land/region hvor hendelsen skjedde (VL454)"
+      },
+      "453": {
+        "label": "Ansvarlig enhet (Responsible Entity)",
+        "helpText": "Myndighet ansvarlig for hendelsesoppfølging (2133 = Norway CAA)"
+      },
+      "431": {
+        "label": "Hendelsesklasse",
+        "helpText": "Obligatorisk for alle ECCAIRS-rapporter"
+      },
+      "430": {
+        "label": "Hendelseskategori (CICTT)",
+        "helpText": "CICTT-kategori som CFIT, LOC-I, MAC, etc. (VL430)"
+      },
+      "390": {
+        "label": "Hendelsestype",
+        "helpText": "Velg hendelsestype fra ECCAIRS VL390-liste (Events entity)"
+      },
+      "1072": {
+        "label": "Deteksjonsfase",
+        "helpText": "Fase da hendelsen ble oppdaget"
+      },
+      "1088": {
+        "label": "Luftfartssektor (Aviation Sector)",
+        "helpText": "Relatert luftfartssektor (VL1088)"
+      },
+      "455": {
+        "label": "Hendelsesstatus (Occurrence Status)",
+        "helpText": "Status på hendelsen (VL455)"
+      },
+      "32": {
+        "label": "Luftfartøykategori",
+        "helpText": "Kategori luftfartøy (VL32)"
+      },
+      "244": {
+        "label": "Serienummer (Aircraft Serial Number)",
+        "helpText": "ECCAIRS krever numerisk serienummer, maks 11 siffer. Hentes fra tilknyttet drone når mulig, ellers settes en numerisk standardverdi."
+      },
+      "1376": {
+        "label": "UAS driftstillatelsestype (Operation Authorization)",
+        "helpText": "Type driftstillatelse for UAS-operasjonen (VL1376)"
+      },
+      "1388": {
+        "label": "Kontrollmodus RPAS/UAS (Control Mode)",
+        "helpText": "Kontrollmodus for RPAS/UAS under hendelsen (VL1388)"
+      },
+      "1238": {
+        "label": "RPAS/UAS karakteristisk dimensjon",
+        "helpText": "Karakteristisk dimensjon på RPAS/UAS (VL1238)"
+      },
+      "1243": {
+        "label": "RPAS/UAS driftskategori (Operations Category)",
+        "helpText": "EU-driftskategori: Open, Specific, Certified (VL1243)"
+      },
+      "1246": {
+        "label": "RPAS/UAS operasjonstype (Type of Operation)",
+        "helpText": "Type operasjon: VLOS, BVLOS, EVLOS, FPV (VL1246)"
+      },
+      "215": {
+        "label": "Operatør (Operator)",
+        "helpText": "Operatør (VL215) — standard: Norway → Other. Skriv inn operatørens navn i tekstfeltet.",
+        "additionalTextField": "Operatørnavn"
+      },
+      "13": {
+        "label": "Luftromsklasse (Airspace Class)",
+        "helpText": "Luftromsklasse - G (ukontrollert) er standard. Bruk C for hendelser innenfor TIZ/CTR."
+      },
+      "15": {
+        "label": "Luftromstype (Airspace Type)",
+        "helpText": "Type luftrom (TMA, CTA, ATZ, RMZ, TMZ, etc.)"
+      },
+      "1241": {
+        "label": "RPAS/UAS luftromstype",
+        "helpText": "Type luftrom for RPAS/UAS-operasjon (VL1241)"
+      },
+      "432": {
+        "label": "Skade på luftfartøy (Damage to Aircraft)",
+        "helpText": "Skadegrad på luftfartøyet (Destroyed, Substantial, Minor, None, Unknown)"
+      },
+      "448": {
+        "label": "Skade på tredjepart (3rd Party Damage)",
+        "helpText": "Skade på tredjepart (Substantial, Minor, None)"
+      },
+      "456": {
+        "label": "Tredjepart berørt",
+        "helpText": "Om tredjepart ble berørt av hendelsen (VL456)"
+      },
+      "451": {
+        "label": "Skadegrad (Injury Level)",
+        "helpText": "Alvorlighetsgrad på personskade (VL451)"
+      },
+      "424": {
+        "label": "Narrativspråk",
+        "helpText": "Språket narrativet er skrevet på (VL424) - Norwegian = 43"
+      },
+      "425": {
+        "label": "Narrativ (beskrivelse)",
+        "helpText": "Detaljert beskrivelse av hendelsen"
+      },
+      "1091": {
+        "label": "Rapportørens språk",
+        "helpText": "Språket rapportørens beskrivelse er skrevet på (VL1091)"
+      },
+      "1092": {
+        "label": "Rapportørens beskrivelse",
+        "helpText": "Rapportørens egen beskrivelse av hendelsen"
+      },
+      "447": {
+        "label": "Rapporteringsenhet (Reporting Entity)",
+        "helpText": "Organisasjon/enhet som rapporterer hendelsen (VL447) — Operatøren som sender rapporten. Skriv inn selskapsnavn i tekstfeltet.",
+        "additionalTextField": "Selskapsnavn"
+      },
+      "476": {
+        "label": "Rapportkilde (Report Source)",
+        "helpText": "Kilde for rapporten (VL476)"
+      },
+      "495": {
+        "label": "Rapportskjematype (Reporting Form Type)",
+        "helpText": "Type rapporteringsskjema (VL495)"
+      },
+      "800": {
+        "label": "Rapportstatus (Report Status)",
+        "helpText": "Status på rapporten (VL800) - Draft = 7"
+      },
+      "801": {
+        "label": "Rapporteringsdato (Reporting Date)",
+        "helpText": "Dato for rapportering"
+      },
+      "802": {
+        "label": "Rapport (vedlegg)",
+        "helpText": "Vedlegg/ressurslenker til rapporten (Eccairs Resource Locator)"
+      },
+      "1064": {
+        "label": "Parter informert (Parties Informed)",
+        "helpText": "Parter som er informert om hendelsen (VL1064)"
+      },
+      "391": {
+        "label": "Risikoklassifisering (Risk Classification)",
+        "helpText": "Risikoklassifisering av hendelsen — kun RPAS-relevante verdier (VL391)"
+      },
+      "1065": {
+        "label": "Risikoklassifisering (intern)",
+        "helpText": "Intern risikoklassifisering fra rapporterende organisasjon (maks 200 tegn)"
+      },
+      "1068": {
+        "label": "Risikovurdering (Risk Assessment)",
+        "helpText": "Detaljert risikovurdering av hendelsen"
+      },
+      "1070": {
+        "label": "Konklusjoner (Conclusions)",
+        "helpText": "Konklusjoner fra organisasjonen"
+      },
+      "1069": {
+        "label": "Risikoreduserende tiltak (Risk Mitigation Action)",
+        "helpText": "Forebyggende, korrigerende eller utbedrende tiltak for å redusere risiko"
+      },
+      "646": {
+        "label": "Fugler/dyr observert",
+        "helpText": "Antall fugler/dyr observert (VL646)"
+      },
+      "647": {
+        "label": "Fugler/dyr truffet",
+        "helpText": "Antall fugler/dyr truffet (VL647)"
+      },
+      "648": {
+        "label": "Fuglestørrelse",
+        "helpText": "Estimert størrelse på fugl (VL648)"
+      },
+      "649": {
+        "label": "Pilot varslet om fugler",
+        "helpText": "Om piloten ble varslet om fugler (VL649)"
+      }
     }
   },
   "safety": {
