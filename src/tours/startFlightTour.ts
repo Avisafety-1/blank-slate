@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { TourDefinition } from "./types";
 import { sleep } from "./tourUtils";
 
@@ -15,18 +16,16 @@ const openStartFlightDialog = async () => {
   await sleep(450);
 };
 
-export const startFlightTour: TourDefinition = {
+export const createStartFlightTour = (t: TFunction): TourDefinition => ({
   id: "start-flight",
-  title: "Start flygning",
-  description:
-    "Lær hvordan du starter en flygning fra dashbordet — med sjekklister, oppdrag, SafeSky-publisering og DroneTag.",
+  title: t("tours.startFlight.title"),
+  description: t("tours.startFlight.description"),
   steps: [
     {
       id: "intro",
       selector: '[data-tour="dashboard-flight-controls"]',
-      title: "Start en flygning fra dashbordet",
-      description:
-        "«Start flygning»-knappen åpner dialogen hvor du velger oppdrag, gjør sjekklister og bestemmer publiseringsmodus før du tar av.",
+      title: t("tours.startFlight.steps.intro.title"),
+      description: t("tours.startFlight.steps.intro.description"),
       side: "top",
       route: "/",
       beforeStep: closeAnyOpenDialog,
@@ -35,9 +34,8 @@ export const startFlightTour: TourDefinition = {
     {
       id: "open-dialog",
       selector: '[data-tour="start-flight-dialog"]',
-      title: "Start flygning-dialogen",
-      description:
-        "Her samler vi alt du trenger før take-off: lufttrafikk, sjekklister, oppdrag, publisering og DroneTag-enhet.",
+      title: t("tours.startFlight.steps.open-dialog.title"),
+      description: t("tours.startFlight.steps.open-dialog.description"),
       side: "left",
       route: "/",
       beforeStep: openStartFlightDialog,
@@ -46,9 +44,8 @@ export const startFlightTour: TourDefinition = {
     {
       id: "traffic",
       selector: '[data-tour="start-flight-traffic"]',
-      title: "Lufttrafikk i nærheten",
-      description:
-        "AviSafe sjekker automatisk nærmeste bemannede trafikk innen 20 km. Rødt = under 5 km, gult = under 15 km. Trafikk over 5 000 ft filtreres bort.",
+      title: t("tours.startFlight.steps.traffic.title"),
+      description: t("tours.startFlight.steps.traffic.description"),
       side: "left",
       route: "/",
       beforeStep: openStartFlightDialog,
@@ -57,9 +54,8 @@ export const startFlightTour: TourDefinition = {
     {
       id: "checklists",
       selector: '[data-tour="start-flight-checklists"]',
-      title: "Sjekklister før flyging",
-      description:
-        "Selskapets påkrevde sjekklister må gjennomføres før du kan starte. Klikk «Åpne sjekkliste» for å fylle ut. Admin kan koble nye sjekklister.",
+      title: t("tours.startFlight.steps.checklists.title"),
+      description: t("tours.startFlight.steps.checklists.description"),
       side: "left",
       route: "/",
       beforeStep: openStartFlightDialog,
@@ -68,9 +64,8 @@ export const startFlightTour: TourDefinition = {
     {
       id: "mission",
       selector: '[data-tour="start-flight-mission"]',
-      title: "Velg oppdrag",
-      description:
-        "Knytt flygningen til et planlagt oppdrag. Oppdrag med rute (📍-ikon) gir tilgang til SafeSky Advisory-publisering automatisk.",
+      title: t("tours.startFlight.steps.mission.title"),
+      description: t("tours.startFlight.steps.mission.description"),
       side: "left",
       route: "/",
       beforeStep: openStartFlightDialog,
@@ -79,9 +74,8 @@ export const startFlightTour: TourDefinition = {
     {
       id: "publish-mode",
       selector: '[data-tour="start-flight-publish-mode"]',
-      title: "Publiseringsmodus",
-      description:
-        "Velg om flygningen skal publiseres til SafeSky: «Ingen», «Advisory» (rute-varsling) eller «Live UAV» (sanntidsposisjon via DroneTag). Live UAV anbefales for økt sikkerhet i delt luftrom.",
+      title: t("tours.startFlight.steps.publish-mode.title"),
+      description: t("tours.startFlight.steps.publish-mode.description"),
       side: "left",
       route: "/",
       beforeStep: openStartFlightDialog,
@@ -90,9 +84,8 @@ export const startFlightTour: TourDefinition = {
     {
       id: "dronetag",
       selector: '[data-tour="start-flight-dronetag"]',
-      title: "DroneTag-enhet",
-      description:
-        "For Live UAV må du velge en registrert DroneTag-enhet. Den sender posisjon kontinuerlig til SafeSky og andre operatører ser deg i kartet.",
+      title: t("tours.startFlight.steps.dronetag.title"),
+      description: t("tours.startFlight.steps.dronetag.description"),
       side: "left",
       route: "/",
       optional: true,
@@ -100,13 +93,12 @@ export const startFlightTour: TourDefinition = {
     {
       id: "submit",
       selector: '[data-tour="start-flight-submit"]',
-      title: "Klar til take-off",
-      description:
-        "Trykk «Start flygning» når alt er på plass. Tiden begynner å telle og flyturen havner i Aktive flygninger på dashbordet.",
+      title: t("tours.startFlight.steps.submit.title"),
+      description: t("tours.startFlight.steps.submit.description"),
       side: "top",
       route: "/",
       beforeStep: openStartFlightDialog,
       optional: true,
     },
   ],
-};
+});

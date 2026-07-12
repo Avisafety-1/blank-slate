@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { TourDefinition } from "./types";
 import { closeMobileNav, sleep } from "./tourUtils";
 
@@ -11,17 +12,16 @@ const scrollIntoView = (selector: string) => async () => {
   }
 };
 
-export const dashboardWidgetsTour: TourDefinition = {
+export const createDashboardWidgetsTour = (t: TFunction): TourDefinition => ({
   id: "dashboard-widgets",
-  title: "Dashbord-widgetene",
-  description: "Bli kjent med widgetene på forsiden — hva de viser og hvordan du bruker dem.",
+  title: t("tours.dashboardWidgets.title"),
+  description: t("tours.dashboardWidgets.description"),
   steps: [
     {
       id: "intro",
       selector: "main",
-      title: "Velkommen til dashbordet",
-      description:
-        "Forsiden gir deg et raskt overblikk: aktive flyvninger, nyheter, status, oppdrag, hendelser, kalender og nøkkeltall. Du kan dra widgetene for å endre rekkefølge.",
+      title: t("tours.dashboardWidgets.steps.intro.title"),
+      description: t("tours.dashboardWidgets.steps.intro.description"),
       side: "bottom",
       route: "/",
       beforeStep: closeMobileNav,
@@ -29,9 +29,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "log-flight",
       selector: '[data-tour="dashboard-log-flight"]',
-      title: "Logg flytid / Last opp flylogg",
-      description:
-        "Registrer flytid manuelt etter en operasjon, eller last opp flylogg fra DJI/ArduPilot for automatisk parsing av telemetri, batteri og flyspor.",
+      title: t("tours.dashboardWidgets.steps.log-flight.title"),
+      description: t("tours.dashboardWidgets.steps.log-flight.description"),
       side: "bottom",
       requiresModule: "missions",
       optional: true,
@@ -40,9 +39,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "flight-controls",
       selector: '[data-tour="dashboard-flight-controls"]',
-      title: "Start / avslutt flytur",
-      description:
-        "Start en flytur for å aktivere klokken, sjekklister og live-posisjon (DroneTag). Trykk «Avslutt» når du lander — da lagres varigheten og du kan fullføre etter-flyt-sjekklisten.",
+      title: t("tours.dashboardWidgets.steps.flight-controls.title"),
+      description: t("tours.dashboardWidgets.steps.flight-controls.description"),
       side: "top",
       requiresModule: "missions",
       optional: true,
@@ -51,9 +49,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "active-flights",
       selector: '[data-tour="dashboard-active-flights"]',
-      title: "Aktive flyvninger",
-      description:
-        "Viser pågående flyvninger i sanntid for selskapet ditt — pilot, drone, varighet og posisjon. Klikk en flyvning for å følge den på kart.",
+      title: t("tours.dashboardWidgets.steps.active-flights.title"),
+      description: t("tours.dashboardWidgets.steps.active-flights.description"),
       side: "bottom",
       requiresModule: "missions",
       optional: true,
@@ -62,9 +59,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "ai-search",
       selector: '[data-tour="dashboard-ai-search"]',
-      title: "AI-søk",
-      description:
-        "Spør AviSafe på naturlig språk — f.eks. «vis siste oppdrag i Oslo» eller «hvilke droner trenger vedlikehold?». AI-en søker på tvers av modulene du har tilgang til.",
+      title: t("tours.dashboardWidgets.steps.ai-search.title"),
+      description: t("tours.dashboardWidgets.steps.ai-search.description"),
       side: "bottom",
       optional: true,
       beforeStep: scrollIntoView('[data-tour="dashboard-ai-search"]'),
@@ -72,9 +68,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "news",
       selector: '[data-tour="dashboard-news"]',
-      title: "Nyheter",
-      description:
-        "Driftsmeldinger, nye funksjoner og varsler fra AviSafe og selskapet ditt. Hold øye med denne for viktige oppdateringer.",
+      title: t("tours.dashboardWidgets.steps.news.title"),
+      description: t("tours.dashboardWidgets.steps.news.description"),
       side: "bottom",
       optional: true,
       beforeStep: scrollIntoView('[data-tour="dashboard-news"]'),
@@ -82,9 +77,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "status",
       selector: '[data-tour="dashboard-status"]',
-      title: "Status",
-      description:
-        "Statusoversikt over ressursene dine — droner, batterier og utstyr som nærmer seg vedlikehold eller har utgått vedlikehold, samt personell med kompetanse som snart utløper eller er utgått.",
+      title: t("tours.dashboardWidgets.steps.status.title"),
+      description: t("tours.dashboardWidgets.steps.status.description"),
       side: "left",
       requiresModule: "status",
       optional: true,
@@ -93,9 +87,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "missions",
       selector: '[data-tour="dashboard-missions"]',
-      title: "Oppdrag",
-      description:
-        "Dine kommende og pågående oppdrag. Klikk et oppdrag for å åpne planlegger, sjekklister og dokumentasjon.",
+      title: t("tours.dashboardWidgets.steps.missions.title"),
+      description: t("tours.dashboardWidgets.steps.missions.description"),
       side: "top",
       requiresModule: "missions",
       optional: true,
@@ -104,9 +97,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "calendar",
       selector: '[data-tour="dashboard-calendar"]',
-      title: "Kalender",
-      description:
-        "Oversikt over planlagte oppdrag denne og neste uke. Klikk en dato for å åpne hele kalenderen.",
+      title: t("tours.dashboardWidgets.steps.calendar.title"),
+      description: t("tours.dashboardWidgets.steps.calendar.description"),
       side: "top",
       requiresModule: "calendar",
       optional: true,
@@ -115,9 +107,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "incidents",
       selector: '[data-tour="dashboard-incidents"]',
-      title: "Hendelser",
-      description:
-        "Siste rapporterte hendelser og avvik. Følg opp åpne saker eller registrer nye for å holde sikkerhetsarbeidet løpende.",
+      title: t("tours.dashboardWidgets.steps.incidents.title"),
+      description: t("tours.dashboardWidgets.steps.incidents.description"),
       side: "left",
       requiresModule: "incidents",
       optional: true,
@@ -126,9 +117,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "documents",
       selector: '[data-tour="dashboard-documents"]',
-      title: "Dokumenter",
-      description:
-        "Snarvei til siste dokumenter — manualer, sjekklister og prosedyrer. Klikk for å åpne dokumentbiblioteket.",
+      title: t("tours.dashboardWidgets.steps.documents.title"),
+      description: t("tours.dashboardWidgets.steps.documents.description"),
       side: "top",
       requiresModule: "documents",
       optional: true,
@@ -137,9 +127,8 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "kpi",
       selector: '[data-tour="dashboard-kpi"]',
-      title: "Nøkkeltall (KPI)",
-      description:
-        "Grafer og tall som viser flytid, antall oppdrag og hendelser over tid — nyttig for ledelse og rapportering.",
+      title: t("tours.dashboardWidgets.steps.kpi.title"),
+      description: t("tours.dashboardWidgets.steps.kpi.description"),
       side: "top",
       optional: true,
       beforeStep: scrollIntoView('[data-tour="dashboard-kpi"]'),
@@ -147,10 +136,9 @@ export const dashboardWidgetsTour: TourDefinition = {
     {
       id: "finish",
       selector: "main",
-      title: "Det var widgetene!",
-      description:
-        "Tips: Dra og slipp widgetene for å tilpasse dashbordet ditt. Du kan starte denne guiden igjen fra profilsiden.",
+      title: t("tours.dashboardWidgets.steps.finish.title"),
+      description: t("tours.dashboardWidgets.steps.finish.description"),
       side: "bottom",
     },
   ],
-};
+});

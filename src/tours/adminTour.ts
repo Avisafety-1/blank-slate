@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { TourDefinition } from "./types";
 import { sleep } from "./tourUtils";
 
@@ -25,29 +26,26 @@ const clickTab = async (selector: string) => {
   await sleep(200);
 };
 
-export const adminTour: TourDefinition = {
+export const createAdminTour = (t: TFunction): TourDefinition => ({
   id: "admin",
-  title: "Administrasjon — full gjennomgang",
-  description:
-    "Grundig tour gjennom admin-siden: brukere, kunder, e-post, SORA, mitt selskap og opplæring. Krever administrator-tilgang. Superadmin-funksjoner (Selskaper, NOTAM, Kalkulator) er ikke en del av denne touren.",
+  title: t("tours.admin.title"),
+  description: t("tours.admin.description"),
   steps: [
     // ---------- INTRO ----------
     {
       id: "intro",
       route: "/admin",
       selector: "main",
-      title: "Velkommen til administrasjon",
-      description:
-        "Admin-siden er kontrollpanelet for selskapet ditt. Her godkjenner du brukere, styrer roller og avdelingstilhørighet, sender invitasjoner, redigerer e-postmaler, definerer SORA-grenser og holder orden på avdelinger og opplæring. Du må være administrator for å kjøre denne touren.",
+      title: t("tours.admin.steps.intro.title"),
+      description: t("tours.admin.steps.intro.description"),
       side: "bottom",
       requiresAdmin: true,
     },
     {
       id: "tabs",
       selector: '[data-tour="admin-tabs"]',
-      title: "Faner",
-      description:
-        "Innholdet er delt i faner: <b>Brukere</b>, <b>Kunder</b>, <b>E-post</b>, <b>SORA</b> (krever tillegg), <b>Mitt selskap</b> og <b>Opplæring</b>. Vi går grundig gjennom hver fane. Noen faner kan være skjult avhengig av abonnement og tilleggsmoduler.",
+      title: t("tours.admin.steps.tabs.title"),
+      description: t("tours.admin.steps.tabs.description"),
       side: "bottom",
       requiresAdmin: true,
       beforeStep: () => clickTab('[data-tour="admin-tab-users"]'),
@@ -59,9 +57,8 @@ export const adminTour: TourDefinition = {
     {
       id: "users-tab",
       selector: '[data-tour="admin-tab-users"]',
-      title: "Brukere — oversikt",
-      description:
-        "Hovedfanen for brukerstyring. Her finner du registreringskoden, sender invitasjoner, godkjenner ventende brukere og styrer rollene til godkjente brukere.",
+      title: t("tours.admin.steps.users-tab.title"),
+      description: t("tours.admin.steps.users-tab.description"),
       side: "bottom",
       requiresAdmin: true,
       beforeStep: () => clickTab('[data-tour="admin-tab-users"]'),
@@ -69,9 +66,8 @@ export const adminTour: TourDefinition = {
     {
       id: "registration-code",
       selector: '[data-tour="admin-registration-code"]',
-      title: "Registreringskode",
-      description:
-        "Den unike koden ansatte oppgir når de registrerer seg, slik at de havner i ditt selskap. Trykk «Kopier» for å dele den. Hver avdeling har sin egen kode — sjekk under «Mitt selskap» for avdelingskoder.",
+      title: t("tours.admin.steps.registration-code.title"),
+      description: t("tours.admin.steps.registration-code.description"),
       side: "bottom",
       requiresAdmin: true,
       optional: true,
@@ -79,18 +75,16 @@ export const adminTour: TourDefinition = {
     {
       id: "invite",
       selector: '[data-tour="admin-invite"]',
-      title: "Inviter ny bruker",
-      description:
-        "Send en invitasjons-e-post med registreringskoden og en lenke. Har selskapet flere avdelinger, kan du velge hvilken avdeling brukeren skal havne i før utsending. Brukeren får en ferdig invitasjon og dukker opp under «Ventende» når kontoen er opprettet.",
+      title: t("tours.admin.steps.invite.title"),
+      description: t("tours.admin.steps.invite.description"),
       side: "bottom",
       requiresAdmin: true,
     },
     {
       id: "pending",
       selector: '[data-tour="admin-pending"]',
-      title: "Ventende godkjenninger",
-      description:
-        "Nye brukere må godkjennes før de får tilgang til appen. Trykk <b>«Godkjenn»</b> for å aktivere kontoen — eller papirkurv-ikonet for å avvise og slette. Hver godkjent bruker øker antall seter på abonnementet, så husk å avvise spam-registreringer.",
+      title: t("tours.admin.steps.pending.title"),
+      description: t("tours.admin.steps.pending.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -98,36 +92,32 @@ export const adminTour: TourDefinition = {
     {
       id: "approved-actions",
       selector: '[data-tour="admin-approved-actions"]',
-      title: "Mailliste og masse-utsending",
-      description:
-        "Knapperaden gir deg <b>Vis mailliste</b> (viser alle e-poster i et tekstfelt) og <b>Kopier mailliste</b> (kopierer alle adresser komma-separert til utklippstavlen). Praktisk for nyhetsbrev eller eksterne kommunikasjonsverktøy.",
+      title: t("tours.admin.steps.approved-actions.title"),
+      description: t("tours.admin.steps.approved-actions.description"),
       side: "bottom",
       requiresAdmin: true,
     },
     {
       id: "approved-list",
       selector: '[data-tour="admin-approved"]',
-      title: "Godkjente brukere — kort",
-      description:
-        "Listen over alle aktive brukere i selskapet (og avdelinger om du er morselskap). På desktop ser du brytere direkte i raden; på mobil åpner du kortet for å redigere. Hver bruker viser navn, e-post og avdelings-badge.",
+      title: t("tours.admin.steps.approved-list.title"),
+      description: t("tours.admin.steps.approved-list.description"),
       side: "top",
       requiresAdmin: true,
     },
     {
       id: "user-roles-switches",
       selector: '[data-tour="admin-approved"]',
-      title: "Roller og brytere per bruker",
-      description:
-        "For hver bruker styrer du: <b>Rolle</b> (administrator/bruker), <b>Avdeling</b>, <b>Teknisk ansvarlig</b> (mottar drone-vedlikeholdsvarsler), <b>Kan godkjenne oppdrag</b> (med valg av hvilke avdelinger), <b>Oppfølgingsansvarlig hendelser</b>, og <b>ECCAIRS-tilgang</b> (hvis aktivert). Endringer trer i kraft umiddelbart via RLS.",
+      title: t("tours.admin.steps.user-roles-switches.title"),
+      description: t("tours.admin.steps.user-roles-switches.description"),
       side: "top",
       requiresAdmin: true,
     },
     {
       id: "user-training-delete",
       selector: '[data-tour="admin-approved"]',
-      title: "Opplæring og sletting",
-      description:
-        "Bryteren <b>«Under opplæring»</b> låser brukeren til kun moduler du selv velger via Opplærings-pickeren — perfekt for nyansatte. <b>Slett</b>-knappen fjerner brukeren permanent fra Auth, men <i>operativ historikk beholdes</i> (oppdrag, flytider, hendelser blir bevart med navnet anonymisert).",
+      title: t("tours.admin.steps.user-training-delete.title"),
+      description: t("tours.admin.steps.user-training-delete.description"),
       side: "top",
       requiresAdmin: true,
     },
@@ -138,9 +128,8 @@ export const adminTour: TourDefinition = {
     {
       id: "tab-customers",
       selector: '[data-tour="admin-tab-customers"]',
-      title: "Kunder — fane",
-      description:
-        "Registrer og administrer eksterne oppdragsgivere. Disse kan kobles til oppdrag og brukes som intern POC på tvers av avdelinger.",
+      title: t("tours.admin.steps.tab-customers.title"),
+      description: t("tours.admin.steps.tab-customers.description"),
       side: "bottom",
       requiresAdmin: true,
       beforeStep: () => clickTab('[data-tour="admin-tab-customers"]'),
@@ -148,9 +137,8 @@ export const adminTour: TourDefinition = {
     {
       id: "customers-add",
       selector: '[data-tour="admin-content-customers"]',
-      title: "Legg til ny kunde",
-      description:
-        "Bruk «Ny kunde»-knappen øverst for å registrere kontaktinformasjon, fakturadetaljer og standard intern POC. Kunder kan tildeles ansvarlige personer som vises automatisk på oppdrag.",
+      title: t("tours.admin.steps.customers-add.title"),
+      description: t("tours.admin.steps.customers-add.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -158,9 +146,8 @@ export const adminTour: TourDefinition = {
     {
       id: "customers-list",
       selector: '[data-tour="admin-content-customers"]',
-      title: "Kundeliste og delte kunder",
-      description:
-        "Klikk på en kunde for å redigere eller arkivere. Hvis selskapet er en avdeling under et morselskap, ser du også <b>delte kunder</b> fra morselskapet markert med badge — disse er felleseie og kan brukes på dine oppdrag.",
+      title: t("tours.admin.steps.customers-list.title"),
+      description: t("tours.admin.steps.customers-list.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -172,9 +159,8 @@ export const adminTour: TourDefinition = {
     {
       id: "tab-email",
       selector: '[data-tour="admin-tab-email"]',
-      title: "E-post — fane",
-      description:
-        "Her redigerer du e-postmaler (velkomst, godkjenning, varsler), endrer avsenderinnstillinger og sender masse-e-poster til brukere/kunder.",
+      title: t("tours.admin.steps.tab-email.title"),
+      description: t("tours.admin.steps.tab-email.description"),
       side: "bottom",
       requiresAdmin: true,
       beforeStep: () => clickTab('[data-tour="admin-tab-email"]'),
@@ -182,9 +168,8 @@ export const adminTour: TourDefinition = {
     {
       id: "email-templates",
       selector: '[data-tour="admin-content-email"]',
-      title: "E-postmaler",
-      description:
-        "Øverst finner du alle redigerbare maler: <b>velkomst</b>, <b>godkjenning</b>, <b>invitasjon</b>, <b>varsler</b> osv. Klikk en mal for å redigere emnefelt og innhold med variabler som <code>{{userName}}</code> og <code>{{companyName}}</code>.",
+      title: t("tours.admin.steps.email-templates.title"),
+      description: t("tours.admin.steps.email-templates.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -192,9 +177,8 @@ export const adminTour: TourDefinition = {
     {
       id: "email-settings",
       selector: '[data-tour="admin-content-email"]',
-      title: "Avsenderinnstillinger",
-      description:
-        "Knappen <b>«E-postinnstillinger»</b> åpner dialogen hvor du setter avsendernavn, svar-til-adresse og eventuelt egen domene-konfigurasjon. Standard avsender er <code>noreply@avisafe.no</code> via Resend.",
+      title: t("tours.admin.steps.email-settings.title"),
+      description: t("tours.admin.steps.email-settings.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -202,9 +186,8 @@ export const adminTour: TourDefinition = {
     {
       id: "email-bulk",
       selector: '[data-tour="admin-content-email"]',
-      title: "Masse-utsending og historikk",
-      description:
-        "Nederst finner du <b>bulk-e-post</b>-skjemaet: velg mottakere (alle brukere, alle kunder, eller egen liste), skriv emne og innhold, og send. Historikken under skjemaet viser alle tidligere kampanjer med status og åpningsstatistikk.",
+      title: t("tours.admin.steps.email-bulk.title"),
+      description: t("tours.admin.steps.email-bulk.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -216,9 +199,8 @@ export const adminTour: TourDefinition = {
     {
       id: "tab-sora",
       selector: '[data-tour="admin-tab-sora"]',
-      title: "SORA-innstillinger",
-      description:
-        "Krever <b>SORA-tillegg</b>. Her setter du selskapsspesifikke standarder som AI-risikovurderingen og pilotene bygger oppdrag på.",
+      title: t("tours.admin.steps.tab-sora.title"),
+      description: t("tours.admin.steps.tab-sora.description"),
       side: "bottom",
       requiresAdmin: true,
       optional: true,
@@ -227,9 +209,8 @@ export const adminTour: TourDefinition = {
     {
       id: "sora-flightgeo",
       selector: '[data-tour="admin-content-sora"]',
-      title: "Standard flygeområde",
-      description:
-        "Definer standard <b>Flight Geography Area</b> som auto-fylles på nye SORA-oppdrag (typisk meter-radius rundt take-off). Pilot kan justere på enkeltoppdrag, men dette er utgangspunktet.",
+      title: t("tours.admin.steps.sora-flightgeo.title"),
+      description: t("tours.admin.steps.sora-flightgeo.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -237,9 +218,8 @@ export const adminTour: TourDefinition = {
     {
       id: "sora-altitude",
       selector: '[data-tour="admin-content-sora"]',
-      title: "Høydegrenser",
-      description:
-        "Sett selskapets standard <b>maks AGL-høyde</b>. Brukes både som auto-fyll og som terskel i risikovurdering — overstiges grensen, flagges oppdraget for ekstra vurdering.",
+      title: t("tours.admin.steps.sora-altitude.title"),
+      description: t("tours.admin.steps.sora-altitude.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -247,9 +227,8 @@ export const adminTour: TourDefinition = {
     {
       id: "sora-mitigations",
       selector: '[data-tour="admin-content-sora"]',
-      title: "Avbøtende tiltak og standarder",
-      description:
-        "Forhåndsvalgte avbøtende tiltak (M1/M2-tiltak, prosedyrer) som dukker opp på alle SORA-oppdrag. Reduserer manuelt arbeid for piloten og sikrer at selskapets standarder følges.",
+      title: t("tours.admin.steps.sora-mitigations.title"),
+      description: t("tours.admin.steps.sora-mitigations.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -261,9 +240,8 @@ export const adminTour: TourDefinition = {
     {
       id: "tab-child",
       selector: '[data-tour="admin-tab-child"]',
-      title: "Mitt selskap — fane",
-      description:
-        "Selskapsoppsett: navn, terminologi, avdelinger/datterselskap, sjekklister, integrasjoner og styring av hvilke innstillinger som propageres ned til avdelinger.",
+      title: t("tours.admin.steps.tab-child.title"),
+      description: t("tours.admin.steps.tab-child.description"),
       side: "bottom",
       requiresAdmin: true,
       beforeStep: () => clickTab('[data-tour="admin-tab-child"]'),
@@ -271,9 +249,8 @@ export const adminTour: TourDefinition = {
     {
       id: "child-info",
       selector: '[data-tour="admin-content-child"]',
-      title: "Selskapsinfo og terminologi",
-      description:
-        "Rediger navn, logo og <b>terminologi</b> — droneoperatør vs. flyselskap. Terminologien bytter ord i hele appen (f.eks. «pilot» vs. «fartøysjef»).",
+      title: t("tours.admin.steps.child-info.title"),
+      description: t("tours.admin.steps.child-info.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -281,9 +258,8 @@ export const adminTour: TourDefinition = {
     {
       id: "child-departments",
       selector: '[data-tour="admin-content-child"]',
-      title: "Avdelinger / datterselskap",
-      description:
-        "Opprett underliggende avdelinger med egen registreringskode. Hver avdeling får isolerte data via RLS, men morselskapet ser alt via hierarkisk visning. Brukere kan tilhøre én avdeling om gangen.",
+      title: t("tours.admin.steps.child-departments.title"),
+      description: t("tours.admin.steps.child-departments.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -291,9 +267,8 @@ export const adminTour: TourDefinition = {
     {
       id: "child-checklists",
       selector: '[data-tour="admin-content-child"]',
-      title: "Standard sjekklister",
-      description:
-        "Rediger standardsjekklister for pre-flight, post-flight og vedlikehold. Disse fungerer som maler for alle oppdrag og resurser i selskapet — pilot kan legge til oppdragsspesifikke punkter underveis.",
+      title: t("tours.admin.steps.child-checklists.title"),
+      description: t("tours.admin.steps.child-checklists.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -301,9 +276,8 @@ export const adminTour: TourDefinition = {
     {
       id: "child-integrations-propagation",
       selector: '[data-tour="admin-content-child"]',
-      title: "Integrasjoner og propagering",
-      description:
-        "Koble på <b>FlightHub 2</b>, <b>ECCAIRS</b> og <b>DroneTag</b> med tokens (krypteres i database). Lengre nede styrer du <b>granulær propagering</b>: hver innstillingstype (sjekklister, kunder, e-postmaler …) kan velges ut/inn for hver avdeling.",
+      title: t("tours.admin.steps.child-integrations-propagation.title"),
+      description: t("tours.admin.steps.child-integrations-propagation.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -315,9 +289,8 @@ export const adminTour: TourDefinition = {
     {
       id: "tab-training",
       selector: '[data-tour="admin-tab-training"]',
-      title: "Opplæring — fane",
-      description:
-        "Kursbygger og tildeling. Lag kurs (manuelt eller med AI), tildel til brukere, følg status og lås opp moduler basert på beståtte kurs.",
+      title: t("tours.admin.steps.tab-training.title"),
+      description: t("tours.admin.steps.tab-training.description"),
       side: "bottom",
       requiresAdmin: true,
       beforeStep: () => clickTab('[data-tour="admin-tab-training"]'),
@@ -325,9 +298,8 @@ export const adminTour: TourDefinition = {
     {
       id: "training-courses",
       selector: '[data-tour="admin-content-training"]',
-      title: "Kursbygger (manuell)",
-      description:
-        "Bygg kurs som en sekvens av moduler: <b>video</b> (YouTube/Vimeo), <b>tekst</b> (rik formatering), <b>PDF-slides</b>, og <b>guidede tourer</b> som peker rett inn i appen. Sett krav til bestått %, antall forsøk og hvilke moduler kurset låser opp ved fullføring.",
+      title: t("tours.admin.steps.training-courses.title"),
+      description: t("tours.admin.steps.training-courses.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -335,9 +307,8 @@ export const adminTour: TourDefinition = {
     {
       id: "training-ai",
       selector: '[data-tour="admin-content-training"]',
-      title: "AI-kursgenerator",
-      description:
-        "<b>«Generer med AI»</b> bygger et komplett kurs fra et tema og målgruppe — den foreslår struktur, finner relevante YouTube-klipp, skriver tekst og lager quiz. Du kan redigere alt i etterkant før publisering.",
+      title: t("tours.admin.steps.training-ai.title"),
+      description: t("tours.admin.steps.training-ai.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -345,9 +316,8 @@ export const adminTour: TourDefinition = {
     {
       id: "training-assign",
       selector: '[data-tour="admin-content-training"]',
-      title: "Tildeling",
-      description:
-        "Tildel kurs til <b>enkeltpersoner</b> eller <b>hele avdelinger</b> samtidig. Sett frist for fullføring; brukeren får varsel og ser kurset under «Mine kurs» på profilsiden.",
+      title: t("tours.admin.steps.training-assign.title"),
+      description: t("tours.admin.steps.training-assign.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -355,9 +325,8 @@ export const adminTour: TourDefinition = {
     {
       id: "training-status",
       selector: '[data-tour="admin-content-training"]',
-      title: "Status og score",
-      description:
-        "<b>Status</b>-fliken viser alle pågående og fullførte tildelinger med score, antall forsøk og tidsbruk. Beståtte kurs <i>låser opp</i> moduler i appen automatisk for brukeren.",
+      title: t("tours.admin.steps.training-status.title"),
+      description: t("tours.admin.steps.training-status.description"),
       side: "top",
       requiresAdmin: true,
       optional: true,
@@ -369,12 +338,11 @@ export const adminTour: TourDefinition = {
     {
       id: "done",
       selector: "main",
-      title: "Du har sett admin-siden",
-      description:
-        "Husk: <b>roller og godkjenninger</b> her påvirker tilganger i hele appen umiddelbart via RLS. <b>Slett</b>-knappen fjerner brukeren permanent fra Auth, men beholder operativ historikk (oppdrag, flytider, hendelser) for revisjon. Trenger du å gjenåpne touren senere finner du den under <b>«Veiledet tour»</b> i menyen.",
+      title: t("tours.admin.steps.done.title"),
+      description: t("tours.admin.steps.done.description"),
       side: "bottom",
       requiresAdmin: true,
       beforeStep: () => clickTab('[data-tour="admin-tab-users"]'),
     },
   ],
-};
+});

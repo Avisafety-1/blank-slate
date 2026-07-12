@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentLanguage } from "@/lib/i18nHelpers";
@@ -20,7 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { assignableTours } from "@/tours/tourDefinitions";
+import { getAssignableTours } from "@/tours/tourDefinitions";
 
 const TTS_VOICES: { value: string; label: string }[] = [
   { value: "coral", label: "Coral (varm, kvinnelig)" },
@@ -78,6 +78,7 @@ interface Props {
 export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
   const { t } = useTranslation();
   const { companyId, user } = useAuth();
+  const assignableTours = useMemo(() => getAssignableTours(t), [t]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [passingScore, setPassingScore] = useState(80);
@@ -462,7 +463,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       setSaving(true);
       try {
         for (const tId of tourIds) {
-          const tour = assignableTours.find((t) => t.id === tId);
+          const tour = assignableTours.find((tourItem) => tourItem.id === tId);
           if (!tour) continue;
           const payload: any = {
             title: tour.title,
@@ -687,7 +688,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                     setTourIds(
                       tourIds.length === assignableTours.length
                         ? []
-                        : assignableTours.map((t) => t.id)
+                        : assignableTours.map((tourItem) => tourItem.id)
                     )
                   }
                 >
@@ -698,25 +699,25 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                 {t("training.courseEditor.chooseToursHint")}
               </p>
               <div className="rounded-md border divide-y">
-                {assignableTours.map((t) => {
-                  const checked = tourIds.includes(t.id);
+                {assignableTours.map((tourItem) => {
+                  const checked = tourIds.includes(tourItem.id);
                   return (
                     <label
-                      key={t.id}
+                      key={tourItem.id}
                       className="flex items-start gap-3 p-3 cursor-pointer hover:bg-muted/50"
                     >
                       <Checkbox
                         checked={checked}
                         onCheckedChange={(v) =>
                           setTourIds((prev) =>
-                            v ? [...prev, t.id] : prev.filter((x) => x !== t.id)
+                            v ? [...prev, tourItem.id] : prev.filter((x) => x !== tourItem.id)
                           )
                         }
                         className="mt-0.5"
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">{t.title}</div>
-                        <div className="text-xs text-muted-foreground">{t.description}</div>
+                        <div className="text-sm font-medium">{tourItem.title}</div>
+                        <div className="text-xs text-muted-foreground">{tourItem.description}</div>
                       </div>
                     </label>
                   );
@@ -736,14 +737,14 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                   <SelectValue placeholder={t("training.courseEditor.chooseTourPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {assignableTours.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                  {assignableTours.map((tourItem) => (
+                    <SelectItem key={tourItem.id} value={tourItem.id}>{tourItem.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {tourId && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {assignableTours.find((t) => t.id === tourId)?.description}
+                  {assignableTours.find((tourItem) => tourItem.id === tourId)?.description}
                 </p>
               )}
             </div>

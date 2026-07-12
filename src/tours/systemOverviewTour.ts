@@ -1,24 +1,25 @@
+import type { TFunction } from "i18next";
 import type { TourDefinition } from "./types";
 import { openMobileNavIfNeeded, closeMobileNav } from "./tourUtils";
 
-export const systemOverviewTour: TourDefinition = {
+export const createSystemOverviewTour = (t: TFunction): TourDefinition => ({
   id: "system-overview",
-  title: "Systemoversikt",
-  description: "Bli kjent med hovedmenyen og modulene i AviSafe.",
+  title: t("tours.systemOverview.title"),
+  description: t("tours.systemOverview.description"),
   steps: [
     {
       id: "intro",
       selector: 'header',
-      title: "Velkommen til AviSafe",
-      description: "Vi tar deg gjennom hovedmenyen så du vet hvor alt ligger. Bruk Neste, Tilbake eller Hopp over når som helst.",
+      title: t("tours.systemOverview.steps.intro.title"),
+      description: t("tours.systemOverview.steps.intro.description"),
       side: "bottom",
       beforeStep: closeMobileNav,
     },
     {
       id: "nav-missions",
       selector: '[data-tour="nav-missions"]',
-      title: "Oppdrag",
-      description: "Planlegg, kjør og dokumenter alle drone­operasjoner her. Dette er hjertet av arbeidsflyten.",
+      title: t("tours.systemOverview.steps.nav-missions.title"),
+      description: t("tours.systemOverview.steps.nav-missions.description"),
       side: "bottom",
       requiresModule: "missions",
       beforeStep: openMobileNavIfNeeded,
@@ -26,8 +27,8 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-map",
       selector: '[data-tour="nav-map"]',
-      title: "Kart",
-      description: "Se luftrom, NOTAM, vær og planlegg ruter. Brukes ved planlegging og operativ vurdering.",
+      title: t("tours.systemOverview.steps.nav-map.title"),
+      description: t("tours.systemOverview.steps.nav-map.description"),
       side: "bottom",
       requiresModule: "map",
       beforeStep: openMobileNavIfNeeded,
@@ -35,8 +36,8 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-documents",
       selector: '[data-tour="nav-documents"]',
-      title: "Dokumenter",
-      description: "Felles dokumentbibliotek for prosedyrer, manualer og rapporter.",
+      title: t("tours.systemOverview.steps.nav-documents.title"),
+      description: t("tours.systemOverview.steps.nav-documents.description"),
       side: "bottom",
       requiresModule: "documents",
       beforeStep: openMobileNavIfNeeded,
@@ -44,8 +45,8 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-calendar",
       selector: '[data-tour="nav-calendar"]',
-      title: "Kalender",
-      description: "Få oversikt over planlagte oppdrag og tidsplanlegging.",
+      title: t("tours.systemOverview.steps.nav-calendar.title"),
+      description: t("tours.systemOverview.steps.nav-calendar.description"),
       side: "bottom",
       requiresModule: "calendar",
       beforeStep: openMobileNavIfNeeded,
@@ -53,8 +54,8 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-incidents",
       selector: '[data-tour="nav-incidents"]',
-      title: "Hendelser",
-      description: "Rapporter avvik, observasjoner og hendelser. Viktig for kontinuerlig sikkerhet.",
+      title: t("tours.systemOverview.steps.nav-incidents.title"),
+      description: t("tours.systemOverview.steps.nav-incidents.description"),
       side: "bottom",
       requiresModule: "incidents",
       beforeStep: openMobileNavIfNeeded,
@@ -62,8 +63,8 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-status",
       selector: '[data-tour="nav-status"]',
-      title: "Status",
-      description: "Operativ status for selskapet — pågående flyvninger og varsler.",
+      title: t("tours.systemOverview.steps.nav-status.title"),
+      description: t("tours.systemOverview.steps.nav-status.description"),
       side: "bottom",
       requiresModule: "status",
       beforeStep: openMobileNavIfNeeded,
@@ -71,8 +72,8 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-resources",
       selector: '[data-tour="nav-resources"]',
-      title: "Ressurser",
-      description: "Droner, batterier, utstyr, vedlikehold, personell og kompetanse.",
+      title: t("tours.systemOverview.steps.nav-resources.title"),
+      description: t("tours.systemOverview.steps.nav-resources.description"),
       side: "bottom",
       requiresModule: "resources",
       beforeStep: openMobileNavIfNeeded,
@@ -80,8 +81,8 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-changelog",
       selector: '[data-tour="nav-changelog"]',
-      title: "Driftstatus",
-      description: "Se endringslogg og driftsmeldinger for plattformen.",
+      title: t("tours.systemOverview.steps.nav-changelog.title"),
+      description: t("tours.systemOverview.steps.nav-changelog.description"),
       side: "bottom",
       optional: true,
       beforeStep: openMobileNavIfNeeded,
@@ -89,8 +90,8 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-admin",
       selector: '[data-tour="nav-admin"]',
-      title: "Administrasjon",
-      description: "Selskapsinnstillinger, brukerstyring og integrasjoner. Kun synlig for administratorer.",
+      title: t("tours.systemOverview.steps.nav-admin.title"),
+      description: t("tours.systemOverview.steps.nav-admin.description"),
       side: "bottom",
       requiresAdmin: true,
       beforeStep: closeMobileNav,
@@ -98,18 +99,18 @@ export const systemOverviewTour: TourDefinition = {
     {
       id: "nav-profile",
       selector: '[data-tour="nav-profile"]',
-      title: "Min profil",
-      description: "Personlige opplysninger, sikkerhet, kompetanse og varslinger. Du kan starte denne guiden igjen herfra.",
+      title: t("tours.systemOverview.steps.nav-profile.title"),
+      description: t("tours.systemOverview.steps.nav-profile.description"),
       side: "bottom",
       beforeStep: closeMobileNav,
     },
     {
       id: "finish",
       selector: 'header',
-      title: "Det var hovedmenyen!",
-      description: "Du finner alle modulene fra toppen. Tips: Start guiden «Opprett oppdrag» når du er klar for å lære oppdragsflyten.",
+      title: t("tours.systemOverview.steps.finish.title"),
+      description: t("tours.systemOverview.steps.finish.description"),
       side: "bottom",
       beforeStep: closeMobileNav,
     },
   ],
-};
+});

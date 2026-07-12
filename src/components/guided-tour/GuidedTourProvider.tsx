@@ -3,10 +3,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { driver, type Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import "./tour-styles.css";
-import { allTours } from "@/tours/tourDefinitions";
+import { getAllTours } from "@/tours/tourDefinitions";
 import type { TourId, TourStep } from "@/tours/types";
 import { waitForElement, sleep, closeMobileNav } from "@/tours/tourUtils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const STORAGE_KEY = "avisafe.tours.completed";
 
@@ -53,6 +54,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isSuperAdmin, hasTrainingModuleAccess } = useAuth();
+  const { t } = useTranslation();
   const driverRef = useRef<Driver | null>(null);
   const [, force] = useState(0);
 
@@ -64,7 +66,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
   }, [isAdmin, isSuperAdmin, hasTrainingModuleAccess]);
 
   const start = useCallback(async (tourId: TourId, opts?: StartTourOptions) => {
-    const tour = allTours[tourId];
+    const tour = getAllTours(t)[tourId];
     if (!tour) return;
 
     const candidates = tour.steps.filter(stepAllowed);
@@ -157,7 +159,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
         if (popover.footerButtons && !popover.footerButtons.querySelector(".avisafe-skip-btn")) {
           const skip = document.createElement("button");
           skip.className = "avisafe-skip-btn";
-          skip.textContent = "Hopp over";
+          skip.textContent = t("tours.ui.skip");
           skip.onclick = () => finish(true);
           popover.footerButtons.prepend(skip);
         }
@@ -201,7 +203,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
 
       const isLast = index === candidates.length - 1;
       const isFirst = index === 0;
-      const progress = `Steg ${index + 1} av ${candidates.length}`;
+      const progress = t("tours.ui.step", { current: index + 1, total: candidates.length });
 
       d.highlight({
         element: el,
@@ -213,8 +215,8 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
           popoverClass: "avisafe-tour",
           showButtons: ["next", "previous", "close"],
           disableButtons: isFirst ? ["previous"] : [],
-          nextBtnText: isLast ? "Fullfør" : "Neste →",
-          prevBtnText: "← Tilbake",
+          nextBtnText: isLast ? t("tours.ui.finish") : t("tours.ui.next"),
+          prevBtnText: t("tours.ui.prev"),
           onNextClick: () => {
             if (isLast) {
               setTimeout(() => finish(true, true), 0);
@@ -231,7 +233,7 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
     };
 
     await performStep(0);
-  }, [navigate, location.pathname, stepAllowed]);
+  }, [navigate, location.pathname, stepAllowed, t]);
 
   const value = useMemo<GuidedTourContextValue>(() => ({
     start,
