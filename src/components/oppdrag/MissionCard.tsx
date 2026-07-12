@@ -649,7 +649,7 @@ export const MissionCard = ({
                   } : null}
                 />
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                  <span className="bg-background/90 px-2 py-1 rounded text-xs font-medium">Klikk for å forstørre</span>
+                  <span className="bg-background/90 px-2 py-1 rounded text-xs font-medium">{t('pages.missions.card.clickToEnlarge')}</span>
                 </div>
               </div>
             </div>
