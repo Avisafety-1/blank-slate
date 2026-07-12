@@ -937,10 +937,10 @@ export default function KartPage() {
                 onClick={handleClearRoute}
                 disabled={currentRoute.coordinates.length === 0}
                 className="h-8 px-2 sm:px-3"
-                title="Nullstill rute"
+                title={t('pages.map.clearTitle')}
               >
                 <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Nullstill</span>
+                <span className="hidden sm:inline ml-1">{t('pages.map.reset')}</span>
               </Button>
               <Button
                 data-tour="map-route-cancel"
