@@ -918,6 +918,17 @@ const Auth = () => {
   if (showOpenAppFallback) {
     return (
       <div className="min-h-screen relative flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => { const target = (i18n.language || 'no').toLowerCase().startsWith('en') ? 'no' : 'en'; i18n.changeLanguage(target); }}
+          className="fixed top-4 right-4 z-20 h-9 w-9 rounded-md bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-foreground hover:bg-card transition-colors"
+          aria-label={t('header.switchToLanguage', { lang: (i18n.language || 'no').toLowerCase().startsWith('en') ? 'NO' : 'EN' })}
+        >
+          <Globe className="h-4 w-4" />
+          <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold leading-none bg-primary text-primary-foreground rounded px-0.5">
+            {(i18n.language || 'no').toLowerCase().startsWith('en') ? 'EN' : 'NO'}
+          </span>
+        </button>
         <div className="fixed inset-0 z-0" style={{
           backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url(${droneBackground})`,
           backgroundSize: "cover",
