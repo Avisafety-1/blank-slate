@@ -879,17 +879,18 @@ export const EquipmentLogbookDialog = ({
 
                         {/* History table */}
                         <div className="space-y-2">
-                          <p className="text-sm font-medium">Historikk ({batteryTrend.length} flylogger)</p>
+                          <p className="text-sm font-medium">{t('resourceDialogs.equipmentLogbook.battery.history', { count: batteryTrend.length })}</p>
                           {/* Header row - hidden on mobile */}
                           <div className="hidden sm:grid sm:grid-cols-7 gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground border-b">
-                            <span>Dato</span>
-                            <span>Sykluser</span>
-                            <span>Helse</span>
-                            <span>Temp</span>
-                            <span>Spenning</span>
-                            <span>Celleavvik</span>
-                            <span>Kapasitet</span>
+                            <span>{t('resourceDialogs.equipmentLogbook.battery.colDate')}</span>
+                            <span>{t('resourceDialogs.equipmentLogbook.battery.colCycles')}</span>
+                            <span>{t('resourceDialogs.equipmentLogbook.battery.colHealth')}</span>
+                            <span>{t('resourceDialogs.equipmentLogbook.battery.colTemp')}</span>
+                            <span>{t('resourceDialogs.equipmentLogbook.battery.colVoltage')}</span>
+                            <span>{t('resourceDialogs.equipmentLogbook.battery.colCellDev')}</span>
+                            <span>{t('resourceDialogs.equipmentLogbook.battery.colCapacity')}</span>
                           </div>
+
                           {batteryTrend.slice().reverse().map((entry, idx) => (
                             <div key={idx} className="border rounded-md px-3 py-2 text-sm">
                               {/* Desktop layout */}
