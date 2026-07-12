@@ -1092,7 +1092,8 @@
         "pilotHeader": "Pilot",
         "categoryHeader": "Category",
         "commentHeader": "Comment",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "generatedLabel": "Generated"
       },
       "export": {
         "kpiSheet": "KPI",
