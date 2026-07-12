@@ -4,7 +4,7 @@
  * slik at info-boksene ser identiske ut på begge kart.
  */
 import i18n from '@/i18n';
-const tp = (k: string, opts?: any) => i18n.t(`pages.map.popups.${k}`, opts);
+const tp = (k: string, opts?: any): string => i18n.t(`pages.map.popups.${k}`, opts) as string;
 
 export const escapePopupHtml = (s: any): string =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({
