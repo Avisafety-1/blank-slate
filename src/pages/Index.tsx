@@ -64,11 +64,11 @@ const Index = () => {
   useEffect(() => {
     const checkout = searchParams.get('checkout');
     if (checkout === 'success') {
-      toast.success('Abonnement aktivert! Velkommen til AviSafe.');
+      toast.success(t('dashboard.checkoutSuccess'));
       checkSubscription();
       setSearchParams({}, { replace: true });
     } else if (checkout === 'cancelled') {
-      toast.info('Betaling ble avbrutt.');
+      toast.info(t('dashboard.checkoutCancelled'));
       setSearchParams({}, { replace: true });
     }
   }, [searchParams]);
@@ -242,11 +242,11 @@ const Index = () => {
         });
         setLogFlightDialogOpen(true);
       } else {
-        toast.error('Kunne ikkje førebu avslutting av flytur. Prøv igjen.');
+        toast.error(t('flight.prepareEndError'));
       }
     } catch (err) {
       console.error('handleEndFlight failed:', err);
-      toast.error('Feil ved avslutting av flytur. Prøv igjen.');
+      toast.error(t('flight.endError'));
     } finally {
       setEndingFlight(false);
     }
@@ -334,10 +334,10 @@ const Index = () => {
                   if ((course as any)?.unlocks_modules?.length) {
                     await refetchUserInfo();
                   }
-                  toast.success("Kurs fullført — kompetanse registrert");
+                  toast.success(t('dashboard.tourCourseCompleted'));
                 } catch (e) {
                   console.error("Failed to register tour course completion:", e);
-                  toast.error("Kunne ikke registrere kursfullføring");
+                  toast.error(t('dashboard.tourCourseError'));
                 }
               }
             : undefined,

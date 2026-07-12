@@ -1,5 +1,19 @@
 # Sync-logg
 
+## 2026-07-12 — i18n-migrasjon: plan + oppstart Fase 1
+
+**Ny plan:** `.lovable/plan.md` – prioritert rekkefølge for full NO→EN-konvertering.
+**Ny statusfil:** `docs/i18n-migration-status.md` – sjekkliste per fase/fil.
+**Konvensjon lagt til:** `src/i18n/README.md` – seksjon "Length-sensitive strings"
+med `Short`/`Abbr`-mønster for engelske strenger som ellers ville sprengt knapper.
+
+**Fase 1.1 startet:** `src/pages/Index.tsx`
+- Migrert hardkodede toasts (`checkout-success/cancelled`, `prepareEnd/end flight`-feil, tour-course-fullført/feil) til nye nøkler under `dashboard.*` og `flight.*` i `no.json` og `en.json`.
+
+**Verifisering:** `tsgo --noEmit` OK.
+
+
+
 ## 2026-07-09 — iOS safe-area-fiks for mobilmeny
 
 **Komponent:** `src/components/Header.tsx`  
