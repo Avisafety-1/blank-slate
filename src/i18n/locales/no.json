@@ -2242,7 +2242,20 @@
       "active": "Aktiv",
       "inactive": "Inaktiv",
       "edit": "Rediger",
-      "deleteConfirmDesc": "Er du sikker på at du vil slette «{{name}}»? Denne handlingen kan ikke angres."
+      "deleteConfirmDesc": "Er du sikker på at du vil slette «{{name}}»? Denne handlingen kan ikke angres.",
+      "preview": "Forhåndsvisning",
+      "alertLabel_low_battery": "Batteri under",
+      "alertLabel_rth_triggered": "RTH ble trigget",
+      "alertLabel_max_height": "Høyde over",
+      "alertLabel_max_speed": "Maks hastighet over",
+      "alertLabel_low_gps_sats": "GPS-satellitter under",
+      "alertLabel_battery_cell_deviation": "Battericelleavvik over",
+      "alertLabel_battery_temp_high": "Batteritemperatur over",
+      "alertLabel_high_vibration": "Høy vibrasjon (ArduPilot)",
+      "alertUnit_pcs": "stk",
+      "toastKeyAlreadySaved": "Nøkkelen er allerede lagret",
+      "toastFh2AppliedForAllSub": "FlightHub 2-tilkobling gjelder nå for alle underavdelinger",
+      "toastFh2OwnConnectionAllowed": "Underavdelinger kan nå bruke egen FlightHub 2-tilkobling"
     },
     "revenueCalculator": {
       "toastSaved": "Scenarioer lagret",

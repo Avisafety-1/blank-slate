@@ -2240,7 +2240,20 @@
       "active": "Active",
       "inactive": "Inactive",
       "edit": "Edit",
-      "deleteConfirmDesc": "Are you sure you want to delete «{{name}}»? This action cannot be undone."
+      "deleteConfirmDesc": "Are you sure you want to delete «{{name}}»? This action cannot be undone.",
+      "preview": "Preview",
+      "alertLabel_low_battery": "Battery below",
+      "alertLabel_rth_triggered": "RTH triggered",
+      "alertLabel_max_height": "Height above",
+      "alertLabel_max_speed": "Max speed above",
+      "alertLabel_low_gps_sats": "GPS satellites below",
+      "alertLabel_battery_cell_deviation": "Battery cell deviation above",
+      "alertLabel_battery_temp_high": "Battery temperature above",
+      "alertLabel_high_vibration": "High vibration (ArduPilot)",
+      "alertUnit_pcs": "pcs",
+      "toastKeyAlreadySaved": "The key is already saved",
+      "toastFh2AppliedForAllSub": "FlightHub 2 connection now applies to all sub-departments",
+      "toastFh2OwnConnectionAllowed": "Sub-departments can now use their own FlightHub 2 connection"
     },
     "revenueCalculator": {
       "toastSaved": "Scenarios saved",
