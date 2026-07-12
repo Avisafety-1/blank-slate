@@ -68,20 +68,19 @@ export function buildRpas5kmPopupHtml(properties: Record<string, any> | null | u
 
   const kontaktHtml = kontakt
     ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
-         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#9a3412;margin-bottom:4px;">Kontakt</div>
+         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#9a3412;margin-bottom:4px;">${tp('rpas.contactTitle')}</div>
          <div style="font-size:12px;line-height:1.4;">${formatText(kontakt)}</div>
        </div>`
     : "";
 
   const fallbackHtml = !textBlocks.length && !kontakt
     ? `<div style="margin-top:6px;font-size:12px;color:#6b7280;">
-         For å fly innenfor 5 km fra lufthavner i Norge må operatøren ta kontakt før flyvning.
-         Bruk <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a> for å sende forespørsel.
+         ${tp('rpas.fallbackInfo')}
        </div>`
     : "";
 
   return `<div style="max-width:320px;max-height:380px;overflow-y:auto;">
-    <div style="font-weight:700;font-size:13px;color:#7c2d12;">RPAS 5 km · ${escapeHtml(name)}</div>
+    <div style="font-weight:700;font-size:13px;color:#7c2d12;">${tp('rpas.titlePrefix')} · ${escapeHtml(name)}</div>
     ${chipHtml}
     ${bodyHtml}
     ${fallbackHtml}
