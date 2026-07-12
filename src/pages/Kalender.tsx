@@ -991,7 +991,7 @@ export default function Kalender() {
             /* Custom event form */
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="event-title">Tittel *</Label>
+                <Label htmlFor="event-title">{t('pages.calendar.titleLabel')}</Label>
                 <Input
                   id="event-title"
                   value={newEvent.title}
