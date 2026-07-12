@@ -20,7 +20,7 @@ Statuskoder:
 | 1.2 | `src/pages/Oppdrag.tsx` + `src/components/oppdrag/*` | DONE | Oppdrag.tsx, OppdragFilterBar, MissionCard, AirspaceConflictWarning migrert 2026-07-12. `OppdragDialogs.tsx` var allerede migrert (`oppdragDialogs.*`). ChecklistBadges har ingen brukervendte strenger. Nye nøkler: `pages.missions.*`, `airspaceConflict.*`. |
 | 1.3 | `src/pages/Kalender.tsx` | DONE | Toasts, legend, dropdown-entries, event-type badge (lookup mot `eventTypes`), vedlikeholds-bekreftelse og custom-event-form migrert 2026-07-12. Utvidet `pages.calendar.*`-namespace med Hendelse/Dokument/Nyhet i `eventTypes`, `noEventsThisDay`, `markAsCompleted`, `saving/save/cancel/confirm`, toast-strenger. |
 | 1.4 | `src/pages/Kart.tsx` + kart-popups | WIP | Kart.tsx, ResourceTimeline, FlightHub2SendDialog (`fh2Dialog.*`) og AdjacentAreaPanel (`adjacentAreaPanel.*`) migrert 2026-07-12. SoraSettingsPanel var i praksis allerede migrert (kun tekniske akronymer/placeholders igjen). Kart-popups i `OpenAIPMap.tsx` (~27 nb-strenger) og `Map3D.tsx` (~70 nb-strenger) står igjen. |
-| 1.5 | `src/pages/Resources.tsx` + `src/components/resources/*` | TODO | Mange dialoger |
+| 1.5 | `src/pages/Resources.tsx` + `src/components/resources/*` | WIP | Ferdig: AddDroneDialog, PersonCompetencyDialog, ChecklistExecutionDialog, DroneLogbookDialog, EquipmentLogbookDialog, EquipmentDetailDialog, DroneDetailDialog (namespace `resourceDialogs.droneDetail`). Gjenstår: Resources.tsx og øvrige dialoger. |
 | 1.6 | `src/components/Header.tsx` | TODO | Restopprydding |
 | 1.7 | `src/pages/Auth.tsx` + `src/pages/ResetPassword.tsx` | TODO | |
 

@@ -2640,7 +2640,6 @@
     },
     "droneLogbook": {
       "title": "Loggbok - {{model}}",
-
       "totalHours": "Totalt {{hours}} flyvetimer",
       "addEntry": "Legg til innlegg",
       "exportPdf": "Eksporter PDF",
@@ -2831,6 +2830,234 @@
         "signatureLabel": "Signatur:",
         "documentTitle": "Loggbok - {{name}} - {{date}}",
         "fileName": "loggbok-utstyr"
+      }
+    },
+    "droneDetail": {
+      "editTitle": "Rediger {{name}}",
+      "sharedFromParent": "🔒 Denne {{name}} er delt fra {{source}} og kan kun redigeres derfra.",
+      "sharedFromParentWithName": "mor-selskapet «{{name}}»",
+      "sharedFromParentFallback": "mor-selskapet",
+      "logbook": "Loggbok",
+      "statusAffectedBy": "⚠️ Status påvirket av: {{items}}",
+      "payloadExceeded": "⚠️ Payload overskredet! Utstyrsvekt: {{weight}} kg / Payload: {{payload}} kg",
+      "payloadNearLimit": "⚠️ Nær payload-grense. Utstyrsvekt: {{weight}} kg / Payload: {{payload}} kg",
+      "loading": "Laster...",
+      "unknown": "Ukjent",
+      "dash": "-",
+      "hoursSuffix": "timer",
+      "kgSuffix": "kg",
+      "labels": {
+        "model": "Modell",
+        "serial": "Serienummer",
+        "internalSerial": "Internt serienummer",
+        "registrationNumber": "Registreringsnummer",
+        "class": "Klasse",
+        "purchaseDate": "Kjøpsdato",
+        "weightMTOM": "Vekt MTOM",
+        "payload": "Payload",
+        "flightHours": "Flyvetimer",
+        "lastFlown": "Sist flydd",
+        "status": "Status",
+        "technicalResponsible": "Teknisk ansvarlig",
+        "notes": "Merknader"
+      },
+      "catalog": {
+        "weightNoPayload": "Vekt uten payload:",
+        "standardTakeoff": "Standard takeoff:",
+        "endurance": "Flygetid:",
+        "enduranceUnit": "min",
+        "maxWind": "Maks vind:",
+        "maxWindUnit": "m/s",
+        "sensor": "Sensor:",
+        "category": "Kategori:"
+      },
+      "statusHints": {
+        "maintenanceDue": "🔧 Vedlikehold forfalt",
+        "maintenanceSoon": "🔧 Vedlikehold nærmer seg",
+        "warningFromLog": "⚠️ Advarsel: {{title}}",
+        "warningFromLogFallback": "⚠️ Advarsel fra flylogg"
+      },
+      "acknowledge": {
+        "button": "Kvitter ut advarsel",
+        "dialogTitle": "Kvitter ut advarsel",
+        "dialogDescWithWarning": "Advarsel: «{{title}}» ({{date}}). Vil du kvittere ut og sette status tilbake til Grønn?",
+        "dialogDescNoWarning": "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?",
+        "cancel": "Avbryt",
+        "confirm": "Kvitter ut",
+        "afterMaintenanceHint": "Advarsel fra flylogg kan kvitteres ut etter at vedlikehold er utført",
+        "logTitle": "Advarsel kvittert ut",
+        "logDescription": "Status endret fra {{from}} til Grønn{{suffix}}",
+        "logDescriptionSuffix": " ({{title}})",
+        "toastSuccess": "Advarsel kvittert ut — status satt til Grønn",
+        "toastFailure": "Kunne ikke kvittere ut: {{message}}"
+      },
+      "inspection": {
+        "sectionTitle": "Inspeksjon",
+        "doButton": "Utfør inspeksjon",
+        "techRestricted": "Kun teknisk ansvarlig ({{name}}) kan utføre inspeksjon",
+        "lastInspection": "Sist inspeksjon",
+        "nextInspection": "Neste inspeksjon",
+        "intervalDays": "Inspeksjonsintervall: {{days}} dager",
+        "hoursSinceInspection": "Flytimer siden inspeksjon",
+        "missionsSinceInspection": "Oppdrag siden inspeksjon",
+        "hoursUnit": "t"
+      },
+      "linkedEquipment": {
+        "title": "Tilknyttet utstyr",
+        "add": "Legg til",
+        "none": "Ingen utstyr tilknyttet",
+        "snPrefix": "SN"
+      },
+      "linkedDronetag": {
+        "title": "Tilknyttet DroneTag",
+        "add": "Legg til",
+        "none": "Ingen DroneTag tilknyttet",
+        "devicePrefix": "Device",
+        "callsignPrefix": "Callsign"
+      },
+      "linkedPersonnel": {
+        "title": "Tilknyttet personell",
+        "add": "Legg til",
+        "none": "Ingen personell tilknyttet"
+      },
+      "linkedDocuments": {
+        "title": "Tilknyttede dokumenter",
+        "add": "Legg til",
+        "none": "Ingen dokumenter tilknyttet",
+        "openTitle": "Åpne dokument",
+        "cannotOpen": "Kunne ikke åpne dokument",
+        "addFailure": "Kunne ikke legge til dokumenter",
+        "addedCount": "{{count}} dokument(er) tilknyttet",
+        "removeFailure": "Kunne ikke fjerne dokument",
+        "removedToast": "{{name}} fjernet"
+      },
+      "accessories": {
+        "title": "Valgfritt utstyr",
+        "add": "Legg til",
+        "none": "Ingen valgfritt utstyr lagt til",
+        "nameLabel": "Navn",
+        "namePlaceholder": "f.eks. ND-filter, Ekstra propeller",
+        "intervalLabel": "Vedlikeholdsintervall (dager)",
+        "intervalPlaceholder": "f.eks. 90",
+        "lastMaintenanceLabel": "Sist vedlikehold",
+        "cancel": "Avbryt",
+        "intervalShort": "Intervall: {{days}} dager",
+        "nextShort": "Neste: {{date}}",
+        "doButton": "Utfør",
+        "nameRequired": "Fyll inn navn på utstyret",
+        "addSuccess": "Utstyr lagt til",
+        "addFailure": "Kunne ikke legge til utstyr: {{message}}",
+        "deleteSuccess": "{{name}} slettet",
+        "deleteFailure": "Kunne ikke slette utstyr: {{message}}",
+        "maintenanceDone": "Vedlikehold utført for {{name}}",
+        "maintenanceFailure": "Kunne ikke oppdatere vedlikehold: {{message}}"
+      },
+      "catalogSelector": {
+        "label": "Velg fra katalog (valgfritt)",
+        "placeholder": "Velg dronemodell eller angi manuelt",
+        "manual": "Angi manuelt",
+        "autofillHint": "Velg en modell for å auto-fylle vekt, payload og klasse"
+      },
+      "form": {
+        "internalSerialPlaceholder": "Valgfritt",
+        "registrationNumberPlaceholder": "Valgfritt",
+        "chooseClass": "Velg klasse",
+        "weightPlaceholder": "f.eks. 0.9",
+        "payloadPlaceholder": "f.eks. 0.5"
+      },
+      "inspectionForm": {
+        "sectionTitle": "Inspeksjon og vedlikeholdsintervall",
+        "startDate": "Startdato",
+        "intervalDays": "Intervall (dager)",
+        "intervalDaysPlaceholder": "f.eks. 90",
+        "intervalHours": "Flytimer mellom inspeksjoner",
+        "intervalHoursPlaceholder": "f.eks. 50",
+        "intervalMissions": "Oppdrag mellom inspeksjoner",
+        "intervalMissionsPlaceholder": "f.eks. 100",
+        "warnDays": "Varsel dager før gul",
+        "warnDaysPlaceholder": "14",
+        "warnHours": "Varsel timer før gul",
+        "warnHoursPlaceholder": "f.eks. 10",
+        "warnMissions": "Varsel oppdrag før gul",
+        "warnMissionsPlaceholder": "f.eks. 20",
+        "autoCalcHint": "Neste inspeksjon beregnes automatisk basert på dagsintervall",
+        "statusTriggerHint": "Status trigges av det som kommer først av dager, flytimer eller oppdrag"
+      },
+      "checklists": {
+        "inspectionLabel": "Sjekkliste for inspeksjon",
+        "inspectionPlaceholder": "Velg sjekkliste (valgfritt)",
+        "none": "Ingen sjekkliste",
+        "inspectionHint": "Hvis valgt, må sjekklisten fullføres før inspeksjon registreres",
+        "operationsLabel": "Operasjonssjekklister",
+        "operationsSelected": "{{count}} sjekkliste(r) valgt",
+        "operationsPlaceholder": "Velg sjekklister (valgfritt)",
+        "operationsHint": "Kobles automatisk til oppdrag når dronen legges til",
+        "postFlightLabel": "Post flight sjekkliste",
+        "postFlightPlaceholder": "Velg post flight sjekkliste (valgfritt)",
+        "postFlightHint": "Vises som bekreftelsesdialog når oppdrag fullføres"
+      },
+      "techResponsible": {
+        "label": "Teknisk ansvarlig",
+        "placeholder": "Velg teknisk ansvarlig...",
+        "searchPlaceholder": "Søk teknisk ansvarlig...",
+        "emptyText": "Ingen med rollen «Teknisk ansvarlig» funnet.",
+        "noneLabel": "Ingen",
+        "hint": "Denne personen mottar vedlikeholdsvarsel. Kvittering kan begrenses til teknisk ansvarlig eller åpnes for alle via selskapsinnstillinger."
+      },
+      "deptVisibility": {
+        "label": "Synlig for avdelinger",
+        "allLabel": "Alle avdelinger"
+      },
+      "moveDrone": {
+        "label": "Flytt drone",
+        "button": "Flytt til annen avdeling",
+        "hint": "Flytt drona til en annen avdeling i samme hierarki. Velg hva som skal følge med."
+      },
+      "delete": {
+        "button": "Slett",
+        "dialogTitle": "Er du sikker?",
+        "dialogDesc": "Dette vil permanent slette dronen \"{{name}}\". Denne handlingen kan ikke angres.",
+        "cancel": "Avbryt",
+        "confirm": "Slett"
+      },
+      "actions": {
+        "edit": "Rediger",
+        "cancel": "Avbryt",
+        "save": "Lagre",
+        "saving": "Lagrer..."
+      },
+      "toasts": {
+        "updated": "{{name}} oppdatert",
+        "updateFailure": "Kunne ikke oppdatere {{name}}: {{message}}",
+        "deleted": "{{name}} slettet",
+        "deleteFailure": "Kunne ikke slette {{name}}: {{message}}",
+        "personnelRemoved": "{{name}} fjernet",
+        "personnelRemoveFailure": "Kunne ikke fjerne personell: {{message}}",
+        "equipmentRemoved": "{{name}} fjernet",
+        "equipmentRemoveFailure": "Kunne ikke fjerne utstyr: {{message}}",
+        "dronetagRemoved": "{{name}} fjernet",
+        "dronetagRemoveFailure": "Kunne ikke fjerne DroneTag: {{message}}",
+        "inspectionDone": "Inspeksjon fullført",
+        "inspectionRegistered": "Inspeksjon registrert",
+        "inspectionFailure": "Kunne ikke registrere inspeksjon: {{message}}"
+      },
+      "inspectionConfirm": {
+        "title": "Bekreft inspeksjon",
+        "description": "Er du sikker på at du vil registrere inspeksjon for {{name}}?",
+        "cancel": "Avbryt",
+        "confirm": "Bekreft"
+      },
+      "accessoryConfirm": {
+        "title": "Bekreft vedlikehold",
+        "description": "Er du sikker på at du vil markere vedlikehold som utført for \"{{name}}\"?",
+        "nextInDays": "Neste vedlikehold vil bli satt til om {{days}} dager.",
+        "cancel": "Avbryt",
+        "confirm": "Bekreft"
+      },
+      "inspectionMeta": {
+        "type": "Manuell inspeksjon",
+        "notesChecklist": "Utført via sjekkliste fra dronekort",
+        "notesCard": "Utført fra dronekort"
       }
     }
   }

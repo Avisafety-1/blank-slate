@@ -2637,7 +2637,6 @@
       }
     },
     "droneLogbook": {
-
       "title": "Logbook - {{model}}",
       "totalHours": "Total {{hours}} flight hours",
       "addEntry": "Add entry",
@@ -2829,6 +2828,234 @@
         "signatureLabel": "Signature:",
         "documentTitle": "Logbook - {{name}} - {{date}}",
         "fileName": "logbook-equipment"
+      }
+    },
+    "droneDetail": {
+      "editTitle": "Edit {{name}}",
+      "sharedFromParent": "🔒 This {{name}} is shared from {{source}} and can only be edited there.",
+      "sharedFromParentWithName": "the parent company \"{{name}}\"",
+      "sharedFromParentFallback": "the parent company",
+      "logbook": "Logbook",
+      "statusAffectedBy": "⚠️ Status affected by: {{items}}",
+      "payloadExceeded": "⚠️ Payload exceeded! Equipment weight: {{weight}} kg / Payload: {{payload}} kg",
+      "payloadNearLimit": "⚠️ Near payload limit. Equipment weight: {{weight}} kg / Payload: {{payload}} kg",
+      "loading": "Loading...",
+      "unknown": "Unknown",
+      "dash": "-",
+      "hoursSuffix": "hours",
+      "kgSuffix": "kg",
+      "labels": {
+        "model": "Model",
+        "serial": "Serial number",
+        "internalSerial": "Internal serial number",
+        "registrationNumber": "Registration number",
+        "class": "Class",
+        "purchaseDate": "Purchase date",
+        "weightMTOM": "MTOM weight",
+        "payload": "Payload",
+        "flightHours": "Flight hours",
+        "lastFlown": "Last flown",
+        "status": "Status",
+        "technicalResponsible": "Technical responsible",
+        "notes": "Notes"
+      },
+      "catalog": {
+        "weightNoPayload": "Weight without payload:",
+        "standardTakeoff": "Standard takeoff:",
+        "endurance": "Endurance:",
+        "enduranceUnit": "min",
+        "maxWind": "Max wind:",
+        "maxWindUnit": "m/s",
+        "sensor": "Sensor:",
+        "category": "Category:"
+      },
+      "statusHints": {
+        "maintenanceDue": "🔧 Maintenance overdue",
+        "maintenanceSoon": "🔧 Maintenance approaching",
+        "warningFromLog": "⚠️ Warning: {{title}}",
+        "warningFromLogFallback": "⚠️ Warning from flight log"
+      },
+      "acknowledge": {
+        "button": "Acknowledge warning",
+        "dialogTitle": "Acknowledge warning",
+        "dialogDescWithWarning": "Warning: \"{{title}}\" ({{date}}). Do you want to acknowledge it and set status back to Green?",
+        "dialogDescNoWarning": "Are you sure you want to acknowledge the warning and set status back to Green?",
+        "cancel": "Cancel",
+        "confirm": "Acknowledge",
+        "afterMaintenanceHint": "Warning from flight log can be acknowledged after maintenance is completed",
+        "logTitle": "Warning acknowledged",
+        "logDescription": "Status changed from {{from}} to Green{{suffix}}",
+        "logDescriptionSuffix": " ({{title}})",
+        "toastSuccess": "Warning acknowledged — status set to Green",
+        "toastFailure": "Could not acknowledge: {{message}}"
+      },
+      "inspection": {
+        "sectionTitle": "Inspection",
+        "doButton": "Perform inspection",
+        "techRestricted": "Only the technical responsible ({{name}}) can perform inspection",
+        "lastInspection": "Last inspection",
+        "nextInspection": "Next inspection",
+        "intervalDays": "Inspection interval: {{days}} days",
+        "hoursSinceInspection": "Flight hours since inspection",
+        "missionsSinceInspection": "Missions since inspection",
+        "hoursUnit": "h"
+      },
+      "linkedEquipment": {
+        "title": "Linked equipment",
+        "add": "Add",
+        "none": "No equipment linked",
+        "snPrefix": "SN"
+      },
+      "linkedDronetag": {
+        "title": "Linked DroneTag",
+        "add": "Add",
+        "none": "No DroneTag linked",
+        "devicePrefix": "Device",
+        "callsignPrefix": "Callsign"
+      },
+      "linkedPersonnel": {
+        "title": "Linked personnel",
+        "add": "Add",
+        "none": "No personnel linked"
+      },
+      "linkedDocuments": {
+        "title": "Linked documents",
+        "add": "Add",
+        "none": "No documents linked",
+        "openTitle": "Open document",
+        "cannotOpen": "Could not open document",
+        "addFailure": "Could not add documents",
+        "addedCount": "{{count}} document(s) linked",
+        "removeFailure": "Could not remove document",
+        "removedToast": "{{name}} removed"
+      },
+      "accessories": {
+        "title": "Optional accessories",
+        "add": "Add",
+        "none": "No optional accessories added",
+        "nameLabel": "Name",
+        "namePlaceholder": "e.g. ND filter, spare propeller",
+        "intervalLabel": "Maintenance interval (days)",
+        "intervalPlaceholder": "e.g. 90",
+        "lastMaintenanceLabel": "Last maintenance",
+        "cancel": "Cancel",
+        "intervalShort": "Interval: {{days}} days",
+        "nextShort": "Next: {{date}}",
+        "doButton": "Perform",
+        "nameRequired": "Enter a name for the accessory",
+        "addSuccess": "Accessory added",
+        "addFailure": "Could not add accessory: {{message}}",
+        "deleteSuccess": "{{name}} deleted",
+        "deleteFailure": "Could not delete accessory: {{message}}",
+        "maintenanceDone": "Maintenance performed for {{name}}",
+        "maintenanceFailure": "Could not update maintenance: {{message}}"
+      },
+      "catalogSelector": {
+        "label": "Select from catalog (optional)",
+        "placeholder": "Select drone model or enter manually",
+        "manual": "Enter manually",
+        "autofillHint": "Select a model to auto-fill weight, payload and class"
+      },
+      "form": {
+        "internalSerialPlaceholder": "Optional",
+        "registrationNumberPlaceholder": "Optional",
+        "chooseClass": "Select class",
+        "weightPlaceholder": "e.g. 0.9",
+        "payloadPlaceholder": "e.g. 0.5"
+      },
+      "inspectionForm": {
+        "sectionTitle": "Inspection and maintenance interval",
+        "startDate": "Start date",
+        "intervalDays": "Interval (days)",
+        "intervalDaysPlaceholder": "e.g. 90",
+        "intervalHours": "Flight hours between inspections",
+        "intervalHoursPlaceholder": "e.g. 50",
+        "intervalMissions": "Missions between inspections",
+        "intervalMissionsPlaceholder": "e.g. 100",
+        "warnDays": "Warn days before yellow",
+        "warnDaysPlaceholder": "14",
+        "warnHours": "Warn hours before yellow",
+        "warnHoursPlaceholder": "e.g. 10",
+        "warnMissions": "Warn missions before yellow",
+        "warnMissionsPlaceholder": "e.g. 20",
+        "autoCalcHint": "Next inspection is calculated automatically based on day interval",
+        "statusTriggerHint": "Status is triggered by whichever comes first: days, flight hours or missions"
+      },
+      "checklists": {
+        "inspectionLabel": "Inspection checklist",
+        "inspectionPlaceholder": "Select checklist (optional)",
+        "none": "No checklist",
+        "inspectionHint": "If selected, the checklist must be completed before inspection is registered",
+        "operationsLabel": "Operations checklists",
+        "operationsSelected": "{{count}} checklist(s) selected",
+        "operationsPlaceholder": "Select checklists (optional)",
+        "operationsHint": "Linked automatically to missions when the drone is added",
+        "postFlightLabel": "Post-flight checklist",
+        "postFlightPlaceholder": "Select post-flight checklist (optional)",
+        "postFlightHint": "Shown as a confirmation dialog when missions are completed"
+      },
+      "techResponsible": {
+        "label": "Technical responsible",
+        "placeholder": "Select technical responsible...",
+        "searchPlaceholder": "Search technical responsible...",
+        "emptyText": "No user with the \"Technical responsible\" role found.",
+        "noneLabel": "None",
+        "hint": "This person receives maintenance notifications. Acknowledgement can be restricted to the technical responsible or opened for everyone via company settings."
+      },
+      "deptVisibility": {
+        "label": "Visible to departments",
+        "allLabel": "All departments"
+      },
+      "moveDrone": {
+        "label": "Move drone",
+        "button": "Move to another department",
+        "hint": "Move the drone to another department in the same hierarchy. Choose what should follow."
+      },
+      "delete": {
+        "button": "Delete",
+        "dialogTitle": "Are you sure?",
+        "dialogDesc": "This will permanently delete the drone \"{{name}}\". This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
+      "actions": {
+        "edit": "Edit",
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving..."
+      },
+      "toasts": {
+        "updated": "{{name}} updated",
+        "updateFailure": "Could not update {{name}}: {{message}}",
+        "deleted": "{{name}} deleted",
+        "deleteFailure": "Could not delete {{name}}: {{message}}",
+        "personnelRemoved": "{{name}} removed",
+        "personnelRemoveFailure": "Could not remove personnel: {{message}}",
+        "equipmentRemoved": "{{name}} removed",
+        "equipmentRemoveFailure": "Could not remove equipment: {{message}}",
+        "dronetagRemoved": "{{name}} removed",
+        "dronetagRemoveFailure": "Could not remove DroneTag: {{message}}",
+        "inspectionDone": "Inspection completed",
+        "inspectionRegistered": "Inspection registered",
+        "inspectionFailure": "Could not register inspection: {{message}}"
+      },
+      "inspectionConfirm": {
+        "title": "Confirm inspection",
+        "description": "Are you sure you want to register an inspection for {{name}}?",
+        "cancel": "Cancel",
+        "confirm": "Confirm"
+      },
+      "accessoryConfirm": {
+        "title": "Confirm maintenance",
+        "description": "Are you sure you want to mark maintenance as done for \"{{name}}\"?",
+        "nextInDays": "Next maintenance will be set to in {{days}} days.",
+        "cancel": "Cancel",
+        "confirm": "Confirm"
+      },
+      "inspectionMeta": {
+        "type": "Manual inspection",
+        "notesChecklist": "Performed via checklist from drone card",
+        "notesCard": "Performed from drone card"
       }
     }
   }
