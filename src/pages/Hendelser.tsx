@@ -953,7 +953,7 @@ const Hendelser = () => {
                   size="sm" 
                   onClick={() => setSelectedStatus(status)}
                 >
-                  {status}
+                  {status === "Alle" ? t('incidents.filters.all') : translateIncidentStatus(status)}
                 </Button>
               ))}
             </div>
