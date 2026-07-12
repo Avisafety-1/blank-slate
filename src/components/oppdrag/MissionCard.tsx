@@ -946,16 +946,16 @@ export const MissionCard = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-amber-500" />
-            Ninox-godkjenning påkrevd
+            {t('pages.missions.card.ninoxRequiredTitle')}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Ditt oppdrag krever godkjenning i Ninox. Bekreft at du har innhentet dette.
+            {t('pages.missions.card.ninoxRequiredDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('pages.missions.card.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleNinoxConfirm}>
-            Bekreft godkjenning
+            {t('pages.missions.card.confirmApproval')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
