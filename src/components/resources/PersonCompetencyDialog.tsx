@@ -338,11 +338,11 @@ export function PersonCompetencyDialog({
       .eq("id", competencyId);
 
     if (error) {
-      toast({ title: "Feil", description: "Kunne ikke oppdatere kompetanse", variant: "destructive" });
+      toast({ title: t('resourceDialogs.personCompetency.error'), description: t('resourceDialogs.personCompetency.couldNotUpdate'), variant: "destructive" });
       return;
     }
 
-    toast({ title: "Suksess", description: "Kompetanse oppdatert" });
+    toast({ title: t('resourceDialogs.personCompetency.success'), description: t('resourceDialogs.personCompetency.updated') });
     setEditingId(null);
     onCompetencyUpdated();
   };
