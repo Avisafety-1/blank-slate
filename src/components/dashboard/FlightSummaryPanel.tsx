@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useTranslation } from "react-i18next";
 import {
   Clock, Zap, Battery, MapPin, Route, Mountain, Satellite,
   Thermometer, Ruler, AlertTriangle, Info, LogIn, LogOut, Plane,
