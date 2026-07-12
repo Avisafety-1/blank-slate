@@ -830,10 +830,10 @@ export default function KartPage() {
                     {currentRoute.areaKm2 > 150 && (
                       <>
                         <span className="hidden sm:inline"> – </span>
-                        <span>for stort for SafeSky</span>
+                        <span>{t('pages.map.tooLargeForSafeSky')}</span>
                       </>
                     )}
-                    {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
+                    {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && ` (${t('pages.map.large')})`}
                   </span>
                 </div>
               )}
