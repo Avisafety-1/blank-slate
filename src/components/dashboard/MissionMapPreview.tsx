@@ -196,14 +196,14 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
           const terrainElev = terrainElevationsRef.current.get(terrainKey);
           const aglValue = altitude != null && terrainElev != null ? altitude - terrainElev : null;
           const content = `<div style="font-size:12px;line-height:1.5">
-            <strong>Punkt ${nearestIdx + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
-            ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
-            ${aglValue != null ? `<strong>Høyde (AGL): ${Math.round(aglValue)} m</strong><br/>` : ''}
-            ${terrainElev != null ? `Terreng: ${Math.round(terrainElev)} m<br/>` : ''}
-            ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
-            ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
-            ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
-            ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
+            <strong>${t("dashboard.missionMapPreview.pointOf", { n: nearestIdx + 1, total: track.positions.length })}</strong><hr style="margin:4px 0"/>
+            ${altitude != null ? t("dashboard.missionMapPreview.heightMsl", { m: Math.round(altitude) }) + '<br/>' : ''}
+            ${aglValue != null ? '<strong>' + t("dashboard.missionMapPreview.heightAgl", { m: Math.round(aglValue) }) + '</strong><br/>' : ''}
+            ${terrainElev != null ? t("dashboard.missionMapPreview.terrain", { m: Math.round(terrainElev) }) + '<br/>' : ''}
+            ${pos.speed != null ? t("dashboard.missionMapPreview.speed", { v: pos.speed.toFixed(1) }) + '<br/>' : ''}
+            ${pos.heading != null ? t("dashboard.missionMapPreview.heading", { deg: Math.round(pos.heading) }) + '<br/>' : ''}
+            ${pos.vert_speed != null ? t("dashboard.missionMapPreview.vertSpeed", { v: pos.vert_speed.toFixed(1) }) + '<br/>' : ''}
+            ${pos.timestamp ? t("dashboard.missionMapPreview.time", { t: new Date(pos.timestamp).toLocaleTimeString(locale) }) : ''}
           </div>`;
           L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
         });
@@ -211,12 +211,12 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
         const startPos = track.positions[0];
         L.circleMarker([startPos.lat, startPos.lng], {
           radius: 8, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1, pane: 'flightTrackPane',
-        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Start`);
+        }).addTo(tracksLayer).bindPopup(t("dashboard.missionMapPreview.flightStart", { n: trackIndex + 1 }));
 
         const endPos = track.positions[track.positions.length - 1];
         L.circleMarker([endPos.lat, endPos.lng], {
           radius: 8, fillColor: '#f97316', color: '#fff', weight: 2, fillOpacity: 1, pane: 'flightTrackPane',
-        }).addTo(tracksLayer).bindPopup(`Flytur ${trackIndex + 1} - Slutt`);
+        }).addTo(tracksLayer).bindPopup(t("dashboard.missionMapPreview.flightEnd", { n: trackIndex + 1 }));
       });
     }
 
