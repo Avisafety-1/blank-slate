@@ -314,7 +314,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
         setOppfolgingsansvarlig(null);
       }
 
-      toast.success("Oppfølgingsansvarlig oppdatert");
+      toast.success(t('dashboard.incidents.responsibleUpdated'));
     } catch (error) {
       console.error("Error updating responsible:", error);
       toast.error("Kunne ikke oppdatere ansvarlig");
