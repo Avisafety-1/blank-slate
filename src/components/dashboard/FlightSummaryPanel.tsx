@@ -175,7 +175,7 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
                   <Info className="w-3 h-3 shrink-0" />
-                  <span>APP_WARNING ({appWarningEvents.reduce((s, g) => s + g.count, 0)} hendelser)</span>
+                  <span>{t('dashboard.flightAnalysis.appWarnings', { count: appWarningEvents.reduce((s, g) => s + g.count, 0) })}</span>
                   <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1 mt-1">
