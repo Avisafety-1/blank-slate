@@ -1033,11 +1033,11 @@ const Auth = () => {
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="code" className="text-xs gap-1">
                         <KeyRound className="h-3.5 w-3.5" />
-                        Selskapskode
+                        {t('auth.companyCodeTab')}
                       </TabsTrigger>
                       <TabsTrigger value="new" className="text-xs gap-1">
                         <Building2 className="h-3.5 w-3.5" />
-                        Nytt selskap
+                        {t('auth.newCompanyTab')}
                       </TabsTrigger>
                     </TabsList>
                   </Tabs>
@@ -1280,11 +1280,11 @@ const Auth = () => {
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="code" className="text-xs gap-1">
                   <KeyRound className="h-3.5 w-3.5" />
-                  Selskapskode
+                  {t('auth.companyCodeTab')}
                 </TabsTrigger>
                 <TabsTrigger value="new" className="text-xs gap-1">
                   <Building2 className="h-3.5 w-3.5" />
-                  Nytt selskap
+                  {t('auth.newCompanyTab')}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
