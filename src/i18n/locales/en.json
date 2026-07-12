@@ -2326,6 +2326,23 @@
       "unknownDocument": "Document",
       "unknownDronetag": "DroneTag",
       "unknownChecklist": "Checklist"
+    },
+    "personnelFlightKpi": {
+      "flightTime": "Flight time",
+      "requirement": "Requirement",
+      "customizePeriods": "Customize periods (days)",
+      "period": "Period {{n}}",
+      "lockedByCompany": "(locked by company)",
+      "companyRequires": "Company requires {{req}}. These periods are always shown first.",
+      "cancel": "Cancel",
+      "save": "Save",
+      "flightTimePerWeek": "Flight time per week",
+      "flightTimePerDays": "Flight time per {{n}} days",
+      "lastDays": "Last {{n}}d",
+      "hourShort": "h",
+      "minuteShort": "m",
+      "bucketAria": "{{label}}, last {{n}} days",
+      "requirementLabel": "{{hours}}h/{{days}}d"
     }
   }
 }
