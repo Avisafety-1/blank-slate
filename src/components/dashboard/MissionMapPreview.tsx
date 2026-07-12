@@ -333,8 +333,8 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
                 style: { color, weight: 2, fillColor: color, fillOpacity: 0.15, dashArray },
                 onEachFeature: (_feature, layer) => {
-                  const displayName = zone.name || zone.zone_id || 'Ukjent';
-                  layer.bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${zone.upper_limit ? 'Øvre: ' + zone.upper_limit : ''}`);
+                  const displayName = zone.name || zone.zone_id || t("dashboard.missionMapPreview.unknown");
+                  layer.bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${zone.upper_limit ? t("dashboard.missionMapPreview.upperLimit", { v: zone.upper_limit }) : ''}`);
                 }
               }).addTo(zonesLayer);
             } catch {}
