@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Pause } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   videoId: string;
@@ -49,6 +50,7 @@ export const YouTubeClipPlayer = ({
   className,
   customControls = false,
 }: Props) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const intervalRef = useRef<number | null>(null);
@@ -188,7 +190,7 @@ export const YouTubeClipPlayer = ({
             />
             {finished && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/60 pointer-events-none">
-                <p className="text-white text-sm font-medium">Video ferdig — klikk «Neste slide»</p>
+                <p className="text-white text-sm font-medium">{t("training.youtubePlayer.videoDoneClickNext")}</p>
               </div>
             )}
           </>
@@ -204,7 +206,7 @@ export const YouTubeClipPlayer = ({
             onClick={togglePlay}
             disabled={!ready || finished}
             className="h-9 w-9 shrink-0"
-            aria-label={isPlaying ? "Pause" : "Spill av"}
+            aria-label={isPlaying ? t("training.youtubePlayer.pause") : t("training.youtubePlayer.play")}
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
