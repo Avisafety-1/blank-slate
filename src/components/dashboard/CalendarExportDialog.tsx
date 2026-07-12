@@ -212,7 +212,7 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
           description: mission.beskrivelse || undefined,
           startDate: new Date(mission.tidspunkt),
           endDate: mission.slutt_tidspunkt ? new Date(mission.slutt_tidspunkt) : undefined,
-          type: "Oppdrag",
+          type: t("dashboard.calendarExport.typeMission"),
         });
       }
     }
@@ -234,10 +234,10 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
       for (const doc of docsData) {
         events.push({
           id: doc.id,
-          title: `${doc.tittel} utgår`,
-          description: `Kategori: ${doc.kategori}`,
+          title: `${doc.tittel} ${t("dashboard.calendarExport.expiresSuffix")}`,
+          description: t("dashboard.calendarExport.categoryLabel", { value: doc.kategori }),
           startDate: new Date(doc.gyldig_til!),
-          type: "Dokument",
+          type: t("dashboard.calendarExport.typeDocument"),
         });
       }
     }
@@ -259,10 +259,10 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
       for (const drone of dronesData) {
         events.push({
           id: drone.id,
-          title: `${drone.modell} - inspeksjon`,
-          description: "Drone inspeksjon",
+          title: t("dashboard.calendarExport.droneInspectionTitle", { model: drone.modell }),
+          description: t("dashboard.calendarExport.droneInspectionDesc"),
           startDate: new Date(drone.neste_inspeksjon!),
-          type: "Vedlikehold",
+          type: t("dashboard.calendarExport.typeMaintenance"),
         });
       }
     }
@@ -284,10 +284,10 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
       for (const eq of equipmentData) {
         events.push({
           id: eq.id,
-          title: `${eq.navn} - vedlikehold`,
-          description: "Utstyrsvedlikehold",
+          title: t("dashboard.calendarExport.equipmentMaintTitle", { name: eq.navn }),
+          description: t("dashboard.calendarExport.equipmentMaintDesc"),
           startDate: new Date(eq.neste_vedlikehold!),
-          type: "Vedlikehold",
+          type: t("dashboard.calendarExport.typeMaintenance"),
         });
       }
     }
@@ -309,10 +309,10 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
       for (const acc of accessoriesData) {
         events.push({
           id: acc.id,
-          title: `${acc.navn} - vedlikehold`,
-          description: "Tilbehørsvedlikehold",
+          title: t("dashboard.calendarExport.equipmentMaintTitle", { name: acc.navn }),
+          description: t("dashboard.calendarExport.accessoryMaintDesc"),
           startDate: new Date(acc.neste_vedlikehold!),
-          type: "Vedlikehold",
+          type: t("dashboard.calendarExport.typeMaintenance"),
         });
       }
     }
@@ -326,7 +326,7 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
       const events = await fetchEvents();
       
       if (events.length === 0) {
-        toast.info("Ingen hendelser å eksportere i valgt periode");
+        toast.info(t("dashboard.calendarExport.noEventsToExport"));
         return;
       }
 
@@ -335,11 +335,11 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
       const filename = `avisafe-kalender-${new Date().toISOString().split("T")[0]}.ics`;
       
       downloadICSFile(icsContent, filename);
-      toast.success(`${events.length} hendelser eksportert til kalenderfil`);
+      toast.success(t("dashboard.calendarExport.exported", { count: events.length }));
       onOpenChange(false);
     } catch (error) {
       console.error("Error exporting calendar:", error);
-      toast.error("Kunne ikke eksportere kalender");
+      toast.error(t("dashboard.calendarExport.exportError"));
     } finally {
       setLoading(false);
     }
@@ -351,35 +351,35 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Synkroniser kalender
+            {t("dashboard.calendarExport.title")}
           </DialogTitle>
           <DialogDescription>
-            Last ned kalenderhendelser til din telefon eller datamaskin
+            {t("dashboard.calendarExport.description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="time-range">Tidsperiode</Label>
+            <Label htmlFor="time-range">{t("dashboard.calendarExport.timeRange")}</Label>
             <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
               <SelectTrigger id="time-range">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="30">Neste 30 dager</SelectItem>
-                <SelectItem value="90">Neste 3 måneder</SelectItem>
-                <SelectItem value="365">Neste år</SelectItem>
-                <SelectItem value="all">Alle fremtidige</SelectItem>
+                <SelectItem value="30">{t("dashboard.calendarExport.next30")}</SelectItem>
+                <SelectItem value="90">{t("dashboard.calendarExport.next3Months")}</SelectItem>
+                <SelectItem value="365">{t("dashboard.calendarExport.nextYear")}</SelectItem>
+                <SelectItem value="all">{t("dashboard.calendarExport.allFuture")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="rounded-lg border bg-muted/50 p-4">
             <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">{eventCount}</strong> hendelser vil bli eksportert
+              <strong className="text-foreground">{eventCount}</strong> {t("dashboard.calendarExport.eventsWillBeExported", { count: eventCount }).replace(/^\d+\s*/, "")}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Inkluderer oppdrag, vedlikehold, dokumentfrister og egne oppføringer
+              {t("dashboard.calendarExport.includes")}
             </p>
           </div>
 
@@ -389,7 +389,7 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
             className="w-full"
           >
             <Download className="mr-2 h-4 w-4" />
-            {loading ? "Genererer..." : "Last ned kalenderfil (.ics)"}
+            {loading ? t("dashboard.calendarExport.generating") : t("dashboard.calendarExport.download")}
           </Button>
 
           <CalendarSubscriptionSection />
