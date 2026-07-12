@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
 import { FlightSummaryPanel, type FlightSummary } from "./FlightSummaryPanel";
