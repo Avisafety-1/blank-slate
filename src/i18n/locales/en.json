@@ -1243,7 +1243,20 @@
       "title": "Missions",
       "noMissionsFound": "No missions found",
       "noMissions": "No missions",
-      "loadMore": "Load more missions"
+      "loadMore": "Load more missions",
+      "filterBar": {
+        "ongoingAndUpcoming": "Ongoing and upcoming",
+        "completed": "Completed",
+        "addMission": "Add mission",
+        "newMission": "New mission",
+        "searchPlaceholder": "Search missions...",
+        "customer": "Customer",
+        "allCustomers": "All customers",
+        "pilot": "Pilot",
+        "allPilots": "All pilots",
+        "drone": "Drone",
+        "allDrones": "All drones"
+      }
     },
     "incidents": {
       "title": "Incidents",
