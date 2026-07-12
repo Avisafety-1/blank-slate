@@ -261,7 +261,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               L.geoJSON(nsmData, {
                 style: { color: '#ef4444', weight: 2, fillColor: '#ef4444', fillOpacity: 0.15 },
                 onEachFeature: (feature, layer) => {
-                  const name = feature.properties?.navn || feature.properties?.name || 'NSM Forbudsområde';
+                  const name = feature.properties?.navn || feature.properties?.name || t("dashboard.missionMapPreview.nsmZoneDefault");
                   layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
                 }
               }).addTo(zonesLayer);
