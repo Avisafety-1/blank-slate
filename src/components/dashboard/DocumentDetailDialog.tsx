@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 interface ChecklistItem {
   id: string;
@@ -66,6 +67,7 @@ const splitLongTitle = (title: string): string[] => {
 
 export const DocumentDetailDialog = ({ open, onOpenChange, document, status, canManage }: DocumentDetailDialogProps) => {
   const { user, ensureValidToken, isAdmin, isSuperAdmin, companyId } = useAuth();
+  const { t } = useTranslation();
   const [downloading, setDownloading] = useState(false);
   
   const [isEditing, setIsEditing] = useState(false);
@@ -163,7 +165,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
       }
     } catch (error: any) {
       console.error('Error opening document:', error);
-      toast.error('Kunne ikke åpne dokumentet');
+      toast.error(t('dashboard.documents.openError'));
     }
   };
 
@@ -173,7 +175,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
     // Check if it's an external URL - can't download directly
     if (document.fil_url.startsWith('http://') || document.fil_url.startsWith('https://')) {
       window.open(document.fil_url, '_blank');
-      toast.info('Åpner ekstern lenke i ny fane');
+      toast.info(t('dashboard.documents.openingExternal'));
       return;
     }
     
@@ -205,10 +207,10 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
       window.document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      toast.success('Dokumentet ble lastet ned');
+      toast.success(t('dashboard.documents.downloaded'));
     } catch (error: any) {
       console.error('Error downloading document:', error);
-      toast.error('Kunne ikke laste ned dokumentet');
+      toast.error(t('dashboard.documents.downloadError'));
     } finally {
       setDownloading(false);
     }
@@ -225,14 +227,14 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
 
       if (error) throw error;
 
-      toast.success('Utløpsdato oppdatert');
+      toast.success(t('dashboard.documents.expiryUpdated'));
       setIsEditing(false);
       onOpenChange(false);
       // Refresh the page to show updated data
       window.location.reload();
     } catch (error: any) {
       console.error('Error updating expiry date:', error);
-      toast.error('Kunne ikke oppdatere utløpsdato');
+      toast.error(t('dashboard.documents.expiryUpdateError'));
     }
   };
 
@@ -388,10 +390,10 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                         : "text-muted-foreground"
                     }`}>
                       {daysUntilExpiry < 0 
-                        ? `Utløpt for ${Math.abs(daysUntilExpiry)} dager siden`
+                        ? t('dashboard.documents.expiredDaysAgo', { days: Math.abs(daysUntilExpiry) })
                         : daysUntilExpiry === 0
-                        ? "Utløper i dag"
-                        : `${daysUntilExpiry} dager igjen`}
+                        ? t('dashboard.documents.expiresToday')
+                        : t('dashboard.documents.daysRemaining', { days: daysUntilExpiry })}
                     </p>
                   )}
                 </div>
@@ -402,7 +404,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
               <div className="flex items-start gap-3">
                 <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Sist endret</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('dashboard.documents.lastModified')}</p>
                   <p className="text-base">
                     {format(document.sist_endret, "dd. MMMM yyyy, HH:mm", { locale: nb })}
                   </p>
@@ -460,9 +462,9 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-destructive">Dokumentet har utløpt</p>
+                  <p className="text-sm font-medium text-destructive">{t('dashboard.documents.expiredTitle')}</p>
                   <p className="text-sm mt-1 text-destructive/90">
-                    Dette dokumentet må fornyes umiddelbart for å opprettholde compliance.
+                    {t('dashboard.documents.expiredWarning')}
                   </p>
                 </div>
               </div>
@@ -475,10 +477,10 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                 <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                    Dokumentet nærmer seg utløp
+                    {t('dashboard.documents.expiringSoonTitle')}
                   </p>
                   <p className="text-sm mt-1 text-amber-900 dark:text-amber-100">
-                    Vennligst sørg for fornyelse innen utløpsdato.
+                    {t('dashboard.documents.expiringSoonMessage')}
                   </p>
                 </div>
               </div>
@@ -506,7 +508,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                     onClick={handleOpenDocument}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Åpne nettside
+                    {t('dashboard.documents.openWebsite')}
                   </Button>
                 )}
                 {document.fil_url && !document.nettside_url && (
@@ -519,7 +521,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                         onClick={handleOpenDocument}
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />
-                        Åpne
+                        {t('dashboard.documents.open')}
                       </Button>
                     )}
                     {/* Download button */}

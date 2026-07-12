@@ -236,7 +236,9 @@
       "postFlightLabel": "Post flight",
       "approveInNinoxTitle": "Godkjenn i Ninox?",
       "approveInNinoxDescription": "Bekreft at oppdraget er godkjent i Ninox.",
-      "approve": "Godkjenn"
+      "approve": "Godkjenn",
+      "geocodeNotFound": "Fant ikke koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data.",
+      "geocodeError": "Kunne ikke finne koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data."
     },
     "kpi": {
       "title": "Hendelser siste 6 mnd",
@@ -251,7 +253,18 @@
       "loadingFollowUp": "Laster oppfølginger...",
       "noFollowUp": "Du har ingen hendelser som oppfølgingsansvarlig",
       "couldNotLoad": "Kunne ikke laste hendelser",
-      "couldNotLoadFollowUp": "Kunne ikke laste oppfølgingshendelser"
+      "couldNotLoadFollowUp": "Kunne ikke laste oppfølgingshendelser",
+      "responsibleUpdated": "Oppfølgingsansvarlig oppdatert",
+      "statusOpen": "Åpen",
+      "responsibleAdmin": "Oppfølgingsansvarlig (Admin)",
+      "searchPerson": "Søk person...",
+      "rootCause": "Hovedårsak",
+      "responsible": "Oppfølgingsansvarlig",
+      "criticalIncident": "Kritisk hendelse",
+      "highSeverity": "Høy alvorlighetsgrad",
+      "urgentAttention": "Denne hendelsen krever umiddelbar oppmerksomhet og oppfølging.",
+      "noComments": "Ingen kommentarer ennå",
+      "comments": "Kommentarer"
     },
     "news": {
       "title": "Nyheter",
@@ -264,7 +277,23 @@
       "noResults": "Ingen dokumenter funnet",
       "expired": "Utløpt",
       "expiresSoon": "Snart",
-      "couldNotLoad": "Kunne ikke hente dokumenter"
+      "couldNotLoad": "Kunne ikke hente dokumenter",
+      "openError": "Kunne ikke åpne dokumentet",
+      "openingExternal": "Åpner ekstern lenke i ny fane",
+      "expiryUpdated": "Utløpsdato oppdatert",
+      "expiryUpdateError": "Kunne ikke oppdatere utløpsdato",
+      "downloaded": "Dokumentet ble lastet ned",
+      "downloadError": "Kunne ikke laste ned dokumentet",
+      "expiredDaysAgo": "Utløpt for {{days}} dager siden",
+      "expiresToday": "Utløper i dag",
+      "daysRemaining": "{{days}} dager igjen",
+      "lastModified": "Sist endret",
+      "expiredTitle": "Dokumentet har utløpt",
+      "expiredWarning": "Dette dokumentet må fornyes umiddelbart for å opprettholde compliance.",
+      "expiringSoonTitle": "Dokumentet nærmer seg utløp",
+      "expiringSoonMessage": "Vennligst sørg for fornyelse innen utløpsdato.",
+      "openWebsite": "Åpne nettside",
+      "open": "Åpne"
     },
     "calendar": {
       "title": "Kalender",

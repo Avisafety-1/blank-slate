@@ -685,11 +685,11 @@ export const AddMissionDialog = ({
             missionCoordinates = geocoded;
             setFormData(prev => ({ ...prev, ...geocoded }));
           } else {
-            toast.warning("Fant ikke koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data.");
+            toast.warning(t('dashboard.missions.geocodeNotFound'));
           }
         } catch (geocodeError) {
           console.error("Could not geocode mission location:", geocodeError);
-          toast.warning("Kunne ikke finne koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data.");
+          toast.warning(t('dashboard.missions.geocodeError'));
         }
       }
 

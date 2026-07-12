@@ -234,7 +234,9 @@
       "postFlightLabel": "Post-flight",
       "approveInNinoxTitle": "Approve in Ninox?",
       "approveInNinoxDescription": "Confirm that the mission is approved in Ninox.",
-      "approve": "Approve"
+      "approve": "Approve",
+      "geocodeNotFound": "Could not find coordinates for the address. Airspace, map, weather and risk assessment may be missing data.",
+      "geocodeError": "Could not look up coordinates for the address. Airspace, map, weather and risk assessment may be missing data."
     },
     "kpi": {
       "title": "Incidents last 6 months",
@@ -249,7 +251,18 @@
       "loadingFollowUp": "Loading follow-ups...",
       "noFollowUp": "You have no incidents as follow-up responsible",
       "couldNotLoad": "Could not load incidents",
-      "couldNotLoadFollowUp": "Could not load follow-up incidents"
+      "couldNotLoadFollowUp": "Could not load follow-up incidents",
+      "responsibleUpdated": "Follow-up responsible updated",
+      "statusOpen": "Open",
+      "responsibleAdmin": "Follow-up responsible (Admin)",
+      "searchPerson": "Search person...",
+      "rootCause": "Root cause",
+      "responsible": "Follow-up responsible",
+      "criticalIncident": "Critical incident",
+      "highSeverity": "High severity",
+      "urgentAttention": "This incident requires immediate attention and follow-up.",
+      "noComments": "No comments yet",
+      "comments": "Comments"
     },
     "news": {
       "title": "News",
@@ -262,7 +275,23 @@
       "noResults": "No documents found",
       "expired": "Expired",
       "expiresSoon": "Soon",
-      "couldNotLoad": "Could not load documents"
+      "couldNotLoad": "Could not load documents",
+      "openError": "Could not open document",
+      "openingExternal": "Opening external link in new tab",
+      "expiryUpdated": "Expiry date updated",
+      "expiryUpdateError": "Could not update expiry date",
+      "downloaded": "Document downloaded",
+      "downloadError": "Could not download document",
+      "expiredDaysAgo": "Expired {{days}} days ago",
+      "expiresToday": "Expires today",
+      "daysRemaining": "{{days}} days remaining",
+      "lastModified": "Last modified",
+      "expiredTitle": "Document has expired",
+      "expiredWarning": "This document must be renewed immediately to maintain compliance.",
+      "expiringSoonTitle": "Document is nearing expiry",
+      "expiringSoonMessage": "Please ensure renewal before the expiry date.",
+      "openWebsite": "Open website",
+      "open": "Open"
     },
     "calendar": {
       "title": "Calendar",

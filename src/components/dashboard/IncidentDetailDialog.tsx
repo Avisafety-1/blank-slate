@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -55,6 +56,7 @@ const statusColors = {
 
 export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest }: IncidentDetailDialogProps) => {
   const { user, companyId, parentCompanyId, ensureValidToken, isAdmin, departmentsEnabled } = useAuth();
+  const { t } = useTranslation();
   const companySettings = useCompanySettings();
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [relatedMission, setRelatedMission] = useState<{ id: string; tittel: string; lokasjon: string; status: string } | null>(null);
@@ -312,7 +314,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
         setOppfolgingsansvarlig(null);
       }
 
-      toast.success("Oppfølgingsansvarlig oppdatert");
+      toast.success(t('dashboard.incidents.responsibleUpdated'));
     } catch (error) {
       console.error("Error updating responsible:", error);
       toast.error("Kunne ikke oppdatere ansvarlig");
@@ -416,7 +418,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Åpen">Åpen</SelectItem>
+                    <SelectItem value="Åpen">{t('dashboard.incidents.statusOpen')}</SelectItem>
                     <SelectItem value="Under behandling">Under behandling</SelectItem>
                     <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
                     <SelectItem value="Lukket">Lukket</SelectItem>
@@ -425,13 +427,13 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="responsible-select">Oppfølgingsansvarlig (Admin)</Label>
+                <Label htmlFor="responsible-select">{t('dashboard.incidents.responsibleAdmin')}</Label>
                 <SearchablePersonSelect
                   persons={users}
                   value={selectedResponsibleId}
                   onValueChange={(val) => handleResponsibleChange(val || "ingen")}
                   placeholder="Velg ansvarlig..."
-                  searchPlaceholder="Søk person..."
+                  searchPlaceholder={t('dashboard.incidents.searchPerson')}
                   allowNone
                   noneLabel="Ingen ansvarlig"
                   disabled={updatingResponsible}
@@ -454,7 +456,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             )}
             {incident.hovedaarsak && (
               <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">
-                Hovedårsak: {incident.hovedaarsak}
+                {t('dashboard.incidents.rootCause')}: {incident.hovedaarsak}
               </Badge>
             )}
             {incident.medvirkende_aarsak && incident.medvirkende_aarsak.split(", ").map((cause: string) => (
@@ -530,7 +532,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               <div className="flex items-start gap-3">
                 <User className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Oppfølgingsansvarlig</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('dashboard.incidents.responsible')}</p>
                   <p className="text-base">{oppfolgingsansvarlig.full_name || 'Ukjent bruker'}</p>
                 </div>
               </div>
@@ -569,10 +571,10 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                 <AlertTriangle className="w-5 h-5 text-destructive mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-destructive">
-                    {incident.alvorlighetsgrad === "Kritisk" ? "Kritisk hendelse" : "Høy alvorlighetsgrad"}
+                    {incident.alvorlighetsgrad === "Kritisk" ? t('dashboard.incidents.criticalIncident') : t('dashboard.incidents.highSeverity')}
                   </p>
                   <p className="text-sm mt-1 text-destructive/90">
-                    Denne hendelsen krever umiddelbar oppmerksomhet og oppfølging.
+                    {t('dashboard.incidents.urgentAttention')}
                   </p>
                 </div>
               </div>
@@ -585,7 +587,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className="w-5 h-5 text-muted-foreground" />
             <h3 className="text-base font-medium">
-              Kommentarer {comments.length > 0 && `(${comments.length})`}
+              {t('dashboard.incidents.comments')} {comments.length > 0 && `(${comments.length})`}
             </h3>
           </div>
 
@@ -593,7 +595,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
           <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
             {comments.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">
-                Ingen kommentarer ennå
+                {t('dashboard.incidents.noComments')}
               </p>
             ) : (
               comments.map((comment) => (
