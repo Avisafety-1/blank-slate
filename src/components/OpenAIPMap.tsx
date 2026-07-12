@@ -214,6 +214,8 @@ export function OpenAIPMap({
   routeInspectMode,
   historicalFlightTracks,
 }: OpenAIPMapProps) {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? 'en-US' : 'nb-NO';
 
   const { user, companyId, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   // Company-level default map layer toggles (jsonb map of layer_id → boolean).
