@@ -791,7 +791,7 @@ const Auth = () => {
             (captchaStatusRef.current as string) !== "error"
           ) {
             setShowCaptchaFallback(true);
-            toast.error("Bekreft at du ikke er en robot og prøv igjen");
+            toast.error(t('auth.captchaRobotError'));
             return;
           }
         }
