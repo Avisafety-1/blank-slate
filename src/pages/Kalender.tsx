@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import droneBackground from "@/assets/drone-background.png";
 import { format, isSameDay } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
