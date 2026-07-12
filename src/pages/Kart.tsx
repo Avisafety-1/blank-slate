@@ -924,10 +924,10 @@ export default function KartPage() {
                 onClick={handleUndoPoint}
                 disabled={currentRoute.coordinates.length === 0}
                 className="h-8 px-2 sm:px-3"
-                title="Angre siste endring"
+                title={t('pages.map.undoTitle')}
               >
                 <Undo className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Angre</span>
+                <span className="hidden sm:inline ml-1">{t('pages.map.undo')}</span>
               </Button>
 
               <Button
