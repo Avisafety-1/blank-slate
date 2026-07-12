@@ -752,19 +752,19 @@ export default function Kalender() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
-                            Oppdrag
+                            {t('pages.calendar.mission')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
-                            Hendelse
+                            {t('pages.calendar.incident')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
-                            Dokument
+                            {t('pages.calendar.document')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>
-                            Nyhet
+                            {t('pages.calendar.news')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAddEntry('annet')}>
-                            Annet
+                            {t('pages.calendar.other')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
