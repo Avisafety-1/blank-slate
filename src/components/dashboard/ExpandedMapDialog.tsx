@@ -80,6 +80,8 @@ export const ExpandedMapDialog = ({
   onSoraUpdated,
   notam,
 }: ExpandedMapDialogProps) => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === "en" ? "en-GB" : "nb-NO";
   const { companyId } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
