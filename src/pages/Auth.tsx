@@ -705,7 +705,8 @@ const Auth = () => {
             full_name: googleFullName.trim(),
             company_id: googleValidatedCompany!.id,
             email: googleUser.email,
-            approved: false
+            approved: false,
+            preferred_language: googleValidatedCompany!.defaultLanguage || 'no'
           });
 
         if (profileError) {
