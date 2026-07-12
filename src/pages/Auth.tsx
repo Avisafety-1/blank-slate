@@ -391,7 +391,15 @@ const Auth = () => {
         });
         
         if (!error && data && data.length > 0) {
-          setGoogleValidatedCompany({ id: data[0].company_id, name: data[0].company_name });
+          const companyId = data[0].company_id;
+          const { data: companyLang } = await supabase
+            .from('companies')
+            .select('default_language')
+            .eq('id', companyId)
+            .maybeSingle();
+          const lang = ((companyLang as any)?.default_language === 'en' ? 'en' : 'no') as 'no' | 'en';
+          setGoogleValidatedCompany({ id: companyId, name: data[0].company_name, defaultLanguage: lang });
+          try { await i18n.changeLanguage(lang); } catch {}
         } else {
           setGoogleValidatedCompany(null);
         }
