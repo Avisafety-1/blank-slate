@@ -118,7 +118,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
       iconAnchor: [20, 40],
     });
 
-    L.marker([latitude, longitude], { icon }).addTo(map).bindPopup("Oppdragsposisjon");
+    L.marker([latitude, longitude], { icon }).addTo(map).bindPopup(t("dashboard.missionMapPreview.missionPosition"));
 
     const allPoints: [number, number][] = [[latitude, longitude]];
 
