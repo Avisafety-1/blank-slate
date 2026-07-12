@@ -16,7 +16,7 @@ Statuskoder:
 | # | Fil / område | Status | Notat |
 |--:|--------------|--------|-------|
 | 1.1 | `src/pages/Index.tsx` | DONE | Toasts + checkout-meldinger migrert 2026-07-12 |
-| 1.1 | `src/components/dashboard/*` (widgets) | TODO | DocumentSection, MissionsSection, IncidentsSection, StatusPanel, KPIChart, NewsSection, CalendarWidget, ActiveFlightsSection, AISearchBar, AddMissionDialog, RiskAssessmentDialog, IncidentDetailDialog, SoraAnalysisDialog, ExpandedMapDialog, MissionMapPreview, DocumentDetailDialog, DocumentSection, FlightAnalysisTimeline, AddIncidentDialog, CalendarExportDialog, OperationClassificationSection, SoraResultView, MissionSoraRouteDocumentation |
+| 1.1 | `src/components/dashboard/*` (widgets) | WIP | DocumentDetailDialog, IncidentDetailDialog, AddMissionDialog (toasts) DONE 2026-07-12. Direct-visible widgets (DocumentSection, MissionsSection, IncidentsSection, StatusPanel, CalendarWidget, AISearchBar) allerede migrert. Gjenstår: RiskAssessmentDialog (JSX-tekst), CalendarExportDialog, CalendarSubscriptionSection, OperationClassificationSection, MissionMapPreview, FlightAnalysisTimeline, ExpandedMapDialog, SoraAnalysisDialog/SoraResultView/MissionSoraRouteDocumentation (Fase 3 – SORA-namespace) |
 | 1.2 | `src/pages/Oppdrag.tsx` + `src/components/oppdrag/*` | TODO | |
 | 1.3 | `src/pages/Kalender.tsx` | TODO | |
 | 1.4 | `src/pages/Kart.tsx` + kart-popups | TODO | Nytt namespace `map` |
