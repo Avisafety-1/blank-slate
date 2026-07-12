@@ -685,16 +685,31 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
   }
 };
 
+// Backwards-compat alias – kept so old imports work while we're migrating.
+export { defaultTemplates as defaultTemplatesNo } from "./template-utils.ts";
+
 /**
- * Gets email template with fallback to default
+ * Default templates per language. New template keys must be added to BOTH
+ * `defaultTemplates` (norsk, above) and `defaultTemplatesEn`.
+ * See mem://preferences/i18n-mandatory.
+ */
+export const defaultTemplatesByLang: Record<EmailLanguage, Record<string, { subject: string; content: string }>> = {
+  no: defaultTemplates,
+  en: defaultTemplatesEn,
+};
+
+/**
+ * Gets email template with fallback: custom (DB, requested language) →
+ * custom (DB, 'no') → default (requested language) → default ('no') → empty.
  */
 export async function getEmailTemplateWithFallback(
   companyId: string,
   templateType: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  language: EmailLanguage = "no"
 ): Promise<EmailTemplateResult> {
-  const customTemplate = await getEmailTemplate(companyId, templateType);
-  
+  const customTemplate = await getEmailTemplate(companyId, templateType, language);
+
   if (customTemplate) {
     const content = replaceTemplateVariables(customTemplate.content, variables);
     return {
@@ -703,8 +718,9 @@ export async function getEmailTemplateWithFallback(
       isCustom: true
     };
   }
-  
-  const defaultTemplate = defaultTemplates[templateType];
+
+  const langDefaults = defaultTemplatesByLang[language] || defaultTemplatesByLang.no;
+  const defaultTemplate = langDefaults[templateType] || defaultTemplatesByLang.no[templateType];
   if (defaultTemplate) {
     let content = replaceTemplateVariables(defaultTemplate.content, variables);
     // Inject logo header into default templates
@@ -715,7 +731,7 @@ export async function getEmailTemplateWithFallback(
       isCustom: false
     };
   }
-  
+
   // Return empty template if no default exists
   return {
     subject: '',
