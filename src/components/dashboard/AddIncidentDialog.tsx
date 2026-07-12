@@ -570,9 +570,9 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6" data-tour="incident-dialog">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Rediger hendelse" : "Rapporter hendelse"}</DialogTitle>
+          <DialogTitle>{isEditing ? t('incidents.dialog.editTitle') : t('incidents.dialog.reportTitle')}</DialogTitle>
           <DialogDescription>
-            {isEditing ? "Oppdater informasjon om hendelsen" : "Fyll ut informasjon om hendelsen"}
+            {isEditing ? t('incidents.dialog.editDescription') : t('incidents.dialog.reportDescription')}
           </DialogDescription>
         </DialogHeader>
 
