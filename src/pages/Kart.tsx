@@ -976,7 +976,7 @@ export default function KartPage() {
                 onClick={() => setSoraOpen((o) => !o)}
                 className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity"
               >
-                <span className="text-sm font-medium text-foreground"><span className="sm:hidden">Buffer</span><span className="hidden sm:inline">SORA volum</span></span>
+                <span className="text-sm font-medium text-foreground"><span className="sm:hidden">{t('pages.map.buffer')}</span><span className="hidden sm:inline">{t('pages.map.soraVolume')}</span></span>
                 <Switch
                   checked={soraSettings.enabled}
                   onCheckedChange={(checked) => {
