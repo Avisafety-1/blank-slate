@@ -1,128 +1,92 @@
+# Tospråklige e-postmaler i edge functions
 
-# Plan: Full i18n-konvertering (NO → EN)
+## Mål
 
-## Bakgrunn (hva som allerede finnes)
+Alle e-poster fra edge functions kan sendes på både norsk og engelsk, valgt automatisk basert på mottakerens språk. Nye kodere følger regelen i `mem://preferences/i18n-mandatory` også for e-post.
 
-- **Infrastruktur klar:** `src/i18n/index.ts` (i18next + LanguageDetector), `src/lib/i18nHelpers.ts` (`getCurrentLanguage`, `setLanguage`, `getFixedT`), `useTerminology()` for drone/fly, README med konvensjoner.
-- **Namespaces i bruk:** `translation` (no.json/en.json, ~1528 linjer hver) og `pdf` (no/pdf.json, en/pdf.json).
-- **Toppnivå-nøkler allerede definert:** `nav, actions, common, auth, flight, dronetag, header, dashboard, resources, missions, incidents, profile, status, forms, errors, roles, admin, riskAssessment, riskAssessmentType, terminology, dronelog, twoFactor, passkey, pages, changelog, mapPublication, oppdragDialogs, soraPanel, logbook`.
-- **Edge functions:** eget mønster med lokale `prompts.ts` (`ai-search`, `generate-narration`, `suggest-course-topics`) – **ikke** i frontend-bundle.
-- **Referansedokumenter:**
-  - `src/i18n/README.md` – konvensjoner (les før hver PR).
-  - `i18n-scan-report.md` – heatmap over 191 filer med hardkodet norsk (generert 2026-05-27, **skal regenereres** via `scripts/i18n-scan.ts` før vi starter).
+## Nåværende situasjon
 
-Ingen egen migrasjonsplan-md finnes fra før – denne planen blir startdokumentet.
+- 11 edge functions sender e-post – alle hardkoder norsk innhold.
+- `_shared/template-utils.ts` inneholder 13 `defaultTemplates` (kun norsk).
+- Selskap kan overstyre maler via `email_templates`-tabellen – én rad per (`company_id`, `template_type`), språk-agnostisk.
+- Klient-vendte feilmeldinger fra funksjonene er hardkodet norsk.
 
-## Strategi
+## Løsning
 
-1. **Én modul per PR.** Aldri kombinere. Følger README pkt. "Inkrementell migrasjon".
-2. **Legg nye nøkler under eksisterende toppnivå** når mulig. Nytt namespace **kun** når kriteriene i README treffer (PDF/AI/map/sora/safety – flere av disse er allerede store nok).
-3. **Ingen omdøping / flytting av eksisterende nøkler.**
-4. **`useTerminology()`** brukes for drone/fly – aldri hardkod "drone"/"aircraft" i nye nøkler.
-5. **Regulatoriske forkortelser** (SORA, ECCAIRS, NSM, RPAS, NOTAM, CTR/TIZ) beholdes på begge språk.
-6. **Verifikasjon per modul:** bytt UI til EN i preview, gå gjennom skjermbildet, sjekk at ingen nøkler vises som råtekst (`saveMissing`-warnings i devkonsoll).
+### 1. Datamodell (én migrasjon)
 
-## Håndtering av lange engelske strenger
+Utvid `email_templates` med `language`-kolonne:
 
-Problemet: EN-oversettelser sprenger knapper/badges/tabellheadere.
+```sql
+ALTER TABLE public.email_templates
+  ADD COLUMN language text NOT NULL DEFAULT 'no'
+  CHECK (language IN ('no', 'en'));
 
-Regelverk (legges til i README under en ny seksjon "Length-sensitive strings"):
+-- Fjern gammel unique, lag ny composite:
+ALTER TABLE public.email_templates
+  DROP CONSTRAINT IF EXISTS email_templates_company_id_template_type_key;
 
-- **Kort-plass-kontekst (knapper, tabs, badges, kolonneheadere, ikonlabels ≤ ~14 tegn NO):**
-  - Bruk **to nøkler** når EN blir mer enn ~30% lengre enn NO:
-    - `foo.action` – full form (brukes i menyer, dialoger, tooltips).
-    - `foo.actionShort` – forkortet variant (brukes i knapper/tabs/badges).
-  - Konvensjon: suffiks `Short` for forkortet, `Abbr` for standard bransjeforkortelser (f.eks. `flightHoursAbbr: "FH"`).
-- **Tooltip-fallback:** komponenter som viser `Short`/`Abbr` skal ha `title`/`aria-label` med full form for tilgjengelighet.
-- **Godkjente engelske forkortelser (foreslått – bekreftes underveis):**
-  - Risk Assessment → "Risk Assmt." (kort), full i dialoger.
-  - Maintenance → "Maint." i tabellheadere.
-  - Equipment → "Equip." i badges.
-  - Personnel → "People" i tabs.
-  - Documents → "Docs" i sidebar/tabs.
-  - Flight Hours → "FH".
-  - Last inspection / Next inspection → "Last insp." / "Next insp." i tabeller.
-  - Registration → "Reg." i tabellheadere.
-  - Add / Delete / Edit → allerede korte, ingen `Short`-variant nødvendig.
-- **Ingen CSS-hack** (`truncate`/`text-xs`) som primær fiks – teksten skal passe på engelsk uten å kutte visuelt.
+ALTER TABLE public.email_templates
+  ADD CONSTRAINT email_templates_company_type_lang_unique
+  UNIQUE (company_id, template_type, language);
+```
 
-## Prioritert rekkefølge
+Eksisterende rader beholder `language='no'` – ingen data-migrering nødvendig.
 
-Prioritet basert på:
-(a) **brukshyppighet** (hvor mange brukere ser siden daglig),
-(b) **hvor bruker-vendt** teksten er (UI > interne tools/admin),
-(c) **treff i scan-rapporten**.
+### 2. Delt språk-modul: `_shared/email-i18n.ts`
 
-### Fase 1 – Kjerne-navigasjon og daglige flater (høy prio)
+Ny fil med:
+- `type EmailLanguage = 'no' | 'en'`
+- `resolveLanguage(req, body)` – leser i denne rekkefølgen: `body.language`, `Accept-Language`-header, brukerens `profiles.preferred_language` (om `user_id` er kjent), fallback `'no'`.
+- `apiMessages: Record<EmailLanguage, Record<string, string>>` – for klient-vendte API-svar (feilmeldinger, "Hvis e-posten finnes..."-svar osv.).
 
-Alle brukere ser disse hver dag; her ligger også de fleste knappene som blir lange på EN.
+### 3. Del opp `defaultTemplates`
 
-1. `src/pages/Index.tsx` (Dashboard) + `src/components/dashboard/*` – widgets, kort, badges.
-2. `src/pages/Oppdrag.tsx` + `src/components/oppdrag/*` (`MissionCard`, `OppdragFilterBar`, `AirspaceConflictWarning`, `dialogs/OppdragDialogs.tsx`).
-3. `src/pages/Kalender.tsx`.
-4. `src/pages/Kart.tsx` + `src/lib/mapDataFetchers.ts`, `mapWeatherPopup.ts`, `zonePopups.ts` (kart-popups → **eget `map`-namespace**, som README foreslår).
-5. `src/pages/Resources.tsx` + `src/components/resources/*` (DroneDetailDialog, EquipmentDetailDialog, PersonCompetencyDialog, AddDroneDialog, AddEquipmentDialog, ChecklistExecutionDialog).
-6. `src/components/Header.tsx` (mobilmenyen – noen strenger igjen).
-7. `src/pages/Auth.tsx` + `src/pages/ResetPassword.tsx`.
+Endre `_shared/template-utils.ts`:
+- `defaultTemplates` blir `Record<EmailLanguage, Record<string, {subject, content}>>`.
+- Alle 13 maler får engelsk tvilling (samme struktur, oversatt innhold – "Hei" → "Hi", "Med vennlig hilsen" → "Best regards", knappe-tekster osv.).
+- `getEmailTemplateWithFallback(companyId, templateType, variables, language)` – henter fra DB med `.eq('language', language)`, faller tilbake til DB `'no'`, deretter `defaultTemplates[language]`, deretter `defaultTemplates['no']`.
 
-### Fase 2 – Hendelser, dokumenter, opplæring (medium prio)
+### 4. Oppdater alle 11 funksjoner
 
-8. `src/pages/Hendelser.tsx` + `src/components/dashboard/AddIncidentDialog.tsx`, `IncidentDetailDialog.tsx`, `DeviationReportDialog.tsx`.
-9. `src/pages/Documents.tsx` + `src/components/documents/*`.
-10. Training-flatene: `src/components/training/*`, `src/components/admin/TrainingCourseEditor.tsx`, `TrainingSection.tsx`, `TrainingStatusView.tsx`, `src/pages/UserManualDownload.tsx`.
-11. Guided tours: `src/tours/*` – **eget `tours`-namespace** (over 200 strenger totalt).
+For hver av `send-user-welcome-email`, `send-customer-welcome-email`, `send-user-approved-email`, `send-password-reset`, `invite-user`, `resend-confirmation-email`, `send-notification-email`, `send-feedback`, `preview-currency-emails`, `send-template-previews`, `test-email`:
+- Les `language` fra request body (default `'no'`).
+- Send `language` videre til `getEmailTemplateWithFallback`.
+- Erstatt hardkodede fallback-strenger (f.eks. i `send-user-approved-email` linje 35-36) og klient-vendte feilstrenger (f.eks. `"E-post er påkrevd"`) med `apiMessages[language]`.
+- Behold `fromName` = "AviSafe" (varemerke, ikke oversettes).
 
-### Fase 3 – SORA, ECCAIRS, safety (domene)
+### 5. Klient-kallere
 
-12. **Eget `sora`-namespace:** `src/pages/SoraProcess.tsx`, `SoraSettingsPanel.tsx`, `dashboard/SoraAnalysisDialog.tsx`, `SoraResultView.tsx`, `MissionSoraRouteDocumentation.tsx`, `admin/CompanySoraConfigSection.tsx`, `lib/soraGeometry.ts`/`soraBufferCalculator.ts` (kun bruker-vendt tekst).
-13. **Eget `eccairs`-namespace:** `src/components/eccairs/*`, `src/config/eccairsFields.ts`, `src/lib/eccairsAutoMapping.ts`.
-14. **Eget `safety`-namespace:** `AirspaceWarnings.tsx`, `AirspaceConflictWarning.tsx`, `AdjacentAreaPanel.tsx`, `natureProtectionRules.ts` (bruker-vendt).
+Alle kall til disse edge functions oppdateres til å sende `language: i18n.language`:
+- `supabase.functions.invoke('send-user-welcome-email', { body: { ..., language: i18n.language } })`
+- Samme for de andre. `i18n.language` er allerede `'no'` eller `'en'`.
 
-### Fase 4 – Admin og backoffice (lavere prio, men mye tekst)
+### 6. Admin-UI for `email_templates` (kort utvidelse)
 
-15. `src/pages/Admin.tsx` + `src/components/admin/*` (EmailTemplateEditor, ChildCompaniesSection, RevenueCalculator, CompanyManagementSection, CustomerDetailDialog, LiveStreamDialog, MapPublicationDefaultsCard, NotamRssFeedsSection, FH2*, BulkEmailSender, DeviationCategoryTreeEditor).
-16. `src/pages/Status.tsx` + `src/hooks/useStatusData.ts`.
-17. `src/pages/Priser.tsx`, `src/pages/Installer.tsx`, `src/pages/Changelog.tsx`.
-18. `src/pages/Marketing.tsx` + `src/components/marketing/*`.
+`EmailTemplateEditor.tsx` får språk-velger (radio: Norsk/English) som styrer hvilken rad som redigeres. Ved lagring skrives (`company_id`, `template_type`, `language`)-rad via upsert. Ingen språk-obligatorisk – hvis kun norsk finnes, sendes norsk til alle mottakere; hvis begge finnes, velges basert på `body.language`.
 
-### Fase 5 – PDF, notifications, edge functions
+### 7. Referansedokument oppdateres
 
-19. **PDF-namespacet er allerede opprettet** men lite fylt. Migrer:
-    - `src/lib/oppdragPdfExport.ts`, `riskAssessmentPdfExport.ts`, `incidentPdfExport.ts`, `userManualPdf.ts`. Alle skal ta `language`-parameter (default `getCurrentLanguage()`), bruke `getFixedT(language, 'pdf')`.
-20. **Notifications:** `src/lib/notifications.ts` → eget `notifications`-namespace.
-21. **Edge functions:** for hver bruker-vendt function (feilmeldinger, e-post, AI-svar), opprett lokal `prompts.ts` etter mønsteret i `ai-search`. Frontend sender `language` i `invoke()`-body. Prioritert liste bestemmes når fase 1-4 er ferdig.
+`docs/i18n-migration-status.md` – Fase 5.3 utvides med e-post-arbeid. `mem://preferences/i18n-mandatory` punkt 6 oppdateres når arbeidet er ferdig.
 
-### Fase 6 – Sluttopprydding
+## Utenfor scope
 
-22. `src/data/mockData.ts` – vurder om mock brukes i UI; ellers utelates.
-23. `src/types/index.ts`, `src/lib/maintenanceStatus.ts`, `src/lib/oppdragHelpers.ts` – enum-labels og statusnavn.
-24. Regenerér `i18n-scan-report.md` og verifisér at kun regulatoriske forkortelser / kommentarer gjenstår.
+- Automatisk maskinoversettelse av eksisterende brukertilpassede maler i DB (selskap må selv legge inn engelsk versjon hvis ønsket).
+- Andre språk enn `no`/`en` – legges lett til senere via samme mønster.
+- Endringer i Lovable Auth Email Templates (`auth-email-hook`) – ikke aktivert i dette prosjektet.
 
-## Leveranser per fase
+## Teknisk sjekkliste
 
-For hver fase (PR-batch):
-1. Legg nye nøkler i riktig namespace (opprett `src/i18n/locales/<lang>/<ns>.json` + registrer i `src/i18n/index.ts` når nødvendig).
-2. Bytt strenger til `t(...)`. Bruk `Short`/`Abbr`-varianter der plassen krever det (se regelverk over).
-3. Manuell verifikasjon i preview (NO + EN) på berørte skjermer.
-4. `tsgo --noEmit`.
-5. Kort oppføring i `docs/SYNC-LOG.md`.
+- [ ] Migrasjon: `language`-kolonne + composite unique
+- [ ] `_shared/email-i18n.ts` med `resolveLanguage` og `apiMessages`
+- [ ] `_shared/template-utils.ts`: split `defaultTemplates` per språk + engelsk oversettelse av alle 13 maler
+- [ ] 11 edge functions oppdatert
+- [ ] Klient-kallere sender `language: i18n.language`
+- [ ] `EmailTemplateEditor.tsx` med språkvelger
+- [ ] `bunx tsgo --noEmit` grønn
+- [ ] Deploy edge functions
+- [ ] Manuell test: send test-email med `language: 'en'` og verifiser engelsk innhold
 
-## Sporing
+## Estimert omfang
 
-Opprett `docs/i18n-migration-status.md` med sjekkliste-tabell (Fase → Fil → Status: TODO / IN PROGRESS / DONE / EN-verified). Denne oppdateres av hver PR og erstatter behovet for å hele tiden regenerere heatmap-rapporten.
-
-## Ut av scope for denne planen
-
-- Å faktisk skrive alle oversettelsene i én operasjon – planen definerer rekkefølgen, faktisk migrasjon skjer per fase på din bestilling.
-- Backend-oversettelser i tabeller (f.eks. dynamiske roller, mission types) – disse forblir på det språket brukeren la dem inn.
-- Nye språk utover EN (norsk bokmål + engelsk).
-
-## Teknisk vedlegg
-
-- Nye namespaces som skal opprettes underveis: `map`, `sora`, `eccairs`, `safety`, `tours`, `notifications`. Registreres i `src/i18n/index.ts` `resources` og `ns`-array i den fasen de introduseres.
-- Regenerering av heatmap: `bun run scripts/i18n-scan.ts` (kjøres manuelt før hver fase starter for oppdatert prioritering).
-- Konvensjon `Short`/`Abbr`-nøkler: dokumenteres i `src/i18n/README.md` sammen med tabell over godkjente engelske forkortelser (revideres per fase 1 når vi ser faktisk overflow i preview).
-
-## Foreslått første steg etter godkjenning
-
-Regenerér `i18n-scan-report.md`, opprett `docs/i18n-migration-status.md`, oppdatér README med `Short`/`Abbr`-seksjon, og start på **Fase 1, punkt 1 (Dashboard)**.
+~14-16 filer, én DB-migrasjon. Kan gjøres i én økt uten problemer, men skal jeg dele i to steg (kjerne-infra + oversettelser i steg 1, klient-oppdateringer + admin-UI i steg 2) hvis du foretrekker mindre PR-er?
