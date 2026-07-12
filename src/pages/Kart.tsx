@@ -1163,7 +1163,7 @@ export default function KartPage() {
               size="icon"
               onClick={() => setRouteInspectMode((v) => !v)}
               className={cn("shadow-lg", routeInspectMode ? "" : "bg-card hover:bg-accent")}
-              title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
+              title={routeInspectMode ? t('pages.map.inspectModeActive') : t('pages.map.inspectModeTitle')}
             >
               <MousePointer2 className="h-5 w-5" />
             </Button>
