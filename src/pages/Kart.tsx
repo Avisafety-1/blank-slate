@@ -914,7 +914,7 @@ export default function KartPage() {
               >
                 <MapPin className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">
-                  {pilotPosition ? "Fjern pilot" : isPlacingPilot ? "Klikk..." : "Pilot"}
+                  {pilotPosition ? t('pages.map.removePilotShort') : isPlacingPilot ? t('pages.map.clickShort') : t('pages.map.pilot')}
                 </span>
               </Button>
               <Button
