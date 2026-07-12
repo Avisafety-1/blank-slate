@@ -140,9 +140,7 @@ export function AdjacentAreaPanel({
   const contentJsx = (
     <div className="px-3 py-3 space-y-3 text-sm">
         <p className="text-xs text-muted-foreground">
-          SORA 2.5 krever vurdering av gjennomsnittlig befolkningstetthet i tilstøtende område
-          (fra bakkerisikobuffer til {radiusKm} km radius).
-          I Norge brukes SSB 250 m befolkningsrutenett; utenfor Norge brukes Eurostat GEOSTAT 2021 1 km grid.
+          {t('adjacentAreaPanel.description', { radius: radiusKm })}
         </p>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
