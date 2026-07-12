@@ -866,7 +866,7 @@ export const EquipmentLogbookDialog = ({
                         {firstCapacity != null && latestCapacity != null && firstCapacity !== latestCapacity && (
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                              <Battery className="w-3 h-3" /> Kapasitetsutvikling
+                              <Battery className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.capacityTrend')}
                             </p>
                             <p className="text-sm">
                               {firstCapacity} mAh → {latestCapacity} mAh
