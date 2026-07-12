@@ -109,7 +109,7 @@ const Auth = () => {
   const [googleUser, setGoogleUser] = useState<User | null>(null);
   const [googleFullName, setGoogleFullName] = useState("");
   const [googleRegistrationCode, setGoogleRegistrationCode] = useState("");
-  const [googleValidatedCompany, setGoogleValidatedCompany] = useState<{ id: string; name: string } | null>(null);
+  const [googleValidatedCompany, setGoogleValidatedCompany] = useState<{ id: string; name: string; defaultLanguage?: 'no' | 'en' } | null>(null);
   const [googleRegMode, setGoogleRegMode] = useState<'code' | 'new'>('code');
   const [googleNewCompanyName, setGoogleNewCompanyName] = useState("");
   const [googleNewCompanyOrgNr, setGoogleNewCompanyOrgNr] = useState("");
