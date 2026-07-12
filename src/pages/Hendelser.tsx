@@ -411,7 +411,7 @@ const Hendelser = () => {
         if (profiles) {
           const responsibleMap: Record<string, string> = {};
           profiles.forEach(profile => {
-            responsibleMap[profile.id] = profile.full_name || 'Ukjent bruker';
+            responsibleMap[profile.id] = profile.full_name || t('incidents.detail.unknownReporter');
           });
           setOppfolgingsansvarlige(responsibleMap);
         }
