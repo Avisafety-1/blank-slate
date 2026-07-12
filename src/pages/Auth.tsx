@@ -568,7 +568,8 @@ const Auth = () => {
               full_name: fullName,
               company_id: validatedCompany!.id,
               email: email,
-              approved: false
+              approved: false,
+              preferred_language: validatedCompany!.defaultLanguage || 'no'
             }, {
               onConflict: 'id'
             });
