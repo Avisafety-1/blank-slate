@@ -1074,19 +1074,20 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
       <AlertDialog open={confirmMaintenanceOpen} onOpenChange={setConfirmMaintenanceOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogTitle>{t('resourceDialogs.equipmentDetail.maintenance.confirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil registrere vedlikehold for {equipment.navn}?
+              {t('resourceDialogs.equipmentDetail.maintenance.confirmDescription', { name: equipment.navn })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('resourceDialogs.equipmentDetail.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 await performMaintenanceUpdate();
               }}
             >
-              Bekreft
+              {t('resourceDialogs.equipmentDetail.maintenance.confirm')}
+
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
