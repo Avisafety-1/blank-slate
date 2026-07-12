@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TRAINING_MODULES, type TrainingModuleKey } from "@/config/trainingModules";
+import { useTranslation } from "react-i18next";
 
 interface TrainingModulePickerProps {
   selected: TrainingModuleKey[];
@@ -13,6 +14,7 @@ interface TrainingModulePickerProps {
 }
 
 export const TrainingModulePicker = ({ selected, onChange, disabled, lockedModules = [], onOpenAllModules }: TrainingModulePickerProps) => {
+  const { t } = useTranslation();
   const lockedSet = new Set(lockedModules);
 
   const toggle = (moduleKey: TrainingModuleKey, checked: boolean) => {
@@ -32,7 +34,7 @@ export const TrainingModulePicker = ({ selected, onChange, disabled, lockedModul
           onClick={onOpenAllModules}
           disabled={disabled}
         >
-          Åpne alle moduler
+          {t("training.modulePicker.openAllModules")}
         </Button>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -49,7 +51,7 @@ export const TrainingModulePicker = ({ selected, onChange, disabled, lockedModul
                 disabled={disabled || isLockedByCourse}
               />
               <span className="flex-1">{module.label}</span>
-              {isLockedByCourse && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">via kurs</Badge>}
+              {isLockedByCourse && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t("training.modulePicker.viaCourse")}</Badge>}
             </Label>
           );
         })}

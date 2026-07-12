@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Save, Maximize, Minimize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { YouTubeClipPlayer, parseYouTubeId } from "@/components/training/YouTubeClipPlayer";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   assignmentId?: string;
@@ -49,6 +50,7 @@ interface CourseData {
 }
 
 export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previewMode = false, open, onOpenChange, onCompleted, onTourStart }: Props) => {
+  const { t } = useTranslation();
   const { user, refetchUserInfo } = useAuth();
   const [course, setCourse] = useState<CourseData | null>(null);
   const [slides, setSlides] = useState<SlideData[]>([]);
@@ -161,7 +163,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       }
     } catch (err) {
       console.error("Error loading course:", err);
-      toast.error("Kunne ikke laste kurset");
+      toast.error(t("training.takeCourse.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -176,10 +178,10 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
         .update({ saved_answers: saveData as any })
         .eq("id", assignmentId);
       if (error) throw error;
-      toast.success("Fremgang lagret");
+      toast.success(t("training.takeCourse.progressSaved"));
     } catch (err) {
       console.error("Error saving progress:", err);
-      toast.error("Kunne ikke lagre fremgang");
+      toast.error(t("training.takeCourse.saveProgressFailed"));
     } finally {
       setSavingProgress(false);
     }
@@ -253,7 +255,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
     const unanswered = questionSlides.filter((q) => !isQuestionAnswered(q.id));
     if (unanswered.length > 0) {
-      toast.error(`Du må svare på alle ${questionSlides.length} spørsmål`);
+      toast.error(t("training.takeCourse.answerAllRequired", { count: questionSlides.length }));
       const firstIdx = slides.findIndex((s) => s.slide_type === "question" && !isQuestionAnswered(s.id));
       if (firstIdx >= 0) setCurrentPage(firstIdx);
       return;
@@ -333,7 +335,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       }
     } catch (err) {
       console.error("Error submitting:", err);
-      toast.error("Kunne ikke fullføre kurset");
+      toast.error(t("training.takeCourse.completeFailed"));
       setSubmitted(false);
     } finally {
       setSubmitting(false);
@@ -394,11 +396,11 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               size="sm"
               onClick={() => speakNarration(narrationText)}
             >
-              ▶ Les opp
+              {t("training.takeCourse.readAloud")}
             </Button>
           ) : null}
           {!s.image_url && !narrationText && !heading && (
-            <p className="text-muted-foreground text-sm">Innholdsside</p>
+            <p className="text-muted-foreground text-sm">{t("training.takeCourse.contentPagePlaceholder")}</p>
           )}
         </div>
       );
@@ -407,7 +409,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
     if (s.slide_type === "video") {
       const vid = parseYouTubeId(s.video_url || "");
       if (!vid) {
-        return <p className="text-sm text-destructive">Ugyldig YouTube-URL</p>;
+        return <p className="text-sm text-destructive">{t("training.takeCourse.invalidYoutubeUrl")}</p>;
       }
       return (
         <div className="flex items-center justify-center">
@@ -446,7 +448,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               <img src={s.image_url} alt="" className={`${isFullscreen ? "max-h-[55vh]" : "max-h-48"} rounded object-contain`} />
             )}
             <p className="text-xs text-muted-foreground">
-              Kryss av alle riktige svar (ett eller flere)
+              {t("training.takeCourse.checkAllCorrect")}
             </p>
             <div className="space-y-2">
               {s.options.map((o) => {
@@ -472,7 +474,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
   const renderResultView = () => (
     <div className="text-center py-8 space-y-4">
       {previewMode && (
-        <Badge variant="secondary" className="mb-2">Forhåndsvisning</Badge>
+        <Badge variant="secondary" className="mb-2">{t("training.takeCourse.preview")}</Badge>
       )}
       {passed ? (
         <CheckCircle className="h-16 w-16 text-primary mx-auto" />
@@ -481,37 +483,37 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       )}
       {questionSlides.length === 0 ? (
         <>
-          <h3 className="text-2xl font-bold">Gjennomført</h3>
-          <p className="text-lg">Kurset er registrert som gjennomført.</p>
+          <h3 className="text-2xl font-bold">{t("training.takeCourse.completed")}</h3>
+          <p className="text-lg">{t("training.takeCourse.completedRegistered")}</p>
         </>
       ) : (
         <>
           <h3 className="text-2xl font-bold">{score}%</h3>
           <p className="text-lg">
-            {passed ? "Gratulerer! Du har bestått kurset." : "Dessverre, du bestod ikke denne gangen."}
+            {passed ? t("training.takeCourse.passedCongrats") : t("training.takeCourse.failedMessage")}
           </p>
           <p className="text-sm text-muted-foreground">
-            Krav: {course?.passing_score}% · Din score: {score}%
+            {t("training.takeCourse.requirementScore", { required: course?.passing_score, score })}
           </p>
         </>
       )}
       {!previewMode && passed && course?.validity_months && (
         <Badge variant="default">
-          Gyldig i {course.validity_months} måneder
+          {t("training.takeCourse.validForMonths", { months: course.validity_months })}
         </Badge>
       )}
       {!previewMode && passed && (
         <p className="text-sm text-muted-foreground">
-          Kurset er lagret som kompetanse på din profil.
+          {t("training.takeCourse.savedAsCompetency")}
         </p>
       )}
       {previewMode && (
         <p className="text-sm text-muted-foreground">
-          Dette er en forhåndsvisning — ingen data er lagret.
+          {t("training.takeCourse.previewNoData")}
         </p>
       )}
       <Button onClick={handleCloseResults} className="mt-4">
-        Lukk
+        {t("training.takeCourse.closeButton")}
       </Button>
     </div>
   );
@@ -523,8 +525,8 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
       {/* Progress */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Side {currentPage + 1} av {slides.length}</span>
-          <span>{answeredCount}/{questionSlides.length} spørsmål besvart</span>
+          <span>{t("training.takeCourse.pageOf", { current: currentPage + 1, total: slides.length })}</span>
+          <span>{t("training.takeCourse.questionsAnswered", { answered: answeredCount, total: questionSlides.length })}</span>
         </div>
         <Progress value={totalProgress} className="h-2" />
       </div>
@@ -544,7 +546,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
             onClick={handlePrev}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Forrige
+            {t("training.takeCourse.previous")}
           </Button>
           {currentPage < slides.length - 1 && (() => {
             const cur = slides[currentPage];
@@ -556,9 +558,9 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
               cur?.slide_type === "question" && !isQuestionAnswered(cur.id);
             const blocked = blockedByVideo || blockedByQuestion;
             const title = blockedByVideo
-              ? "Du må se hele videoen før du kan gå videre"
+              ? t("training.takeCourse.videoRequiredBlock")
               : blockedByQuestion
-              ? "Velg minst ett svar før du kan gå videre"
+              ? t("training.takeCourse.questionRequiredBlock")
               : undefined;
             return (
               <Button
@@ -568,7 +570,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
                 disabled={blocked}
                 title={title}
               >
-                Neste
+                {t("training.takeCourse.next")}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             );
@@ -578,17 +580,17 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           {!previewMode && (
             <Button variant="ghost" size="sm" onClick={handleSaveAndClose} disabled={savingProgress}>
               <Save className="h-4 w-4 mr-1" />
-              {savingProgress ? "Lagrer..." : "Lagre og lukk"}
+              {savingProgress ? t("training.common.saving") : t("training.takeCourse.saveAndClose")}
             </Button>
           )}
           {previewMode && (
             <Button variant="ghost" size="sm" onClick={handleClose}>
-              Lukk
+              {t("training.takeCourse.closeButton")}
             </Button>
           )}
           {((questionSlides.length === 0 && currentPage === slides.length - 1) || (answeredCount === questionSlides.length && questionSlides.length > 0 && currentPage === slides.length - 1)) && (
             <Button size="sm" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? "Fullfører..." : "Fullfør"}
+              {submitting ? t("training.takeCourse.finishing") : t("training.takeCourse.finish")}
             </Button>
           )}
         </div>
@@ -610,8 +612,8 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
           <DialogHeader>
             <div className="flex items-center justify-between gap-2 pr-10">
               <div className="flex items-center gap-2 min-w-0">
-                <DialogTitle className="truncate">{course?.title || "Kurs"}</DialogTitle>
-                {previewMode && <Badge variant="secondary" className="shrink-0">Forhåndsvisning</Badge>}
+                <DialogTitle className="truncate">{course?.title || t("training.takeCourse.defaultCourseTitle")}</DialogTitle>
+                {previewMode && <Badge variant="secondary" className="shrink-0">{t("training.takeCourse.preview")}</Badge>}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <Button
@@ -619,7 +621,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
                   size="icon"
                   className="h-9 w-9 rounded-lg border-border"
                   onClick={toggleFullscreen}
-                  title={isFullscreen ? "Avslutt fullskjerm" : "Fullskjerm"}
+                  title={isFullscreen ? t("training.takeCourse.exitFullscreen") : t("training.takeCourse.fullscreen")}
                 >
                   {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
                 </Button>
@@ -630,19 +632,19 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
 
           <div className={isFullscreen ? "flex-1 overflow-y-auto" : ""}>
             {loading ? (
-              <p className="text-sm text-muted-foreground">Laster kurs...</p>
+              <p className="text-sm text-muted-foreground">{t("training.takeCourse.loadingCourse")}</p>
             ) : course?.display_mode === "guided_tour" && course?.tour_id ? (
               <div className="space-y-4 py-4">
                 <p className="text-sm text-muted-foreground">
-                  Dette kurset er en veiledet gjennomgang. Klikk på knappen under for å starte. Når du fullfører gjennomgangen til siste steg, registreres kurset som bestått og en kompetanse opprettes automatisk på profilen din.
+                  {t("training.takeCourse.guidedTourDesc")}
                 </p>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={handleClose}>Avbryt</Button>
+                  <Button variant="outline" onClick={handleClose}>{t("training.common.cancel")}</Button>
                   <Button
                     onClick={() => {
                       const bridge = (window as any).__avisafeTour;
                       if (!bridge?.startTour) {
-                        toast.error("Veiledningen er ikke tilgjengelig her. Gå til hovedskjermen og prøv igjen.");
+                        toast.error(t("training.takeCourse.tourUnavailable"));
                         return;
                       }
                       onOpenChange(false);
@@ -652,7 +654,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
                       }, 250);
                     }}
                   >
-                    Start veiledet gjennomgang
+                    {t("training.takeCourse.startGuidedTour")}
                   </Button>
                 </div>
               </div>

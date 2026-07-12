@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   courseId: string;
@@ -25,6 +26,7 @@ interface ProfileRow {
 }
 
 export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
@@ -110,7 +112,7 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
         .eq("id", courseId)
         .single();
 
-      const courseName = courseData?.title || "Kurs";
+      const courseName = courseData?.title || t("training.assignmentDialog.defaultCourseName");
 
       // Send notification emails (fire and forget)
       for (const profileId of selectedIds) {
@@ -127,11 +129,11 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
         }).catch((err) => console.error("Email error:", err));
       }
 
-      toast.success(`${selectedIds.size} ansatte tildelt kurset`);
+      toast.success(t("training.assignmentDialog.assignedToast", { count: selectedIds.size }));
       onOpenChange(false);
     } catch (err) {
       console.error("Error assigning:", err);
-      toast.error("Kunne ikke tildele kurs");
+      toast.error(t("training.assignmentDialog.assignFailed"));
     } finally {
       setSaving(false);
     }
@@ -161,13 +163,13 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Tildel kurs til ansatte</DialogTitle>
+          <DialogTitle>{t("training.assignmentDialog.title")}</DialogTitle>
         </DialogHeader>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Søk etter ansatt..."
+            placeholder={t("training.assignmentDialog.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -177,10 +179,10 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
         {companyOptions.length > 1 && (
           <Select value={companyFilter} onValueChange={setCompanyFilter}>
             <SelectTrigger>
-              <SelectValue placeholder="Alle avdelinger" />
+              <SelectValue placeholder={t("training.assignmentDialog.allDepartments")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">Alle avdelinger</SelectItem>
+              <SelectItem value="__all__">{t("training.assignmentDialog.allDepartments")}</SelectItem>
               {companyOptions.map(([id, name]) => (
                 <SelectItem key={id} value={id}>{name}</SelectItem>
               ))}
@@ -189,12 +191,12 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
         )}
 
         {assignedIds.size > 0 && (
-          <p className="text-xs text-muted-foreground">{assignedIds.size} allerede tildelt (skjult)</p>
+          <p className="text-xs text-muted-foreground">{t("training.assignmentDialog.alreadyAssignedHidden", { count: assignedIds.size })}</p>
         )}
 
         <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Ingen ansatte funnet</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("training.assignmentDialog.noEmployeesFound")}</p>
           ) : (
             filtered.map((p) => (
               <label
@@ -203,12 +205,12 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
               >
                 <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggle(p.id)} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{p.full_name || "Ukjent"}</p>
+                  <p className="text-sm font-medium truncate">{p.full_name || t("training.assignmentDialog.unknown")}</p>
                   <p className="text-xs text-muted-foreground truncate">{p.email}</p>
                 </div>
                 {failedIds.has(p.id) && (
                   <Badge variant="destructive" className="text-[10px] flex-shrink-0">
-                    Strøket – tildel på nytt
+                    {t("training.assignmentDialog.failedReassign")}
                   </Badge>
                 )}
                 {(p.companies as any)?.navn && (
@@ -223,10 +225,10 @@ export const TrainingAssignmentDialog = ({ courseId, open, onOpenChange }: Props
 
         <div className="flex justify-end gap-2 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Avbryt
+            {t("training.common.cancel")}
           </Button>
           <Button onClick={handleAssign} disabled={saving || selectedIds.size === 0}>
-            {saving ? "Tildeler..." : `Tildel (${selectedIds.size})`}
+            {saving ? t("training.assignmentDialog.assigning") : t("training.assignmentDialog.assign", { count: selectedIds.size })}
           </Button>
         </div>
       </DialogContent>

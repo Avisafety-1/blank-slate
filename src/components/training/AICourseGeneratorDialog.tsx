@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getCurrentLanguage } from "@/lib/i18nHelpers";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,7 @@ export const AICourseGeneratorDialog = ({
   initialFolderId,
   onCourseCreated,
 }: Props) => {
+  const { t } = useTranslation();
   const { companyId, user } = useAuth();
   const [step, setStep] = useState<Step>("select");
   const [file, setFile] = useState<File | null>(null);
@@ -131,7 +133,7 @@ export const AICourseGeneratorDialog = ({
 
   const useExistingManual = (m: ExistingManual) => {
     if (m.chunk_count === 0) {
-      toast.error("Denne manualen mangler AI-indeks. Last opp på nytt.");
+      toast.error(t("training.aiGenerator.errorNoManualIndex"));
       return;
     }
     setManualId(m.id);
@@ -149,15 +151,15 @@ export const AICourseGeneratorDialog = ({
   const handleFileSelect = (selected: File | undefined) => {
     if (!selected) return;
     if (!isPdf(selected) && !isDocx(selected)) {
-      toast.error("Kun PDF- eller Word-filer (.docx) er støttet");
+      toast.error(t("training.aiGenerator.errorFileType"));
       return;
     }
     if (/\.doc$/i.test(selected.name) && !isDocx(selected)) {
-      toast.error("Gamle .doc-filer støttes ikke. Lagre som .docx og prøv igjen.");
+      toast.error(t("training.aiGenerator.errorOldDoc"));
       return;
     }
     if (selected.size > 50 * 1024 * 1024) {
-      toast.error("Filen er for stor (maks 50 MB)");
+      toast.error(t("training.aiGenerator.errorFileSize"));
       return;
     }
     setFile(selected);
@@ -179,17 +181,17 @@ export const AICourseGeneratorDialog = ({
       });
       if (error) {
         const ctx: any = (error as any).context;
-        if (ctx?.status === 429) throw new Error("AI er overbelastet. Prøv igjen om litt.");
-        if (ctx?.status === 402) throw new Error("AI-kreditter brukt opp.");
+        if (ctx?.status === 429) throw new Error(t("training.aiGenerator.aiOverloaded"));
+        if (ctx?.status === 402) throw new Error(t("training.aiGenerator.aiCreditsUsedUp"));
         throw error;
       }
       setTopics(data?.topics || []);
       if (!data?.topics?.length) {
-        setTopicsError("AI klarte ikke å foreslå temaer. Prøv en annen manual.");
+        setTopicsError(t("training.aiGenerator.aiNoTopics"));
       }
     } catch (e: any) {
       console.error(e);
-      setTopicsError(e?.message || "Kunne ikke hente forslag");
+      setTopicsError(e?.message || t("training.aiGenerator.fetchTopicsFailed"));
     } finally {
       setTopicsLoading(false);
     }
@@ -199,7 +201,7 @@ export const AICourseGeneratorDialog = ({
     if (!file || !companyId || !user) return;
     setErrorMsg(null);
     setUploadProgress(5);
-    setUploadStage(isDocx(file) ? "Leser Word-dokument…" : "Leser PDF…");
+    setUploadStage(isDocx(file) ? t("training.aiGenerator.readingWord") : t("training.aiGenerator.readingPdf"));
 
     try {
       let fullText = "";
@@ -226,18 +228,18 @@ export const AICourseGeneratorDialog = ({
         }
       }
 
-      setUploadStage("Splitter i seksjoner…");
+      setUploadStage(t("training.aiGenerator.splittingSections"));
       const chunks = chunkManualText(fullText);
       if (chunks.length === 0) {
         throw new Error(
           isDocx(file)
-            ? "Fant ingen tekst i Word-dokumentet."
-            : "Fant ingen tekst i PDF-en. Er den scannet?"
+            ? t("training.aiGenerator.errorNoTextWord")
+            : t("training.aiGenerator.errorNoTextPdf")
         );
       }
       setUploadProgress(45);
 
-      setUploadStage("Lagrer manual…");
+      setUploadStage(t("training.aiGenerator.savingManual"));
       const manualUuid = crypto.randomUUID();
       const ext = isDocx(file) ? "docx" : "pdf";
       const path = `${companyId}/${manualUuid}.${ext}`;
@@ -263,7 +265,7 @@ export const AICourseGeneratorDialog = ({
       if (insertErr) throw insertErr;
 
       setManualId(manualUuid);
-      setUploadStage("Genererer embeddings (AI-indeks)…");
+      setUploadStage(t("training.aiGenerator.generatingIndex"));
       setUploadProgress(70);
 
       const { data: procData, error: procErr } = await supabase.functions.invoke("process-manual", {
@@ -275,12 +277,12 @@ export const AICourseGeneratorDialog = ({
       if (procErr) throw procErr;
       setChunkCount(procData?.chunk_count || chunks.length);
       setUploadProgress(100);
-      setUploadStage("Ferdig");
+      setUploadStage(t("training.aiGenerator.done"));
       setStep("topics");
       fetchTopics(manualUuid);
     } catch (e: any) {
       console.error(e);
-      const msg = e?.message || "Opplasting feilet";
+      const msg = e?.message || t("training.aiGenerator.uploadFailed");
       setErrorMsg(msg);
       toast.error(msg);
       setUploadProgress(0);
@@ -293,17 +295,17 @@ export const AICourseGeneratorDialog = ({
     setGenerating(true);
     setErrorMsg(null);
     setStep("generate");
-    setGenerationStage("Analyserer manual og lager intro-tekst…");
+    setGenerationStage(t("training.aiGenerator.analyzingManual"));
 
     try {
       // Progressive UI hints (since we can't get real progress from the function)
       setTimeout(() => {
-        if (includeVisuals) setGenerationStage("Genererer bilder med AI…");
+        if (includeVisuals) setGenerationStage(t("training.aiGenerator.generatingImages"));
       }, 6000);
       setTimeout(() => {
-        if (includeNarration) setGenerationStage("Lager talesynteser…");
+        if (includeNarration) setGenerationStage(t("training.aiGenerator.generatingNarration"));
       }, 14000);
-      setTimeout(() => setGenerationStage("Lager spørsmål…"), 22000);
+      setTimeout(() => setGenerationStage(t("training.aiGenerator.generatingQuestions")), 22000);
 
       const { data, error } = await supabase.functions.invoke("generate-course", {
         body: {
@@ -323,19 +325,19 @@ export const AICourseGeneratorDialog = ({
 
       if (error) {
         const ctx: any = (error as any).context;
-        if (ctx?.status === 429) throw new Error("AI er overbelastet. Prøv igjen om litt.");
-        if (ctx?.status === 402) throw new Error("AI-kreditter brukt opp. Legg til kreditter i Workspace.");
+        if (ctx?.status === 429) throw new Error(t("training.aiGenerator.aiOverloaded"));
+        if (ctx?.status === 402) throw new Error(t("training.aiGenerator.aiCreditsUsedUpWorkspace"));
         throw error;
       }
 
-      if (!data?.course_id) throw new Error("AI returnerte ikke et kurs");
+      if (!data?.course_id) throw new Error(t("training.aiGenerator.aiNoCourse"));
 
-      setGenerationStage("Lagrer kurs…");
+      setGenerationStage(t("training.aiGenerator.savingCourse"));
       const generated = data.questions_generated ?? 0;
       const requested = data.questions_requested ?? length;
       const intros = data.intro_slides_generated ?? 0;
       toast.success(
-        `Kurs opprettet (${intros} intro-slides + ${generated}/${requested} spørsmål)`
+        t("training.aiGenerator.courseCreatedToast", { intros, generated, requested })
       );
       const warnings: string[] = Array.isArray(data.warnings) ? data.warnings : [];
       if (warnings.length > 0) {
@@ -346,7 +348,7 @@ export const AICourseGeneratorDialog = ({
       onOpenChange(false);
     } catch (e: any) {
       console.error(e);
-      const msg = e?.message || "Generering feilet";
+      const msg = e?.message || t("training.aiGenerator.generateFailed");
       setErrorMsg(msg);
       toast.error(msg);
       setStep("config");
@@ -358,7 +360,7 @@ export const AICourseGeneratorDialog = ({
   const renderSelect = () => (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Velg en tidligere opplastet manual for å spare tid og AI-kostnader, eller last opp en ny.
+        {t("training.aiGenerator.selectIntro")}
       </p>
 
       {loadingManuals ? (
@@ -384,9 +386,9 @@ export const AICourseGeneratorDialog = ({
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{m.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {indexed ? `${m.chunk_count} seksjoner` : "Ikke indeksert"}
-                      {m.page_count ? ` · ${m.page_count} sider` : ""}
-                      {" · lastet opp "}
+                      {indexed ? t("training.aiGenerator.indexedSections", { count: m.chunk_count }) : t("training.aiGenerator.notIndexed")}
+                      {m.page_count ? t("training.aiGenerator.pages", { count: m.page_count }) : ""}
+                      {t("training.aiGenerator.uploadedAt")}
                       {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: nb })}
                     </p>
                   </div>
@@ -397,14 +399,14 @@ export const AICourseGeneratorDialog = ({
         </div>
       ) : (
         <div className="py-6 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
-          Ingen tidligere manualer funnet.
+          {t("training.aiGenerator.noManuals")}
         </div>
       )}
 
       <div className="flex justify-between gap-2 pt-2">
-        <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+        <Button variant="outline" onClick={() => onOpenChange(false)}>{t("training.common.cancel")}</Button>
         <Button onClick={() => setStep("upload")}>
-          <Plus className="h-4 w-4 mr-2" /> Last opp ny manual
+          <Plus className="h-4 w-4 mr-2" /> {t("training.aiGenerator.uploadNew")}
         </Button>
       </div>
     </div>
@@ -413,10 +415,10 @@ export const AICourseGeneratorDialog = ({
   const renderUpload = () => (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="manual-title">Tittel</Label>
+        <Label htmlFor="manual-title">{t("training.aiGenerator.titleLabel")}</Label>
         <Input
           id="manual-title"
-          placeholder="F.eks. Operasjonsmanual 2025"
+          placeholder={t("training.aiGenerator.titlePlaceholder")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="mt-1"
@@ -447,8 +449,8 @@ export const AICourseGeneratorDialog = ({
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <Upload className="h-10 w-10" />
-            <p className="font-medium">Dra og slipp PDF eller Word her</p>
-            <p className="text-xs">eller klikk for å velge (.pdf eller .docx, maks 50 MB)</p>
+            <p className="font-medium">{t("training.aiGenerator.dropHint")}</p>
+            <p className="text-xs">{t("training.aiGenerator.dropSubHint")}</p>
           </div>
         )}
       </div>
@@ -472,13 +474,13 @@ export const AICourseGeneratorDialog = ({
 
       <div className="flex justify-between gap-2">
         <Button variant="outline" onClick={() => setStep("select")} disabled={uploadProgress > 0 && uploadProgress < 100}>
-          Tilbake
+          {t("training.common.back")}
         </Button>
         <Button onClick={extractAndUpload} disabled={!file || !title.trim() || (uploadProgress > 0 && uploadProgress < 100)}>
           {uploadProgress > 0 && uploadProgress < 100 ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Behandler…</>
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t("training.aiGenerator.processing")}</>
           ) : (
-            <>Last opp og fortsett</>
+            <>{t("training.aiGenerator.uploadContinue")}</>
           )}
         </Button>
       </div>
@@ -490,7 +492,7 @@ export const AICourseGeneratorDialog = ({
       <Card className="p-3 bg-muted/30 flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-primary" />
         <span className="text-sm">
-          <strong>{title}</strong> — {chunkCount} seksjoner indeksert
+          {t("training.aiGenerator.indexedCount", { title, count: chunkCount })}
         </span>
       </Card>
 
@@ -504,9 +506,9 @@ export const AICourseGeneratorDialog = ({
       />
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+        <Button variant="outline" onClick={() => onOpenChange(false)}>{t("training.common.cancel")}</Button>
         <Button onClick={() => setStep("config")} disabled={!selectedTopic}>
-          Fortsett
+          {t("training.common.continue")}
         </Button>
       </div>
     </div>
@@ -516,14 +518,14 @@ export const AICourseGeneratorDialog = ({
     <div className="space-y-5">
       {selectedTopic && (
         <Card className="p-3 bg-primary/5 border-primary/30">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Valgt tema</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{t("training.aiGenerator.chosenTopic")}</p>
           <p className="font-semibold text-sm">{selectedTopic.title}</p>
           <p className="text-xs text-muted-foreground mt-1">{selectedTopic.chapter_reference} · {selectedTopic.description}</p>
         </Card>
       )}
 
       <div>
-        <Label>Antall spørsmål</Label>
+        <Label>{t("training.aiGenerator.questionCount")}</Label>
         <RadioGroup
           value={String(length)}
           onValueChange={(v) => setLength(Number(v) as 5 | 10 | 15)}
@@ -541,35 +543,35 @@ export const AICourseGeneratorDialog = ({
       <div className="space-y-3 rounded-lg border p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <Label htmlFor="narration-toggle" className="font-medium">Inkluder talende intro</Label>
+            <Label htmlFor="narration-toggle" className="font-medium">{t("training.aiGenerator.includeNarration")}</Label>
             <p className="text-xs text-muted-foreground mt-0.5">
-              AI genererer talesyntese (TTS) som leser opp introduksjonen før spørsmålene.
+              {t("training.aiGenerator.includeNarrationDesc")}
             </p>
           </div>
           <Switch id="narration-toggle" checked={includeNarration} onCheckedChange={setIncludeNarration} />
         </div>
         {includeNarration && (
           <div className="pt-2 border-t">
-            <Label htmlFor="voice-select" className="text-sm">Stemme</Label>
+            <Label htmlFor="voice-select" className="text-sm">{t("training.aiGenerator.voice")}</Label>
             <Select value={voice} onValueChange={setVoice}>
               <SelectTrigger id="voice-select" className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="coral">Coral – varm kvinnestemme (anbefalt)</SelectItem>
-                <SelectItem value="sage">Sage – rolig kvinnestemme</SelectItem>
-                <SelectItem value="nova">Nova – lys, energisk kvinnestemme</SelectItem>
-                <SelectItem value="onyx">Onyx – dyp mannstemme</SelectItem>
+                <SelectItem value="coral">{t("training.aiGenerator.voiceCoral")}</SelectItem>
+                <SelectItem value="sage">{t("training.aiGenerator.voiceSage")}</SelectItem>
+                <SelectItem value="nova">{t("training.aiGenerator.voiceNova")}</SelectItem>
+                <SelectItem value="onyx">{t("training.aiGenerator.voiceOnyx")}</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1">
-              Bruker OpenAI gpt-4o-mini-tts med norsk lærer-tone.
+              {t("training.aiGenerator.voiceHint")}
             </p>
           </div>
         )}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <Label htmlFor="visuals-toggle" className="font-medium">Inkluder AI-bilder</Label>
+            <Label htmlFor="visuals-toggle" className="font-medium">{t("training.aiGenerator.includeVisuals")}</Label>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Hver intro-slide får et AI-generert illustrasjonsbilde.
+              {t("training.aiGenerator.includeVisualsDesc")}
             </p>
           </div>
           <Switch id="visuals-toggle" checked={includeVisuals} onCheckedChange={setIncludeVisuals} />
@@ -578,11 +580,11 @@ export const AICourseGeneratorDialog = ({
 
       {folders.length > 0 && (
         <div>
-          <Label>Mappe (valgfritt)</Label>
+          <Label>{t("training.aiGenerator.folderOptional")}</Label>
           <Select value={folderId || "_none"} onValueChange={(v) => setFolderId(v === "_none" ? null : v)}>
-            <SelectTrigger className="mt-1"><SelectValue placeholder="Ingen mappe" /></SelectTrigger>
+            <SelectTrigger className="mt-1"><SelectValue placeholder={t("training.aiGenerator.noFolder")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="_none">Ingen mappe</SelectItem>
+              <SelectItem value="_none">{t("training.aiGenerator.noFolder")}</SelectItem>
               {folders.map((f) => (
                 <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
               ))}
@@ -599,10 +601,10 @@ export const AICourseGeneratorDialog = ({
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => setStep("topics")}>Tilbake</Button>
+        <Button variant="outline" onClick={() => setStep("topics")}>{t("training.common.back")}</Button>
         <Button onClick={handleGenerate} disabled={generating}>
           <Sparkles className="h-4 w-4 mr-2" />
-          Generer kurs
+          {t("training.aiGenerator.generateCourse")}
         </Button>
       </div>
     </div>
@@ -613,7 +615,7 @@ export const AICourseGeneratorDialog = ({
       <Loader2 className="h-10 w-10 animate-spin text-primary" />
       <p className="font-medium">{generationStage}</p>
       <p className="text-sm text-muted-foreground">
-        Dette kan ta 30-90 sekunder{includeVisuals || includeNarration ? " (bilder og lyd tar lengst)" : ""}.
+        {t("training.aiGenerator.generateTime", { extra: includeVisuals || includeNarration ? t("training.aiGenerator.generateTimeExtra") : "" })}
       </p>
     </div>
   );
@@ -624,14 +626,14 @@ export const AICourseGeneratorDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            AI Kursgenerator
+            {t("training.aiGenerator.title")}
           </DialogTitle>
           <DialogDescription>
-            {step === "select" && "Velg en eksisterende manual eller last opp en ny"}
-            {step === "upload" && "Last opp en operasjonsmanual (PDF eller Word)"}
-            {step === "topics" && "Velg tema for kurset"}
-            {step === "config" && "Konfigurer kurset"}
-            {step === "generate" && "Genererer kurs…"}
+            {step === "select" && t("training.aiGenerator.descSelect")}
+            {step === "upload" && t("training.aiGenerator.descUpload")}
+            {step === "topics" && t("training.aiGenerator.descTopics")}
+            {step === "config" && t("training.aiGenerator.descConfig")}
+            {step === "generate" && t("training.aiGenerator.descGenerate")}
           </DialogDescription>
         </DialogHeader>
         {step === "select" && renderSelect()}

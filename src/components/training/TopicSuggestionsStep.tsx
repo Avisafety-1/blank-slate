@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, BookOpen, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 export interface SuggestedTopic {
   title: string;
@@ -20,13 +21,14 @@ interface Props {
 }
 
 export const TopicSuggestionsStep = ({ loading, topics, selected, onSelect, errorMsg, onRetry }: Props) => {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div className="py-10 flex flex-col items-center gap-3 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="font-medium">AI leser manualen…</p>
+        <p className="font-medium">{t("training.topicSuggestions.aiReading")}</p>
         <p className="text-sm text-muted-foreground">
-          Foreslår kurs-temaer basert på innholdet. Tar 10-30 sekunder.
+          {t("training.topicSuggestions.aiReadingDesc")}
         </p>
       </div>
     );
@@ -41,7 +43,7 @@ export const TopicSuggestionsStep = ({ loading, topics, selected, onSelect, erro
         </div>
         {onRetry && (
           <Button variant="outline" onClick={onRetry}>
-            Prøv igjen
+            {t("training.topicSuggestions.retry")}
           </Button>
         )}
       </div>
@@ -51,7 +53,7 @@ export const TopicSuggestionsStep = ({ loading, topics, selected, onSelect, erro
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground mb-2">
-        Velg ett tema for kurset. AI vil bygge kurset rundt dette emnet.
+        {t("training.topicSuggestions.chooseTopic")}
       </p>
       {topics.map((t, i) => {
         const isSelected = selected?.title === t.title && selected?.chapter_reference === t.chapter_reference;
@@ -77,7 +79,7 @@ export const TopicSuggestionsStep = ({ loading, topics, selected, onSelect, erro
         );
       })}
       {topics.length === 0 && (
-        <p className="text-sm text-muted-foreground py-6 text-center">Ingen forslag ble generert.</p>
+        <p className="text-sm text-muted-foreground py-6 text-center">{t("training.topicSuggestions.noSuggestions")}</p>
       )}
     </div>
   );
