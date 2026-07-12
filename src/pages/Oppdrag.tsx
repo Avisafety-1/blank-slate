@@ -453,7 +453,7 @@ const Oppdrag = () => {
             ) : filteredMissions.length === 0 ? (
               <GlassCard className="p-8 text-center">
                 <p className="text-muted-foreground">
-                  {searchQuery ? "Ingen oppdrag funnet" : "Ingen oppdrag"}
+                  {searchQuery ? t('pages.missions.noMissionsFound') : t('pages.missions.noMissions')}
                 </p>
               </GlassCard>
             ) : (
