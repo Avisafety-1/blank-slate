@@ -493,12 +493,12 @@ export const EquipmentLogbookDialog = ({
 
       if (signatureUrl) {
         const finalY = allLogs.length > 0 ? ((pdf as any).lastAutoTable?.finalY || 150) : 70;
-        await addSignatureToPdf(pdf, signatureUrl, finalY + 20, "Signatur:");
+        await addSignatureToPdf(pdf, signatureUrl, finalY + 20, t('resourceDialogs.equipmentLogbook.pdf.signatureLabel'));
       }
 
       const pdfBlob = pdf.output('blob');
       const safeName = sanitizeFilenameForPdf(equipmentNavn);
-      const fileName = `loggbok-utstyr-${safeName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      const fileName = `${t('resourceDialogs.equipmentLogbook.pdf.fileName')}-${safeName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
       const filePath = `${companyId}/${user.id}/${Date.now()}-${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -508,7 +508,7 @@ export const EquipmentLogbookDialog = ({
       if (uploadError) throw uploadError;
 
       const { error: insertError } = await supabase.from('documents').insert({
-        tittel: sanitizeForPdf(`Loggbok - ${equipmentNavn} - ${dateStr}`),
+        tittel: sanitizeForPdf(t('resourceDialogs.equipmentLogbook.pdf.documentTitle', { name: equipmentNavn, date: dateStr })),
         kategori: 'loggbok',
         fil_url: filePath,
         fil_navn: fileName,
@@ -518,12 +518,13 @@ export const EquipmentLogbookDialog = ({
       });
 
       if (insertError) throw insertError;
-      toast.success('Loggbok eksportert til dokumenter');
+      toast.success(t('resourceDialogs.equipmentLogbook.toasts.exportSuccess'));
     } catch (error: any) {
       console.error('Error exporting PDF:', error);
-      toast.error(`Kunne ikke eksportere: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentLogbook.toasts.exportError', { message: error.message }));
     }
   };
+
 
   const filteredLogs = activeTab === 'all' 
     ? allLogs 
