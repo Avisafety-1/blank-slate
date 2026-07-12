@@ -661,7 +661,7 @@ export const MissionCard = ({
       {mission.sora && (
         <div className="pt-2 border-t border-border/50">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-muted-foreground">SORA-ANALYSE</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.soraAnalysisHeader')}</p>
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => onOpenSora(mission.id)}
@@ -670,7 +670,7 @@ export const MissionCard = ({
                 className="h-7 text-xs"
               >
                 <Edit className="h-3 w-3 mr-1" />
-                Rediger
+                {t('pages.missions.card.edit')}
               </Button>
               <Badge variant="outline" className={getSoraBadgeColor(mission.sora.sora_status)}>
                 {mission.sora.sora_status}
