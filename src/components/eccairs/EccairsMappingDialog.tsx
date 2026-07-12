@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Dialog,
@@ -72,6 +73,7 @@ export function EccairsMappingDialog({
   onOpenChange,
   onSaved,
 }: EccairsMappingDialogProps) {
+  const { t } = useTranslation();
   const { hasAddon } = usePlanGating();
   const { attributes, getAttribute, isLoading, saveAllAttributes, isSaving } = 
     useIncidentEccairsAttributes(incident.id, open);

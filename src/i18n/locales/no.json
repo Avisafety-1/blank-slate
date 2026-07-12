@@ -4899,5 +4899,326 @@
       "writePlaceholder": "Skriv {{field}}...",
       "commentsHeader": "Kommentarer"
     }
+  },
+  "safety": {
+    "common": {
+      "unknown": "Ukjent"
+    },
+    "arealbrukLegend": {
+      "title": "Arealbruk:",
+      "bolig": "Bolig",
+      "naeringKontor": "Næring/Kontor",
+      "industriLager": "Industri/Lager",
+      "fritidPark": "Fritid/Park",
+      "offentlig": "Offentlig",
+      "transport": "Transport"
+    },
+    "befolkningLegend": {
+      "title": "Befolkning per km² {{suffix}}",
+      "suffix250m": "(SSB 250 m)",
+      "suffixSsb1km": "(SSB 1 km)",
+      "suffixEurostat": "(Eurostat 2021, 1 km)",
+      "suffixBoth": "(SSB 1 km / Eurostat 2021)",
+      "subtitle250m": "Risikovurdering bruker 250 m-ruter × 16.",
+      "subtitleSsb": "Kilde: SSB (kun Norge)",
+      "subtitleEurostat": "Kilde: Eurostat GISCO Census 2021",
+      "subtitleBoth": "Norge: SSB · Europa: Eurostat GISCO (Census 2021)",
+      "range1": "1–9 bosatte per km²",
+      "range2": "10–19 bosatte per km²",
+      "range3": "20–99 bosatte per km²",
+      "range4": "100–499 bosatte per km²",
+      "range5": "500–1 999 bosatte per km²",
+      "range6": "2 000–4 999 bosatte per km²",
+      "range7": "5 000 eller flere bosatte per km²"
+    },
+    "eiendomsgrenserLegend": {
+      "title": "Eiendomsgrenser (Matrikkelen)",
+      "description": "Klikk i kartet for å se gnr/bnr. Bruk nummeret til å slå opp eier på Kartverkets eiendomsregister.",
+      "linkText": "Åpne eiendomsregisteret"
+    },
+    "tettstederLegend": {
+      "title": "Tettsteder (SSB)",
+      "tettbygd": "Tettbygd (≥200 bosatte, tett bebyggelse)",
+      "spredtbygd": "Spredtbygd / landlig område"
+    },
+    "mapLayerControl": {
+      "ariaLabel": "Kartlag",
+      "title": "Kartlag",
+      "groupLuftrom": "Luftrom",
+      "groupRestriksjoner": "Restriksjoner",
+      "groupNaturBefolkning": "Natur & befolkning",
+      "groupInfrastruktur": "Infrastruktur",
+      "groupLiveTrafikk": "Live trafikk",
+      "groupOppdrag": "Oppdrag",
+      "groupAnnet": "Annet"
+    },
+    "weatherPanel": {
+      "loading": "Henter {{label}}...",
+      "errorFetch": "Kunne ikke hente værdata",
+      "historicalUnavailable": "Værdata ikke tilgjengelig for historiske oppdrag",
+      "historicalIncomplete": "Værdata ufullstendig for dette oppdraget",
+      "actualWeather": "Faktisk vær",
+      "recordedAt": "Værdata registrert ved fullføring: {{date}}",
+      "actualConditionsFooter": "Faktiske værforhold under flygningen",
+      "recommendationNoFly": "Anbefales ikke å fly",
+      "recommendationCaution": "Fly med forsiktighet",
+      "recommendationOk": "Gode flyforhold",
+      "recommendationUnknown": "Ukjent",
+      "forecastNext": "Prognose neste",
+      "hours12": "12 timer",
+      "legendOk": "OK",
+      "legendCaution": "Forsiktig",
+      "legendNoFly": "Ikke fly",
+      "gustSuffix": "(kast {{value}})",
+      "dewPointSuffix": "duggp.",
+      "bestFlightWindow": "Beste flyvindu: {{start}} - {{end}} ({{hours}}t)",
+      "wind": "Vind",
+      "temperature": "Temperatur",
+      "precipitation": "Nedbør",
+      "humidity": "Fuktighet",
+      "dewPoint": "Duggpunkt",
+      "weatherAlerts": "Væradvarsler",
+      "tabNow": "Nå",
+      "tabForecast": "Prognose 24t",
+      "hourlyForecast": "Timeprognose",
+      "bestFlightWindowLong": "Beste flyvindu: {{start}} - {{end}} ({{hours}} timer)",
+      "footerSource": "Værdata fra MET Norway • Oppdatert {{time}}",
+      "reasons": {
+        "strongWind": "Sterk vind ({{value}} m/s)",
+        "strongGust": "Kraftige vindkast ({{value}} m/s)",
+        "heavyPrecip": "Kraftig nedbør ({{value}} mm)",
+        "extremeTemp": "Ekstrem temperatur ({{value}}°C)",
+        "fog": "Tåke",
+        "condensation": "Kondens (duggpunkt {{value}}°C)",
+        "moderateWind": "Mye vind ({{value}} m/s)",
+        "gust": "Vindkast ({{value}} m/s)",
+        "precip": "Nedbør ({{value}} mm)",
+        "cold": "Kulde ({{value}}°C)",
+        "nearDewPoint": "Nær duggpunkt ({{value}}°C)"
+      }
+    },
+    "weatherPopup": {
+      "title": "Dronevær for valgt posisjon",
+      "coordinates": "Koordinater: {{lat}}, {{lng}}",
+      "loading": "Laster værdata...",
+      "errorFetch": "Kunne ikke hente værdata",
+      "errorGeneric": "Feil ved henting av værdata",
+      "recommendationNoFly": "Anbefales ikke å fly",
+      "recommendationCaution": "Fly med forsiktighet",
+      "recommendationOk": "Gode flyforhold",
+      "recommendationUnknown": "Ukjent",
+      "wind": "Vind",
+      "temp": "Temp",
+      "precipitation": "Nedbør",
+      "dewPoint": "Duggpunkt",
+      "forecastNext": "Prognose neste",
+      "hours12": "12 timer",
+      "legendOk": "OK",
+      "legendCaution": "Forsiktig",
+      "legendNoFly": "Ikke fly",
+      "bestFlightWindow": "Beste flyvindu: {{start}} - {{end}} ({{hours}}t)",
+      "gustSuffix": "kast {{value}}",
+      "footerSource": "Værdata fra MET Norway"
+    },
+    "natureProtection": {
+      "unknownName": "Ukjent",
+      "factSheetNote": "📄 Åpne faktaarket for verneforskriftens fulle ordlyd",
+      "legalBasis": "Hjemmel: {{basis}}",
+      "metaForvaltning": "Forvaltning:",
+      "metaKommune": "Kommune:",
+      "metaVernet": "Vernet:",
+      "metaIucn": "IUCN:",
+      "linkFactSheet": "📄 Åpne faktaark",
+      "linkSecureMessage": "✉️ Send søknad via sikker melding",
+      "linkDroneRules": "ℹ️ Regler for droner",
+      "rules": {
+        "Nasjonalpark": {
+          "label": "Nasjonalpark",
+          "legalBasis": "Naturmangfoldloven § 35, verneforskrift for nasjonalparken",
+          "pilotAdvice": "Droneflyging er som hovedregel forbudt. Krever dispensasjon fra forvaltningsmyndigheten."
+        },
+        "NasjonalparkSvalbard": {
+          "label": "Nasjonalpark (Svalbard)",
+          "legalBasis": "Svalbardmiljøloven, verneforskrift for nasjonalparken",
+          "pilotAdvice": "Droneflyging er forbudt uten tillatelse fra Sysselmesteren."
+        },
+        "Naturreservat": {
+          "label": "Naturreservat",
+          "legalBasis": "Naturmangfoldloven § 37, verneforskrift for naturreservatet",
+          "pilotAdvice": "Droneflyging er normalt forbudt. Krever dispensasjon fra forvaltningsmyndigheten."
+        },
+        "NaturreservatSvalbard": {
+          "label": "Naturreservat (Svalbard)",
+          "legalBasis": "Svalbardmiljøloven, verneforskrift for naturreservatet",
+          "pilotAdvice": "Droneflyging er forbudt uten tillatelse fra Sysselmesteren."
+        },
+        "NaturreservatJanMayen": {
+          "label": "Naturreservat (Jan Mayen)",
+          "legalBasis": "Verneforskrift for Jan Mayen naturreservat",
+          "pilotAdvice": "Droneflyging er forbudt uten særskilt tillatelse."
+        },
+        "Landskapsvernomraade": {
+          "label": "Landskapsvernområde",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er ofte begrenset og kan kreve dispensasjon. Sjekk verneforskriften."
+        },
+        "LandskapsvernomraadeDyrelivsfredning": {
+          "label": "Landskapsvernområde med dyrelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekkesesongen. Krever ofte dispensasjon."
+        },
+        "LandskapsvernomraadePlantelivsfredning": {
+          "label": "Landskapsvernområde med plantelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset. Sjekk verneforskriften."
+        },
+        "LandskapsvernomraadePlanteOgDyrelivsfredning": {
+          "label": "Landskapsvernområde med plante- og dyrelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekkesesongen. Krever ofte dispensasjon."
+        },
+        "LandskapsvernomraadeBiotopvern": {
+          "label": "Landskapsvernområde med biotopvern",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset. Krever ofte dispensasjon."
+        },
+        "Biotopvern": {
+          "label": "Biotopvernområde",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er forbudt eller sterkt begrenset, særlig i hekke-/yngletid."
+        },
+        "BiotopvernVilt": {
+          "label": "Biotopvernområde (vilt)",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er forbudt eller sterkt begrenset, særlig i hekke-/yngletid."
+        },
+        "MarintVerneomraade": {
+          "label": "Marint verneområde",
+          "legalBasis": "Naturmangfoldloven § 39, verneforskrift for området",
+          "pilotAdvice": "Ingen egne droneregler, men sjekk nærliggende verneområder."
+        },
+        "Dyrefredningsomrade": {
+          "label": "Dyrefredningsområde",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er som hovedregel forbudt i hekke-/yngletid. Krever dispensasjon."
+        },
+        "Dyrelivsfredning": {
+          "label": "Dyrelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekke-/yngletid."
+        },
+        "Plantefredningsomraade": {
+          "label": "Plantefredningsområde",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Landing og oppstart er ofte forbudt. Overflyging kan være tillatt."
+        },
+        "Plantelivsfredning": {
+          "label": "Plantelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Landing og oppstart er ofte forbudt. Sjekk verneforskriften."
+        },
+        "PlanteOgDyrefredningsomraade": {
+          "label": "Plante- og dyrefredningsområde",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekke-/yngletid. Krever ofte dispensasjon."
+        },
+        "PlanteOgDyrelivsfredning": {
+          "label": "Plante- og dyrelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekke-/yngletid."
+        },
+        "Naturminne": {
+          "label": "Naturminne",
+          "legalBasis": "Naturmangfoldloven § 39, verneforskrift for området",
+          "pilotAdvice": "Området er fredet — sjekk verneforskriften før droneflyging."
+        },
+        "GeotopvernSvalbard": {
+          "label": "Geotopvern (Svalbard)",
+          "legalBasis": "Svalbardmiljøloven, verneforskrift for området",
+          "pilotAdvice": "Droneflyging krever tillatelse fra Sysselmesteren."
+        },
+        "MidlertidigVernaOmraade": {
+          "label": "Midlertidig vernet område",
+          "legalBasis": "Naturmangfoldloven, midlertidig verneforskrift",
+          "pilotAdvice": "Området har midlertidig vern — antas å ha samme restriksjoner som tilsvarende permanente vern."
+        }
+      },
+      "defaultRule": {
+        "label": "Verneområde",
+        "legalBasis": "Naturmangfoldloven, verneforskrift for området",
+        "pilotAdvice": "Sjekk verneforskriften før droneflyging i dette området."
+      },
+      "dispensasjon": {
+        "sysselmester": "Veiledning hos Sysselmesteren",
+        "veiledningHosAuthority": "Veiledning hos {{authority}}",
+        "veiledningHosVerneomraadestyret": "Veiledning hos verneområdestyret",
+        "veiledningHosStatsforvalteren": "Veiledning hos Statsforvalteren",
+        "kontaktMed": "Kontakt med {{authority}}",
+        "kontaktForvaltningsmyndighet": "Kontakt forvaltningsmyndighet"
+      }
+    },
+    "routeProximity": {
+      "autoShownBadge": "📍 Auto-vist langs ruten",
+      "vernRestriction": {
+        "ferdselsforbud": "Ferdselsforbud",
+        "landingsforbud": "Landingsforbud",
+        "lavflyving": "Lavflyvingsforbud under 300m",
+        "genericRestriction": "Restriksjon"
+      },
+      "caaLabels": {
+        "restriksjoner": "Restriksjonsområde",
+        "fareomrader": "Fareområde",
+        "notamSoner": "NOTAM-sone",
+        "flyplasser": "Flyplass",
+        "fengsler": "Fengsel",
+        "ambassader": "Ambassade",
+        "genericZone": "CAA-sone"
+      },
+      "shipTypes": {
+        "fishing": "Fiskefartøy",
+        "towing": "Sleping",
+        "dredging": "Mudring",
+        "diving": "Dykking",
+        "military": "Militær",
+        "sailing": "Seilbåt",
+        "pleasure": "Fritidsfartøy",
+        "highSpeed": "Hurtiggående fartøy",
+        "pilot": "Losfartøy",
+        "sar": "SAR",
+        "tug": "Taubåt",
+        "portTender": "Havneassistanse",
+        "police": "Politi",
+        "medical": "Medisinsk",
+        "passenger": "Passasjerskip",
+        "cargo": "Lasteskip",
+        "tanker": "Tankskip",
+        "unknown": "Ukjent",
+        "genericType": "Type {{type}}"
+      },
+      "vesselPopup": {
+        "mmsi": "MMSI",
+        "type": "Type",
+        "speed": "Fart",
+        "course": "Kurs",
+        "destination": "Dest"
+      },
+      "obstaclePopup": {
+        "title": "Hindring",
+        "type": "Type",
+        "elevationMsl": "Høyde (MSL)",
+        "elevationAgl": "Høyde (AGL)",
+        "unknownType": "Ukjent"
+      },
+      "powerLineLabels": {
+        "transmisjonsnett": "Transmisjonsnett",
+        "regionalnett": "Regionalnett",
+        "sjokabel": "Sjøkabel",
+        "distribusjonsnett": "Distribusjonsnett",
+        "transformatorstasjon": "Transformatorstasjon"
+      },
+      "powerLineVoltage": "Spenning: {{value}} kV",
+      "unknownValue": "–",
+      "unknownName": "Ukjent"
+    }
   }
 }

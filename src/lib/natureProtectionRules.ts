@@ -10,6 +10,9 @@
  *   - vernedato (ms epoch), iucn, kommune, verneplan, verneforskrift, faktaark
  */
 
+import i18n from '@/i18n';
+const tp = (k: string, opts?: any): string => i18n.t(`safety.natureProtection.${k}`, opts) as string;
+
 export const MILJODIR_DRONE_RULES_URL =
   'https://www.miljodirektoratet.no/ansvarsomrader/vernet-natur/regler-for-droner-i-naturen/';
 
@@ -81,210 +84,199 @@ export function getStatusPresentation(status: VerneformStatus): StatusPresentati
  * Råd er basert på Miljødirektoratets veileder
  * (https://www.miljodirektoratet.no/ansvarsomrader/vernet-natur/regler-for-droner-i-naturen/).
  */
-export const VERNEFORM_RULES: Record<string, VerneformRule> = {
+const VERNEFORM_RULE_META: Record<string, VerneformRule> = {
   Nasjonalpark: {
-    label: 'Nasjonalpark',
+    label: tp('rules.Nasjonalpark.label'),
     rule: 'Droneflyging er som hovedregel forbudt. Krever dispensasjon fra forvaltningsmyndigheten.',
-    legalBasis: 'Naturmangfoldloven § 35 og verneforskriften for området.',
+    legalBasis: tp('rules.Nasjonalpark.legalBasis'),
     color: '#15803d',
     status: 'FORBUDT',
-    pilotAdvice:
-      'Droneflyging er forbudt — også å fly inn fra utsiden eller lette like utenfor grensen. Du må ha tillatelse fra nasjonalparkstyret før du flyr.',
+    pilotAdvice: tp('rules.Nasjonalpark.pilotAdvice'),
   },
   NasjonalparkSvalbard: {
-    label: 'Nasjonalpark (Svalbard)',
+    label: tp('rules.NasjonalparkSvalbard.label'),
     rule: 'Droneflyging er forbudt uten tillatelse fra Sysselmesteren.',
-    legalBasis: 'Svalbardmiljøloven og verneforskriften.',
+    legalBasis: tp('rules.NasjonalparkSvalbard.legalBasis'),
     color: '#15803d',
     status: 'FORBUDT',
-    pilotAdvice: 'Droneflyging krever tillatelse fra Sysselmesteren på Svalbard.',
+    pilotAdvice: tp('rules.NasjonalparkSvalbard.pilotAdvice'),
   },
   Naturreservat: {
-    label: 'Naturreservat',
+    label: tp('rules.Naturreservat.label'),
     rule: 'Droneflyging er normalt forbudt. Krever dispensasjon fra forvaltningsmyndigheten.',
-    legalBasis: 'Naturmangfoldloven § 37 og verneforskriften for området.',
+    legalBasis: tp('rules.Naturreservat.legalBasis'),
     color: '#166534',
     status: 'SJEKK_FORSKRIFT',
-    pilotAdvice:
-      'Sjekk verneforskriften i faktaarket. Står «modellfly o.l.» nevnt, er droner forbudt. Forstyrrelse av dyreliv er uansett ulovlig — særlig ved hekking eller raste-/yngletid.',
+    pilotAdvice: tp('rules.Naturreservat.pilotAdvice'),
   },
   NaturreservatSvalbard: {
-    label: 'Naturreservat (Svalbard)',
+    label: tp('rules.NaturreservatSvalbard.label'),
     rule: 'Droneflyging er forbudt uten tillatelse fra Sysselmesteren.',
-    legalBasis: 'Svalbardmiljøloven og verneforskriften.',
+    legalBasis: tp('rules.NaturreservatSvalbard.legalBasis'),
     color: '#166534',
     status: 'FORBUDT',
-    pilotAdvice: 'Droneflyging krever tillatelse fra Sysselmesteren på Svalbard.',
+    pilotAdvice: tp('rules.NaturreservatSvalbard.pilotAdvice'),
   },
   NaturreservatJanMayen: {
-    label: 'Naturreservat (Jan Mayen)',
+    label: tp('rules.NaturreservatJanMayen.label'),
     rule: 'Droneflyging er forbudt uten særskilt tillatelse.',
-    legalBasis: 'Verneforskrift for Jan Mayen.',
+    legalBasis: tp('rules.NaturreservatJanMayen.legalBasis'),
     color: '#166534',
     status: 'FORBUDT',
-    pilotAdvice: 'Hele Jan Mayen er naturreservat — droneflyging krever særskilt tillatelse.',
+    pilotAdvice: tp('rules.NaturreservatJanMayen.pilotAdvice'),
   },
   Landskapsvernomraade: {
-    label: 'Landskapsvernområde',
+    label: tp('rules.Landskapsvernomraade.label'),
     rule: 'Droneflyging er ofte begrenset og kan kreve dispensasjon. Sjekk verneforskriften.',
-    legalBasis: 'Naturmangfoldloven § 36 og verneforskriften for området.',
+    legalBasis: tp('rules.Landskapsvernomraade.legalBasis'),
     color: '#4ade80',
     status: 'SJEKK_FORSKRIFT',
-    pilotAdvice:
-      'I større landskapsvernområder er droner forbudt. I mindre kan det være tillatt — sjekk verneforskriften i faktaarket før du flyr.',
+    pilotAdvice: tp('rules.Landskapsvernomraade.pilotAdvice'),
   },
   LandskapsvernomraadeDyrelivsfredning: {
-    label: 'Landskapsvernområde med dyrelivsfredning',
+    label: tp('rules.LandskapsvernomraadeDyrelivsfredning.label'),
     rule: 'Droneflyging er begrenset, særlig i hekkesesongen. Krever ofte dispensasjon.',
-    legalBasis: 'Naturmangfoldloven § 36 og verneforskriften.',
+    legalBasis: tp('rules.LandskapsvernomraadeDyrelivsfredning.legalBasis'),
     color: '#4ade80',
     status: 'BEGRENSET',
-    pilotAdvice:
-      'Forstyrrelse av dyreliv er forbudt — særlig i hekke-/yngletid. Krever som regel dispensasjon.',
+    pilotAdvice: tp('rules.LandskapsvernomraadeDyrelivsfredning.pilotAdvice'),
   },
   LandskapsvernomraadePlantelivsfredning: {
-    label: 'Landskapsvernområde med plantelivsfredning',
+    label: tp('rules.LandskapsvernomraadePlantelivsfredning.label'),
     rule: 'Droneflyging er begrenset. Sjekk verneforskriften.',
-    legalBasis: 'Naturmangfoldloven § 36 og verneforskriften.',
+    legalBasis: tp('rules.LandskapsvernomraadePlantelivsfredning.legalBasis'),
     color: '#4ade80',
     status: 'SJEKK_FORSKRIFT',
-    pilotAdvice: 'Landing og oppstart er ofte forbudt. Sjekk verneforskriften i faktaarket.',
+    pilotAdvice: tp('rules.LandskapsvernomraadePlantelivsfredning.pilotAdvice'),
   },
   LandskapsvernomraadePlanteOgDyrelivsfredning: {
-    label: 'Landskapsvernområde med plante- og dyrelivsfredning',
+    label: tp('rules.LandskapsvernomraadePlanteOgDyrelivsfredning.label'),
     rule: 'Droneflyging er begrenset, særlig i hekkesesongen. Krever ofte dispensasjon.',
-    legalBasis: 'Naturmangfoldloven § 36 og verneforskriften.',
+    legalBasis: tp('rules.LandskapsvernomraadePlanteOgDyrelivsfredning.legalBasis'),
     color: '#4ade80',
     status: 'BEGRENSET',
-    pilotAdvice:
-      'Forstyrrelse av dyre- og planteliv er forbudt — særlig i hekke-/yngletid. Krever som regel dispensasjon.',
+    pilotAdvice: tp('rules.LandskapsvernomraadePlanteOgDyrelivsfredning.pilotAdvice'),
   },
   LandskapsvernomraadeBiotopvern: {
-    label: 'Landskapsvernområde med biotopvern',
+    label: tp('rules.LandskapsvernomraadeBiotopvern.label'),
     rule: 'Droneflyging er begrenset. Krever ofte dispensasjon.',
-    legalBasis: 'Naturmangfoldloven § 36 og verneforskriften.',
+    legalBasis: tp('rules.LandskapsvernomraadeBiotopvern.legalBasis'),
     color: '#4ade80',
     status: 'BEGRENSET',
-    pilotAdvice: 'Biotopen er sårbar — droneflyging krever som regel dispensasjon.',
+    pilotAdvice: tp('rules.LandskapsvernomraadeBiotopvern.pilotAdvice'),
   },
   Biotopvern: {
-    label: 'Biotopvernområde',
+    label: tp('rules.Biotopvern.label'),
     rule: 'Droneflyging er forbudt eller sterkt begrenset, særlig i hekke-/yngletid.',
-    legalBasis: 'Naturmangfoldloven § 38 og verneforskriften.',
+    legalBasis: tp('rules.Biotopvern.legalBasis'),
     color: '#22c55e',
     status: 'BEGRENSET',
-    pilotAdvice:
-      'Forstyrrelse av fugleliv er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.',
+    pilotAdvice: tp('rules.Biotopvern.pilotAdvice'),
   },
   BiotopvernVilt: {
-    label: 'Biotopvernområde (vilt)',
+    label: tp('rules.BiotopvernVilt.label'),
     rule: 'Droneflyging er forbudt eller sterkt begrenset, særlig i hekke-/yngletid.',
-    legalBasis: 'Viltloven § 7 og verneforskriften.',
+    legalBasis: tp('rules.BiotopvernVilt.legalBasis'),
     color: '#22c55e',
     status: 'BEGRENSET',
-    pilotAdvice:
-      'Forstyrrelse av vilt er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.',
+    pilotAdvice: tp('rules.BiotopvernVilt.pilotAdvice'),
   },
   MarintVerneomraade: {
-    label: 'Marint verneområde',
+    label: tp('rules.MarintVerneomraade.label'),
     rule: 'Ingen egne droneregler, men sjekk nærliggende verneområder.',
-    legalBasis: 'Naturmangfoldloven § 39 og verneforskriften.',
+    legalBasis: tp('rules.MarintVerneomraade.legalBasis'),
     color: '#0ea5e9',
     status: 'AKTSOMHET',
-    pilotAdvice:
-      'Ingen egne droneregler her, men aktsomhetsplikt etter nml § 6. Marine verneområder grenser ofte til naturreservat eller nasjonalpark — sjekk nabosonene.',
+    pilotAdvice: tp('rules.MarintVerneomraade.pilotAdvice'),
   },
   Dyrefredningsomrade: {
-    label: 'Dyrefredningsområde',
+    label: tp('rules.Dyrefredningsomrade.label'),
     rule: 'Droneflyging er som hovedregel forbudt i hekke-/yngletid. Krever dispensasjon.',
-    legalBasis: 'Naturmangfoldloven og verneforskriften.',
+    legalBasis: tp('rules.Dyrefredningsomrade.legalBasis'),
     color: '#a3e635',
     status: 'BEGRENSET',
-    pilotAdvice:
-      'Forstyrrelse av dyreliv er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.',
+    pilotAdvice: tp('rules.Dyrefredningsomrade.pilotAdvice'),
   },
   Dyrelivsfredning: {
-    label: 'Dyrelivsfredning',
+    label: tp('rules.Dyrelivsfredning.label'),
     rule: 'Droneflyging er begrenset, særlig i hekke-/yngletid.',
-    legalBasis: 'Naturmangfoldloven og verneforskriften.',
+    legalBasis: tp('rules.Dyrelivsfredning.legalBasis'),
     color: '#a3e635',
     status: 'BEGRENSET',
-    pilotAdvice:
-      'Forstyrrelse av dyreliv er forbudt — særlig hekke-/yngletid. Hold god avstand eller søk dispensasjon.',
+    pilotAdvice: tp('rules.Dyrelivsfredning.pilotAdvice'),
   },
   Plantefredningsomraade: {
-    label: 'Plantefredningsområde',
+    label: tp('rules.Plantefredningsomraade.label'),
     rule: 'Landing og oppstart er ofte forbudt. Overflyging kan være tillatt.',
-    legalBasis: 'Naturmangfoldloven og verneforskriften.',
+    legalBasis: tp('rules.Plantefredningsomraade.legalBasis'),
     color: '#84cc16',
     status: 'SJEKK_FORSKRIFT',
-    pilotAdvice: 'Landing og oppstart er ofte forbudt. Overflyging kan være tillatt — sjekk verneforskriften.',
+    pilotAdvice: tp('rules.Plantefredningsomraade.pilotAdvice'),
   },
   Plantelivsfredning: {
-    label: 'Plantelivsfredning',
+    label: tp('rules.Plantelivsfredning.label'),
     rule: 'Landing og oppstart er ofte forbudt. Sjekk verneforskriften.',
-    legalBasis: 'Naturmangfoldloven og verneforskriften.',
+    legalBasis: tp('rules.Plantelivsfredning.legalBasis'),
     color: '#84cc16',
     status: 'SJEKK_FORSKRIFT',
-    pilotAdvice: 'Landing og oppstart er ofte forbudt. Sjekk verneforskriften i faktaarket.',
+    pilotAdvice: tp('rules.Plantelivsfredning.pilotAdvice'),
   },
   PlanteOgDyrefredningsomraade: {
-    label: 'Plante- og dyrefredningsområde',
+    label: tp('rules.PlanteOgDyrefredningsomraade.label'),
     rule: 'Droneflyging er begrenset, særlig i hekke-/yngletid. Krever ofte dispensasjon.',
-    legalBasis: 'Naturmangfoldloven og verneforskriften.',
+    legalBasis: tp('rules.PlanteOgDyrefredningsomraade.legalBasis'),
     color: '#a3e635',
     status: 'BEGRENSET',
-    pilotAdvice:
-      'Forstyrrelse av dyre- og planteliv er forbudt — særlig hekke-/yngletid. Krever som regel dispensasjon.',
+    pilotAdvice: tp('rules.PlanteOgDyrefredningsomraade.pilotAdvice'),
   },
   PlanteOgDyrelivsfredning: {
-    label: 'Plante- og dyrelivsfredning',
+    label: tp('rules.PlanteOgDyrelivsfredning.label'),
     rule: 'Droneflyging er begrenset, særlig i hekke-/yngletid.',
-    legalBasis: 'Naturmangfoldloven og verneforskriften.',
+    legalBasis: tp('rules.PlanteOgDyrelivsfredning.legalBasis'),
     color: '#a3e635',
     status: 'BEGRENSET',
-    pilotAdvice:
-      'Forstyrrelse av dyre- og planteliv er forbudt — særlig hekke-/yngletid. Hold god avstand eller søk dispensasjon.',
+    pilotAdvice: tp('rules.PlanteOgDyrelivsfredning.pilotAdvice'),
   },
   Naturminne: {
-    label: 'Naturminne',
+    label: tp('rules.Naturminne.label'),
     rule: 'Området er fredet — sjekk verneforskriften før droneflyging.',
-    legalBasis: 'Naturmangfoldloven og verneforskriften.',
+    legalBasis: tp('rules.Naturminne.legalBasis'),
     color: '#16a34a',
     status: 'SJEKK_FORSKRIFT',
-    pilotAdvice: 'Lite, fredet objekt. Sjekk verneforskriften i faktaarket før du flyr.',
+    pilotAdvice: tp('rules.Naturminne.pilotAdvice'),
   },
   GeotopvernSvalbard: {
-    label: 'Geotopvern (Svalbard)',
+    label: tp('rules.GeotopvernSvalbard.label'),
     rule: 'Droneflyging krever tillatelse fra Sysselmesteren.',
-    legalBasis: 'Svalbardmiljøloven.',
+    legalBasis: tp('rules.GeotopvernSvalbard.legalBasis'),
     color: '#16a34a',
     status: 'FORBUDT',
-    pilotAdvice: 'Droneflyging krever tillatelse fra Sysselmesteren på Svalbard.',
+    pilotAdvice: tp('rules.GeotopvernSvalbard.pilotAdvice'),
   },
   MidlertidigVernaOmraade: {
-    label: 'Midlertidig vernet område',
+    label: tp('rules.MidlertidigVernaOmraade.label'),
     rule: 'Området har midlertidig vern — antas å ha samme restriksjoner som tilsvarende permanente vern.',
-    legalBasis: 'Naturmangfoldloven § 45.',
+    legalBasis: tp('rules.MidlertidigVernaOmraade.legalBasis'),
     color: '#16a34a',
     status: 'SJEKK_FORSKRIFT',
-    pilotAdvice:
-      'Midlertidig vernet — behandles som tilsvarende permanent vern. Sjekk forskriften i faktaarket.',
+    pilotAdvice: tp('rules.MidlertidigVernaOmraade.pilotAdvice'),
   },
 };
 
-const DEFAULT_RULE: VerneformRule = {
-  label: 'Naturvernområde',
-  rule: 'Droneflyging kan være begrenset. Sjekk verneforskriften før flyging.',
-  legalBasis: 'Naturmangfoldloven og verneforskriften for området.',
-  color: '#16a34a',
-  status: 'SJEKK_FORSKRIFT',
-  pilotAdvice: 'Verneform er ukjent — sjekk verneforskriften i faktaarket før du flyr.',
-};
+function DEFAULT_RULE(): VerneformRule {
+  return {
+    label: tp('defaultRule.label'),
+    rule: tp('defaultRule.pilotAdvice'),
+    legalBasis: tp('defaultRule.legalBasis'),
+    color: '#16a34a',
+    status: 'SJEKK_FORSKRIFT',
+    pilotAdvice: tp('defaultRule.pilotAdvice'),
+  };
+}
 
 export function getVerneformRule(verneform: string | null | undefined): VerneformRule {
-  if (!verneform) return DEFAULT_RULE;
-  return VERNEFORM_RULES[verneform] ?? DEFAULT_RULE;
+  const meta = verneform ? VERNEFORM_RULE_META[verneform] : undefined;
+  return meta ?? DEFAULT_RULE();
 }
 
 
@@ -389,7 +381,7 @@ function resolveDispensasjon(
   const m = (forvaltningsmyndighet || '').toLowerCase();
 
   if (t.includes('sysselmester') || m.includes('sysselmester')) {
-    return { url: SYSSELMESTER_URL, label: 'Veiledning hos Sysselmesteren', sikkerMeldingUrl: null };
+    return { url: SYSSELMESTER_URL, label: tp('dispensasjon.sysselmester'), sikkerMeldingUrl: null };
   }
   if (
     t.includes('verneomraadestyre') ||
@@ -399,25 +391,25 @@ function resolveDispensasjon(
   ) {
     return {
       url: forvaltningsmyndighet ? nasjonalparkstyreUrl(forvaltningsmyndighet) : NASJONALPARKSTYRE_BASE,
-      label: forvaltningsmyndighet ? `Veiledning hos ${forvaltningsmyndighet}` : 'Veiledning hos verneområdestyret',
+      label: forvaltningsmyndighet ? tp('dispensasjon.veiledningHosAuthority', { authority: forvaltningsmyndighet }) : tp('dispensasjon.veiledningHosVerneomraadestyret'),
       sikkerMeldingUrl: null,
     };
   }
   if (t.includes('statsforvalter') || m.includes('statsforvalteren')) {
     return {
       url: forvaltningsmyndighet ? statsforvalterVerneUrl(forvaltningsmyndighet) : STATSFORVALTER_FALLBACK,
-      label: forvaltningsmyndighet ? `Veiledning hos ${forvaltningsmyndighet}` : 'Veiledning hos Statsforvalteren',
+      label: forvaltningsmyndighet ? tp('dispensasjon.veiledningHosAuthority', { authority: forvaltningsmyndighet }) : tp('dispensasjon.veiledningHosStatsforvalteren'),
       sikkerMeldingUrl: STATSFORVALTER_SIKKER_MELDING,
     };
   }
   if (t.includes('kommune') || m.includes(' kommune')) {
     return {
       url: faktaarkUrl,
-      label: forvaltningsmyndighet ? `Kontakt ${forvaltningsmyndighet}` : 'Kontakt forvaltningsmyndighet',
+      label: forvaltningsmyndighet ? tp('dispensasjon.kontaktMed', { authority: forvaltningsmyndighet }) : tp('dispensasjon.kontaktForvaltningsmyndighet'),
       sikkerMeldingUrl: null,
     };
   }
-  return { url: STATSFORVALTER_FALLBACK, label: 'Veiledning hos Statsforvalteren', sikkerMeldingUrl: null };
+  return { url: STATSFORVALTER_FALLBACK, label: tp('dispensasjon.veiledningHosStatsforvalteren'), sikkerMeldingUrl: null };
 }
 
 export function enrichNatureArea(properties: Record<string, any> | null | undefined): NatureAreaEnrichment {
@@ -494,29 +486,29 @@ export function buildNatureZonePopupHtml(input: NatureZonePopupInput): string {
   popup += `<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${badgeColor}"></span>`;
   popup += `<span style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.03em">${esc(rule.label)}</span>`;
   popup += `</div>`;
-  popup += `<div style="font-weight:600;font-size:13px;margin-bottom:6px">${esc(name || 'Ukjent')}</div>`;
+  popup += `<div style="font-weight:600;font-size:13px;margin-bottom:6px">${esc(name || tp('unknownName'))}</div>`;
 
   popup += `<div style="background:${status.bg};border-left:3px solid ${status.border};padding:7px 9px;border-radius:3px;margin-bottom:6px">`;
   popup += `<div style="font-weight:700;color:${status.color};margin-bottom:3px;font-size:12px">${status.icon} ${esc(status.label)}</div>`;
   popup += `<div style="color:#1f2937;margin-bottom:4px">${esc(rule.pilotAdvice)}</div>`;
-  popup += `<div style="color:#475569;font-size:11px;border-top:1px solid ${status.border}33;padding-top:4px;margin-top:4px">📄 Åpne faktaarket for verneforskriftens fulle ordlyd</div>`;
-  popup += `<div style="color:#64748b;font-size:10px;margin-top:3px">Hjemmel: ${esc(rule.legalBasis)}</div>`;
+  popup += `<div style="color:#475569;font-size:11px;border-top:1px solid ${status.border}33;padding-top:4px;margin-top:4px">${tp('factSheetNote')}</div>`;
+  popup += `<div style="color:#64748b;font-size:10px;margin-top:3px">${tp('legalBasis', { basis: rule.legalBasis })}</div>`;
   popup += `</div>`;
 
   const metaRows: string[] = [];
-  if (enrich.forvaltningsmyndighet) metaRows.push(`<div><strong>Forvaltning:</strong> ${esc(enrich.forvaltningsmyndighet)}</div>`);
-  if (enrich.kommune) metaRows.push(`<div><strong>Kommune:</strong> ${esc(enrich.kommune)}</div>`);
-  if (enrich.vernedatoFormatted) metaRows.push(`<div><strong>Vernet:</strong> ${esc(enrich.vernedatoFormatted)}</div>`);
-  if (enrich.iucn) metaRows.push(`<div><strong>IUCN:</strong> ${esc(enrich.iucn)}</div>`);
+  if (enrich.forvaltningsmyndighet) metaRows.push(`<div><strong>${tp('metaForvaltning')}</strong> ${esc(enrich.forvaltningsmyndighet)}</div>`);
+  if (enrich.kommune) metaRows.push(`<div><strong>${tp('metaKommune')}</strong> ${esc(enrich.kommune)}</div>`);
+  if (enrich.vernedatoFormatted) metaRows.push(`<div><strong>${tp('metaVernet')}</strong> ${esc(enrich.vernedatoFormatted)}</div>`);
+  if (enrich.iucn) metaRows.push(`<div><strong>${tp('metaIucn')}</strong> ${esc(enrich.iucn)}</div>`);
   if (metaRows.length) popup += `<div style="margin-bottom:6px;color:#334155">${metaRows.join('')}</div>`;
 
   const linkStyle = 'display:inline-block;padding:5px 9px;margin:2px 4px 2px 0;background:#0f172a;color:#fff;text-decoration:none;border-radius:4px;font-size:11px;font-weight:500';
   const linkStyleAlt = 'display:inline-block;padding:5px 9px;margin:2px 4px 2px 0;background:#e2e8f0;color:#0f172a;text-decoration:none;border-radius:4px;font-size:11px;font-weight:500';
   popup += `<div style="margin-top:6px">`;
-  if (enrich.faktaarkUrl) popup += `<a href="${esc(enrich.faktaarkUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyle}">📄 Åpne faktaark</a>`;
-  if (enrich.dispensasjonUrl) popup += `<a href="${esc(enrich.dispensasjonUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">📘 ${esc(enrich.dispensasjonLabel)}</a>`;
-  if (enrich.sikkerMeldingUrl) popup += `<a href="${esc(enrich.sikkerMeldingUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">✉️ Send søknad via sikker melding</a>`;
-  popup += `<a href="${esc(MILJODIR_DRONE_RULES_URL)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">ℹ️ Regler for droner</a>`;
+  if (enrich.faktaarkUrl) popup += `<a href="${esc(enrich.faktaarkUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyle}">${tp('linkFactSheet')}</a>`;
+  if (enrich.dispensasjonUrl) popup += `<a href="${esc(enrich.dispensasjonUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">${esc(tp('linkGuidance', { label: enrich.dispensasjonLabel }))}</a>`;
+  if (enrich.sikkerMeldingUrl) popup += `<a href="${esc(enrich.sikkerMeldingUrl)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">${tp('linkSecureMessage')}</a>`;
+  popup += `<a href="${esc(MILJODIR_DRONE_RULES_URL)}" target="_blank" rel="noopener noreferrer" style="${linkStyleAlt}">${tp('linkDroneRules')}</a>`;
   popup += `</div>`;
 
   if (extraFooterHtml) popup += extraFooterHtml;

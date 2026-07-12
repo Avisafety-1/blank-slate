@@ -1,6 +1,6 @@
 # i18n-migrasjon: statussporing
 
-Sist oppdatert: 2026-07-12
+Sist oppdatert: 2026-07-13
 
 Full plan: se `.lovable/plan.md` (godkjent 2026-07-12) og konvensjoner i
 `src/i18n/README.md`. Heatmap regenereres via `bun run scripts/i18n-scan.ts`.
@@ -40,7 +40,7 @@ Statuskoder:
 |--:|--------------|--------|
 | 3.1 | SORA-flater → namespace `sora` | DONE |
 | 3.2 | ECCAIRS-flater → namespace `eccairs` | DONE |
-| 3.3 | Safety/airspace → namespace `safety` | TODO |
+| 3.3 | Safety/airspace → namespace `safety` | DONE – `src/lib/routeProximityLayers.ts` popup-byggere (fartøy/AIS, luftfartshindre, kraftlinjer, CAA-soner, vern-restriksjoner, auto-vist-badge) koblet til `safety.routeProximity.*` via modul-nivå `tp()`-hjelper. `natureProtectionRules.ts` doc-kommentar verifisert (beskriver dynamisk generert etikett, ikke hardkodet UI-streng — ingen endring nødvendig). |
 
 ## Fase 4 – Admin og backoffice
 

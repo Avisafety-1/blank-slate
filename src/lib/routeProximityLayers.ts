@@ -1,8 +1,11 @@
 import L from "leaflet";
+import i18n from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { bufferPolyline } from "@/lib/soraGeometry";
 import { buildNatureZonePopupHtml } from "@/lib/natureProtectionRules";
 import type { RoutePoint } from "@/types/map";
+
+const tp = (k: string, opts?: Record<string, unknown>) => i18n.t(k, opts) as string;
 
 
 /**
@@ -31,8 +34,10 @@ const escapeHtml = (value: unknown) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-const AUTO_BADGE =
-  '<div style="margin-top:6px;padding:3px 6px;background:#fef3c7;color:#92400e;border-radius:4px;font-size:11px;display:inline-block;">📍 Auto-vist langs ruten</div>';
+const getAutoBadge = () =>
+  `<div style="margin-top:6px;padding:3px 6px;background:#fef3c7;color:#92400e;border-radius:4px;font-size:11px;display:inline-block;">${escapeHtml(
+    tp("safety.routeProximity.autoShownBadge"),
+  )}</div>`;
 
 const NATURVERN_COLORS: Record<string, string> = {
   Nasjonalpark: "#15803d",
@@ -50,19 +55,26 @@ const VERN_RESTRICTION_COLORS: Record<string, string> = {
   LAVFLYVING: "#eab308",
 };
 
-const VERN_RESTRICTION_LABELS: Record<string, string> = {
-  FERDSELSFORBUD: "Ferdselsforbud",
-  LANDINGSFORBUD: "Landingsforbud",
-  LAVFLYVING: "Lavflyvingsforbud under 300m",
-};
+function getVernRestrictionLabel(type: string | undefined): string {
+  switch (type) {
+    case "FERDSELSFORBUD":
+      return tp("safety.routeProximity.vernRestriction.ferdselsforbud");
+    case "LANDINGSFORBUD":
+      return tp("safety.routeProximity.vernRestriction.landingsforbud");
+    case "LAVFLYVING":
+      return tp("safety.routeProximity.vernRestriction.lavflyving");
+    default:
+      return type || tp("safety.routeProximity.vernRestriction.genericRestriction");
+  }
+}
 
-const CAA_COLORS: Record<string, { color: string; label: string }> = {
-  restriksjoner: { color: "#dc2626", label: "Restriksjonsområde" },
-  fareomrader: { color: "#f59e0b", label: "Fareområde" },
-  notam_soner: { color: "#a855f7", label: "NOTAM-sone" },
-  flyplasser: { color: "#f59e0b", label: "Flyplass" },
-  fengsler: { color: "#0284c7", label: "Fengsel" },
-  ambassader: { color: "#0284c7", label: "Ambassade" },
+const CAA_COLORS: Record<string, { color: string; labelKey: string }> = {
+  restriksjoner: { color: "#dc2626", labelKey: "safety.routeProximity.caaLabels.restriksjoner" },
+  fareomrader: { color: "#f59e0b", labelKey: "safety.routeProximity.caaLabels.fareomrader" },
+  notam_soner: { color: "#a855f7", labelKey: "safety.routeProximity.caaLabels.notamSoner" },
+  flyplasser: { color: "#f59e0b", labelKey: "safety.routeProximity.caaLabels.flyplasser" },
+  fengsler: { color: "#0284c7", labelKey: "safety.routeProximity.caaLabels.fengsler" },
+  ambassader: { color: "#0284c7", labelKey: "safety.routeProximity.caaLabels.ambassader" },
 };
 
 const CAA_LAYER_IDS = [
@@ -79,7 +91,7 @@ const NVE_BASE =
 
 interface KraftDef {
   layerId: number;
-  label: string;
+  labelKey: string;
   color: string;
   weight: number;
   dashArray?: string;
@@ -87,11 +99,11 @@ interface KraftDef {
 }
 
 const KRAFT_LAYERS: KraftDef[] = [
-  { layerId: 0, label: "Transmisjonsnett", color: "#2563eb", weight: 3 },
-  { layerId: 1, label: "Regionalnett", color: "#f97316", weight: 2 },
-  { layerId: 3, label: "Sjøkabel", color: "#06b6d4", weight: 2, dashArray: "6, 4" },
-  { layerId: 2, label: "Distribusjonsnett", color: "#eab308", weight: 1.5 },
-  { layerId: 5, label: "Transformatorstasjon", color: "#a855f7", weight: 0, isPoint: true },
+  { layerId: 0, labelKey: "safety.routeProximity.powerLineLabels.transmisjonsnett", color: "#2563eb", weight: 3 },
+  { layerId: 1, labelKey: "safety.routeProximity.powerLineLabels.regionalnett", color: "#f97316", weight: 2 },
+  { layerId: 3, labelKey: "safety.routeProximity.powerLineLabels.sjokabel", color: "#06b6d4", weight: 2, dashArray: "6, 4" },
+  { layerId: 2, labelKey: "safety.routeProximity.powerLineLabels.distribusjonsnett", color: "#eab308", weight: 1.5 },
+  { layerId: 5, labelKey: "safety.routeProximity.powerLineLabels.transformatorstasjon", color: "#a855f7", weight: 0, isPoint: true },
 ];
 
 export function ensureRouteProximityPane(map: L.Map): void {
@@ -308,7 +320,7 @@ function renderNaturvern(layer: L.LayerGroup, zones: any[]) {
       name: zone.name,
       verneform: zone.verneform,
       properties: zone.properties,
-      extraFooterHtml: AUTO_BADGE,
+      extraFooterHtml: getAutoBadge(),
     });
     try {
       L.geoJSON(
@@ -331,10 +343,10 @@ function renderNaturvern(layer: L.LayerGroup, zones: any[]) {
 function renderVernRestrictions(layer: L.LayerGroup, zones: any[]) {
   for (const zone of zones) {
     const color = VERN_RESTRICTION_COLORS[zone.restriction_type || ""] || "#ef4444";
-    const label = VERN_RESTRICTION_LABELS[zone.restriction_type || ""] || zone.restriction_type || "Restriksjon";
+    const label = getVernRestrictionLabel(zone.restriction_type);
     const popup = `<div style="min-width:180px;"><strong>⛔ ${escapeHtml(label)}</strong><br/><strong>${escapeHtml(
-      zone.name || "Ukjent",
-    )}</strong>${AUTO_BADGE}</div>`;
+      zone.name || tp("safety.routeProximity.unknownName"),
+    )}</strong>${getAutoBadge()}</div>`;
     try {
       L.geoJSON(
         { type: "Feature", geometry: zone.geometry, properties: {} } as any,
@@ -354,10 +366,12 @@ function renderVernRestrictions(layer: L.LayerGroup, zones: any[]) {
 
 function renderCaaZones(layer: L.LayerGroup, zones: any[]) {
   for (const zone of zones) {
-    const style = CAA_COLORS[zone.layer_id] || { color: "#dc2626", label: "CAA-sone" };
-    const popup = `<div style="min-width:180px;"><strong>⚠️ ${escapeHtml(style.label)}</strong><br/><strong>${escapeHtml(
-      zone.name || "Ukjent",
-    )}</strong>${AUTO_BADGE}</div>`;
+    const style = CAA_COLORS[zone.layer_id];
+    const color = style?.color || "#dc2626";
+    const label = style ? tp(style.labelKey) : tp("safety.routeProximity.caaLabels.genericZone");
+    const popup = `<div style="min-width:180px;"><strong>⚠️ ${escapeHtml(label)}</strong><br/><strong>${escapeHtml(
+      zone.name || tp("safety.routeProximity.unknownName"),
+    )}</strong>${getAutoBadge()}</div>`;
     try {
       L.geoJSON(
         { type: "Feature", geometry: zone.geometry, properties: {} } as any,
@@ -365,9 +379,9 @@ function renderCaaZones(layer: L.LayerGroup, zones: any[]) {
           pane: PANE,
           interactive: true,
           style: {
-            color: style.color,
+            color,
             weight: 2,
-            fillColor: style.color,
+            fillColor: color,
             fillOpacity: 0.18,
             dashArray: "4, 4",
           },
@@ -389,9 +403,10 @@ function renderPowerLines(
     const p = feature?.properties || {};
     const name = p.NAVN || p.navn || p.Navn || p.name || "";
     const spenning = p.SPENNING || p.spenning || p.SPENNING_KV || "";
-    const popup = `<div style="min-width:180px;"><strong>⚡ ${escapeHtml(def.label)}</strong>${
+    const label = tp(def.labelKey);
+    const popup = `<div style="min-width:180px;"><strong>⚡ ${escapeHtml(label)}</strong>${
       name ? `<br/>${escapeHtml(name)}` : ""
-    }${spenning ? `<br/>Spenning: ${escapeHtml(spenning)} kV` : ""}${AUTO_BADGE}</div>`;
+    }${spenning ? `<br/>${escapeHtml(tp("safety.routeProximity.powerLineVoltage", { value: spenning }))}` : ""}${getAutoBadge()}</div>`;
     try {
       L.geoJSON(feature, {
         pane: PANE,
@@ -426,31 +441,33 @@ function renderPowerLines(
 
 // ============ AIS (BarentsWatch) ============
 
-const SHIP_TYPE_NAMES: Record<number, string> = {
-  30: "Fiskefartøy",
-  31: "Sleping",
-  32: "Sleping",
-  33: "Mudring",
-  34: "Dykking",
-  35: "Militær",
-  36: "Seilbåt",
-  37: "Fritidsfartøy",
-  40: "Hurtiggående fartøy",
-  50: "Losfartøy",
-  51: "SAR",
-  52: "Taubåt",
-  53: "Havneassistanse",
-  55: "Politi",
-  58: "Medisinsk",
-  60: "Passasjerskip",
-  70: "Lasteskip",
-  80: "Tankskip",
+const SHIP_TYPE_KEYS: Record<number, string> = {
+  30: "fishing",
+  31: "towing",
+  32: "towing",
+  33: "dredging",
+  34: "diving",
+  35: "military",
+  36: "sailing",
+  37: "pleasure",
+  40: "highSpeed",
+  50: "pilot",
+  51: "sar",
+  52: "tug",
+  53: "portTender",
+  55: "police",
+  58: "medical",
+  60: "passenger",
+  70: "cargo",
+  80: "tanker",
 };
 
 function getShipTypeName(type: number | null | undefined): string {
-  if (type == null) return "Ukjent";
+  if (type == null) return tp("safety.routeProximity.shipTypes.unknown");
   const base = Math.floor(type / 10) * 10;
-  return SHIP_TYPE_NAMES[type] || SHIP_TYPE_NAMES[base] || `Type ${type}`;
+  const key = SHIP_TYPE_KEYS[type] || SHIP_TYPE_KEYS[base];
+  if (key) return tp(`safety.routeProximity.shipTypes.${key}`);
+  return tp("safety.routeProximity.shipTypes.genericType", { type });
 }
 
 function vesselColor(shipType: number | null | undefined): string {
@@ -541,17 +558,18 @@ function renderAisVessels(
         pane: PANE,
         interactive: true,
       });
+      const unknownValue = tp("safety.routeProximity.unknownValue");
       const typeName = getShipTypeName(v.shipType);
-      const sog = v.sog != null ? `${v.sog.toFixed(1)} kn` : "–";
-      const cog = v.cog != null ? `${Math.round(v.cog)}°` : "–";
-      const name = escapeHtml(v.name || "Ukjent");
+      const sog = v.sog != null ? `${v.sog.toFixed(1)} kn` : unknownValue;
+      const cog = v.cog != null ? `${Math.round(v.cog)}°` : unknownValue;
+      const name = escapeHtml(v.name || tp("safety.routeProximity.unknownName"));
       let popup = `<div style="min-width:180px;"><strong>🚢 ${name}</strong><br/>`;
-      popup += `MMSI: ${escapeHtml(v.mmsi ?? "–")}<br/>`;
-      popup += `Type: ${escapeHtml(typeName)}<br/>`;
-      popup += `Fart: ${sog}<br/>`;
-      popup += `Kurs: ${cog}`;
-      if (v.destination) popup += `<br/>Dest: ${escapeHtml(v.destination)}`;
-      popup += AUTO_BADGE + `</div>`;
+      popup += `${tp("safety.routeProximity.vesselPopup.mmsi")}: ${escapeHtml(v.mmsi ?? unknownValue)}<br/>`;
+      popup += `${tp("safety.routeProximity.vesselPopup.type")}: ${escapeHtml(typeName)}<br/>`;
+      popup += `${tp("safety.routeProximity.vesselPopup.speed")}: ${sog}<br/>`;
+      popup += `${tp("safety.routeProximity.vesselPopup.course")}: ${cog}`;
+      if (v.destination) popup += `<br/>${tp("safety.routeProximity.vesselPopup.destination")}: ${escapeHtml(v.destination)}`;
+      popup += getAutoBadge() + `</div>`;
       marker.bindPopup(popup);
       marker.addTo(layer);
     } catch {
@@ -620,12 +638,12 @@ function renderObstacles(
   for (const o of obstacles) {
     if (o.lat < bbox.minLat || o.lat > bbox.maxLat || o.lng < bbox.minLng || o.lng > bbox.maxLng) continue;
     try {
-      const typeName = o.type || "Ukjent";
+      const typeName = o.type || tp("safety.routeProximity.obstaclePopup.unknownType");
       const displayName = o.name || typeName;
-      let popup = `<div style="min-width:180px;"><strong>⚠️ Hindring</strong><br/><strong>${escapeHtml(displayName)}</strong><br/>Type: ${escapeHtml(typeName)}<br/>`;
-      if (o.elevation != null) popup += `Høyde (MSL): ${escapeHtml(o.elevation)} m<br/>`;
-      if (o.height_agl != null) popup += `Høyde (AGL): ${escapeHtml(o.height_agl)} m<br/>`;
-      popup += AUTO_BADGE + `</div>`;
+      let popup = `<div style="min-width:180px;"><strong>⚠️ ${tp("safety.routeProximity.obstaclePopup.title")}</strong><br/><strong>${escapeHtml(displayName)}</strong><br/>${tp("safety.routeProximity.obstaclePopup.type")}: ${escapeHtml(typeName)}<br/>`;
+      if (o.elevation != null) popup += `${tp("safety.routeProximity.obstaclePopup.elevationMsl")}: ${escapeHtml(o.elevation)} m<br/>`;
+      if (o.height_agl != null) popup += `${tp("safety.routeProximity.obstaclePopup.elevationAgl")}: ${escapeHtml(o.height_agl)} m<br/>`;
+      popup += getAutoBadge() + `</div>`;
       L.marker([o.lat, o.lng], { icon, pane: "markerPane", interactive: true })
         .bindPopup(popup)
         .addTo(layer);
