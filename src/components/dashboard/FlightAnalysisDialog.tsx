@@ -483,11 +483,11 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           {/* Speed legend */}
           {mapReady && showSpeedTrail && (
             <div className="absolute bottom-2 left-2 z-10 bg-background/80 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-1.5 text-[10px] border border-border shadow-sm">
-              <span className="text-muted-foreground">Sakte</span>
+              <span className="text-muted-foreground">{t('dashboard.flightAnalysis.slow')}</span>
               <div className="w-12 h-2 rounded-full" style={{
                 background: 'linear-gradient(to right, hsl(142,76%,36%), hsl(45,93%,47%), hsl(0,84%,60%))'
               }} />
-              <span className="text-muted-foreground">Rask</span>
+              <span className="text-muted-foreground">{t('dashboard.flightAnalysis.fast')}</span>
             </div>
           )}
 
