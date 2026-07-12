@@ -971,7 +971,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               </Collapsible>
 
               <div>
-                <Label htmlFor="merknader" className="text-xs sm:text-sm">Merknader</Label>
+                <Label htmlFor="merknader" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.notes')}</Label>
                 <Textarea
                   id="merknader"
                   value={formData.merknader}
