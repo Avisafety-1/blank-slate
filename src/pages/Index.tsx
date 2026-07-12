@@ -242,11 +242,11 @@ const Index = () => {
         });
         setLogFlightDialogOpen(true);
       } else {
-        toast.error('Kunne ikkje førebu avslutting av flytur. Prøv igjen.');
+        toast.error(t('flight.prepareEndError'));
       }
     } catch (err) {
       console.error('handleEndFlight failed:', err);
-      toast.error('Feil ved avslutting av flytur. Prøv igjen.');
+      toast.error(t('flight.endError'));
     } finally {
       setEndingFlight(false);
     }
