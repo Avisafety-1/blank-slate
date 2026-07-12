@@ -99,3 +99,15 @@ med `Short`/`Abbr`-mønster for engelske strenger som ellers ville sprengt knapp
 - `ChecklistBadges.tsx` inneholder ingen brukervendte strenger.
 
 **Verifisering:** `tsgo --noEmit` OK. Fase 1.2 markert DONE i migration-status.
+
+
+## 2026-07-12 — i18n Fase 1.3: Kalender
+
+**Komponent:** `src/pages/Kalender.tsx`
+
+**Endringer:**
+- Migrert alle gjenværende norske strenger (dropdown-entries, fargeforklaring, custom-event-form, toasts, vedlikeholds-bekreftelse) til `pages.calendar.*`.
+- Utvidet `pages.calendar.eventTypes` med Hendelse/Dokument/Nyhet slik at badge-typen på hendelsesdetalj-visning oversettes; bruker `t('pages.calendar.eventTypes.<type>', { defaultValue: event.type })` for å håndtere tilpassede typer trygt.
+- Nye nøkler (no/en): `add`, `save`, `saving`, `confirm`, `noEventsThisDay`, `markAsCompleted`, `confirmMaintenanceDesc`, `missionCreated`, `documentSaved`, `documentUpdated`, `documentDeleted`.
+
+**Verifisering:** `tsgo --noEmit` OK.

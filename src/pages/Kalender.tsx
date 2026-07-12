@@ -630,12 +630,12 @@ export default function Kalender() {
 
   const handleAddCustomEvent = async () => {
     if (!newEvent.title.trim()) {
-      toast.error("Tittel er påkrevd");
+      toast.error(t('pages.calendar.titleRequired'));
       return;
     }
 
     if (!user || !companyId) {
-      toast.error("Du må være innlogget");
+      toast.error(t('pages.calendar.mustBeLoggedIn'));
       return;
     }
 
@@ -656,14 +656,14 @@ export default function Kalender() {
 
       if (error) throw error;
 
-      toast.success("Kalenderoppføring lagret");
+      toast.success(t('pages.calendar.entrySaved'));
       setNewEvent({ title: "", type: "Annet", description: "", time: "09:00" });
       setShowAddEventForm(false);
       setDialogOpen(false);
       fetchCustomEvents();
     } catch (error: any) {
       console.error("Error adding custom event:", error);
-      toast.error("Kunne ikke lagre oppføring");
+      toast.error(t('pages.calendar.couldNotSaveEntry'));
     } finally {
       setSavingEvent(false);
     }
@@ -678,13 +678,13 @@ export default function Kalender() {
   };
 
   const handleDocumentSaveSuccess = () => {
-    toast.success("Dokument lagret!");
+    toast.success(t('pages.calendar.documentSaved'));
     fetchCustomEvents();
     handleDocumentModalClose();
   };
 
   const handleDocumentDeleteSuccess = () => {
-    toast.success("Dokument slettet!");
+    toast.success(t('pages.calendar.documentDeleted'));
     fetchCustomEvents();
     handleDocumentModalClose();
   };
@@ -752,19 +752,19 @@ export default function Kalender() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
-                            Oppdrag
+                            {t('pages.calendar.mission')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
-                            Hendelse
+                            {t('pages.calendar.incident')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
-                            Dokument
+                            {t('pages.calendar.document')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>
-                            Nyhet
+                            {t('pages.calendar.news')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleAddEntry('annet')}>
-                            Annet
+                            {t('pages.calendar.other')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -845,31 +845,31 @@ export default function Kalender() {
 
                   {/* Legend */}
                   <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-4">
-                    <h3 className="text-sm font-semibold mb-3">Fargeforklaring</h3>
+                    <h3 className="text-sm font-semibold mb-3">{t('pages.calendar.colorLegend')}</h3>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Oppdrag</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.mission')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Hendelse</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.incident')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Dokument</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.document')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Vedlikehold</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.maintenance')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Nyhet</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.news')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Annet</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.other')}</span>
                       </div>
                     </div>
                   </div>
@@ -924,7 +924,7 @@ export default function Kalender() {
                               <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
                             )}
                             <Badge variant="outline" className="text-xs">
-                              {event.type}
+                              {t(`pages.calendar.eventTypes.${event.type}`, { defaultValue: event.type })}
                             </Badge>
                             {isMaintenanceEvent && (
                               <div 
@@ -940,7 +940,7 @@ export default function Kalender() {
                                   htmlFor={`maintenance-${event.id}`}
                                   className="text-xs text-muted-foreground cursor-pointer"
                                 >
-                                  Marker som utført
+                                  {t('pages.calendar.markAsCompleted')}
                                 </Label>
                               </div>
                             )}
@@ -954,7 +954,7 @@ export default function Kalender() {
                   })
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen hendelser denne dagen
+                    {t('pages.calendar.noEventsThisDay')}
                   </p>
                 )}
               </div>
@@ -964,25 +964,25 @@ export default function Kalender() {
                 <DropdownMenuTrigger asChild>
                   <Button className="w-full gap-2 mt-4">
                     <Plus className="w-4 h-4" />
-                    Legg til
+                    {t('pages.calendar.add')}
                     <ChevronDown className="w-4 h-4 ml-auto" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem onClick={() => handleAddEntry('oppdrag', true)}>
-                    Oppdrag
+                    {t('pages.calendar.mission')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddEntry('hendelse', true)}>
-                    Hendelse
+                    {t('pages.calendar.incident')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddEntry('dokument', true)}>
-                    Dokument
+                    {t('pages.calendar.document')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddEntry('nyhet', true)}>
-                    Nyhet
+                    {t('pages.calendar.news')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddEntry('annet', false)}>
-                    Annet
+                    {t('pages.calendar.other')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -991,7 +991,7 @@ export default function Kalender() {
             /* Custom event form */
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="event-title">Tittel *</Label>
+                <Label htmlFor="event-title">{t('pages.calendar.titleLabel')}</Label>
                 <Input
                   id="event-title"
                   value={newEvent.title}
@@ -1073,7 +1073,7 @@ export default function Kalender() {
 
               <div className="flex gap-2 pt-2">
                 <Button onClick={handleAddCustomEvent} disabled={savingEvent} className="flex-1">
-                  {savingEvent ? "Lagrer..." : "Lagre"}
+                  {savingEvent ? t('pages.calendar.saving') : t('pages.calendar.save')}
                 </Button>
                 <Button
                   variant="outline"
@@ -1083,7 +1083,7 @@ export default function Kalender() {
                   }}
                   disabled={savingEvent}
                 >
-                  Avbryt
+                  {t('pages.calendar.cancel')}
                 </Button>
               </div>
             </div>
@@ -1096,7 +1096,7 @@ export default function Kalender() {
         open={addMissionDialogOpen}
         onOpenChange={setAddMissionDialogOpen}
         onMissionAdded={() => {
-          toast.success("Oppdrag opprettet!");
+          toast.success(t('pages.calendar.missionCreated'));
           fetchCustomEvents();
         }}
       />
@@ -1143,13 +1143,13 @@ export default function Kalender() {
           setSelectedDocument(null);
         }}
         onSaveSuccess={() => {
-          toast.success("Dokument oppdatert!");
+          toast.success(t('pages.calendar.documentUpdated'));
           setDocumentDetailDialogOpen(false);
           setSelectedDocument(null);
           fetchCustomEvents();
         }}
         onDeleteSuccess={() => {
-          toast.success("Dokument slettet!");
+          toast.success(t('pages.calendar.documentDeleted'));
           setDocumentDetailDialogOpen(false);
           setSelectedDocument(null);
           fetchCustomEvents();
@@ -1182,13 +1182,13 @@ export default function Kalender() {
       <AlertDialog open={confirmCalendarMaintenance} onOpenChange={setConfirmCalendarMaintenance}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogTitle>{t('pages.calendar.confirmMaintenance')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil markere vedlikehold som utført for {pendingConfirmEvent?.title}?
+              {t('pages.calendar.confirmMaintenanceDesc', { title: pendingConfirmEvent?.title })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('pages.calendar.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 if (pendingConfirmEvent) {
@@ -1197,7 +1197,7 @@ export default function Kalender() {
                 }
               }}
             >
-              Bekreft
+              {t('pages.calendar.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
