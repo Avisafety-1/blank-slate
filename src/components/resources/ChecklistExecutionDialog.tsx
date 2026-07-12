@@ -721,7 +721,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
 
         <DialogFooter className="flex-shrink-0 gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Avbryt
+            {t('resourceDialogs.checklistExecution.cancel')}
           </Button>
           <Button
             onClick={handleComplete}
@@ -729,16 +729,16 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
             className="gap-2"
           >
             {isCompleting ? (
-              "Fullfører..."
+              t('resourceDialogs.checklistExecution.completing')
             ) : allItemsChecked ? (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                Fullfør
+                {t('resourceDialogs.checklistExecution.complete')}
               </>
             ) : isFileMode ? (
-              "Marker sjekklisten som utført"
+              t('resourceDialogs.checklistExecution.markAsCompleted')
             ) : (
-              `Kryss av alle punkter (${checkedCount}/${totalCount})`
+              t('resourceDialogs.checklistExecution.checkAll', { done: checkedCount, total: totalCount })
             )}
           </Button>
         </DialogFooter>
