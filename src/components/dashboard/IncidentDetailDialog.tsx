@@ -456,7 +456,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             )}
             {incident.hovedaarsak && (
               <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">
-                Hovedårsak: {incident.hovedaarsak}
+                {t('dashboard.incidents.rootCause')}: {incident.hovedaarsak}
               </Badge>
             )}
             {incident.medvirkende_aarsak && incident.medvirkende_aarsak.split(", ").map((cause: string) => (
