@@ -792,7 +792,7 @@ export const DroneLogbookDialog = ({
                               >
                                 <img
                                   src={log.imageUrl}
-                                  alt="Vedlegg"
+                                  alt={t('resourceDialogs.droneLogbook.attachmentAlt')}
                                   className="h-16 w-auto rounded-md border object-cover max-w-[120px]"
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 rounded-md transition-opacity">
