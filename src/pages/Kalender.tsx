@@ -630,7 +630,7 @@ export default function Kalender() {
 
   const handleAddCustomEvent = async () => {
     if (!newEvent.title.trim()) {
-      toast.error("Tittel er påkrevd");
+      toast.error(t('pages.calendar.titleRequired'));
       return;
     }
 
