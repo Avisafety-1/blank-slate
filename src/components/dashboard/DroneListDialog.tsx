@@ -2,13 +2,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { useState, useEffect, useMemo } from "react";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
 import { X, Building2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { translateResourceStatus } from "@/lib/i18nHelpers";
 
 interface DroneListDialogProps {
   open: boolean;
@@ -24,6 +26,8 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const terminology = useTerminology();
   const { companyId } = useAuth();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === "en" ? enUS : nb;
 
   const filteredDrones = useMemo(() => {
     if (!statusFilter) return drones;
@@ -51,7 +55,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
     }
   }, [drones]);
 
-  const titleSuffix = statusFilter ? ` – ${statusFilter} (${filteredDrones.length})` : ` (${drones.length})`;
+  const titleSuffix = statusFilter ? ` – ${translateResourceStatus(statusFilter)} (${filteredDrones.length})` : ` (${drones.length})`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,7 +65,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
             {terminology.vehicles}{titleSuffix}
             {statusFilter && (
               <button type="button" onClick={() => onStatusFilterChange?.(null)} className="inline-flex items-center gap-0.5 text-xs bg-muted rounded-full px-2 py-0.5 hover:bg-muted/80">
-                Vis alle <X className="w-3 h-3" />
+                {t("resources.cards.showAll")} <X className="w-3 h-3" />
               </button>
             )}
           </DialogTitle>
@@ -78,11 +82,11 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
                 <div>
                   <h3 className="font-semibold text-lg">{drone.modell}</h3>
                   {drone.registration_number && (
-                    <p className="text-sm text-muted-foreground">Reg.nr: {drone.registration_number}</p>
+                    <p className="text-sm text-muted-foreground">{t("resources.cards.regNumber")}: {drone.registration_number}</p>
                   )}
-                  <p className="text-sm text-muted-foreground">SN: {drone.serienummer}</p>
+                  <p className="text-sm text-muted-foreground">{t("resources.cards.serialNumber")}: {drone.serienummer}</p>
                   {drone.internal_serial && (
-                    <p className="text-sm text-muted-foreground">Internt SN: {drone.internal_serial}</p>
+                    <p className="text-sm text-muted-foreground">{t("resources.cards.internalSerial")}: {drone.internal_serial}</p>
                   )}
                   {drone.company_id !== companyId && drone.companies?.navn && (
                     <Badge variant="secondary" className="mt-1 gap-1 text-xs">
@@ -96,30 +100,30 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
               
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <p className="text-muted-foreground text-xs">Sist flydd</p>
+                  <p className="text-muted-foreground text-xs">{t("resources.cards.lastFlown")}</p>
                   <p className="font-medium">{drone.last_flown ? format(new Date(drone.last_flown), "dd.MM.yyyy") : "–"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Flyvetimer</p>
+                  <p className="text-muted-foreground text-xs">{t("resources.cards.flightHours")}</p>
                   <p className="font-medium">{drone.flyvetimer}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Tilgjengelig</p>
-                  <p className="font-medium">{drone.tilgjengelig ? "Ja" : "Nei"}</p>
+                  <p className="text-muted-foreground text-xs">{t("resources.cards.available")}</p>
+                  <p className="font-medium">{drone.tilgjengelig ? t("resources.cards.yes") : t("resources.cards.no")}</p>
                 </div>
                 {drone.neste_inspeksjon && (
                   <div>
-                    <p className="text-muted-foreground text-xs">Neste insp.</p>
+                    <p className="text-muted-foreground text-xs">{t("resources.cards.nextInspection")}</p>
                     <p className="font-medium">
-                      {format(new Date(drone.neste_inspeksjon), "dd.MM.yy", { locale: nb })}
+                      {format(new Date(drone.neste_inspeksjon), "dd.MM.yy", { locale: dateLocale })}
                     </p>
                   </div>
                 )}
                 {drone.sist_inspeksjon && (
                   <div>
-                    <p className="text-muted-foreground text-xs">Sist insp.</p>
+                    <p className="text-muted-foreground text-xs">{t("resources.cards.lastInspection")}</p>
                     <p className="font-medium">
-                      {format(new Date(drone.sist_inspeksjon), "dd.MM.yy", { locale: nb })}
+                      {format(new Date(drone.sist_inspeksjon), "dd.MM.yy", { locale: dateLocale })}
                     </p>
                   </div>
                 )}
@@ -127,7 +131,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
               
               {drone.merknader && (
                 <div className="text-sm pt-2 border-t border-border">
-                  <span className="text-muted-foreground">Merknader:</span>
+                  <span className="text-muted-foreground">{t("resources.cards.notesColon")}</span>
                   <p className="mt-1">{drone.merknader}</p>
                 </div>
               )}
