@@ -843,7 +843,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 <CollapsibleContent className="space-y-3 pt-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="vedlikeholdsintervall_dager" className="text-xs sm:text-sm">Intervall (dager)</Label>
+                      <Label htmlFor="vedlikeholdsintervall_dager" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.intervalDaysField')}</Label>
                       <Input
                         id="vedlikeholdsintervall_dager"
                         type="number"
