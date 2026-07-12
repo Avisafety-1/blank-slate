@@ -917,7 +917,7 @@ export const MissionCard = ({
         {mission.merknader ? (
           <p className="text-sm text-foreground whitespace-pre-wrap">{mission.merknader}</p>
         ) : (
-          <p className="text-sm text-muted-foreground">Ingen merknader</p>
+          <p className="text-sm text-muted-foreground">{t('pages.missions.card.noNotes')}</p>
         )}
       </div>
 
