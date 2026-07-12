@@ -1756,8 +1756,8 @@ export function OpenAIPMap({
     
     const VLOS_RADIUS = pilotVlosRadiusM && pilotVlosRadiusM > 0 ? Math.round(pilotVlosRadiusM) : 120;
     const alosLine = pilotAlosCalculation
-      ? `<br/><span style="font-size: 12px;">ALOS: ${pilotAlosCalculation}</span>`
-      : `<br/><span style="font-size: 11px; color: #999;">(standard 120 m – velg drone i SORA for ALOS)</span>`;
+      ? `<br/><span style="font-size: 12px;">${t('pages.map.pilotPopup.alos', { v: pilotAlosCalculation })}</span>`
+      : `<br/><span style="font-size: 11px; color: #999;">${t('pages.map.pilotPopup.alosDefault')}</span>`;
     
     const pilotIcon = L.divIcon({
       className: '',
