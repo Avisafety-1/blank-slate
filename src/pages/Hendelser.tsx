@@ -1020,7 +1020,7 @@ const Hendelser = () => {
                         onClick={() => handleEditRequest(incident)}
                       >
                         <Edit className="w-4 h-4 mr-2" />
-                        Rediger
+                        {t('actions.edit')}
                       </Button>
                       <Button 
                         variant="outline" 
@@ -1029,7 +1029,7 @@ const Hendelser = () => {
                         disabled={exportingId === incident.id}
                       >
                         <FileText className="w-4 h-4 mr-2" />
-                        {exportingId === incident.id ? "{t('incidents.eccairs.exporting')}" : "PDF"}
+                        {exportingId === incident.id ? t('incidents.eccairs.exporting') : "PDF"}
                       </Button>
                     </div>
                   </div>
