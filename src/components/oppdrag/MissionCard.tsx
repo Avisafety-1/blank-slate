@@ -717,7 +717,7 @@ export const MissionCard = ({
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-destructive" />
             <p className="text-xs font-semibold text-muted-foreground">
-              TILKNYTTEDE HENDELSER ({mission.incidents.length})
+              {t('pages.missions.card.linkedIncidentsHeader', { count: mission.incidents.length })}
             </p>
           </div>
           <div className="space-y-2">
