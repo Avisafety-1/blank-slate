@@ -767,7 +767,7 @@ export function PersonCompetencyDialog({
               <div className="space-y-3 mb-6 min-w-0">
                 <h3 data-tour="person-courses" className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
                   <GraduationCap className="h-4 w-4" />
-                  Tilgjengelige kurs
+                  {t('resourceDialogs.personCompetency.availableCourses')}
                 </h3>
                 {availableCourses.map((course) => (
                   <div key={course.id} className="border rounded-lg p-3 bg-card flex items-center justify-between gap-2 sm:gap-3 min-w-0 max-w-full overflow-hidden">
@@ -777,11 +777,11 @@ export function PersonCompetencyDialog({
                         <p className="text-xs text-muted-foreground line-clamp-1 break-words">{course.description}</p>
                       )}
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        Bestått: {course.passing_score}% · {course.validity_months ? `Gyldig ${course.validity_months} mnd` : "Permanent"}
+                        {t('resourceDialogs.personCompetency.passing')} {course.passing_score}% · {course.validity_months ? t('resourceDialogs.personCompetency.validMonths', { n: course.validity_months }) : t('resourceDialogs.personCompetency.permanent')}
                       </p>
                     </div>
                     <Button size="sm" className="shrink-0" onClick={() => handleTakeCourse(course)}>
-                      Ta kurs
+                      {t('resourceDialogs.personCompetency.takeCourse')}
                     </Button>
                   </div>
                 ))}
