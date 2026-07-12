@@ -55,6 +55,8 @@ const PAGE_SIZE = 200;
 
 export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog, expanded, selectedIds, onToggleSelect }, ref) => {
   const { companyId, user } = useAuth();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'en' ? enUS : nb;
   const { hasAddon } = usePlanGating();
   const [logs, setLogs] = useState<PendingDjiLog[]>([]);
   const [loading, setLoading] = useState(true);
