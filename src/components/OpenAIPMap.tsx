@@ -1940,7 +1940,7 @@ export function OpenAIPMap({
           className={`shadow-lg ${weatherEnabled ? "" : "bg-card hover:bg-accent"}`}
           onClick={() => { if (mode !== "view") return; setWeatherEnabled(!weatherEnabled); }}
           disabled={mode !== "view"}
-          title={mode !== "view" ? "Værvisning er ikke tilgjengelig under ruteplanlegging" : weatherEnabled ? "Slå av værvisning" : "Slå på værvisning (klikk i kartet)"}
+          title={mode !== "view" ? t('pages.map.weatherToggle.unavailable') : weatherEnabled ? t('pages.map.weatherToggle.off') : t('pages.map.weatherToggle.on')}
         >
           <CloudSun className="h-5 w-5" />
         </Button>
@@ -1957,9 +1957,9 @@ export function OpenAIPMap({
             switchBaseLayer(next);
           }}
           title={
-            baseLayerType === "osm" ? "Bytt til satellittkart"
-            : baseLayerType === "satellite" ? "Bytt til topografisk kart"
-            : "Bytt til standard kart"
+            baseLayerType === "osm" ? t('pages.map.baseToggle.toSatellite')
+            : baseLayerType === "satellite" ? t('pages.map.baseToggle.toTopo')
+            : t('pages.map.baseToggle.toStandard')
           }
         >
           {baseLayerType === "osm" ? <Satellite className="h-5 w-5" />
@@ -1972,7 +1972,7 @@ export function OpenAIPMap({
         {stackSlotAboveLayers}
 
         {mode === "view" && onStartRoutePlanning && (
-          <Button data-tour="map-route-planner-trigger" onClick={onStartRoutePlanning} variant="default" size="icon" className="shadow-lg" title="Planlegg ny rute">
+          <Button data-tour="map-route-planner-trigger" onClick={onStartRoutePlanning} variant="default" size="icon" className="shadow-lg" title={t('pages.map.planNewRoute')}>
             <Route className="h-5 w-5" />
           </Button>
         )}
@@ -1980,13 +1980,13 @@ export function OpenAIPMap({
 
       {mode === "view" && weatherEnabled && (
         <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
-          <span className="text-muted-foreground">Klikk på kartet for å se værdata</span>
+          <span className="text-muted-foreground">{t('pages.map.weatherToggle.hint')}</span>
         </div>
       )}
 
       {mode === "routePlanning" && routePointCount === 0 && (
         <div className={`absolute top-4 z-[1000] bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border text-sm ${routeHintOffsetClass ?? "left-1/2 -translate-x-1/2"}`}>
-          <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
+          <span className="text-muted-foreground">{t('pages.map.weatherToggle.clickToAddPoints')}</span>
         </div>
       )}
 
