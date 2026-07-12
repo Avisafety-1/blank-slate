@@ -646,7 +646,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={handleOpenFile}
                   >
                     <Download className="w-4 h-4" />
-                    Last ned dokument
+                    {t('resourceDialogs.checklistExecution.downloadDocument')}
                   </Button>
                 </div>
               ) : (
