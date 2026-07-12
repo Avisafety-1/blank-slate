@@ -1598,13 +1598,13 @@ export function OpenAIPMap({
         const pos = track.positions[nearestIdx];
         const altitude = pos.alt_msl ?? pos.alt ?? null;
         const content = `<div style="font-size:12px;line-height:1.5">
-          <strong>Flydd rute${track.flightDate ? ' — ' + new Date(track.flightDate).toLocaleDateString('nb-NO') : ''}</strong><hr style="margin:4px 0"/>
-          Punkt ${nearestIdx + 1} av ${track.positions.length}<br/>
-          ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
-          ${pos.alt_agl != null ? `Høyde (AGL): ${Math.round(pos.alt_agl)} m<br/>` : ''}
-          ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
-          ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
-          ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
+          <strong>${track.flightDate ? t('pages.map.flightTrackPopup.flownRouteOn', { date: new Date(track.flightDate).toLocaleDateString(dateLocale) }) : t('pages.map.flightTrackPopup.flownRoute')}</strong><hr style="margin:4px 0"/>
+          ${t('pages.map.flightTrackPopup.pointOf', { i: nearestIdx + 1, n: track.positions.length })}<br/>
+          ${altitude != null ? `${t('pages.map.flightTrackPopup.altMsl', { v: Math.round(altitude) })}<br/>` : ''}
+          ${pos.alt_agl != null ? `${t('pages.map.flightTrackPopup.altAgl', { v: Math.round(pos.alt_agl) })}<br/>` : ''}
+          ${pos.speed != null ? `${t('pages.map.flightTrackPopup.speed', { v: pos.speed.toFixed(1) })}<br/>` : ''}
+          ${pos.heading != null ? `${t('pages.map.flightTrackPopup.heading', { v: Math.round(pos.heading) })}<br/>` : ''}
+          ${pos.timestamp ? t('pages.map.flightTrackPopup.time', { v: new Date(pos.timestamp).toLocaleTimeString(dateLocale) }) : ''}
         </div>`;
         L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
       });
@@ -1612,12 +1612,12 @@ export function OpenAIPMap({
       const startPos = track.positions[0];
       L.circleMarker([startPos.lat, startPos.lng], {
         radius: 8, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1, pane: 'historicalFlightPane',
-      }).addTo(layer).bindPopup(`Flytur ${trackIndex + 1} — Start`);
+      }).addTo(layer).bindPopup(t('pages.map.flightTrackPopup.flightStart', { i: trackIndex + 1 }));
 
       const endPos = track.positions[track.positions.length - 1];
       L.circleMarker([endPos.lat, endPos.lng], {
         radius: 8, fillColor: '#f97316', color: '#fff', weight: 2, fillOpacity: 1, pane: 'historicalFlightPane',
-      }).addTo(layer).bindPopup(`Flytur ${trackIndex + 1} — Slutt`);
+      }).addTo(layer).bindPopup(t('pages.map.flightTrackPopup.flightEnd', { i: trackIndex + 1 }));
     });
 
     // Fit bounds if no explicit initial center from route
