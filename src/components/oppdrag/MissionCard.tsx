@@ -389,12 +389,12 @@ export const MissionCard = ({
       {/* Customer Info */}
       {mission.customers && (
         <div className="pt-2 border-t border-border/50">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">KUNDE</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t('pages.missions.card.customerHeader')}</p>
           <div className="space-y-1">
             <p className="text-sm text-foreground">{mission.customers.navn}</p>
             {mission.customers.kontaktperson && (
               <p className="text-xs text-muted-foreground">
-                Kontakt: {mission.customers.kontaktperson}
+                {t('pages.missions.card.contact')}{mission.customers.kontaktperson}
               </p>
             )}
             {(mission.customers.telefon || mission.customers.epost) && (
