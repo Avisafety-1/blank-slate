@@ -382,7 +382,7 @@ export const EquipmentLogbookDialog = ({
           .upload(filePath, imageFile, { contentType: imageFile.type });
         
         if (uploadError) {
-          toast.error("Innlegg lagret, men bilde kunne ikke lastes opp");
+          toast.error(t('resourceDialogs.equipmentLogbook.toasts.imageUploadError'));
         } else {
           await (supabase as any)
             .from("equipment_log_entries")
