@@ -146,7 +146,7 @@ export const MissionCard = ({
     if (!error) {
       setNinoxApproved(true);
       fetchMissions();
-      toast.success('Ninox-godkjenning bekreftet');
+      toast.success(t('pages.missions.card.ninoxConfirmedToast'));
     }
     setNinoxConfirmOpen(false);
   };
