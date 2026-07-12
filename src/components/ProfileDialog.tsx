@@ -1267,34 +1267,34 @@ export const ProfileDialog = () => {
                 }}>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Gi tilbakemelding</DialogTitle>
+                      <DialogTitle>{t('profile.feedback.title')}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Overskrift</Label>
+                        <Label>{t('profile.feedback.subject')}</Label>
                         <Input
                           value={feedbackSubject}
                           onChange={(e) => setFeedbackSubject(e.target.value)}
-                          placeholder="Hva gjelder tilbakemeldingen?"
+                          placeholder={t('profile.feedback.subjectPlaceholder')}
                           maxLength={200}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Melding</Label>
+                        <Label>{t('profile.feedback.message')}</Label>
                         <Textarea
                           value={feedbackMessage}
                           onChange={(e) => setFeedbackMessage(e.target.value)}
-                          placeholder="Beskriv tilbakemeldingen din..."
+                          placeholder={t('profile.feedback.messagePlaceholder')}
                           rows={5}
                           maxLength={5000}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Oppdrag (valgfritt)</Label>
+                        <Label>{t('profile.feedback.missionOptional')}</Label>
                         {(() => {
                           const selected = feedbackMissions.find((m) => m.id === feedbackMissionId);
                           const selectedLabel = feedbackMissionId === "none" || !selected
-                            ? "Ingen"
+                            ? t('profile.feedback.none')
                             : `${selected.tittel}${selected.tidspunkt ? ` — ${new Date(selected.tidspunkt).toLocaleDateString("nb-NO")}` : ""}`;
                           return (
                             <Popover>
@@ -1310,7 +1310,7 @@ export const ProfileDialog = () => {
                                   <Input
                                     value={feedbackMissionSearch}
                                     onChange={(e) => setFeedbackMissionSearch(e.target.value)}
-                                    placeholder="Søk oppdrag..."
+                                    placeholder={t('profile.feedback.searchMission')}
                                     className="h-9 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
                                   />
                                 </div>
@@ -1324,7 +1324,7 @@ export const ProfileDialog = () => {
                                     )}
                                   >
                                     <Check className={cn("h-4 w-4", feedbackMissionId === "none" ? "opacity-100" : "opacity-0")} />
-                                    Ingen
+                                    {t('profile.feedback.none')}
                                   </button>
                                   {feedbackMissions.map((m) => {
                                     const date = m.tidspunkt ? new Date(m.tidspunkt).toLocaleDateString("nb-NO") : "";
@@ -1348,12 +1348,12 @@ export const ProfileDialog = () => {
                                   })}
                                   {!feedbackMissionLoading && feedbackMissions.length === 0 && (
                                     <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                                      Ingen oppdrag funnet
+                                      {t('profile.feedback.noMissionsFound')}
                                     </div>
                                   )}
                                   {feedbackMissionLoading && (
                                     <div className="px-3 py-2 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
-                                      <Loader2 className="h-3 w-3 animate-spin" /> Laster...
+                                      <Loader2 className="h-3 w-3 animate-spin" /> {t('profile.feedback.loading')}
                                     </div>
                                   )}
                                   {feedbackMissionHasMore && !feedbackMissionLoading && (
@@ -1364,7 +1364,7 @@ export const ProfileDialog = () => {
                                       }
                                       className="w-full px-3 py-2 text-sm text-primary hover:bg-muted/50 text-center"
                                     >
-                                      Last flere
+                                      {t('profile.feedback.loadMore')}
                                     </button>
                                   )}
                                 </div>
@@ -1374,10 +1374,10 @@ export const ProfileDialog = () => {
                         })()}
                       </div>
                       <div className="space-y-2">
-                        <Label>Vedlegg (valgfritt)</Label>
+                        <Label>{t('profile.feedback.attachmentOptional')}</Label>
                         {feedbackImagePreview ? (
                           <div className="relative inline-block">
-                            <img src={feedbackImagePreview} alt="Vedlegg" className="max-h-32 rounded-md border border-border" />
+                            <img src={feedbackImagePreview} alt={t('profile.feedback.attachmentAlt')} className="max-h-32 rounded-md border border-border" />
                             <Button
                               variant="destructive"
                               size="icon"
@@ -1402,7 +1402,7 @@ export const ProfileDialog = () => {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                   if (file.size > 5 * 1024 * 1024) {
-                                    toast.error("Bildet kan ikke være større enn 5 MB");
+                                    toast.error(t('profile.feedback.imageTooLarge'));
                                     return;
                                   }
                                   setFeedbackImage(file);
@@ -1418,7 +1418,7 @@ export const ProfileDialog = () => {
                               type="button"
                             >
                               <Camera className="h-4 w-4 mr-1" />
-                              Legg til bilde
+                              {t('profile.feedback.addImage')}
                             </Button>
                           </div>
                         )}
@@ -1429,12 +1429,12 @@ export const ProfileDialog = () => {
                           onClick={() => setFeedbackOpen(false)}
                           disabled={feedbackSending}
                         >
-                          Avbryt
+                          {t('profile.feedback.cancel')}
                         </Button>
                         <Button
                           onClick={async () => {
                             if (!feedbackSubject.trim() || !feedbackMessage.trim()) {
-                              toast.error("Fyll ut både overskrift og melding");
+                              toast.error(t('profile.feedback.fillBoth'));
                               return;
                             }
                             setFeedbackSending(true);
@@ -1463,7 +1463,7 @@ export const ProfileDialog = () => {
                                 },
                               });
                               if (error) throw error;
-                              toast.success("Tilbakemelding sendt! Takk for innspillet.");
+                              toast.success(t('profile.feedback.sent'));
                               setFeedbackOpen(false);
                               setFeedbackSubject("");
                               setFeedbackMessage("");
@@ -1475,7 +1475,7 @@ export const ProfileDialog = () => {
                               }
                             } catch (err: any) {
                               console.error("Error sending feedback:", err);
-                              toast.error(err.message || "Kunne ikke sende tilbakemelding");
+                              toast.error(err.message || t('profile.feedback.sendError'));
                             } finally {
                               setFeedbackSending(false);
                             }
@@ -1483,7 +1483,7 @@ export const ProfileDialog = () => {
                           disabled={feedbackSending || !feedbackSubject.trim() || !feedbackMessage.trim()}
                         >
                           <Send className="h-4 w-4 mr-1" />
-                          {feedbackSending ? "Sender..." : "Send"}
+                          {feedbackSending ? t('profile.feedback.sending') : t('profile.feedback.send')}
                         </Button>
                       </div>
                     </div>
