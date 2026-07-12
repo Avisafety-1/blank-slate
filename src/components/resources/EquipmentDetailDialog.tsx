@@ -368,12 +368,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
       if (error) throw error;
 
-      toast.success("Utstyr slettet");
+      toast.success(t('resourceDialogs.equipmentDetail.toasts.deleted'));
       onOpenChange(false);
       onEquipmentUpdated();
     } catch (error: any) {
       console.error("Error deleting equipment:", error);
-      toast.error(`Kunne ikke slette utstyr: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentDetail.toasts.deleteError', { message: error.message }));
+
     }
   };
 
