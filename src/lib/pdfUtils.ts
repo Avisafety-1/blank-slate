@@ -1,6 +1,9 @@
 import jsPDF from "jspdf";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
+import { getCurrentLanguage, getFixedT, type AppLanguage } from "@/lib/i18nHelpers";
+
+const dateFnsLocale = (language: AppLanguage) => (language === "en" ? enUS : nb);
 
 // Import fonts as base64
 import robotoRegularUrl from "@/assets/fonts/Roboto-Regular.ttf";
@@ -130,9 +133,13 @@ export const sanitizeFilenameForPdf = (name: string): string => {
 /**
  * Formats a date for display in PDFs using Norwegian locale.
  */
-export const formatDateForPdf = (date: Date | string, formatStr: string = "dd.MM.yyyy HH:mm"): string => {
+export const formatDateForPdf = (
+  date: Date | string,
+  formatStr: string = "dd.MM.yyyy HH:mm",
+  language: AppLanguage = getCurrentLanguage(),
+): string => {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return sanitizeForPdf(format(dateObj, formatStr, { locale: nb }));
+  return sanitizeForPdf(format(dateObj, formatStr, { locale: dateFnsLocale(language) }));
 };
 
 /**
@@ -143,7 +150,8 @@ export const addSignatureToPdf = async (
   doc: jsPDF,
   signatureUrl: string,
   yPos: number,
-  label: string = "Signatur:"
+  label?: string,
+  language: AppLanguage = getCurrentLanguage(),
 ): Promise<number> => {
   try {
     const img = new Image();
@@ -155,9 +163,10 @@ export const addSignatureToPdf = async (
       img.src = signatureUrl;
     });
     
+    const resolvedLabel = label ?? getFixedT(language, "pdf")("common.signatureLabel", "Signatur:");
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(sanitizeForPdf(label), 14, yPos);
+    doc.text(sanitizeForPdf(resolvedLabel), 14, yPos);
     
     // Calculate proportional dimensions
     const maxWidth = 60;
@@ -179,12 +188,18 @@ export const addSignatureToPdf = async (
 /**
  * Formats a duration in minutes to a human-readable string.
  */
-export const formatDurationForPdf = (minutes: number): string => {
+export const formatDurationForPdf = (
+  minutes: number,
+  language: AppLanguage = getCurrentLanguage(),
+): string => {
+  const t = getFixedT(language, "pdf");
+  const hoursShort = t("common.hoursShort", language === "en" ? "h" : "t");
+  const minutesShort = t("common.minutesShort", "min");
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hours === 0) return `${mins} min`;
-  if (mins === 0) return `${hours} t`;
-  return `${hours} t ${mins} min`;
+  if (hours === 0) return `${mins} ${minutesShort}`;
+  if (mins === 0) return `${hours} ${hoursShort}`;
+  return `${hours} ${hoursShort} ${mins} ${minutesShort}`;
 };
 
 /**
@@ -195,7 +210,8 @@ export const addPdfHeader = (
   doc: jsPDF,
   title: string,
   subtitle?: string,
-  companyName?: string
+  companyName?: string,
+  language: AppLanguage = getCurrentLanguage(),
 ): number => {
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 16;
@@ -224,7 +240,10 @@ export const addPdfHeader = (
   
   doc.setFontSize(10);
   doc.setTextColor(100);
-  doc.text(`Eksportert: ${formatDateForPdf(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`, pageWidth / 2, yPos, { align: "center" });
+  const t = getFixedT(language, "pdf");
+  const dateFmt = language === "en" ? "dd.MM.yyyy 'at' HH:mm" : "dd.MM.yyyy 'kl.' HH:mm";
+  const dateStr = formatDateForPdf(new Date(), dateFmt, language);
+  doc.text(t("common.exportedAt", { date: dateStr, defaultValue: `Eksportert: ${dateStr}` }), pageWidth / 2, yPos, { align: "center" });
   doc.setTextColor(0);
   yPos += 15;
   

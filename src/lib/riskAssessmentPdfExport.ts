@@ -118,7 +118,7 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (data.population_density_band) fields.push([i18n.t('pdf.riskAssessment.labels.populationDensity', { ns: 'pdf' }), sanitizeForPdf(data.population_density_band)]);
   if (data.population_density_value != null) fields.push([i18n.t('pdf.riskAssessment.labels.populationDensityPerKm2', { ns: 'pdf' }), String(data.population_density_value)]);
   if (data.population_density_average != null) fields.push([i18n.t('pdf.riskAssessment.labels.avgDensityPerKm2', { ns: 'pdf' }), String(data.population_density_average)]);
-  if (data.ssb_grid_population != null) fields.push([i18n.t('pdf.riskAssessment.labels.ssbGridPopulation', { ns: 'pdf' }), `${data.ssb_grid_population} personer (${data.ssb_grid_resolution_m || 250} m)`]);
+  if (data.ssb_grid_population != null) fields.push([i18n.t('pdf.riskAssessment.labels.ssbGridPopulation', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.ssbCalc.gridPopulationValue', { ns: 'pdf', count: data.ssb_grid_population, resolution: data.ssb_grid_resolution_m || 250 })]);
   if (data.grc_calculation_method) fields.push([i18n.t('pdf.riskAssessment.labels.grcMethod', { ns: 'pdf' }), sanitizeForPdf(data.grc_calculation_method)]);
   if (data.igrc_table_basis) fields.push([i18n.t('pdf.riskAssessment.labels.tableBasis', { ns: 'pdf' }), sanitizeForPdf(data.igrc_table_basis)]);
   if (data.igrc != null) fields.push([i18n.t('pdf.riskAssessment.labels.igrc', { ns: 'pdf' }), String(data.igrc)]);
@@ -151,12 +151,13 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
     doc.text(i18n.t('pdf.riskAssessment.labels.ssbCalculationTitle', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
+    const lang = i18n.language?.toLowerCase().startsWith("en") ? "en-GB" : "nb-NO";
     const ssbText = [
-      data.population_density_source ? `Datakilde: ${data.population_density_source}` : null,
-      data.population_density_footprint ? `Fotavtrykk: ${data.population_density_footprint}` : null,
-      data.population_density_calculation ? `Beregning: ${data.population_density_calculation}` : null,
-      data.population_density_average != null ? `Gjennomsnitt i fotavtrykk: ${Number(data.population_density_average).toLocaleString("nb-NO", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} personer/km2` : null,
-      data.population_density_driver ? `Dimensjonerende del av ruten: ${data.population_density_driver}` : null,
+      data.population_density_source ? i18n.t('pdf.riskAssessment.ssbCalc.dataSource', { ns: 'pdf', value: data.population_density_source }) : null,
+      data.population_density_footprint ? i18n.t('pdf.riskAssessment.ssbCalc.footprint', { ns: 'pdf', value: data.population_density_footprint }) : null,
+      data.population_density_calculation ? i18n.t('pdf.riskAssessment.ssbCalc.calculation', { ns: 'pdf', value: data.population_density_calculation }) : null,
+      data.population_density_average != null ? i18n.t('pdf.riskAssessment.ssbCalc.avgInFootprint', { ns: 'pdf', value: Number(data.population_density_average).toLocaleString(lang, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) }) : null,
+      data.population_density_driver ? i18n.t('pdf.riskAssessment.ssbCalc.dimensioningPart', { ns: 'pdf', value: data.population_density_driver }) : null,
     ].filter(Boolean).join("\n");
     const lines = doc.splitTextToSize(sanitizeForPdf(ssbText), pageWidth - 28);
     doc.text(lines, 14, yPos);

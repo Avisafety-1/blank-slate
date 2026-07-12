@@ -1,10 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, formatDurationForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import i18n from "@/i18n";
+import { getIntlLocale } from "@/lib/i18nHelpers";
 import { generateMissionMapSnapshot } from "@/lib/mapSnapshotUtils";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   OUTDOOR_ASSEMBLIES_LABELS,
@@ -14,10 +15,12 @@ import {
 
 type Mission = any;
 
+const dateLocale = () => (i18n.language?.toLowerCase().startsWith("en") ? enUS : nb);
+
 const fmtRouteDocNumber = (value: unknown, decimals = 0, unit = "") => {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return "-";
-  return `${n.toLocaleString("nb-NO", { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit}`;
+  return `${n.toLocaleString(getIntlLocale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit}`;
 };
 
 const getRouteSoraRows = (route: any): string[][] => {
@@ -812,8 +815,8 @@ export const exportToPDF = async (
           .join(', ') || '-';
         
         return [
-          format(new Date(log.flight_date), "dd.MM.yyyy", { locale: nb }),
-          `${log.flight_duration_minutes} min`,
+          format(new Date(log.flight_date), "dd.MM.yyyy", { locale: dateLocale() }),
+          formatDurationForPdf(log.flight_duration_minutes),
           log.pilot?.full_name || '-',
           log.drones?.modell || '-',
           safeskyLabels[log.safesky_mode] || i18n.t('pdf.mission.flightLogs.safesky.off', { ns: 'pdf' }),
@@ -963,7 +966,7 @@ export const exportToPDF = async (
         setFontStyle(pdf, "bold");
         pdf.text(
           sanitizeForPdf(
-            i18n.t('pdf.mission.flightLogsDetailed.flightTitle', { ns: 'pdf', index: logIdx + 1, date: format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: nb }) })
+            i18n.t('pdf.mission.flightLogsDetailed.flightTitle', { ns: 'pdf', index: logIdx + 1, date: format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: dateLocale() }) })
           ),
           15,
           yPos

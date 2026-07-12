@@ -463,6 +463,14 @@
     "documentDescription": {
       "sora": "Automatically generated SORA analysis for mission: {{title}}",
       "ai": "Automatically generated risk assessment for mission: {{title}}"
+    },
+    "ssbCalc": {
+      "gridPopulationValue": "{{count}} people ({{resolution}} m)",
+      "dataSource": "Data source: {{value}}",
+      "footprint": "Footprint: {{value}}",
+      "calculation": "Calculation: {{value}}",
+      "avgInFootprint": "Average in footprint: {{value}} people/km2",
+      "dimensioningPart": "Dimensioning part of the route: {{value}}"
     }
   },
   "userManual": {
@@ -1265,6 +1273,32 @@
     "exportedAt": "Exported: {{date}}",
     "unknown": "Unknown",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "signatureLabel": "Signature:",
+    "hoursShort": "h",
+    "minutesShort": "min"
+  },
+  "flightLogbook": {
+    "title": "Logbook - {{name}}",
+    "totalFlightTime": "Total flight time",
+    "fromLogged": "From logged flights",
+    "manuallyAdded": "Manually added",
+    "headers": {
+      "date": "Date",
+      "departure": "Departure",
+      "landing": "Landing",
+      "duration": "Duration",
+      "drone": "Drone",
+      "mission": "Mission"
+    },
+    "filenamePrefix": "logbook",
+    "documentDescription": "Personal flight logbook exported {{date}}",
+    "toasts": {
+      "entryDeleted": "Entry deleted",
+      "deleteFailed": "Could not delete: {{message}}",
+      "missingInfo": "Missing user or company information",
+      "exported": "Logbook exported to documents",
+      "exportFailed": "Could not export logbook"
+    }
   }
 }

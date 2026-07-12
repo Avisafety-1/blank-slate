@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 
 interface FlightLogbookDialogProps {
   open: boolean;
@@ -543,38 +544,42 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         .delete()
         .eq("id", entry.id);
       if (error) throw error;
-      toast.success("Innlegg slettet");
+      toast.success(i18n.t("flightLogbook.toasts.entryDeleted", { ns: "pdf" }));
       fetchPersonnelLogs();
     } catch (error: any) {
-      toast.error(`Kunne ikke slette: ${error.message}`);
+      toast.error(i18n.t("flightLogbook.toasts.deleteFailed", { ns: "pdf", message: error.message }));
     }
   };
 
   const handleExportPDF = async () => {
     if (!companyId || !user) {
-      toast.error("Mangler bruker- eller bedriftsinformasjon");
+      toast.error(i18n.t("flightLogbook.toasts.missingInfo", { ns: "pdf" }));
       return;
     }
 
     setExporting(true);
     try {
       const doc = await createPdfDocument();
-      
+      const title = i18n.t("flightLogbook.title", { ns: "pdf", name: personName });
+
       doc.setFontSize(18);
-      doc.text(sanitizeForPdf(`Loggbok - ${personName}`), 14, 20);
-      
+      doc.text(sanitizeForPdf(title), 14, 20);
+
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(formatDateForPdf(new Date(), "'Eksportert:' d. MMMM yyyy 'kl.' HH:mm"), 14, 28);
-      
+      const exportedDateFmt = i18n.language?.toLowerCase().startsWith("en")
+        ? "'Exported:' d MMMM yyyy 'at' HH:mm"
+        : "'Eksportert:' d. MMMM yyyy 'kl.' HH:mm";
+      doc.text(formatDateForPdf(new Date(), exportedDateFmt), 14, 28);
+
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text(`Total flytid: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40);
+      doc.text(`${i18n.t("flightLogbook.totalFlightTime", { ns: "pdf" })}: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40);
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`Fra loggførte flyturer: ${formatDurationForPdf(loggedMinutes)}`, 14, 47);
-      doc.text(`Manuelt lagt til: ${formatDurationForPdf(manualMinutes2)}`, 14, 54);
-      
+      doc.text(`${i18n.t("flightLogbook.fromLogged", { ns: "pdf" })}: ${formatDurationForPdf(loggedMinutes)}`, 14, 47);
+      doc.text(`${i18n.t("flightLogbook.manuallyAdded", { ns: "pdf" })}: ${formatDurationForPdf(manualMinutes2)}`, 14, 54);
+
       const tableData = flightLogs.map(log => [
         format(new Date(log.flight_date), "dd.MM.yyyy"),
         sanitizeForPdf(log.departure_location),
@@ -583,10 +588,17 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         sanitizeForPdf(log.drone?.modell) || "-",
         sanitizeForPdf(log.mission?.tittel) || "-"
       ]);
-      
+
       autoTable(doc, {
         startY: 62,
-        head: [["Dato", "Avgang", "Landing", "Varighet", "Drone", "Oppdrag"]],
+        head: [[
+          i18n.t("flightLogbook.headers.date", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.departure", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.landing", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.duration", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.drone", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.mission", { ns: "pdf" }),
+        ]],
         body: tableData,
         styles: { fontSize: 8, font: getPdfFontName() },
         headStyles: { fillColor: [59, 130, 246], font: getPdfFontName() }
@@ -594,44 +606,48 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
       if (signatureUrl) {
         const finalY = (doc as any).lastAutoTable?.finalY || 150;
-        await addSignatureToPdf(doc, signatureUrl, finalY + 20, "Signatur:");
+        await addSignatureToPdf(doc, signatureUrl, finalY + 20);
       }
-      
+
       const safeName = sanitizeFilenameForPdf(personName);
       const dateStr = format(new Date(), "yyyy-MM-dd");
-      const fileName = `loggbok_${safeName}_${dateStr}.pdf`;
-      
+      const fileName = `${i18n.t("flightLogbook.filenamePrefix", { ns: "pdf" })}_${safeName}_${dateStr}.pdf`;
+
       const pdfBlob = doc.output("blob");
       const filePath = `${companyId}/${fileName}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from("documents")
         .upload(filePath, pdfBlob, { contentType: "application/pdf", upsert: true });
-      
+
       if (uploadError) throw uploadError;
-      
+
+      const isEn = i18n.language?.toLowerCase().startsWith("en");
+      const descDate = format(new Date(), "d MMMM yyyy", { locale: isEn ? undefined as any : nb });
       const { error: docError } = await supabase.from("documents").insert({
         company_id: companyId,
         user_id: user.id,
-        tittel: sanitizeForPdf(`Loggbok - ${personName}`),
+        tittel: sanitizeForPdf(title),
         kategori: "loggbok",
         fil_navn: fileName,
         fil_url: filePath,
         fil_storrelse: pdfBlob.size,
-        beskrivelse: sanitizeForPdf(`Personlig flyloggbok eksportert ${format(new Date(), "d. MMMM yyyy", { locale: nb })}`)
+        beskrivelse: sanitizeForPdf(i18n.t("flightLogbook.documentDescription", { ns: "pdf", date: descDate })),
       });
-      
+
       if (docError) throw docError;
 
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      toast.success("Loggbok eksportert til dokumenter");
+      toast.success(i18n.t("flightLogbook.toasts.exported", { ns: "pdf" }));
     } catch (error) {
       console.error("Error exporting PDF:", error);
-      toast.error("Kunne ikke eksportere loggbok");
+      toast.error(i18n.t("flightLogbook.toasts.exportFailed", { ns: "pdf" }));
     } finally {
       setExporting(false);
     }
   };
+
+
 
   return (
     <>
