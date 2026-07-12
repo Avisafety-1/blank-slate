@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -213,6 +214,8 @@ export function OpenAIPMap({
   routeInspectMode,
   historicalFlightTracks,
 }: OpenAIPMapProps) {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? 'en-US' : 'nb-NO';
 
   const { user, companyId, companyName, parentCompanyName, companyLat, companyLon, profileLoaded } = useAuth();
   // Company-level default map layer toggles (jsonb map of layer_id → boolean).
@@ -623,13 +626,13 @@ export function OpenAIPMap({
         });
       }
 
-      let popupContent = `<strong>Punkt ${index + 1}</strong>`;
+      let popupContent = `<strong>${t('pages.map.routePointPopup.title', { n: index + 1 })}</strong>`;
       if (index > 0) {
         const dist = calculateDistance(points[index - 1].lat, points[index - 1].lng, point.lat, point.lng);
-        popupContent += `<br/>Avstand fra forrige: ${dist.toFixed(2)} km`;
+        popupContent += `<br/>${t('pages.map.routePointPopup.distanceFromPrev', { d: dist.toFixed(2) })}`;
       }
       if (modeRef.current === 'routePlanning') {
-        popupContent += '<br/><em style="font-size: 11px; color: #666;">Dra for å flytte, høyreklikk for å slette</em>';
+        popupContent += `<br/><em style="font-size: 11px; color: #666;">${t('pages.map.routePointPopup.dragOrRight')}</em>`;
       }
       marker.bindPopup(popupContent);
       marker.addTo(routeLayerRef.current!);
@@ -650,7 +653,7 @@ export function OpenAIPMap({
             font-weight: 600;
             box-shadow: 0 1px 4px rgba(0,0,0,0.2);
             white-space: nowrap;
-          ">Total: ${totalDist.toFixed(2)} km</div>`,
+          ">${t('pages.map.routePointPopup.total', { d: totalDist.toFixed(2) })}</div>`,
           iconSize: [100, 24],
           iconAnchor: [50, -10],
         }),
@@ -730,13 +733,13 @@ export function OpenAIPMap({
         const isEurostat = cell.source === "eurostat";
         const density = cell.densityPerKm2 ?? (isEurostat ? cell.population : cell.population * 16);
         const isHotspot = index === maxDensityIndex;
-        const densityLabel = `${Math.round(density).toLocaleString('nb-NO')} /km²`;
-        const sourceLabel = isEurostat ? "Eurostat 2021 · 1 km-rute" : "SSB 250 m-rute";
+        const densityLabel = `${Math.round(density).toLocaleString(dateLocale)} /km²`;
+        const sourceLabel = isEurostat ? t('pages.map.density.sourceEurostat') : t('pages.map.density.sourceSsb');
         const densityCalc = isEurostat
-          ? `${density.toLocaleString('nb-NO')} pers/km² (1 km² rute)`
-          : `${density.toLocaleString('nb-NO')} pers/km² (pop × 16, 250 m rute)`;
-        const popup = `<strong>${sourceLabel}</strong><br/>${cell.population.toLocaleString('nb-NO')} personer i ruten<br/>${densityCalc}${isHotspot ? '<br/><strong>Pådriver for utregning</strong>' : ''}`;
-        const tooltip = `Pådriver · ${densityLabel}`;
+          ? t('pages.map.density.eurostatCalc', { n: density.toLocaleString(dateLocale) })
+          : t('pages.map.density.ssbCalc', { n: density.toLocaleString(dateLocale) });
+        const popup = `<strong>${sourceLabel}</strong><br/>${t('pages.map.density.peopleInRoute', { n: cell.population.toLocaleString(dateLocale) })}<br/>${densityCalc}${isHotspot ? `<br/><strong>${t('pages.map.density.driverForCalc')}</strong>` : ''}`;
+        const tooltip = t('pages.map.density.driverTooltip', { label: densityLabel });
         const tooltipOptions: L.TooltipOptions = {
           permanent: true,
           direction: 'center',
@@ -909,7 +912,7 @@ export function OpenAIPMap({
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
       const airspaceUrl = openAipConfig.tiles.airspace.replace("{key}", openAipConfig.apiKey);
       const airspaceLayer = L.tileLayer(airspaceUrl, { opacity: 0.55, subdomains: "abc" }).addTo(map);
-      layerConfigs.push({ id: "airspace", name: "Luftrom", layer: airspaceLayer, enabled: true, icon: "layers", group: "Luftrom" });
+      layerConfigs.push({ id: "airspace", name: t('pages.map.layers.airspace'), layer: airspaceLayer, enabled: true, icon: "layers", group: t('pages.map.layers.groups.airspace') });
     }
 
     const rpasLayer = L.layerGroup().addTo(map);
@@ -1017,31 +1020,37 @@ export function OpenAIPMap({
     // ============================================================
 
     // Luftrom
-    layerConfigs.push({ id: "rpas", name: "RPAS 5 km", layer: rpasLayer, enabled: true, icon: "radio", group: "Luftrom" });
-    layerConfigs.push({ id: "nsm", name: "NSM forbudsområder", layer: nsmLayer, enabled: true, icon: "ban", group: "Luftrom" });
-    layerConfigs.push({ id: "aip", name: "P/R/D-soner", layer: aipLayer, enabled: false, icon: "shield", group: "Luftrom" });
-    layerConfigs.push({ id: "rmz_tmz_atz", name: "RMZ / TMZ / ATZ", layer: rmzTmzAtzLayer, enabled: true, icon: "radio", group: "Luftrom" });
+    const gAir = t('pages.map.layers.groups.airspace');
+    const gRes = t('pages.map.layers.groups.restrictions');
+    const gNat = t('pages.map.layers.groups.natureAndPopulation');
+    const gInf = t('pages.map.layers.groups.infrastructure');
+    const gMis = t('pages.map.layers.groups.missions');
+    const gLive = t('pages.map.layers.groups.liveTraffic');
+    layerConfigs.push({ id: "rpas", name: t('pages.map.layers.rpas'), layer: rpasLayer, enabled: true, icon: "radio", group: gAir });
+    layerConfigs.push({ id: "nsm", name: t('pages.map.layers.nsm'), layer: nsmLayer, enabled: true, icon: "ban", group: gAir });
+    layerConfigs.push({ id: "aip", name: t('pages.map.layers.prd'), layer: aipLayer, enabled: false, icon: "shield", group: gAir });
+    layerConfigs.push({ id: "rmz_tmz_atz", name: t('pages.map.layers.rmzTmzAtz'), layer: rmzTmzAtzLayer, enabled: true, icon: "radio", group: gAir });
 
     // Restriksjoner — slått sammen NO + DK
-    layerConfigs.push({ id: "restriksjonsomrader", name: "Restriksjonsområder", layer: [caaRestriksjonerLayer, dkRodLayer], enabled: false, icon: "ban", group: "Restriksjoner" });
-    layerConfigs.push({ id: "fareomrader", name: "Fareområder", layer: [caaFareLayer, dkOrangeLayer], enabled: false, icon: "alertTriangle", group: "Restriksjoner" });
-    layerConfigs.push({ id: "sikringsobjekter", name: "Sikringsobjekter", layer: [caaFengslerLayer, caaAmbassaderLayer, dkBlaLayer], enabled: false, icon: "shield", group: "Restriksjoner" });
-    layerConfigs.push({ id: "notam", name: "NOTAM", layer: [notamLayer, caaNotamSonerLayer], enabled: true, icon: "alertTriangle", group: "Restriksjoner" });
+    layerConfigs.push({ id: "restriksjonsomrader", name: t('pages.map.layers.restrictedAreas'), layer: [caaRestriksjonerLayer, dkRodLayer], enabled: false, icon: "ban", group: gRes });
+    layerConfigs.push({ id: "fareomrader", name: t('pages.map.layers.dangerAreas'), layer: [caaFareLayer, dkOrangeLayer], enabled: false, icon: "alertTriangle", group: gRes });
+    layerConfigs.push({ id: "sikringsobjekter", name: t('pages.map.layers.securityObjects'), layer: [caaFengslerLayer, caaAmbassaderLayer, dkBlaLayer], enabled: false, icon: "shield", group: gRes });
+    layerConfigs.push({ id: "notam", name: t('pages.map.layers.notam'), layer: [notamLayer, caaNotamSonerLayer], enabled: true, icon: "alertTriangle", group: gRes });
 
     // Natur & befolkning
-    layerConfigs.push({ id: "verneomrader", name: "Verneområder", layer: [naturvernLayer, dkNatureLayer], enabled: false, icon: "treePine", group: "Natur & befolkning" });
-    layerConfigs.push({ id: "befolkning", name: "Befolkning", layer: [eurostatPopLayer, ssbBefolkningLayer], enabled: false, icon: "users", group: "Natur & befolkning" });
-    layerConfigs.push({ id: "tettsteder", name: "Tettsteder", layer: tettstederLayer, enabled: false, icon: "users", group: "Natur & befolkning" });
-    layerConfigs.push({ id: "arealbruk", name: "Arealbruk", layer: arealbrukLayer, enabled: false, icon: "users", group: "Natur & befolkning" });
+    layerConfigs.push({ id: "verneomrader", name: t('pages.map.layers.protectedAreas'), layer: [naturvernLayer, dkNatureLayer], enabled: false, icon: "treePine", group: gNat });
+    layerConfigs.push({ id: "befolkning", name: t('pages.map.layers.population'), layer: [eurostatPopLayer, ssbBefolkningLayer], enabled: false, icon: "users", group: gNat });
+    layerConfigs.push({ id: "tettsteder", name: t('pages.map.layers.urbanAreas'), layer: tettstederLayer, enabled: false, icon: "users", group: gNat });
+    layerConfigs.push({ id: "arealbruk", name: t('pages.map.layers.landUse'), layer: arealbrukLayer, enabled: false, icon: "users", group: gNat });
 
     // Infrastruktur
-    layerConfigs.push({ id: "luftfartshindre", name: "Luftfartshindre", layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: "Infrastruktur" });
-    layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger", layer: kraftledningerLayer, enabled: false, icon: "zap", group: "Infrastruktur" });
-    layerConfigs.push({ id: "eiendomsgrenser", name: "Eiendomsgrenser", layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: "Infrastruktur" });
+    layerConfigs.push({ id: "luftfartshindre", name: t('pages.map.layers.aviationObstacles'), layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: gInf });
+    layerConfigs.push({ id: "kraftledninger", name: t('pages.map.layers.powerLines'), layer: kraftledningerLayer, enabled: false, icon: "zap", group: gInf });
+    layerConfigs.push({ id: "eiendomsgrenser", name: t('pages.map.layers.propertyBoundaries'), layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: gInf });
     if (tensioLuftnettLayer) {
-      layerConfigs.push({ id: "tensio_luftnett", name: "Luftnett Tensio", layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: "Infrastruktur" });
+      layerConfigs.push({ id: "tensio_luftnett", name: t('pages.map.layers.tensioPowerGrid'), layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: gInf });
     }
-    layerConfigs.push({ id: "flyplasser", name: "Flyplasser", layer: [airportsLayer, caaFlyplasserLayer], enabled: true, icon: "planeLanding", group: "Infrastruktur" });
+    layerConfigs.push({ id: "flyplasser", name: t('pages.map.layers.airports'), layer: [airportsLayer, caaFlyplasserLayer], enabled: true, icon: "planeLanding", group: gInf });
 
     // Geolocation
     if (navigator.geolocation) {
@@ -1054,7 +1063,7 @@ export function OpenAIPMap({
             userMarkerRef.current = L.circleMarker(coords, {
               radius: 8, fillColor: '#3b82f6', fillOpacity: 1, color: '#ffffff', weight: 2,
             }).addTo(map);
-            userMarkerRef.current.bindPopup("Din posisjon");
+            userMarkerRef.current.bindPopup(t('pages.map.yourPosition'));
           }
           // Only center on the user's position if we have not been given an explicit
           // mission center and we are not focusing on a specific flight.
@@ -1073,24 +1082,24 @@ export function OpenAIPMap({
 
     // Drone, Missions, SafeSky, Route, Pilot, Advisory layers
     const droneLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "drones", name: "Droner", layer: droneLayer, enabled: true, icon: "navigation", group: "Live trafikk" });
+    layerConfigs.push({ id: "drones", name: t('pages.map.layers.drones'), layer: droneLayer, enabled: true, icon: "navigation", group: gLive });
 
     const missionsLayer = L.layerGroup();
     if (modeRef.current === "view") missionsLayer.addTo(map);
     missionsLayerRef.current = missionsLayer;
-    layerConfigs.push({ id: "missions", name: "Oppdrag", layer: missionsLayer, enabled: modeRef.current === "view", icon: "mapPin", group: "Oppdrag" });
+    layerConfigs.push({ id: "missions", name: t('pages.map.layers.missions_'), layer: missionsLayer, enabled: modeRef.current === "view", icon: "mapPin", group: gMis });
 
     const completedMissionsLayer = L.layerGroup();
-    layerConfigs.push({ id: "completed_missions", name: "Utførte oppdrag", layer: completedMissionsLayer, enabled: false, icon: "mapPin", group: "Oppdrag" });
+    layerConfigs.push({ id: "completed_missions", name: t('pages.map.layers.completedMissions'), layer: completedMissionsLayer, enabled: false, icon: "mapPin", group: gMis });
 
     const plannedPublishedLayer = L.layerGroup();
     if (modeRef.current === "view") plannedPublishedLayer.addTo(map);
     plannedPublishedLayerRef.current = plannedPublishedLayer;
-    layerConfigs.push({ id: "planned_published", name: "Planlagte oppdrag (delt)", layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin", group: "Oppdrag" });
+    layerConfigs.push({ id: "planned_published", name: t('pages.map.layers.plannedShared'), layer: plannedPublishedLayer, enabled: modeRef.current === "view", icon: "mapPin", group: gMis });
 
     const safeskyLayer = L.layerGroup().addTo(map);
-    layerConfigs.push({ id: "safesky", name: "Lufttrafikk", layer: safeskyLayer, enabled: true, icon: "radar", group: "Live trafikk" });
-    layerConfigs.push({ id: "nais", name: "Skipstrafikk", layer: naisLayer, enabled: false, icon: "navigation", group: "Live trafikk" });
+    layerConfigs.push({ id: "safesky", name: t('pages.map.layers.airTraffic'), layer: safeskyLayer, enabled: true, icon: "radar", group: gLive });
+    layerConfigs.push({ id: "nais", name: t('pages.map.layers.shipTraffic'), layer: naisLayer, enabled: false, icon: "navigation", group: gLive });
 
     const routeLayer = L.layerGroup().addTo(map);
     routeLayerRef.current = routeLayer;
@@ -1589,13 +1598,13 @@ export function OpenAIPMap({
         const pos = track.positions[nearestIdx];
         const altitude = pos.alt_msl ?? pos.alt ?? null;
         const content = `<div style="font-size:12px;line-height:1.5">
-          <strong>Flydd rute${track.flightDate ? ' — ' + new Date(track.flightDate).toLocaleDateString('nb-NO') : ''}</strong><hr style="margin:4px 0"/>
-          Punkt ${nearestIdx + 1} av ${track.positions.length}<br/>
-          ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
-          ${pos.alt_agl != null ? `Høyde (AGL): ${Math.round(pos.alt_agl)} m<br/>` : ''}
-          ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
-          ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
-          ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
+          <strong>${track.flightDate ? t('pages.map.flightTrackPopup.flownRouteOn', { date: new Date(track.flightDate).toLocaleDateString(dateLocale) }) : t('pages.map.flightTrackPopup.flownRoute')}</strong><hr style="margin:4px 0"/>
+          ${t('pages.map.flightTrackPopup.pointOf', { i: nearestIdx + 1, n: track.positions.length })}<br/>
+          ${altitude != null ? `${t('pages.map.flightTrackPopup.altMsl', { v: Math.round(altitude) })}<br/>` : ''}
+          ${pos.alt_agl != null ? `${t('pages.map.flightTrackPopup.altAgl', { v: Math.round(pos.alt_agl) })}<br/>` : ''}
+          ${pos.speed != null ? `${t('pages.map.flightTrackPopup.speed', { v: pos.speed.toFixed(1) })}<br/>` : ''}
+          ${pos.heading != null ? `${t('pages.map.flightTrackPopup.heading', { v: Math.round(pos.heading) })}<br/>` : ''}
+          ${pos.timestamp ? t('pages.map.flightTrackPopup.time', { v: new Date(pos.timestamp).toLocaleTimeString(dateLocale) }) : ''}
         </div>`;
         L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
       });
@@ -1603,12 +1612,12 @@ export function OpenAIPMap({
       const startPos = track.positions[0];
       L.circleMarker([startPos.lat, startPos.lng], {
         radius: 8, fillColor: '#22c55e', color: '#fff', weight: 2, fillOpacity: 1, pane: 'historicalFlightPane',
-      }).addTo(layer).bindPopup(`Flytur ${trackIndex + 1} — Start`);
+      }).addTo(layer).bindPopup(t('pages.map.flightTrackPopup.flightStart', { i: trackIndex + 1 }));
 
       const endPos = track.positions[track.positions.length - 1];
       L.circleMarker([endPos.lat, endPos.lng], {
         radius: 8, fillColor: '#f97316', color: '#fff', weight: 2, fillOpacity: 1, pane: 'historicalFlightPane',
-      }).addTo(layer).bindPopup(`Flytur ${trackIndex + 1} — Slutt`);
+      }).addTo(layer).bindPopup(t('pages.map.flightTrackPopup.flightEnd', { i: trackIndex + 1 }));
     });
 
     // Fit bounds if no explicit initial center from route
@@ -1747,8 +1756,8 @@ export function OpenAIPMap({
     
     const VLOS_RADIUS = pilotVlosRadiusM && pilotVlosRadiusM > 0 ? Math.round(pilotVlosRadiusM) : 120;
     const alosLine = pilotAlosCalculation
-      ? `<br/><span style="font-size: 12px;">ALOS: ${pilotAlosCalculation}</span>`
-      : `<br/><span style="font-size: 11px; color: #999;">(standard 120 m – velg drone i SORA for ALOS)</span>`;
+      ? `<br/><span style="font-size: 12px;">${t('pages.map.pilotPopup.alos', { v: pilotAlosCalculation })}</span>`
+      : `<br/><span style="font-size: 11px; color: #999;">${t('pages.map.pilotPopup.alosDefault')}</span>`;
     
     const pilotIcon = L.divIcon({
       className: '',
@@ -1771,7 +1780,7 @@ export function OpenAIPMap({
       icon: pilotIcon, draggable: mode === 'routePlanning', pane: 'routePane',
     });
     
-    marker.bindPopup(`<div><strong>👤 Pilotposisjon</strong><br/><span style="font-size: 11px; color: #666;">Dra for å flytte</span><br/><span style="font-size: 12px;">VLOS-radius: ${VLOS_RADIUS}m</span>${alosLine}</div>`);
+    marker.bindPopup(`<div><strong>${t('pages.map.pilotPopup.title')}</strong><br/><span style="font-size: 11px; color: #666;">${t('pages.map.pilotPopup.dragToMove')}</span><br/><span style="font-size: 12px;">${t('pages.map.pilotPopup.vlosRadius', { r: VLOS_RADIUS })}</span>${alosLine}</div>`);
     
     if (mode === 'routePlanning') {
       marker.on('dragend', (e: any) => {
@@ -1931,7 +1940,7 @@ export function OpenAIPMap({
           className={`shadow-lg ${weatherEnabled ? "" : "bg-card hover:bg-accent"}`}
           onClick={() => { if (mode !== "view") return; setWeatherEnabled(!weatherEnabled); }}
           disabled={mode !== "view"}
-          title={mode !== "view" ? "Værvisning er ikke tilgjengelig under ruteplanlegging" : weatherEnabled ? "Slå av værvisning" : "Slå på værvisning (klikk i kartet)"}
+          title={mode !== "view" ? t('pages.map.weatherToggle.unavailable') : weatherEnabled ? t('pages.map.weatherToggle.off') : t('pages.map.weatherToggle.on')}
         >
           <CloudSun className="h-5 w-5" />
         </Button>
@@ -1948,9 +1957,9 @@ export function OpenAIPMap({
             switchBaseLayer(next);
           }}
           title={
-            baseLayerType === "osm" ? "Bytt til satellittkart"
-            : baseLayerType === "satellite" ? "Bytt til topografisk kart"
-            : "Bytt til standard kart"
+            baseLayerType === "osm" ? t('pages.map.baseToggle.toSatellite')
+            : baseLayerType === "satellite" ? t('pages.map.baseToggle.toTopo')
+            : t('pages.map.baseToggle.toStandard')
           }
         >
           {baseLayerType === "osm" ? <Satellite className="h-5 w-5" />
@@ -1963,7 +1972,7 @@ export function OpenAIPMap({
         {stackSlotAboveLayers}
 
         {mode === "view" && onStartRoutePlanning && (
-          <Button data-tour="map-route-planner-trigger" onClick={onStartRoutePlanning} variant="default" size="icon" className="shadow-lg" title="Planlegg ny rute">
+          <Button data-tour="map-route-planner-trigger" onClick={onStartRoutePlanning} variant="default" size="icon" className="shadow-lg" title={t('pages.map.planNewRoute')}>
             <Route className="h-5 w-5" />
           </Button>
         )}
@@ -1971,13 +1980,13 @@ export function OpenAIPMap({
 
       {mode === "view" && weatherEnabled && (
         <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border z-[1000] text-sm">
-          <span className="text-muted-foreground">Klikk på kartet for å se værdata</span>
+          <span className="text-muted-foreground">{t('pages.map.weatherToggle.hint')}</span>
         </div>
       )}
 
       {mode === "routePlanning" && routePointCount === 0 && (
         <div className={`absolute top-4 z-[1000] bg-background/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-border text-sm ${routeHintOffsetClass ?? "left-1/2 -translate-x-1/2"}`}>
-          <span className="text-muted-foreground">Klikk på kartet for å legge til punkter</span>
+          <span className="text-muted-foreground">{t('pages.map.weatherToggle.clickToAddPoints')}</span>
         </div>
       )}
 

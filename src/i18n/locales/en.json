@@ -1561,7 +1561,88 @@
           "toStandard": "Switch to standard map",
           "baseAria": "Change base map"
         }
-      }
+      },
+      "layers": {
+        "groups": {
+          "airspace": "Airspace",
+          "restrictions": "Restrictions",
+          "natureAndPopulation": "Nature & population",
+          "infrastructure": "Infrastructure",
+          "missions": "Missions",
+          "liveTraffic": "Live traffic"
+        },
+        "airspace": "Airspace",
+        "rpas": "RPAS 5 km",
+        "nsm": "NSM prohibited areas",
+        "prd": "P/R/D zones",
+        "rmzTmzAtz": "RMZ / TMZ / ATZ",
+        "restrictedAreas": "Restricted areas",
+        "dangerAreas": "Danger areas",
+        "securityObjects": "Security objects",
+        "notam": "NOTAM",
+        "protectedAreas": "Protected areas",
+        "population": "Population",
+        "urbanAreas": "Urban areas",
+        "landUse": "Land use",
+        "aviationObstacles": "Aviation obstacles",
+        "powerLines": "Power lines",
+        "propertyBoundaries": "Property boundaries",
+        "tensioPowerGrid": "Tensio power grid",
+        "airports": "Airports",
+        "drones": "Drones",
+        "missions_": "Missions",
+        "completedMissions": "Completed missions",
+        "plannedShared": "Planned missions (shared)",
+        "airTraffic": "Air traffic",
+        "shipTraffic": "Ship traffic"
+      },
+      "pilotPopup": {
+        "title": "👤 Pilot position",
+        "dragToMove": "Drag to move",
+        "vlosRadius": "VLOS radius: {{r}} m",
+        "alos": "ALOS: {{v}}",
+        "alosDefault": "(default 120 m – choose drone in SORA for ALOS)"
+      },
+      "routePointPopup": {
+        "title": "Point {{n}}",
+        "distanceFromPrev": "Distance from previous: {{d}} km",
+        "dragOrRight": "Drag to move, right-click to delete",
+        "total": "Total: {{d}} km"
+      },
+      "density": {
+        "sourceEurostat": "Eurostat 2021 · 1 km grid",
+        "sourceSsb": "SSB 250 m grid",
+        "peopleInRoute": "{{n}} people in the route",
+        "eurostatCalc": "{{n}} pers/km² (1 km² cell)",
+        "ssbCalc": "{{n}} pers/km² (pop × 16, 250 m cell)",
+        "driverForCalc": "Driver for calculation",
+        "driverTooltip": "Driver · {{label}}"
+      },
+      "flightTrackPopup": {
+        "flownRoute": "Flown route",
+        "flownRouteOn": "Flown route — {{date}}",
+        "pointOf": "Point {{i}} of {{n}}",
+        "altMsl": "Altitude (MSL): {{v}} m",
+        "altAgl": "Altitude (AGL): {{v}} m",
+        "speed": "Speed: {{v}} m/s",
+        "heading": "Heading: {{v}}°",
+        "time": "Time: {{v}}",
+        "flightStart": "Flight {{i}} — Start",
+        "flightEnd": "Flight {{i}} — End"
+      },
+      "weatherToggle": {
+        "unavailable": "Weather view is not available during route planning",
+        "off": "Turn off weather view",
+        "on": "Turn on weather view (click on the map)",
+        "hint": "Click on the map to see weather data",
+        "clickToAddPoints": "Click on the map to add points"
+      },
+      "baseToggle": {
+        "toSatellite": "Switch to satellite map",
+        "toTopo": "Switch to topographic map",
+        "toStandard": "Switch to standard map"
+      },
+      "yourPosition": "Your position"
     },
     "stats": {
       "back": "Back",
