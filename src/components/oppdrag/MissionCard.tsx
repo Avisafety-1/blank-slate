@@ -542,7 +542,7 @@ export const MissionCard = ({
         <div className="pt-2 border-t border-border/50">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground">DOKUMENTER</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.documentsHeader')}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {mission.documents.map((d: any) => {
