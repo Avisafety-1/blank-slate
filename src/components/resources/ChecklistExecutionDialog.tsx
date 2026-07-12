@@ -487,7 +487,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <div className="rounded-lg border overflow-hidden">
                   <img
                     src={fileUrl!}
-                    alt={checklistTitles[activeChecklistId] || "Sjekkliste"}
+                    alt={checklistTitles[activeChecklistId] || t('resourceDialogs.checklistExecution.sjekkliste')}
                     className="w-full h-auto cursor-pointer"
                     onClick={() => openFileInBrowser(fileUrl!)}
                   />
