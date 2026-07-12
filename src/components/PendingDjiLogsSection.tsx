@@ -252,7 +252,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
 
                 <p className="text-[11px] text-muted-foreground truncate">
                   {log.flight_date
-                    ? format(new Date(log.flight_date), "dd. MMM yyyy HH:mm", { locale: nb })
+                    ? format(new Date(log.flight_date), "dd. MMM yyyy HH:mm", { locale: dateLocale })
                     : "Ukjent dato"}
                   {log.duration_seconds
                     ? ` · ${Math.round(log.duration_seconds / 60)} min`
