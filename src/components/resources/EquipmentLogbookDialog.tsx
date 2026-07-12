@@ -681,11 +681,12 @@ export const EquipmentLogbookDialog = ({
               <div className="overflow-y-auto flex-1 min-h-0 pr-2 sm:pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    Laster loggbok...
+                    {t('resourceDialogs.equipmentLogbook.loading')}
                   </div>
                 ) : filteredLogs.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    Ingen oppføringer
+                    {t('resourceDialogs.equipmentLogbook.noEntries')}
+
                   </div>
                 ) : (
                   <div className="space-y-3">
