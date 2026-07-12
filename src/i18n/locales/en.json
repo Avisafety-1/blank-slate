@@ -2616,6 +2616,112 @@
         "documentTitle": "Logbook - {{model}} - {{date}}",
         "fileName": "logbook"
       }
+    },
+    "equipmentLogbook": {
+      "title": "Logbook - {{name}}",
+      "totalHours": "Total {{hours}} flight hours",
+      "addEntry": "Add",
+      "exportPdf": "PDF",
+      "tabs": {
+        "all": "All",
+        "flights": "Flights",
+        "drones": "Drones",
+        "manual": "Manual",
+        "battery": "Battery trend",
+        "batteryShort": "Batt"
+      },
+      "type": "Type",
+      "date": "Date",
+      "titleField": "Title *",
+      "titlePlaceholder": "Short description",
+      "description": "Description",
+      "descriptionPlaceholder": "Additional details (optional)",
+      "image": "Image (optional)",
+      "imagePreviewAlt": "Preview",
+      "uploadImage": "Upload image",
+      "saving": "Saving...",
+      "save": "Save",
+      "cancel": "Cancel",
+      "loading": "Loading logbook...",
+      "noEntries": "No entries",
+      "attachmentAlt": "Attachment",
+      "lightboxAlt": "Image",
+      "openIncident": "Open incident",
+      "unknownUser": "Unknown",
+      "unknownDrone": "Unknown drone",
+      "entryTypes": {
+        "merknad": "Note",
+        "hendelse": "Incident",
+        "reparasjon": "Repair",
+        "vedlikehold": "Maintenance",
+        "annet": "Other"
+      },
+      "logTitles": {
+        "flight": "Flight: {{from}} -> {{to}}",
+        "flightDescription": "{{minutes}} min, {{movements}} movements",
+        "flightDescriptionWithNotes": "{{minutes}} min, {{movements}} movements - {{notes}}",
+        "droneAdded": "Added to {{drone}}",
+        "droneRemoved": "Removed from {{drone}}",
+        "droneConnection": "Drone connection"
+      },
+      "badges": {
+        "flight": "Flight",
+        "added": "Added",
+        "removed": "Removed",
+        "note": "Note"
+      },
+      "toasts": {
+        "fetchError": "Could not load logbook",
+        "imageTooLarge": "Image is too large (max 10 MB)",
+        "titleRequired": "Enter a title",
+        "entryUpdated": "Entry updated",
+        "entryAdded": "Entry added",
+        "imageUploadError": "Entry saved, but image could not be uploaded",
+        "saveError": "Could not save entry: {{message}}",
+        "entryDeleted": "Entry deleted",
+        "deleteError": "Could not delete: {{message}}",
+        "loginRequired": "You must be signed in",
+        "exportSuccess": "Logbook exported to documents",
+        "exportError": "Could not export: {{message}}"
+      },
+      "battery": {
+        "empty": "No battery history found",
+        "emptyHint": "Import flight logs with this battery to see trends",
+        "cycles": "Cycles",
+        "health": "Health",
+        "maxTemp": "Max temp",
+        "minTempLabel": "Min: {{temp}}°C",
+        "minVoltage": "Min voltage",
+        "cellDeviation": "Cell deviation",
+        "cellHigh": "High",
+        "cellModerate": "Moderate",
+        "cellOk": "OK",
+        "capacityTrend": "Capacity trend",
+        "history": "History ({{count}} flight logs)",
+        "colDate": "Date",
+        "colCycles": "Cycles",
+        "colHealth": "Health",
+        "colTemp": "Temp",
+        "colVoltage": "Voltage",
+        "colCellDev": "Cell dev",
+        "colCapacity": "Capacity"
+      },
+      "pdf": {
+        "title": "Logbook - {{name}}",
+        "totalHours": "Total {{hours}} flight hours",
+        "exportedAt": "Exported: {{date}} {{time}}",
+        "noEntries": "No entries in the logbook.",
+        "columns": {
+          "date": "Date",
+          "type": "Type",
+          "title": "Title",
+          "description": "Description",
+          "user": "Performed by"
+        },
+        "signatureLabel": "Signature:",
+        "documentTitle": "Logbook - {{name}} - {{date}}",
+        "fileName": "logbook-equipment"
+      }
     }
   }
 }
