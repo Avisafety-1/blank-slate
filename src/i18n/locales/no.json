@@ -1505,6 +1505,8 @@
     "customers": "Kunder",
     "emailTemplates": "E-postmaler",
     "companies": "Selskaper",
+    "myCompany": "Mitt selskap",
+    "training": "Opplæring",
     "registrationCode": "Registreringskode",
     "registrationCodeDesc": "Del denne koden med nye brukere som skal registrere seg i systemet",
     "copy": "Kopier",
