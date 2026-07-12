@@ -201,6 +201,7 @@ export const CompanyManagementDialog = ({
         stripe_exempt: inheritedStripeExempt,
         parent_company_id: parentId,
         departments_enabled: departmentsEnabled,
+        default_language: data.default_language || 'no',
       };
 
       if (isCreating) {
