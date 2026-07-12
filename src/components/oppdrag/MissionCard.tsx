@@ -502,7 +502,7 @@ export const MissionCard = ({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Package className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground">UTSTYR</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.equipmentHeader')}</p>
           </div>
           {mission.equipment?.length > 0 ? (
             <ul className="space-y-2">
