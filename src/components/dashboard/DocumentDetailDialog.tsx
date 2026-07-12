@@ -227,14 +227,14 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
 
       if (error) throw error;
 
-      toast.success('Utløpsdato oppdatert');
+      toast.success(t('dashboard.documents.expiryUpdated'));
       setIsEditing(false);
       onOpenChange(false);
       // Refresh the page to show updated data
       window.location.reload();
     } catch (error: any) {
       console.error('Error updating expiry date:', error);
-      toast.error('Kunne ikke oppdatere utløpsdato');
+      toast.error(t('dashboard.documents.expiryUpdateError'));
     }
   };
 
