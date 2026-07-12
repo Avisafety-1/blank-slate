@@ -3,9 +3,11 @@
  * Brukes av 3D-kartet for å rendre ekstruderte sylindere og bygge popups som speiler 2D.
  */
 
+import i18n from '@/i18n';
 import { escapePopupHtml } from './zonePopups';
 
 const esc = escapePopupHtml;
+const tp = (k: string, opts?: any): string => i18n.t(`pages.map.popups.${k}`, opts) as string;
 
 export interface AipZoneStyle {
   color: string;
@@ -13,18 +15,29 @@ export interface AipZoneStyle {
   fillOpacity: number;
 }
 
-export const AIP_ZONE_STYLES: Record<string, AipZoneStyle> = {
-  P:   { color: '#dc2626', label: 'Forbudsområde',                 fillOpacity: 0.20 },
-  R:   { color: '#8b5cf6', label: 'Restriksjonsområde',            fillOpacity: 0.20 },
-  D:   { color: '#f59e0b', label: 'Fareområde',                    fillOpacity: 0.20 },
-  CTR: { color: '#ec4899', label: 'CTR (Control Zone)',            fillOpacity: 0.12 },
-  TIZ: { color: '#a78bfa', label: 'TIZ (Traffic Information Zone)', fillOpacity: 0.12 },
-  TMZ: { color: '#06b6d4', label: 'TMZ (Transponder Mandatory Zone)', fillOpacity: 0.12 },
-  RMZ: { color: '#22c55e', label: 'RMZ (Radio Mandatory Zone)',    fillOpacity: 0.12 },
-  ATZ: { color: '#f59e0b', label: 'Småflyplass — 5 km sone',       fillOpacity: 0.12 },
+const AIP_ZONE_META: Record<string, { color: string; fillOpacity: number }> = {
+  P:   { color: '#dc2626', fillOpacity: 0.20 },
+  R:   { color: '#8b5cf6', fillOpacity: 0.20 },
+  D:   { color: '#f59e0b', fillOpacity: 0.20 },
+  CTR: { color: '#ec4899', fillOpacity: 0.12 },
+  TIZ: { color: '#a78bfa', fillOpacity: 0.12 },
+  TMZ: { color: '#06b6d4', fillOpacity: 0.12 },
+  RMZ: { color: '#22c55e', fillOpacity: 0.12 },
+  ATZ: { color: '#f59e0b', fillOpacity: 0.12 },
 };
 
-export const AIP_ZONE_TYPES = Object.keys(AIP_ZONE_STYLES);
+export const AIP_ZONE_STYLES: Record<string, AipZoneStyle> = new Proxy({} as any, {
+  get: (_t, prop: string) => {
+    const m = AIP_ZONE_META[prop];
+    if (m) return { ...m, label: tp(`aip.styles.${prop}`, { defaultValue: prop }) };
+    return undefined;
+  },
+  has: (_t, prop: string) => prop in AIP_ZONE_META,
+  ownKeys: () => Object.keys(AIP_ZONE_META),
+  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+});
+
+export const AIP_ZONE_TYPES = Object.keys(AIP_ZONE_META);
 
 /**
  * Parser AIP høyde-streng til meter AMSL/AGL (vi behandler dem likt for 3D-visuell).
