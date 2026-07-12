@@ -391,7 +391,7 @@ export const EquipmentLogbookDialog = ({
         }
       }
 
-      toast.success(editingEntryId ? "Innlegg oppdatert" : "Innlegg lagt til");
+      toast.success(editingEntryId ? t('resourceDialogs.equipmentLogbook.toasts.entryUpdated') : t('resourceDialogs.equipmentLogbook.toasts.entryAdded'));
       setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
       clearImage();
       setShowAddEntry(false);
