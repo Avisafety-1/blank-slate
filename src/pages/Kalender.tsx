@@ -1096,7 +1096,7 @@ export default function Kalender() {
         open={addMissionDialogOpen}
         onOpenChange={setAddMissionDialogOpen}
         onMissionAdded={() => {
-          toast.success("Oppdrag opprettet!");
+          toast.success(t('pages.calendar.missionCreated'));
           fetchCustomEvents();
         }}
       />
