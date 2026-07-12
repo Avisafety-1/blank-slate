@@ -801,9 +801,9 @@ export default function KartPage() {
               <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-auto">
                 <Route className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                 <div className="min-w-0">
-                  <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">Planlegg flyrute</h1>
+                  <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">{t('pages.map.planRoute')}</h1>
                   <p className="text-xs text-muted-foreground">
-                    {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
+                    {t('pages.map.points', { count: currentRoute.coordinates.length })}
                     {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
                   </p>
                 </div>
