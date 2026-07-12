@@ -885,7 +885,7 @@ export const MissionCard = ({
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
                       <Radio className="h-3 w-3 mr-1" />
-                      SafeSky: {log.safesky_mode === 'advisory' ? 'Advisory' : 'Live UAV'}
+                      SafeSky: {log.safesky_mode === 'advisory' ? t('pages.missions.card.safeSkyAdvisory') : t('pages.missions.card.safeSkyLiveUav')}
                     </Badge>
                   )}
                   {log.completed_checklists && log.completed_checklists.length > 0 && (
