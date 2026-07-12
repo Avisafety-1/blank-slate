@@ -376,7 +376,7 @@ export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialo
 
           <div className="rounded-lg border bg-muted/50 p-4">
             <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">{eventCount}</strong> {t("dashboard.calendarExport.eventsWillBeExported", { count: eventCount }).replace(/^\d+\s*/, "")}
+              <strong className="text-foreground">{eventCount}</strong> {t("dashboard.calendarExport.eventsWillBeExportedSuffix")}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {t("dashboard.calendarExport.includes")}
