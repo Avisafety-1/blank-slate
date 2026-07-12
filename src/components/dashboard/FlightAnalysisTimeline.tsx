@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { BatterySummary } from "./FlightAnalysisDialog";
 import { Slider } from "@/components/ui/slider";
