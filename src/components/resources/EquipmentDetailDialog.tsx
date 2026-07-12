@@ -1032,15 +1032,16 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                 <div className="flex gap-2 ml-auto">
                   {!isEditing ? (
-                    <Button onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>Rediger</Button>
+                    <Button onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>{t('resourceDialogs.equipmentDetail.edit')}</Button>
                   ) : (
                     <>
                       <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
-                        Avbryt
+                        {t('resourceDialogs.equipmentDetail.cancel')}
                       </Button>
                       <Button onClick={handleSave} disabled={isSubmitting}>
-                        {isSubmitting ? "Lagrer..." : "Lagre"}
+                        {isSubmitting ? t('resourceDialogs.equipmentDetail.saving') : t('resourceDialogs.equipmentDetail.save')}
                       </Button>
+
                     </>
                   )}
                 </div>
