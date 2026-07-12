@@ -521,7 +521,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                         onClick={handleOpenDocument}
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />
-                        Åpne
+                        {t('dashboard.documents.open')}
                       </Button>
                     )}
                     {/* Download button */}
