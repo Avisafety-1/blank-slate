@@ -1,5 +1,11 @@
 # Sync-logg
 
+## 2026-07-12 — i18n Fase 1.1: ExpandedMapDialog
+
+**Migrert:** `src/components/dashboard/ExpandedMapDialog.tsx` – dialog-tittel, SORA lagre-knapp + toasts, kart-satellittveksler, ruta/flyspor-popups (reuses `dashboard.missionMapPreview.*`), start/slutt-markører, legende og statistikk-tekst (Maks høyde/hastighet/AGL, Snitt AGL). Fetch-hjelperen `fetchZones` tar nå `t` som parameter for NSM/CTR-navn-fallbacks. Nye nøkler under `dashboard.expandedMap.*`. Bruker `dangerouslySetInnerHTML` for statistikk-strenger med `<strong>`-interpolasjon (i18next `escapeValue:false`). `tsgo --noEmit` OK.
+
+
+
 ## 2026-07-12 — i18n Fase 1.1: FlightAnalysisTimeline + MissionMapPreview
 
 **Migrert:**
