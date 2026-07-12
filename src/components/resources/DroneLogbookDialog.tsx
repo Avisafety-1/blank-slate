@@ -768,7 +768,7 @@ export const DroneLogbookDialog = ({
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
-                                  title="Analyser flytur"
+                                  title={t('resourceDialogs.droneLogbook.analyzeFlight')}
                                   onClick={() => {
                                     setAnalysisTrack(log.flightTrack);
                                     setAnalysisDate(log.flightDate);
