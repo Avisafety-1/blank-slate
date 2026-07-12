@@ -1549,7 +1549,7 @@ const Admin = () => {
                                           const newIds = checked ? [...current, id] : current.filter(i => i !== id);
                                           updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
                                         }}
-                                        allLabel="Alle avdelinger"
+                                        allLabel={t('admin.page.allDepartments')}
                                       />
                                     </PopoverContent>
                                   </Popover>
