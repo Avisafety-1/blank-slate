@@ -172,7 +172,7 @@ export function PersonnelFlightKpi({ personId }: Props) {
   };
 
   const requirementLabel = activeRules
-    .map((r) => `${r.hours}t/${r.days}d`)
+    .map((r) => t('resourceDialogs.personnelFlightKpi.requirementLabel', { hours: r.hours, days: r.days }))
     .join(" · ");
 
   return (
@@ -180,10 +180,10 @@ export function PersonnelFlightKpi({ personId }: Props) {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold flex items-center gap-1.5 text-muted-foreground">
           <Plane className="h-3.5 w-3.5" />
-          Flytid
+          {t('resourceDialogs.personnelFlightKpi.flightTime')}
           {activeRules.length > 0 && (
             <span className="text-[10px] font-normal text-muted-foreground/80">
-              · Krav {requirementLabel}
+              · {t('resourceDialogs.personnelFlightKpi.requirement')} {requirementLabel}
             </span>
           )}
         </h3>
@@ -195,14 +195,14 @@ export function PersonnelFlightKpi({ personId }: Props) {
           </PopoverTrigger>
           <PopoverContent className="w-64" align="end">
             <div className="space-y-3">
-              <p className="text-xs font-medium">Tilpass perioder (dager)</p>
+              <p className="text-xs font-medium">{t('resourceDialogs.personnelFlightKpi.customizePeriods')}</p>
               {draft.map((value, i) => {
                 const locked = i < activeRules.length;
                 return (
                   <div key={i}>
                     <Label className="text-xs">
-                      Periode {i + 1}
-                      {locked && <span className="ml-1 text-muted-foreground">(låst av selskap)</span>}
+                      {t('resourceDialogs.personnelFlightKpi.period', { n: i + 1 })}
+                      {locked && <span className="ml-1 text-muted-foreground">{t('resourceDialogs.personnelFlightKpi.lockedByCompany')}</span>}
                     </Label>
                     <Input
                       type="number"
@@ -224,12 +224,12 @@ export function PersonnelFlightKpi({ personId }: Props) {
               })}
               {activeRules.length > 0 && (
                 <p className="text-[10px] text-muted-foreground leading-tight">
-                  Selskapet krever {requirementLabel}. Disse periodene vises alltid først.
+                  {t('resourceDialogs.personnelFlightKpi.companyRequires', { req: requirementLabel })}
                 </p>
               )}
               <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setEditOpen(false)}>Avbryt</Button>
-                <Button size="sm" onClick={savePeriods}>Lagre</Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditOpen(false)}>{t('resourceDialogs.personnelFlightKpi.cancel')}</Button>
+                <Button size="sm" onClick={savePeriods}>{t('resourceDialogs.personnelFlightKpi.save')}</Button>
               </div>
             </div>
           </PopoverContent>
@@ -242,19 +242,19 @@ export function PersonnelFlightKpi({ personId }: Props) {
           const bucketDays = s.buckets[0]?.bucketDays ?? s.days / 6;
           const bucketLabel =
             Math.round(bucketDays) === 7
-              ? "Flytid per uke"
-              : `Flytid per ${Math.round(bucketDays)} dager`;
+              ? t('resourceDialogs.personnelFlightKpi.flightTimePerWeek')
+              : t('resourceDialogs.personnelFlightKpi.flightTimePerDays', { n: Math.round(bucketDays) });
           return (
             <div key={i} className="rounded-md border border-border/60 bg-muted/20 p-2 min-w-0">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Siste {s.days}d
+                {t('resourceDialogs.personnelFlightKpi.lastDays', { n: s.days })}
               </p>
               <p className={cn("text-base sm:text-lg font-bold leading-tight", colorClass)}>
-                {loading ? "…" : formatHours(s.total)}
+                {loading ? "…" : formatHours(s.total, hLabel, mLabel)}
               </p>
               <div
                 className="h-10 mt-1"
-                aria-label={`${bucketLabel}, siste ${s.days} dager`}
+                aria-label={t('resourceDialogs.personnelFlightKpi.bucketAria', { label: bucketLabel, n: s.days })}
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={s.buckets}>
@@ -268,7 +268,7 @@ export function PersonnelFlightKpi({ personId }: Props) {
                         fontSize: 11,
                         padding: "4px 6px",
                       }}
-                      formatter={(v: number) => [formatHours(v), "Flytid"]}
+                      formatter={(v: number) => [formatHours(v, hLabel, mLabel), t('resourceDialogs.personnelFlightKpi.flightTime')]}
                       labelFormatter={(label) => String(label)}
                     />
                     <Bar dataKey="minutes" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} />
