@@ -11,6 +11,8 @@ import { isDjiController } from "@/lib/deviceDetection";
 // Use local worker bundled with react-pdf's nested pdfjs-dist to guarantee version match
 import pdfWorkerUrl from "react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url";
 
+import { useTranslation } from "react-i18next";
+
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 type FileMode = "image" | "pdf" | "docx" | "document" | null;
@@ -54,6 +56,7 @@ function tryParseChecklistItems(beskrivelse: string | null): ChecklistItem[] | n
 }
 
 export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) => {
+  const { t } = useTranslation();
   const { open, onOpenChange, itemName, onComplete, completedIds = [] } = props;
   const checklistIds: string[] = props.checklistIds ?? (props.checklistId ? [props.checklistId] : []);
 
@@ -347,7 +350,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         if (!cancelled) setDocxHtml(value);
       } catch (err) {
         console.error("[ChecklistExecutionDialog] docx convert failed:", err);
-        if (!cancelled) setLoadError("Kunne ikke vise Word-dokumentet. Bruk «Åpne i ny fane» for å laste det ned.");
+        if (!cancelled) setLoadError(t('resourceDialogs.checklistExecution.wordLoadError'));
       } finally {
         if (!cancelled) setDocxLoading(false);
       }
@@ -427,8 +430,8 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
             <ClipboardCheck className="w-5 h-5 text-primary" />
             <span className="truncate">
               {showTabs
-                ? itemName || "Sjekklister"
-                : checklistTitles[activeChecklistId] || "Sjekkliste"}
+                ? itemName || t('resourceDialogs.checklistExecution.sjekklister')
+                : checklistTitles[activeChecklistId] || t('resourceDialogs.checklistExecution.sjekkliste')}
             </span>
           </DialogTitle>
           {showTabs && (
@@ -460,8 +463,8 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         {!isFileMode && !isLoading && items.length > 0 && (
           <div className="space-y-1 flex-shrink-0">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Fremgang</span>
-              <span className="font-medium">{checkedCount} av {totalCount}</span>
+              <span className="text-muted-foreground">{t('resourceDialogs.checklistExecution.fremgang')}</span>
+              <span className="font-medium">{t('resourceDialogs.checklistExecution.avTotal', { done: checkedCount, total: totalCount })}</span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
@@ -475,7 +478,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(90vh - 260px)' }}>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Laster sjekkliste...</p>
+              <p className="text-muted-foreground">{t('resourceDialogs.checklistExecution.laster')}</p>
             </div>
           ) : isFileMode ? (
             /* File-based checklist (image or document) */
@@ -484,7 +487,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <div className="rounded-lg border overflow-hidden">
                   <img
                     src={fileUrl!}
-                    alt={checklistTitles[activeChecklistId] || "Sjekkliste"}
+                    alt={checklistTitles[activeChecklistId] || t('resourceDialogs.checklistExecution.sjekkliste')}
                     className="w-full h-auto cursor-pointer"
                     onClick={() => openFileInBrowser(fileUrl!)}
                   />
@@ -493,9 +496,9 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
                   <FileText className="w-12 h-12 text-primary" />
                   <div className="text-center space-y-1">
-                    <p className="font-medium text-sm">{fileName || checklistTitles[activeChecklistId] || "PDF-sjekkliste"}</p>
+                    <p className="font-medium text-sm">{fileName || checklistTitles[activeChecklistId] || t('resourceDialogs.checklistExecution.pdfTittel')}</p>
                     <p className="text-xs text-muted-foreground">
-                      Sjekklisten åpnes automatisk. Hvis ingenting skjer, trykk under.
+                      {t('resourceDialogs.checklistExecution.pdfAutoOpen')}
                     </p>
                   </div>
                   <Button
@@ -504,7 +507,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={handleOpenFile}
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Åpne sjekkliste
+                    {t('resourceDialogs.checklistExecution.openChecklist')}
                   </Button>
                 </div>
               ) : fileMode === "pdf" ? (
@@ -515,14 +518,14 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                   >
                     {/* Zoom controls */}
                     <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md bg-background/90 backdrop-blur border shadow-sm p-1">
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale - 0.25)} aria-label="Zoom ut">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale - 0.25)} aria-label={t('resourceDialogs.checklistExecution.zoomOut')}>
                         <ZoomOut className="h-4 w-4" />
                       </Button>
                       <span className="text-xs tabular-nums w-10 text-center">{Math.round(pdfScale * 100)}%</span>
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale + 0.25)} aria-label="Zoom inn">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale + 0.25)} aria-label={t('resourceDialogs.checklistExecution.zoomIn')}>
                         <ZoomIn className="h-4 w-4" />
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={resetPdfZoom} aria-label="Nullstill zoom">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={resetPdfZoom} aria-label={t('resourceDialogs.checklistExecution.resetZoom')}>
                         <RotateCcw className="h-4 w-4" />
                       </Button>
                     </div>
@@ -547,12 +550,12 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                           onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
                           onLoadError={(err) => {
                             console.error("[ChecklistExecutionDialog] PDF load failed:", err);
-                            setLoadError("Kunne ikke laste PDF. Prøv å åpne i ny fane.");
+                            setLoadError(t('resourceDialogs.checklistExecution.pdfLoadError'));
                           }}
                           loading={
                             <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
                               <Loader2 className="w-5 h-5 animate-spin" />
-                              <span className="text-sm">Laster PDF...</span>
+                              <span className="text-sm">{t('resourceDialogs.checklistExecution.loadingPdf')}</span>
                             </div>
                           }
                         >
@@ -577,7 +580,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={() => window.open(fileUrl!, '_blank')}
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Åpne i ny fane
+                    {t('resourceDialogs.checklistExecution.openInNewTab')}
                   </Button>
                 </div>
               ) : fileMode === "docx" ? (
@@ -623,7 +626,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     {docxLoading ? (
                       <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="text-sm">Konverterer Word-dokument...</span>
+                        <span className="text-sm">{t('resourceDialogs.checklistExecution.convertingDocx')}</span>
                       </div>
                     ) : docxHtml ? (
                       <div
@@ -632,7 +635,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                       />
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-8">
-                        Ingen innhold kunne vises.
+                        {t('resourceDialogs.checklistExecution.noContent')}
                       </p>
                     )}
                   </div>
@@ -643,15 +646,15 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={handleOpenFile}
                   >
                     <Download className="w-4 h-4" />
-                    Last ned dokument
+                    {t('resourceDialogs.checklistExecution.downloadDocument')}
                   </Button>
                 </div>
               ) : (
                 <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
                   <FileText className="w-12 h-12 text-primary" />
                   <div className="text-center">
-                    <p className="font-medium text-sm">{fileName || "Sjekklistefil"}</p>
-                    <p className="text-xs text-muted-foreground">Last ned dokumentet for å gjennomgå sjekklisten</p>
+                    <p className="font-medium text-sm">{fileName || t('resourceDialogs.checklistExecution.checklistFile')}</p>
+                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.checklistExecution.downloadHint')}</p>
                   </div>
                   <Button
                     variant="outline"
@@ -659,7 +662,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={handleOpenFile}
                   >
                     <Download className="w-4 h-4" />
-                    Last ned sjekkliste
+                    {t('resourceDialogs.checklistExecution.downloadChecklist')}
                   </Button>
                 </div>
               )}
@@ -671,7 +674,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
             </div>
           ) : items.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Ingen punkter i sjekklisten</p>
+              <p className="text-muted-foreground">{t('resourceDialogs.checklistExecution.noItems')}</p>
             </div>
           ) : (
             /* JSON-based checklist */
@@ -718,7 +721,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
 
         <DialogFooter className="flex-shrink-0 gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Avbryt
+            {t('resourceDialogs.checklistExecution.cancel')}
           </Button>
           <Button
             onClick={handleComplete}
@@ -726,16 +729,16 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
             className="gap-2"
           >
             {isCompleting ? (
-              "Fullfører..."
+              t('resourceDialogs.checklistExecution.completing')
             ) : allItemsChecked ? (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                Fullfør
+                {t('resourceDialogs.checklistExecution.complete')}
               </>
             ) : isFileMode ? (
-              "Marker sjekklisten som utført"
+              t('resourceDialogs.checklistExecution.markAsCompleted')
             ) : (
-              `Kryss av alle punkter (${checkedCount}/${totalCount})`
+              t('resourceDialogs.checklistExecution.checkAll', { done: checkedCount, total: totalCount })
             )}
           </Button>
         </DialogFooter>
