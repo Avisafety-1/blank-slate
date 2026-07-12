@@ -175,7 +175,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
     // Check if it's an external URL - can't download directly
     if (document.fil_url.startsWith('http://') || document.fil_url.startsWith('https://')) {
       window.open(document.fil_url, '_blank');
-      toast.info('Åpner ekstern lenke i ny fane');
+      toast.info(t('dashboard.documents.openingExternal'));
       return;
     }
     
