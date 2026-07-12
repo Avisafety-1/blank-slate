@@ -193,7 +193,7 @@ export function AdjacentAreaPanel({
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground py-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-xs">Henter SSB befolkningsdata…</span>
+            <span className="text-xs">{t('adjacentAreaPanel.fetchingSsb')}</span>
           </div>
         ) : result ? (
           <div className="space-y-2">
