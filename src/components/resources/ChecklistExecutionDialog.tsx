@@ -555,7 +555,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                           loading={
                             <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
                               <Loader2 className="w-5 h-5 animate-spin" />
-                              <span className="text-sm">Laster PDF...</span>
+                              <span className="text-sm">{t('resourceDialogs.checklistExecution.loadingPdf')}</span>
                             </div>
                           }
                         >
