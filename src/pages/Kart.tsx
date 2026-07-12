@@ -364,12 +364,12 @@ export default function KartPage() {
         .eq("id", editingMissionId);
       
       if (error) {
-        toast.error("Kunne ikke oppdatere ruten");
+        toast.error(t('pages.map.routeUpdateFailed'));
         console.error("Route update error:", error);
         return;
       }
       
-      toast.success("Rute og SORA-grunnlag oppdatert");
+      toast.success(t('pages.map.routeSavedWithSora'));
       // Hold brukeren i route-planning-modus så ruten fortsatt er synlig/redigerbar
       return;
     }
