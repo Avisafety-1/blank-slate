@@ -39,7 +39,7 @@ interface FlightAnalysisTimelineProps {
   batterySummary?: BatterySummary;
 }
 
-const formatTime = (idx: number, positions: TelemetryPoint[]) => {
+const formatTime = (idx: number, positions: TelemetryPoint[], locale: string = "nb-NO") => {
   const ts = positions[idx]?.timestamp;
   if (!ts) return `#${idx}`;
   const match = ts.match(/PT(\d+)S/);
@@ -50,7 +50,7 @@ const formatTime = (idx: number, positions: TelemetryPoint[]) => {
     return `${m}:${String(s).padStart(2, '0')}`;
   }
   try {
-    return new Date(ts).toLocaleTimeString("nb-NO", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return new Date(ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   } catch { return `#${idx}`; }
 };
 
