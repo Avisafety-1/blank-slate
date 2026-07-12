@@ -1526,7 +1526,7 @@ const Admin = () => {
                                   className="scale-75"
                                   disabled={!canManageRoles}
                                 />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">Oppfølgingsansvarlig</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">{t('admin.page.incidentResponsible')}</span>
                                 {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
                                   <Popover>
                                     <PopoverTrigger asChild>
