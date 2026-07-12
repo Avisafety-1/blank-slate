@@ -23,6 +23,7 @@ import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 import { NotamDialog } from "./NotamDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 import {
   statusColors,
   getAIRiskBadgeColor,
@@ -262,7 +263,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     fetchMissions();
     if (missionToApprove && companyId) {
       try {
-        await supabase.functions.invoke('send-notification-email', {
+        await invokeEmailFunction('send-notification-email', {
           body: {
             type: 'notify_mission_approval',
             companyId,

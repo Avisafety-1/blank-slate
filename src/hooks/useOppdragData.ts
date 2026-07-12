@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { toast } from "sonner";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 type Mission = any;
 
@@ -436,7 +437,7 @@ export const useOppdragData = () => {
       if (error) throw error;
 
       try {
-        await supabase.functions.invoke('send-notification-email', {
+        await invokeEmailFunction('send-notification-email', {
           body: {
             type: 'notify_mission_approval',
             companyId,

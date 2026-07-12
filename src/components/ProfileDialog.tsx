@@ -38,6 +38,7 @@ import { useTranslation } from "react-i18next";
 import { PLANS } from "@/config/subscriptionPlans";
 import { TwoFactorSetup } from "./TwoFactorSetup";
 import { PasskeySetup } from "./PasskeySetup";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 interface Profile {
   full_name: string | null;
@@ -655,7 +656,7 @@ export const ProfileDialog = () => {
 
     setPasswordResetLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('send-password-reset', {
+      const { error } = await invokeEmailFunction('send-password-reset', {
         body: { email: user.email }
       });
 
@@ -782,7 +783,7 @@ export const ProfileDialog = () => {
 
       const senderName = profile?.full_name || user.email || 'Ukjent';
 
-      const { error } = await supabase.functions.invoke('send-notification-email', {
+      const { error } = await invokeEmailFunction('send-notification-email', {
         body: {
           type: 'notify_pilot_comment',
           companyId: profile?.company_id,
@@ -843,7 +844,7 @@ export const ProfileDialog = () => {
 
       // Send email notification to pilots
       try {
-        await supabase.functions.invoke('send-notification-email', {
+        await invokeEmailFunction('send-notification-email', {
           body: {
             type: 'notify_mission_approved',
             missionId,
@@ -1453,7 +1454,7 @@ export const ProfileDialog = () => {
                                   .getPublicUrl(filePath);
                                 imageUrl = urlData.publicUrl;
                               }
-                              const { error } = await supabase.functions.invoke('send-feedback', {
+                              const { error } = await invokeEmailFunction('send-feedback', {
                                 body: {
                                   subject: feedbackSubject.trim(),
                                   message: feedbackMessage.trim(),

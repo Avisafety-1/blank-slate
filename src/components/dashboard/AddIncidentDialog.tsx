@@ -28,6 +28,7 @@ import { usePlanGating } from "@/hooks/usePlanGating";
 import type { Tables } from "@/integrations/supabase/types";
 import { useTranslation } from "react-i18next";
 import { translateSeverity, translateIncidentCategory, translateRootCause } from "@/lib/i18nHelpers";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 
 interface AddIncidentDialogProps {
@@ -506,7 +507,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
         // Send email notification for new incident (kun ved ny hendelse)
         try {
-          await supabase.functions.invoke('send-notification-email', {
+          await invokeEmailFunction('send-notification-email', {
             body: {
               type: 'notify_new_incident',
               companyId: companyId,
@@ -527,7 +528,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         if (formData.oppfolgingsansvarlig_id) {
           const recipientUser = users.find(u => u.id === formData.oppfolgingsansvarlig_id);
           
-          await supabase.functions.invoke('send-notification-email', {
+          await invokeEmailFunction('send-notification-email', {
             body: {
               type: 'notify_followup_assigned',
               companyId: companyId,

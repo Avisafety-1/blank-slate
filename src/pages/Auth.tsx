@@ -19,6 +19,7 @@ import { isPasskeyLogin } from "@/lib/authMethod";
 
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 import { TurnstileWidget, resetTurnstile } from "@/components/auth/TurnstileWidget";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 // Feature flag: skru av captcha-verifisering uten å fjerne kode.
 // Sett til true igjen for å reaktivere Turnstile-flyten.
@@ -558,7 +559,7 @@ const Auth = () => {
             console.error('Error creating profile:', profileError);
           }
 
-          await supabase.functions.invoke('send-notification-email', {
+          await invokeEmailFunction('send-notification-email', {
             body: {
               type: 'notify_admins_new_user',
               companyId: validatedCompany!.id,
@@ -695,7 +696,7 @@ const Auth = () => {
         }
 
         // Send notifications to admins
-        await supabase.functions.invoke('send-notification-email', {
+        await invokeEmailFunction('send-notification-email', {
           body: {
             type: 'notify_admins_new_user',
             companyId: googleValidatedCompany!.id,
@@ -877,7 +878,7 @@ const Auth = () => {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('send-password-reset', {
+      const { error } = await invokeEmailFunction('send-password-reset', {
         body: { email: resetEmail }
       });
       

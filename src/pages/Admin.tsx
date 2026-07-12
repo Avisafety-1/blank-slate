@@ -45,6 +45,7 @@ import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/train
 import { useTranslation } from "react-i18next";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import { PLANS, ADDONS } from "@/config/subscriptionPlans";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -343,7 +344,7 @@ const Admin = () => {
 
         if (company) {
           // Send approval email via edge function
-          await supabase.functions.invoke('send-user-approved-email', {
+          await invokeEmailFunction('send-user-approved-email', {
             body: {
               user_id: userId,
               user_name: profile.full_name || "Bruker",
@@ -1042,7 +1043,7 @@ const Admin = () => {
 
                         try {
                           setSendingInvite(true);
-                          const { data, error } = await supabase.functions.invoke("invite-user", {
+                          const { data, error } = await invokeEmailFunction('invite-user', {
                             body: { email, companyName: inviteCompanyName, registrationCode: inviteRegCode },
                           });
                           if (error) throw error;

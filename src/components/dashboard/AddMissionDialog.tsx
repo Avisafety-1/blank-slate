@@ -37,6 +37,7 @@ import { MissionPublicationSection, PublicationFields } from "@/components/dashb
 import { MissionConflictWarning } from "@/components/dashboard/MissionConflictWarning";
 import { useMissionMapConflicts } from "@/hooks/useMissionMapConflicts";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
@@ -627,7 +628,7 @@ export const AddMissionDialog = ({
     const senderProfile = profiles.find((p) => p.id === senderId);
     const missionDate = formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : new Date().toISOString();
 
-    await Promise.all(newMentionIds.map((recipientId) => supabase.functions.invoke('send-notification-email', {
+    await Promise.all(newMentionIds.map((recipientId) => invokeEmailFunction('send-notification-email', {
       body: {
         type: 'notify_mission_mention',
         companyId,
@@ -1021,7 +1022,7 @@ export const AddMissionDialog = ({
             .map(id => equipment.find(e => e.id === id)?.navn)
             .filter(Boolean) as string[];
 
-          await supabase.functions.invoke('send-notification-email', {
+          await invokeEmailFunction('send-notification-email', {
             body: {
               type: 'notify_new_mission',
               companyId: profile.company_id,
