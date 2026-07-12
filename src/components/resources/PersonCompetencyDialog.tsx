@@ -897,7 +897,7 @@ export function PersonCompetencyDialog({
               <div>
                 <Label htmlFor="new-warning-days" className="text-xs flex items-center gap-1">
                   <Bell className="h-3 w-3" />
-                  Varsle (dager før utløp)
+                  {t('resourceDialogs.personCompetency.notifyDays')}
                 </Label>
                 <Input
                   id="new-warning-days"
@@ -910,7 +910,7 @@ export function PersonCompetencyDialog({
                   className="h-9"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Gul status og e-postvarsel utløses {newWarningDays} dager før utløp.
+                  {t('resourceDialogs.personCompetency.notifyHint', { days: newWarningDays })}
                 </p>
               </div>
 
