@@ -772,7 +772,6 @@ const Admin = () => {
               <Shield className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-primary" />
               <div className="text-left">
                 <h1 className="text-sm sm:text-base lg:text-xl xl:text-2xl font-bold whitespace-nowrap">{t('admin.title')}</h1>
-                <p className="text-xs lg:text-sm text-primary hidden lg:block">{t('admin.userApproval')}</p>
               </div>
             </Button>
             <nav className="flex items-center justify-end gap-0.5 sm:gap-2 lg:gap-4 flex-1 min-w-0 flex-wrap overflow-visible">

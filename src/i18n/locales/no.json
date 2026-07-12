@@ -1500,7 +1500,6 @@
   },
   "admin": {
     "title": "SMS Admin",
-    "userApproval": "Brukergodkjenning",
     "users": "Brukere",
     "customers": "Kunder",
     "emailTemplates": "E-postmaler",
