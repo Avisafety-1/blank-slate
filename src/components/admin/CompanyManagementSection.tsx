@@ -55,6 +55,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 interface Company {
   id: string;
@@ -137,12 +138,12 @@ const MobileCompanyCard = ({
               {company.selskapstype === 'flyselskap' ? (
                 <>
                   <Plane className="h-3 w-3 text-muted-foreground" />
-                  <span>Flyselskap</span>
+                  <span>{t("admin.companyManagement.flyselskap")}</span>
                 </>
               ) : (
                 <>
                   <Radio className="h-3 w-3 text-muted-foreground" />
-                  <span>Droneoperatør</span>
+                  <span>{t("admin.companyManagement.droneoperator")}</span>
                 </>
               )}
             </div>
@@ -182,10 +183,10 @@ const MobileCompanyCard = ({
                   checked={company.aktiv}
                   onCheckedChange={() => onToggleActive(company)}
                 />
-                <Label className="text-sm">Status</Label>
+                <Label className="text-sm">{t("admin.companyManagement.status")}</Label>
               </div>
               {company.parent_company_id ? (
-                <p className="text-xs text-muted-foreground italic">Integrasjoner arves fra morselskap</p>
+                <p className="text-xs text-muted-foreground italic">{t("admin.companyManagement.inheritedFromParent")}</p>
               ) : (
                 <>
                   <div className="flex items-center gap-2">
@@ -193,28 +194,28 @@ const MobileCompanyCard = ({
                       checked={company.eccairs_enabled ?? false}
                       onCheckedChange={() => onToggleEccairs(company)}
                     />
-                    <Label className="text-sm">ECCAIRS</Label>
+                    <Label className="text-sm">{t("admin.companyManagement.eccairs")}</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={company.dji_flightlog_enabled}
                       onCheckedChange={() => onToggleDji(company)}
                     />
-                    <Label className="text-sm">DJI Flylogg</Label>
+                    <Label className="text-sm">{t("admin.companyManagement.djiFlightlog")}</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={company.ardupilot_enabled}
                       onCheckedChange={() => onToggleArdupilot(company)}
                     />
-                    <Label className="text-sm">ArduPilot</Label>
+                    <Label className="text-sm">{t("admin.companyManagement.ardupilot")}</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={company.dronetag_enabled}
                       onCheckedChange={() => onToggleDronetag(company)}
                     />
-                    <Label className="text-sm">DroneTag</Label>
+                    <Label className="text-sm">{t("admin.companyManagement.dronetag")}</Label>
                   </div>
                   {company.dji_flightlog_enabled && (
                     <>
@@ -223,15 +224,15 @@ const MobileCompanyCard = ({
                           checked={company.dji_auto_sync_enabled}
                           onCheckedChange={() => onToggleAutoSync(company)}
                         />
-                        <Label className="text-sm">Auto-sync</Label>
+                        <Label className="text-sm">{t("admin.companyManagement.autoSync")}</Label>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <Label className="text-xs text-muted-foreground">Sync fra dato</Label>
+                        <Label className="text-xs text-muted-foreground">{t("admin.companyManagement.syncFromDate")}</Label>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !company.dji_sync_from_date && "text-muted-foreground")}>
                               <CalendarIcon className="h-3 w-3 mr-1" />
-                              {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
+                              {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : t("admin.companyManagement.notSet")}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
@@ -261,7 +262,7 @@ const MobileCompanyCard = ({
                 className="flex-1"
               >
                 <Pencil className="h-3 w-3 mr-1" />
-                Rediger
+                {t("admin.companyManagement.edit")}
               </Button>
               <Button
                 variant="destructive"
@@ -269,7 +270,7 @@ const MobileCompanyCard = ({
                 onClick={() => onDelete(company)}
                 className="flex-1"
               >
-                Slett
+                {t("admin.companyManagement.delete")}
               </Button>
             </div>
           </div>
@@ -280,6 +281,7 @@ const MobileCompanyCard = ({
 };
 
 export const CompanyManagementSection = () => {
+  const { t } = useTranslation();
   const { companyId, isSuperAdmin, refetchUserInfo, user } = useAuth();
   const isMobile = useIsMobile();
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -336,7 +338,7 @@ export const CompanyManagementSection = () => {
       setCompanies(data || []);
     } catch (error: any) {
       console.error("Error fetching companies:", error);
-      toast.error("Kunne ikke laste selskaper");
+      toast.error(t("admin.companyManagement.toastFetchError"));
     } finally {
       setLoading(false);
     }
@@ -364,12 +366,12 @@ export const CompanyManagementSection = () => {
         .eq("id", company.id);
 
       if (error) throw error;
-      toast.success(newValue ? "Selskap aktivert" : "Selskap deaktivert");
+      toast.success(newValue ? t("admin.companyManagement.toastActivated") : t("admin.companyManagement.toastDeactivated"));
     } catch (error: any) {
       // Revert on error
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, aktiv: !newValue } : c));
       console.error("Error toggling company status:", error);
-      toast.error("Kunne ikke oppdatere status");
+      toast.error(t("admin.companyManagement.toastActivateError"));
     }
   };
 
@@ -385,12 +387,12 @@ export const CompanyManagementSection = () => {
         .eq("id", company.id);
 
       if (error) throw error;
-      toast.success(newValue ? "ECCAIRS aktivert" : "ECCAIRS deaktivert");
+      toast.success(newValue ? t("admin.companyManagement.toastEccairsOn") : t("admin.companyManagement.toastEccairsOff"));
     } catch (error: any) {
       // Revert on error
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, eccairs_enabled: !newValue } : c));
       console.error("Error toggling ECCAIRS status:", error);
-      toast.error("Kunne ikke oppdatere ECCAIRS-status");
+      toast.error(t("admin.companyManagement.toastEccairsError"));
     }
   };
 
@@ -407,12 +409,12 @@ export const CompanyManagementSection = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       
-    toast.success(newValue ? "DJI Flylogg aktivert" : "DJI Flylogg deaktivert");
+    toast.success(newValue ? t("admin.companyManagement.toastDjiOn") : t("admin.companyManagement.toastDjiOff"));
     } catch (error: any) {
       // Revert on error
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_flightlog_enabled: !newValue } : c));
       console.error("Error toggling DJI status:", error);
-      toast.error("Kunne ikke oppdatere DJI Flylogg-status: " + (error.message || "Ukjent feil"));
+      toast.error(t("admin.companyManagement.toastDjiError", { error: error.message || "Ukjent feil" }));
     }
   };
 
@@ -427,11 +429,11 @@ export const CompanyManagementSection = () => {
         .eq("id", company.id);
 
       if (error) throw error;
-      toast.success(newValue ? "DroneTag aktivert" : "DroneTag deaktivert");
+      toast.success(newValue ? t("admin.companyManagement.toastDronetagOn") : t("admin.companyManagement.toastDronetagOff"));
     } catch (error: any) {
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dronetag_enabled: !newValue } : c));
       console.error("Error toggling DroneTag status:", error);
-      toast.error("Kunne ikke oppdatere DroneTag-status");
+      toast.error(t("admin.companyManagement.toastDronetagError"));
     }
   };
 
@@ -446,11 +448,11 @@ export const CompanyManagementSection = () => {
         .eq("id", company.id);
 
       if (error) throw error;
-      toast.success(newValue ? "ArduPilot aktivert" : "ArduPilot deaktivert");
+      toast.success(newValue ? t("admin.companyManagement.toastArdupilotOn") : t("admin.companyManagement.toastArdupilotOff"));
     } catch (error: any) {
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, ardupilot_enabled: !newValue } : c));
       console.error("Error toggling ArduPilot status:", error);
-      toast.error("Kunne ikke oppdatere ArduPilot-status");
+      toast.error(t("admin.companyManagement.toastArdupilotError"));
     }
   };
 
@@ -465,11 +467,11 @@ export const CompanyManagementSection = () => {
         .eq("id", company.id);
 
       if (error) throw error;
-      toast.success(newValue ? "Automatisk sync aktivert" : "Automatisk sync deaktivert");
+      toast.success(newValue ? t("admin.companyManagement.toastAutoSyncOn") : t("admin.companyManagement.toastAutoSyncOff"));
     } catch (error: any) {
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_auto_sync_enabled: !newValue } : c));
       console.error("Error toggling auto sync:", error);
-      toast.error("Kunne ikke oppdatere auto-sync status");
+      toast.error(t("admin.companyManagement.toastAutoSyncError"));
     }
   };
 
@@ -485,11 +487,11 @@ export const CompanyManagementSection = () => {
         .eq("id", company.id);
 
       if (error) throw error;
-      toast.success(newValue ? `Sync-startdato satt til ${format(date!, "dd.MM.yyyy")}` : "Sync-startdato fjernet");
+      toast.success(newValue ? t("admin.companyManagement.toastSyncDateSet", { date: format(date!, "dd.MM.yyyy") }) : t("admin.companyManagement.toastSyncDateRemoved"));
     } catch (error: any) {
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, dji_sync_from_date: oldValue } : c));
       console.error("Error updating sync date:", error);
-      toast.error("Kunne ikke oppdatere sync-startdato");
+      toast.error(t("admin.companyManagement.toastSyncDateError"));
     }
   };
 
@@ -508,12 +510,12 @@ export const CompanyManagementSection = () => {
         .eq("id", companyToDelete.id);
 
       if (error) throw error;
-      toast.success("Selskap slettet");
+      toast.success(t("admin.companyManagement.toastDeleted"));
       setDeleteDialogOpen(false);
       setCompanyToDelete(null);
     } catch (error: any) {
       console.error("Error deleting company:", error);
-      toast.error("Kunne ikke slette selskap: " + error.message);
+      toast.error(t("admin.companyManagement.toastDeleteError", { error: error.message }));
     }
   };
 
@@ -528,10 +530,10 @@ export const CompanyManagementSection = () => {
       
       await refetchUserInfo();
       const company = companies.find(c => c.id === newCompanyId);
-      toast.success(`Byttet til ${company?.navn}`);
+      toast.success(t("admin.companyManagement.toastSwitched", { name: company?.navn }));
     } catch (error) {
       console.error("Error switching company:", error);
-      toast.error("Kunne ikke bytte selskap");
+      toast.error(t("admin.companyManagement.toastSwitchError"));
     }
   };
 
@@ -556,7 +558,7 @@ export const CompanyManagementSection = () => {
       setUsageData(data);
     } catch (error: any) {
       console.error("Error fetching usage:", error);
-      toast.error("Kunne ikke hente API-bruk: " + (error.message || "Ukjent feil"));
+      toast.error(t("admin.companyManagement.toastUsageError", { error: error.message || "Ukjent feil" }));
     } finally {
       setUsageLoading(false);
     }
@@ -566,7 +568,7 @@ export const CompanyManagementSection = () => {
     return (
       <GlassCard className="p-3 sm:p-6">
         <div className="flex items-center justify-center py-6 sm:py-8">
-          <p className="text-sm sm:text-base text-muted-foreground">Laster selskaper...</p>
+          <p className="text-sm sm:text-base text-muted-foreground">{t("admin.companyManagement.loading")}</p>
         </div>
       </GlassCard>
     );
@@ -578,16 +580,16 @@ export const CompanyManagementSection = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <h2 className="text-base sm:text-xl font-semibold">Selskapsadministrasjon</h2>
+            <h2 className="text-base sm:text-xl font-semibold">{t("admin.companyManagement.title")}</h2>
           </div>
           <div className="flex gap-2">
             <Button onClick={() => handleFetchUsage()} variant="outline" size={isMobile ? "sm" : "default"}>
               <BarChart3 className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
-              {isMobile ? "API" : "API-bruk"}
+              {isMobile ? t("admin.companyManagement.apiUsageMobile") : t("admin.companyManagement.apiUsageFull")}
             </Button>
             <Button onClick={handleAddCompany} size={isMobile ? "sm" : "default"}>
               <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
-              {isMobile ? "Nytt" : "Nytt selskap"}
+              {isMobile ? t("admin.companyManagement.newCompanyMobile") : t("admin.companyManagement.newCompanyFull")}
             </Button>
           </div>
         </div>
@@ -597,7 +599,7 @@ export const CompanyManagementSection = () => {
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Søk etter navn, org.nr eller e-post..."
+              placeholder={t("admin.companyManagement.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -607,11 +609,11 @@ export const CompanyManagementSection = () => {
 
         {companies.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
-            Ingen selskaper funnet. Opprett ditt første selskap.
+            {t("admin.companyManagement.empty")}
           </div>
         ) : filteredCompanies.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
-            Ingen selskaper matcher søket «{searchQuery}»
+            {t("admin.companyManagement.noSearchResults", { query: searchQuery })}
           </div>
         ) : isMobile ? (
           // Mobile: Expandable cards
@@ -639,18 +641,18 @@ export const CompanyManagementSection = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs sm:text-sm">Navn</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Type</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Org.nr</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Kontaktinfo</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Status</TableHead>
-                    <TableHead className="text-xs sm:text-sm">ECCAIRS</TableHead>
-                     <TableHead className="text-xs sm:text-sm">DJI Flylogg</TableHead>
-                    <TableHead className="text-xs sm:text-sm">ArduPilot</TableHead>
-                    <TableHead className="text-xs sm:text-sm">DroneTag</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Auto-sync</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Sync fra dato</TableHead>
-                    <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnName")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnType")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnOrgNr")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnContact")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnStatus")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnEccairs")}</TableHead>
+                     <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnDji")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnArdupilot")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnDronetag")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnAutoSync")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.companyManagement.columnSyncDate")}</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">{t("admin.companyManagement.columnActions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -667,12 +669,12 @@ export const CompanyManagementSection = () => {
                           {company.selskapstype === 'flyselskap' ? (
                             <>
                               <Plane className="h-3 w-3 text-muted-foreground" />
-                              <span>Flyselskap</span>
+                              <span>{t("admin.companyManagement.flyselskap")}</span>
                             </>
                           ) : (
                             <>
                               <Radio className="h-3 w-3 text-muted-foreground" />
-                              <span>Droneoperatør</span>
+                              <span>{t("admin.companyManagement.droneoperator")}</span>
                             </>
                           )}
                         </div>
@@ -711,7 +713,7 @@ export const CompanyManagementSection = () => {
                             !company.kontakt_telefon &&
                             !company.adresse && (
                               <span className="text-muted-foreground text-xs">
-                                Ingen kontaktinfo
+                                {t("admin.companyManagement.noContactInfo")}
                               </span>
                             )}
                         </div>
@@ -727,14 +729,14 @@ export const CompanyManagementSection = () => {
                               variant={company.aktiv ? "default" : "secondary"}
                               className="text-xs"
                             >
-                              {company.aktiv ? "Aktiv" : "Inaktiv"}
+                              {company.aktiv ? t("admin.companyManagement.active") : t("admin.companyManagement.inactive")}
                             </Badge>
                           </Label>
                         </div>
                       </TableCell>
                       {company.parent_company_id ? (
                         <TableCell colSpan={6}>
-                          <span className="text-xs text-muted-foreground italic">Arvet fra morselskap</span>
+                          <span className="text-xs text-muted-foreground italic">{t("admin.companyManagement.inheritedFromParentShort")}</span>
                         </TableCell>
                       ) : (
                         <>
@@ -749,7 +751,7 @@ export const CompanyManagementSection = () => {
                                   variant={company.eccairs_enabled ? "default" : "secondary"}
                                   className="text-xs"
                                 >
-                                  {company.eccairs_enabled ? "På" : "Av"}
+                                  {company.eccairs_enabled ? t("admin.companyManagement.on") : t("admin.companyManagement.off")}
                                 </Badge>
                               </Label>
                             </div>
@@ -765,7 +767,7 @@ export const CompanyManagementSection = () => {
                                   variant={company.dji_flightlog_enabled ? "default" : "secondary"}
                                   className="text-xs"
                                 >
-                                  {company.dji_flightlog_enabled ? "På" : "Av"}
+                                  {company.dji_flightlog_enabled ? t("admin.companyManagement.on") : t("admin.companyManagement.off")}
                                 </Badge>
                               </Label>
                             </div>
@@ -781,7 +783,7 @@ export const CompanyManagementSection = () => {
                                   variant={company.ardupilot_enabled ? "default" : "secondary"}
                                   className="text-xs"
                                 >
-                                  {company.ardupilot_enabled ? "På" : "Av"}
+                                  {company.ardupilot_enabled ? t("admin.companyManagement.on") : t("admin.companyManagement.off")}
                                 </Badge>
                               </Label>
                             </div>
@@ -797,7 +799,7 @@ export const CompanyManagementSection = () => {
                                   variant={company.dronetag_enabled ? "default" : "secondary"}
                                   className="text-xs"
                                 >
-                                  {company.dronetag_enabled ? "På" : "Av"}
+                                  {company.dronetag_enabled ? t("admin.companyManagement.on") : t("admin.companyManagement.off")}
                                 </Badge>
                               </Label>
                             </div>
@@ -814,7 +816,7 @@ export const CompanyManagementSection = () => {
                                     variant={company.dji_auto_sync_enabled ? "default" : "secondary"}
                                     className="text-xs"
                                   >
-                                    {company.dji_auto_sync_enabled ? "På" : "Av"}
+                                    {company.dji_auto_sync_enabled ? t("admin.companyManagement.on") : t("admin.companyManagement.off")}
                                   </Badge>
                                 </Label>
                               </div>
@@ -828,7 +830,7 @@ export const CompanyManagementSection = () => {
                                 <PopoverTrigger asChild>
                                   <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal text-xs", !company.dji_sync_from_date && "text-muted-foreground")}>
                                     <CalendarIcon className="h-3 w-3 mr-1" />
-                                    {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : "Ikke satt"}
+                                    {company.dji_sync_from_date ? format(new Date(company.dji_sync_from_date), "dd.MM.yyyy") : t("admin.companyManagement.notSet")}
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
@@ -862,7 +864,7 @@ export const CompanyManagementSection = () => {
                             size="sm"
                             onClick={() => handleDeleteClick(company)}
                           >
-                            Slett
+                            {t("admin.companyManagement.delete")}
                           </Button>
                         </div>
                       </TableCell>
@@ -885,25 +887,23 @@ export const CompanyManagementSection = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft sletting</AlertDialogTitle>
+            <AlertDialogTitle>{t("admin.companyManagement.deleteConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil slette selskapet "
-              {companyToDelete?.navn}"? Denne handlingen kan ikke angres.
+              {t("admin.companyManagement.deleteConfirmDesc", { name: companyToDelete?.navn })}
               <br />
               <br />
               <strong className="text-destructive">
-                Advarsel: Alle brukere og data tilknyttet dette selskapet vil
-                også bli påvirket.
+                {t("admin.companyManagement.deleteConfirmWarning")}
               </strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t("admin.companyManagement.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-destructive hover:bg-destructive/90"
             >
-              Slett selskap
+              {t("admin.companyManagement.deleteConfirmAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -914,23 +914,23 @@ export const CompanyManagementSection = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
-              DroneLog API-bruk
+              {t("admin.companyManagement.usageDialogTitle")}
             </DialogTitle>
            <DialogDescription>
-              Bruksstatistikk for gjeldende måned
+              {t("admin.companyManagement.usageDialogDesc")}
             </DialogDescription>
           </DialogHeader>
 
           {/* Company selector for scoped usage */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Vis bruk for</Label>
+            <Label className="text-xs text-muted-foreground">{t("admin.companyManagement.usageShowFor")}</Label>
             <div className="flex gap-2">
               <Select value={usageCompanyId || "__all__"} onValueChange={(v) => { const val = v === "__all__" ? "" : v; setUsageCompanyId(val); handleFetchUsage(val || undefined); }}>
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Master-nøkkel (alle)" />
+                  <SelectValue placeholder={t("admin.companyManagement.masterKeyAll")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">Master-nøkkel (alle)</SelectItem>
+                  <SelectItem value="__all__">{t("admin.companyManagement.masterKeyAll")}</SelectItem>
                   {companies.filter(c => c.dji_flightlog_enabled).map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
                   ))}
@@ -939,7 +939,7 @@ export const CompanyManagementSection = () => {
             </div>
             {usageData?._keyScope && (
               <p className="text-xs text-muted-foreground">
-                Viser: {usageData._keyScope === 'company' ? `Selskapsnøkkel (${usageData._companyName})` : 'Master-nøkkel'}
+                {t("admin.companyManagement.usageShowing", { scope: usageData._keyScope === 'company' ? t("admin.companyManagement.usageShowingCompanyKey", { name: usageData._companyName }) : t("admin.companyManagement.usageShowingMasterKey") })}
               </p>
             )}
           </div>
@@ -963,27 +963,27 @@ export const CompanyManagementSection = () => {
                   <>
                     {plan && (
                       <div className="text-sm text-muted-foreground text-center">
-                        Plan: <span className="font-medium text-foreground capitalize">{plan}</span>
+                        {t("admin.companyManagement.usagePlan")}: <span className="font-medium text-foreground capitalize">{plan}</span>
                       </div>
                     )}
                     <div className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 rounded-lg bg-muted/50">
                         <p className="text-2xl font-bold">{used}</p>
-                        <p className="text-xs text-muted-foreground">Brukt</p>
+                        <p className="text-xs text-muted-foreground">{t("admin.companyManagement.usageUsed")}</p>
                       </div>
                       <div className="text-center p-3 rounded-lg bg-muted/50">
                         <p className="text-2xl font-bold">{limit}</p>
-                        <p className="text-xs text-muted-foreground">Limit</p>
+                        <p className="text-xs text-muted-foreground">{t("admin.companyManagement.usageLimit")}</p>
                       </div>
                       <div className="text-center p-3 rounded-lg bg-muted/50">
                         <p className="text-2xl font-bold">{remaining}</p>
-                        <p className="text-xs text-muted-foreground">Gjenstående</p>
+                        <p className="text-xs text-muted-foreground">{t("admin.companyManagement.usageRemaining")}</p>
                       </div>
                     </div>
                     {pct !== null && (
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Forbruk</span>
+                          <span>{t("admin.companyManagement.usageConsumption")}</span>
                           <span>{pct}%</span>
                         </div>
                         <Progress value={pct} />
@@ -995,14 +995,14 @@ export const CompanyManagementSection = () => {
 
               {/* Raw JSON fallback for debugging */}
               <details className="text-xs">
-                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Vis rådata</summary>
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{t("admin.companyManagement.usageShowRaw")}</summary>
                 <pre className="mt-2 p-2 rounded bg-muted overflow-auto max-h-48 text-xs">
                   {JSON.stringify(usageData, null, 2)}
                 </pre>
               </details>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">Ingen data tilgjengelig</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("admin.companyManagement.usageNoData")}</p>
           )}
         </DialogContent>
       </Dialog>
