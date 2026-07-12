@@ -1,6 +1,16 @@
 # Sync-logg
 
+## 2026-07-12 — i18n Fase 1.1: dashboard-dialoger
+
+**Migrert:**
+- `src/components/dashboard/DocumentDetailDialog.tsx` – 6 toasts + 8 JSX-strenger (utløp, åpne, sist endret) → `dashboard.documents.*`.
+- `src/components/dashboard/IncidentDetailDialog.tsx` – 1 toast + 8 JSX-strenger (oppfølgingsansvarlig, hovedårsak, kommentarer, alvorlighetsgrad) → `dashboard.incidents.*`.
+- `src/components/dashboard/AddMissionDialog.tsx` – 2 geocode-toasts → `dashboard.missions.*`.
+
+Nye nøkler lagt til under `dashboard.documents/incidents/missions` i `no.json`+`en.json`. Ingen eksisterende nøkler flyttet eller omdøpt. `tsgo --noEmit` OK.
+
 ## 2026-07-12 — i18n-migrasjon: plan + oppstart Fase 1
+
 
 **Ny plan:** `.lovable/plan.md` – prioritert rekkefølge for full NO→EN-konvertering.
 **Ny statusfil:** `docs/i18n-migration-status.md` – sjekkliste per fase/fil.
