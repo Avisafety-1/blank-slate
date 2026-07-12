@@ -992,13 +992,13 @@ const Hendelser = () => {
                           </Badge>
                         )}
                         <Badge className={statusColors[incident.status] || ""}>
-                          {incident.status}
+                          {translateIncidentStatus(incident.status)}
                         </Badge>
                         <Badge className={severityColors[incident.alvorlighetsgrad] || ""}>
-                          {incident.alvorlighetsgrad}
+                          {translateSeverity(incident.alvorlighetsgrad)}
                         </Badge>
                         {incident.kategori && (
-                          <Badge variant="outline">{incident.kategori}</Badge>
+                          <Badge variant="outline">{translateIncidentCategory(incident.kategori)}</Badge>
                         )}
                         {incident.hovedaarsak && (
                           <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/30 dark:text-amber-100 dark:border-amber-700">
