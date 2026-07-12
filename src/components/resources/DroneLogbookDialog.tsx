@@ -456,7 +456,7 @@ export const DroneLogbookDialog = ({
 
   const handleExportPDF = async () => {
     if (!user || !companyId) {
-      toast.error("Du må være innlogget");
+      toast.error(t('resourceDialogs.droneLogbook.toasts.loginRequired'));
       return;
     }
 
@@ -466,22 +466,28 @@ export const DroneLogbookDialog = ({
       const timeStr = format(new Date(), 'HH:mm');
       
       pdf.setFontSize(18);
-      pdf.text(sanitizeForPdf(`Loggbok - ${droneModell}`), 14, 20);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.droneLogbook.pdf.title', { model: droneModell })), 14, 20);
       pdf.setFontSize(11);
-      pdf.text(`Totalt ${Number(flyvetimer).toFixed(2)} flyvetimer`, 14, 28);
-      pdf.text(`Eksportert: ${dateStr} ${timeStr}`, 14, 35);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.droneLogbook.pdf.totalHours', { hours: Number(flyvetimer).toFixed(2) })), 14, 28);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.droneLogbook.pdf.exportedAt', { date: dateStr, time: timeStr })), 14, 35);
       
       const tableData = allLogs.map(log => [
         formatDateForPdf(log.date, 'dd.MM.yyyy HH:mm'),
         sanitizeForPdf(log.badgeText),
         sanitizeForPdf(log.title),
         sanitizeForPdf(log.description) || '',
-        sanitizeForPdf(log.userName) || 'Ukjent'
+        sanitizeForPdf(log.userName) || t('resourceDialogs.droneLogbook.unknownUser')
       ]);
 
       autoTable(pdf, {
         startY: 45,
-        head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utført av']],
+        head: [[
+          t('resourceDialogs.droneLogbook.pdf.columns.date'),
+          t('resourceDialogs.droneLogbook.pdf.columns.type'),
+          t('resourceDialogs.droneLogbook.pdf.columns.title'),
+          t('resourceDialogs.droneLogbook.pdf.columns.description'),
+          t('resourceDialogs.droneLogbook.pdf.columns.user'),
+        ]],
         body: tableData,
         styles: { fontSize: 8, cellPadding: 2, font: getPdfFontName() },
         headStyles: { fillColor: [59, 130, 246], font: getPdfFontName() },
@@ -496,12 +502,12 @@ export const DroneLogbookDialog = ({
 
       if (signatureUrl) {
         const finalY = (pdf as any).lastAutoTable?.finalY || 150;
-        await addSignatureToPdf(pdf, signatureUrl, finalY + 20, "Signatur:");
+        await addSignatureToPdf(pdf, signatureUrl, finalY + 20, t('resourceDialogs.droneLogbook.pdf.signatureLabel'));
       }
 
       const pdfBlob = pdf.output('blob');
       const safeModelName = sanitizeFilenameForPdf(droneModell);
-      const fileName = `loggbok-${safeModelName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      const fileName = `${t('resourceDialogs.droneLogbook.pdf.fileName')}-${safeModelName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
       const filePath = `${companyId}/${user.id}/${Date.now()}-${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -511,7 +517,7 @@ export const DroneLogbookDialog = ({
       if (uploadError) throw uploadError;
 
       const { error: insertError } = await supabase.from('documents').insert({
-        tittel: sanitizeForPdf(`Loggbok - ${droneModell} - ${dateStr}`),
+        tittel: sanitizeForPdf(t('resourceDialogs.droneLogbook.pdf.documentTitle', { model: droneModell, date: dateStr })),
         kategori: 'loggbok',
         fil_url: filePath,
         fil_navn: fileName,
@@ -521,10 +527,10 @@ export const DroneLogbookDialog = ({
       });
 
       if (insertError) throw insertError;
-      toast.success('Loggbok eksportert til dokumenter');
+      toast.success(t('resourceDialogs.droneLogbook.toasts.exportSuccess'));
     } catch (error: any) {
       console.error('Error exporting PDF:', error);
-      toast.error(`Kunne ikke eksportere: ${error.message}`);
+      toast.error(t('resourceDialogs.droneLogbook.toasts.exportError', { message: error.message }));
     }
   };
 
