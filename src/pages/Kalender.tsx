@@ -776,7 +776,7 @@ export default function Kalender() {
                     month={month}
                     onMonthChange={setMonth}
                     onDayClick={handleDateClick}
-                    locale={nb}
+                    locale={dateLocale}
                     className={cn("rounded-md border-0 pointer-events-auto w-full")}
                     classNames={{
                       months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full",
@@ -899,7 +899,7 @@ export default function Kalender() {
         <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
-              {selectedDate && format(selectedDate, "dd. MMMM yyyy", { locale: nb })}
+              {selectedDate && format(selectedDate, "dd. MMMM yyyy", { locale: dateLocale })}
             </DialogTitle>
           </DialogHeader>
 
@@ -1035,7 +1035,7 @@ export default function Kalender() {
                         disabled={savingEvent}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP", { locale: nb }) : <span>{t('pages.calendar.pickDate')}</span>}
+                        {selectedDate ? format(selectedDate, "PPP", { locale: dateLocale }) : <span>{t('pages.calendar.pickDate')}</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1044,7 +1044,7 @@ export default function Kalender() {
                         selected={selectedDate || undefined}
                         onSelect={(date) => date && setSelectedDate(date)}
                         initialFocus
-                        locale={nb}
+                        locale={dateLocale}
                         className="pointer-events-auto"
                       />
                     </PopoverContent>
