@@ -1457,7 +1457,7 @@ const Admin = () => {
                                   <Popover>
                                     <PopoverTrigger asChild>
                                       <Button variant="outline" size="sm" className="h-7 text-xs px-2">
-                                        {getEffectiveTrainingModules(profile).length} mod.
+                                        {getEffectiveTrainingModules(profile).length} {t('admin.page.moduleShort')}
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-72 p-3 z-[1300]" align="start">
