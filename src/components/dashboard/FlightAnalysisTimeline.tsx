@@ -179,17 +179,17 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
       {/* Current values info panel */}
       {current && (
         <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-1.5 text-[10px] sm:text-xs">
-          <InfoCell label="Høyde" value={`${current.height?.toFixed(0) ?? '—'}m`} />
-          <InfoCell label="MSL" value={`${current.alt?.toFixed(0) ?? '—'}m`} />
-          {current.speed !== undefined && <InfoCell label="Hast." value={`${current.speed.toFixed(1)} m/s`} />}
-          {current.vSpeed !== undefined && <InfoCell label="V.hast" value={`${current.vSpeed.toFixed(1)} m/s`} />}
-          {current.battery !== undefined && <InfoCell label="Batteri" value={`${current.battery.toFixed(0)}%`} />}
-          {current.gpsNum !== undefined && <InfoCell label="GPS" value={`${current.gpsNum} sat`} />}
-          {current.dist2D !== undefined && <InfoCell label="Avstand" value={`${current.dist2D.toFixed(0)}m`} />}
-          {current.gimbalPitch !== undefined && <InfoCell label="Gimbal" value={`${current.gimbalPitch.toFixed(0)}°`} />}
-          {current.windSpeed !== undefined && <InfoCell label="Vind" value={`${current.windSpeed.toFixed(1)} m/s`} />}
-          {current.flycState && <InfoCell label="Modus" value={current.flycState} />}
-          {current.yaw !== undefined && <InfoCell label="Heading" value={`${current.yaw.toFixed(0)}°`} />}
+          <InfoCell label={t("dashboard.flightAnalysis.cellHeight")} value={`${current.height?.toFixed(0) ?? '—'}m`} />
+          <InfoCell label={t("dashboard.flightAnalysis.cellMsl")} value={`${current.alt?.toFixed(0) ?? '—'}m`} />
+          {current.speed !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellSpeed")} value={`${current.speed.toFixed(1)} m/s`} />}
+          {current.vSpeed !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellVSpeed")} value={`${current.vSpeed.toFixed(1)} m/s`} />}
+          {current.battery !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellBattery")} value={`${current.battery.toFixed(0)}%`} />}
+          {current.gpsNum !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellGps")} value={`${current.gpsNum} ${t("dashboard.flightAnalysis.gpsSatShort")}`} />}
+          {current.dist2D !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellDistance")} value={`${current.dist2D.toFixed(0)}m`} />}
+          {current.gimbalPitch !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellGimbal")} value={`${current.gimbalPitch.toFixed(0)}°`} />}
+          {current.windSpeed !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellWind")} value={`${current.windSpeed.toFixed(1)} m/s`} />}
+          {current.flycState && <InfoCell label={t("dashboard.flightAnalysis.cellMode")} value={current.flycState} />}
+          {current.yaw !== undefined && <InfoCell label={t("dashboard.flightAnalysis.cellHeading")} value={`${current.yaw.toFixed(0)}°`} />}
         </div>
       )}
 
