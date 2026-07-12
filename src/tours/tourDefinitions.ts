@@ -1,38 +1,49 @@
+import type { TFunction } from "i18next";
 import type { TourDefinition, TourId } from "./types";
-import { systemOverviewTour } from "./systemOverviewTour";
-import { missionCreationTour } from "./missionCreationTour";
-import { dashboardWidgetsTour } from "./dashboardWidgetsTour";
-import { startFlightTour } from "./startFlightTour";
-import { logFlightTour } from "./logFlightTour";
-import { uploadDroneLogTour } from "./uploadDroneLogTour";
-import { incidentReportTour } from "./incidentReportTour";
-import { resourcesTour } from "./resourcesTour";
-import { adminTour } from "./adminTour";
+import { createSystemOverviewTour } from "./systemOverviewTour";
+import { createMissionCreationTour } from "./missionCreationTour";
+import { createDashboardWidgetsTour } from "./dashboardWidgetsTour";
+import { createStartFlightTour } from "./startFlightTour";
+import { createLogFlightTour } from "./logFlightTour";
+import { createUploadDroneLogTour } from "./uploadDroneLogTour";
+import { createIncidentReportTour } from "./incidentReportTour";
+import { createResourcesTour } from "./resourcesTour";
+import { createAdminTour } from "./adminTour";
 
-export const allTours: Record<TourId, TourDefinition> = {
-  "system-overview": systemOverviewTour,
-  "mission-creation": missionCreationTour,
-  "dashboard-widgets": dashboardWidgetsTour,
-  "start-flight": startFlightTour,
-  "log-flight": logFlightTour,
-  "upload-drone-log": uploadDroneLogTour,
-  "incident-report": incidentReportTour,
-  "resources": resourcesTour,
-  "admin": adminTour,
-};
+export function getAllTours(t: TFunction): Record<TourId, TourDefinition> {
+  return {
+    "system-overview": createSystemOverviewTour(t),
+    "mission-creation": createMissionCreationTour(t),
+    "dashboard-widgets": createDashboardWidgetsTour(t),
+    "start-flight": createStartFlightTour(t),
+    "log-flight": createLogFlightTour(t),
+    "upload-drone-log": createUploadDroneLogTour(t),
+    "incident-report": createIncidentReportTour(t),
+    resources: createResourcesTour(t),
+    admin: createAdminTour(t),
+  };
+}
 
-export const tourList: TourDefinition[] = [
-  systemOverviewTour,
-  dashboardWidgetsTour,
-  missionCreationTour,
-  startFlightTour,
-  logFlightTour,
-  uploadDroneLogTour,
-  incidentReportTour,
-  resourcesTour,
-  adminTour,
-];
+export function getTourList(t: TFunction): TourDefinition[] {
+  const all = getAllTours(t);
+  return [
+    all["system-overview"],
+    all["dashboard-widgets"],
+    all["mission-creation"],
+    all["start-flight"],
+    all["log-flight"],
+    all["upload-drone-log"],
+    all["incident-report"],
+    all.resources,
+    all.admin,
+  ];
+}
+
+export function getTourById(id: TourId, t: TFunction): TourDefinition | undefined {
+  return getAllTours(t)[id];
+}
 
 /** Tourer som kan tildeles brukere som kurs via opplæringsmodulen */
-export const assignableTours: { id: TourId; title: string; description: string }[] =
-  tourList.map((t) => ({ id: t.id, title: t.title, description: t.description }));
+export function getAssignableTours(t: TFunction): { id: TourId; title: string; description: string }[] {
+  return getTourList(t).map((tour) => ({ id: tour.id, title: tour.title, description: tour.description }));
+}

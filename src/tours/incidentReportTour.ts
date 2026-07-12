@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { TourDefinition } from "./types";
 import { sleep } from "./tourUtils";
 
@@ -18,19 +19,17 @@ const openIncidentDialog = async () => {
   await sleep(450);
 };
 
-export const incidentReportTour: TourDefinition = {
+export const createIncidentReportTour = (t: TFunction): TourDefinition => ({
   id: "incident-report",
-  title: "Rapportere hendelser",
-  description:
-    "Lær hvordan du raskt rapporterer en hendelse fra dashbord-widgeten, og hvordan du finner full oversikt på Hendelser-siden.",
+  title: t("tours.incidentReport.title"),
+  description: t("tours.incidentReport.description"),
   steps: [
     // ---- Del A: Dashbord-widget ----
     {
       id: "widget-intro",
       selector: '[data-tour="dashboard-incidents"]',
-      title: "Hendelses-widget",
-      description:
-        "Hendelses-widgeten på dashbordet gir kjapp oversikt over de siste rapportene og en hurtigvei til å rapportere noe nytt.",
+      title: t("tours.incidentReport.steps.widget-intro.title"),
+      description: t("tours.incidentReport.steps.widget-intro.description"),
       side: "top",
       route: "/",
       beforeStep: closeAnyOpenDialog,
@@ -39,9 +38,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "widget-report",
       selector: '[data-tour="incident-widget-report"]',
-      title: "Rapporter hendelse",
-      description:
-        "Klikk her for å åpne rapporteringsskjemaet direkte. Rask tilgang er viktig — terskelen for å melde inn skal være lav.",
+      title: t("tours.incidentReport.steps.widget-report.title"),
+      description: t("tours.incidentReport.steps.widget-report.description"),
       side: "left",
       route: "/",
       optional: true,
@@ -49,9 +47,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "widget-tabs",
       selector: '[data-tour="incident-widget-tabs"]',
-      title: "Hendelser og oppfølging",
-      description:
-        "Er du oppfølgingsansvarlig får du en egen «Oppfølging»-fane med saker tildelt deg, slik at ingenting faller mellom to stoler.",
+      title: t("tours.incidentReport.steps.widget-tabs.title"),
+      description: t("tours.incidentReport.steps.widget-tabs.description"),
       side: "bottom",
       route: "/",
       optional: true,
@@ -59,9 +56,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "widget-list",
       selector: '[data-tour="incident-widget-list"]',
-      title: "Klikk for detaljer",
-      description:
-        "Klikk på et kort for å åpne detaljdialogen med kommentarer, vedlegg, ECCAIRS-status og koblinger til oppdrag/ressurser.",
+      title: t("tours.incidentReport.steps.widget-list.title"),
+      description: t("tours.incidentReport.steps.widget-list.description"),
       side: "top",
       route: "/",
       optional: true,
@@ -71,9 +67,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "open-dialog",
       selector: '[data-tour="incident-dialog"]',
-      title: "Rapporteringsskjema",
-      description:
-        "Dette er samme skjema enten du åpner det fra widgeten eller fra Hendelser-siden. Vi går gjennom feltene fra topp til bunn.",
+      title: t("tours.incidentReport.steps.open-dialog.title"),
+      description: t("tours.incidentReport.steps.open-dialog.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -82,9 +77,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "mission",
       selector: '[data-tour="incident-mission"]',
-      title: "Knytt til oppdrag",
-      description:
-        "Velg et oppdrag for å forhåndsutfylle pilot, drone, lokasjon og tidspunkt — og for å gi full sporbarhet mellom hendelse og operasjon.",
+      title: t("tours.incidentReport.steps.mission.title"),
+      description: t("tours.incidentReport.steps.mission.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -93,9 +87,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "title-desc",
       selector: '[data-tour="incident-title-desc"]',
-      title: "Tittel og beskrivelse",
-      description:
-        "Tittel er obligatorisk. Beskriv hva som skjedde, hvor og hvorfor — jo mer kontekst, desto bedre læring i ettertid.",
+      title: t("tours.incidentReport.steps.title-desc.title"),
+      description: t("tours.incidentReport.steps.title-desc.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -104,9 +97,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "meta",
       selector: '[data-tour="incident-meta"]',
-      title: "Tidspunkt, alvorlighet og status",
-      description:
-        "Sett tidspunkt for hendelsen og velg alvorlighetsgrad (Lav/Middels/Høy/Kritisk). «Kritisk» trigger varsling til admin.",
+      title: t("tours.incidentReport.steps.meta.title"),
+      description: t("tours.incidentReport.steps.meta.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -115,9 +107,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "classification",
       selector: '[data-tour="incident-classification"]',
-      title: "Klassifisering",
-      description:
-        "Kategori, hovedårsak og medvirkende årsaker brukes i statistikk og for ECCAIRS-rapportering til Luftfartstilsynet.",
+      title: t("tours.incidentReport.steps.classification.title"),
+      description: t("tours.incidentReport.steps.classification.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -126,9 +117,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "resources",
       selector: '[data-tour="incident-resources"]',
-      title: "Ressurser (drone, pilot, utstyr)",
-      description:
-        "Koble ressurser slik at hendelsen automatisk dukker opp i loggboken til hver enkelt drone/utstyrsenhet — viktig for vedlikehold og analyse.",
+      title: t("tours.incidentReport.steps.resources.title"),
+      description: t("tours.incidentReport.steps.resources.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -137,9 +127,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "image",
       selector: '[data-tour="incident-image"]',
-      title: "Bilde",
-      description:
-        "Legg ved et bilde direkte. Flere vedlegg kan legges til i detaljdialogen etter at hendelsen er opprettet.",
+      title: t("tours.incidentReport.steps.image.title"),
+      description: t("tours.incidentReport.steps.image.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -148,9 +137,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "followup",
       selector: '[data-tour="incident-followup"]',
-      title: "Oppfølgingsansvarlig",
-      description:
-        "Tildel en ansvarlig — vedkommende får varsel og ser saken i sin «Oppfølging»-fane på dashbordet.",
+      title: t("tours.incidentReport.steps.followup.title"),
+      description: t("tours.incidentReport.steps.followup.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -159,9 +147,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "anonymous",
       selector: '[data-tour="incident-anonymous"]',
-      title: "Anonym rapportering",
-      description:
-        "Du kan velge å rapportere anonymt. Admin kan også slå på selskapsinnstilling som gjør alle rapporter anonyme automatisk.",
+      title: t("tours.incidentReport.steps.anonymous.title"),
+      description: t("tours.incidentReport.steps.anonymous.description"),
       side: "left",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -170,9 +157,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "submit",
       selector: '[data-tour="incident-submit"]',
-      title: "Send inn rapporten",
-      description:
-        "Trykk Rapporter for å lagre. Vi går videre til Hendelser-siden for å se hvor du finner full oversikt.",
+      title: t("tours.incidentReport.steps.submit.title"),
+      description: t("tours.incidentReport.steps.submit.description"),
       side: "top",
       route: "/",
       beforeStep: openIncidentDialog,
@@ -183,9 +169,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "nav",
       selector: '[data-tour="nav-incidents"]',
-      title: "Gå til Hendelser",
-      description:
-        "På Hendelser-siden får du full oversikt med søk, filtrering, ECCAIRS-rapportering, vedlegg og PDF-eksport.",
+      title: t("tours.incidentReport.steps.nav.title"),
+      description: t("tours.incidentReport.steps.nav.description"),
       side: "right",
       route: "/hendelser",
       beforeStep: closeAnyOpenDialog,
@@ -194,9 +179,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "search",
       selector: '[data-tour="hendelser-search"]',
-      title: "Søk",
-      description:
-        "Søk i tittel, beskrivelse, oppdrag og lokasjon på tvers av alle hendelser du har tilgang til.",
+      title: t("tours.incidentReport.steps.search.title"),
+      description: t("tours.incidentReport.steps.search.description"),
       side: "bottom",
       route: "/hendelser",
       optional: true,
@@ -204,9 +188,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "status-filter",
       selector: '[data-tour="hendelser-status-filter"]',
-      title: "Statusfilter",
-      description:
-        "Filtrer på Åpen, Under behandling, Ferdigbehandlet eller Lukket for å fokusere på det som krever handling.",
+      title: t("tours.incidentReport.steps.status-filter.title"),
+      description: t("tours.incidentReport.steps.status-filter.description"),
       side: "top",
       route: "/hendelser",
       optional: true,
@@ -214,9 +197,8 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "add",
       selector: '[data-tour="hendelser-add"]',
-      title: "Ny hendelse",
-      description:
-        "Samme rapporteringsskjema som fra widgeten. Bruk denne når du allerede er på Hendelser-siden.",
+      title: t("tours.incidentReport.steps.add.title"),
+      description: t("tours.incidentReport.steps.add.description"),
       side: "left",
       route: "/hendelser",
       optional: true,
@@ -224,12 +206,11 @@ export const incidentReportTour: TourDefinition = {
     {
       id: "outro",
       selector: '[data-tour="nav-incidents"]',
-      title: "Ferdig",
-      description:
-        "Nå vet du hvordan du rapporterer og finner igjen hendelser. Du kan starte denne touren på nytt fra Min profil → Kompetanse.",
+      title: t("tours.incidentReport.steps.outro.title"),
+      description: t("tours.incidentReport.steps.outro.description"),
       side: "right",
       route: "/hendelser",
       optional: true,
     },
   ],
-};
+});

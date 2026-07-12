@@ -32,7 +32,7 @@ Statuskoder:
 | 2.1 | `src/pages/Hendelser.tsx` + incident-dialoger | DONE – Hendelser.tsx: alle ECCAIRS-relaterte toasts/labels/knapper/AlertDialog migrert til `incidents.eccairs.*`; `getEccairsStatusLabel` tar nå `t`-funksjon. IncidentsSection/IncidentDetailDialog/AddIncidentDialog: kun enum-verdier igjen, ingen migrering nødvendig. |
 | 2.2 | `src/pages/Documents.tsx` + `src/components/documents/*` | DONE – DocumentUploadDialog, DocumentCardModal, FolderDetailDialog, FolderGrid migrert til `documents.uploadDialog.*`/`cardModal.*`/`folderDetail.*`/`folderGrid.*`. Documents.tsx var allerede migrert av tidligere agent. Kun DB-enum-status ("Grønn"/"Gul"/"Rød") gjenstår som intern identifikator. |
 | 2.3 | Training-flater (`src/components/training/*`, admin-Training*) | DONE – TrainingCourseEditor.tsx og TrainingSection.tsx koblet til `training.courseEditor.*`/`training.section.*` (nøklene fantes allerede fra tidligere arbeid, kun `useTranslation`+`t()`-kobling manglet). Lagt til manglende nøkkel `toastFetchCoursesFailed` i begge språkfiler. |
-| 2.4 | Guided tours (`src/tours/*`) | TODO |
+| 2.4 | Guided tours (`src/tours/*`) | DONE |
 
 ## Fase 3 – SORA, ECCAIRS, safety
 

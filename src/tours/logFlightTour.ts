@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { TourDefinition } from "./types";
 import { sleep } from "./tourUtils";
 
@@ -20,18 +21,16 @@ const openLogFlightDialog = async () => {
   await sleep(450);
 };
 
-export const logFlightTour: TourDefinition = {
+export const createLogFlightTour = (t: TFunction): TourDefinition => ({
   id: "log-flight",
-  title: "Logg flytid / avslutt flygning",
-  description:
-    "Lær hvordan du logger flytid manuelt eller avslutter en aktiv flygning. Samme dialog brukes i begge tilfeller.",
+  title: t("tours.logFlight.title"),
+  description: t("tours.logFlight.description"),
   steps: [
     {
       id: "intro",
       selector: '[data-tour="dashboard-flight-controls"]',
-      title: "Avslutt flygning eller logg manuelt",
-      description:
-        "Når du stopper en aktiv flygning åpnes denne dialogen automatisk og fyller ut tid, drone og pilot. Du kan også åpne den manuelt for å logge en flygning i etterkant — vi viser sistnevnte nå.",
+      title: t("tours.logFlight.steps.intro.title"),
+      description: t("tours.logFlight.steps.intro.description"),
       side: "top",
       route: "/",
       beforeStep: closeAnyOpenDialog,
@@ -40,9 +39,8 @@ export const logFlightTour: TourDefinition = {
     {
       id: "open-dialog",
       selector: '[data-tour="log-flight-dialog"]',
-      title: "Logg flytid-dialogen",
-      description:
-        "Her registrerer du flytid, avgangs- og landingssted, drone, pilot, utstyr og bevegelser. Data lagres i flyloggen og oppdaterer dronens flytid.",
+      title: t("tours.logFlight.steps.open-dialog.title"),
+      description: t("tours.logFlight.steps.open-dialog.description"),
       side: "left",
       route: "/",
       beforeStep: openLogFlightDialog,
@@ -51,9 +49,8 @@ export const logFlightTour: TourDefinition = {
     {
       id: "mission",
       selector: '[data-tour="log-flight-mission"]',
-      title: "Tilknytt oppdrag",
-      description:
-        "Koble flytiden til et oppdrag for sporbarhet. Når oppdrag er valgt kan du sette det til «Fullført» direkte herfra.",
+      title: t("tours.logFlight.steps.mission.title"),
+      description: t("tours.logFlight.steps.mission.description"),
       side: "left",
       route: "/",
       beforeStep: openLogFlightDialog,
@@ -62,9 +59,8 @@ export const logFlightTour: TourDefinition = {
     {
       id: "drone",
       selector: '[data-tour="log-flight-drone"]',
-      title: "Velg drone",
-      description:
-        "Velg dronen som ble brukt. Drone-tid og antall bevegelser oppdateres automatisk på ressursen for vedlikeholdssporing.",
+      title: t("tours.logFlight.steps.drone.title"),
+      description: t("tours.logFlight.steps.drone.description"),
       side: "left",
       route: "/",
       optional: true,
@@ -72,9 +68,8 @@ export const logFlightTour: TourDefinition = {
     {
       id: "pilot",
       selector: '[data-tour="log-flight-pilot"]',
-      title: "Pilot",
-      description:
-        "Velg pilot — dette gir korrekt loggføring per pilot, og brukes i kompetanse-/erfaringsoversikten.",
+      title: t("tours.logFlight.steps.pilot.title"),
+      description: t("tours.logFlight.steps.pilot.description"),
       side: "left",
       route: "/",
       optional: true,
@@ -82,9 +77,8 @@ export const logFlightTour: TourDefinition = {
     {
       id: "times",
       selector: '[data-tour="log-flight-times"]',
-      title: "Dato, sted og varighet",
-      description:
-        "Fyll inn dato, avgangs- og landingssted, og varighet (minutter eller fra/til-klokkeslett). Varighet og timer beregnes automatisk.",
+      title: t("tours.logFlight.steps.times.title"),
+      description: t("tours.logFlight.steps.times.description"),
       side: "left",
       route: "/",
       optional: true,
@@ -92,9 +86,8 @@ export const logFlightTour: TourDefinition = {
     {
       id: "movements",
       selector: '[data-tour="log-flight-movements"]',
-      title: "Bevegelser og operasjonstype",
-      description:
-        "Antall landinger og operasjonstype (VLOS / BVLOS / EVLOS). Inngår i statistikken og er viktig for regulatorisk rapportering.",
+      title: t("tours.logFlight.steps.movements.title"),
+      description: t("tours.logFlight.steps.movements.description"),
       side: "left",
       route: "/",
       optional: true,
@@ -102,13 +95,12 @@ export const logFlightTour: TourDefinition = {
     {
       id: "submit",
       selector: '[data-tour="log-flight-submit"]',
-      title: "Lagre flytid",
-      description:
-        "Trykk «Logg flytid» for å lagre. Loggen vises på Statistikk-siden og oppdaterer dronens vedlikeholdsstatus.",
+      title: t("tours.logFlight.steps.submit.title"),
+      description: t("tours.logFlight.steps.submit.description"),
       side: "top",
       route: "/",
       beforeStep: openLogFlightDialog,
       optional: true,
     },
   ],
-};
+});
