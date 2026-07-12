@@ -966,7 +966,7 @@ export const exportToPDF = async (
         setFontStyle(pdf, "bold");
         pdf.text(
           sanitizeForPdf(
-            i18n.t('pdf.mission.flightLogsDetailed.flightTitle', { ns: 'pdf', index: logIdx + 1, date: format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: nb }) })
+            i18n.t('pdf.mission.flightLogsDetailed.flightTitle', { ns: 'pdf', index: logIdx + 1, date: format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: dateLocale() }) })
           ),
           15,
           yPos
