@@ -367,11 +367,11 @@ export function PersonCompetencyDialog({
       .eq("id", competencyToDelete);
 
     if (error) {
-      toast({ title: "Feil", description: "Kunne ikke slette kompetanse", variant: "destructive" });
+      toast({ title: t('resourceDialogs.personCompetency.error'), description: t('resourceDialogs.personCompetency.couldNotDelete'), variant: "destructive" });
       return;
     }
 
-    toast({ title: "Suksess", description: "Kompetanse slettet" });
+    toast({ title: t('resourceDialogs.personCompetency.success'), description: t('resourceDialogs.personCompetency.deleted') });
     setDeleteDialogOpen(false);
     setCompetencyToDelete(null);
     onCompetencyUpdated();
