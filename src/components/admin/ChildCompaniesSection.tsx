@@ -230,14 +230,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
   // ── Flight alerts state ──
   const ALERT_TYPES = [
-    { key: 'low_battery', label: 'Batteri under', unit: '%', defaultValue: 20, hasThreshold: true },
-    { key: 'rth_triggered', label: 'RTH ble trigget', unit: '', defaultValue: null, hasThreshold: false },
-    { key: 'max_height', label: 'Høyde over', unit: 'm AGL', defaultValue: 120, hasThreshold: true },
-    { key: 'max_speed', label: 'Maks hastighet over', unit: 'm/s', defaultValue: 20, hasThreshold: true },
-    { key: 'low_gps_sats', label: 'GPS-satellitter under', unit: 'stk', defaultValue: 6, hasThreshold: true },
-    { key: 'battery_cell_deviation', label: 'Battericelleavvik over', unit: 'V', defaultValue: 0.3, hasThreshold: true },
-    { key: 'battery_temp_high', label: 'Batteritemperatur over', unit: '°C', defaultValue: 50, hasThreshold: true },
-    { key: 'high_vibration', label: 'Høy vibrasjon (ArduPilot)', unit: '', defaultValue: null, hasThreshold: false },
+    { key: 'low_battery', labelKey: 'alertLabel_low_battery', unit: '%', defaultValue: 20, hasThreshold: true },
+    { key: 'rth_triggered', labelKey: 'alertLabel_rth_triggered', unit: '', defaultValue: null, hasThreshold: false },
+    { key: 'max_height', labelKey: 'alertLabel_max_height', unit: 'm AGL', defaultValue: 120, hasThreshold: true },
+    { key: 'max_speed', labelKey: 'alertLabel_max_speed', unit: 'm/s', defaultValue: 20, hasThreshold: true },
+    { key: 'low_gps_sats', labelKey: 'alertLabel_low_gps_sats', unit: t('admin.childCompanies.alertUnit_pcs'), defaultValue: 6, hasThreshold: true },
+    { key: 'battery_cell_deviation', labelKey: 'alertLabel_battery_cell_deviation', unit: 'V', defaultValue: 0.3, hasThreshold: true },
+    { key: 'battery_temp_high', labelKey: 'alertLabel_battery_temp_high', unit: '°C', defaultValue: 50, hasThreshold: true },
+    { key: 'high_vibration', labelKey: 'alertLabel_high_vibration', unit: '', defaultValue: null, hasThreshold: false },
   ];
 
   const [flightAlerts, setFlightAlerts] = useState<Record<string, { enabled: boolean; threshold_value: number | null }>>({});
@@ -962,7 +962,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
     if (cleanToken === FH2_MASK) {
-      toast("Nøkkelen er allerede lagret");
+      toast(t("admin.childCompanies.toastKeyAlreadySaved"));
       return;
     }
     if (!cleanToken) {
@@ -1053,8 +1053,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .eq("id", companyId);
       if (error) throw error;
       toast.success(checked
-        ? "FlightHub 2-tilkobling gjelder nå for alle underavdelinger"
-        : "Underavdelinger kan nå bruke egen FlightHub 2-tilkobling"
+        ? t("admin.childCompanies.toastFh2AppliedForAllSub")
+        : t("admin.childCompanies.toastFh2OwnConnectionAllowed")
       );
     } catch (err: any) {
       setApplyFh2ToChildren(!checked);
@@ -1839,7 +1839,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         </RadioGroup>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Forhåndsvisning: <span className="font-mono text-foreground">
+                        {t("admin.childCompanies.preview")}: <span className="font-mono text-foreground">
                           {((csPrefix.trim() || parentCompanyName || 'avisafe').replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe')
                             + (csVariable === 'drone_registration' ? 'LNABCD' : csVariable === 'none' ? '' : '01')}
                         </span>
@@ -1975,7 +1975,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                                 className="shrink-0"
                                 disabled={alertsLocked}
                               />
-                              <span className="text-sm min-w-0">{alert.label}</span>
+                              <span className="text-sm min-w-0">{t(`admin.childCompanies.${alert.labelKey}`)}</span>
                               {alert.hasThreshold && (
                                 <div className="flex items-center gap-1">
                                   <Input
