@@ -744,7 +744,7 @@ export const ExpandedMapDialog = ({
 };
 
 // ── Airspace zone fetching (extracted for clarity) ──
-async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
+async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map, t: (k: string, opts?: any) => string) {
   try {
     // NSM zones (red)
     const nsmResponse = await fetch(
