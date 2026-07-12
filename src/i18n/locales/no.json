@@ -1243,7 +1243,9 @@
         "eccairsDesc": "E2-rapportering til Luftfartstilsynet"
       },
       "addonUnit": "NOK/mnd"
-    }
+    },
+    "feedbackButton": "Gi tilbakemelding",
+    "statusChangelog": "Status og endringslogg"
   },
   "status": {
     "green": "Grønn",

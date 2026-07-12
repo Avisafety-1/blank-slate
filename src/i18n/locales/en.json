@@ -1241,7 +1241,9 @@
         "eccairsDesc": "E2 reporting to the Civil Aviation Authority"
       },
       "addonUnit": "NOK/mo"
-    }
+    },
+    "feedbackButton": "Give feedback",
+    "statusChangelog": "Status & changelog"
   },
   "status": {
     "green": "Green",
