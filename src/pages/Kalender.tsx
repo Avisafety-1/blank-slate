@@ -1083,7 +1083,7 @@ export default function Kalender() {
                   }}
                   disabled={savingEvent}
                 >
-                  Avbryt
+                  {t('pages.calendar.cancel')}
                 </Button>
               </div>
             </div>
