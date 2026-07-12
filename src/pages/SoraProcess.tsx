@@ -167,8 +167,10 @@ const PhaseCard = ({ phase, icon, title, subtitle, accentColor, dimColor, midCol
         ))}
       </div>
     </div>
-  </div>
-);
+    </div>
+  );
+};
+
 
 export default function SoraProcess() {
   const { t } = useTranslation();
