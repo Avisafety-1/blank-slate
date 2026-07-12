@@ -2528,6 +2528,94 @@
       "complete": "Complete",
       "markAsCompleted": "Mark the checklist as completed",
       "checkAll": "Check all items ({{done}}/{{total}})"
+    },
+    "droneLogbook": {
+      "title": "Logbook - {{model}}",
+      "totalHours": "Total {{hours}} flight hours",
+      "addEntry": "Add entry",
+      "exportPdf": "Export PDF",
+      "type": "Type",
+      "date": "Date",
+      "titleField": "Title *",
+      "titlePlaceholder": "Short description",
+      "description": "Description",
+      "descriptionPlaceholder": "Additional details (optional)",
+      "image": "Image (optional)",
+      "imagePreviewAlt": "Preview",
+      "uploadImage": "Upload image",
+      "saving": "Saving...",
+      "update": "Update",
+      "save": "Save",
+      "cancel": "Cancel",
+      "tabs": {
+        "all": "All",
+        "flights": "Flights",
+        "inspections": "Insp.",
+        "equipment": "Equipment",
+        "manual": "Man."
+      },
+      "loading": "Loading logbook...",
+      "noEntries": "No entries",
+      "edit": "Edit",
+      "editFlightLogAdmin": "Edit flight log (admin)",
+      "openIncident": "Open incident",
+      "analyzeFlight": "Analyze flight",
+      "attachmentAlt": "Attachment",
+      "lightboxAlt": "Image",
+      "entryTypes": {
+        "merknad": "Note",
+        "hendelse": "Incident",
+        "reparasjon": "Repair",
+        "annet": "Other"
+      },
+      "logTitles": {
+        "flight": "Flight: {{from}} -> {{to}}",
+        "flightDescription": "{{minutes}} min, {{movements}} movements",
+        "flightDescriptionWithNotes": "{{minutes}} min, {{movements}} movements - {{notes}}",
+        "inspection": "Inspection",
+        "inspectionWithType": "Inspection: {{type}}",
+        "equipmentAdded": "{{name}} added",
+        "equipmentRemoved": "{{name}} removed",
+        "equipmentTypeAccessory": "Accessory",
+        "equipmentTypeEquipment": "Equipment"
+      },
+      "badges": {
+        "flight": "Flight",
+        "inspection": "Inspection",
+        "added": "Added",
+        "removed": "Removed",
+        "note": "Note"
+      },
+      "unknownUser": "Unknown",
+      "toasts": {
+        "fetchError": "Could not fetch logbook",
+        "imageTooLarge": "Image is too large (max 10 MB)",
+        "titleRequired": "Enter a title",
+        "entryUpdated": "Entry updated",
+        "entryAdded": "Entry added",
+        "imageUploadError": "Entry saved, but image could not be uploaded",
+        "saveError": "Could not save entry: {{message}}",
+        "entryDeleted": "Entry deleted",
+        "deleteError": "Could not delete: {{message}}",
+        "loginRequired": "You must be logged in",
+        "exportSuccess": "Logbook exported to documents",
+        "exportError": "Could not export: {{message}}"
+      },
+      "pdf": {
+        "title": "Logbook - {{model}}",
+        "totalHours": "Total {{hours}} flight hours",
+        "exportedAt": "Exported: {{date}} {{time}}",
+        "columns": {
+          "date": "Date",
+          "type": "Type",
+          "title": "Title",
+          "description": "Description",
+          "user": "Performed by"
+        },
+        "signatureLabel": "Signature:",
+        "documentTitle": "Logbook - {{model}} - {{date}}",
+        "fileName": "logbook"
+      }
     }
   }
 }

@@ -2530,6 +2530,94 @@
       "complete": "Fullfør",
       "markAsCompleted": "Marker sjekklisten som utført",
       "checkAll": "Kryss av alle punkter ({{done}}/{{total}})"
+    },
+    "droneLogbook": {
+      "title": "Loggbok - {{model}}",
+      "totalHours": "Totalt {{hours}} flyvetimer",
+      "addEntry": "Legg til innlegg",
+      "exportPdf": "Eksporter PDF",
+      "type": "Type",
+      "date": "Dato",
+      "titleField": "Tittel *",
+      "titlePlaceholder": "Kort beskrivelse",
+      "description": "Beskrivelse",
+      "descriptionPlaceholder": "Utfyllende detaljer (valgfritt)",
+      "image": "Bilde (valgfritt)",
+      "imagePreviewAlt": "Forhåndsvisning",
+      "uploadImage": "Last opp bilde",
+      "saving": "Lagrer...",
+      "update": "Oppdater",
+      "save": "Lagre",
+      "cancel": "Avbryt",
+      "tabs": {
+        "all": "Alle",
+        "flights": "Fly",
+        "inspections": "Insp.",
+        "equipment": "Utstyr",
+        "manual": "Man."
+      },
+      "loading": "Laster loggbok...",
+      "noEntries": "Ingen oppføringer",
+      "edit": "Rediger",
+      "editFlightLogAdmin": "Rediger flylogg (admin)",
+      "openIncident": "Åpne hendelse",
+      "analyzeFlight": "Analyser flytur",
+      "attachmentAlt": "Vedlegg",
+      "lightboxAlt": "Bilde",
+      "entryTypes": {
+        "merknad": "Merknad",
+        "hendelse": "Hendelse",
+        "reparasjon": "Reparasjon",
+        "annet": "Annet"
+      },
+      "logTitles": {
+        "flight": "Flytur: {{from}} -> {{to}}",
+        "flightDescription": "{{minutes}} min, {{movements}} bevegelser",
+        "flightDescriptionWithNotes": "{{minutes}} min, {{movements}} bevegelser - {{notes}}",
+        "inspection": "Inspeksjon",
+        "inspectionWithType": "Inspeksjon: {{type}}",
+        "equipmentAdded": "{{name}} lagt til",
+        "equipmentRemoved": "{{name}} fjernet",
+        "equipmentTypeAccessory": "Tilleggsutstyr",
+        "equipmentTypeEquipment": "Utstyr"
+      },
+      "badges": {
+        "flight": "Flytur",
+        "inspection": "Inspeksjon",
+        "added": "Lagt til",
+        "removed": "Fjernet",
+        "note": "Merknad"
+      },
+      "unknownUser": "Ukjent",
+      "toasts": {
+        "fetchError": "Kunne ikke hente loggbok",
+        "imageTooLarge": "Bildet er for stort (maks 10 MB)",
+        "titleRequired": "Fyll inn tittel",
+        "entryUpdated": "Innlegg oppdatert",
+        "entryAdded": "Innlegg lagt til",
+        "imageUploadError": "Innlegg lagret, men bilde kunne ikke lastes opp",
+        "saveError": "Kunne ikke lagre innlegg: {{message}}",
+        "entryDeleted": "Innlegg slettet",
+        "deleteError": "Kunne ikke slette: {{message}}",
+        "loginRequired": "Du må være innlogget",
+        "exportSuccess": "Loggbok eksportert til dokumenter",
+        "exportError": "Kunne ikke eksportere: {{message}}"
+      },
+      "pdf": {
+        "title": "Loggbok - {{model}}",
+        "totalHours": "Totalt {{hours}} flyvetimer",
+        "exportedAt": "Eksportert: {{date}} {{time}}",
+        "columns": {
+          "date": "Dato",
+          "type": "Type",
+          "title": "Tittel",
+          "description": "Beskrivelse",
+          "user": "Utført av"
+        },
+        "signatureLabel": "Signatur:",
+        "documentTitle": "Loggbok - {{model}} - {{date}}",
+        "fileName": "loggbok"
+      }
     }
   }
 }

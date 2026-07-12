@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
 import { 
@@ -79,6 +80,7 @@ export const DroneLogbookDialog = ({
   const { user, companyId } = useAuth();
   const { isAdmin } = useRoleCheck();
   const terminology = useTerminology();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,12 +176,14 @@ export const DroneLogbookDialog = ({
             id: `flight-${log.id}`,
             type: 'flight',
             date: new Date(log.flight_date),
-            title: `Flytur: ${log.departure_location} -> ${log.landing_location}`,
-            description: `${log.flight_duration_minutes} min, ${log.movements} bevegelser${log.notes ? ` - ${log.notes}` : ''}`,
-            userName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || 'Ukjent',
+            title: t('resourceDialogs.droneLogbook.logTitles.flight', { from: log.departure_location, to: log.landing_location }),
+            description: log.notes
+              ? t('resourceDialogs.droneLogbook.logTitles.flightDescriptionWithNotes', { minutes: log.flight_duration_minutes, movements: log.movements, notes: log.notes })
+              : t('resourceDialogs.droneLogbook.logTitles.flightDescription', { minutes: log.flight_duration_minutes, movements: log.movements }),
+            userName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: <Plane className="w-4 h-4" />,
             badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            badgeText: 'Flytur',
+            badgeText: t('resourceDialogs.droneLogbook.badges.flight'),
             flightTrack: {
               ...existingTrack,
               events: existingTrack.events || eventsByLogId.get(log.id) || [],
@@ -233,12 +237,14 @@ export const DroneLogbookDialog = ({
             id: `inspection-${insp.id}`,
             type: 'inspection',
             date: new Date(insp.inspection_date),
-            title: `Inspeksjon${insp.inspection_type ? `: ${insp.inspection_type}` : ''}`,
+            title: insp.inspection_type
+              ? t('resourceDialogs.droneLogbook.logTitles.inspectionWithType', { type: insp.inspection_type })
+              : t('resourceDialogs.droneLogbook.logTitles.inspection'),
             description: insp.notes || undefined,
-            userName: userMap.get(insp.user_id) || 'Ukjent',
+            userName: userMap.get(insp.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: <Search className="w-4 h-4" />,
             badgeColor: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-            badgeText: 'Inspeksjon',
+            badgeText: t('resourceDialogs.droneLogbook.badges.inspection'),
           });
         });
       }
@@ -261,14 +267,18 @@ export const DroneLogbookDialog = ({
             id: `equipment-${entry.id}`,
             type: isAdded ? 'equipment_added' : 'equipment_removed',
             date: new Date(entry.created_at),
-            title: `${entry.item_name} ${isAdded ? 'lagt til' : 'fjernet'}`,
-            description: `${entry.item_type === 'accessory' ? 'Tilleggsutstyr' : 'Utstyr'}`,
-            userName: userMap.get(entry.user_id) || 'Ukjent',
+            title: isAdded
+              ? t('resourceDialogs.droneLogbook.logTitles.equipmentAdded', { name: entry.item_name })
+              : t('resourceDialogs.droneLogbook.logTitles.equipmentRemoved', { name: entry.item_name }),
+            description: entry.item_type === 'accessory'
+              ? t('resourceDialogs.droneLogbook.logTitles.equipmentTypeAccessory')
+              : t('resourceDialogs.droneLogbook.logTitles.equipmentTypeEquipment'),
+            userName: userMap.get(entry.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: isAdded ? <PackagePlus className="w-4 h-4" /> : <PackageMinus className="w-4 h-4" />,
             badgeColor: isAdded 
               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
               : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-            badgeText: isAdded ? 'Lagt til' : 'Fjernet',
+            badgeText: isAdded ? t('resourceDialogs.droneLogbook.badges.added') : t('resourceDialogs.droneLogbook.badges.removed'),
           });
         });
       }
@@ -300,12 +310,12 @@ export const DroneLogbookDialog = ({
             date: new Date(entry.entry_date),
             title: entry.title,
             description: incidentIdMatch ? undefined : (entry.description || undefined),
-            userName: userMap.get(entry.user_id) || 'Ukjent',
+            userName: userMap.get(entry.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: isHendelse ? <AlertTriangle className="w-4 h-4" /> : <Edit className="w-4 h-4" />,
             badgeColor: isHendelse
               ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
               : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-            badgeText: entry.entry_type || 'Merknad',
+            badgeText: entry.entry_type || t('resourceDialogs.droneLogbook.badges.note'),
             imageUrl: imagePublicUrl,
             incidentId: incidentIdMatch?.[1] || undefined,
             manualEntryId: entry.id,
@@ -318,7 +328,7 @@ export const DroneLogbookDialog = ({
       setAllLogs(logs);
     } catch (error) {
       console.error("Error fetching logs:", error);
-      toast.error("Kunne ikke hente loggbok");
+      toast.error(t('resourceDialogs.droneLogbook.toasts.fetchError'));
     } finally {
       setIsLoading(false);
     }
@@ -328,7 +338,7 @@ export const DroneLogbookDialog = ({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("Bildet er for stort (maks 10 MB)");
+      toast.error(t('resourceDialogs.droneLogbook.toasts.imageTooLarge'));
       return;
     }
     setImageFile(file);
@@ -343,7 +353,7 @@ export const DroneLogbookDialog = ({
 
   const handleAddEntry = async () => {
     if (!user || !companyId || !newEntry.title.trim()) {
-      toast.error("Fyll inn tittel");
+      toast.error(t('resourceDialogs.droneLogbook.toasts.titleRequired'));
       return;
     }
     setIsSaving(true);
@@ -388,7 +398,7 @@ export const DroneLogbookDialog = ({
           .upload(filePath, imageFile, { contentType: imageFile.type });
 
         if (uploadError) {
-          toast.error("Innlegg lagret, men bilde kunne ikke lastes opp");
+          toast.error(t('resourceDialogs.droneLogbook.toasts.imageUploadError'));
         } else {
           await (supabase as any)
             .from("drone_log_entries")
@@ -397,7 +407,7 @@ export const DroneLogbookDialog = ({
         }
       }
 
-      toast.success(editingEntryId ? "Innlegg oppdatert" : "Innlegg lagt til");
+      toast.success(editingEntryId ? t('resourceDialogs.droneLogbook.toasts.entryUpdated') : t('resourceDialogs.droneLogbook.toasts.entryAdded'));
       setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
       clearImage();
       setShowAddEntry(false);
@@ -405,7 +415,7 @@ export const DroneLogbookDialog = ({
       fetchAllLogs();
     } catch (error: any) {
       console.error("Error saving entry:", error);
-      toast.error(`Kunne ikke lagre innlegg: ${error.message}`);
+      toast.error(t('resourceDialogs.droneLogbook.toasts.saveError', { message: error.message }));
     } finally {
       setIsSaving(false);
     }
@@ -437,16 +447,16 @@ export const DroneLogbookDialog = ({
         .eq("id", id);
 
       if (error) throw error;
-      toast.success("Innlegg slettet");
+      toast.success(t('resourceDialogs.droneLogbook.toasts.entryDeleted'));
       fetchAllLogs();
     } catch (error: any) {
-      toast.error(`Kunne ikke slette: ${error.message}`);
+      toast.error(t('resourceDialogs.droneLogbook.toasts.deleteError', { message: error.message }));
     }
   };
 
   const handleExportPDF = async () => {
     if (!user || !companyId) {
-      toast.error("Du må være innlogget");
+      toast.error(t('resourceDialogs.droneLogbook.toasts.loginRequired'));
       return;
     }
 
@@ -456,22 +466,28 @@ export const DroneLogbookDialog = ({
       const timeStr = format(new Date(), 'HH:mm');
       
       pdf.setFontSize(18);
-      pdf.text(sanitizeForPdf(`Loggbok - ${droneModell}`), 14, 20);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.droneLogbook.pdf.title', { model: droneModell })), 14, 20);
       pdf.setFontSize(11);
-      pdf.text(`Totalt ${Number(flyvetimer).toFixed(2)} flyvetimer`, 14, 28);
-      pdf.text(`Eksportert: ${dateStr} ${timeStr}`, 14, 35);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.droneLogbook.pdf.totalHours', { hours: Number(flyvetimer).toFixed(2) })), 14, 28);
+      pdf.text(sanitizeForPdf(t('resourceDialogs.droneLogbook.pdf.exportedAt', { date: dateStr, time: timeStr })), 14, 35);
       
       const tableData = allLogs.map(log => [
         formatDateForPdf(log.date, 'dd.MM.yyyy HH:mm'),
         sanitizeForPdf(log.badgeText),
         sanitizeForPdf(log.title),
         sanitizeForPdf(log.description) || '',
-        sanitizeForPdf(log.userName) || 'Ukjent'
+        sanitizeForPdf(log.userName) || t('resourceDialogs.droneLogbook.unknownUser')
       ]);
 
       autoTable(pdf, {
         startY: 45,
-        head: [['Dato', 'Type', 'Tittel', 'Beskrivelse', 'Utført av']],
+        head: [[
+          t('resourceDialogs.droneLogbook.pdf.columns.date'),
+          t('resourceDialogs.droneLogbook.pdf.columns.type'),
+          t('resourceDialogs.droneLogbook.pdf.columns.title'),
+          t('resourceDialogs.droneLogbook.pdf.columns.description'),
+          t('resourceDialogs.droneLogbook.pdf.columns.user'),
+        ]],
         body: tableData,
         styles: { fontSize: 8, cellPadding: 2, font: getPdfFontName() },
         headStyles: { fillColor: [59, 130, 246], font: getPdfFontName() },
@@ -486,12 +502,12 @@ export const DroneLogbookDialog = ({
 
       if (signatureUrl) {
         const finalY = (pdf as any).lastAutoTable?.finalY || 150;
-        await addSignatureToPdf(pdf, signatureUrl, finalY + 20, "Signatur:");
+        await addSignatureToPdf(pdf, signatureUrl, finalY + 20, t('resourceDialogs.droneLogbook.pdf.signatureLabel'));
       }
 
       const pdfBlob = pdf.output('blob');
       const safeModelName = sanitizeFilenameForPdf(droneModell);
-      const fileName = `loggbok-${safeModelName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      const fileName = `${t('resourceDialogs.droneLogbook.pdf.fileName')}-${safeModelName}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
       const filePath = `${companyId}/${user.id}/${Date.now()}-${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -501,7 +517,7 @@ export const DroneLogbookDialog = ({
       if (uploadError) throw uploadError;
 
       const { error: insertError } = await supabase.from('documents').insert({
-        tittel: sanitizeForPdf(`Loggbok - ${droneModell} - ${dateStr}`),
+        tittel: sanitizeForPdf(t('resourceDialogs.droneLogbook.pdf.documentTitle', { model: droneModell, date: dateStr })),
         kategori: 'loggbok',
         fil_url: filePath,
         fil_navn: fileName,
@@ -511,10 +527,10 @@ export const DroneLogbookDialog = ({
       });
 
       if (insertError) throw insertError;
-      toast.success('Loggbok eksportert til dokumenter');
+      toast.success(t('resourceDialogs.droneLogbook.toasts.exportSuccess'));
     } catch (error: any) {
       console.error('Error exporting PDF:', error);
-      toast.error(`Kunne ikke eksportere: ${error.message}`);
+      toast.error(t('resourceDialogs.droneLogbook.toasts.exportError', { message: error.message }));
     }
   };
 
@@ -537,10 +553,10 @@ export const DroneLogbookDialog = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Book className="w-5 h-5 text-primary" />
-              Loggbok - {droneModell}
+              {t('resourceDialogs.droneLogbook.title', { model: droneModell })}
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Totalt {Number(flyvetimer).toFixed(2)} flyvetimer
+              {t('resourceDialogs.droneLogbook.totalHours', { hours: Number(flyvetimer).toFixed(2) })}
             </p>
           </DialogHeader>
 
@@ -553,7 +569,7 @@ export const DroneLogbookDialog = ({
               className="w-full sm:w-auto"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Legg til innlegg
+              {t('resourceDialogs.droneLogbook.addEntry')}
             </Button>
             <Button 
               variant="outline" 
@@ -563,7 +579,7 @@ export const DroneLogbookDialog = ({
               className="w-full sm:w-auto"
             >
               <FileText className="w-4 h-4 mr-2" />
-              Eksporter PDF
+              {t('resourceDialogs.droneLogbook.exportPdf')}
             </Button>
           </div>
 
@@ -571,7 +587,7 @@ export const DroneLogbookDialog = ({
             <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs sm:text-sm">Type</Label>
+                  <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.type')}</Label>
                   <Select 
                     value={newEntry.entry_type} 
                     onValueChange={(v) => setNewEntry(prev => ({ ...prev, entry_type: v }))}
@@ -580,15 +596,15 @@ export const DroneLogbookDialog = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="merknad">Merknad</SelectItem>
-                      <SelectItem value="hendelse">Hendelse</SelectItem>
-                      <SelectItem value="reparasjon">Reparasjon</SelectItem>
-                      <SelectItem value="annet">Annet</SelectItem>
+                      <SelectItem value="merknad">{t('resourceDialogs.droneLogbook.entryTypes.merknad')}</SelectItem>
+                      <SelectItem value="hendelse">{t('resourceDialogs.droneLogbook.entryTypes.hendelse')}</SelectItem>
+                      <SelectItem value="reparasjon">{t('resourceDialogs.droneLogbook.entryTypes.reparasjon')}</SelectItem>
+                      <SelectItem value="annet">{t('resourceDialogs.droneLogbook.entryTypes.annet')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs sm:text-sm">Dato</Label>
+                  <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.date')}</Label>
                   <Input
                     type="date"
                     className="h-9"
@@ -598,30 +614,30 @@ export const DroneLogbookDialog = ({
                 </div>
               </div>
               <div>
-                <Label>Tittel *</Label>
+                <Label>{t('resourceDialogs.droneLogbook.titleField')}</Label>
                 <Input
                   value={newEntry.title}
                   onChange={(e) => setNewEntry(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Kort beskrivelse"
+                  placeholder={t('resourceDialogs.droneLogbook.titlePlaceholder')}
                 />
               </div>
               <div>
-                <Label>Beskrivelse</Label>
+                <Label>{t('resourceDialogs.droneLogbook.description')}</Label>
                 <Textarea
                   value={newEntry.description}
                   onChange={(e) => setNewEntry(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Utfyllende detaljer (valgfritt)"
+                  placeholder={t('resourceDialogs.droneLogbook.descriptionPlaceholder')}
                   rows={2}
                 />
               </div>
               {/* Image upload */}
               <div>
-                <Label className="text-xs sm:text-sm">Bilde (valgfritt)</Label>
+                <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.image')}</Label>
                 {imagePreviewUrl ? (
                   <div className="relative inline-block mt-1">
                     <img
                       src={imagePreviewUrl}
-                      alt="Forhåndsvisning"
+                      alt={t('resourceDialogs.droneLogbook.imagePreviewAlt')}
                       className="h-20 sm:h-24 w-auto rounded-md border object-cover"
                     />
                     <button
@@ -639,7 +655,7 @@ export const DroneLogbookDialog = ({
                     className="mt-1 flex items-center gap-2 px-3 py-2 border border-dashed rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors w-full"
                   >
                     <ImagePlus className="w-4 h-4" />
-                    Last opp bilde
+                    {t('resourceDialogs.droneLogbook.uploadImage')}
                   </button>
                 )}
                 <input
@@ -652,31 +668,31 @@ export const DroneLogbookDialog = ({
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
-                  {isSaving ? "Lagrer..." : (editingEntryId ? "Oppdater" : "Lagre")}
+                  {isSaving ? t('resourceDialogs.droneLogbook.saving') : (editingEntryId ? t('resourceDialogs.droneLogbook.update') : t('resourceDialogs.droneLogbook.save'))}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>Avbryt</Button>
+                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>{t('resourceDialogs.droneLogbook.cancel')}</Button>
               </div>
             </div>
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}>
             <TabsList className="flex w-full overflow-x-auto no-scrollbar">
-              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
-              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Fly</TabsTrigger>
-              <TabsTrigger value="inspections" className="flex-1 min-w-[50px] text-xs sm:text-sm">Insp.</TabsTrigger>
-              <TabsTrigger value="equipment" className="flex-1 min-w-[50px] text-xs sm:text-sm">Utstyr</TabsTrigger>
-              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Man.</TabsTrigger>
+              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.all')}</TabsTrigger>
+              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.flights')}</TabsTrigger>
+              <TabsTrigger value="inspections" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.inspections')}</TabsTrigger>
+              <TabsTrigger value="equipment" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.equipment')}</TabsTrigger>
+              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.manual')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
               <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    Laster loggbok...
+                    {t('resourceDialogs.droneLogbook.loading')}
                   </div>
                 ) : filteredLogs.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    Ingen oppføringer
+                    {t('resourceDialogs.droneLogbook.noEntries')}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -707,7 +723,7 @@ export const DroneLogbookDialog = ({
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
-                                    title="Rediger"
+                                    title={t('resourceDialogs.droneLogbook.edit')}
                                     onClick={() => handleEditManualEntry(log)}
                                   >
                                     <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -727,7 +743,7 @@ export const DroneLogbookDialog = ({
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
-                                  title="Rediger flylogg (admin)"
+                                  title={t('resourceDialogs.droneLogbook.editFlightLogAdmin')}
                                   onClick={() => setEditingFlightLogId(log.flightLogId!)}
                                 >
                                   <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -738,7 +754,7 @@ export const DroneLogbookDialog = ({
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
-                                  title="Åpne hendelse"
+                                  title={t('resourceDialogs.droneLogbook.openIncident')}
                                   onClick={() => {
                                     onOpenChange(false);
                                     navigate('/hendelser', { state: { openIncidentId: log.incidentId } });
@@ -752,7 +768,7 @@ export const DroneLogbookDialog = ({
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
-                                  title="Analyser flytur"
+                                  title={t('resourceDialogs.droneLogbook.analyzeFlight')}
                                   onClick={() => {
                                     setAnalysisTrack(log.flightTrack);
                                     setAnalysisDate(log.flightDate);
@@ -776,7 +792,7 @@ export const DroneLogbookDialog = ({
                               >
                                 <img
                                   src={log.imageUrl}
-                                  alt="Vedlegg"
+                                  alt={t('resourceDialogs.droneLogbook.attachmentAlt')}
                                   className="h-16 w-auto rounded-md border object-cover max-w-[120px]"
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 rounded-md transition-opacity">
@@ -813,7 +829,7 @@ export const DroneLogbookDialog = ({
           <DialogContent className="max-w-3xl p-2 bg-background/95">
             <img
               src={lightboxUrl}
-              alt="Bilde"
+              alt={t('resourceDialogs.droneLogbook.lightboxAlt')}
               className="w-full h-auto rounded-md max-h-[80vh] object-contain"
             />
           </DialogContent>
