@@ -1,73 +1,97 @@
-## Mål
+## Oversetting og opprydning av profil-siden (ProfileDialog)
 
-Gjøre både `/hendelser`-siden, alle incident-dialogene og hele ECCAIRS Classification-dialogen fullt to­språklige (NO/EN) via `t()`, uten å endre DB-verdier eller forretningslogikk.
+Alt gjøres i `src/components/ProfileDialog.tsx` + `src/components/SignaturePad.tsx` og i18n-filene `src/i18n/locales/en.json` / `no.json`. Ingen logikk endres.
 
-## Prinsipper
+### 1. Kortere tab-etiketter (så de får plass i knappene)
 
-- DB-lagrede enum-lignende verdier (`Åpen`, `Under behandling`, `Ferdigbehandlet`, `Lukket`, `Middels`, `Høy`, `Kritisk`, `Luft`, `Bakke`, `Miljø` osv.) beholdes uendret i databasen. Kun visning oversettes via eksisterende hjelpere: `translateIncidentStatus`, `translateSeverity`, `translateIncidentCategory`.
-- Alle nye brukervendte strenger legges i **både** `src/i18n/locales/no.json` og `src/i18n/locales/en.json`.
-- Ingen endringer i forretningslogikk, ingen skjema-/RLS-endringer.
+Legger til nye i18n-nøkler under `profile.tabs.*` og bruker disse i `TabsTrigger`:
 
-## 1. Hendelser-siden (`src/pages/Hendelser.tsx`)
+| Tab | NO | EN |
+| --- | --- | --- |
+| profile | Profil | Profile |
+| security | Sikkerhet | Security |
+| competencies | Kompetanse | Skills |
+| emergency | Nødkontakt | Emergency |
+| notifications | Varsler | Alerts |
+| incidents | Oppfølging | Follow-up |
+| subscription | Abonnement | Plan |
 
-- Statusfilter-knapper (`statusOptions`): behold interne verdier `Alle | Åpen | Under behandling | Ferdigbehandlet | Lukket`, men vis dem via ny hjelper — `Alle` → `t('incidents.filters.all')` og de fire status-verdiene via `translateIncidentStatus(...)`.
-- Hardkodede JSX-strenger som skal gjennom `t()`:
-  - «Rediger» (kortknapp)
-  - «Rapportert av: …», «Avdeling: …», «Ansvarlig: …»
-  - «Beskrivelse»-overskrift
-  - «Laster…»
-  - Tom-tilstand-tekst («… ingen hendelser …»)
-  - Kommentar-collapsible-etiketter
-  - Toast-meldinger («Kunne ikke laste …», eksport-meldinger osv.)
-- Feilaktig streng `"{t('incidents.eccairs.exporting')}"` (linje 1030) fikses til reell `t()`-kall.
-- Datoformat: bytt `format(..., "d. MMMM yyyy 'kl.' HH:mm", { locale: nb })` til å velge locale (`nb` vs `enUS`) og formatstreng basert på gjeldende språk.
+Fjerner den nåværende `.replace('Min ', '')`-hacken på profil-tabben.
 
-## 2. Incident-dialoger
+### 2. Rolle-badges (bilde 288)
 
-**`src/components/dashboard/IncidentDetailDialog.tsx`**
-- Statusvelger: `SelectItem`-tekst rendres via `translateIncidentStatus(value)`, ikke hardkodet «Under behandling / Ferdigbehandlet / Lukket».
-- Labels: «Endre status (Admin)», «Knyttet til oppdrag», «Hendelsestidspunkt», «Lokasjon», «Rapportert av», «Rapportert dato», «Beskrivelse», «Vedlagt bilde», «Hendelsesbilde» (alt), toast «Hendelsesrapport lagret i dokumenter».
+Erstatter hardkodet norsk i badge-listen (linje ~1160-1197):
+- «Godkjenner oppdrag (Alle avdelinger)» → `profile.roleBadges.approver` + `profile.roleBadges.allDepartments`
+- «Oppfølgingsansvarlig hendelser» → `profile.roleBadges.incidentResponsible`
+- «ECCAIRS-tilgang» → `profile.roleBadges.eccairs`
+- «Teknisk ansvarlig» → `profile.roleBadges.technicalResponsible`
 
-**`src/components/dashboard/AddIncidentDialog.tsx`**
-- DialogTitle/Description («Rediger hendelse» / «Rapporter hendelse» / undertekst) via `t()`.
-- Alle toasts: «Hendelse oppdatert!», «Hendelse rapportert!», «Kunne ikke laste opp bilde», «Feil ved lagring: …».
-- Notification `title/description` som starter med «Hendelse: …» og «(offline)» går gjennom `t()` med interpolasjon.
+`formatScope()` bygges med `t()` i stedet for hardkodet ` (Alle avdelinger)`.
 
-**`src/components/dashboard/IncidentsSection.tsx`**
-- Gjennomgå og bytt eventuelle gjenværende hardkodede etiketter til `t()` (badges bruker allerede `translateIncident*`; kun statiske overskrifter/tom-tilstander gjenstår).
+### 3. UAS operatørnummer-blokk (bilde 288)
 
-## 3. ECCAIRS Classification-dialogen
+- «UAS operatørnummer» → `profile.uasOperatorNumber`
+- Placeholder «f.eks. NOR87…» → `profile.uasOperatorNumberPlaceholder`
+- Hint «Fra Luftfartstilsynets flydrone-tjeneste…» → `profile.uasOperatorNumberHint`
 
-**`src/config/eccairsFields.ts`** — flytt tekst ut av konfigen til i18n:
-- Legg til nye felter i typen: `labelKey: string`, `helpTextKey?: string`, `additionalTextFieldKey?: string`. Beholder `label`/`helpText` som fallback for eksisterende bruk under overgangen; komponenter går over til nøkler.
-- `ECCAIRS_FIELD_GROUP_LABELS` konverteres til en oversettelses-oppslag `t('eccairs.groups.<group>')`. Beholder ikonene som de er.
-- ~60 felt-labels + ~40 hjelpetekster + 10 gruppetitler → tilsvarende nye nøkler under `eccairs.fields.<code>.label|helpText` og `eccairs.groups.*` i **både** `no.json` og `en.json`. Engelske oversettelser skrives fra kilden (ECCAIRS-taksonomiens offisielle engelske betegnelser der de finnes; ellers naturlig oversettelse).
+### 4. Nødnumre-seksjon (Emergency-fanen)
 
-**`src/components/eccairs/EccairsMappingDialog.tsx`**
-- Erstatt gjenværende norske toasts: «Forslag anvendt», «Klassifisering lagret», «Kunne ikke lagre klassifisering» → `t()`.
-- Bruk nye `labelKey`/`helpTextKey`/gruppenøkler når felter rendres.
-- `OCCURRENCE_CLASS_LABELS` og øvrige mappinger som vises i UI (hvis norske) løftes til `t()`.
+- «Nødnumre», «Brann», «Politi», «Ambulanse» → `profile.emergencyNumbers`, `.fire`, `.police`, `.ambulance`
 
-**Øvrige eccairs-komponenter** (`EccairsSettingsDialog`, `EccairsEventTypeTreeSelect`, `EccairsPhaseOfFlightSelect`, `EccairsMultiSelect`, `EccairsTaxonomySelect`, `EccairsAttachmentUpload`, `EccairsEventTypeSelect`): gjennomgang for gjenværende norske strenger og bytt til `t()` der nødvendig (disse er stort sett allerede oversatt basert på scan).
+### 5. Signatur-seksjon (bilde 287)
 
-## 4. Filer som endres
+I `SignaturePad.tsx` finnes allerede nøklene `profile.uploadSignature`, `profile.changeSignature`, `profile.drawSignature`, `profile.uploadingSignature`, `profile.signature`, men de mangler i `en.json`/`no.json` (bruker default-fallback). Legger til alle disse i begge språk:
+- «Last opp signatur» / «Upload signature»
+- «Endre signatur» / «Change signature»
+- «Tegn signatur» / «Draw signature»
+- «Laster opp…» / «Uploading…»
+- «Signaturen brukes på eksporterte loggbøker og dokumenter.» / «This signature is used on exported logbooks and documents.» → `profile.signatureDescription`
 
-- `src/pages/Hendelser.tsx`
-- `src/components/dashboard/IncidentDetailDialog.tsx`
-- `src/components/dashboard/AddIncidentDialog.tsx`
-- `src/components/dashboard/IncidentsSection.tsx`
-- `src/components/eccairs/EccairsMappingDialog.tsx` (+ mindre justering i øvrige eccairs-komponenter ved behov)
-- `src/config/eccairsFields.ts`
-- `src/i18n/locales/no.json`
-- `src/i18n/locales/en.json`
+### 6. Varslinger-fanen (bilde 289)
 
-## 5. Verifikasjon
+Alle hardkodede strenger fra linje ~1934-2062 flyttes til `profile.notificationOptions.*`:
+- Oppdrag til godkjenning + beskrivelse (missionApproval / missionApprovalDesc)
+- «Varslinger fra avdelinger» + beskrivelse (childCompanies / childCompaniesDesc)
+- Nye hendelser / oppdrag / brukere / dokumenter / vedlikehold i avdelinger + tilhørende beskrivelser (childIncidents, childMissions, childNewUsers, childDocumentExpiry, childMaintenance)
 
-- `bunx tsgo --noEmit` passerer.
-- Manuell sjekk: bytt språk via velgeren, åpne `/hendelser`, filtrer på hver status, åpne «Rediger», åpne ECCAIRS Classification-dialogen og bekreft at alle gruppetitler, feltlabels, hjelpetekster, knapper og toasts er på valgt språk.
+### 7. Kompetanse-fanen
 
-## Ikke inkludert
+- «Opplæring og guider» + «Få en interaktiv gjennomgang…» → `profile.trainingAndGuides` + `profile.trainingAndGuidesDesc`
+- «Kurs og tester» → `profile.coursesAndTests`
+- «Kurs» (fallback tittel) → `profile.course`
+- «⏳ Påbegynt» → `profile.inProgress`
+- «Fortsett kurs» / «Ta kurs» → `profile.continueCourse` / `profile.takeCourse`
+- «Utløpt» → `profile.expired`
 
-- Endring av DB-verdier eller migrasjoner.
-- Oversettelse av PDF-eksportmaler (håndteres separat om ønskelig).
-- ECCAIRS-taksonomi-verdier hentet fra Supabase (`eccairs_values`) — disse leveres av backend og er utenfor scope.
+### 8. Oppfølging-fanen (bilde 290)
+
+- «Oppdrag til godkjenning ({{n}})» → `profile.pendingApprovalTitle`
+- Badge «Sjekkliste», tekst «Risiko» → `profile.checklist`, `profile.risk`
+- «Skriv kommentar…», «Send varsel til pilot», «Tilbake», «Godkjenn», «Avbryt», «Kommentar», «Kommentar (valgfritt)» → nøkler under `profile.approval.*`
+- «Du er satt som flyger/personell…» → `profile.approval.selfBlocked`
+- «Ingen oppdrag venter på godkjenning» → `profile.approval.noneWaiting`
+- «Hendelser til oppfølging ({{n}})» → `profile.followUpIncidentsTitle`
+- «Kommentar fra godkjenner {{name}}:» → `profile.approval.commentFrom`
+
+### 9. Tilbakemelding-dialog (feedback)
+
+Alle strenger (Gi tilbakemelding, Overskrift, Melding, Oppdrag (valgfritt), Vedlegg (valgfritt), Ingen, Søk oppdrag…, Ingen oppdrag funnet, Last flere, Laster…, Legg til bilde, Avbryt, Sender…, Send, «Tilbakemelding sendt!», «Fyll ut både overskrift og melding», «Bildet kan ikke være større enn 5 MB», «Kunne ikke sende tilbakemelding») → `profile.feedback.*`
+
+### 10. Abonnement-fanen
+
+- Overskrift «Abonnement» + «Se alle planer» → `profile.subscription.title`, `.seeAllPlans`
+- Badges «Faktureres separat», «Prøveperiode», «Avsluttes», «Aktivt», «Nåværende», «Aktiv» → `.billedSeparately`, `.trial`, `.ending`, `.active`, `.current`, `.addonActive`
+- «Ditt selskap faktureres separat…», «Sjekker abonnementstatus…», «Du har ikke et aktivt abonnement.», «Kontakt betalingsansvarlig…» → tilsvarende nøkler
+- «Bytt plan», «Tilleggsmoduler», «Endring trer i kraft umiddelbart…», «Abonner nå», «Administrer abonnement», «X dager igjen av prøveperioden», «Utløper …», «Neste fornyelse», «Abonnementet avsluttes ved…», addons (SORA Admin, DJI-integrasjon, ECCAIRS-integrasjon, beskrivelser), confirm-tekst «Er du sikker på at du vil …» og toasts («Kunne ikke endre plan», «Plan endret til …», «X aktivert/deaktivert», «Kunne ikke oppdatere tilleggsmodul», «Kunne ikke åpne administrasjon», «Kunne ikke starte betaling») → `profile.subscription.*`
+
+### 11. Diverse
+
+- «App versjon v{{v}}» → `profile.appVersion`
+- Fallback-strenger «Ukjent», «Ukjent feil» der de er UI-synlige → eksisterende `common.unknown` / ny `common.unknownError`
+
+### Teknisk oppsummering
+
+- Kun frontend: `ProfileDialog.tsx`, `SignaturePad.tsx`, `en.json`, `no.json`.
+- Bruker eksisterende `useTranslation()` hook som allerede er i filen.
+- Ingen endringer i database, RLS, edge functions eller andre komponenter.
+- Verifiseres med `bunx tsgo --noEmit` og manuell sjekk med `rg` etter gjenværende norske strenger.

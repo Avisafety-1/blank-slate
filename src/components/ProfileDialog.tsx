@@ -129,7 +129,7 @@ const severityColors = {
 
 export const ProfileDialog = () => {
   const { user, subscribed, subscriptionEnd, subscriptionLoading, cancelAtPeriodEnd, isTrial, trialEnd, stripeExempt, subscriptionPlan, subscriptionAddons, isBillingOwner, seatCount, companyId, parentCompanyId, accessibleCompanies, signOut, checkSubscription, isAdmin: authIsAdmin, userRole: authUserRole, canApproveMissions, canBeIncidentResponsible, approvalCompanyIds } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, permission: pushPermission, subscribe: subscribePush, unsubscribe: unsubscribePush, sendTestNotification } = usePushNotifications();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -944,15 +944,15 @@ export const ProfileDialog = () => {
               <TabsList className={`grid w-full grid-cols-3 md:grid-cols-4 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10 ${canBeIncidentResponsible ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
-                  <span>{t('profile.title').replace('Min ', '').replace('My ', '')}</span>
+                  <span>{t('profile.tabs.profile')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="security" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Lock className="h-3 w-3" />
-                  <span>{t('profile.security')}</span>
+                  <span>{t('profile.tabs.security')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="competencies" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Award className="h-3 w-3" />
-                  <span>{t('profile.competencies')}</span>
+                  <span>{t('profile.tabs.competencies')}</span>
                   {pendingTraining.length > 0 && (
                     <Badge
                       variant="destructive"
@@ -964,16 +964,16 @@ export const ProfileDialog = () => {
                 </TabsTrigger>
                 <TabsTrigger value="emergency" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Heart className="h-3 w-3" />
-                  <span>{t('profile.emergency')}</span>
+                  <span>{t('profile.tabs.emergency')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="notifications" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Bell className="h-3 w-3" />
-                  <span>{t('profile.notifications')}</span>
+                  <span>{t('profile.tabs.notifications')}</span>
                 </TabsTrigger>
                 {canBeIncidentResponsible && (
                 <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0" style={{ touchAction: 'manipulation' }}>
                   <ClipboardCheck className="h-3 w-3" />
-                  <span>Oppfølging</span>
+                  <span>{t('profile.tabs.incidents')}</span>
                   {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
                     <Badge
                       variant="destructive"
@@ -986,7 +986,7 @@ export const ProfileDialog = () => {
                 )}
                 <TabsTrigger value="subscription" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <CreditCard className="h-3 w-3" />
-                  <span>Abonnement</span>
+                  <span>{t('profile.tabs.subscription')}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -999,7 +999,7 @@ export const ProfileDialog = () => {
                     className="w-full sm:w-auto"
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
-                    Gi tilbakemelding
+                    {t('profile.feedbackButton')}
                   </Button>
                   <Button
                     variant="outline"
@@ -1008,7 +1008,7 @@ export const ProfileDialog = () => {
                     className="w-full sm:w-auto"
                   >
                     <Activity className="h-4 w-4 mr-1" />
-                    Status og endringslogg
+                    {t('profile.statusChangelog')}
                   </Button>
                 </div>
               )}
@@ -1086,19 +1086,19 @@ export const ProfileDialog = () => {
                           )}
                         </div>
                         <div className="grid gap-1">
-                          <Label className="text-xs">UAS operatørnummer</Label>
+                          <Label className="text-xs">{t('profile.uasOperatorNumber')}</Label>
                           {isEditing ? (
                             <Input
                               value={editedProfile.uas_operator_number || ""}
                               onChange={(e) => setEditedProfile({ ...editedProfile, uas_operator_number: e.target.value })}
-                              placeholder="f.eks. NOR87astrdge12k"
+                              placeholder={t('profile.uasOperatorNumberPlaceholder')}
                               className="h-8 text-sm"
                             />
                           ) : (
                             <p className="text-sm text-muted-foreground">{profile?.uas_operator_number || t('common.notSpecified')}</p>
                           )}
                           <p className="text-[10px] text-muted-foreground/70">
-                            Fra Luftfartstilsynets flydrone-tjeneste. De siste sifrene er hemmelige og skal ikke tas med i merkingen.
+                            {t('profile.uasOperatorNumberHint')}
                           </p>
                         </div>
                       </div>
@@ -1157,7 +1157,7 @@ export const ProfileDialog = () => {
                           {(() => {
                             const formatScope = (ids: string[] | null | undefined): string => {
                               if (!ids || ids.length === 0) return '';
-                              if (ids.includes('all')) return ' (Alle avdelinger)';
+                              if (ids.includes('all')) return ` (${t('profile.roleBadges.allDepartments')})`;
                               const names = ids.map(id => companyNameMap[id]).filter(Boolean);
                               return names.length > 0 ? ` (${names.join(', ')})` : '';
                             };
@@ -1165,28 +1165,28 @@ export const ProfileDialog = () => {
                             if ((profile as any)?.can_approve_missions) {
                               extras.push({
                                 key: 'approver',
-                                label: `Godkjenner oppdrag${formatScope((profile as any)?.approval_company_ids)}`,
+                                label: `${t('profile.roleBadges.approver')}${formatScope((profile as any)?.approval_company_ids)}`,
                                 className: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300 hover:bg-emerald-500/20',
                               });
                             }
                             if ((profile as any)?.can_be_incident_responsible) {
                               extras.push({
                                 key: 'incident',
-                                label: `Oppfølgingsansvarlig hendelser${formatScope((profile as any)?.incident_responsible_company_ids)}`,
+                                label: `${t('profile.roleBadges.incidentResponsible')}${formatScope((profile as any)?.incident_responsible_company_ids)}`,
                                 className: 'bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300 hover:bg-amber-500/20',
                               });
                             }
                             if ((profile as any)?.can_access_eccairs) {
                               extras.push({
                                 key: 'eccairs',
-                                label: 'ECCAIRS-tilgang',
+                                label: t('profile.roleBadges.eccairs'),
                                 className: 'bg-violet-500/15 text-violet-700 border-violet-500/30 dark:text-violet-300 hover:bg-violet-500/20',
                               });
                             }
                             if ((profile as any)?.is_technical_responsible) {
                               extras.push({
                                 key: 'technical',
-                                label: 'Teknisk ansvarlig',
+                                label: t('profile.roleBadges.technicalResponsible'),
                                 className: 'bg-cyan-500/15 text-cyan-700 border-cyan-500/30 dark:text-cyan-300 hover:bg-cyan-500/20',
                               });
                             }
@@ -1267,34 +1267,34 @@ export const ProfileDialog = () => {
                 }}>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Gi tilbakemelding</DialogTitle>
+                      <DialogTitle>{t('profile.feedback.title')}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Overskrift</Label>
+                        <Label>{t('profile.feedback.subject')}</Label>
                         <Input
                           value={feedbackSubject}
                           onChange={(e) => setFeedbackSubject(e.target.value)}
-                          placeholder="Hva gjelder tilbakemeldingen?"
+                          placeholder={t('profile.feedback.subjectPlaceholder')}
                           maxLength={200}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Melding</Label>
+                        <Label>{t('profile.feedback.message')}</Label>
                         <Textarea
                           value={feedbackMessage}
                           onChange={(e) => setFeedbackMessage(e.target.value)}
-                          placeholder="Beskriv tilbakemeldingen din..."
+                          placeholder={t('profile.feedback.messagePlaceholder')}
                           rows={5}
                           maxLength={5000}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Oppdrag (valgfritt)</Label>
+                        <Label>{t('profile.feedback.missionOptional')}</Label>
                         {(() => {
                           const selected = feedbackMissions.find((m) => m.id === feedbackMissionId);
                           const selectedLabel = feedbackMissionId === "none" || !selected
-                            ? "Ingen"
+                            ? t('profile.feedback.none')
                             : `${selected.tittel}${selected.tidspunkt ? ` — ${new Date(selected.tidspunkt).toLocaleDateString("nb-NO")}` : ""}`;
                           return (
                             <Popover>
@@ -1310,7 +1310,7 @@ export const ProfileDialog = () => {
                                   <Input
                                     value={feedbackMissionSearch}
                                     onChange={(e) => setFeedbackMissionSearch(e.target.value)}
-                                    placeholder="Søk oppdrag..."
+                                    placeholder={t('profile.feedback.searchMission')}
                                     className="h-9 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
                                   />
                                 </div>
@@ -1324,7 +1324,7 @@ export const ProfileDialog = () => {
                                     )}
                                   >
                                     <Check className={cn("h-4 w-4", feedbackMissionId === "none" ? "opacity-100" : "opacity-0")} />
-                                    Ingen
+                                    {t('profile.feedback.none')}
                                   </button>
                                   {feedbackMissions.map((m) => {
                                     const date = m.tidspunkt ? new Date(m.tidspunkt).toLocaleDateString("nb-NO") : "";
@@ -1348,12 +1348,12 @@ export const ProfileDialog = () => {
                                   })}
                                   {!feedbackMissionLoading && feedbackMissions.length === 0 && (
                                     <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                                      Ingen oppdrag funnet
+                                      {t('profile.feedback.noMissionsFound')}
                                     </div>
                                   )}
                                   {feedbackMissionLoading && (
                                     <div className="px-3 py-2 text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
-                                      <Loader2 className="h-3 w-3 animate-spin" /> Laster...
+                                      <Loader2 className="h-3 w-3 animate-spin" /> {t('profile.feedback.loading')}
                                     </div>
                                   )}
                                   {feedbackMissionHasMore && !feedbackMissionLoading && (
@@ -1364,7 +1364,7 @@ export const ProfileDialog = () => {
                                       }
                                       className="w-full px-3 py-2 text-sm text-primary hover:bg-muted/50 text-center"
                                     >
-                                      Last flere
+                                      {t('profile.feedback.loadMore')}
                                     </button>
                                   )}
                                 </div>
@@ -1374,10 +1374,10 @@ export const ProfileDialog = () => {
                         })()}
                       </div>
                       <div className="space-y-2">
-                        <Label>Vedlegg (valgfritt)</Label>
+                        <Label>{t('profile.feedback.attachmentOptional')}</Label>
                         {feedbackImagePreview ? (
                           <div className="relative inline-block">
-                            <img src={feedbackImagePreview} alt="Vedlegg" className="max-h-32 rounded-md border border-border" />
+                            <img src={feedbackImagePreview} alt={t('profile.feedback.attachmentAlt')} className="max-h-32 rounded-md border border-border" />
                             <Button
                               variant="destructive"
                               size="icon"
@@ -1402,7 +1402,7 @@ export const ProfileDialog = () => {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                   if (file.size > 5 * 1024 * 1024) {
-                                    toast.error("Bildet kan ikke være større enn 5 MB");
+                                    toast.error(t('profile.feedback.imageTooLarge'));
                                     return;
                                   }
                                   setFeedbackImage(file);
@@ -1418,7 +1418,7 @@ export const ProfileDialog = () => {
                               type="button"
                             >
                               <Camera className="h-4 w-4 mr-1" />
-                              Legg til bilde
+                              {t('profile.feedback.addImage')}
                             </Button>
                           </div>
                         )}
@@ -1429,12 +1429,12 @@ export const ProfileDialog = () => {
                           onClick={() => setFeedbackOpen(false)}
                           disabled={feedbackSending}
                         >
-                          Avbryt
+                          {t('profile.feedback.cancel')}
                         </Button>
                         <Button
                           onClick={async () => {
                             if (!feedbackSubject.trim() || !feedbackMessage.trim()) {
-                              toast.error("Fyll ut både overskrift og melding");
+                              toast.error(t('profile.feedback.fillBoth'));
                               return;
                             }
                             setFeedbackSending(true);
@@ -1463,7 +1463,7 @@ export const ProfileDialog = () => {
                                 },
                               });
                               if (error) throw error;
-                              toast.success("Tilbakemelding sendt! Takk for innspillet.");
+                              toast.success(t('profile.feedback.sent'));
                               setFeedbackOpen(false);
                               setFeedbackSubject("");
                               setFeedbackMessage("");
@@ -1475,7 +1475,7 @@ export const ProfileDialog = () => {
                               }
                             } catch (err: any) {
                               console.error("Error sending feedback:", err);
-                              toast.error(err.message || "Kunne ikke sende tilbakemelding");
+                              toast.error(err.message || t('profile.feedback.sendError'));
                             } finally {
                               setFeedbackSending(false);
                             }
@@ -1483,7 +1483,7 @@ export const ProfileDialog = () => {
                           disabled={feedbackSending || !feedbackSubject.trim() || !feedbackMessage.trim()}
                         >
                           <Send className="h-4 w-4 mr-1" />
-                          {feedbackSending ? "Sender..." : "Send"}
+                          {feedbackSending ? t('profile.feedback.sending') : t('profile.feedback.send')}
                         </Button>
                       </div>
                     </div>
@@ -1589,10 +1589,10 @@ export const ProfileDialog = () => {
                 {/* Guided tour launcher */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Opplæring og guider</CardTitle>
+                    <CardTitle className="text-base">{t('profile.trainingAndGuides')}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">Få en interaktiv gjennomgang av AviSafe direkte i appen.</p>
+                    <p className="text-sm text-muted-foreground mb-3">{t('profile.trainingAndGuidesDesc')}</p>
                     <StartTourButton variant="default" />
                   </CardContent>
                 </Card>
@@ -1603,7 +1603,7 @@ export const ProfileDialog = () => {
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-base">
                         <GraduationCap className="h-5 w-5 shrink-0" />
-                        <span className="break-words">Kurs og tester ({pendingTraining.length})</span>
+                        <span className="break-words">{t('profile.coursesAndTests')} ({pendingTraining.length})</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1620,7 +1620,7 @@ export const ProfileDialog = () => {
                               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-sm break-words">
-                                    {(assignment.training_courses as any)?.title || "Kurs"}
+                                    {(assignment.training_courses as any)?.title || t('profile.course')}
                                   </p>
                                   {(assignment.training_courses as any)?.description && (
                                     <p className="text-xs text-muted-foreground line-clamp-2">
@@ -1629,7 +1629,7 @@ export const ProfileDialog = () => {
                                   )}
                                   {hasStarted && (
                                     <p className="text-xs text-muted-foreground mt-1">
-                                      ⏳ Påbegynt
+                                      {t('profile.inProgress')}
                                     </p>
                                   )}
                                 </div>
@@ -1639,7 +1639,7 @@ export const ProfileDialog = () => {
                                   onClick={() => setTakeCourseAssignmentId(assignment.id)}
                                 >
                                   <GraduationCap className="h-4 w-4 mr-1" />
-                                  {hasStarted ? "Fortsett kurs" : "Ta kurs"}
+                                  {hasStarted ? t('profile.continueCourse') : t('profile.takeCourse')}
                                 </Button>
                               </div>
                             </div>
@@ -1736,7 +1736,7 @@ export const ProfileDialog = () => {
                               {expired && (
                                 <div className="mt-2 flex items-center gap-1 text-xs text-destructive font-medium">
                                   <AlertCircle className="h-3 w-3" />
-                                  Utløpt
+                                  {t('profile.expiredLabel')}
                                 </div>
                               )}
                             </div>
@@ -1801,19 +1801,19 @@ export const ProfileDialog = () => {
 
                     <Separator />
                     <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Nødnumre</Label>
+                      <Label className="text-muted-foreground text-xs font-medium uppercase tracking-wide">{t('profile.emergencyNumbers')}</Label>
                       <div className="grid grid-cols-3 gap-2">
                         <a href="tel:110" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
                           <span className="text-lg font-bold">110</span>
-                          <span className="text-xs text-muted-foreground">Brann</span>
+                          <span className="text-xs text-muted-foreground">{t('profile.fire')}</span>
                         </a>
                         <a href="tel:112" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
                           <span className="text-lg font-bold">112</span>
-                          <span className="text-xs text-muted-foreground">Politi</span>
+                          <span className="text-xs text-muted-foreground">{t('profile.police')}</span>
                         </a>
                         <a href="tel:113" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
                           <span className="text-lg font-bold">113</span>
-                          <span className="text-xs text-muted-foreground">Ambulanse</span>
+                          <span className="text-xs text-muted-foreground">{t('profile.ambulance')}</span>
                         </a>
                       </div>
                     </div>
@@ -1931,10 +1931,10 @@ export const ProfileDialog = () => {
                           <div className="flex items-center justify-between">
                             <div className="space-y-0.5 flex-1">
                               <label className="text-sm font-medium">
-                                Oppdrag til godkjenning
+                                {t('profile.notificationOptions.missionApproval')}
                               </label>
                               <p className="text-xs text-muted-foreground">
-                                Motta e-post når oppdrag sendes til godkjenning
+                                {t('profile.notificationOptions.missionApprovalDesc')}
                               </p>
                             </div>
                             <Switch
@@ -1992,16 +1992,16 @@ export const ProfileDialog = () => {
                           <Separator className="my-6" />
                           <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
                             <div className="space-y-1">
-                              <h4 className="font-medium">Varslinger fra avdelinger</h4>
+                              <h4 className="font-medium">{t('profile.notificationOptions.childCompanies')}</h4>
                               <p className="text-xs text-muted-foreground">
-                                Gjelder hendelser og frister i avdelinger under mor-selskapet ditt.
+                                {t('profile.notificationOptions.childCompaniesDesc')}
                               </p>
                             </div>
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Nye hendelser i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når en avdeling registrerer en hendelse.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childIncidents')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childIncidentsDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_incidents ?? true}
@@ -2013,8 +2013,8 @@ export const ProfileDialog = () => {
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Nye oppdrag i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når en avdeling oppretter et oppdrag.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childMissions')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childMissionsDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_missions ?? true}
@@ -2026,8 +2026,8 @@ export const ProfileDialog = () => {
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Nye brukere i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når en bruker venter på godkjenning i en avdeling.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childNewUsers')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childNewUsersDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_new_user_pending ?? true}
@@ -2039,8 +2039,8 @@ export const ProfileDialog = () => {
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Dokumenter som utløper i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når dokumentfrister i avdelinger nærmer seg.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childDocumentExpiry')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childDocumentExpiryDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_document_expiry ?? true}
@@ -2052,8 +2052,8 @@ export const ProfileDialog = () => {
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Vedlikehold i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når ressurser i avdelinger krever vedlikehold eller inspeksjon.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childMaintenance')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childMaintenanceDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_maintenance_reminder ?? true}
@@ -2220,7 +2220,7 @@ export const ProfileDialog = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5" />
-                        Oppdrag til godkjenning ({pendingApprovalMissions.length})
+                        {t('profile.pendingApprovalTitle', { count: pendingApprovalMissions.length })}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -2263,12 +2263,12 @@ export const ProfileDialog = () => {
                                 )}
                                 <Badge variant="outline" className={`${mission.aiRisk ? getAIRiskBadgeColor(mission.aiRisk.recommendation) : 'bg-gray-500/20 text-gray-900 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
                                   <Brain className="w-3 h-3 mr-1" />
-                                  {mission.aiRisk ? Number(mission.aiRisk.overall_score).toFixed(1) : 'Risiko'}
+                                  {mission.aiRisk ? Number(mission.aiRisk.overall_score).toFixed(1) : t('profile.approval.risk')}
                                 </Badge>
                                 {mission.checklist_ids?.length > 0 && (
                                   <Badge variant="outline" className={`${mission.checklist_ids.every((id: string) => mission.checklist_completed_ids?.includes(id)) ? 'bg-green-500/20 text-green-900 border-green-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
                                     <ClipboardCheck className="w-3 h-3 mr-1" />
-                                    Sjekkliste
+                                    {t('profile.approval.checklist')}
                                   </Badge>
                                 )}
                                 {mission.notam_text && (
@@ -2320,7 +2320,7 @@ export const ProfileDialog = () => {
                               {commentingMissionId === mission.id && (
                                 <div className="space-y-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                                   <Textarea
-                                    placeholder="Skriv kommentar..."
+                                    placeholder={t('profile.approval.writeComment')}
                                     value={missionComment}
                                     onChange={(e) => setMissionComment(e.target.value)}
                                     rows={2}
@@ -2329,10 +2329,10 @@ export const ProfileDialog = () => {
                                   <div className="flex flex-wrap gap-2">
                                     <Button size="sm" variant="secondary" className="hover:bg-muted/50" onClick={async () => { await handleSaveComment(mission.id); await handleNotifyPilot(mission.id, missionComment); }}>
                                       <Send className="h-4 w-4 mr-1" />
-                                      Send varsel til pilot
+                                      {t('profile.approval.sendNotice')}
                                     </Button>
                                     <Button size="sm" variant="outline" className="hover:bg-muted/50" onClick={() => { setCommentingMissionId(null); setMissionComment(""); }}>
-                                      Tilbake
+                                      {t('profile.approval.back')}
                                     </Button>
                                   </div>
                                 </div>
@@ -2341,13 +2341,13 @@ export const ProfileDialog = () => {
                               {/* Approval section */}
                               {selfApprovalBlocked && (
                                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" onClick={(e) => e.stopPropagation()}>
-                                  Du er satt som flyger/personell på dette oppdraget og kan derfor ikke godkjenne det.
+                                  {t('profile.approval.selfBlocked')}
                                 </div>
                               )}
                               {approvingMissionId === mission.id ? (
                                 <div className="space-y-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                                   <Textarea
-                                    placeholder="Kommentar (valgfritt)"
+                                    placeholder={t('profile.approval.commentOptional')}
                                     value={approvalComment}
                                     onChange={(e) => setApprovalComment(e.target.value)}
                                     rows={2}
@@ -2356,10 +2356,10 @@ export const ProfileDialog = () => {
                                   <div className="flex gap-2">
                                     <Button size="sm" onClick={() => handleApproveMission(mission.id)} disabled={selfApprovalBlocked}>
                                       <CheckCircle2 className="h-4 w-4 mr-1" />
-                                      Godkjenn
+                                      {t('profile.approval.approve')}
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={() => { setApprovingMissionId(null); setApprovalComment(""); }}>
-                                      Avbryt
+                                      {t('profile.approval.cancel')}
                                     </Button>
                                   </div>
                                 </div>
@@ -2367,11 +2367,11 @@ export const ProfileDialog = () => {
                                 <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                                   <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(mission.id); setMissionComment(""); }}>
                                     <MessageSquare className="h-4 w-4 mr-1" />
-                                    Kommentar
+                                    {t('profile.approval.comment')}
                                   </Button>
                                   <Button size="sm" variant="outline" onClick={() => setApprovingMissionId(mission.id)} disabled={selfApprovalBlocked}>
                                     <CheckCircle2 className="h-4 w-4 mr-1" />
-                                    Godkjenn
+                                    {t('profile.approval.approve')}
                                   </Button>
                                 </div>
                               )}
@@ -2382,7 +2382,7 @@ export const ProfileDialog = () => {
                                 <div className="pt-2 border-t border-border/50 space-y-1">
                                   {mission.approver_comments.map((c: any, i: number) => (
                                     <p key={i} className="text-xs text-muted-foreground">
-                                      <span className="font-medium">Kommentar fra godkjenner {c.author_name}:</span>{' '}
+                                      <span className="font-medium">{t('profile.approval.commentFrom', { name: c.author_name })}</span>{' '}
                                       {c.comment}
                                       <span className="ml-1 opacity-60">
                                         ({new Date(c.created_at).toLocaleDateString('no-NO', { day: '2-digit', month: 'short' })})
@@ -2396,7 +2396,7 @@ export const ProfileDialog = () => {
                           })}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">Ingen oppdrag venter på godkjenning</p>
+                        <p className="text-sm text-muted-foreground">{t('profile.approval.noneWaiting')}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -2405,7 +2405,7 @@ export const ProfileDialog = () => {
                 {/* Follow-up Incidents */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Hendelser til oppfølging ({followUpIncidents.length})</CardTitle>
+                    <CardTitle>{t('profile.followUpIncidentsTitle', { count: followUpIncidents.length })}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {followUpIncidents.length > 0 ? (
@@ -2445,10 +2445,10 @@ export const ProfileDialog = () => {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <CreditCard className="h-5 w-5" />
-                        Abonnement
+                        {t('profile.subscription.title')}
                       </CardTitle>
                       <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => { setProfileDialogOpen(false); navigate('/priser'); }}>
-                        Se alle planer <ArrowUpRight className="h-3 w-3 ml-1" />
+                        {t('profile.subscription.seeAllPlans')} <ArrowUpRight className="h-3 w-3 ml-1" />
                       </Button>
                     </div>
                   </CardHeader>
@@ -2456,38 +2456,38 @@ export const ProfileDialog = () => {
                     {stripeExempt ? (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-primary/10 text-primary border-primary/20">Faktureres separat</Badge>
+                          <Badge className="bg-primary/10 text-primary border-primary/20">{t('profile.subscription.billedSeparately')}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Ditt selskap faktureres separat og trenger ikke Stripe-abonnement.
+                          {t('profile.subscription.billedSeparatelyDesc')}
                         </p>
                       </div>
                     ) : subscriptionLoading ? (
-                      <p className="text-sm text-muted-foreground">Sjekker abonnementstatus…</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.subscription.checkingStatus')}</p>
                     ) : subscribed ? (
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             {isTrial ? (
-                              <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Prøveperiode</Badge>
+                              <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">{t('profile.subscription.trial')}</Badge>
                             ) : cancelAtPeriodEnd ? (
-                              <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">Avsluttes</Badge>
+                              <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">{t('profile.subscription.ending')}</Badge>
                             ) : (
-                              <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
+                              <Badge className="bg-primary/10 text-primary border-primary/20">{t('profile.subscription.active')}</Badge>
                             )}
                           </div>
                           <span className="text-sm font-medium">
                             {subscriptionPlan
                               ? `${subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)} – ${
                                   subscriptionPlan === 'starter' ? '99' : subscriptionPlan === 'grower' ? '199' : '299'
-                                } NOK/bruker/mnd`
+                                } ${t('profile.subscription.currency')}`
                               : 'AviSafe Platform'}
-                            {seatCount > 1 && ` × ${seatCount} brukere`}
+                            {seatCount > 1 && ` × ${seatCount} ${t('profile.subscription.users')}`}
                           </span>
                           {subscriptionAddons.length > 0 && (
                             <span className="text-xs text-muted-foreground">
-                              Tillegg: {subscriptionAddons.map(a => 
-                                a === 'sora_admin' ? 'SORA Admin' : a === 'dji' ? 'DJI' : 'ECCAIRS'
+                              {t('profile.subscription.addonsTitle')}: {subscriptionAddons.map(a => 
+                                a === 'sora_admin' ? t('profile.subscription.addons.soraName') : a === 'dji' ? 'DJI' : 'ECCAIRS'
                               ).join(', ')}
                             </span>
                           )}
@@ -2496,21 +2496,21 @@ export const ProfileDialog = () => {
                           const daysLeft = Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
                           return (
                             <p className="text-sm text-blue-600 break-words">
-                              {daysLeft} {daysLeft === 1 ? 'dag' : 'dager'} igjen av prøveperioden
+                              {t('profile.subscription.daysLeft', { count: daysLeft })}
                               <span className="block text-xs text-blue-500">
-                                Utløper {new Date(trialEnd).toLocaleDateString('nb-NO')}
+                                {t('profile.subscription.expiresOn', { date: new Date(trialEnd).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'nb-NO') })}
                               </span>
                             </p>
                           );
                         })()}
                         {subscriptionEnd && subscriptionEnd !== 'unknown' && !isTrial && (
                           <p className="text-sm text-muted-foreground">
-                            {cancelAtPeriodEnd ? 'Utløper' : 'Neste fornyelse'}: {new Date(subscriptionEnd).toLocaleDateString('nb-NO')}
+                            {cancelAtPeriodEnd ? t('profile.subscription.expires') : t('profile.subscription.nextRenewal')}: {new Date(subscriptionEnd).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'nb-NO')}
                           </p>
                         )}
                         {cancelAtPeriodEnd && (
                           <p className="text-xs text-orange-600 break-words">
-                            Abonnementet avsluttes ved periodens slutt. Reaktiver via «Administrer abonnement».
+                            {t('profile.subscription.endsAtPeriod')}
                           </p>
                         )}
 
@@ -2519,7 +2519,7 @@ export const ProfileDialog = () => {
                           <>
                             <Separator />
                             <div>
-                              <p className="text-sm font-medium mb-2">Bytt plan</p>
+                              <p className="text-sm font-medium mb-2">{t('profile.subscription.switchPlan')}</p>
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 {PLANS.map((plan) => {
                                   const shortFeatures = plan.features.slice(0, 4);
@@ -2532,8 +2532,8 @@ export const ProfileDialog = () => {
                                       onClick={async () => {
                                         if (isCurrent || changingPlan) return;
                                         const action = (subscriptionPlan === 'starter' || (subscriptionPlan === 'grower' && plan.id === 'professional'))
-                                          ? 'oppgradere' : 'nedgradere';
-                                        if (!confirm(`Er du sikker på at du vil ${action} til ${plan.name} (${plan.price} NOK/bruker/mnd)?`)) return;
+                                          ? t('profile.subscription.upgrade') : t('profile.subscription.downgrade');
+                                        if (!confirm(t('profile.subscription.confirmChange', { action, name: plan.name, price: plan.price }))) return;
                                         setChangingPlan(plan.id);
                                         try {
                                           const { data, error } = await supabase.functions.invoke('change-plan', {
@@ -2541,10 +2541,10 @@ export const ProfileDialog = () => {
                                           });
                                           if (error) throw error;
                                           if (data?.error) throw new Error(data.error);
-                                          toast.success(`Plan endret til ${plan.name}`);
+                                          toast.success(t('profile.subscription.planChangedTo', { name: plan.name }));
                                           await checkSubscription();
                                         } catch (e: any) {
-                                          toast.error('Kunne ikke endre plan: ' + (e.message || 'Ukjent feil'));
+                                          toast.error(t('profile.subscription.changePlanError') + ': ' + (e.message || t('common.unknownError')));
                                         } finally {
                                           setChangingPlan(null);
                                         }
@@ -2557,13 +2557,13 @@ export const ProfileDialog = () => {
                                     >
                                       {isCurrent && (
                                         <span className="absolute -top-2 left-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-medium">
-                                          Nåværende
+                                          {t('profile.subscription.current')}
                                         </span>
                                       )}
                                       <div className="flex items-center justify-between sm:flex-col sm:items-start">
                                         <div>
                                           <p className="text-sm font-semibold">{plan.name}</p>
-                                          <p className="text-xs text-muted-foreground">{plan.price} NOK/bruker/mnd</p>
+                                          <p className="text-xs text-muted-foreground">{plan.price} {t('profile.subscription.currency')}</p>
                                         </div>
                                         {isChanging && <Loader2 className="h-4 w-4 animate-spin" />}
                                       </div>
@@ -2577,19 +2577,19 @@ export const ProfileDialog = () => {
                                 })}
                               </div>
                               <p className="text-xs text-muted-foreground mt-2">
-                                Endring trer i kraft umiddelbart. Prorata-justering på neste faktura.
+                                {t('profile.subscription.planChangeImmediate')}
                               </p>
                             </div>
 
                             {/* Addon management */}
                             <Separator />
                             <div>
-                              <p className="text-sm font-medium mb-2">Tilleggsmoduler</p>
+                              <p className="text-sm font-medium mb-2">{t('profile.subscription.addonsTitle')}</p>
                               <div className="space-y-2">
                                 {([
-                                  { id: 'sora_admin', name: 'SORA Admin', desc: 'Avansert SORA risikoanalyse', price: 99 },
-                                  { id: 'dji', name: 'DJI-integrasjon', desc: 'Automatisk import av DJI-flightlogs', price: 99 },
-                                  { id: 'eccairs', name: 'ECCAIRS-integrasjon', desc: 'E2-rapportering til Luftfartstilsynet', price: 99 },
+                                  { id: 'sora_admin', name: t('profile.subscription.addons.soraName'), desc: t('profile.subscription.addons.soraDesc'), price: 99 },
+                                  { id: 'dji', name: t('profile.subscription.addons.djiName'), desc: t('profile.subscription.addons.djiDesc'), price: 99 },
+                                  { id: 'eccairs', name: t('profile.subscription.addons.eccairsName'), desc: t('profile.subscription.addons.eccairsDesc'), price: 99 },
                                 ] as const).map((addon) => {
                                   const isActive = subscriptionAddons.includes(addon.id);
                                   return (
@@ -2603,11 +2603,11 @@ export const ProfileDialog = () => {
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <p className="text-sm font-medium">{addon.name}</p>
                                           {isActive && (
-                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">Aktiv</Badge>
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">{t('profile.subscription.addonActive')}</Badge>
                                           )}
                                         </div>
                                         <p className="text-xs text-muted-foreground break-words">{addon.desc}</p>
-                                        <p className="text-xs font-medium mt-0.5">{addon.price} NOK/mnd</p>
+                                        <p className="text-xs font-medium mt-0.5">{addon.price} {t('profile.subscription.addonUnit')}</p>
                                       </div>
                                       {isBillingOwner && (
                                         <Switch
@@ -2621,10 +2621,10 @@ export const ProfileDialog = () => {
                                               });
                                               if (error) throw error;
                                               if (data?.error) throw new Error(data.error);
-                                              toast.success(checked ? `${addon.name} aktivert` : `${addon.name} deaktivert`);
+                                              toast.success(checked ? t('profile.subscription.addonEnabled', { name: addon.name }) : t('profile.subscription.addonDisabled', { name: addon.name }));
                                               await checkSubscription();
                                             } catch (e: any) {
-                                              toast.error('Kunne ikke oppdatere tilleggsmodul: ' + (e.message || 'Ukjent feil'));
+                                              toast.error(t('profile.subscription.addonUpdateError') + ': ' + (e.message || t('common.unknownError')));
                                             } finally {
                                               setTogglingAddon(null);
                                             }
@@ -2636,7 +2636,7 @@ export const ProfileDialog = () => {
                                 })}
                               </div>
                               <p className="text-xs text-muted-foreground mt-2">
-                                {isBillingOwner ? 'Endring trer i kraft umiddelbart med prorata-justering.' : 'Kontakt betalingsansvarlig for å endre tilleggsmoduler.'}
+                                {isBillingOwner ? t('profile.subscription.addonChangeImmediate') : t('profile.subscription.contactBillingForAddons')}
                               </p>
                             </div>
                           </>
@@ -2651,17 +2651,17 @@ export const ProfileDialog = () => {
                                 if (error) throw error;
                                 if (data?.url) window.open(data.url, '_blank');
                               } catch (e: any) {
-                                toast.error('Kunne ikke åpne administrasjon: ' + (e.message || 'Ukjent feil'));
+                                toast.error(t('profile.subscription.portalError') + ': ' + (e.message || t('common.unknownError')));
                               }
                             }}
                           >
-                            Administrer abonnement
+                            {t('profile.subscription.manageSubscription')}
                           </Button>
                         )}
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <p className="text-sm text-muted-foreground">Du har ikke et aktivt abonnement.</p>
+                        <p className="text-sm text-muted-foreground">{t('profile.subscription.noSubscription')}</p>
                         {isBillingOwner || !subscriptionPlan ? (
                           <Button
                             onClick={async () => {
@@ -2672,16 +2672,16 @@ export const ProfileDialog = () => {
                                 if (error) throw error;
                                 if (data?.url) window.open(data.url, '_blank');
                               } catch (e: any) {
-                                toast.error('Kunne ikke starte betaling: ' + (e.message || 'Ukjent feil'));
+                                toast.error(t('profile.subscription.checkoutError') + ': ' + (e.message || t('common.unknownError')));
                               }
                             }}
                           >
                             <CreditCard className="h-4 w-4 mr-2" />
-                            Abonner nå
+                            {t('profile.subscription.subscribeNow')}
                           </Button>
                         ) : (
                           <p className="text-xs text-muted-foreground">
-                            Kontakt betalingsansvarlig i selskapet for å aktivere abonnement.
+                            {t('profile.subscription.contactBillingOwner')}
                           </p>
                         )}
                       </div>
@@ -2692,7 +2692,7 @@ export const ProfileDialog = () => {
             </Tabs>
           )}
           <p className="text-[10px] text-muted-foreground/50 text-center pt-2 pb-1">
-            App versjon v{appVersion}
+            {t('profile.appVersion', { version: appVersion })}
           </p>
         </ScrollArea>
       </DialogContent>
