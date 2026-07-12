@@ -174,7 +174,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               className="w-full sm:w-auto"
             >
               <ShieldCheck className="w-4 h-4 mr-2" />
-              Risikovurdering
+              {t('dashboard.missionDetail.riskAssessment')}
             </Button>
             <Button 
               size="sm" 
