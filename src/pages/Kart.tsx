@@ -1135,7 +1135,7 @@ export default function KartPage() {
             </Button>
           )}
           <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2 pointer-events-auto">
-            <span className="text-xs text-muted-foreground">Traffic data provided by</span>
+            <span className="text-xs text-muted-foreground">{t('pages.map.trafficDataProvidedBy')}</span>
             <a href="https://www.safesky.app" target="_blank" rel="noopener noreferrer">
               <img src={safeskyLogo} alt="SafeSky" className="h-5 dark:invert" />
             </a>
