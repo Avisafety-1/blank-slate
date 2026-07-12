@@ -224,20 +224,21 @@ export const Header = () => {
                   {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
                     <Button variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/statistikk"); }}>
                       <BarChart3 className="w-4 h-4 mr-2" />
-                      Plattformstatistikk
+                      {t('header.platformStatistics')}
                     </Button>
                   )}
                   {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
                     <Button variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/marketing"); }}>
                       <Megaphone className="w-4 h-4 mr-2" />
-                      Marketing
+                      {t('header.marketing')}
                     </Button>
                   )}
                   <div className="my-2 border-t border-border" />
                   <Button data-tour="nav-changelog" variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/changelog"); }}>
                     <Activity className="w-4 h-4 mr-2" />
-                    Driftstatus
+                    {t('header.operationalStatus')}
                   </Button>
+
                   <Button variant="ghost" className="justify-start" onClick={() => { setNavOpen(false); navigate("/installer"); }}>
                     <Download className="w-4 h-4 mr-2" />
                     {t('nav.installApp', 'Installer app')}
