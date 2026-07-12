@@ -948,10 +948,10 @@ export default function KartPage() {
                 size="sm"
                 onClick={handleCancelRoute}
                 className="h-8 px-2 sm:px-3"
-                title="Avbryt"
+                title={t('pages.map.cancelTitle')}
               >
                 <X className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Avbryt</span>
+                <span className="hidden sm:inline ml-1">{t('pages.map.cancel')}</span>
               </Button>
               <Button
                 data-tour="map-route-save"
