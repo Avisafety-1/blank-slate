@@ -310,7 +310,7 @@ export function PersonCompetencyDialog({
 
   const handleUpdateCompetency = async (competencyId: string) => {
     if (!editType || !editName) {
-      toast({ title: "Feil", description: "Type og navn er påkrevd", variant: "destructive" });
+      toast({ title: t('resourceDialogs.personCompetency.error'), description: t('resourceDialogs.personCompetency.typeAndNameRequired'), variant: "destructive" });
       return;
     }
 
