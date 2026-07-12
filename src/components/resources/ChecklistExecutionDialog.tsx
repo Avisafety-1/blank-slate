@@ -635,7 +635,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                       />
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-8">
-                        Ingen innhold kunne vises.
+                        {t('resourceDialogs.checklistExecution.noContent')}
                       </p>
                     )}
                   </div>
