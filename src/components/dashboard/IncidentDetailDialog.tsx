@@ -418,7 +418,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Åpen">Åpen</SelectItem>
+                    <SelectItem value="Åpen">{t('dashboard.incidents.statusOpen')}</SelectItem>
                     <SelectItem value="Under behandling">Under behandling</SelectItem>
                     <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
                     <SelectItem value="Lukket">Lukket</SelectItem>
