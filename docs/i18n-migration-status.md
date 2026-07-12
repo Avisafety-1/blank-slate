@@ -57,7 +57,7 @@ Statuskoder:
 |--:|--------------|--------|
 | 5.1 | PDF-eksport (`oppdragPdfExport`, `riskAssessmentPdfExport`, `incidentPdfExport`, `userManualPdf`) | DONE | userManualPdf.ts migrert 2026-07-13: alle 17 seksjoner (titler, avsnitt, lister, tabeller) flyttet til `pdf.userManual.sections.*` i no/en pdf.json, hentet via i18n.t(returnObjects). Tittelside, TOC, footer bruker eksisterende `pdf.userManual.*`-nøkler. Verifisert med bunx tsgo --noEmit (ingen feil). |
 | 5.2 | `src/lib/notifications.ts` → namespace `notifications` | DONE | Alle brukervendte strenger i incident-notification HTML migrert til `notifications.incident.*` 2026-07-12. |
-| 5.3 | Edge functions (bruker-vendte) → lokale `prompts.ts` | TODO |
+| 5.3 | Edge functions (bruker-vendte) → lokale `prompts.ts` | DONE | company-status-ai og platform-statistics-ai fikk egne `prompts.ts` 2026-07-13 (SYSTEM_PROMPT + buildUserPrompt). Øvrige AI-funksjoner (drone-regulations-ai, ai-search, generate-narration, ai-risk-assessment, generate-course, suggest-course-topics) hadde allerede `prompts.ts`. marketing-ai og marketing-visual er bevisst hoppet over (kun for superadmins, jf. Fase 4.4). E-post-innhold i edge functions forblir norsk (server har ikke bruker-språkkontekst). |
 
 ## Fase 6 – Sluttopprydding
 
