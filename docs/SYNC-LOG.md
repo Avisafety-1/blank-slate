@@ -1,5 +1,13 @@
 # Sync-logg
 
+## 2026-07-12 — i18n Fase 1.1: RiskAssessmentDialog (manuell SORA-fane)
+
+**Migrert:** `src/components/dashboard/RiskAssessmentDialog.tsx` – hele "Manuell SORA"-fanen: oppdragsvelger, kontekstkort (Oppdrag/Dato/Sted/Risk-nivå), alle 5 accordion-seksjoner (Operasjonsmiljø, GRC, ARC, SAIL, Status), Select-alternativer (Tettbygd/Landlig/…, Lav/Moderat/Høy, Ikke startet/Under arbeid/…), textarea-plassholdere, «Utført/Godkjent av» og handlingsknappene (Avbryt/Lagre/Lagrer…). Nye nøkler under `riskAssessment.manualSora.*` i `no.json`+`en.json`. Ingen eksisterende nøkler flyttet. `tsgo --noEmit` OK.
+
+Med dette er Fase 1.1 (dashboard-widgets) komplett bortsett fra Sora-flatene (SoraAnalysisDialog/SoraResultView/MissionSoraRouteDocumentation) som ligger under Fase 3 (SORA-namespace).
+
+
+
 ## 2026-07-12 — i18n Fase 1.1: ExpandedMapDialog
 
 **Migrert:** `src/components/dashboard/ExpandedMapDialog.tsx` – dialog-tittel, SORA lagre-knapp + toasts, kart-satellittveksler, ruta/flyspor-popups (reuses `dashboard.missionMapPreview.*`), start/slutt-markører, legende og statistikk-tekst (Maks høyde/hastighet/AGL, Snitt AGL). Fetch-hjelperen `fetchZones` tar nå `t` som parameter for NSM/CTR-navn-fallbacks. Nye nøkler under `dashboard.expandedMap.*`. Bruker `dangerouslySetInnerHTML` for statistikk-strenger med `<strong>`-interpolasjon (i18next `escapeValue:false`). `tsgo --noEmit` OK.
