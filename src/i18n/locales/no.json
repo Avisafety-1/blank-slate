@@ -2618,6 +2618,112 @@
         "documentTitle": "Loggbok - {{model}} - {{date}}",
         "fileName": "loggbok"
       }
+    },
+    "equipmentLogbook": {
+      "title": "Loggbok - {{name}}",
+      "totalHours": "Totalt {{hours}} flyvetimer",
+      "addEntry": "Legg til",
+      "exportPdf": "PDF",
+      "tabs": {
+        "all": "Alle",
+        "flights": "Flyturer",
+        "drones": "Droner",
+        "manual": "Manuelt",
+        "battery": "Batteritrend",
+        "batteryShort": "Batt"
+      },
+      "type": "Type",
+      "date": "Dato",
+      "titleField": "Tittel *",
+      "titlePlaceholder": "Kort beskrivelse",
+      "description": "Beskrivelse",
+      "descriptionPlaceholder": "Utfyllende detaljer (valgfritt)",
+      "image": "Bilde (valgfritt)",
+      "imagePreviewAlt": "Forhåndsvisning",
+      "uploadImage": "Last opp bilde",
+      "saving": "Lagrer...",
+      "save": "Lagre",
+      "cancel": "Avbryt",
+      "loading": "Laster loggbok...",
+      "noEntries": "Ingen oppføringer",
+      "attachmentAlt": "Vedlegg",
+      "lightboxAlt": "Bilde",
+      "openIncident": "Åpne hendelse",
+      "unknownUser": "Ukjent",
+      "unknownDrone": "Ukjent drone",
+      "entryTypes": {
+        "merknad": "Merknad",
+        "hendelse": "Hendelse",
+        "reparasjon": "Reparasjon",
+        "vedlikehold": "Vedlikehold",
+        "annet": "Annet"
+      },
+      "logTitles": {
+        "flight": "Flytur: {{from}} -> {{to}}",
+        "flightDescription": "{{minutes}} min, {{movements}} bevegelser",
+        "flightDescriptionWithNotes": "{{minutes}} min, {{movements}} bevegelser - {{notes}}",
+        "droneAdded": "Lagt til {{drone}}",
+        "droneRemoved": "Fjernet fra {{drone}}",
+        "droneConnection": "Dronekobling"
+      },
+      "badges": {
+        "flight": "Flytur",
+        "added": "Lagt til",
+        "removed": "Fjernet",
+        "note": "Merknad"
+      },
+      "toasts": {
+        "fetchError": "Kunne ikke hente loggbok",
+        "imageTooLarge": "Bildet er for stort (maks 10 MB)",
+        "titleRequired": "Fyll inn tittel",
+        "entryUpdated": "Innlegg oppdatert",
+        "entryAdded": "Innlegg lagt til",
+        "imageUploadError": "Innlegg lagret, men bilde kunne ikke lastes opp",
+        "saveError": "Kunne ikke lagre innlegg: {{message}}",
+        "entryDeleted": "Innlegg slettet",
+        "deleteError": "Kunne ikke slette: {{message}}",
+        "loginRequired": "Du må være innlogget",
+        "exportSuccess": "Loggbok eksportert til dokumenter",
+        "exportError": "Kunne ikke eksportere: {{message}}"
+      },
+      "battery": {
+        "empty": "Ingen batterihistorikk funnet",
+        "emptyHint": "Importer flylogger med dette batteriet for å se trender",
+        "cycles": "Sykluser",
+        "health": "Helse",
+        "maxTemp": "Maks temp",
+        "minTempLabel": "Min: {{temp}}°C",
+        "minVoltage": "Min spenning",
+        "cellDeviation": "Celleavvik",
+        "cellHigh": "Høyt",
+        "cellModerate": "Moderat",
+        "cellOk": "OK",
+        "capacityTrend": "Kapasitetsutvikling",
+        "history": "Historikk ({{count}} flylogger)",
+        "colDate": "Dato",
+        "colCycles": "Sykluser",
+        "colHealth": "Helse",
+        "colTemp": "Temp",
+        "colVoltage": "Spenning",
+        "colCellDev": "Celleavvik",
+        "colCapacity": "Kapasitet"
+      },
+      "pdf": {
+        "title": "Loggbok - {{name}}",
+        "totalHours": "Totalt {{hours}} flyvetimer",
+        "exportedAt": "Eksportert: {{date}} {{time}}",
+        "noEntries": "Ingen oppføringer i loggboken.",
+        "columns": {
+          "date": "Dato",
+          "type": "Type",
+          "title": "Tittel",
+          "description": "Beskrivelse",
+          "user": "Utført av"
+        },
+        "signatureLabel": "Signatur:",
+        "documentTitle": "Loggbok - {{name}} - {{date}}",
+        "fileName": "loggbok-utstyr"
+      }
     }
   }
 }
