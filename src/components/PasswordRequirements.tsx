@@ -1,7 +1,7 @@
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n/config";
+import i18n from "@/i18n";
 
 export interface PasswordCheck {
   key: string;
