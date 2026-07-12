@@ -902,7 +902,7 @@ const Hendelser = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-foreground">Laster...</p>
+        <p className="text-foreground">{t('incidents.card.loadingApp')}</p>
       </div>
     );
   }
