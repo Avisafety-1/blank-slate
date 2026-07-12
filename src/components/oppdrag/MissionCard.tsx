@@ -440,7 +440,7 @@ export const MissionCard = ({
                 return (
                   <li key={p.profile_id} className="space-y-0.5">
                     <span className="text-sm text-foreground flex items-center gap-1">
-                      {p.profiles?.full_name || "Ukjent"}
+                      {p.profiles?.full_name || t('pages.missions.card.unknown')}
                       {p.company_mission_roles?.name && (
                         <span className="text-xs text-muted-foreground">({p.company_mission_roles.name})</span>
                       )}
