@@ -685,8 +685,8 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
   }
 };
 
-// Backwards-compat alias – kept so old imports work while we're migrating.
-export { defaultTemplates as defaultTemplatesNo } from "./template-utils.ts";
+// Alias kept for readability — Norwegian is the default language.
+export const defaultTemplatesNo = defaultTemplates;
 
 /**
  * Default templates per language. New template keys must be added to BOTH
