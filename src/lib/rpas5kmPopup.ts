@@ -28,7 +28,7 @@ function pick(props: Record<string, any>, ...keys: string[]): string | null {
 
 export function buildRpas5kmPopupHtml(properties: Record<string, any> | null | undefined): string {
   const props = properties || {};
-  const name = pick(props, "NAVN", "navn", "name", "NAME") || "RPAS 5 km-sone";
+  const name = pick(props, "NAVN", "navn", "name", "NAME") || tp('rpas.fallbackName');
   const icao = pick(props, "ICAO", "icao");
   const ctrTiz = pick(props, "CTR_TIZ", "ctr_tiz");
   const sted = pick(props, "STED", "sted");
