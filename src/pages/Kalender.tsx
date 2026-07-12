@@ -1149,7 +1149,7 @@ export default function Kalender() {
           fetchCustomEvents();
         }}
         onDeleteSuccess={() => {
-          toast.success("Dokument slettet!");
+          toast.success(t('pages.calendar.documentDeleted'));
           setDocumentDetailDialogOpen(false);
           setSelectedDocument(null);
           fetchCustomEvents();
