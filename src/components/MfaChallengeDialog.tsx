@@ -155,7 +155,7 @@ export const MfaChallengeDialog = ({ open, onVerified, onCancel }: MfaChallengeD
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next && !verifying) void handleCancel(); }}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
