@@ -264,8 +264,7 @@ export function AdjacentAreaPanel({
           </div>
         ) : coordinates.length < 2 ? (
           <p className="text-xs text-muted-foreground italic py-2">
-            Planlegg en rute (minst 2 punkter) for å beregne tilstøtende område.
-            Oppdragets start-/lokasjonspunkt teller ikke som rute.
+            {t('adjacentAreaPanel.planRouteHint')}
           </p>
         ) : null}
     </div>
