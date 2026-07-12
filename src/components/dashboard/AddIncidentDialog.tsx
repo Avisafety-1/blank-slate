@@ -343,6 +343,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
     const today = new Date().toISOString().split("T")[0];
     const description = incidentId ? `incident_id:${incidentId}` : undefined;
+    const entryTitle = t('incidents.logbookEntryTitle', { title: incidentTitle });
 
     if (droneId) {
       await supabase.from("drone_log_entries").insert({
@@ -350,7 +351,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         drone_id: droneId,
         entry_date: today,
         entry_type: "hendelse",
-        title: `Hendelse: ${incidentTitle}`,
+        title: entryTitle,
         description,
         user_id: user?.id || null,
       });
@@ -362,7 +363,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         equipment_id: eqId,
         entry_date: today,
         entry_type: "hendelse",
-        title: `Hendelse: ${incidentTitle}`,
+        title: entryTitle,
         description,
         user_id: user?.id || null,
       }));
@@ -399,7 +400,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
         if (uploadError) {
           console.error('Upload error:', uploadError);
-          toast.error("Kunne ikke laste opp bilde");
+          toast.error(t('incidents.toast.imageUploadFailed'));
           setSubmitting(false);
           return;
         }
@@ -447,7 +448,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             user_id: user.id,
             rapportert_av: user.email || 'Ukjent',
           },
-          description: `Hendelse: ${formData.tittel} (offline)`,
+          description: t('incidents.logbookEntryTitle', { title: formData.tittel }) + t('incidents.offlineSuffix'),
         });
 
         toast.success(t('incidents.savedOffline'));
@@ -468,7 +469,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         // Create logbook entries on update too (if resources changed)
         await createLogbookEntries(formData.tittel, incidentToEdit.id);
 
-        toast.success("Hendelse oppdatert!");
+        toast.success(t('incidents.toast.updated'));
       } else {
         // Generer incident_number basert på dato
         const eventDate = new Date(formData.hendelsestidspunkt);
@@ -544,14 +545,14 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           });
         }
 
-        toast.success("Hendelse rapportert!");
+        toast.success(t('incidents.toast.reported'));
       }
       
       onOpenChange(false);
       
     } catch (error: any) {
       console.error('Submit error:', error);
-      toast.error(`Feil ved lagring: ${error.message}`);
+      toast.error(t('incidents.toast.saveError', { msg: error.message }));
     } finally {
       setSubmitting(false);
     }
