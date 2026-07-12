@@ -948,16 +948,17 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   </div>
 
                   <div>
-                    <Label className="text-xs sm:text-sm">Sjekkliste for vedlikehold</Label>
+                    <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.checklistLabel')}</Label>
                     <Select
                       value={formData.sjekkliste_id}
                       onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger className="text-sm">
-                        <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                        <SelectValue placeholder={t('resourceDialogs.equipmentDetail.maintenance.checklistPlaceholder')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                        <SelectItem value="none">{t('resourceDialogs.equipmentDetail.maintenance.noChecklist')}</SelectItem>
+
                         {checklists.map((checklist) => (
                           <SelectItem key={checklist.id} value={checklist.id}>
                             {checklist.tittel}
