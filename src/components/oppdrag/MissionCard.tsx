@@ -114,6 +114,7 @@ export const MissionCard = ({
   hasFh2Connection,
   onSendToFH2,
 }: MissionCardProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { companyId, departmentsEnabled } = useAuth();
   const [has5kmZone, setHas5kmZone] = useState(false);
