@@ -561,20 +561,20 @@ export function PersonCompetencyDialog({
                         </Select>
                       </div>
                       <div>
-                        <Label>Navn</Label>
+                        <Label>{t('resourceDialogs.personCompetency.navn')}</Label>
                         <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
                       </div>
                       <div>
-                        <Label>Beskrivelse</Label>
+                        <Label>{t('resourceDialogs.personCompetency.description')}</Label>
                         <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-xs">Utstedt</Label>
+                          <Label className="text-xs">{t('resourceDialogs.personCompetency.issued')}</Label>
                           <Input type="date" value={editIssueDate} onChange={(e) => setEditIssueDate(e.target.value)} className="h-9" />
                         </div>
                         <div>
-                          <Label className="text-xs">Utløper</Label>
+                          <Label className="text-xs">{t('resourceDialogs.personCompetency.expires')}</Label>
                           <Input type="date" value={editExpiryDate} onChange={(e) => setEditExpiryDate(e.target.value)} className="h-9" />
                         </div>
                       </div>
