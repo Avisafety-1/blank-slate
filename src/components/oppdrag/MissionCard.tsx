@@ -351,7 +351,7 @@ export const MissionCard = ({
         <div className="flex items-start gap-2">
           <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
           <div>
-            <p className="text-muted-foreground">Lokasjon</p>
+            <p className="text-muted-foreground">{t('pages.missions.card.location')}</p>
             <p className="text-foreground">{mission.lokasjon}</p>
             {effectiveLat != null && effectiveLng != null && (
               <p className="text-xs text-muted-foreground">
