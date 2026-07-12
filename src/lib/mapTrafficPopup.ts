@@ -72,7 +72,7 @@ function row(label: string, value: string | number | null | undefined): string {
 }
 
 export function renderTrafficPopup(d: TrafficPopupData): string {
-  const callsign = d.callsign?.trim() || "Ukjent";
+  const callsign = d.callsign?.trim() || tp('unknown');
   const typeLabel = d.beaconType ? formatBeaconType(d.beaconType) : null;
 
   const altM = d.altitudeM != null ? Math.round(d.altitudeM) : null;
@@ -91,30 +91,31 @@ export function renderTrafficPopup(d: TrafficPopupData): string {
   const courseStr = d.courseDeg != null ? `${Math.round(d.courseDeg)}°` : null;
 
   const statusStr = d.onGround === true
-    ? "På bakken"
+    ? tp('onGround')
     : d.onGround === false
-      ? "I luften"
+      ? tp('inAir')
       : null;
 
   let updatedStr: string | null = null;
   if (d.updatedAt) {
     const date = d.updatedAt instanceof Date ? d.updatedAt : new Date(d.updatedAt);
     if (!isNaN(date.getTime())) {
-      updatedStr = date.toLocaleTimeString("no-NO");
+      const loc = (i18n.language || 'no').startsWith('en') ? 'en-US' : 'no-NO';
+      updatedStr = date.toLocaleTimeString(loc);
     }
   }
 
   const rows = [
-    row("Type", typeLabel),
-    row("Modell", d.aircraftModel),
-    row("Registrering", d.registration),
-    row("Høyde", altStr),
-    row("Fart", speedStr),
-    row("Vertikalfart", vsStr),
-    row("Kurs", courseStr),
-    row("Squawk", d.squawk),
-    row("Status", statusStr),
-    row("Oppdatert", updatedStr),
+    row(tp('type'), typeLabel),
+    row(tp('model'), d.aircraftModel),
+    row(tp('registration'), d.registration),
+    row(tp('altitude'), altStr),
+    row(tp('speed'), speedStr),
+    row(tp('verticalSpeed'), vsStr),
+    row(tp('course'), courseStr),
+    row(tp('squawk'), d.squawk),
+    row(tp('status'), statusStr),
+    row(tp('updated'), updatedStr),
   ].filter(Boolean).join("");
 
   return `
@@ -124,7 +125,7 @@ export function renderTrafficPopup(d: TrafficPopupData): string {
       </div>
       ${rows}
       <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:12px;">
-        <span style="color:#6b7280;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Kilde</span>
+        <span style="color:#6b7280;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">${tp('source')}</span>
         <span style="font-size:11px;font-weight:500;color:#374151;">${escapeHtml(formatSource(d.source))}</span>
       </div>
     </div>
