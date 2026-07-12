@@ -323,7 +323,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <div className="flex items-start gap-3">
               <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Tidspunkt</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.missionDetail.time')}</p>
                 <p className="text-base">
                   {format(new Date(currentMission.tidspunkt), "dd. MMMM yyyy, HH:mm", { locale: nb })}
                 </p>
