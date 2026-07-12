@@ -771,7 +771,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                             setFormData({ ...formData, medvirkende_aarsak: next.join(", ") });
                           }}
                         />
-                        {cause.navn}
+                        {translateRootCause(cause.navn)}
                       </label>
                     );
                   })}
@@ -782,7 +782,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               <div className="flex flex-wrap gap-1 mt-1">
                 {formData.medvirkende_aarsak.split(", ").map((cause) => (
                   <span key={cause} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">
-                    {cause}
+                    {translateRootCause(cause)}
                     <button
                       type="button"
                       onClick={() => {
