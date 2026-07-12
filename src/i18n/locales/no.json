@@ -1643,7 +1643,8 @@
         "toSatellite": "Bytt til satellittkart",
         "toTopo": "Bytt til topografisk kart",
         "toStandard": "Bytt til standard kart"
-      }
+      },
+      "yourPosition": "Din posisjon"
     },
     "stats": {
       "back": "Tilbake",

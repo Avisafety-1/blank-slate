@@ -1641,7 +1641,8 @@
         "toSatellite": "Switch to satellite map",
         "toTopo": "Switch to topographic map",
         "toStandard": "Switch to standard map"
-      }
+      },
+      "yourPosition": "Your position"
     },
     "stats": {
       "back": "Back",
