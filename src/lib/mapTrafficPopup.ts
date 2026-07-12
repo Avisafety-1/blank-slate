@@ -1,10 +1,8 @@
 /**
- * Felles popup-renderer for luftrom-trafikk på kartet (SafeSky beacons,
- * AviSafe advisory-flyturer og live DroneTag-telemetri).
- *
- * Mål: alle markører viser samme felter i samme rekkefølge, med en tydelig
- * "Kilde"-rubrikk som forteller hvor data kommer fra.
+ * Felles popup-renderer for luftrom-trafikk på kartet.
  */
+import i18n from '@/i18n';
+const tp = (k: string, opts?: any): string => i18n.t(`pages.map.popups.traffic.${k}`, opts) as string;
 
 export type TrafficSource =
   | { kind: "safesky"; subSource?: string | null } // f.eks. "flarm", "ogn", "adsb"
@@ -28,41 +26,30 @@ export interface TrafficPopupData {
   source: TrafficSource;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  UAV: "Drone",
-  AIRCRAFT: "Fly",
-  LIGHT_AIRCRAFT: "Lett fly",
-  HEAVY_AIRCRAFT: "Tungt fly",
-  HELICOPTER: "Helikopter",
-  GLIDER: "Seilfly",
-  PARAGLIDER: "Paraglider",
-  HANG_GLIDER: "Hangglider",
-  BALLOON: "Ballong",
-  AIRSHIP: "Luftskip",
-  SKYDIVER: "Fallskjermhopper",
-  TOW_PLANE: "Slepefly",
-  DOT: "Ukjent fartøy",
-  UNKNOWN: "Ukjent",
-};
+const TYPE_KEYS = new Set([
+  'UAV','AIRCRAFT','LIGHT_AIRCRAFT','HEAVY_AIRCRAFT','HELICOPTER','GLIDER','PARAGLIDER',
+  'HANG_GLIDER','BALLOON','AIRSHIP','SKYDIVER','TOW_PLANE','DOT','UNKNOWN',
+]);
 
 export function formatBeaconType(t?: string | null): string {
-  if (!t) return "Ukjent";
+  if (!t) return tp('unknown');
   const upper = t.toUpperCase();
-  return TYPE_LABELS[upper] ?? t;
+  if (TYPE_KEYS.has(upper)) return tp(`types.${upper}`);
+  return t;
 }
 
 function formatSource(src: TrafficSource): string {
   switch (src.kind) {
     case "safesky":
-      return src.subSource ? `SafeSky (${src.subSource})` : "SafeSky";
+      return src.subSource ? tp('sources.safeskyWith', { sub: src.subSource }) : tp('sources.safesky');
     case "avisafe-advisory":
-      return "AviSafe → SafeSky";
+      return tp('sources.avisafeAdvisory');
     case "avisafe-dronetag":
-      return "AviSafe (DroneTag)";
+      return tp('sources.avisafeDronetag');
     case "avisafe-flighthub2":
-      return "Live · DJI FlightHub 2";
+      return tp('sources.avisafeFlighthub2');
     case "avisafe":
-      return "AviSafe";
+      return tp('sources.avisafe');
   }
 }
 
@@ -85,7 +72,7 @@ function row(label: string, value: string | number | null | undefined): string {
 }
 
 export function renderTrafficPopup(d: TrafficPopupData): string {
-  const callsign = d.callsign?.trim() || "Ukjent";
+  const callsign = d.callsign?.trim() || tp('unknown');
   const typeLabel = d.beaconType ? formatBeaconType(d.beaconType) : null;
 
   const altM = d.altitudeM != null ? Math.round(d.altitudeM) : null;
@@ -104,30 +91,31 @@ export function renderTrafficPopup(d: TrafficPopupData): string {
   const courseStr = d.courseDeg != null ? `${Math.round(d.courseDeg)}°` : null;
 
   const statusStr = d.onGround === true
-    ? "På bakken"
+    ? tp('onGround')
     : d.onGround === false
-      ? "I luften"
+      ? tp('inAir')
       : null;
 
   let updatedStr: string | null = null;
   if (d.updatedAt) {
     const date = d.updatedAt instanceof Date ? d.updatedAt : new Date(d.updatedAt);
     if (!isNaN(date.getTime())) {
-      updatedStr = date.toLocaleTimeString("no-NO");
+      const loc = (i18n.language || 'no').startsWith('en') ? 'en-US' : 'no-NO';
+      updatedStr = date.toLocaleTimeString(loc);
     }
   }
 
   const rows = [
-    row("Type", typeLabel),
-    row("Modell", d.aircraftModel),
-    row("Registrering", d.registration),
-    row("Høyde", altStr),
-    row("Fart", speedStr),
-    row("Vertikalfart", vsStr),
-    row("Kurs", courseStr),
-    row("Squawk", d.squawk),
-    row("Status", statusStr),
-    row("Oppdatert", updatedStr),
+    row(tp('type'), typeLabel),
+    row(tp('model'), d.aircraftModel),
+    row(tp('registration'), d.registration),
+    row(tp('altitude'), altStr),
+    row(tp('speed'), speedStr),
+    row(tp('verticalSpeed'), vsStr),
+    row(tp('course'), courseStr),
+    row(tp('squawk'), d.squawk),
+    row(tp('status'), statusStr),
+    row(tp('updated'), updatedStr),
   ].filter(Boolean).join("");
 
   return `
@@ -137,7 +125,7 @@ export function renderTrafficPopup(d: TrafficPopupData): string {
       </div>
       ${rows}
       <div style="margin-top:8px;padding-top:6px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:12px;">
-        <span style="color:#6b7280;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Kilde</span>
+        <span style="color:#6b7280;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">${tp('source')}</span>
         <span style="font-size:11px;font-weight:500;color:#374151;">${escapeHtml(formatSource(d.source))}</span>
       </div>
     </div>

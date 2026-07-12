@@ -1,14 +1,8 @@
 /**
  * Bygger HTML for popup som vises når brukeren klikker på en RPAS 5km-sone.
- *
- * Data kommer fra `rpas_5km_zones.properties` som synces fra Avinors
- * "Dronerestriksjonsomraader_gdb" feature service. Inneholder typisk:
- *  - NAVN, ICAO, CTR_TIZ, STED
- *  - TEKST1..TEKST6 — beskrivelse + godkjenningsprosess (NINOX m.m.)
- *  - KONTAKTDETALJER2 — telefon / kontaktinfo
- *
- * Faller tilbake på enklere felter dersom dataen mangler (eldre rader).
  */
+import i18n from '@/i18n';
+const tp = (k: string, opts?: any): string => i18n.t(`pages.map.popups.${k}`, opts) as string;
 
 function escapeHtml(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -34,7 +28,7 @@ function pick(props: Record<string, any>, ...keys: string[]): string | null {
 
 export function buildRpas5kmPopupHtml(properties: Record<string, any> | null | undefined): string {
   const props = properties || {};
-  const name = pick(props, "NAVN", "navn", "name", "NAME") || "RPAS 5 km-sone";
+  const name = pick(props, "NAVN", "navn", "name", "NAME") || tp('rpas.fallbackName');
   const icao = pick(props, "ICAO", "icao");
   const ctrTiz = pick(props, "CTR_TIZ", "ctr_tiz");
   const sted = pick(props, "STED", "sted");
@@ -74,20 +68,19 @@ export function buildRpas5kmPopupHtml(properties: Record<string, any> | null | u
 
   const kontaktHtml = kontakt
     ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #e5e7eb;">
-         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#9a3412;margin-bottom:4px;">Kontakt</div>
+         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#9a3412;margin-bottom:4px;">${tp('rpas.contactTitle')}</div>
          <div style="font-size:12px;line-height:1.4;">${formatText(kontakt)}</div>
        </div>`
     : "";
 
   const fallbackHtml = !textBlocks.length && !kontakt
     ? `<div style="margin-top:6px;font-size:12px;color:#6b7280;">
-         For å fly innenfor 5 km fra lufthavner i Norge må operatøren ta kontakt før flyvning.
-         Bruk <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a> for å sende forespørsel.
+         ${tp('rpas.fallbackInfo')}
        </div>`
     : "";
 
   return `<div style="max-width:320px;max-height:380px;overflow-y:auto;">
-    <div style="font-weight:700;font-size:13px;color:#7c2d12;">RPAS 5 km · ${escapeHtml(name)}</div>
+    <div style="font-weight:700;font-size:13px;color:#7c2d12;">${tp('rpas.titlePrefix')} · ${escapeHtml(name)}</div>
     ${chipHtml}
     ${bodyHtml}
     ${fallbackHtml}

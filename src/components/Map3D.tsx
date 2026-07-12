@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import maplibregl, { Map as MlMap, StyleSpecification, GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Button } from "@/components/ui/button";
@@ -439,6 +440,7 @@ export default function Map3D({
   soraSettings,
   routeUndoToken,
 }: Map3DProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const fetchTimerRef = useRef<number | null>(null);
@@ -1957,12 +1959,12 @@ export default function Map3D({
           className="shadow-lg bg-card hover:bg-accent"
           title={
             base === "satellite"
-              ? "Bytt til topografisk kart"
+              ? t('pages.map.popups.map3d.toTopo')
               : base === "topo"
-              ? "Bytt til standard kart"
-              : "Bytt til satellittkart"
+              ? t('pages.map.popups.map3d.toStandard')
+              : t('pages.map.popups.map3d.toSatellite')
           }
-          aria-label="Bytt grunnkart"
+          aria-label={t('pages.map.popups.map3d.baseAria')}
         >
           {base === "satellite" ? <Mountain className="h-5 w-5" /> : base === "topo" ? <MapIcon className="h-5 w-5" /> : <Satellite className="h-5 w-5" />}
         </Button>

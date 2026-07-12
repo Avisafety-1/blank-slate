@@ -1460,7 +1460,110 @@
       "switchTo3DExperimental": "Bytt til 3D-kart (eksperimentell)",
       "inspectModeActive": "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)",
       "inspectModeTitle": "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)",
-      "planNewRoute": "Planlegg ny rute"
+      "planNewRoute": "Planlegg ny rute",
+      "popups": {
+        "unknown": "Ukjent",
+        "loading": "Laster …",
+        "source": "Kilde",
+        "caa": {
+          "zoneFallback": "⚠️ Sone",
+          "iconLabels": {
+            "fengsler": "🚫 Fengsel",
+            "ambassader": "🚫 Ambassade",
+            "fareomrader": "⚠️ Fareområde",
+            "flyplasser": "✈️ Flyplass",
+            "notam_soner": "⚠️ NOTAM-sone",
+            "restriksjoner": "🚫 Restriksjonsområde"
+          },
+          "height": "Høyde",
+          "heightTerrain": "Høyde: ≈{{min}}–{{max}} m MSL (terreng + 120 m)",
+          "authority": "Myndighet:",
+          "info": "info",
+          "phone": "Tlf",
+          "smallAirportTitle": "✈️ Småflyplass — 5 km sone",
+          "smallAirportContact": "Kontakt flyplassen før flyging — <a href=\"https://myppr.no\" target=\"_blank\" rel=\"noopener noreferrer\">myppr.no</a>"
+        },
+        "dk": {
+          "zoneFallback": "⚠️ DK sone",
+          "iconLabels": {
+            "rod": "🚫 Flyvesikringskritisk",
+            "orange": "⚠️ Opmærksomhedsområde",
+            "bla": "🛡️ Sikringskritisk"
+          },
+          "buffer": "Bufferzone",
+          "sourceLabel": "Kilde: Trafikstyrelsen"
+        },
+        "aip": {
+          "fallbackLabel": "Luftrom",
+          "unknown": "Ukjent",
+          "upperLimit": "Øvre grense",
+          "lowerLimit": "Nedre grense",
+          "upperTerrain": "Øvre grense: ≈{{v}} m MSL (terreng + 120 m)",
+          "lowerTerrain": "Nedre grense: ≈{{v}} m MSL (bakkenivå)",
+          "styles": {
+            "P": "Forbudsområde",
+            "R": "Restriksjonsområde",
+            "D": "Fareområde",
+            "CTR": "CTR (Control Zone)",
+            "TIZ": "TIZ (Traffic Information Zone)",
+            "TMZ": "TMZ (Transponder Mandatory Zone)",
+            "RMZ": "RMZ (Radio Mandatory Zone)",
+            "ATZ": "Småflyplass — 5 km sone"
+          }
+        },
+        "rpas": {
+          "fallbackName": "RPAS 5 km-sone",
+          "titlePrefix": "RPAS 5 km",
+          "contactTitle": "Kontakt",
+          "fallbackInfo": "For å fly innenfor 5 km fra lufthavner i Norge må operatøren ta kontakt før flyvning. Bruk <a href=\"https://myppr.no\" target=\"_blank\" rel=\"noopener noreferrer\">myppr.no</a> for å sende forespørsel."
+        },
+        "traffic": {
+          "unknown": "Ukjent",
+          "type": "Type",
+          "model": "Modell",
+          "registration": "Registrering",
+          "altitude": "Høyde",
+          "speed": "Fart",
+          "verticalSpeed": "Vertikalfart",
+          "course": "Kurs",
+          "squawk": "Squawk",
+          "status": "Status",
+          "updated": "Oppdatert",
+          "onGround": "På bakken",
+          "inAir": "I luften",
+          "source": "Kilde",
+          "types": {
+            "UAV": "Drone",
+            "AIRCRAFT": "Fly",
+            "LIGHT_AIRCRAFT": "Lett fly",
+            "HEAVY_AIRCRAFT": "Tungt fly",
+            "HELICOPTER": "Helikopter",
+            "GLIDER": "Seilfly",
+            "PARAGLIDER": "Paraglider",
+            "HANG_GLIDER": "Hangglider",
+            "BALLOON": "Ballong",
+            "AIRSHIP": "Luftskip",
+            "SKYDIVER": "Fallskjermhopper",
+            "TOW_PLANE": "Slepefly",
+            "DOT": "Ukjent fartøy",
+            "UNKNOWN": "Ukjent"
+          },
+          "sources": {
+            "safesky": "SafeSky",
+            "safeskyWith": "SafeSky ({{sub}})",
+            "avisafeAdvisory": "AviSafe → SafeSky",
+            "avisafeDronetag": "AviSafe (DroneTag)",
+            "avisafeFlighthub2": "Live · DJI FlightHub 2",
+            "avisafe": "AviSafe"
+          }
+        },
+        "map3d": {
+          "toSatellite": "Bytt til satellittkart",
+          "toTopo": "Bytt til topografisk kart",
+          "toStandard": "Bytt til standard kart",
+          "baseAria": "Bytt grunnkart"
+        }
+      }
     },
     "stats": {
       "back": "Tilbake",

@@ -1458,7 +1458,110 @@
       "switchTo3DExperimental": "Switch to 3D map (experimental)",
       "inspectModeActive": "Inspection mode active (click to return to drawing)",
       "inspectModeTitle": "Inspection mode (click geo zones without adding route point)",
-      "planNewRoute": "Plan new route"
+      "planNewRoute": "Plan new route",
+      "popups": {
+        "unknown": "Unknown",
+        "loading": "Loading …",
+        "source": "Source",
+        "caa": {
+          "zoneFallback": "⚠️ Zone",
+          "iconLabels": {
+            "fengsler": "🚫 Prison",
+            "ambassader": "🚫 Embassy",
+            "fareomrader": "⚠️ Danger area",
+            "flyplasser": "✈️ Airport",
+            "notam_soner": "⚠️ NOTAM zone",
+            "restriksjoner": "🚫 Restricted area"
+          },
+          "height": "Altitude",
+          "heightTerrain": "Altitude: ≈{{min}}–{{max}} m MSL (terrain + 120 m)",
+          "authority": "Authority:",
+          "info": "info",
+          "phone": "Phone",
+          "smallAirportTitle": "✈️ Small airport — 5 km zone",
+          "smallAirportContact": "Contact the airport before flying — <a href=\"https://myppr.no\" target=\"_blank\" rel=\"noopener noreferrer\">myppr.no</a>"
+        },
+        "dk": {
+          "zoneFallback": "⚠️ DK zone",
+          "iconLabels": {
+            "rod": "🚫 Aviation-safety critical",
+            "orange": "⚠️ Attention area",
+            "bla": "🛡️ Security critical"
+          },
+          "buffer": "Buffer zone",
+          "sourceLabel": "Source: Trafikstyrelsen"
+        },
+        "aip": {
+          "fallbackLabel": "Airspace",
+          "unknown": "Unknown",
+          "upperLimit": "Upper limit",
+          "lowerLimit": "Lower limit",
+          "upperTerrain": "Upper limit: ≈{{v}} m MSL (terrain + 120 m)",
+          "lowerTerrain": "Lower limit: ≈{{v}} m MSL (ground level)",
+          "styles": {
+            "P": "Prohibited area",
+            "R": "Restricted area",
+            "D": "Danger area",
+            "CTR": "CTR (Control Zone)",
+            "TIZ": "TIZ (Traffic Information Zone)",
+            "TMZ": "TMZ (Transponder Mandatory Zone)",
+            "RMZ": "RMZ (Radio Mandatory Zone)",
+            "ATZ": "Small airport — 5 km zone"
+          }
+        },
+        "rpas": {
+          "fallbackName": "RPAS 5 km zone",
+          "titlePrefix": "RPAS 5 km",
+          "contactTitle": "Contact",
+          "fallbackInfo": "To fly within 5 km of airports in Norway, the operator must make contact before flight. Use <a href=\"https://myppr.no\" target=\"_blank\" rel=\"noopener noreferrer\">myppr.no</a> to send a request."
+        },
+        "traffic": {
+          "unknown": "Unknown",
+          "type": "Type",
+          "model": "Model",
+          "registration": "Registration",
+          "altitude": "Altitude",
+          "speed": "Speed",
+          "verticalSpeed": "Vertical speed",
+          "course": "Course",
+          "squawk": "Squawk",
+          "status": "Status",
+          "updated": "Updated",
+          "onGround": "On ground",
+          "inAir": "Airborne",
+          "source": "Source",
+          "types": {
+            "UAV": "Drone",
+            "AIRCRAFT": "Aircraft",
+            "LIGHT_AIRCRAFT": "Light aircraft",
+            "HEAVY_AIRCRAFT": "Heavy aircraft",
+            "HELICOPTER": "Helicopter",
+            "GLIDER": "Glider",
+            "PARAGLIDER": "Paraglider",
+            "HANG_GLIDER": "Hang glider",
+            "BALLOON": "Balloon",
+            "AIRSHIP": "Airship",
+            "SKYDIVER": "Skydiver",
+            "TOW_PLANE": "Tow plane",
+            "DOT": "Unknown vehicle",
+            "UNKNOWN": "Unknown"
+          },
+          "sources": {
+            "safesky": "SafeSky",
+            "safeskyWith": "SafeSky ({{sub}})",
+            "avisafeAdvisory": "AviSafe → SafeSky",
+            "avisafeDronetag": "AviSafe (DroneTag)",
+            "avisafeFlighthub2": "Live · DJI FlightHub 2",
+            "avisafe": "AviSafe"
+          }
+        },
+        "map3d": {
+          "toSatellite": "Switch to satellite map",
+          "toTopo": "Switch to topographic map",
+          "toStandard": "Switch to standard map",
+          "baseAria": "Change base map"
+        }
+      }
     },
     "stats": {
       "back": "Back",
