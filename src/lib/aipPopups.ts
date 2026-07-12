@@ -76,19 +76,19 @@ export function parseAipLimitToMeters(raw: string | number | null | undefined): 
 
 export function buildAipZonePopupHtml(zone: any): string {
   const t = String(zone?.zone_type ?? '').toUpperCase();
-  const style = AIP_ZONE_STYLES[t] || { color: '#dc2626', label: t || 'Luftrom', fillOpacity: 0.2 };
-  const displayName = zone?.name || zone?.zone_id || 'Ukjent';
+  const style = AIP_ZONE_STYLES[t] || { color: '#dc2626', label: t || tp('aip.fallbackLabel'), fillOpacity: 0.2 };
+  const displayName = zone?.name || zone?.zone_id || tp('aip.unknown');
   let html = `<strong>${esc(style.label)}</strong><br/>`;
   html += `<strong>${esc(displayName)}</strong><br/>`;
   if (zone?.upper_limit) {
-    html += `Øvre grense: ${esc(zone.upper_limit)}<br/>`;
+    html += `${tp('aip.upperLimit')}: ${esc(zone.upper_limit)}<br/>`;
   } else if (zone?.terrain_max_m != null) {
-    html += `Øvre grense: ≈${Math.round(zone.terrain_max_m + 120)} m MSL (terreng + 120 m)<br/>`;
+    html += `${tp('aip.upperTerrain', { v: Math.round(zone.terrain_max_m + 120) })}<br/>`;
   }
   if (zone?.lower_limit) {
-    html += `Nedre grense: ${esc(zone.lower_limit)}<br/>`;
+    html += `${tp('aip.lowerLimit')}: ${esc(zone.lower_limit)}<br/>`;
   } else if (zone?.terrain_min_m != null) {
-    html += `Nedre grense: ≈${Math.round(zone.terrain_min_m)} m MSL (bakkenivå)<br/>`;
+    html += `${tp('aip.lowerTerrain', { v: Math.round(zone.terrain_min_m) })}<br/>`;
   }
   if (zone?.remarks) {
     html += `<div style="font-size:11px;margin-top:4px;color:#666;">${esc(zone.remarks)}</div>`;
