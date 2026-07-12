@@ -101,6 +101,7 @@ const MobileCompanyCard = ({
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
