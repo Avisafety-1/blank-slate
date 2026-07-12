@@ -1780,7 +1780,7 @@ export function OpenAIPMap({
       icon: pilotIcon, draggable: mode === 'routePlanning', pane: 'routePane',
     });
     
-    marker.bindPopup(`<div><strong>👤 Pilotposisjon</strong><br/><span style="font-size: 11px; color: #666;">Dra for å flytte</span><br/><span style="font-size: 12px;">VLOS-radius: ${VLOS_RADIUS}m</span>${alosLine}</div>`);
+    marker.bindPopup(`<div><strong>${t('pages.map.pilotPopup.title')}</strong><br/><span style="font-size: 11px; color: #666;">${t('pages.map.pilotPopup.dragToMove')}</span><br/><span style="font-size: 12px;">${t('pages.map.pilotPopup.vlosRadius', { r: VLOS_RADIUS })}</span>${alosLine}</div>`);
     
     if (mode === 'routePlanning') {
       marker.on('dragend', (e: any) => {
