@@ -280,11 +280,11 @@ export const MissionCard = ({
           <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
             <DropdownMenuItem onClick={() => onEdit(mission)}>
               <Edit className="h-4 w-4 mr-2" />
-              Rediger
+              {t('pages.missions.card.edit')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onNewRiskAssessment(mission)}>
               <ShieldCheck className="h-4 w-4 mr-2" />
-              Ny risikovurdering
+              {t('pages.missions.card.newRiskAssessment')}
             </DropdownMenuItem>
             {onNotam && (
               <DropdownMenuItem onClick={() => onNotam(mission)}>
@@ -294,41 +294,41 @@ export const MissionCard = ({
             )}
             <DropdownMenuItem onClick={() => onChecklistPicker(mission)}>
               <ClipboardCheck className="h-4 w-4 mr-2" />
-              Tilknytt sjekkliste
+              {t('pages.missions.card.attachChecklist')}
             </DropdownMenuItem>
             {showApproval && canSubmitForApproval(mission.approval_status) && (
               <DropdownMenuItem onClick={() => setApprovalConfirmOpen(true)}>
                 <Send className="h-4 w-4 mr-2" />
-                Send til godkjenning
+                {t('pages.missions.card.sendForApproval')}
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onExportPdf(mission)}>
               <Download className="h-4 w-4 mr-2" />
-              Eksporter PDF
+              {t('pages.missions.card.exportPdf')}
             </DropdownMenuItem>
             {(mission.route as { coordinates?: any[] } | null)?.coordinates?.length > 0 && (
               <>
                 <DropdownMenuItem onClick={() => onExportKmz(mission)}>
                   <Navigation className="h-4 w-4 mr-2" />
-                  Eksporter KMZ
+                  {t('pages.missions.card.exportKmz')}
                 </DropdownMenuItem>
                 {hasFh2Connection && onSendToFH2 && (
                   <DropdownMenuItem onClick={() => onSendToFH2(mission)}>
                     <Upload className="h-4 w-4 mr-2" />
-                    Send til FlightHub 2
+                    {t('pages.missions.card.sendToFlightHub2')}
                   </DropdownMenuItem>
                 )}
               </>
             )}
             <DropdownMenuItem onClick={() => onImportKml(mission.id)} disabled={importingKml}>
               <Upload className="h-4 w-4 mr-2" />
-              {importingKml && kmlImportMissionId === mission.id ? 'Importerer…' : 'Importer KML/KMZ'}
+              {importingKml && kmlImportMissionId === mission.id ? t('pages.missions.card.importing') : t('pages.missions.card.importKmlKmz')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onReportIncident(mission)}>
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Rapporter hendelse
+              {t('pages.missions.card.reportIncident')}
             </DropdownMenuItem>
             {isAdmin && (
               <>
@@ -338,7 +338,7 @@ export const MissionCard = ({
                   className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Slett
+                  {t('pages.missions.card.delete')}
                 </DropdownMenuItem>
               </>
             )}
