@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import {
   OUTDOOR_ASSEMBLIES_LABELS,
   POPULATION_DENSITY_LABELS,
@@ -30,6 +31,7 @@ export const hasSoraRouteDocumentation = (route: any) =>
   !!route?.soraSettings?.enabled || !!route?.adjacentAreaDocumentation?.enabled;
 
 export const MissionSoraRouteDocumentation = ({ route, compact = false, className }: MissionSoraRouteDocumentationProps) => {
+  const { t } = useTranslation();
   const sora = route?.soraSettings;
   const adjacent = route?.adjacentAreaDocumentation;
 
@@ -39,33 +41,33 @@ export const MissionSoraRouteDocumentation = ({ route, compact = false, classNam
 
   if (sora?.enabled) {
     rows.push(
-      { section: "SORA volum", label: "Flight Geography", value: fmt(sora.flightGeographyDistance, 0, " m") },
-      { label: "Contingency buffer", value: fmt(sora.contingencyDistance, 0, " m") },
-      { label: "Contingency høyde", value: fmt(sora.contingencyHeight, 0, " m") },
-      { label: "Ground Risk Buffer", value: fmt(sora.groundRiskDistance, 0, " m") },
-      { label: "Flyhøyde", value: fmt(sora.flightAltitude, 0, " m AGL") },
-      { label: "Buffermodus", value: sora.bufferMode === "convexHull" ? "Konveks" : "Rute-korridor" },
-      { label: "Drone", value: sora.droneName || (sora.droneId ? "Valgt i ruteplanlegger" : "Ikke valgt") },
-      { label: "CD", value: fmt(sora.characteristicDimensionM, 2, " m") },
-      { label: "V0 / bakkehastighet", value: fmt(sora.groundSpeedMps, 1, " m/s") },
+      { section: t("sora.routeDocumentation.sectionSora"), label: t("sora.routeDocumentation.flightGeography"), value: fmt(sora.flightGeographyDistance, 0, " m") },
+      { label: t("sora.routeDocumentation.contingencyBuffer"), value: fmt(sora.contingencyDistance, 0, " m") },
+      { label: t("sora.routeDocumentation.contingencyHeight"), value: fmt(sora.contingencyHeight, 0, " m") },
+      { label: t("sora.routeDocumentation.groundRiskBuffer"), value: fmt(sora.groundRiskDistance, 0, " m") },
+      { label: t("sora.routeDocumentation.flightAltitude"), value: fmt(sora.flightAltitude, 0, " m AGL") },
+      { label: t("sora.routeDocumentation.bufferMode"), value: sora.bufferMode === "convexHull" ? t("sora.routeDocumentation.bufferModeConvex") : t("sora.routeDocumentation.bufferModeCorridor") },
+      { label: t("sora.routeDocumentation.drone"), value: sora.droneName || (sora.droneId ? t("sora.routeDocumentation.droneSelectedInPlanner") : t("sora.routeDocumentation.droneNotSelected")) },
+      { label: t("sora.routeDocumentation.cd"), value: fmt(sora.characteristicDimensionM, 2, " m") },
+      { label: t("sora.routeDocumentation.v0"), value: fmt(sora.groundSpeedMps, 1, " m/s") },
     );
   }
 
   if (adjacent?.enabled) {
     rows.push(
-      { section: "Tilstøtende områder", label: "Tilstøtende radius", value: fmt((adjacent.adjacentRadiusM ?? 0) / 1000, 1, " km") },
-      { label: "Areal", value: fmt(adjacent.adjacentAreaKm2, 1, " km²") },
-      { label: "Innbyggere funnet", value: fmt(adjacent.totalPopulation, 0) },
-      { label: "Gj.snitt tetthet", value: fmt(adjacent.avgDensity, 1, " pers/km²") },
-      { label: "Datagrunnlag", value: adjacent.dataSource || (adjacent.gridResolutionM ? `SSB ${adjacent.gridResolutionM} m` : "SSB 250 m") },
-      { label: "Beregning", value: adjacent.calculation || adjacent.method || "-" },
-      { label: "Grense/kategori", value: POPULATION_DENSITY_LABELS[adjacent.populationDensityCategory as keyof typeof POPULATION_DENSITY_LABELS] ?? adjacent.populationDensityCategory ?? "-" },
-      { label: "UA Size", value: UA_SIZE_LABELS[adjacent.uaSize as keyof typeof UA_SIZE_LABELS] ?? adjacent.uaSize ?? "-" },
-      { label: "SAIL", value: adjacent.sail ? `SAIL ${adjacent.sail}` : "-" },
-      { label: "Outdoor assemblies", value: OUTDOOR_ASSEMBLIES_LABELS[adjacent.outdoorAssemblies as keyof typeof OUTDOOR_ASSEMBLIES_LABELS] ?? adjacent.outdoorAssemblies ?? "-" },
-      { label: "Required containment", value: adjacent.requiredContainment ?? "-" },
-      { label: "Resultat", value: adjacent.statusText || (adjacent.pass ? "Innenfor beregningsgrunnlaget" : "Krever nærmere vurdering") },
-      { label: "Beregnet", value: fmtDate(adjacent.calculatedAt) },
+      { section: t("sora.routeDocumentation.sectionAdjacent"), label: t("sora.routeDocumentation.adjacentRadius"), value: fmt((adjacent.adjacentRadiusM ?? 0) / 1000, 1, " km") },
+      { label: t("sora.routeDocumentation.area"), value: fmt(adjacent.adjacentAreaKm2, 1, " km²") },
+      { label: t("sora.routeDocumentation.populationFound"), value: fmt(adjacent.totalPopulation, 0) },
+      { label: t("sora.routeDocumentation.avgDensity"), value: fmt(adjacent.avgDensity, 1, " pers/km²") },
+      { label: t("sora.routeDocumentation.dataSource"), value: adjacent.dataSource || (adjacent.gridResolutionM ? `SSB ${adjacent.gridResolutionM} m` : t("sora.routeDocumentation.dataSourceDefault")) },
+      { label: t("sora.routeDocumentation.calculation"), value: adjacent.calculation || adjacent.method || "-" },
+      { label: t("sora.routeDocumentation.densityCategory"), value: POPULATION_DENSITY_LABELS[adjacent.populationDensityCategory as keyof typeof POPULATION_DENSITY_LABELS] ?? adjacent.populationDensityCategory ?? "-" },
+      { label: t("sora.routeDocumentation.uaSize"), value: UA_SIZE_LABELS[adjacent.uaSize as keyof typeof UA_SIZE_LABELS] ?? adjacent.uaSize ?? "-" },
+      { label: t("sora.routeDocumentation.sail"), value: adjacent.sail ? `SAIL ${adjacent.sail}` : "-" },
+      { label: t("sora.routeDocumentation.outdoorAssemblies"), value: OUTDOOR_ASSEMBLIES_LABELS[adjacent.outdoorAssemblies as keyof typeof OUTDOOR_ASSEMBLIES_LABELS] ?? adjacent.outdoorAssemblies ?? "-" },
+      { label: t("sora.routeDocumentation.requiredContainment"), value: adjacent.requiredContainment ?? "-" },
+      { label: t("sora.routeDocumentation.result"), value: adjacent.statusText || (adjacent.pass ? t("sora.routeDocumentation.resultPass") : t("sora.routeDocumentation.resultFail")) },
+      { label: t("sora.routeDocumentation.calculatedAt"), value: fmtDate(adjacent.calculatedAt) },
     );
   }
 
@@ -78,7 +80,7 @@ export const MissionSoraRouteDocumentation = ({ route, compact = false, classNam
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <span>SORA buffer og tilstøtende områder</span>
+        <span>{t("sora.routeDocumentation.collapseTitle")}</span>
         <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent onClick={(e) => e.stopPropagation()}>

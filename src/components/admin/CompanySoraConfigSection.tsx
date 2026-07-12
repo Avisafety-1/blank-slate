@@ -40,6 +40,7 @@ import {
   Sunrise,
   Lock,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Document {
   id: string;
@@ -93,6 +94,7 @@ const DEFAULT_CONFIG: SoraConfig = {
 };
 
 export const CompanySoraConfigSection = () => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [config, setConfig] = useState<SoraConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
@@ -185,7 +187,7 @@ export const CompanySoraConfigSection = () => {
           .select("navn, propagate_sora_config, propagate_sora_approval")
           .eq("id", parentId)
           .maybeSingle();
-        setParentName(parentCompany?.navn || "Morselskap");
+        setParentName(parentCompany?.navn || t("sora.companyConfig.parentCompanyFallback"));
         if (parentCompany?.propagate_sora_config) {
           setLockedByParent(true);
         }
@@ -257,12 +259,12 @@ export const CompanySoraConfigSection = () => {
         .delete()
         .eq("company_id", companyId);
       if (error) throw error;
-      toast.success("Tilbakestilt til morselskapets innstillinger");
+      toast.success(t("sora.companyConfig.toastResetSuccess"));
       await fetchConfig();
       await fetchDocuments();
     } catch (error) {
       console.error("Error resetting config:", error);
-      toast.error("Kunne ikke tilbakestille");
+      toast.error(t("sora.companyConfig.toastResetError"));
     } finally {
       setResetting(false);
     }
@@ -344,10 +346,10 @@ export const CompanySoraConfigSection = () => {
         );
 
       if (error) throw error;
-      toast.success("SORA-innstillinger lagret");
+      toast.success(t("sora.companyConfig.toastSaveSuccess"));
     } catch (error) {
       console.error("Error saving SORA config:", error);
-      toast.error("Kunne ikke lagre innstillinger");
+      toast.error(t("sora.companyConfig.toastSaveError"));
     } finally {
       setSaving(false);
     }
@@ -374,16 +376,16 @@ export const CompanySoraConfigSection = () => {
 
   const getCategoryLabel = (kategori: string) => {
     const labels: Record<string, string> = {
-      operasjonsmanual: "Operasjonsmanual",
-      sikkerhet: "Sikkerhet",
-      vedlikehold: "Vedlikehold",
-      sertifikater: "Sertifikater",
-      forsikring: "Forsikring",
-      kontrakter: "Kontrakter",
-      prosedyrer: "Prosedyrer",
-      sjekklister: "Sjekklister",
-      rapporter: "Rapporter",
-      annet: "Annet",
+      operasjonsmanual: t("sora.companyConfig.categoryOperasjonsmanual"),
+      sikkerhet: t("sora.companyConfig.categorySikkerhet"),
+      vedlikehold: t("sora.companyConfig.categoryVedlikehold"),
+      sertifikater: t("sora.companyConfig.categorySertifikater"),
+      forsikring: t("sora.companyConfig.categoryForsikring"),
+      kontrakter: t("sora.companyConfig.categoryKontrakter"),
+      prosedyrer: t("sora.companyConfig.categoryProsedyrer"),
+      sjekklister: t("sora.companyConfig.categorySjekklister"),
+      rapporter: t("sora.companyConfig.categoryRapporter"),
+      annet: t("sora.companyConfig.categoryAnnet"),
     };
     return labels[kategori] || kategori;
   };
@@ -403,9 +405,9 @@ export const CompanySoraConfigSection = () => {
         <div className="flex items-center gap-3 p-4 rounded-lg border border-primary/40 bg-primary/5">
           <Lock className="h-5 w-5 text-primary flex-shrink-0" />
           <div>
-            <p className="text-sm font-medium">🔒 SORA-innstillingene styres av {parentName}</p>
+            <p className="text-sm font-medium">{t("sora.companyConfig.lockedByParentTitle", { parent: parentName })}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Kontakt morselskapets administrator for å endre disse innstillingene.
+              {t("sora.companyConfig.lockedByParentDesc")}
             </p>
           </div>
         </div>
@@ -416,9 +418,9 @@ export const CompanySoraConfigSection = () => {
         <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
           <Building2 className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium">Arvet fra {parentName}</p>
+            <p className="text-sm font-medium">{t("sora.companyConfig.inheritedTitle", { parent: parentName })}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Disse innstillingene er arvet fra morselskapet. Endringer du gjør her lagres som egne innstillinger for denne avdelingen.
+              {t("sora.companyConfig.inheritedDesc")}
             </p>
           </div>
         </div>
@@ -429,9 +431,9 @@ export const CompanySoraConfigSection = () => {
         <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
           <Info className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium">Egne SORA-innstillinger</p>
+            <p className="text-sm font-medium">{t("sora.companyConfig.ownConfigTitle")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Denne avdelingen har egne innstillinger som overstyrer morselskapet.
+              {t("sora.companyConfig.ownConfigDesc")}
             </p>
           </div>
           <Button
@@ -442,7 +444,7 @@ export const CompanySoraConfigSection = () => {
             className="flex-shrink-0"
           >
             {resetting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-            Tilbakestill til morselskap
+            {t("sora.companyConfig.resetToParentButton")}
           </Button>
         </div>
       )}
@@ -452,9 +454,9 @@ export const CompanySoraConfigSection = () => {
         <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
           <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-sm font-medium">Selskapsspesifikke SORA-innstillinger</p>
+            <p className="text-sm font-medium">{t("sora.companyConfig.headerTitle")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Disse innstillingene overstyrer systemets standardverdier og sendes automatisk til AI-risikovurderingen for alle oppdrag i selskapet. Hardstop-grenser er absolutte og vil alltid utløse NO-GO uavhengig av andre scores.
+              {t("sora.companyConfig.headerDesc")}
             </p>
           </div>
         </div>
@@ -470,10 +472,10 @@ export const CompanySoraConfigSection = () => {
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
                     <UserCheck className="h-4 w-4 text-primary" />
-                    Godkjenning basert på SORA
+                    {t("sora.companyConfig.approvalCardTitle")}
                   </CardTitle>
                   <CardDescription className="text-xs mt-1">
-                    Automatisk godkjenning av oppdrag basert på AI SORA-resultater
+                    {t("sora.companyConfig.approvalCardDesc")}
                   </CardDescription>
                 </div>
                 <ChevronDown
@@ -488,9 +490,9 @@ export const CompanySoraConfigSection = () => {
                 <div className="flex items-start gap-3 p-3 rounded-lg border border-primary/40 bg-primary/5">
                   <Lock className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Arvet fra {parentName} — kun lesetilgang</p>
+                    <p className="text-sm font-medium">{t("sora.companyConfig.approvalLockedTitle", { parent: parentName })}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      «Godkjenning basert på SORA» og tilhørende terskler styres av morselskapet.
+                      {t("sora.companyConfig.approvalLockedDesc")}
                     </p>
                   </div>
                 </div>
@@ -500,9 +502,9 @@ export const CompanySoraConfigSection = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div>
-                    <p className="text-sm font-medium">Godkjenning av oppdrag basert på SORA</p>
+                    <p className="text-sm font-medium">{t("sora.companyConfig.approvalToggleLabel")}</p>
                     <p className="text-xs text-muted-foreground">
-                      Når aktivert vil oppdrag automatisk godkjennes hvis AI SORA-score er over terskelen og ingen hardstop er utløst
+                      {t("sora.companyConfig.approvalToggleDesc")}
                     </p>
                   </div>
                 </div>
@@ -533,10 +535,10 @@ export const CompanySoraConfigSection = () => {
                         invalidateCompanySettingsCache();
                       }
 
-                      toast.success(v ? "SORA-basert godkjenning aktivert" : "SORA-basert godkjenning deaktivert");
+                      toast.success(v ? t("sora.companyConfig.toastApprovalEnabled") : t("sora.companyConfig.toastApprovalDisabled"));
                     } catch (err) {
                       console.error("Error saving sora_based_approval:", err);
-                      toast.error("Kunne ikke lagre innstillingen");
+                      toast.error(t("sora.companyConfig.toastApprovalSaveError"));
                       setConfig((p) => ({ ...p, sora_based_approval: !v }));
                       if (companyId) {
                         syncSoraApprovalEnabled(companyId, !v);
@@ -552,9 +554,9 @@ export const CompanySoraConfigSection = () => {
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-sm font-medium">Gjelder for alle underavdelinger</p>
+                      <p className="text-sm font-medium">{t("sora.companyConfig.propagateApprovalLabel")}</p>
                       <p className="text-xs text-muted-foreground">
-                        Avdelingene arver «Godkjenning basert på SORA», terskel og hardstop-innstilling fra dette selskapet
+                        {t("sora.companyConfig.propagateApprovalDesc")}
                       </p>
                     </div>
                   </div>
@@ -572,10 +574,10 @@ export const CompanySoraConfigSection = () => {
                           .update({ propagate_sora_approval: v })
                           .eq("id", companyId);
                         if (error) throw error;
-                        toast.success(v ? "Propagering aktivert" : "Propagering deaktivert");
+                        toast.success(v ? t("sora.companyConfig.toastPropagateOn") : t("sora.companyConfig.toastPropagateOff"));
                       } catch (err) {
                         console.error("Error saving propagate_sora_approval:", err);
-                        toast.error("Kunne ikke lagre propagering");
+                        toast.error(t("sora.companyConfig.toastPropagateSaveError"));
                         setPropagateApproval(prev);
                       } finally {
                         setSavingPropagateApproval(false);
@@ -591,7 +593,7 @@ export const CompanySoraConfigSection = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium">
-                        AI SORA-terskel for automatisk godkjenning
+                        {t("sora.companyConfig.thresholdLabel")}
                       </Label>
                       <Badge variant="outline" className="text-sm font-mono">
                         {config.sora_approval_threshold.toFixed(1)}
@@ -608,11 +610,11 @@ export const CompanySoraConfigSection = () => {
                       className="w-full"
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>0 — Alltid godkjenning</span>
-                      <span>10 — Krever perfekt score</span>
+                      <span>{t("sora.companyConfig.thresholdMinLabel")}</span>
+                      <span>{t("sora.companyConfig.thresholdMaxLabel")}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Oppdrag med AI-score ≥ {config.sora_approval_threshold.toFixed(1)} godkjennes automatisk. Lavere score krever manuell godkjenning.
+                      {t("sora.companyConfig.thresholdHint", { threshold: config.sora_approval_threshold.toFixed(1) })}
                     </p>
                   </div>
 
@@ -621,9 +623,9 @@ export const CompanySoraConfigSection = () => {
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-destructive" />
                       <div>
-                        <p className="text-sm font-medium">Krev godkjenning ved hardstop</p>
+                        <p className="text-sm font-medium">{t("sora.companyConfig.hardstopApprovalLabel")}</p>
                         <p className="text-xs text-muted-foreground">
-                          Uansett score — hvis en hardstop utløses kreves alltid manuell godkjenning
+                          {t("sora.companyConfig.hardstopApprovalDesc")}
                         </p>
                       </div>
                     </div>
@@ -651,10 +653,10 @@ export const CompanySoraConfigSection = () => {
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-destructive" />
-                    Hardstop-grenser
+                    {t("sora.companyConfig.hardstopCardTitle")}
                   </CardTitle>
                   <CardDescription className="text-xs mt-1">
-                    Absolutte terskler som alltid utløser NO-GO — overstyrer alle andre scores
+                    {t("sora.companyConfig.hardstopCardDesc")}
                   </CardDescription>
                 </div>
                 <ChevronDown
@@ -670,7 +672,7 @@ export const CompanySoraConfigSection = () => {
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2 text-sm font-medium">
                     <Wind className="h-4 w-4 text-blue-500" />
-                    Maks vindstyrke (middelvind)
+                    {t("sora.companyConfig.maxWindLabel")}
                   </Label>
                   <div className="flex items-center gap-2">
                     <Input
@@ -696,7 +698,7 @@ export const CompanySoraConfigSection = () => {
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>1 m/s</span>
-                  <span className="text-xs text-muted-foreground">Standard: 10 m/s</span>
+                  <span className="text-xs text-muted-foreground">{t("sora.companyConfig.maxWindStandard")}</span>
                   <span>30 m/s</span>
                 </div>
               </div>
@@ -706,7 +708,7 @@ export const CompanySoraConfigSection = () => {
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2 text-sm font-medium">
                     <Wind className="h-4 w-4 text-cyan-500" />
-                    Maks vindkast
+                    {t("sora.companyConfig.maxGustLabel")}
                   </Label>
                   <div className="flex items-center gap-2">
                     <Input
@@ -732,7 +734,7 @@ export const CompanySoraConfigSection = () => {
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>1 m/s</span>
-                  <span>Standard: 15 m/s</span>
+                  <span>{t("sora.companyConfig.maxGustStandard")}</span>
                   <span>40 m/s</span>
                 </div>
               </div>
@@ -741,7 +743,7 @@ export const CompanySoraConfigSection = () => {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <Eye className="h-4 w-4 text-green-500" />
-                  Minimum sikt (km)
+                  {t("sora.companyConfig.minVisibilityLabel")}
                 </Label>
                 <div className="flex items-center gap-3">
                   <Input
@@ -755,7 +757,7 @@ export const CompanySoraConfigSection = () => {
                     max={20}
                     step={0.1}
                   />
-                  <span className="text-sm text-muted-foreground">km sikt (standard: 1 km)</span>
+                  <span className="text-sm text-muted-foreground">{t("sora.companyConfig.minVisibilityHint")}</span>
                 </div>
               </div>
 
@@ -763,7 +765,7 @@ export const CompanySoraConfigSection = () => {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <Mountain className="h-4 w-4 text-orange-500" />
-                  Maks flyhøyde
+                  {t("sora.companyConfig.maxAltitudeLabel")}
                 </Label>
                 <div className="flex items-center gap-3">
                   <Input
@@ -777,7 +779,7 @@ export const CompanySoraConfigSection = () => {
                     max={500}
                     step={10}
                   />
-                  <span className="text-sm text-muted-foreground">meter AGL (standard: 120 m)</span>
+                  <span className="text-sm text-muted-foreground">{t("sora.companyConfig.maxAltitudeHint")}</span>
                 </div>
               </div>
 
@@ -787,8 +789,8 @@ export const CompanySoraConfigSection = () => {
                   <div className="flex items-center gap-2">
                     <BatteryCharging className="h-4 w-4 text-yellow-500" />
                     <div>
-                      <p className="text-sm font-medium">Krev reservebatteri</p>
-                      <p className="text-xs text-muted-foreground">Oppdrag krever alltid reservebatteri om bord</p>
+                      <p className="text-sm font-medium">{t("sora.companyConfig.backupBatteryLabel")}</p>
+                      <p className="text-xs text-muted-foreground">{t("sora.companyConfig.backupBatteryDesc")}</p>
                     </div>
                   </div>
                   <Switch
@@ -802,8 +804,8 @@ export const CompanySoraConfigSection = () => {
                   <div className="flex items-center gap-2">
                     <UserCheck className="h-4 w-4 text-purple-500" />
                     <div>
-                      <p className="text-sm font-medium">Krev observatør</p>
-                      <p className="text-xs text-muted-foreground">Alle oppdrag krever dedikert observatør</p>
+                      <p className="text-sm font-medium">{t("sora.companyConfig.observerLabel")}</p>
+                      <p className="text-xs text-muted-foreground">{t("sora.companyConfig.observerDesc")}</p>
                     </div>
                   </div>
                   <Switch
@@ -817,8 +819,8 @@ export const CompanySoraConfigSection = () => {
                   <div className="flex items-center gap-2">
                     <Plane className="h-4 w-4 text-primary" />
                     <div>
-                      <p className="text-sm font-medium">Tillat BVLOS</p>
-                      <p className="text-xs text-muted-foreground">Flyging utenfor visuell rekkevidde er tillatt. Hvis av → HARD STOP ved BVLOS-oppdrag</p>
+                      <p className="text-sm font-medium">{t("sora.companyConfig.bvlosLabel")}</p>
+                      <p className="text-xs text-muted-foreground">{t("sora.companyConfig.bvlosDesc")}</p>
                     </div>
                   </div>
                   <Switch
@@ -832,8 +834,8 @@ export const CompanySoraConfigSection = () => {
                   <div className="flex items-center gap-2">
                     <Moon className="h-4 w-4 text-indigo-500" />
                     <div>
-                      <p className="text-sm font-medium">Tillat nattflyging</p>
-                      <p className="text-xs text-muted-foreground">Flyging i mørket er tillatt. Hvis av → HARD STOP ved nattoppdrag</p>
+                      <p className="text-sm font-medium">{t("sora.companyConfig.nightFlightLabel")}</p>
+                      <p className="text-xs text-muted-foreground">{t("sora.companyConfig.nightFlightDesc")}</p>
                     </div>
                   </div>
                   <Switch
@@ -847,8 +849,8 @@ export const CompanySoraConfigSection = () => {
                   <div className="flex items-center gap-2">
                     <Sunrise className="h-4 w-4 text-amber-500" />
                     <div>
-                      <p className="text-sm font-medium">Krev sivil skumring</p>
-                      <p className="text-xs text-muted-foreground">Oppdrag må gjennomføres innenfor sivil skumring (dawn–dusk). HARD STOP hvis utenfor.</p>
+                      <p className="text-sm font-medium">{t("sora.companyConfig.civilTwilightLabel")}</p>
+                      <p className="text-xs text-muted-foreground">{t("sora.companyConfig.civilTwilightDesc")}</p>
                     </div>
                   </div>
                   <Switch
@@ -864,11 +866,11 @@ export const CompanySoraConfigSection = () => {
               <div className="space-y-3 pt-2 border-t border-border">
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <Thermometer className="h-4 w-4 text-red-500" />
-                  Temperaturgrenser (°C)
+                  {t("sora.companyConfig.tempLimitsLabel")}
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Minimum temperatur</Label>
+                    <Label className="text-xs text-muted-foreground">{t("sora.companyConfig.minTempLabel")}</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -880,11 +882,11 @@ export const CompanySoraConfigSection = () => {
                         min={-40}
                         max={0}
                       />
-                      <span className="text-xs text-muted-foreground">°C (std: -10)</span>
+                      <span className="text-xs text-muted-foreground">{t("sora.companyConfig.minTempHint")}</span>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Maksimum temperatur</Label>
+                    <Label className="text-xs text-muted-foreground">{t("sora.companyConfig.maxTempLabel")}</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -896,11 +898,11 @@ export const CompanySoraConfigSection = () => {
                         min={20}
                         max={55}
                       />
-                      <span className="text-xs text-muted-foreground">°C (std: 40)</span>
+                      <span className="text-xs text-muted-foreground">{t("sora.companyConfig.maxTempHint")}</span>
                     </div>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">Kritisk for LiPo-batterier. Fyring utenfor disse grensene utløser HARD STOP.</p>
+                <p className="text-xs text-muted-foreground">{t("sora.companyConfig.tempCriticalNote")}</p>
               </div>
 
               {/* Pilotinaktivitet og befolkningstetthet */}
@@ -908,7 +910,7 @@ export const CompanySoraConfigSection = () => {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-sm font-medium">
                     <Clock className="h-4 w-4 text-orange-500" />
-                    Maks pilotinaktivitet (dager)
+                    {t("sora.companyConfig.pilotInactivityLabel")}
                   </Label>
                   <div className="flex items-center gap-3">
                     <Input
@@ -920,22 +922,22 @@ export const CompanySoraConfigSection = () => {
                           max_pilot_inactivity_days: e.target.value === "" ? null : Number(e.target.value),
                         }))
                       }
-                      placeholder="Ingen grense"
+                      placeholder={t("sora.companyConfig.pilotInactivityPlaceholder")}
                       className="w-36 h-9"
                       min={1}
                       max={365}
                     />
                     <span className="text-sm text-muted-foreground">
                       {config.max_pilot_inactivity_days
-                        ? `HARD STOP hvis pilot ikke har flydd på >${config.max_pilot_inactivity_days} dager`
-                        : "La stå tomt for ingen grense"}
+                        ? t("sora.companyConfig.pilotInactivityHint", { days: config.max_pilot_inactivity_days })
+                        : t("sora.companyConfig.pilotInactivityEmptyHint")}
                     </span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-sm font-medium">
                     <Users className="h-4 w-4 text-teal-500" />
-                    Maks befolkningstetthet (pers/km²)
+                    {t("sora.companyConfig.maxPopDensityLabel")}
                   </Label>
                   <div className="flex items-center gap-3">
                     <Input
@@ -947,17 +949,17 @@ export const CompanySoraConfigSection = () => {
                           max_population_density_per_km2: e.target.value === "" ? null : Number(e.target.value),
                         }))
                       }
-                      placeholder="Ingen grense"
+                      placeholder={t("sora.companyConfig.pilotInactivityPlaceholder")}
                       className="w-36 h-9"
                       min={1}
                     />
                     <span className="text-sm text-muted-foreground">
                       {config.max_population_density_per_km2
-                        ? `HARD STOP over ${config.max_population_density_per_km2} pers/km²`
-                        : "La stå tomt for ingen grense"}
+                        ? t("sora.companyConfig.maxPopDensityHint", { density: config.max_population_density_per_km2 })
+                        : t("sora.companyConfig.pilotInactivityEmptyHint")}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">SORA-referanse: 500/km² = befolket, 1500/km² = tett bybebyggelse.</p>
+                  <p className="text-xs text-muted-foreground">{t("sora.companyConfig.maxPopDensityNote")}</p>
                 </div>
               </div>
             </CardContent>
@@ -974,13 +976,13 @@ export const CompanySoraConfigSection = () => {
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
-                    Operative begrensninger
+                    {t("sora.companyConfig.restrictionsCardTitle")}
                     {config.operative_restrictions && (
-                      <Badge variant="secondary" className="ml-1 text-xs">Satt</Badge>
+                      <Badge variant="secondary" className="ml-1 text-xs">{t("sora.companyConfig.restrictionsBadge")}</Badge>
                     )}
                   </CardTitle>
                   <CardDescription className="text-xs mt-1">
-                    Fritekst som sendes direkte til AI-en ved risikovurdering
+                    {t("sora.companyConfig.restrictionsCardDesc")}
                   </CardDescription>
                 </div>
                 <ChevronDown
@@ -996,11 +998,11 @@ export const CompanySoraConfigSection = () => {
                 onChange={(e) =>
                   setConfig((p) => ({ ...p, operative_restrictions: e.target.value }))
                 }
-                placeholder="Skriv inn selskapets operative begrensninger som AI-en skal ta hensyn til i risikovurderingen...&#10;&#10;Eksempel:&#10;- Selskapet tillater ikke flyging over folkemengder uten skriftlig tillatelse&#10;- Alltid krever grunneierklarering for private eiendommer&#10;- Maksimalt 2 oppdrag per pilot per dag&#10;- Nattflyging krever spesiell godkjenning fra operativ leder"
+                placeholder={t("sora.companyConfig.restrictionsPlaceholder")}
                 className="min-h-[200px] text-sm"
               />
               <p className="text-xs text-muted-foreground mt-2">
-                Denne teksten legges direkte inn i AI-prompten og overstyrer/supplerer selskapets operasjonsmanual.
+                {t("sora.companyConfig.restrictionsHint")}
               </p>
             </CardContent>
           </CollapsibleContent>
@@ -1016,15 +1018,15 @@ export const CompanySoraConfigSection = () => {
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-primary" />
-                    Operasjonsmanual / Policydokumenter
+                    {t("sora.companyConfig.documentsCardTitle")}
                     {config.linked_document_ids.length > 0 && (
                       <Badge variant="secondary" className="ml-1 text-xs">
-                        {config.linked_document_ids.length} tilknyttet
+                        {t("sora.companyConfig.documentsCountBadge", { count: config.linked_document_ids.length })}
                       </Badge>
                     )}
                   </CardTitle>
                   <CardDescription className="text-xs mt-1">
-                    Lenk dokumenter fra biblioteket og legg inn nøkkelpunkter AI-en kan lese
+                    {t("sora.companyConfig.documentsCardDesc")}
                   </CardDescription>
                 </div>
                 <ChevronDown
@@ -1037,9 +1039,9 @@ export const CompanySoraConfigSection = () => {
             <CardContent className="pt-0 space-y-5">
               {/* Dokumentvelger */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Tilknyttede dokumenter (for referanse)</Label>
+                <Label className="text-sm font-medium">{t("sora.companyConfig.linkedDocsLabel")}</Label>
                 <Input
-                  placeholder="Søk etter dokumenter..."
+                  placeholder={t("sora.companyConfig.searchDocsPlaceholder")}
                   value={docSearchQuery}
                   onChange={(e) => setDocSearchQuery(e.target.value)}
                   className="h-9 text-sm"
@@ -1047,7 +1049,7 @@ export const CompanySoraConfigSection = () => {
                 <div className="max-h-48 overflow-y-auto border rounded-lg divide-y divide-border">
                   {filteredDocuments.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      Ingen dokumenter funnet
+                      {t("sora.companyConfig.noDocsFound")}
                     </p>
                   ) : (
                     filteredDocuments.map((doc) => {
@@ -1119,12 +1121,12 @@ export const CompanySoraConfigSection = () => {
               {/* Policy notes - klartekst for AI */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  Nøkkelpunkter fra operasjonsmanualen (AI-lesbar tekst)
+                  {t("sora.companyConfig.policyNotesLabel")}
                 </Label>
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
                   <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    AI kan ikke lese PDF-filer direkte. Bruk dette feltet til å lime inn eller skrive de viktigste reglene fra operasjonsmanualen i klartekst — dette er det AI faktisk leser og bruker aktivt.
+                    {t("sora.companyConfig.policyNotesWarning")}
                   </p>
                 </div>
                 <Textarea
@@ -1132,11 +1134,11 @@ export const CompanySoraConfigSection = () => {
                   onChange={(e) =>
                     setConfig((p) => ({ ...p, policy_notes: e.target.value }))
                   }
-                  placeholder="Lim inn eller skriv nøkkelpunkter fra operasjonsmanualen som AI-en skal bruke aktivt ved risikovurdering...&#10;&#10;Eksempel:&#10;- Seksjon 4.2: Operatøren skal alltid kontrollere NOTAMs minst 2 timer før planlagt flyging&#10;- Seksjon 5.1: Minimum 2 batterier med full kapasitet for oppdrag over 15 min&#10;- Seksjon 6.3: Alle oppdrag i befolkede områder krever skriftlig grunneierklarering&#10;- Seksjon 7.1: Observatør obligatorisk ved sikt under 3 km"
+                  placeholder={t("sora.companyConfig.policyNotesPlaceholder")}
                   className="min-h-[200px] text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  AI vil vurdere om oppdraget er i tråd med disse reglene og nevne avvik i risikovurderingen.
+                  {t("sora.companyConfig.policyNotesHint")}
                 </p>
               </div>
             </CardContent>
@@ -1149,9 +1151,9 @@ export const CompanySoraConfigSection = () => {
         <div className="rounded-lg border border-primary/30 bg-muted/30 p-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="propagate-sora-config" className="flex-1 cursor-pointer pr-4">
-              <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+              <div className="font-medium text-sm">{t("sora.companyConfig.propagateConfigLabel")}</div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                Når aktivert låses SORA-innstillingene for alle avdelinger og verdiene pushes fra morselskapet
+                {t("sora.companyConfig.propagateConfigDesc")}
               </div>
             </Label>
             <Switch
@@ -1199,9 +1201,9 @@ export const CompanySoraConfigSection = () => {
                         }, { onConflict: "company_id" });
                     }
                   }
-                  toast.success("SORA-innstillinger låst og pushet til alle avdelinger");
+                  toast.success(t("sora.companyConfig.toastPropagateConfigOn"));
                 } else {
-                  toast.success("Avdelinger kan nå redigere SORA-innstillinger selv");
+                  toast.success(t("sora.companyConfig.toastPropagateConfigOff"));
                 }
                 setSavingPropagate(false);
               }}
@@ -1220,7 +1222,7 @@ export const CompanySoraConfigSection = () => {
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {saving ? "Lagrer..." : "Lagre SORA-innstillinger"}
+            {saving ? t("sora.companyConfig.saving") : t("sora.companyConfig.saveButton")}
           </Button>
         </div>
       )}
