@@ -899,7 +899,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="inspection_interval_missions" className="text-xs sm:text-sm">Intervall (oppdrag)</Label>
+                      <Label htmlFor="inspection_interval_missions" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.intervalMissionsField')}</Label>
                       <Input
                         id="inspection_interval_missions"
                         type="number"
