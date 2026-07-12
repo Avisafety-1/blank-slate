@@ -230,14 +230,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
   // ── Flight alerts state ──
   const ALERT_TYPES = [
-    { key: 'low_battery', label: 'Batteri under', unit: '%', defaultValue: 20, hasThreshold: true },
-    { key: 'rth_triggered', label: 'RTH ble trigget', unit: '', defaultValue: null, hasThreshold: false },
-    { key: 'max_height', label: 'Høyde over', unit: 'm AGL', defaultValue: 120, hasThreshold: true },
-    { key: 'max_speed', label: 'Maks hastighet over', unit: 'm/s', defaultValue: 20, hasThreshold: true },
-    { key: 'low_gps_sats', label: 'GPS-satellitter under', unit: 'stk', defaultValue: 6, hasThreshold: true },
-    { key: 'battery_cell_deviation', label: 'Battericelleavvik over', unit: 'V', defaultValue: 0.3, hasThreshold: true },
-    { key: 'battery_temp_high', label: 'Batteritemperatur over', unit: '°C', defaultValue: 50, hasThreshold: true },
-    { key: 'high_vibration', label: 'Høy vibrasjon (ArduPilot)', unit: '', defaultValue: null, hasThreshold: false },
+    { key: 'low_battery', labelKey: 'alertLabel_low_battery', unit: '%', defaultValue: 20, hasThreshold: true },
+    { key: 'rth_triggered', labelKey: 'alertLabel_rth_triggered', unit: '', defaultValue: null, hasThreshold: false },
+    { key: 'max_height', labelKey: 'alertLabel_max_height', unit: 'm AGL', defaultValue: 120, hasThreshold: true },
+    { key: 'max_speed', labelKey: 'alertLabel_max_speed', unit: 'm/s', defaultValue: 20, hasThreshold: true },
+    { key: 'low_gps_sats', labelKey: 'alertLabel_low_gps_sats', unit: t('admin.childCompanies.alertUnit_pcs'), defaultValue: 6, hasThreshold: true },
+    { key: 'battery_cell_deviation', labelKey: 'alertLabel_battery_cell_deviation', unit: 'V', defaultValue: 0.3, hasThreshold: true },
+    { key: 'battery_temp_high', labelKey: 'alertLabel_battery_temp_high', unit: '°C', defaultValue: 50, hasThreshold: true },
+    { key: 'high_vibration', labelKey: 'alertLabel_high_vibration', unit: '', defaultValue: null, hasThreshold: false },
   ];
 
   const [flightAlerts, setFlightAlerts] = useState<Record<string, { enabled: boolean; threshold_value: number | null }>>({});
@@ -962,7 +962,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     if (!companyId) return;
     const cleanToken = (fh2Token || "").trim().replace(/^bearer\s+/i, "");
     if (cleanToken === FH2_MASK) {
-      toast("Nøkkelen er allerede lagret");
+      toast(t("admin.childCompanies.toastKeyAlreadySaved"));
       return;
     }
     if (!cleanToken) {
@@ -1053,8 +1053,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .eq("id", companyId);
       if (error) throw error;
       toast.success(checked
-        ? "FlightHub 2-tilkobling gjelder nå for alle underavdelinger"
-        : "Underavdelinger kan nå bruke egen FlightHub 2-tilkobling"
+        ? t("admin.childCompanies.toastFh2AppliedForAllSub")
+        : t("admin.childCompanies.toastFh2OwnConnectionAllowed")
       );
     } catch (err: any) {
       setApplyFh2ToChildren(!checked);
@@ -1258,10 +1258,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  Selskapsinnstillinger — {parentCompanyName}
+                  {t("admin.childCompanies.sectionTitle", { name: parentCompanyName })}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Innstillinger som gjelder for ditt selskap
+                  {t("admin.childCompanies.sectionSubtitle")}
                 </p>
               </div>
               <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
@@ -1273,15 +1273,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 flex items-start gap-2">
                   <Lock className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                   <div className="text-xs">
-                    <div className="font-medium text-foreground">Du ser innstillinger for {parentCompanyName}</div>
+                    <div className="font-medium text-foreground">{t("admin.childCompanies.inheritedBanner", { name: parentCompanyName })}</div>
                     <div className="text-muted-foreground mt-0.5">
-                      Felt merket med <Lock className="w-3 h-3 inline align-text-bottom" /> «Arvet fra {parentNavn}» styres av morselskapet og kan ikke endres her. Andre felt kan du overstyre selv.
+                      {t("admin.childCompanies.inheritedBannerDesc", { name: parentNavn })}
                     </div>
                   </div>
                 </div>
               )}
 
-              <SubSection title="Generelle innstillinger" icon={Settings}>
+              <SubSection title={t("admin.childCompanies.generalSettings")} icon={Settings}>
               {/* Vis alle luftromsadvarsler */}
               {(() => {
                 const locked = isChildDept && !!inherited?.propagate_airspace_warnings;
@@ -1290,15 +1290,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                     <Label htmlFor="show-all-airspace" className="flex-1 cursor-pointer pr-4">
                       <div className="font-medium text-sm flex items-center gap-1.5">
-                        Vis alle luftromsadvarsler på oppdragskortene
+                        {t("admin.childCompanies.showAllAirspaceWarnings")}
                         {locked && (
                           <Badge variant="secondary" className="text-[10px] gap-1">
-                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                           </Badge>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Når aktivert vises alle advarsler direkte i stedet for kun den viktigste med resten i en ekspanderbar liste
+                        {t("admin.childCompanies.showAllAirspaceWarningsDesc")}
                       </div>
                     </Label>
                     <Switch
@@ -1319,15 +1319,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                     <Label htmlFor="hide-reporter" className="flex-1 cursor-pointer pr-4">
                       <div className="font-medium text-sm flex items-center gap-1.5">
-                        Skjul identitet til rapportør av hendelser
+                        {t("admin.childCompanies.hideReporterIdentity")}
                         {locked && (
                           <Badge variant="secondary" className="text-[10px] gap-1">
-                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                           </Badge>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Når aktivert vises ikke navnet på den som rapporterte hendelsen. Administratorer i moderselskapet kan fortsatt se rapportørens identitet.
+                        {t("admin.childCompanies.hideReporterIdentityDesc")}
                       </div>
                     </Label>
                     <Switch
@@ -1344,15 +1344,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 <Label htmlFor="incident-reports-visible-all" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm flex items-center gap-1.5">
                     <Building2 className="w-4 h-4" />
-                    Hendelsesrapporter synlig for alle selskaper
+                    {t("admin.childCompanies.incidentReportsVisibleAll")}
                     {isChildDept && (
                       <Badge variant="secondary" className="text-[10px] gap-1">
-                        <Lock className="w-2.5 h-2.5" /> Styres av {parentNavn}
+                        <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.managedBy", { name: parentNavn })}
                       </Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert kan morselskapet og alle avdelinger se hendelsesrapporter fra hverandre.
+                    {t("admin.childCompanies.incidentReportsVisibleAllDesc")}
                   </div>
                 </Label>
                 <Switch
@@ -1371,15 +1371,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                     <Label htmlFor="require-approval" className="flex-1 cursor-pointer pr-4">
                       <div className="font-medium text-sm flex items-center gap-1.5">
-                        Oppdrag krever godkjenning
+                        {t("admin.childCompanies.requireMissionApproval")}
                         {locked && (
                           <Badge variant="secondary" className="text-[10px] gap-1">
-                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                           </Badge>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        SORA-spesifikk godkjenningslogikk overstyrer dette valget
+                        {t("admin.childCompanies.requireMissionApprovalDesc")}
                       </div>
                     </Label>
                     <Switch
@@ -1395,15 +1395,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                 <Label htmlFor="prevent-self-approval" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm flex items-center gap-1.5">
-                    Kan ikke godkjenne egne oppdrag
+                    {t("admin.childCompanies.preventSelfApproval")}
                     {preventSelfApprovalLocked && (
                       <Badge variant="secondary" className="text-[10px] gap-1">
-                        <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                        <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                       </Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Når oppdrag sendes til godkjenning kan flyger/personell på oppdraget ikke godkjenne det selv.
+                    {t("admin.childCompanies.preventSelfApprovalDesc")}
                   </div>
                 </Label>
                 <Switch
@@ -1417,15 +1417,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                 <Label htmlFor="all-users-maintenance-ack" className="flex-1 cursor-pointer pr-4">
                   <div className="font-medium text-sm flex items-center gap-1.5">
-                    Alle brukere kan kvittere ut vedlikehold på ressurser
+                    {t("admin.childCompanies.allUsersCanAckMaintenance")}
                     {allUsersCanAcknowledgeMaintenanceLocked && (
                       <Badge variant="secondary" className="text-[10px] gap-1">
-                        <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                        <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                       </Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    Når aktivert kan alle brukere med tilgang til ressursen utføre vedlikehold/inspeksjon selv om teknisk ansvarlig er satt. Teknisk ansvarlig styrer fortsatt hvem i avdelingen som får vedlikeholdsvarsel.
+                    {t("admin.childCompanies.allUsersCanAckMaintenanceDesc")}
                   </div>
                 </Label>
                 <Switch
@@ -1469,7 +1469,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   return (
                     <div className="rounded-md border border-border/60 bg-card/40 p-3 space-y-3">
                       <div className="flex items-center justify-between">
-                        <div className="text-xs font-medium">Regel {idx}</div>
+                        <div className="text-xs font-medium">{t("admin.childCompanies.ruleN", { n: idx })}</div>
                         <Switch
                           checked={ruleEnabled}
                           onCheckedChange={async (checked) => {
@@ -1520,16 +1520,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 space-y-3">
                     <div>
                       <div className="font-medium text-sm flex items-center gap-1.5">
-                        Krav til flytid (currency)
+                        {t("admin.childCompanies.currencyTitle")}
                         {locked && (
                           <Badge variant="secondary" className="text-[10px] gap-1">
-                            <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                            <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                           </Badge>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Sett minimum flytimer i én eller to perioder. Påvirker grønn/gul/rød-status på personell
-                        (rød = krav ikke oppfylt, gul = innenfor men nær terskelen).
+                        {t("admin.childCompanies.currencyDesc")}
                       </div>
                     </div>
                     {renderRule(1, r1Enabled, r1Hours, r1Days)}
@@ -1540,7 +1539,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         <Label htmlFor="currency-propagate" className="flex-1 cursor-pointer pr-4">
                           <div className="text-xs font-medium">{t("admin.childCompanies.forceSameRequirement")}</div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">
-                            Når aktivert overstyrer kravet avdelingenes egne verdier — endringer her oppdateres automatisk hos avdelingene.
+                            {t("admin.childCompanies.propagateCurrencyDesc")}
                           </div>
                         </Label>
                         <Switch
@@ -1568,15 +1567,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     <div className="flex items-center justify-between">
                       <Label htmlFor="require-sora" className="flex-1 cursor-pointer pr-4">
                         <div className="font-medium text-sm flex items-center gap-1.5">
-                          Krev SORA på alle oppdrag
+                          {t("admin.childCompanies.requireSora")}
                           {locked && (
                             <Badge variant="secondary" className="text-[10px] gap-1">
-                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                              <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                             </Badge>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          Alle oppdrag må ha gjennomført SORA-analyse for å kunne startes eller godkjennes. Gjelder ikke når SORA-basert godkjenning er aktivert.
+                          {t("admin.childCompanies.requireSoraDesc")}
                         </div>
                       </Label>
                       <Switch
@@ -1597,11 +1596,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         >
                           <div className="flex items-center gap-1.5">
                             <RadioGroupItem value="1" id="sora-step-1" disabled={locked} />
-                            <Label htmlFor="sora-step-1" className="text-xs cursor-pointer">1 steg (AI-vurdering)</Label>
+                            <Label htmlFor="sora-step-1" className="text-xs cursor-pointer">{t("admin.childCompanies.soraStep1Label")}</Label>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <RadioGroupItem value="2" id="sora-step-2" disabled={locked} />
-                            <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">2 steg (+ revurdering)</Label>
+                            <Label htmlFor="sora-step-2" className="text-xs cursor-pointer">{t("admin.childCompanies.soraStep2Label")}</Label>
                           </div>
                         </RadioGroup>
                       </div>
@@ -1616,7 +1615,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
                     <div className="font-medium text-sm">{t("admin.childCompanies.settingsApplyToAllSub")}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Når aktivert settes innstillingene over på alle avdelinger og avdelingene kan ikke overstyre dem
+                      {t("admin.childCompanies.settingsApplyDesc")}
                     </div>
                   </Label>
                   <Switch
@@ -1629,7 +1628,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               )}
               </SubSection>
 
-              <SubSection title="Avviksrapport ved flytur" icon={AlertTriangle}>
+              <SubSection title={t("admin.childCompanies.deviationReport")} icon={AlertTriangle}>
                 {(() => {
                   const locked = isChildDept && !!inherited?.propagate_deviation_report;
                   const value = locked ? inherited!.deviation_report_enabled : deviationReportEnabled;
@@ -1638,17 +1637,17 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       <div className="flex items-center justify-between">
                         <Label htmlFor="deviation-report" className="flex-1 cursor-pointer pr-4">
                           <div className="font-medium text-sm flex items-center gap-1.5">
-                            Aktiver avviksrapport
+                            {t("admin.childCompanies.deviationReport")}
                             {locked && (
                               <Badge variant="secondary" className="text-[10px] gap-1">
-                                <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                                <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                               </Badge>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground mt-0.5">
                             {locked
-                              ? "Avdelingen arver innstillinger og kategorier fra morselskapet og kan ikke endres her."
-                              : "Når aktivert får piloten en pop-up etter avsluttet flytur med mulighet til å rapportere avvik via en hierarkisk valgliste."}
+                              ? t("admin.childCompanies.deviationReportDescLocked")
+                              : t("admin.childCompanies.deviationReportDescUnlocked")}
                           </div>
                         </Label>
                         <Switch
@@ -1661,7 +1660,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {value && companyId && !locked && (
                         <div className="pt-2 border-t border-border/50">
                           <p className="text-xs font-medium text-muted-foreground mb-2">
-                            Kategorier (ubegrenset antall nivåer):
+                            {t("admin.childCompanies.categoriesUnlimited")}
                           </p>
                           <DeviationCategoryTreeEditor companyId={companyId} />
                         </div>
@@ -1669,7 +1668,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {value && locked && parentDeviationCompanyId && (
                         <div className="pt-2 border-t border-border/50">
                           <p className="text-xs font-medium text-muted-foreground mb-2">
-                            Kategorier (arvet — kun lesetilgang):
+                            {t("admin.childCompanies.categoriesInherited")}
                           </p>
                           <DeviationCategoryTreeEditor companyId={companyId} readOnly />
                         </div>
@@ -1678,7 +1677,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   );
                 })()}
               </SubSection>
-              <SubSection title="Standard SORA-buffersone" icon={Shield}>
+              <SubSection title={t("admin.childCompanies.defaultSoraBuffer") || "Default SORA buffer"} icon={Shield}>
                 {(() => {
                   const soraLocked = isChildDept && !!inherited?.propagate_sora_buffer_mode;
                   const bufMode = soraLocked ? inherited!.default_buffer_mode : defaultBufferMode;
@@ -1688,15 +1687,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     <div className="space-y-3">
                       <Label className="flex-1">
                         <div className="font-medium text-sm flex items-center gap-1.5">
-                          Velg buffermodus
+                          {t("admin.childCompanies.chooseBufferMode")}
                           {soraLocked && (
                             <Badge variant="secondary" className="text-[10px] gap-1">
-                              <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                              <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                             </Badge>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          Velg standard buffermodus for nye oppdrag og ruteplanlegger
+                          {t("admin.childCompanies.chooseBufferModeDesc")}
                         </div>
                       </Label>
                       <RadioGroup
@@ -1725,7 +1724,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                                 </button>
                               </PopoverTrigger>
                               <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                                Avstanden legges på hver side av ruten. F.eks. 30m betyr 30m ut fra ruten på begge sider (totalt 60m bredde).
+                                {t("admin.childCompanies.flightGeoTooltip")}
                               </PopoverContent>
                             </Popover>
                           </div>
@@ -1752,7 +1751,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                                 </button>
                               </PopoverTrigger>
                               <PopoverContent side="top" className="max-w-[250px] text-xs p-2">
-                                Planlagt flyhøyde over bakken (AGL). Bufferhøyden (contingency volume) kommer i tillegg oppå denne verdien.
+                                {t("admin.childCompanies.flightAltTooltip")}
                               </PopoverContent>
                             </Popover>
                           </div>
@@ -1773,7 +1772,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                           <Label htmlFor="apply-sora-defaults-children" className="flex-1 cursor-pointer pr-4">
                             <div className="font-medium text-sm">{t("admin.childCompanies.soraDefaultsApplyToAllSub")}</div>
                             <div className="text-xs text-muted-foreground mt-0.5">
-                              Når aktivert kopieres SORA-standardverdier til alle avdelinger og låses
+                              {t("admin.childCompanies.soraDefaultsApplyDesc")}
                             </div>
                           </Label>
                           <Switch
@@ -1799,11 +1798,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {callsignLocked && (
                         <div className="rounded-md border border-primary/40 bg-primary/5 p-2 flex items-center gap-2">
                           <Lock className="w-3.5 h-3.5 text-primary" />
-                          <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
+                          <span className="text-xs text-primary">{t("admin.childCompanies.managedByParent", { name: parentNavn })}</span>
                         </div>
                       )}
                       <div className="text-xs text-muted-foreground">
-                        Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.
+                        {t("admin.childCompanies.safeskyDesc")}
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">{t("admin.childCompanies.callsignPrefixLabel")}</Label>
@@ -1811,7 +1810,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                           id="callsign-prefix"
                           value={csPrefix}
                           onChange={(e) => { callsignEditing.current = true; setCallsignPrefix(e.target.value); }}
-                          placeholder="f.eks. nordavind (tomt = bruk selskapsnavn)"
+                          placeholder={t("admin.childCompanies.callsignPrefixPlaceholder")}
                           maxLength={50}
                           className="h-8 text-sm"
                           disabled={callsignLocked}
@@ -1840,7 +1839,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         </RadioGroup>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Forhåndsvisning: <span className="font-mono text-foreground">
+                        {t("admin.childCompanies.preview")}: <span className="font-mono text-foreground">
                           {((csPrefix.trim() || parentCompanyName || 'avisafe').replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe')
                             + (csVariable === 'drone_registration' ? 'LNABCD' : csVariable === 'none' ? '' : '01')}
                         </span>
@@ -1849,7 +1848,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         <Label htmlFor="callsign-test-mode" className="flex-1 cursor-pointer pr-4">
                           <div className="font-medium text-sm">{t("admin.childCompanies.testMode")}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            All trafikk publiseres til SafeSky med høyde 0 ft og status «on ground». Bruk for testing uten å vise drone i lufta.
+                            {t("admin.childCompanies.testModeDesc")}
                           </div>
                         </Label>
                         <Switch
@@ -1864,7 +1863,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                           <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
                             <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                             <div className="text-xs text-muted-foreground mt-0.5">
-                              Propager prefix og variabel til alle avdelinger
+                              {t("admin.childCompanies.propagatePrefixVariable")}
                             </div>
                           </Label>
                           <Switch
@@ -1878,7 +1877,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {!callsignLocked && (
                         <div className="flex justify-end">
                           <Button size="sm" onClick={handleSaveCallsign} disabled={savingCallsign}>
-                            {savingCallsign ? "Lagrer…" : "Lagre callsign-innstillinger"}
+                            {savingCallsign ? t("admin.childCompanies.savingCallsign") : t("admin.childCompanies.saveCallsign")}
                           </Button>
                         </div>
                       )}
@@ -1886,18 +1885,18 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   );
                 })()}
               </SubSection>
-              <SubSection title="Roller" icon={UserCog}>
+              <SubSection title={t("admin.childCompanies.rolesTitle") || "Roles"} icon={UserCog}>
                 {/* Locked banner for child departments */}
                 {isChildDept && !!inherited?.propagate_mission_roles && (
                   <div className="flex items-center gap-2 p-2 rounded-md border border-primary/40 bg-primary/5">
                     <Lock className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
+                    <span className="text-xs text-primary">{t("admin.childCompanies.managedByParent", { name: parentNavn })}</span>
                   </div>
                 )}
                 {!(isChildDept && !!inherited?.propagate_mission_roles) && (
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Ny rolle (f.eks. Ansvarlig pilot)"
+                      placeholder={t("admin.childCompanies.newRolePlaceholder")}
                       value={newRoleName}
                       onChange={(e) => setNewRoleName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddRole()}
@@ -1905,7 +1904,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     />
                     <Button size="sm" onClick={handleAddRole} disabled={savingRole || !newRoleName.trim()} className="h-8">
                       <Plus className="h-3.5 w-3.5 mr-1" />
-                      Legg til
+                      {t("admin.childCompanies.addRole")}
                     </Button>
                   </div>
                 )}
@@ -1937,7 +1936,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     <Label htmlFor="apply-roles-children" className="flex-1 cursor-pointer pr-4">
                       <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Når aktivert kopieres rollene til alle avdelinger i selskapet
+                        {t("admin.childCompanies.rolesPropagateDesc")}
                       </div>
                     </Label>
                     <Switch
@@ -1949,12 +1948,12 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   </div>
                 )}
               </SubSection>
-              <SubSection title="Flylogg-varsler" icon={Bell}>
+              <SubSection title={t("admin.childCompanies.flightLogAlerts") || "Flight log alerts"} icon={Bell}>
                 {/* Locked banner for child departments */}
                 {isChildDept && !!inherited?.propagate_flight_alerts && (
                   <div className="flex items-center gap-2 p-2 rounded-md border border-primary/40 bg-primary/5">
                     <Lock className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    <span className="text-xs text-primary">Styres av morselskapet ({parentNavn})</span>
+                    <span className="text-xs text-primary">{t("admin.childCompanies.managedByParent", { name: parentNavn })}</span>
                   </div>
                 )}
                 {(() => {
@@ -1976,7 +1975,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                                 className="shrink-0"
                                 disabled={alertsLocked}
                               />
-                              <span className="text-sm min-w-0">{alert.label}</span>
+                              <span className="text-sm min-w-0">{t(`admin.childCompanies.${alert.labelKey}`)}</span>
                               {alert.hasThreshold && (
                                 <div className="flex items-center gap-1">
                                   <Input
@@ -2001,16 +2000,16 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                             persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
                             value={null}
                             onValueChange={handleAddRecipient}
-                            placeholder="Legg til mottaker..."
-                            searchPlaceholder="Søk person..."
-                            emptyText="Ingen tilgjengelige personer."
+                            placeholder={t("admin.childCompanies.addRecipientPlaceholder")}
+                            searchPlaceholder={t("admin.childCompanies.searchPerson")}
+                            emptyText={t("admin.childCompanies.noAvailablePersons")}
                           />
                         )}
                         {displayRecipients.length > 0 && (
                           <div className="flex flex-wrap gap-1.5">
                             {displayRecipients.map((r) => (
                               <div key={r.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
-                                <span>{r.full_name || 'Ukjent bruker'}</span>
+                                <span>{r.full_name || t("admin.childCompanies.unknownUser")}</span>
                                 {!alertsLocked && (
                                   <button
                                     type="button"
@@ -2034,7 +2033,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     <Label htmlFor="apply-alerts-children" className="flex-1 cursor-pointer pr-4">
                       <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Når aktivert kopieres varsler og mottakere til alle avdelinger
+                        {t("admin.childCompanies.alertsPropagateDesc")}
                       </div>
                     </Label>
                     <Switch
@@ -2047,11 +2046,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 )}
               </SubSection>
 
-              <SubSection title="Kartpublisering" icon={MapIcon}>
+              <SubSection title={t("admin.childCompanies.mapPublication")} icon={MapIcon}>
                 <MapPublicationDefaultsCard companyId={companyId} disabled={savingSettings} />
               </SubSection>
 
-              <SubSection title="Standard kartlag" icon={MapIcon}>
+              <SubSection title={t("admin.childCompanies.defaultMapLayers")} icon={MapIcon}>
                 <MapLayerDefaultsSection
                   companyId={companyId}
                   disabled={savingSettings}
@@ -2059,7 +2058,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 />
               </SubSection>
 
-              <SubSection title="Oppdragstyper" icon={Settings}>
+              <SubSection title={t("admin.childCompanies.missionTypes")} icon={Settings}>
                 <MissionTypesSection companyId={companyId} disabled={savingSettings} />
               </SubSection>
             </div>
@@ -2078,13 +2077,13 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   DJI FlightHub 2
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Send rutefiler og SORA-korridorer til DJI FlightHub 2
+                  {t("admin.childCompanies.fh2Desc")}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {fh2Connected && (
                   <Badge variant="default" className="text-xs">
-                    {fh2Inherited ? "Arvet tilkobling" : "Tilkoblet"}
+                    {fh2Inherited ? t("admin.childCompanies.fh2ConnectedInherited") : t("admin.childCompanies.fh2Connected")}
                   </Badge>
                 )}
                 <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
@@ -2095,10 +2094,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label className="text-xs flex items-center gap-1.5">
-                  Organisasjonsnøkkel (FlightHub Sync)
+                  {t("admin.childCompanies.fh2OrgKeyLabel")}
                   {fh2Locked && (
                     <Badge variant="secondary" className="text-[10px] gap-1">
-                      <Lock className="w-2.5 h-2.5" /> Arvet fra {parentNavn}
+                      <Lock className="w-2.5 h-2.5" /> {t("admin.childCompanies.inheritedFrom", { name: parentNavn })}
                     </Badge>
                   )}
                 </Label>
@@ -2108,33 +2107,33 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     value={fh2Token}
                     onChange={(e) => setFh2Token(e.target.value)}
                     onFocus={() => { if (fh2Token === FH2_MASK) { fh2Editing.current = true; setFh2Token(""); } }}
-                    placeholder={fh2Locked ? "Arves fra morselskapet" : "Lim inn FlightHub Sync-nøkkel..."}
+                    placeholder={fh2Locked ? t("admin.childCompanies.fh2InheritedPlaceholder") : t("admin.childCompanies.fh2Placeholder")}
                     className="h-8 text-sm font-mono"
                     disabled={fh2Locked}
                   />
                   <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFh2ShowToken(!fh2ShowToken)} disabled={fh2Locked}>
-                    {fh2ShowToken ? "Skjul" : "Vis"}
+                    {fh2ShowToken ? t("admin.childCompanies.hide") : t("admin.childCompanies.show")}
                   </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  Bruk nøkkelen fra FlightHub 2 → Organisasjonsinnstillinger → FlightHub Sync → Organisasjonsnøkkel.
+                  {t("admin.childCompanies.fh2Hint")}
                 </p>
               </div>
 
               <div className="flex gap-2">
                 {!fh2Locked && fh2Token && fh2Token !== FH2_MASK && (
                   <Button size="sm" onClick={handleSaveFh2} disabled={savingFh2} className="h-8">
-                    {savingFh2 ? "Lagrer..." : "Lagre"}
+                    {savingFh2 ? t("admin.childCompanies.saving") : t("admin.childCompanies.save")}
                   </Button>
                 )}
                 {(fh2Token === FH2_MASK || fh2Locked) && (
                   <Button variant="outline" size="sm" onClick={handleTestFh2} disabled={testingFh2} className="h-8">
-                    {testingFh2 ? "Tester..." : "Test tilkobling"}
+                    {testingFh2 ? t("admin.childCompanies.testing") : t("admin.childCompanies.testConnection")}
                   </Button>
                 )}
                 {!fh2Locked && fh2Connected && (
                   <Button variant="destructive" size="sm" onClick={handleDeleteFh2} disabled={savingFh2} className="h-8">
-                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Slett
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> {t("admin.childCompanies.delete2")}
                   </Button>
                 )}
               </div>
@@ -2144,7 +2143,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <Label htmlFor="apply-fh2-children" className="flex-1 cursor-pointer pr-4">
                     <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Når aktivert arver underavdelinger FlightHub 2-nøkkelen fra morselskapet og kan ikke overstyre den.
+                      {t("admin.childCompanies.fh2PropagateDesc")}
                     </div>
                   </Label>
                   <Switch
@@ -2161,8 +2160,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 space-y-2">
                     <p className="text-sm font-medium text-green-700 dark:text-green-300">
                       ✅ {fh2Inherited
-                        ? `Tilkoblet via morselskapet med ${fh2Projects.length} prosjekter`
-                        : `Gratulerer! Du er tilkoblet din FH2-konto med ${fh2Projects.length} prosjekter`}
+                        ? t("admin.childCompanies.fh2SuccessInherited", { count: fh2Projects.length })
+                        : t("admin.childCompanies.fh2SuccessOwn", { count: fh2Projects.length })}
                     </p>
                     {fh2Projects.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
@@ -2197,15 +2196,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Avdelinger
+              {t("admin.childCompanies.departments")}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Opprett og administrer avdelinger tilknyttet ditt selskap
+              {t("admin.childCompanies.departmentsDesc")}
             </p>
           </div>
           <Button onClick={handleAdd} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            Ny avdeling
+            {t("admin.childCompanies.newDepartment")}
           </Button>
         </div>
 
@@ -2213,7 +2212,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           <p className="text-muted-foreground text-sm">{t("admin.childCompanies.loading")}</p>
         ) : children.length === 0 ? (
           <p className="text-muted-foreground text-sm py-8 text-center">
-            Ingen avdelinger opprettet ennå.
+            {t("admin.childCompanies.noDepartments")}
           </p>
         ) : isMobile ? (
           <div className="space-y-2">
@@ -2222,7 +2221,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{c.navn}</span>
                   <Badge variant={c.aktiv ? "default" : "secondary"} className="text-xs">
-                    {c.aktiv ? "Aktiv" : "Inaktiv"}
+                    {c.aktiv ? t("admin.childCompanies.active") : t("admin.childCompanies.inactive")}
                   </Badge>
                 </div>
                 {c.org_nummer && (
@@ -2232,10 +2231,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 )}
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(c)}>
-                    <Pencil className="h-3 w-3 mr-1" /> Rediger
+                    <Pencil className="h-3 w-3 mr-1" /> {t("admin.childCompanies.edit")}
                   </Button>
                   <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleDeleteClick(c)}>
-                    Slett
+                    {t("admin.childCompanies.delete2")}
                   </Button>
                 </div>
               </div>
@@ -2262,15 +2261,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                   <TableCell>{c.kontakt_telefon || "–"}</TableCell>
                   <TableCell>
                     <Badge variant={c.aktiv ? "default" : "secondary"}>
-                      {c.aktiv ? "Aktiv" : "Inaktiv"}
+                      {c.aktiv ? t("admin.childCompanies.active") : t("admin.childCompanies.inactive")}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button variant="outline" size="sm" onClick={() => handleEdit(c)}>
-                      <Pencil className="h-3 w-3 mr-1" /> Rediger
+                      <Pencil className="h-3 w-3 mr-1" /> {t("admin.childCompanies.edit")}
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(c)}>
-                      Slett
+                      {t("admin.childCompanies.delete2")}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -2293,7 +2292,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           <AlertDialogHeader>
             <AlertDialogTitle>{t("admin.childCompanies.deleteChildTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil slette «{companyToDelete?.navn}»? Denne handlingen kan ikke angres.
+              {t("admin.childCompanies.deleteConfirmDesc", { name: companyToDelete?.navn })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
