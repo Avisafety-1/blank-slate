@@ -810,7 +810,7 @@ export const EquipmentLogbookDialog = ({
                         {/* Summary cards - 4 cols on desktop, 2 on mobile */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                           <div className="border rounded-lg p-3 bg-card">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Sykluser</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.cycles')}</p>
                             <p className="text-lg font-bold">{latest?.cycles ?? '—'}</p>
                             <p className="text-[10px] text-muted-foreground">
                               {first?.cycles ?? '?'} → {latest?.cycles ?? '?'}
