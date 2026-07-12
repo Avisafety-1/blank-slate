@@ -550,7 +550,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                           onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
                           onLoadError={(err) => {
                             console.error("[ChecklistExecutionDialog] PDF load failed:", err);
-                            setLoadError("Kunne ikke laste PDF. Prøv å åpne i ny fane.");
+                            setLoadError(t('resourceDialogs.checklistExecution.pdfLoadError'));
                           }}
                           loading={
                             <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
