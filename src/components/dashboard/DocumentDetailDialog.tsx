@@ -404,7 +404,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
               <div className="flex items-start gap-3">
                 <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Sist endret</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('dashboard.documents.lastModified')}</p>
                   <p className="text-base">
                     {format(document.sist_endret, "dd. MMMM yyyy, HH:mm", { locale: nb })}
                   </p>
