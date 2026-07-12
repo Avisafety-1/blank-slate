@@ -433,7 +433,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                   value={selectedResponsibleId}
                   onValueChange={(val) => handleResponsibleChange(val || "ingen")}
                   placeholder="Velg ansvarlig..."
-                  searchPlaceholder="Søk person..."
+                  searchPlaceholder={t('dashboard.incidents.searchPerson')}
                   allowNone
                   noneLabel="Ingen ansvarlig"
                   disabled={updatingResponsible}
