@@ -668,9 +668,9 @@ export const DroneLogbookDialog = ({
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
-                  {isSaving ? "Lagrer..." : (editingEntryId ? "Oppdater" : "Lagre")}
+                  {isSaving ? t('resourceDialogs.droneLogbook.saving') : (editingEntryId ? t('resourceDialogs.droneLogbook.update') : t('resourceDialogs.droneLogbook.save'))}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>Avbryt</Button>
+                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>{t('resourceDialogs.droneLogbook.cancel')}</Button>
               </div>
             </div>
           )}
