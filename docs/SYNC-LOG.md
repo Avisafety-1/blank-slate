@@ -72,3 +72,18 @@ med `Short`/`Abbr`-mønster for engelske strenger som ellers ville sprengt knapp
 - `tsgo --noEmit` kjørt uten feil.
 - Mobil-preview (iPhone-viewport) bekrefter at meny og lukke-kryss ligger under statuslinjen.
 - Android/Samsung-viewport bekrefter uendret utseende.
+
+
+## 2026-07-12 — i18n Fase 1.2: Oppdrag-side (delvis)
+
+**Komponenter:** `src/pages/Oppdrag.tsx`, `src/components/oppdrag/OppdragFilterBar.tsx`, `src/components/oppdrag/MissionCard.tsx`
+
+**Endringer:**
+- Migrert alle bruker-vendte strenger i Oppdrag-siden, filterlinjen og oppdragskortet til `pages.missions.*`-nøkler i `no.json` og `en.json` (nye under-namespace: `filterBar`, `card`).
+- Interpolasjon brukes for tellere (`linkedIncidentsHeader`, `flightsHeader`) og godkjenner-navn (`approverCommentFrom`).
+- Eksisterende oversettelser (`pages.missions.title`, `common.loading`) gjenbrukt uten duplisering.
+- DB-statusstrenger som `"Fullført"`/`"Avbrutt"` bevart som råtekst (matches mot `mission.status`).
+
+**Gjenstår i 1.2:** `src/components/oppdrag/dialogs/*`, `AirspaceConflictWarning.tsx`, `ChecklistBadges.tsx`.
+
+**Verifisering:** `tsgo --noEmit` OK.
