@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
 import { Document } from "@/types";
+import { useTranslation } from "react-i18next";
 
 interface FolderDetailDialogProps {
   folder: { id: string; name: string; company_id?: string; inherited?: boolean } | null;
@@ -36,6 +37,7 @@ interface FolderDoc {
 }
 
 export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAdmin, canManage }: FolderDetailDialogProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const canManageFolder = canManage ?? (isAdmin && !folder?.inherited);
   const [folderDocs, setFolderDocs] = useState<FolderDoc[]>([]);
@@ -104,7 +106,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         id: d.id,
         document_id: d.document_id,
         tab_id: d.tab_id,
-        tittel: d.documents?.tittel || "Ukjent",
+        tittel: d.documents?.tittel || t("documents.folderDetail.unknownTitle"),
         kategori: d.documents?.kategori || "",
       }))
     );
@@ -198,7 +200,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         }))
       );
     }
-    toast.success("Mappeinnhold oppdatert");
+    toast.success(t("documents.folderDetail.toasts.contentUpdated"));
     setShowPicker(false);
     loadFolderDocs();
     onRefresh();
@@ -206,7 +208,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
 
   const removeDoc = async (itemId: string) => {
     await supabase.from("document_folder_items").delete().eq("id", itemId);
-    toast.success("Dokument fjernet fra mappen");
+    toast.success(t("documents.folderDetail.toasts.documentRemoved"));
     loadFolderDocs();
     onRefresh();
   };
@@ -214,8 +216,8 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const deleteFolder = async () => {
     if (!folder) return;
     const { error } = await supabase.from("document_folders").delete().eq("id", folder.id);
-    if (error) { toast.error("Kunne ikke slette mappen"); return; }
-    toast.success("Mappe slettet");
+    if (error) { toast.error(t("documents.folderDetail.toasts.deleteFailed")); return; }
+    toast.success(t("documents.folderDetail.toasts.deleted"));
     onOpenChange(false);
     onRefresh();
   };
@@ -223,7 +225,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const saveRename = async () => {
     if (!folder || !editName.trim()) return;
     await supabase.from("document_folders").update({ name: editName.trim() }).eq("id", folder.id);
-    toast.success("Mappenavn oppdatert");
+    toast.success(t("documents.folderDetail.toasts.nameUpdated"));
     setEditing(false);
     onRefresh();
   };
@@ -232,7 +234,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     if (!folder) return;
     setVisibleToChildren(checked);
     await supabase.from("document_folders").update({ visible_to_children: checked }).eq("id", folder.id);
-    toast.success(checked ? "Mappen er nå synlig for avdelinger" : "Mappen er nå kun synlig for dette selskapet");
+    toast.success(checked ? t("documents.folderDetail.toasts.visibleToChildrenOn") : t("documents.folderDetail.toasts.visibleToChildrenOff"));
     onRefresh();
   };
 
@@ -245,8 +247,8 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
       name: newTabName.trim(),
       sort_order: nextOrder,
     });
-    if (error) { toast.error("Kunne ikke opprette fane"); return; }
-    toast.success("Fane opprettet");
+    if (error) { toast.error(t("documents.folderDetail.toasts.tabCreateFailed")); return; }
+    toast.success(t("documents.folderDetail.toasts.tabCreated"));
     setNewTabName("");
     setShowNewTab(false);
     loadTabs();
@@ -255,7 +257,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const renameTab = async () => {
     if (!editingTabId || !editingTabName.trim()) return;
     await supabase.from("document_folder_tabs").update({ name: editingTabName.trim() }).eq("id", editingTabId);
-    toast.success("Fanenavn oppdatert");
+    toast.success(t("documents.folderDetail.toasts.tabNameUpdated"));
     setEditingTabId(null);
     loadTabs();
   };
@@ -263,7 +265,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const deleteTab = async (tabId: string) => {
     // Documents in this tab will have tab_id set to null (ON DELETE SET NULL)
     await supabase.from("document_folder_tabs").delete().eq("id", tabId);
-    toast.success("Fane slettet");
+    toast.success(t("documents.folderDetail.toasts.tabDeleted"));
     if (activeTab === tabId) setActiveTab(null);
     loadTabs();
     loadFolderDocs();
@@ -287,7 +289,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
           {editing ? (
             <div className="flex items-center gap-2">
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="text-lg font-semibold" onKeyDown={(e) => e.key === "Enter" && saveRename()} autoFocus />
-              <Button size="sm" onClick={saveRename}>Lagre</Button>
+              <Button size="sm" onClick={saveRename}>{t("documents.folderDetail.save")}</Button>
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)}><X className="h-4 w-4" /></Button>
             </div>
           ) : (
@@ -300,7 +302,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
               )}
             </div>
           )}
-          <DialogDescription>{folderDocs.length} dokument{folderDocs.length !== 1 ? "er" : ""}</DialogDescription>
+          <DialogDescription>{t("documents.folderDetail.documentCount", { count: folderDocs.length })}</DialogDescription>
         </DialogHeader>
 
         {/* Tabs bar */}
@@ -312,7 +314,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                 activeTab === null ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent/20'
               }`}
             >
-              Alle
+              {t("documents.folderDetail.all")}
             </button>
             {tabs.map((tab) => (
               <div key={tab.id} className="flex items-center group">
@@ -362,12 +364,12 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                 <Input
                   value={newTabName}
                   onChange={(e) => setNewTabName(e.target.value)}
-                  placeholder="Fanenavn..."
+                  placeholder={t("documents.folderDetail.tabNamePlaceholder")}
                   className="h-7 text-xs w-24"
                   onKeyDown={(e) => e.key === "Enter" && createTab()}
                   autoFocus
                 />
-                <Button size="sm" className="h-7 text-xs px-2" onClick={createTab}>OK</Button>
+                <Button size="sm" className="h-7 text-xs px-2" onClick={createTab}>{t("documents.folderDetail.ok")}</Button>
                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowNewTab(false)}><X className="h-3 w-3" /></Button>
               </div>
             )}
@@ -376,7 +378,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
 
         {showPicker ? (
           <div className="flex-1 flex flex-col gap-3 min-h-0">
-            <Input placeholder="Søk dokumenter..." value={searchPicker} onChange={(e) => setSearchPicker(e.target.value)} />
+            <Input placeholder={t("documents.folderDetail.searchDocuments")} value={searchPicker} onChange={(e) => setSearchPicker(e.target.value)} />
             <div className="flex-1 min-h-[200px] overflow-y-auto border rounded-md p-2">
               {filteredPickerDocs.map((doc) => (
                 <label key={doc.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-accent/10 rounded cursor-pointer">
@@ -386,12 +388,12 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                 </label>
               ))}
               {filteredPickerDocs.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Ingen dokumenter funnet</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("documents.folderDetail.noDocumentsFound")}</p>
               )}
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowPicker(false)}>Avbryt</Button>
-              <Button size="sm" onClick={savePicker}>Lagre endringer</Button>
+              <Button variant="outline" size="sm" onClick={() => setShowPicker(false)}>{t("documents.folderDetail.cancel")}</Button>
+              <Button size="sm" onClick={savePicker}>{t("documents.folderDetail.saveChanges")}</Button>
             </div>
           </div>
         ) : (
@@ -399,7 +401,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
             <div className="flex-1 min-h-0 overflow-y-auto">
               {visibleDocs.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">
-                  {activeTab ? "Ingen dokumenter i denne fanen" : "Ingen dokumenter i denne mappen"}
+                  {activeTab ? t("documents.folderDetail.noDocumentsInTab") : t("documents.folderDetail.noDocumentsInFolder")}
                 </p>
               ) : (
                 <div className="space-y-1">
@@ -423,15 +425,15 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                   <label className="flex items-center gap-2 cursor-pointer">
                     <Switch checked={visibleToChildren} onCheckedChange={toggleVisibleToChildren} />
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs text-foreground">Synlig for alle avdelinger</span>
+                    <span className="text-xs text-foreground">{t("documents.folderDetail.visibleToChildren")}</span>
                   </label>
                 )}
                 <div className="flex gap-2 justify-between">
                   <Button variant="destructive" size="sm" onClick={deleteFolder}>
-                    <Trash2 className="h-4 w-4 mr-1" /> Slett mappe
+                    <Trash2 className="h-4 w-4 mr-1" /> {t("documents.folderDetail.deleteFolder")}
                   </Button>
                   <Button size="sm" onClick={openPicker}>
-                    <Plus className="h-4 w-4 mr-1" /> Legg til dokumenter
+                    <Plus className="h-4 w-4 mr-1" /> {t("documents.folderDetail.addDocuments")}
                   </Button>
                 </div>
               </div>

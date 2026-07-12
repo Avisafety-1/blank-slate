@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { FolderOpen, Building2 } from "lucide-react";
 import { CreateFolderDialog } from "./CreateFolderDialog";
 import { FolderDetailDialog } from "./FolderDetailDialog";
+import { useTranslation } from "react-i18next";
 
 interface FolderGridProps {
   isAdmin: boolean;
@@ -22,6 +23,7 @@ interface Folder {
 }
 
 const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: FolderGridProps) => {
+  const { t } = useTranslation();
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const { companyId: userCompanyId } = useAuth();
@@ -80,7 +82,7 @@ const FolderGrid = ({ isAdmin, companyId, createOpen, onCreateOpenChange }: Fold
             </div>
             <div className="flex flex-col sm:items-center min-w-0">
               <span className="text-sm sm:text-xs font-medium text-foreground text-left sm:text-center line-clamp-2 leading-tight">{folder.name}</span>
-              <span className="text-[11px] sm:text-[10px] text-muted-foreground">{folder.item_count} dok.</span>
+              <span className="text-[11px] sm:text-[10px] text-muted-foreground">{t("documents.folderGrid.itemCount", { count: folder.item_count })}</span>
             </div>
           </button>
         ))}

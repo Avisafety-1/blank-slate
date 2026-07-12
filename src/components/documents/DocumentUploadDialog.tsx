@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Upload, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 interface DocumentUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -24,6 +25,7 @@ export const DocumentUploadDialog = ({
   onSuccess,
   defaultExpiryDate,
 }: DocumentUploadDialogProps) => {
+  const { t } = useTranslation();
   const { companyId, isSuperAdmin: isSuperadmin } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -61,7 +63,7 @@ export const DocumentUploadDialog = ({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast.error("Filen er for stor. Maksimal størrelse er 10MB.");
+        toast.error(t("documents.uploadDialog.errors.fileTooLarge"));
         return;
       }
       setSelectedFile(file);
@@ -73,17 +75,17 @@ export const DocumentUploadDialog = ({
 
   const handleUpload = async () => {
     if (!formData.title) {
-      toast.error("Vennligst fyll inn tittel");
+      toast.error(t("documents.uploadDialog.errors.titleRequired"));
       return;
     }
 
     if (uploadType === "file" && !selectedFile) {
-      toast.error("Vennligst velg en fil");
+      toast.error(t("documents.uploadDialog.errors.fileRequired"));
       return;
     }
 
     if (uploadType === "url" && !formData.websiteUrl) {
-      toast.error("Vennligst skriv inn en URL");
+      toast.error(t("documents.uploadDialog.errors.urlRequired"));
       return;
     }
 
@@ -93,7 +95,7 @@ export const DocumentUploadDialog = ({
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("Ikke innlogget");
+      if (!user) throw new Error(t("documents.uploadDialog.errors.notLoggedIn"));
 
       let fileUrl = null;
       let fileName = null;
@@ -131,7 +133,7 @@ export const DocumentUploadDialog = ({
       });
       if (insertError) throw insertError;
 
-      toast.success("Dokument lastet opp");
+      toast.success(t("documents.toasts.uploaded"));
       onOpenChange(false);
       if (onSuccess) onSuccess();
 
@@ -152,7 +154,7 @@ export const DocumentUploadDialog = ({
       }
     } catch (error: any) {
       console.error("Error uploading document:", error);
-      toast.error(error.message || "Kunne ikke laste opp dokument");
+      toast.error(error.message || t("documents.toasts.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -162,7 +164,7 @@ export const DocumentUploadDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Last opp dokument</DialogTitle>
+          <DialogTitle>{t("documents.uploadDialog.title")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -173,17 +175,17 @@ export const DocumentUploadDialog = ({
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="file" id="file" />
-              <Label htmlFor="file">Last opp fil</Label>
+              <Label htmlFor="file">{t("documents.uploadDialog.uploadFile")}</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="url" id="url" />
-              <Label htmlFor="url">Legg til URL</Label>
+              <Label htmlFor="url">{t("documents.uploadDialog.addUrl")}</Label>
             </div>
           </RadioGroup>
 
           {uploadType === "file" ? (
             <div className="space-y-2">
-              <Label>Fil</Label>
+              <Label>{t("documents.uploadDialog.fileLabel")}</Label>
               <div className="flex gap-2">
                 <Input
                   type="file"
@@ -199,16 +201,16 @@ export const DocumentUploadDialog = ({
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Støttede formater: PDF, Word, Excel, PowerPoint, bilder, tekstfiler
+                {t("documents.uploadDialog.supportedFormats")}
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="websiteUrl">URL til nettside</Label>
+              <Label htmlFor="websiteUrl">{t("documents.uploadDialog.websiteUrlLabel")}</Label>
               <Input
                 id="websiteUrl"
                 type="url"
-                placeholder="https://eksempel.no/dokument"
+                placeholder={t("documents.uploadDialog.websiteUrlPlaceholder")}
                 value={formData.websiteUrl}
                 onChange={(e) =>
                   setFormData((prev) => ({
@@ -221,32 +223,32 @@ export const DocumentUploadDialog = ({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="title">Tittel</Label>
+            <Label htmlFor="title">{t("documents.uploadDialog.titleLabel")}</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              placeholder="Dokumenttittel"
+              placeholder={t("documents.uploadDialog.titlePlaceholder")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Beskrivelse (valgfritt)</Label>
+            <Label htmlFor="description">{t("documents.uploadDialog.descriptionLabel")}</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, description: e.target.value }))
               }
-              placeholder="Legg til en beskrivelse av dokumentet..."
+              placeholder={t("documents.uploadDialog.descriptionPlaceholder")}
               rows={3}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">Kategori</Label>
+            <Label htmlFor="category">{t("documents.uploadDialog.categoryLabel")}</Label>
             <Select
               value={formData.category}
               onValueChange={(value) =>
@@ -257,22 +259,22 @@ export const DocumentUploadDialog = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="regelverk">Regelverk</SelectItem>
-                <SelectItem value="prosedyrer">Prosedyrer</SelectItem>
-                <SelectItem value="sjekklister">Sjekklister</SelectItem>
-                <SelectItem value="rapporter">Rapporter</SelectItem>
-                <SelectItem value="nettsider">Nettsider</SelectItem>
-                <SelectItem value="oppdrag">Oppdrag</SelectItem>
-                <SelectItem value="loggbok">Loggbok</SelectItem>
-                <SelectItem value="dokumentstyring">Dokumentstyring</SelectItem>
-                <SelectItem value="operasjonsmanual">Operasjonsmanual</SelectItem>
-                <SelectItem value="annet">Annet</SelectItem>
+                <SelectItem value="regelverk">{t("documents.categories.regelverk")}</SelectItem>
+                <SelectItem value="prosedyrer">{t("documents.categories.prosedyrer")}</SelectItem>
+                <SelectItem value="sjekklister">{t("documents.categories.sjekklister")}</SelectItem>
+                <SelectItem value="rapporter">{t("documents.categories.rapporter")}</SelectItem>
+                <SelectItem value="nettsider">{t("documents.categories.nettsider")}</SelectItem>
+                <SelectItem value="oppdrag">{t("documents.categories.oppdrag")}</SelectItem>
+                <SelectItem value="loggbok">{t("documents.categories.loggbok")}</SelectItem>
+                <SelectItem value="dokumentstyring">{t("documents.categories.dokumentstyring")}</SelectItem>
+                <SelectItem value="operasjonsmanual">{t("documents.categories.operasjonsmanual")}</SelectItem>
+                <SelectItem value="annet">{t("documents.categories.annet")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="expiryDate">Utløpsdato (valgfritt)</Label>
+            <Label htmlFor="expiryDate">{t("documents.uploadDialog.expiryDateLabel")}</Label>
             <Input
               id="expiryDate"
               type="date"
@@ -285,7 +287,7 @@ export const DocumentUploadDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="notificationDays">
-              Varsle dager før utløp
+              {t("documents.uploadDialog.notificationDaysLabel")}
             </Label>
             <Input
               id="notificationDays"
@@ -306,9 +308,9 @@ export const DocumentUploadDialog = ({
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-muted-foreground" />
                 <div className="space-y-0.5">
-                  <Label htmlFor="visible-children-doc">Synlig for alle avdelinger</Label>
+                  <Label htmlFor="visible-children-doc">{t("documents.uploadDialog.visibleToChildrenLabel")}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Deles automatisk med alle underavdelinger
+                    {t("documents.uploadDialog.visibleToChildrenDescription")}
                   </p>
                 </div>
               </div>
@@ -323,9 +325,9 @@ export const DocumentUploadDialog = ({
           {isSuperadmin && (
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
               <div className="space-y-0.5">
-                <Label htmlFor="global-visibility">Synlig for alle selskaper</Label>
+                <Label htmlFor="global-visibility">{t("documents.uploadDialog.globalVisibilityLabel")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Gjør dokumentet tilgjengelig for alle selskaper i systemet
+                  {t("documents.uploadDialog.globalVisibilityDescription")}
                 </p>
               </div>
               <Switch
@@ -341,11 +343,11 @@ export const DocumentUploadDialog = ({
               onClick={() => onOpenChange(false)}
               disabled={uploading}
             >
-              Avbryt
+              {t("documents.uploadDialog.cancel")}
             </Button>
             <Button onClick={handleUpload} disabled={uploading}>
               <Upload className="w-4 h-4 mr-2" />
-              {uploading ? "Laster opp..." : "Last opp"}
+              {uploading ? t("documents.uploadDialog.uploading") : t("documents.uploadDialog.upload")}
             </Button>
           </div>
         </div>

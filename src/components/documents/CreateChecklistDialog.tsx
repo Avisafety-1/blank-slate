@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Trash2, ChevronUp, ChevronDown, Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ChecklistItem {
   id: string;
@@ -21,6 +22,7 @@ interface CreateChecklistDialogProps {
 }
 
 export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateChecklistDialogProps) => {
+  const { t } = useTranslation();
   const { user, companyId, isSuperAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
@@ -61,18 +63,18 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
     e.preventDefault();
     
     if (!user || !companyId) {
-      toast.error("Du må være logget inn");
+      toast.error(t('documents.checklistDialog.errors.loginRequired'));
       return;
     }
 
     if (!title.trim()) {
-      toast.error("Fyll inn navn på sjekklisten");
+      toast.error(t('documents.checklistDialog.errors.nameRequired'));
       return;
     }
 
     const validItems = items.filter(item => item.text.trim());
     if (validItems.length === 0) {
-      toast.error("Legg til minst ett punkt i sjekklisten");
+      toast.error(t('documents.checklistDialog.errors.itemRequired'));
       return;
     }
 
@@ -91,13 +93,13 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
         beskrivelse: checklistData,
         company_id: companyId,
         user_id: user.id,
-        opprettet_av: user.email || "Ukjent",
+        opprettet_av: user.email || t('common.unknownName'),
         global_visibility: isSuperAdmin ? globalVisibility : false,
       });
 
       if (error) throw error;
 
-      toast.success("Sjekkliste opprettet");
+      toast.success(t('documents.checklistDialog.success'));
       setTitle("");
       setGlobalVisibility(false);
       setItems([{ id: crypto.randomUUID(), text: "" }]);
@@ -105,7 +107,7 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error creating checklist:", error);
-      toast.error(`Kunne ikke opprette sjekkliste: ${error.message}`);
+      toast.error(t('documents.checklistDialog.errors.createFailed', { message: error.message }));
     } finally {
       setIsSubmitting(false);
     }
@@ -122,23 +124,23 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Ny sjekkliste</DialogTitle>
+          <DialogTitle>{t('documents.checklistDialog.title')}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="title">Navn på sjekkliste</Label>
+            <Label htmlFor="title">{t('documents.checklistDialog.nameLabel')}</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="f.eks. Drone-inspeksjon før flyging"
+              placeholder={t('documents.checklistDialog.namePlaceholder')}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Sjekkliste-punkter</Label>
+            <Label>{t('documents.checklistDialog.itemsLabel')}</Label>
             <div className="space-y-2">
               {items.map((item, index) => (
                 <div key={item.id} className="flex items-center gap-1.5">
@@ -154,7 +156,7 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
                   <Input
                     value={item.text}
                     onChange={(e) => handleItemChange(item.id, e.target.value)}
-                    placeholder="Beskriv sjekk-punktet..."
+                    placeholder={t('documents.checklistDialog.itemPlaceholder')}
                     className="flex-1"
                   />
                   <Button
@@ -179,7 +181,7 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
               className="w-full mt-2"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Legg til punkt
+              {t('documents.checklistDialog.addItem')}
             </Button>
           </div>
 
@@ -190,10 +192,10 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
                 <Globe className="w-4 h-4 text-primary" />
                 <div>
                   <Label htmlFor="global-visibility" className="text-sm font-medium">
-                    Synlig for alle selskaper
+                    {t('documents.checklistDialog.globalVisibilityLabel')}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Gjør sjekklisten tilgjengelig for alle selskaper i systemet
+                    {t('documents.checklistDialog.globalVisibilityDescription')}
                   </p>
                 </div>
               </div>
@@ -207,10 +209,10 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
 
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={handleClose}>
-              Avbryt
+              {t('documents.checklistDialog.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Oppretter..." : "Opprett sjekkliste"}
+              {isSubmitting ? t('documents.checklistDialog.submitting') : t('documents.checklistDialog.submit')}
             </Button>
           </DialogFooter>
         </form>

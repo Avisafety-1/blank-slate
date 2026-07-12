@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
 
 const openUrl = (url: string) => {
   let finalUrl = url;
@@ -37,11 +38,11 @@ const getFileIcon = (fileName?: string | null) => {
   }
 };
 
-const showFileAccessError = (action: "open" | "download") => {
+const showFileAccessError = (t: (key: string) => string, action: "open" | "download") => {
   toast.error(
     action === "open"
-      ? "Du har tilgang til dokumentkortet, men filtilgangen mangler. Kontakt administrator."
-      : "Du har tilgang til dokumentkortet, men filen kunne ikke lastes ned. Kontakt administrator."
+      ? t('documents.toasts.accessErrorOpen')
+      : t('documents.toasts.accessErrorDownload')
   );
 };
 
@@ -52,24 +53,24 @@ interface DocumentsListProps {
   getDocumentStatus: (doc: Document) => DocumentStatusFilter;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  regelverk: "Regelverk",
-  prosedyrer: "Prosedyrer",
-  sjekklister: "Sjekklister",
-  rapporter: "Rapporter",
-  nettsider: "Nettsider",
-  oppdrag: "Oppdrag",
-  loggbok: "Loggbok",
-  "kml-kmz": "KML/KMZ",
-  dokumentstyring: "Dokumentstyring",
-  risikovurderinger: "Risikovurderinger",
-  operasjonsmanual: "Operasjonsmanual",
-  annet: "Annet"
+const CATEGORY_KEYS: Record<string, string> = {
+  regelverk: "regelverk",
+  prosedyrer: "prosedyrer",
+  sjekklister: "sjekklister",
+  rapporter: "rapporter",
+  nettsider: "nettsider",
+  oppdrag: "oppdrag",
+  loggbok: "loggbok",
+  "kml-kmz": "kmlKmz",
+  dokumentstyring: "dokumentstyring",
+  risikovurderinger: "risikovurderinger",
+  operasjonsmanual: "operasjonsmanual",
+  annet: "annet"
 };
 
-const ExpiryCell = ({ doc, status }: { doc: Document; status: DocumentStatusFilter }) => {
+const ExpiryCell = ({ doc, status, t }: { doc: Document; status: DocumentStatusFilter; t: (key: string) => string }) => {
   if (!doc.gyldig_til) {
-    return <span className="text-muted-foreground italic text-sm">Ingen utløpsdato</span>;
+    return <span className="text-muted-foreground italic text-sm">{t('documents.list.noExpiryDate')}</span>;
   }
 
   const formatted = format(new Date(doc.gyldig_til), "dd.MM.yyyy", { locale: nb });
@@ -101,6 +102,7 @@ const DocumentsList = ({
   onDocumentClick,
   getDocumentStatus,
 }: DocumentsListProps) => {
+  const { t } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
 
   const handleOpenFile = async (filUrl: string) => {
@@ -114,7 +116,7 @@ const DocumentsList = ({
       if (data?.signedUrl) window.open(data.signedUrl, '_blank');
     } catch (error) {
       console.error('Error opening file:', error);
-      showFileAccessError("open");
+      showFileAccessError(t, "open");
     }
   };
 
@@ -122,7 +124,7 @@ const DocumentsList = ({
     try {
       if (filUrl.startsWith('http://') || filUrl.startsWith('https://')) {
         window.open(filUrl, '_blank');
-        toast.info('Åpner ekstern lenke');
+        toast.info(t('documents.toasts.externalLinkOpened'));
         return;
       }
       const { data, error } = await supabase.storage.from('documents').download(filUrl);
@@ -136,11 +138,11 @@ const DocumentsList = ({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        toast.success('Dokumentet ble lastet ned');
+        toast.success(t('documents.toasts.downloaded'));
       }
     } catch (error) {
       console.error('Error downloading file:', error);
-      showFileAccessError("download");
+      showFileAccessError(t, "download");
     }
   };
 
@@ -152,7 +154,7 @@ const DocumentsList = ({
 
   if (documents.length === 0) {
     return <div className="text-center py-12 text-muted-foreground">
-        Ingen dokumenter funnet
+        {t('documents.list.empty')}
       </div>;
   }
 
@@ -161,16 +163,16 @@ const DocumentsList = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="bg-muted/80 text-foreground opacity-100">Tittel</TableHead>
+            <TableHead className="bg-muted/80 text-foreground opacity-100">{t('documents.list.titleHeader')}</TableHead>
             <TableHead className="bg-muted/80 text-foreground shadow-sm px-2 md:px-4">
-              <span className="md:hidden">Kat.</span>
-              <span className="hidden md:inline">Kategori</span>
+              <span className="md:hidden">{t('documents.list.categoryHeaderShort')}</span>
+              <span className="hidden md:inline">{t('documents.list.categoryHeader')}</span>
             </TableHead>
             <TableHead className="bg-muted/80 text-foreground hidden md:table-cell">
-              Utløpsdato
+              {t('documents.list.expiryHeader')}
             </TableHead>
-            <TableHead className="bg-muted/80 text-foreground hidden lg:table-cell">Opprettet</TableHead>
-            <TableHead className="bg-muted/80 text-foreground text-right pl-1 md:pl-4">Handlinger</TableHead>
+            <TableHead className="bg-muted/80 text-foreground hidden lg:table-cell">{t('documents.list.createdHeader')}</TableHead>
+            <TableHead className="bg-muted/80 text-foreground text-right pl-1 md:pl-4">{t('documents.list.actionsHeader')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -199,11 +201,11 @@ const DocumentsList = ({
                 </TableCell>
                 <TableCell className="bg-slate-200/50 text-slate-950 px-2 md:px-4">
                   <Badge variant="secondary" className="text-xs whitespace-nowrap">
-                    {CATEGORY_LABELS[doc.kategori] || doc.kategori}
+                    {CATEGORY_KEYS[doc.kategori] ? t(`documents.categories.${CATEGORY_KEYS[doc.kategori]}`) : doc.kategori}
                   </Badge>
                 </TableCell>
                 <TableCell className="bg-slate-200/50 text-slate-950 hidden md:table-cell">
-                  <ExpiryCell doc={doc} status={status} />
+                  <ExpiryCell doc={doc} status={status} t={t} />
                 </TableCell>
                 <TableCell className="bg-slate-200/50 text-slate-950 hidden lg:table-cell">
                   {format(new Date(doc.opprettet_dato), "dd.MM.yyyy", { locale: nb })}
@@ -218,7 +220,7 @@ const DocumentsList = ({
                               <ExternalLink className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Åpne nettside</TooltipContent>
+                          <TooltipContent>{t('documents.list.openWebsite')}</TooltipContent>
                         </Tooltip>
                       )}
                       {doc.fil_url && !doc.nettside_url && (
@@ -230,7 +232,7 @@ const DocumentsList = ({
                                   <ExternalLink className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Åpne i nettleser</TooltipContent>
+                              <TooltipContent>{t('documents.list.openInBrowser')}</TooltipContent>
                             </Tooltip>
                           )}
                           <Tooltip>
@@ -239,7 +241,7 @@ const DocumentsList = ({
                                 <Download className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Last ned</TooltipContent>
+                            <TooltipContent>{t('documents.list.download')}</TooltipContent>
                           </Tooltip>
                         </>
                       )}

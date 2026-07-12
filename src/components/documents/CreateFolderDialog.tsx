@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface CreateFolderDialogProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface CreateFolderDialogProps {
 }
 
 export const CreateFolderDialog = ({ open, onOpenChange, onSuccess }: CreateFolderDialogProps) => {
+  const { t } = useTranslation();
   const { companyId, user } = useAuth();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -28,10 +30,10 @@ export const CreateFolderDialog = ({ open, onOpenChange, onSuccess }: CreateFold
     });
     setSaving(false);
     if (error) {
-      toast.error("Kunne ikke opprette mappe");
+      toast.error(t('documents.folderDialog.createFailed'));
       return;
     }
-    toast.success("Mappe opprettet");
+    toast.success(t('documents.folderDialog.created'));
     setName("");
     onOpenChange(false);
     onSuccess();
@@ -41,22 +43,22 @@ export const CreateFolderDialog = ({ open, onOpenChange, onSuccess }: CreateFold
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Ny mappe</DialogTitle>
+          <DialogTitle>{t('documents.folderDialog.title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Label htmlFor="folder-name">Mappenavn</Label>
+          <Label htmlFor="folder-name">{t('documents.folderDialog.nameLabel')}</Label>
           <Input
             id="folder-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Skriv inn mappenavn..."
+            placeholder={t('documents.folderDialog.namePlaceholder')}
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('documents.folderDialog.cancel')}</Button>
           <Button onClick={handleSave} disabled={!name.trim() || saving}>
-            {saving ? "Lagrer..." : "Opprett"}
+            {saving ? t('documents.folderDialog.saving') : t('documents.folderDialog.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

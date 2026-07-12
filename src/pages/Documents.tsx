@@ -147,13 +147,13 @@ const Documents = () => {
   const handleSaveSuccess = () => {
     refetch();
     handleCloseModal();
-    toast.success(isCreating ? "Dokument opprettet" : "Dokument oppdatert");
+    toast.success(isCreating ? t('documents.toasts.created') : t('documents.toasts.updated'));
   };
 
   const handleDeleteSuccess = () => {
     refetch();
     handleCloseModal();
-    toast.success("Dokument slettet");
+    toast.success(t('documents.toasts.deleted'));
   };
 
   if (loading) {
@@ -215,7 +215,7 @@ const Documents = () => {
 
             <DocumentUploadDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={() => {
               refetch();
-              toast.success("Dokument opprettet");
+              toast.success(t('documents.toasts.created'));
             }} />
 
             <CreateChecklistDialog
