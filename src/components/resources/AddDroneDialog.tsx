@@ -266,13 +266,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         <form onSubmit={handleAddDrone} className="space-y-4">
           {/* Drone catalog selector */}
           <div className="border-b pb-4 mb-4">
-            <Label>Velg fra katalog (valgfritt)</Label>
+            <Label>{t('resourceDialogs.addDrone.velgFraKatalog')}</Label>
             <Select value={selectedModelId} onValueChange={handleModelSelect}>
               <SelectTrigger>
-                <SelectValue placeholder="Velg dronemodell eller angi manuelt" />
+                <SelectValue placeholder={t('resourceDialogs.addDrone.velgDroneModell')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="manual">Angi manuelt</SelectItem>
+                <SelectItem value="manual">{t('resourceDialogs.addDrone.angiManuelt')}</SelectItem>
                 {droneModels.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
                     {model.name} ({model.eu_class})
@@ -281,12 +281,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1">
-              Velg en modell for å auto-fylle vekt, payload og klasse
+              {t('resourceDialogs.addDrone.katalogHint')}
             </p>
           </div>
 
           <div>
-            <Label htmlFor="modell">Modell</Label>
+            <Label htmlFor="modell">{t('resourceDialogs.addDrone.modell')}</Label>
             <Input 
               id="modell" 
               name="modell" 
@@ -296,27 +296,27 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             />
           </div>
           <div>
-            <Label htmlFor="serienummer">Serienummer</Label>
+            <Label htmlFor="serienummer">{t('resourceDialogs.addDrone.serienummer')}</Label>
             <Input id="serienummer" name="serienummer" defaultValue={defaultValues?.serienummer || ''} />
           </div>
           <div>
-            <Label htmlFor="internal_serial">Internt serienummer</Label>
+            <Label htmlFor="internal_serial">{t('resourceDialogs.addDrone.internalSerial')}</Label>
             <Input 
               id="internal_serial" 
               value={internalSerial}
               onChange={(e) => setInternalSerial(e.target.value)}
-              placeholder="Valgfritt"
+              placeholder={t('resourceDialogs.addDrone.valgfritt')}
             />
           </div>
           <div>
-            <Label htmlFor="registration_number">Registreringsnummer</Label>
-            <Input id="registration_number" name="registration_number" placeholder="Valgfritt" />
+            <Label htmlFor="registration_number">{t('resourceDialogs.addDrone.registration')}</Label>
+            <Input id="registration_number" name="registration_number" placeholder={t('resourceDialogs.addDrone.valgfritt')} />
           </div>
           <div>
-            <Label htmlFor="klasse">Klasse</Label>
+            <Label htmlFor="klasse">{t('resourceDialogs.addDrone.klasse')}</Label>
             <Select value={klasse} onValueChange={setKlasse}>
               <SelectTrigger>
-                <SelectValue placeholder="Velg klasse" />
+                <SelectValue placeholder={t('resourceDialogs.addDrone.velgKlasse')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="C0">C0</SelectItem>
