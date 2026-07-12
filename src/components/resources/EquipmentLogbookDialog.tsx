@@ -958,7 +958,7 @@ export const EquipmentLogbookDialog = ({
           <DialogContent className="max-w-3xl p-2 bg-background/95">
             <img
               src={lightboxUrl}
-              alt="Bilde"
+              alt={t('resourceDialogs.equipmentLogbook.lightboxAlt')}
               className="w-full h-auto rounded-md max-h-[80vh] object-contain"
             />
           </DialogContent>
