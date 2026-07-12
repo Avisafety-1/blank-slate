@@ -19,7 +19,7 @@ Statuskoder:
 | 1.1 | `src/components/dashboard/*` (widgets) | DONE | Alle dashboard-widgets migrert 2026-07-12: DocumentDetailDialog, IncidentDetailDialog, AddMissionDialog, CalendarExportDialog, CalendarSubscriptionSection, FlightAnalysisTimeline, MissionMapPreview, ExpandedMapDialog, RiskAssessmentDialog (manuell SORA-fane under `riskAssessment.manualSora`). SORA-spesifikke dialoger (SoraAnalysisDialog/SoraResultView/MissionSoraRouteDocumentation) håndteres i Fase 3 (SORA-namespace). |
 | 1.2 | `src/pages/Oppdrag.tsx` + `src/components/oppdrag/*` | DONE | Oppdrag.tsx, OppdragFilterBar, MissionCard, AirspaceConflictWarning migrert 2026-07-12. `OppdragDialogs.tsx` var allerede migrert (`oppdragDialogs.*`). ChecklistBadges har ingen brukervendte strenger. Nye nøkler: `pages.missions.*`, `airspaceConflict.*`. |
 | 1.3 | `src/pages/Kalender.tsx` | DONE | Toasts, legend, dropdown-entries, event-type badge (lookup mot `eventTypes`), vedlikeholds-bekreftelse og custom-event-form migrert 2026-07-12. Utvidet `pages.calendar.*`-namespace med Hendelse/Dokument/Nyhet i `eventTypes`, `noEventsThisDay`, `markAsCompleted`, `saving/save/cancel/confirm`, toast-strenger. |
-| 1.4 | `src/pages/Kart.tsx` + kart-popups | WIP | Kart.tsx, ResourceTimeline, FlightHub2SendDialog (`fh2Dialog.*`) og AdjacentAreaPanel (`adjacentAreaPanel.*`) migrert 2026-07-12. SoraSettingsPanel var i praksis allerede migrert (kun tekniske akronymer/placeholders igjen). Kart-popups i `OpenAIPMap.tsx` (~27 nb-strenger) og `Map3D.tsx` (~70 nb-strenger) står igjen. |
+| 1.4 | `src/pages/Kart.tsx` + kart-popups | WIP | Kart.tsx, ResourceTimeline, FlightHub2SendDialog (`fh2Dialog.*`) og AdjacentAreaPanel (`adjacentAreaPanel.*`) migrert 2026-07-12. SoraSettingsPanel var i praksis allerede migrert (kun tekniske akronymer/placeholders igjen). Kart-popups i `OpenAIPMap.tsx` (~27 nb-strenger) og `Map3D.tsx` (~70 nb-strenger) står igjen — utsatt til vi utvider luftrom-støtte utenfor Norge (samme kontekst, samme popups). |
 | 1.5 | `src/pages/Resources.tsx` + `src/components/resources/*` | DONE | Alle dialoger migrert 2026-07-12. Resources.tsx var allerede fullstendig migrert (kun DB-enum-verdier "Grønn"/"Gul"/"Rød" og "alle"-filter-sentinel gjenstår som interne identifikatorer). Add*-dialoger og øvrige (AddCompetencyDialog, AddDronetagDialog, AddEquipmentDialog, AddEquipmentToDroneDialog, AddPersonnelToDroneDialog, DronetagDetailDialog, MoveDroneDialog, ResourceVisibilityWarningDialog, PersonnelFlightKpi) bruker allerede `t()`. |
 | 1.6 | `src/components/Header.tsx` | DONE | Plattformstatistikk/Marketing/Driftstatus/Lukk migrert til `header.*` 2026-07-12. |
 
@@ -29,7 +29,7 @@ Statuskoder:
 
 | # | Fil / område | Status |
 |--:|--------------|--------|
-| 2.1 | `src/pages/Hendelser.tsx` + incident-dialoger | TODO |
+| 2.1 | `src/pages/Hendelser.tsx` + incident-dialoger | DONE – Hendelser.tsx: alle ECCAIRS-relaterte toasts/labels/knapper/AlertDialog migrert til `incidents.eccairs.*`; `getEccairsStatusLabel` tar nå `t`-funksjon. IncidentsSection/IncidentDetailDialog/AddIncidentDialog: kun enum-verdier igjen, ingen migrering nødvendig. |
 | 2.2 | `src/pages/Documents.tsx` + `src/components/documents/*` | TODO |
 | 2.3 | Training-flater (`src/components/training/*`, admin-Training*) | TODO |
 | 2.4 | Guided tours (`src/tours/*`) | TODO |

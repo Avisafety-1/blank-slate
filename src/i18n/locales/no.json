@@ -144,7 +144,6 @@
       "linkNotWorking": "Fungerte ikke lenken? Send ny link"
     }
   },
-
   "flight": {
     "activeFlight": "Pågående flytur",
     "noActiveFlightError": "Ingen flytur ble startet",
@@ -248,7 +247,6 @@
     "operationalStatus": "Driftstatus",
     "close": "Lukk"
   },
-
   "dashboard": {
     "search": {
       "placeholder": "Søk (oppdrag, hendelser, dokumenter, utstyr...)",
@@ -799,6 +797,62 @@
       "Under behandling": "Under behandling",
       "Ferdigbehandlet": "Ferdigbehandlet",
       "Lukket": "Lukket"
+    },
+    "eccairs": {
+      "mustBeLoggedIn": "Du må være logget inn",
+      "reportSaved": "Hendelsesrapport lagret i dokumenter",
+      "exportReportFailed": "Kunne ikke eksportere rapport",
+      "gatewayNotConfigured": "ECCAIRS gateway URL er ikke konfigurert",
+      "noCompany": "Ingen bedrift tilknyttet",
+      "draftCreated": "ECCAIRS utkast opprettet: {{e2Id}}",
+      "unknownExportError": "Ukjent feil ved eksport til ECCAIRS",
+      "exportFailed": "ECCAIRS-eksport feilet: {{msg}}",
+      "orDraftFallback": "E2 kan ikke gi direktelenke for OR-utkast. Åpner portal – søk på E2 ID.",
+      "openFailed": "Kunne ikke åpne i ECCAIRS",
+      "submitFailed": "Kunne ikke sende til ECCAIRS",
+      "submitted": "Sendt til ECCAIRS",
+      "networkError": "Nettverksfeil ved sending til ECCAIRS",
+      "unknown": "Ukjent",
+      "unknownError": "Ukjent feil",
+      "updateFailedStatus": "Feil {{status}}: Kunne ikke oppdatere utkast",
+      "draftUpdated": "ECCAIRS-utkast oppdatert",
+      "updateFailed": "Kunne ikke oppdatere utkast: {{msg}}",
+      "noE2Id": "Ingen E2 ID funnet",
+      "confirmDeleteDraft": "Er du sikker på at du vil slette ECCAIRS-utkast {{e2Id}}?",
+      "deleteFailedStatus": "Feil {{status}}: Kunne ikke slette utkast",
+      "draftDeleted": "ECCAIRS-utkast {{e2Id}} slettet",
+      "deleteFailed": "Kunne ikke slette utkast: {{msg}}",
+      "noCommentsYet": "Ingen kommentarer ennå",
+      "addCommentOrSeeDetails": "Legg til kommentar eller se alle detaljer →",
+      "reportingTitle": "ECCAIRS Rapportering",
+      "environment": "Miljø: {{env}}",
+      "production": "Produksjon",
+      "sandbox": "Sandbox/test",
+      "settings": "Innstillinger",
+      "statusLabel": "Status:",
+      "e2IdLabel": "E2 ID:",
+      "lastAttemptLabel": "Sist forsøk:",
+      "attemptsLabel": "Forsøk:",
+      "classify": "Klassifiser",
+      "exporting": "Eksporterer...",
+      "exportButton": "Eksporter til ECCAIRS",
+      "openButton": "Åpne i ECCAIRS",
+      "updating": "Oppdaterer...",
+      "updateDraftButton": "Oppdater utkast",
+      "submitButton": "Send inn til ECCAIRS",
+      "deleteDraftButton": "Slett utkast",
+      "confirmSubmitTitle": "Bekreft innsending til ECCAIRS",
+      "confirmSubmitDescription": "Er du sikker på at du vil sende inn denne hendelsen til ECCAIRS? Dette vil endre status fra utkast til innsendt, og rapporten vil bli sendt til Luftfartstilsynet.",
+      "cancel": "Avbryt",
+      "submitAction": "Send inn",
+      "status": {
+        "pending": "Venter",
+        "draftCreated": "Utkast opprettet",
+        "draftUpdated": "Utkast oppdatert",
+        "submitted": "Sendt",
+        "failed": "Feilet",
+        "notExported": "Ikke eksportert"
+      }
     }
   },
   "profile": {

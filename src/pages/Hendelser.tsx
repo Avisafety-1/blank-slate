@@ -116,14 +116,14 @@ type EccairsExport = {
   response: any;
 };
 
-const getEccairsStatusLabel = (status?: string): string => {
+const getEccairsStatusLabel = (status: string | undefined, t: (key: string) => string): string => {
   switch (status) {
-    case 'pending': return 'Venter';
-    case 'draft_created': return 'Utkast opprettet';
-    case 'draft_updated': return 'Utkast oppdatert';
-    case 'submitted': return 'Sendt';
-    case 'failed': return 'Feilet';
-    default: return 'Ikke eksportert';
+    case 'pending': return t('incidents.eccairs.status.pending');
+    case 'draft_created': return t('incidents.eccairs.status.draftCreated');
+    case 'draft_updated': return t('incidents.eccairs.status.draftUpdated');
+    case 'submitted': return t('incidents.eccairs.status.submitted');
+    case 'failed': return t('incidents.eccairs.status.failed');
+    default: return t('incidents.eccairs.status.notExported');
   }
 };
 
@@ -500,9 +500,9 @@ const Hendelser = () => {
     });
 
     if (success) {
-      toast.success("Hendelsesrapport lagret i dokumenter");
+      toast.success(t("incidents.eccairs.reportSaved"));
     } else {
-      toast.error("Kunne ikke eksportere rapport");
+      toast.error(t("incidents.eccairs.exportReportFailed"));
     }
     
     setExportingId(null);
@@ -510,19 +510,19 @@ const Hendelser = () => {
 
   const exportToEccairs = async (incidentId: string) => {
     if (!ECCAIRS_GATEWAY) {
-      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      toast.error(t("incidents.eccairs.gatewayNotConfigured"));
       console.error("Missing VITE_ECCAIRS_GATEWAY_URL");
       return;
     }
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      toast.error("Du må være logget inn");
+      toast.error(t("incidents.eccairs.mustBeLoggedIn"));
       return;
     }
 
     if (!companyId) {
-      toast.error("Ingen bedrift tilknyttet");
+      toast.error(t("incidents.eccairs.noCompany"));
       return;
     }
     
@@ -624,12 +624,12 @@ const Hendelser = () => {
       if (updErr) throw updErr;
 
       setEccairsExports(prev => ({ ...prev, [incidentId]: updated as EccairsExport }));
-      toast.success(`ECCAIRS utkast opprettet: ${json.e2_id}`);
+      toast.success(t("incidents.eccairs.draftCreated", { e2Id: json.e2_id }));
 
     } catch (err: any) {
       console.error('ECCAIRS export failed', err);
       
-      const msg = err?.message ?? 'Ukjent feil ved eksport til ECCAIRS';
+      const msg = err?.message ?? t('incidents.eccairs.unknownExportError');
       
       const { data: failedRow } = await supabase
         .from('eccairs_exports')
@@ -647,7 +647,7 @@ const Hendelser = () => {
         setEccairsExports(prev => ({ ...prev, [incidentId]: failedRow as EccairsExport }));
       }
       
-      toast.error(`ECCAIRS-eksport feilet: ${msg}`);
+      toast.error(t("incidents.eccairs.exportFailed", { msg }));
     } finally {
       setEccairsExportingId(null);
     }
@@ -655,13 +655,13 @@ const Hendelser = () => {
 
   const openInEccairs = async (e2Id: string, incidentId: string) => {
     if (!ECCAIRS_GATEWAY) {
-      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      toast.error(t("incidents.eccairs.gatewayNotConfigured"));
       return;
     }
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      toast.error("Du må være logget inn");
+      toast.error(t("incidents.eccairs.mustBeLoggedIn"));
       return;
     }
 
@@ -693,7 +693,7 @@ const Hendelser = () => {
       const isNotFound = r.status === 404 || returnCode === 2 || errText.includes("not found");
 
       if (isNotFound && typeof e2Id === "string" && e2Id.startsWith("OR-")) {
-        toast.message("E2 kan ikke gi direktelenke for OR-utkast. Åpner portal – søk på E2 ID.");
+        toast.message(t("incidents.eccairs.orDraftFallback"));
 
         // Best effort: kopier E2 ID til clipboard
         try { 
@@ -704,24 +704,24 @@ const Hendelser = () => {
         return;
       }
 
-      toast.error("Kunne ikke åpne i ECCAIRS");
+      toast.error(t("incidents.eccairs.openFailed"));
       console.error("openInEccairs failed:", { status: r.status, body: j });
     } catch (err) {
       console.error('Failed to get ECCAIRS URL', err);
-      toast.error('Kunne ikke åpne i ECCAIRS');
+      toast.error(t("incidents.eccairs.openFailed"));
     }
   };
 
   const submitToEccairs = async (incidentId: string) => {
     if (!ECCAIRS_GATEWAY) {
-      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      toast.error(t("incidents.eccairs.gatewayNotConfigured"));
       return;
     }
 
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
     if (!accessToken) {
-      toast.error("Du må være logget inn");
+      toast.error(t("incidents.eccairs.mustBeLoggedIn"));
       return;
     }
 
@@ -739,12 +739,12 @@ const Hendelser = () => {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok || !json?.ok) {
-        toast.error(json?.error || "Kunne ikke sende til ECCAIRS");
+        toast.error(json?.error || t("incidents.eccairs.submitFailed"));
         console.error("ECCAIRS submit failed:", json);
         return;
       }
 
-      toast.success("Sendt til ECCAIRS");
+      toast.success(t("incidents.eccairs.submitted"));
       // Update local state to reflect submitted status
       setEccairsExports(prev => ({
         ...prev,
@@ -754,20 +754,20 @@ const Hendelser = () => {
         }
       }));
     } catch (e) {
-      toast.error("Nettverksfeil ved sending til ECCAIRS");
+      toast.error(t("incidents.eccairs.networkError"));
       console.error(e);
     }
   };
 
   const updateEccairsDraft = async (incidentId: string) => {
     if (!ECCAIRS_GATEWAY) {
-      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      toast.error(t("incidents.eccairs.gatewayNotConfigured"));
       return;
     }
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      toast.error("Du må være logget inn");
+      toast.error(t("incidents.eccairs.mustBeLoggedIn"));
       return;
     }
 
@@ -801,12 +801,12 @@ const Hendelser = () => {
         const errorDetails = json?.details;
         if (Array.isArray(errorDetails) && errorDetails.length > 0) {
           errorDetails.forEach((d: { attribute_code?: number; message?: string }) => {
-            const attrLabel = d.attribute_code ? getAttributeLabel(d.attribute_code) : 'Ukjent';
-            toast.error(`${attrLabel}: ${d.message || 'Ukjent feil'}`);
+            const attrLabel = d.attribute_code ? getAttributeLabel(d.attribute_code) : t('incidents.eccairs.unknown');
+            toast.error(`${attrLabel}: ${d.message || t('incidents.eccairs.unknownError')}`);
           });
           return;
         }
-        throw new Error(json?.error || `Feil ${res.status}: Kunne ikke oppdatere utkast`);
+        throw new Error(json?.error || t("incidents.eccairs.updateFailedStatus", { status: res.status }));
       }
 
       await supabase
@@ -820,10 +820,10 @@ const Hendelser = () => {
         .eq('incident_id', incidentId)
         .eq('environment', eccairsEnvironment);
 
-      toast.success("ECCAIRS-utkast oppdatert");
+      toast.success(t("incidents.eccairs.draftUpdated"));
     } catch (err: any) {
       console.error('ECCAIRS update failed', err);
-      toast.error(`Kunne ikke oppdatere utkast: ${err?.message}`);
+      toast.error(t("incidents.eccairs.updateFailed", { msg: err?.message }));
     } finally {
       setEccairsExportingId(null);
     }
@@ -831,23 +831,23 @@ const Hendelser = () => {
 
   const deleteEccairsDraft = async (incidentId: string) => {
     if (!ECCAIRS_GATEWAY) {
-      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      toast.error(t("incidents.eccairs.gatewayNotConfigured"));
       return;
     }
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      toast.error("Du må være logget inn");
+      toast.error(t("incidents.eccairs.mustBeLoggedIn"));
       return;
     }
 
     const exp = eccairsExports[incidentId];
     if (!exp?.e2_id) {
-      toast.error("Ingen E2 ID funnet");
+      toast.error(t("incidents.eccairs.noE2Id"));
       return;
     }
 
-    if (!confirm(`Er du sikker på at du vil slette ECCAIRS-utkast ${exp.e2_id}?`)) {
+    if (!confirm(t("incidents.eccairs.confirmDeleteDraft", { e2Id: exp.e2_id }))) {
       return;
     }
 
@@ -871,7 +871,7 @@ const Hendelser = () => {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || `Feil ${res.status}: Kunne ikke slette utkast`);
+        throw new Error(json?.error || t("incidents.eccairs.deleteFailedStatus", { status: res.status }));
       }
 
       // Oppdater lokal database - marker som slettet
@@ -888,10 +888,10 @@ const Hendelser = () => {
         return updated;
       });
 
-      toast.success(`ECCAIRS-utkast ${exp.e2_id} slettet`);
+      toast.success(t("incidents.eccairs.draftDeleted", { e2Id: exp.e2_id }));
     } catch (err: any) {
       console.error('ECCAIRS delete failed', err);
-      toast.error(`Kunne ikke slette utkast: ${err?.message}`);
+      toast.error(t("incidents.eccairs.deleteFailed", { msg: err?.message }));
     } finally {
       setEccairsExportingId(null);
     }
@@ -1027,7 +1027,7 @@ const Hendelser = () => {
                         disabled={exportingId === incident.id}
                       >
                         <FileText className="w-4 h-4 mr-2" />
-                        {exportingId === incident.id ? "Eksporterer..." : "PDF"}
+                        {exportingId === incident.id ? "{t('incidents.eccairs.exporting')}" : "PDF"}
                       </Button>
                     </div>
                   </div>
@@ -1114,14 +1114,14 @@ const Hendelser = () => {
                             </div>
                           ))
                         ) : (
-                          <p className="text-sm text-muted-foreground italic">Ingen kommentarer ennå</p>
+                          <p className="text-sm text-muted-foreground italic">{t("incidents.eccairs.noCommentsYet")}</p>
                         )}
                         
                         <button
                           onClick={() => handleIncidentClick(incident)}
                           className="text-sm text-primary hover:underline"
                         >
-                          Legg til kommentar eller se alle detaljer →
+                          {t('incidents.eccairs.addCommentOrSeeDetails')}
                         </button>
                       </CollapsibleContent>
                     </Collapsible>
@@ -1152,10 +1152,10 @@ const Hendelser = () => {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-col gap-0.5">
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            ECCAIRS Rapportering
+                            {t('incidents.eccairs.reportingTitle')}
                           </p>
                           <span className="text-xs text-muted-foreground">
-                            Miljø: {eccairsEnvironment === 'prod' ? 'Produksjon' : 'Sandbox/test'}
+                            {t('incidents.eccairs.environment', { env: eccairsEnvironment === 'prod' ? t('incidents.eccairs.production') : t('incidents.eccairs.sandbox') })}
                           </span>
                         </div>
                         <Button
@@ -1165,7 +1165,7 @@ const Hendelser = () => {
                           onClick={() => setEccairsSettingsOpen(true)}
                         >
                           <Settings2 className="w-3 h-3 mr-1" />
-                          <span className="text-xs">Innstillinger</span>
+                          <span className="text-xs">{t('incidents.eccairs.settings')}</span>
                         </Button>
                       </div>
                       {(() => {
@@ -1173,20 +1173,20 @@ const Hendelser = () => {
                         return (
                           <div className="flex flex-col gap-2 text-sm">
                             <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">Status:</span>
+                              <span className="text-muted-foreground">{t('incidents.eccairs.statusLabel')}</span>
                               <Badge variant="outline" className={cn(getEccairsStatusClass(exp?.status))}>
-                                {getEccairsStatusLabel(exp?.status)}
+                                {getEccairsStatusLabel(exp?.status, t)}
                               </Badge>
                             </div>
                             {exp?.e2_id && (
                               <div className="flex flex-col gap-1">
-                                <span className="text-muted-foreground">E2 ID:</span>
+                                <span className="text-muted-foreground">{t('incidents.eccairs.e2IdLabel')}</span>
                                 <span className="text-xs break-all">{exp.e2_id}</span>
                               </div>
                             )}
                             {exp?.last_attempt_at && (
                               <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">Sist forsøk:</span>
+                                <span className="text-muted-foreground">{t('incidents.eccairs.lastAttemptLabel')}</span>
                                 <span>
                                   {format(new Date(exp.last_attempt_at), 'd. MMM HH:mm', { locale: nb })}
                                 </span>
@@ -1194,7 +1194,7 @@ const Hendelser = () => {
                             )}
                             {typeof exp?.attempts === 'number' && exp.attempts > 0 && (
                               <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">Forsøk:</span>
+                                <span className="text-muted-foreground">{t('incidents.eccairs.attemptsLabel')}</span>
                                 <span>{exp.attempts}</span>
                               </div>
                             )}
@@ -1233,7 +1233,7 @@ const Hendelser = () => {
                                 }}
                               >
                                 <Tags className="w-4 h-4 mr-2" />
-                                Klassifiser
+                                {t('incidents.eccairs.classify')}
                               </Button>
                               {(!exp || exp.status === 'failed' || exp.status === 'pending') && (
                                 <Button
@@ -1248,10 +1248,10 @@ const Hendelser = () => {
                                   {eccairsExportingId === incident.id ? (
                                     <>
                                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                      Eksporterer...
+                                      {t('incidents.eccairs.exporting')}
                                     </>
                                   ) : (
-                                    <>Eksporter til ECCAIRS</>
+                                    <>{t('incidents.eccairs.exportButton')}</>
                                   )}
                                 </Button>
                               )}
@@ -1266,7 +1266,7 @@ const Hendelser = () => {
                                     }}
                                   >
                                     <ExternalLink className="w-4 h-4 mr-2" />
-                                    Åpne i ECCAIRS
+                                    {t('incidents.eccairs.openButton')}
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -1296,12 +1296,12 @@ const Hendelser = () => {
                                     {eccairsExportingId === incident.id ? (
                                       <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Oppdaterer...
+                                        {t('incidents.eccairs.updating')}
                                       </>
                                     ) : (
                                       <>
                                         <RefreshCw className="w-4 h-4 mr-2" />
-                                        Oppdater utkast
+                                        {t('incidents.eccairs.updateDraftButton')}
                                       </>
                                     )}
                                   </Button>
@@ -1313,7 +1313,7 @@ const Hendelser = () => {
                                       setEccairsSubmitConfirmOpen(true);
                                     }}
                                   >
-                                    Send inn til ECCAIRS
+                                    {t('incidents.eccairs.submitButton')}
                                   </Button>
                                   <Button
                                     variant="destructive"
@@ -1329,7 +1329,7 @@ const Hendelser = () => {
                                     ) : (
                                       <Trash2 className="w-4 h-4 mr-2" />
                                     )}
-                                    Slett utkast
+                                    {t('incidents.eccairs.deleteDraftButton')}
                                   </Button>
                                 </>
                               )}
@@ -1400,15 +1400,14 @@ const Hendelser = () => {
       <AlertDialog open={eccairsSubmitConfirmOpen} onOpenChange={setEccairsSubmitConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft innsending til ECCAIRS</AlertDialogTitle>
+            <AlertDialogTitle>{t('incidents.eccairs.confirmSubmitTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil sende inn denne hendelsen til ECCAIRS? 
-              Dette vil endre status fra utkast til innsendt, og rapporten vil bli sendt til Luftfartstilsynet.
+              {t('incidents.eccairs.confirmSubmitDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setEccairsSubmitIncidentId(null)}>
-              Avbryt
+              {t('incidents.eccairs.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
@@ -1418,7 +1417,7 @@ const Hendelser = () => {
                 setEccairsSubmitIncidentId(null);
               }}
             >
-              Send inn
+              {t('incidents.eccairs.submitAction')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

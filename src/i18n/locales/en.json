@@ -144,7 +144,6 @@
       "linkNotWorking": "Link didn't work? Send new link"
     }
   },
-
   "flight": {
     "activeFlight": "Active flight",
     "noActiveFlightError": "No active flight was started",
@@ -246,7 +245,6 @@
     "operationalStatus": "Operational status",
     "close": "Close"
   },
-
   "dashboard": {
     "search": {
       "placeholder": "Search (missions, incidents, documents, equipment...)",
@@ -797,6 +795,62 @@
       "Under behandling": "Under investigation",
       "Ferdigbehandlet": "Resolved",
       "Lukket": "Closed"
+    },
+    "eccairs": {
+      "mustBeLoggedIn": "You must be logged in",
+      "reportSaved": "Incident report saved to documents",
+      "exportReportFailed": "Could not export report",
+      "gatewayNotConfigured": "ECCAIRS gateway URL is not configured",
+      "noCompany": "No company associated",
+      "draftCreated": "ECCAIRS draft created: {{e2Id}}",
+      "unknownExportError": "Unknown error exporting to ECCAIRS",
+      "exportFailed": "ECCAIRS export failed: {{msg}}",
+      "orDraftFallback": "E2 cannot provide a direct link for OR drafts. Opening portal – search by E2 ID.",
+      "openFailed": "Could not open in ECCAIRS",
+      "submitFailed": "Could not submit to ECCAIRS",
+      "submitted": "Submitted to ECCAIRS",
+      "networkError": "Network error while submitting to ECCAIRS",
+      "unknown": "Unknown",
+      "unknownError": "Unknown error",
+      "updateFailedStatus": "Error {{status}}: Could not update draft",
+      "draftUpdated": "ECCAIRS draft updated",
+      "updateFailed": "Could not update draft: {{msg}}",
+      "noE2Id": "No E2 ID found",
+      "confirmDeleteDraft": "Are you sure you want to delete ECCAIRS draft {{e2Id}}?",
+      "deleteFailedStatus": "Error {{status}}: Could not delete draft",
+      "draftDeleted": "ECCAIRS draft {{e2Id}} deleted",
+      "deleteFailed": "Could not delete draft: {{msg}}",
+      "noCommentsYet": "No comments yet",
+      "addCommentOrSeeDetails": "Add comment or see all details →",
+      "reportingTitle": "ECCAIRS Reporting",
+      "environment": "Environment: {{env}}",
+      "production": "Production",
+      "sandbox": "Sandbox/test",
+      "settings": "Settings",
+      "statusLabel": "Status:",
+      "e2IdLabel": "E2 ID:",
+      "lastAttemptLabel": "Last attempt:",
+      "attemptsLabel": "Attempts:",
+      "classify": "Classify",
+      "exporting": "Exporting...",
+      "exportButton": "Export to ECCAIRS",
+      "openButton": "Open in ECCAIRS",
+      "updating": "Updating...",
+      "updateDraftButton": "Update draft",
+      "submitButton": "Submit to ECCAIRS",
+      "deleteDraftButton": "Delete draft",
+      "confirmSubmitTitle": "Confirm submission to ECCAIRS",
+      "confirmSubmitDescription": "Are you sure you want to submit this incident to ECCAIRS? This will change the status from draft to submitted, and the report will be sent to the Civil Aviation Authority.",
+      "cancel": "Cancel",
+      "submitAction": "Submit",
+      "status": {
+        "pending": "Pending",
+        "draftCreated": "Draft created",
+        "draftUpdated": "Draft updated",
+        "submitted": "Submitted",
+        "failed": "Failed",
+        "notExported": "Not exported"
+      }
     }
   },
   "profile": {
