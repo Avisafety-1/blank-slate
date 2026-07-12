@@ -798,7 +798,7 @@ export function PersonCompetencyDialog({
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] p-3 sm:p-6 overflow-hidden box-border">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Legg til kompetanse</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{t('resourceDialogs.personCompetency.addCompetency')}</DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[calc(90vh-6rem)] w-full">
             <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0 pr-3">
