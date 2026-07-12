@@ -653,7 +653,7 @@ export function OpenAIPMap({
             font-weight: 600;
             box-shadow: 0 1px 4px rgba(0,0,0,0.2);
             white-space: nowrap;
-          ">Total: ${totalDist.toFixed(2)} km</div>`,
+          ">${t('pages.map.routePointPopup.total', { d: totalDist.toFixed(2) })}</div>`,
           iconSize: [100, 24],
           iconAnchor: [50, -10],
         }),
