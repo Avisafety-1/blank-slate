@@ -1387,6 +1387,27 @@
         "Nyhet": "News",
         "Møte": "Meeting",
         "Annet": "Other"
+      },
+      "resourceTimeline": {
+        "today": "Today",
+        "week": "Week {{num}}, {{year}}",
+        "drones": "Drones",
+        "personnel": "Personnel",
+        "equipment": "Equipment",
+        "calendar": "Calendar",
+        "missions": "Missions",
+        "maintenance": "Maintenance",
+        "loading": "Loading resource calendar…",
+        "empty": "No resources with events this week",
+        "emptyHint": "Create missions and assign drones, equipment or personnel to see them here",
+        "resourceConflict": "Resource conflict",
+        "resource": "Resource",
+        "type": "Type",
+        "date": "Date",
+        "category": "Category",
+        "inspection": "Inspection",
+        "drone": "Drone",
+        "unknown": "Unknown"
       }
     },
     "map": {

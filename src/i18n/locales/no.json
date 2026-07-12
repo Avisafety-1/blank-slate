@@ -1389,6 +1389,27 @@
         "Nyhet": "Nyhet",
         "Møte": "Møte",
         "Annet": "Annet"
+      },
+      "resourceTimeline": {
+        "today": "I dag",
+        "week": "Uke {{num}}, {{year}}",
+        "drones": "Droner",
+        "personnel": "Personell",
+        "equipment": "Utstyr",
+        "calendar": "Kalender",
+        "missions": "Oppdrag",
+        "maintenance": "Vedlikehold",
+        "loading": "Laster ressurskalender…",
+        "empty": "Ingen ressurser med hendelser denne uken",
+        "emptyHint": "Opprett oppdrag og tildel droner, utstyr eller personell for å se dem her",
+        "resourceConflict": "Ressurskonflikt",
+        "resource": "Ressurs",
+        "type": "Type",
+        "date": "Dato",
+        "category": "Kategori",
+        "inspection": "Inspeksjon",
+        "drone": "Drone",
+        "unknown": "Ukjent"
       }
     },
     "map": {
