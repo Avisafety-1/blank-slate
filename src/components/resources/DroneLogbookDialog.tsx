@@ -267,14 +267,18 @@ export const DroneLogbookDialog = ({
             id: `equipment-${entry.id}`,
             type: isAdded ? 'equipment_added' : 'equipment_removed',
             date: new Date(entry.created_at),
-            title: `${entry.item_name} ${isAdded ? 'lagt til' : 'fjernet'}`,
-            description: `${entry.item_type === 'accessory' ? 'Tilleggsutstyr' : 'Utstyr'}`,
-            userName: userMap.get(entry.user_id) || 'Ukjent',
+            title: isAdded
+              ? t('resourceDialogs.droneLogbook.logTitles.equipmentAdded', { name: entry.item_name })
+              : t('resourceDialogs.droneLogbook.logTitles.equipmentRemoved', { name: entry.item_name }),
+            description: entry.item_type === 'accessory'
+              ? t('resourceDialogs.droneLogbook.logTitles.equipmentTypeAccessory')
+              : t('resourceDialogs.droneLogbook.logTitles.equipmentTypeEquipment'),
+            userName: userMap.get(entry.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: isAdded ? <PackagePlus className="w-4 h-4" /> : <PackageMinus className="w-4 h-4" />,
             badgeColor: isAdded 
               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
               : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-            badgeText: isAdded ? 'Lagt til' : 'Fjernet',
+            badgeText: isAdded ? t('resourceDialogs.droneLogbook.badges.added') : t('resourceDialogs.droneLogbook.badges.removed'),
           });
         });
       }
