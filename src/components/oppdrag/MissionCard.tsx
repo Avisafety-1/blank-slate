@@ -494,7 +494,7 @@ export const MissionCard = ({
               })}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Ingen tilknyttet</p>
+            <p className="text-sm text-muted-foreground">{t('pages.missions.card.noneAttached')}</p>
           )}
         </div>
 
