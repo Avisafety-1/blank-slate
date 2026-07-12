@@ -1,6 +1,9 @@
 import jsPDF from "jspdf";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
+import { getCurrentLanguage, getFixedT, type AppLanguage } from "@/lib/i18nHelpers";
+
+const dateFnsLocale = (language: AppLanguage) => (language === "en" ? enUS : nb);
 
 // Import fonts as base64
 import robotoRegularUrl from "@/assets/fonts/Roboto-Regular.ttf";
