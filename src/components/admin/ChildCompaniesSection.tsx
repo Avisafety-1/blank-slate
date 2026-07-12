@@ -325,19 +325,19 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .select("id")
       .single();
     if (error) {
-      if (error.code === '23505') toast.error("Mottaker finnes allerede");
-      else toast.error("Kunne ikke legge til mottaker");
+      if (error.code === '23505') t("admin.childCompanies.toastRecipientExists");
+      else t("admin.childCompanies.toastRecipientAddError");
       return;
     }
     const profile = companyProfiles.find(p => p.id === profileId);
     setAlertRecipients(prev => [...prev, { id: data.id, profile_id: profileId, full_name: profile?.full_name || null }]);
-    toast.success("Mottaker lagt til");
+    toast.success(t("admin.childCompanies.toastRecipientAdded"));
   };
 
   const handleRemoveRecipient = async (recipientId: string) => {
     await (supabase as any).from("company_flight_alert_recipients").delete().eq("id", recipientId);
     setAlertRecipients(prev => prev.filter(r => r.id !== recipientId));
-    toast.success("Mottaker fjernet");
+    toast.success(t("admin.childCompanies.toastRecipientRemoved"));
   };
 
   const fetchMissionRoles = useCallback(async () => {
@@ -358,12 +358,12 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .insert({ company_id: companyId, name: newRoleName.trim() });
     setSavingRole(false);
     if (error) {
-      if (error.code === '23505') toast.error("Rollen finnes allerede");
-      else toast.error("Kunne ikke legge til rolle");
+      if (error.code === '23505') t("admin.childCompanies.toastRoleExists");
+      else t("admin.childCompanies.toastRoleAddError");
       return;
     }
     setNewRoleName("");
-    toast.success("Rolle lagt til");
+    toast.success(t("admin.childCompanies.toastRoleAdded"));
     fetchMissionRoles();
   };
 
@@ -373,10 +373,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .delete()
       .eq("id", roleId);
     if (error) {
-      toast.error("Kunne ikke slette rolle");
+      toast.error(t("admin.childCompanies.toastRoleDeleteError"));
       return;
     }
-    toast.success("Rolle slettet");
+    toast.success(t("admin.childCompanies.toastRoleDeleted"));
     fetchMissionRoles();
   };
 
@@ -393,7 +393,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setChildren(data || []);
     } catch (error) {
       console.error("Error fetching child companies:", error);
-      toast.error("Kunne ikke laste avdelinger");
+      toast.error(t("admin.childCompanies.toastFetchChildrenError"));
     } finally {
       setLoading(false);
     }
@@ -623,7 +623,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -637,7 +637,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setShowAllAirspaceWarnings(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleHideReporter = async (checked: boolean) => {
@@ -649,7 +649,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -663,7 +663,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setHideReporterIdentity(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleIncidentReportsVisibleToAllCompanies = async (checked: boolean) => {
@@ -675,14 +675,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
     setSavingSettings(false);
     setIncidentReportsVisibleToAllCompanies(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const saveCurrencyRequirement = async (patch: Partial<{
@@ -703,11 +703,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     setSavingSettings(false);
     if (error) {
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleRequireMissionApproval = async (checked: boolean) => {
@@ -719,7 +719,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -733,7 +733,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setRequireMissionApproval(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleTogglePreventSelfApproval = async (checked: boolean) => {
@@ -745,7 +745,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -759,7 +759,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setPreventSelfApproval(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleAllUsersCanAcknowledgeMaintenance = async (checked: boolean) => {
@@ -771,7 +771,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -785,7 +785,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setAllUsersCanAcknowledgeMaintenance(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleRequireSora = async (checked: boolean) => {
@@ -799,7 +799,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .maybeSingle();
 
       if (soraApprovalEnabled || !!soraConfig?.sora_based_approval) {
-        toast.error("Kan ikke aktiveres når SORA-basert godkjenning er på");
+        toast.error(t("admin.childCompanies.toastCannotEnableSoraConflict"));
         return;
       }
     }
@@ -811,7 +811,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -825,7 +825,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setRequireSoraOnMissions(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleDeviationReport = async (checked: boolean) => {
@@ -837,7 +837,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
     if (applySettingsToChildren) {
@@ -849,14 +849,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setDeviationReportEnabled(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
     if (checked) {
       const { count } = await (supabase as any)
         .from("deviation_report_categories")
         .select("id", { count: "exact", head: true })
         .eq("company_id", companyId);
       if ((count || 0) === 0) {
-        toast.info("Husk å definere kategorier nedenfor – ellers vises ingen pop-up til pilotene.");
+        toast.info(t("admin.childCompanies.toastDefineCategoriesReminder"));
       }
     }
   };
@@ -870,7 +870,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -884,7 +884,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setRequireSoraSteps(steps);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleChangeBufferMode = async (mode: "corridor" | "convexHull") => {
@@ -896,7 +896,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setDefaultBufferMode(mode);
     invalidateCompanySettingsCache();
-    toast.success("Buffermodus lagret");
+    toast.success(t("admin.childCompanies.toastBufferModeSaved"));
   };
 
   const handleChangeDefaultFlightGeography = async (value: number) => {
@@ -908,7 +908,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .upsert({ company_id: companyId, default_flight_geography_m: value }, { onConflict: 'company_id' });
     setSavingSettings(false);
     invalidateCompanySettingsCache();
-    toast.success("Standard Flight Geography lagret");
+    toast.success(t("admin.childCompanies.toastFlightGeographySaved"));
   };
 
   const handleChangeDefaultFlightAltitude = async (value: number) => {
@@ -920,7 +920,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .upsert({ company_id: companyId, default_flight_altitude_m: value }, { onConflict: 'company_id' });
     setSavingSettings(false);
     invalidateCompanySettingsCache();
-    toast.success("Standard flyhøyde lagret");
+    toast.success(t("admin.childCompanies.toastFlightAltitudeSaved"));
   };
 
   const handleSaveCallsign = async () => {
@@ -935,7 +935,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     const { error } = await supabase.from("companies").update(payload).eq("id", companyId);
     if (error) {
       setSavingCallsign(false);
-      toast.error("Kunne ikke lagre SafeSky-callsign");
+      toast.error(t("admin.childCompanies.toastCallsignSaveError"));
       return;
     }
     if (callsignPropagate) {
@@ -951,7 +951,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingCallsign(false);
     callsignEditing.current = false;
     invalidateCompanySettingsCache();
-    toast.success("SafeSky-callsign lagret");
+    toast.success(t("admin.childCompanies.toastCallsignSaved"));
   };
 
   const FH2_MASK = "••••••••";
@@ -964,7 +964,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       return;
     }
     if (!cleanToken) {
-      toast.error("Fyll inn en nøkkel først");
+      toast.error(t("admin.childCompanies.toastFillKeyFirst"));
       return;
     }
     setSavingFh2(true);
@@ -979,9 +979,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       }
       setFh2Token(cleanToken ? FH2_MASK : "");
       fh2Editing.current = false;
-      toast.success(cleanToken ? "FlightHub 2-nøkkel lagret (kryptert)" : "FlightHub 2-nøkkel fjernet");
+      toast.success(t(cleanToken ? "admin.childCompanies.toastFh2KeySaved" : "admin.childCompanies.toastFh2KeyRemoved"));
     } catch (err: any) {
-      toast.error(err?.message || "Kunne ikke lagre");
+      toast.error(t("admin.childCompanies.toastSaveError"));
     } finally {
       setSavingFh2(false);
     }
@@ -995,9 +995,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setFh2Token("");
       setFh2Connected(false);
       setFh2Projects([]);
-      toast.success("FlightHub 2-nøkkel slettet");
+      toast.success(t("admin.childCompanies.toastFh2KeyDeleted"));
     } catch (err: any) {
-      toast.error(err?.message || "Kunne ikke slette");
+      toast.error(t("admin.childCompanies.toastDeleteError"));
     } finally {
       setSavingFh2(false);
     }
@@ -1025,16 +1025,16 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const projectNames: string[] = data.project_names || [];
         setFh2Projects(projectNames);
         setFh2Connected(true);
-        toast.success(`Gratulerer! Du er tilkoblet din FH2-konto med ${data.project_count || 0} prosjekter`);
+        toast.success(t("admin.childCompanies.toastFh2Connected", { count: data.project_count || 0 }));
       } else if (data?.server_ok && !data?.token_ok) {
-        toast.error("Server svarer, men nøkkelen ble avvist. Sjekk at nøkkelen er korrekt og ikke utløpt.", { duration: 10000 });
+        toast.error(t("admin.childCompanies.toastFh2KeyRejected", { duration: 10000 }));
       } else if (data?.error) {
-        toast.error(`FlightHub 2 feil: ${data.error}`, { duration: 10000 });
+        toast.error(t("admin.childCompanies.toastFh2Error", { error: data.error, duration: 10000 }));
       } else {
-        toast.error("Kunne ikke nå FlightHub 2-serveren.");
+        toast.error(t("admin.childCompanies.toastFh2Unreachable"));
       }
     } catch (err: any) {
-      toast.error(err?.message || "Tilkobling feilet");
+      toast.error(t("admin.childCompanies.toastConnectionFailed"));
     } finally {
       setTestingFh2(false);
     }
@@ -1056,7 +1056,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       );
     } catch (err: any) {
       setApplyFh2ToChildren(!checked);
-      toast.error(err?.message || "Kunne ikke lagre FlightHub 2-innstilling");
+      toast.error(t("admin.childCompanies.toastFh2SettingSaveError"));
     } finally {
       setSavingSettings(false);
     }
@@ -1084,9 +1084,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .from("companies")
         .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, prevent_self_approval: preventSelfApproval, all_users_can_acknowledge_maintenance: allUsersCanAcknowledgeMaintenance, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
         .eq("parent_company_id", companyId);
-      toast.success("Selskapsinnstillinger anvendt på alle avdelinger og låst");
+      toast.success(t("admin.childCompanies.toastSettingsAppliedLocked"));
     } else {
-      toast.success("Avdelinger kan nå overstyre innstillingene selv");
+      toast.success(t("admin.childCompanies.toastSettingsUnlocked"));
     }
     setSavingSettings(false);
     invalidateCompanySettingsCache();
@@ -1120,9 +1120,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           }
         }
       }
-      toast.success("Roller anvendt på alle avdelinger og låst");
+      toast.success(t("admin.childCompanies.toastRolesAppliedLocked"));
     } else {
-      toast.success("Avdelinger kan nå redigere roller selv");
+      toast.success(t("admin.childCompanies.toastRolesUnlocked"));
     }
     setSavingSettings(false);
   };
@@ -1163,9 +1163,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           }
         }
       }
-      toast.success("Flylogg-varsler anvendt på alle avdelinger og låst");
+      toast.success(t("admin.childCompanies.toastAlertsAppliedLocked"));
     } else {
-      toast.success("Avdelinger kan nå redigere varsler selv");
+      toast.success(t("admin.childCompanies.toastAlertsUnlocked"));
     }
     setSavingSettings(false);
   };
@@ -1196,9 +1196,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             }, { onConflict: 'company_id' });
         }
       }
-      toast.success("SORA-standardverdier anvendt og låst");
+      toast.success(t("admin.childCompanies.toastSoraDefaultsAppliedLocked"));
     } else {
-      toast.success("Avdelinger kan nå redigere SORA-standardverdier");
+      toast.success(t("admin.childCompanies.toastSoraDefaultsUnlocked"));
     }
     setSavingSettings(false);
     invalidateCompanySettingsCache();
@@ -1228,13 +1228,13 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .eq("id", companyToDelete.id);
 
       if (error) throw error;
-      toast.success("Avdeling slettet");
+      toast.success(t("admin.childCompanies.toastChildDeleted"));
       setDeleteDialogOpen(false);
       setCompanyToDelete(null);
       fetchChildren();
     } catch (error: any) {
       console.error("Error deleting child company:", error);
-      toast.error("Kunne ikke slette avdeling: " + error.message);
+      toast.error(t("admin.childCompanies.toastChildDeleteError", { error: error.message }));
     }
   };
 
