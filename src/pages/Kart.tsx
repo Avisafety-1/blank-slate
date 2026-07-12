@@ -851,7 +851,7 @@ export default function KartPage() {
                   )}
                   <span className="leading-tight whitespace-nowrap">
                     {vlisInfo.maxDistanceMeters}m
-                    {!vlisInfo.isWithinVLOS && ` (${vlisInfo.pointsOutside} utenfor)`}
+                    {!vlisInfo.isWithinVLOS && ` (${t('pages.map.outsideCount', { count: vlisInfo.pointsOutside })})`}
                   </span>
                 </div>
               )}
