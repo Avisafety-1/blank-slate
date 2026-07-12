@@ -20,6 +20,7 @@ import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
 import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
 import { TakeCourseDialog } from "@/components/training/TakeCourseDialog";
 import { PersonnelFlightKpi } from "@/components/resources/PersonnelFlightKpi";
+import { useTranslation } from "react-i18next";
 
 interface Competency {
   id: string;
@@ -53,6 +54,7 @@ export function PersonCompetencyDialog({
   person: initialPerson,
   onCompetencyUpdated,
 }: PersonCompetencyDialogProps) {
+  const { t } = useTranslation();
   const { companyId, isAdmin, user } = useAuth();
   const canEdit = isAdmin || (!!user && !!initialPerson && user.id === initialPerson.id);
   const [person, setPerson] = useState<Person | null>(initialPerson);
@@ -223,8 +225,8 @@ export function PersonCompetencyDialog({
     
     if (!newType || !newName || !person) {
       toast({
-        title: "Feil",
-        description: "Type og navn er påkrevd",
+        title: t('resourceDialogs.personCompetency.error'),
+        description: t('resourceDialogs.personCompetency.typeAndNameRequired'),
         variant: "destructive",
       });
       return;
@@ -244,9 +246,9 @@ export function PersonCompetencyDialog({
     if (error) {
       console.error("Error adding competency:", error);
       if (error.code === "42501" || error.message?.includes("policy")) {
-        toast({ title: "Ingen tillatelse", description: "Du har ikke tillatelse til å legge til kompetanse for denne personen", variant: "destructive" });
+        toast({ title: t('resourceDialogs.personCompetency.noPermission'), description: t('resourceDialogs.personCompetency.cannotAdd'), variant: "destructive" });
       } else {
-        toast({ title: "Feil", description: error.message || "Kunne ikke legge til kompetanse", variant: "destructive" });
+        toast({ title: t('resourceDialogs.personCompetency.error'), description: error.message || t('resourceDialogs.personCompetency.couldNotAdd'), variant: "destructive" });
       }
       return;
     }
@@ -260,7 +262,7 @@ export function PersonCompetencyDialog({
       await (supabase as any).from("personnel_competencies").update({ fil_url: filUrl }).eq("id", data.id);
     }
 
-    toast({ title: "Suksess", description: "Kompetanse lagt til" });
+    toast({ title: t('resourceDialogs.personCompetency.success'), description: t('resourceDialogs.personCompetency.added') });
 
     // Reset form
     setNewType("");
@@ -308,7 +310,7 @@ export function PersonCompetencyDialog({
 
   const handleUpdateCompetency = async (competencyId: string) => {
     if (!editType || !editName) {
-      toast({ title: "Feil", description: "Type og navn er påkrevd", variant: "destructive" });
+      toast({ title: t('resourceDialogs.personCompetency.error'), description: t('resourceDialogs.personCompetency.typeAndNameRequired'), variant: "destructive" });
       return;
     }
 
@@ -336,11 +338,11 @@ export function PersonCompetencyDialog({
       .eq("id", competencyId);
 
     if (error) {
-      toast({ title: "Feil", description: "Kunne ikke oppdatere kompetanse", variant: "destructive" });
+      toast({ title: t('resourceDialogs.personCompetency.error'), description: t('resourceDialogs.personCompetency.couldNotUpdate'), variant: "destructive" });
       return;
     }
 
-    toast({ title: "Suksess", description: "Kompetanse oppdatert" });
+    toast({ title: t('resourceDialogs.personCompetency.success'), description: t('resourceDialogs.personCompetency.updated') });
     setEditingId(null);
     onCompetencyUpdated();
   };
@@ -365,11 +367,11 @@ export function PersonCompetencyDialog({
       .eq("id", competencyToDelete);
 
     if (error) {
-      toast({ title: "Feil", description: "Kunne ikke slette kompetanse", variant: "destructive" });
+      toast({ title: t('resourceDialogs.personCompetency.error'), description: t('resourceDialogs.personCompetency.couldNotDelete'), variant: "destructive" });
       return;
     }
 
-    toast({ title: "Suksess", description: "Kompetanse slettet" });
+    toast({ title: t('resourceDialogs.personCompetency.success'), description: t('resourceDialogs.personCompetency.deleted') });
     setDeleteDialogOpen(false);
     setCompetencyToDelete(null);
     onCompetencyUpdated();
@@ -388,12 +390,12 @@ export function PersonCompetencyDialog({
     const hasAttachment = file || docUrl || existingFilUrl;
     return (
       <div className="space-y-2">
-        <Label className="text-xs">Vedlegg (sertifikat/kompetansebevis)</Label>
+        <Label className="text-xs">{t('resourceDialogs.personCompetency.attachment')}</Label>
         {hasAttachment ? (
           <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
             <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-xs truncate flex-1">
-              {file ? file.name : docUrl ? "Dokument fra /dokumenter" : "Vedlegg"}
+              {file ? file.name : docUrl ? t('resourceDialogs.personCompetency.docFromDokumenter') : t('resourceDialogs.personCompetency.attachmentLabel')}
             </span>
             {(existingFilUrl && !file && !docUrl) && (
               <Button
@@ -434,7 +436,7 @@ export function PersonCompetencyDialog({
               onClick={() => inputRef.current?.click()}
             >
               <Upload className="h-3.5 w-3.5 shrink-0" />
-              Last opp
+              {t('resourceDialogs.personCompetency.upload')}
             </Button>
             <Button
               type="button"
@@ -444,7 +446,7 @@ export function PersonCompetencyDialog({
               onClick={onOpenDocPicker}
             >
               <FileText className="h-3.5 w-3.5 shrink-0" />
-              Dokumenter
+              {t('resourceDialogs.personCompetency.documents')}
             </Button>
             <input
               ref={inputRef}
@@ -487,7 +489,7 @@ export function PersonCompetencyDialog({
       setTakeCourseAssignmentId(data.id);
     } catch (err) {
       console.error("Error creating assignment:", err);
-      toast({ title: "Feil", description: "Kunne ikke starte kurset", variant: "destructive" });
+      toast({ title: t('resourceDialogs.personCompetency.error'), description: t('resourceDialogs.personCompetency.couldNotStartCourse'), variant: "destructive" });
     }
   };
 
@@ -508,7 +510,7 @@ export function PersonCompetencyDialog({
                 className="gap-2 w-full sm:w-auto"
               >
                 <Book className="w-4 h-4" />
-                Loggbok
+                {t('resourceDialogs.personCompetency.logbook')}
               </Button>
               {canEdit && (
                 <Button
@@ -517,7 +519,7 @@ export function PersonCompetencyDialog({
                   className="gap-2 w-full sm:w-auto"
                 >
                   <Plus className="w-4 h-4" />
-                  Legg til kompetanse
+                  {t('resourceDialogs.personCompetency.addCompetency')}
                 </Button>
               )}
             </div>
@@ -542,7 +544,7 @@ export function PersonCompetencyDialog({
                     // Edit mode
                     <div className="space-y-3">
                       <div>
-                        <Label>Type</Label>
+                        <Label>{t('resourceDialogs.personCompetency.type')}</Label>
                         <Select value={editType} onValueChange={setEditType}>
                           <SelectTrigger>
                             <SelectValue />
@@ -559,27 +561,27 @@ export function PersonCompetencyDialog({
                         </Select>
                       </div>
                       <div>
-                        <Label>Navn</Label>
+                        <Label>{t('resourceDialogs.personCompetency.navn')}</Label>
                         <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
                       </div>
                       <div>
-                        <Label>Beskrivelse</Label>
+                        <Label>{t('resourceDialogs.personCompetency.description')}</Label>
                         <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-xs">Utstedt</Label>
+                          <Label className="text-xs">{t('resourceDialogs.personCompetency.issued')}</Label>
                           <Input type="date" value={editIssueDate} onChange={(e) => setEditIssueDate(e.target.value)} className="h-9" />
                         </div>
                         <div>
-                          <Label className="text-xs">Utløper</Label>
+                          <Label className="text-xs">{t('resourceDialogs.personCompetency.expires')}</Label>
                           <Input type="date" value={editExpiryDate} onChange={(e) => setEditExpiryDate(e.target.value)} className="h-9" />
                         </div>
                       </div>
                       <div>
                         <Label className="text-xs flex items-center gap-1">
                           <Bell className="h-3 w-3" />
-                          Varsle (dager før utløp)
+                          {t('resourceDialogs.personCompetency.notifyDays')}
                         </Label>
                         <Input
                           type="number"
@@ -591,7 +593,7 @@ export function PersonCompetencyDialog({
                           className="h-9"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                          Gul status og e-postvarsel utløses {editWarningDays} dager før utløp.
+                          {t('resourceDialogs.personCompetency.notifyHint', { days: editWarningDays })}
                         </p>
                       </div>
                       {renderFileInput(
@@ -611,15 +613,15 @@ export function PersonCompetencyDialog({
                           onCheckedChange={setEditAffectsStatus}
                         />
                         <Label htmlFor={`edit-affects-status-${competency.id}`} className="text-xs">
-                          Påvirker status
+                          {t('resourceDialogs.personCompetency.affectsStatus')}
                         </Label>
                       </div>
                       <div className="flex gap-2 pt-2">
                         <Button onClick={() => handleUpdateCompetency(competency.id)} size="sm">
-                          Lagre
+                          {t('resourceDialogs.personCompetency.save')}
                         </Button>
                         <Button onClick={handleCancelEdit} variant="outline" size="sm">
-                          Avbryt
+                          {t('resourceDialogs.personCompetency.cancel')}
                         </Button>
                       </div>
                     </div>
@@ -647,18 +649,18 @@ export function PersonCompetencyDialog({
                       )}
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         {competency.utstedt_dato && (
-                          <span>Utstedt: {format(new Date(competency.utstedt_dato), "dd.MM.yy", { locale: nb })}</span>
+                          <span>{t('resourceDialogs.personCompetency.issuedShort')} {format(new Date(competency.utstedt_dato), "dd.MM.yy", { locale: nb })}</span>
                         )}
                         {competency.utloper_dato && (
                           <span className={new Date(competency.utloper_dato) < new Date() ? "text-destructive" : ""}>
-                            Utløper: {format(new Date(competency.utloper_dato), "dd.MM.yy", { locale: nb })}
+                            {t('resourceDialogs.personCompetency.expiresShort')} {format(new Date(competency.utloper_dato), "dd.MM.yy", { locale: nb })}
                           </span>
                         )}
                       </div>
                       {competency.utloper_dato && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Bell className="h-3 w-3" />
-                          Gul varsling sendes {competency.varsel_dager ?? 30} dager før utløp
+                          {t('resourceDialogs.personCompetency.yellowWarningShort', { days: competency.varsel_dager ?? 30 })}
                         </p>
                       )}
                       {competency.fil_url && (
@@ -673,7 +675,7 @@ export function PersonCompetencyDialog({
                           }}
                         >
                           <Paperclip className="h-3.5 w-3.5" />
-                          Vis vedlegg
+                          {t('resourceDialogs.personCompetency.showAttachment')}
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       )}
@@ -707,8 +709,8 @@ export function PersonCompetencyDialog({
                                 };
                               });
                               toast({
-                                title: "Feil",
-                                description: "Kunne ikke oppdatere innstilling",
+                                title: t('resourceDialogs.personCompetency.error'),
+                                description: t('resourceDialogs.personCompetency.couldNotUpdateSetting'),
                                 variant: "destructive",
                               });
                             } else {
@@ -717,7 +719,7 @@ export function PersonCompetencyDialog({
                           }}
                         />
                         <Label htmlFor={`affects-status-${competency.id}`} className="text-xs text-muted-foreground">
-                          Påvirker status
+                          {t('resourceDialogs.personCompetency.affectsStatus')}
                         </Label>
                       </div>
                     </>
@@ -729,12 +731,12 @@ export function PersonCompetencyDialog({
                 <>
                   <div className="space-y-3 mb-6 min-w-0">
                     <h3 data-tour="person-competencies" className="text-sm font-semibold text-muted-foreground">
-                      Kompetanser
+                      {t('resourceDialogs.personCompetency.competencies')}
                     </h3>
                     {regularComps.length === 0 && tourComps.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
+                      <p className="text-sm text-muted-foreground">{t('resourceDialogs.personCompetency.noCompetencies')}</p>
                     ) : regularComps.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Ingen ordinære kompetanser registrert</p>
+                      <p className="text-sm text-muted-foreground">{t('resourceDialogs.personCompetency.noOrdinary')}</p>
                     ) : (
                       regularComps.map(renderCompetencyCard)
                     )}
@@ -745,7 +747,7 @@ export function PersonCompetencyDialog({
                       <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/50 px-3 py-2 text-sm font-medium transition-colors group">
                         <span className="flex items-center gap-2 text-muted-foreground">
                           <Compass className="h-4 w-4 text-primary" />
-                          Fullførte veiledede tour-er
+                          {t('resourceDialogs.personCompetency.completedTours')}
                           <span className="text-xs text-muted-foreground/80">({tourComps.length})</span>
                         </span>
                         <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
@@ -765,7 +767,7 @@ export function PersonCompetencyDialog({
               <div className="space-y-3 mb-6 min-w-0">
                 <h3 data-tour="person-courses" className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
                   <GraduationCap className="h-4 w-4" />
-                  Tilgjengelige kurs
+                  {t('resourceDialogs.personCompetency.availableCourses')}
                 </h3>
                 {availableCourses.map((course) => (
                   <div key={course.id} className="border rounded-lg p-3 bg-card flex items-center justify-between gap-2 sm:gap-3 min-w-0 max-w-full overflow-hidden">
@@ -775,11 +777,11 @@ export function PersonCompetencyDialog({
                         <p className="text-xs text-muted-foreground line-clamp-1 break-words">{course.description}</p>
                       )}
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        Bestått: {course.passing_score}% · {course.validity_months ? `Gyldig ${course.validity_months} mnd` : "Permanent"}
+                        {t('resourceDialogs.personCompetency.passing')} {course.passing_score}% · {course.validity_months ? t('resourceDialogs.personCompetency.validMonths', { n: course.validity_months }) : t('resourceDialogs.personCompetency.permanent')}
                       </p>
                     </div>
                     <Button size="sm" className="shrink-0" onClick={() => handleTakeCourse(course)}>
-                      Ta kurs
+                      {t('resourceDialogs.personCompetency.takeCourse')}
                     </Button>
                   </div>
                 ))}
@@ -796,16 +798,16 @@ export function PersonCompetencyDialog({
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] p-3 sm:p-6 overflow-hidden box-border">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Legg til kompetanse</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{t('resourceDialogs.personCompetency.addCompetency')}</DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[calc(90vh-6rem)] w-full">
             <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0 pr-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="new-type" className="text-xs">Type *</Label>
+                  <Label htmlFor="new-type" className="text-xs">{t('resourceDialogs.personCompetency.typeRequired')}</Label>
                   <Select value={newType} onValueChange={setNewType}>
                     <SelectTrigger id="new-type" className="h-9">
-                      <SelectValue placeholder="Velg type" />
+                      <SelectValue placeholder={t('resourceDialogs.personCompetency.selectType')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Kurs">Kurs</SelectItem>
@@ -819,7 +821,7 @@ export function PersonCompetencyDialog({
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="new-name" className="text-xs">Navn *</Label>
+                  <Label htmlFor="new-name" className="text-xs">{t('resourceDialogs.personCompetency.nameRequired')}</Label>
                   {newType === "Kurs" ? (
                     <>
                       <Select
@@ -827,13 +829,13 @@ export function PersonCompetencyDialog({
                         onValueChange={(v) => setNewName(v === "__custom__" ? "" : v)}
                       >
                         <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Velg kurs..." />
+                          <SelectValue placeholder={t('resourceDialogs.personCompetency.selectCourse')} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="STS">STS</SelectItem>
                           <SelectItem value="A1/A3">A1/A3</SelectItem>
                           <SelectItem value="A2">A2</SelectItem>
-                          <SelectItem value="__custom__">Annet (skriv inn)...</SelectItem>
+                          <SelectItem value="__custom__">{t('resourceDialogs.personCompetency.otherEnter')}</SelectItem>
                         </SelectContent>
                       </Select>
                       {!["STS", "A1/A3", "A2"].includes(newName) && (
@@ -841,7 +843,7 @@ export function PersonCompetencyDialog({
                           id="new-name"
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
-                          placeholder="Skriv inn kursnavn"
+                          placeholder={t('resourceDialogs.personCompetency.enterCourseName')}
                           className="h-9 mt-2"
                         />
                       )}
@@ -851,7 +853,7 @@ export function PersonCompetencyDialog({
                       id="new-name"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      placeholder="F.eks. A3 drone"
+                      placeholder={t('resourceDialogs.personCompetency.egA3')}
                       className="h-9"
                     />
                   )}
@@ -859,19 +861,19 @@ export function PersonCompetencyDialog({
               </div>
 
               <div>
-                <Label htmlFor="new-description" className="text-xs">Beskrivelse</Label>
+                <Label htmlFor="new-description" className="text-xs">{t('resourceDialogs.personCompetency.description')}</Label>
                 <Textarea
                   id="new-description"
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Valgfri"
+                  placeholder={t('resourceDialogs.personCompetency.optional')}
                   className="min-h-[60px]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="min-w-0">
-                  <Label htmlFor="new-issue-date" className="text-xs">Utstedt</Label>
+                  <Label htmlFor="new-issue-date" className="text-xs">{t('resourceDialogs.personCompetency.issued')}</Label>
                   <Input
                     id="new-issue-date"
                     type="date"
@@ -881,7 +883,7 @@ export function PersonCompetencyDialog({
                   />
                 </div>
                 <div className="min-w-0">
-                  <Label htmlFor="new-expiry-date" className="text-xs">Utløper</Label>
+                  <Label htmlFor="new-expiry-date" className="text-xs">{t('resourceDialogs.personCompetency.expires')}</Label>
                   <Input
                     id="new-expiry-date"
                     type="date"
@@ -895,7 +897,7 @@ export function PersonCompetencyDialog({
               <div>
                 <Label htmlFor="new-warning-days" className="text-xs flex items-center gap-1">
                   <Bell className="h-3 w-3" />
-                  Varsle (dager før utløp)
+                  {t('resourceDialogs.personCompetency.notifyDays')}
                 </Label>
                 <Input
                   id="new-warning-days"
@@ -908,7 +910,7 @@ export function PersonCompetencyDialog({
                   className="h-9"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Gul status og e-postvarsel utløses {newWarningDays} dager før utløp.
+                  {t('resourceDialogs.personCompetency.notifyHint', { days: newWarningDays })}
                 </p>
               </div>
 
@@ -930,12 +932,12 @@ export function PersonCompetencyDialog({
                   onCheckedChange={setNewAffectsStatus}
                 />
                 <Label htmlFor="new-affects-status" className="text-xs">
-                  Påvirker status
+                  {t('resourceDialogs.personCompetency.affectsStatus')}
                 </Label>
               </div>
 
               <Button type="submit" className="w-full h-10">
-                Legg til
+                {t('resourceDialogs.personCompetency.add')}
               </Button>
             </form>
           </ScrollArea>
@@ -946,15 +948,15 @@ export function PersonCompetencyDialog({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+            <AlertDialogTitle>{t('resourceDialogs.personCompetency.areYouSure')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Denne handlingen kan ikke angres. Kompetansen vil bli permanent slettet.
+              {t('resourceDialogs.personCompetency.confirmDeleteDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('resourceDialogs.personCompetency.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete}>
-              Slett
+              {t('resourceDialogs.personCompetency.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
