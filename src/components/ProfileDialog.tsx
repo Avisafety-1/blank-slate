@@ -1931,10 +1931,10 @@ export const ProfileDialog = () => {
                           <div className="flex items-center justify-between">
                             <div className="space-y-0.5 flex-1">
                               <label className="text-sm font-medium">
-                                Oppdrag til godkjenning
+                                {t('profile.notificationOptions.missionApproval')}
                               </label>
                               <p className="text-xs text-muted-foreground">
-                                Motta e-post når oppdrag sendes til godkjenning
+                                {t('profile.notificationOptions.missionApprovalDesc')}
                               </p>
                             </div>
                             <Switch
@@ -1992,16 +1992,16 @@ export const ProfileDialog = () => {
                           <Separator className="my-6" />
                           <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
                             <div className="space-y-1">
-                              <h4 className="font-medium">Varslinger fra avdelinger</h4>
+                              <h4 className="font-medium">{t('profile.notificationOptions.childCompanies')}</h4>
                               <p className="text-xs text-muted-foreground">
-                                Gjelder hendelser og frister i avdelinger under mor-selskapet ditt.
+                                {t('profile.notificationOptions.childCompaniesDesc')}
                               </p>
                             </div>
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Nye hendelser i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når en avdeling registrerer en hendelse.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childIncidents')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childIncidentsDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_incidents ?? true}
@@ -2013,8 +2013,8 @@ export const ProfileDialog = () => {
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Nye oppdrag i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når en avdeling oppretter et oppdrag.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childMissions')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childMissionsDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_missions ?? true}
@@ -2026,8 +2026,8 @@ export const ProfileDialog = () => {
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Nye brukere i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når en bruker venter på godkjenning i en avdeling.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childNewUsers')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childNewUsersDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_new_user_pending ?? true}
@@ -2039,8 +2039,8 @@ export const ProfileDialog = () => {
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Dokumenter som utløper i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når dokumentfrister i avdelinger nærmer seg.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childDocumentExpiry')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childDocumentExpiryDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_document_expiry ?? true}
@@ -2052,8 +2052,8 @@ export const ProfileDialog = () => {
 
                             <div className="flex items-center justify-between gap-4">
                               <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">Vedlikehold i avdelinger</label>
-                                <p className="text-xs text-muted-foreground">Motta e-post når ressurser i avdelinger krever vedlikehold eller inspeksjon.</p>
+                                <label className="text-sm font-medium">{t('profile.notificationOptions.childMaintenance')}</label>
+                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childMaintenanceDesc')}</p>
                               </div>
                               <Switch
                                 checked={notificationPrefs?.email_child_maintenance_reminder ?? true}
