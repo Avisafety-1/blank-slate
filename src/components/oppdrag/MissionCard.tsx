@@ -963,15 +963,15 @@ export const MissionCard = ({
     <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Send til godkjenning?</AlertDialogTitle>
+          <AlertDialogTitle>{t('pages.missions.card.sendForApprovalTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Er du sikker på at du vil sende dette oppdraget til godkjenning?
+            {t('pages.missions.card.sendForApprovalDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('pages.missions.card.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleSubmitForApproval}>
-            Send til godkjenning
+            {t('pages.missions.card.sendForApproval')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
