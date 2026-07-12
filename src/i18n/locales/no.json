@@ -60,7 +60,8 @@
     "noResults": "Ingen treff for",
     "processing": "Behandler...",
     "other": "Annet",
-    "missionFallback": "Oppdrag"
+    "missionFallback": "Oppdrag",
+    "unknown": "Ukjent"
   },
   "auth": {
     "signIn": "Logg inn",
@@ -620,7 +621,9 @@
     "statusGreen": "Grønn",
     "statusYellow": "Gul",
     "statusRed": "Rød",
-    "noResultsFiltered": "Ingen treff med valgte filtre"
+    "noResultsFiltered": "Ingen treff med valgte filtre",
+    "accessoryFallback": "Tilbehør",
+    "equipmentFallback": "Utstyr"
   },
   "missions": {
     "title": "Tittel",
