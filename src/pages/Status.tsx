@@ -48,6 +48,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
@@ -79,6 +80,7 @@ const COLORS = {
 };
 
 const Status = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, companyId, companyName: authCompanyName, parentCompanyName } = useAuth();
@@ -147,15 +149,15 @@ const Status = () => {
     try {
       const { data: session } = await supabase.auth.getSession();
       const token = session?.session?.access_token;
-      if (!token) throw new Error("Ingen aktiv sesjon");
+      if (!token) throw new Error(t("status.hookMessages.noActiveSession"));
 
       const periodLabel =
-        timePeriod === "month" ? "Siste måned" :
-        timePeriod === "quarter" ? "Siste kvartal" :
-        timePeriod === "year" ? "Siste år" :
+        timePeriod === "month" ? t("status.page.periodMonth") :
+        timePeriod === "quarter" ? t("status.page.periodQuarter") :
+        timePeriod === "year" ? t("status.page.periodYear") :
         timePeriod === "custom" && customDateFrom && customDateTo
           ? `${format(customDateFrom, "dd.MM.yyyy")} – ${format(customDateTo, "dd.MM.yyyy")}`
-          : "Ukjent";
+          : t("status.hookMessages.periodUnknown");
 
       // Hent flåtestørrelse (anonyme antall) for normalisering av risiko
       const visibleIds = await supabase
@@ -231,10 +233,10 @@ const Status = () => {
       );
 
       if (!resp.ok || !resp.body) {
-        let msg = "AI-analyse feilet";
+        let msg = t("status.hookMessages.aiAnalysisFailed");
         try { const j = await resp.json(); msg = j.error || msg; } catch {}
-        if (resp.status === 429) msg = "Forespørselsgrense nådd. Prøv igjen om litt.";
-        if (resp.status === 402) msg = "AI-kreditter brukt opp. Legg til kreditter i workspace.";
+        if (resp.status === 429) msg = t("status.hookMessages.rateLimitReached");
+        if (resp.status === 402) msg = t("status.hookMessages.creditsExhausted");
         toast.error(msg);
         setAiText(msg);
         return;
@@ -271,7 +273,7 @@ const Status = () => {
       }
     } catch (err) {
       console.error("AI analysis error:", err);
-      const msg = err instanceof Error ? err.message : "Ukjent feil";
+      const msg = err instanceof Error ? err.message : t("status.hookMessages.unknownErrorGeneric");
       toast.error(msg);
       setAiText(msg);
     } finally {
@@ -286,7 +288,7 @@ const Status = () => {
       .eq("id", missionId)
       .maybeSingle();
     if (error || !data) {
-      toast.error("Kunne ikke åpne oppdraget");
+      toast.error(t("status.hookMessages.couldNotOpenMission"));
       return;
     }
     setSelectedMission(data);
@@ -675,7 +677,7 @@ const Status = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
         <main className="container mx-auto px-4 py-8">
-          <div className="text-center">Laster statistikk...</div>
+          <div className="text-center">{t("status.page.loading")}</div>
         </main>
       </div>
     );
@@ -691,131 +693,131 @@ const Status = () => {
 
       // KPI Sheet
       const kpiSheetData = [
-        ["Nøkkeltall (KPI)", ""],
-        ["Totale oppdrag", kpiData.totalMissions],
-        ["Fullførte oppdrag", kpiData.completedMissions],
-        ["Fullføringsgrad", `${completionRate}%`],
-        ["Totale flyvetimer", kpiData.totalFlightHours],
-        ["Hendelsesfrekvens", kpiData.incidentRate.toFixed(2)],
-        ["Aktive ressurser", kpiData.activeResources],
+        [t("status.hookMessages.export.kpiHeading"), ""],
+        [t("status.hookMessages.export.totalMissions"), kpiData.totalMissions],
+        [t("status.hookMessages.export.completedMissions"), kpiData.completedMissions],
+        [t("status.hookMessages.export.completionRate"), `${completionRate}%`],
+        [t("status.hookMessages.export.totalFlightHours"), kpiData.totalFlightHours],
+        [t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)],
+        [t("status.hookMessages.export.activeResources"), kpiData.activeResources],
       ];
       const wsKPI = XLSX.utils.aoa_to_sheet(kpiSheetData);
-      XLSX.utils.book_append_sheet(wb, wsKPI, "KPI");
+      XLSX.utils.book_append_sheet(wb, wsKPI, t("status.hookMessages.export.kpiSheet"));
 
       // Missions by Month
       const missionMonthData = [
-        ["Måned", "Antall oppdrag"],
+        [t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.missionCountHeader")],
         ...missionsByMonth.map(item => [item.month, item.count])
       ];
       const wsMissionsMonth = XLSX.utils.aoa_to_sheet(missionMonthData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsMonth, "Oppdrag per måned");
+      XLSX.utils.book_append_sheet(wb, wsMissionsMonth, t("status.hookMessages.export.missionsByMonthSheet"));
 
       // Missions by Status
       const missionStatusData = [
-        ["Status", "Antall"],
+        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
         ...missionsByStatus.map(item => [item.name, item.value])
       ];
       const wsMissionsStatus = XLSX.utils.aoa_to_sheet(missionStatusData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsStatus, "Oppdrag per status");
+      XLSX.utils.book_append_sheet(wb, wsMissionsStatus, t("status.hookMessages.export.missionsByStatusSheet"));
 
       // Missions by Risk
       const missionRiskData = [
-        ["Risikonivå", "Antall"],
+        [t("status.hookMessages.export.riskLevelHeader"), t("status.hookMessages.export.countHeader")],
         ...missionsByRisk.map(item => [item.name, item.value])
       ];
       const wsMissionsRisk = XLSX.utils.aoa_to_sheet(missionRiskData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsRisk, "Oppdrag per risiko");
+      XLSX.utils.book_append_sheet(wb, wsMissionsRisk, t("status.hookMessages.export.missionsByRiskSheet"));
 
       // Incidents by Month
       const incidentMonthData = [
-        ["Måned", "Antall hendelser"],
+        [t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.incidentCountHeader")],
         ...incidentsByMonth.map(item => [item.month, item.count])
       ];
       const wsIncidentsMonth = XLSX.utils.aoa_to_sheet(incidentMonthData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsMonth, "Hendelser per måned");
+      XLSX.utils.book_append_sheet(wb, wsIncidentsMonth, t("status.hookMessages.export.incidentsByMonthSheet"));
 
       // Incidents by Main Cause
       const incidentMainCauseData = [
-        ["Hovedårsak", "Antall"],
+        [t("status.hookMessages.export.mainCauseHeader"), t("status.hookMessages.export.countHeader")],
         ...incidentsByMainCause.map(item => [item.name, item.value])
       ];
       const wsIncidentsMainCause = XLSX.utils.aoa_to_sheet(incidentMainCauseData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsMainCause, "Hovedårsaker");
+      XLSX.utils.book_append_sheet(wb, wsIncidentsMainCause, t("status.hookMessages.export.mainCausesSheet"));
 
       // Incidents by Contributing Cause
       const incidentContributingData = [
-        ["Medvirkende årsak", "Antall"],
+        [t("status.hookMessages.export.contributingCauseHeader"), t("status.hookMessages.export.countHeader")],
         ...incidentsByContributingCause.map(item => [item.name, item.value])
       ];
       const wsIncidentsContributing = XLSX.utils.aoa_to_sheet(incidentContributingData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsContributing, "Medvirkende årsaker");
+      XLSX.utils.book_append_sheet(wb, wsIncidentsContributing, t("status.hookMessages.export.contributingCausesSheet"));
 
       // Incidents by Severity
       const incidentSeverityData = [
-        ["Alvorlighetsgrad", "Antall"],
+        [t("status.hookMessages.export.severityHeader"), t("status.hookMessages.export.countHeader")],
         ...incidentsBySeverity.map(item => [item.name, item.value])
       ];
       const wsIncidentsSeverity = XLSX.utils.aoa_to_sheet(incidentSeverityData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsSeverity, "Hendelser per alvorlighetsgrad");
+      XLSX.utils.book_append_sheet(wb, wsIncidentsSeverity, t("status.hookMessages.export.incidentsBySeveritySheet"));
 
       // Drone Status
       const droneStatusData = [
-        ["Status", "Antall"],
+        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
         ...droneStatus.map(item => [item.name, item.value])
       ];
       const wsDroneStatus = XLSX.utils.aoa_to_sheet(droneStatusData);
-      XLSX.utils.book_append_sheet(wb, wsDroneStatus, "Dronestatus");
+      XLSX.utils.book_append_sheet(wb, wsDroneStatus, t("status.hookMessages.export.droneStatusSheet"));
 
       // Equipment Status
       const equipmentStatusData = [
-        ["Status", "Antall"],
+        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
         ...equipmentStatus.map(item => [item.name, item.value])
       ];
       const wsEquipmentStatus = XLSX.utils.aoa_to_sheet(equipmentStatusData);
-      XLSX.utils.book_append_sheet(wb, wsEquipmentStatus, "Utstyrstatus");
+      XLSX.utils.book_append_sheet(wb, wsEquipmentStatus, t("status.hookMessages.export.equipmentStatusSheet"));
 
       // Flight Hours by Drone
       const flightHoursData = [
-        ["Drone", "Flyvetimer"],
+        [t("status.hookMessages.export.droneHeader"), t("status.hookMessages.export.flightHoursHeader")],
         ...flightHoursByDrone.map(item => [item.name, item.hours])
       ];
       const wsFlightHours = XLSX.utils.aoa_to_sheet(flightHoursData);
-      XLSX.utils.book_append_sheet(wb, wsFlightHours, "Flyvetimer per drone");
+      XLSX.utils.book_append_sheet(wb, wsFlightHours, t("status.hookMessages.export.flightHoursSheet"));
 
       // Expiring Documents
       const expiringDocsData = [
-        ["Tidsperiode", "Antall dokumenter"],
-        ["Innen 30 dager", expiringDocs.thirtyDays],
-        ["Innen 60 dager", expiringDocs.sixtyDays],
-        ["Innen 90 dager", expiringDocs.ninetyDays],
+        [t("status.hookMessages.export.periodHeader"), t("status.hookMessages.export.docCountHeader")],
+        [t("status.hookMessages.export.within30"), expiringDocs.thirtyDays],
+        [t("status.hookMessages.export.within60"), expiringDocs.sixtyDays],
+        [t("status.hookMessages.export.within90"), expiringDocs.ninetyDays],
       ];
       const wsExpiringDocs = XLSX.utils.aoa_to_sheet(expiringDocsData);
-      XLSX.utils.book_append_sheet(wb, wsExpiringDocs, "Dokumenter som utløper");
+      XLSX.utils.book_append_sheet(wb, wsExpiringDocs, t("status.hookMessages.export.expiringDocsSheet"));
 
       // Deviation Reports
       const deviationSummary = [
-        ["Avviksrapporter (sammendrag)", ""],
-        ["Totalt antall avvik", deviationReports.length],
-        ["Unike flyturer med avvik", new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size],
-        ["Unike piloter", new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size],
+        [t("status.hookMessages.export.deviationSummaryHeading"), ""],
+        [t("status.hookMessages.export.totalDeviations"), deviationReports.length],
+        [t("status.hookMessages.export.uniqueFlightsWithDeviations"), new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size],
+        [t("status.hookMessages.export.uniquePilots"), new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size],
         [],
-        ["Hovedkategori", "Antall"],
+        [t("status.hookMessages.export.mainCategoryHeader"), t("status.hookMessages.export.countHeader")],
         ...Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
-          const root = r.category_path[0] || "Ukategorisert";
+          const root = r.category_path[0] || t("status.hookMessages.export.unknownCategory");
           acc[root] = (acc[root] || 0) + 1;
           return acc;
         }, {})).map(([name, value]) => [name, value]),
         [],
-        ["Dato", "Pilot", "Kategori", "Kommentar"],
+        [t("status.hookMessages.export.dateHeader"), t("status.hookMessages.export.pilotHeader"), t("status.hookMessages.export.categoryHeader"), t("status.hookMessages.export.commentHeader")],
         ...deviationReports.map(r => [
           format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
-          r.reporter_name || "Ukjent",
+          r.reporter_name || t("status.hookMessages.export.unknown"),
           r.category_path.join(" > "),
           r.comment || "",
         ]),
       ];
       const wsDeviation = XLSX.utils.aoa_to_sheet(deviationSummary);
-      XLSX.utils.book_append_sheet(wb, wsDeviation, "Avviksrapporter");
+      XLSX.utils.book_append_sheet(wb, wsDeviation, t("status.hookMessages.export.deviationSheet"));
 
       // Generate filename with date
       const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.xlsx`;
@@ -832,7 +834,7 @@ const Status = () => {
         .single();
 
       if (!profile?.company_id) {
-        throw new Error("Kunne ikke hente firmaopplysninger");
+        throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
       }
 
       // Upload to Supabase Storage
@@ -847,35 +849,35 @@ const Status = () => {
       if (uploadError) throw uploadError;
 
       // Create document entry in database
-      const periodLabel = timePeriod === "month" ? "Siste måned" : 
-                         timePeriod === "quarter" ? "Siste kvartal" : "Siste år";
+      const periodLabel = timePeriod === "month" ? t("status.page.periodMonth") : 
+                         timePeriod === "quarter" ? t("status.page.periodQuarter") : t("status.page.periodYear");
       
       const { error: dbError } = await supabase
         .from('documents')
         .insert({
-          tittel: `Statistikkrapport - ${periodLabel}`,
-          kategori: 'Rapporter',
-          beskrivelse: `Excel-rapport generert ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`,
+          tittel: `${t("status.hookMessages.export.reportTitlePrefix")} - ${periodLabel}`,
+          kategori: t("status.hookMessages.export.docCategory"),
+          beskrivelse: t("status.hookMessages.export.excelDescription", { date: format(new Date(), "dd.MM.yyyy 'kl.' HH:mm") }),
           fil_navn: fileName,
           fil_url: filePath,
           fil_storrelse: blob.size,
           company_id: profile.company_id,
           user_id: user?.id,
-          opprettet_av: profile?.full_name || user?.email || 'Ukjent'
         });
+
 
       if (dbError) throw dbError;
 
       // Also download the file for the user
       XLSX.writeFile(wb, fileName);
       
-      toast.success("Excel-rapport lagret", {
-        description: "Rapporten er lagret i dokumenter under kategorien Rapporter"
+      toast.success(t("status.hookMessages.excelSavedTitle"), {
+        description: t("status.hookMessages.reportSavedDescription")
       });
     } catch (error) {
       console.error("Error exporting to Excel:", error);
-      toast.error("Feil ved eksport", {
-        description: "Kunne ikke generere Excel-rapport"
+      toast.error(t("status.hookMessages.exportErrorTitle"), {
+        description: t("status.hookMessages.excelExportErrorDescription")
       });
     }
   };
@@ -886,89 +888,89 @@ const Status = () => {
       const sections: string[][] = [];
 
       // KPI
-      sections.push(["Nøkkeltall (KPI)", ""]);
-      sections.push(["Totale oppdrag", String(kpiData.totalMissions)]);
-      sections.push(["Fullførte oppdrag", String(kpiData.completedMissions)]);
-      sections.push(["Fullføringsgrad", `${completionRate}%`]);
-      sections.push(["Totale flyvetimer", String(kpiData.totalFlightHours)]);
-      sections.push(["Hendelsesfrekvens", kpiData.incidentRate.toFixed(2)]);
-      sections.push(["Aktive ressurser", String(kpiData.activeResources)]);
+      sections.push([t("status.hookMessages.export.kpiHeading"), ""]);
+      sections.push([t("status.hookMessages.export.totalMissions"), String(kpiData.totalMissions)]);
+      sections.push([t("status.hookMessages.export.completedMissions"), String(kpiData.completedMissions)]);
+      sections.push([t("status.hookMessages.export.completionRate"), `${completionRate}%`]);
+      sections.push([t("status.hookMessages.export.totalFlightHours"), String(kpiData.totalFlightHours)]);
+      sections.push([t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)]);
+      sections.push([t("status.hookMessages.export.activeResources"), String(kpiData.activeResources)]);
       sections.push([]);
 
       // Missions by Month
-      sections.push(["Måned", "Antall oppdrag"]);
+      sections.push([t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.missionCountHeader")]);
       missionsByMonth.forEach(item => sections.push([item.month, String(item.count)]));
       sections.push([]);
 
       // Missions by Status
-      sections.push(["Status", "Antall"]);
+      sections.push([t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")]);
       missionsByStatus.forEach(item => sections.push([item.name, String(item.value)]));
       sections.push([]);
 
       // Missions by Risk
-      sections.push(["Risikonivå", "Antall"]);
+      sections.push([t("status.hookMessages.export.riskLevelHeader"), t("status.hookMessages.export.countHeader")]);
       missionsByRisk.forEach(item => sections.push([item.name, String(item.value)]));
       sections.push([]);
 
       // Incidents by Month
-      sections.push(["Måned", "Antall hendelser"]);
+      sections.push([t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.incidentCountHeader")]);
       incidentsByMonth.forEach(item => sections.push([item.month, String(item.count)]));
       sections.push([]);
 
       // Incidents by Main Cause
-      sections.push(["Hovedårsak", "Antall"]);
+      sections.push([t("status.hookMessages.export.mainCauseHeader"), t("status.hookMessages.export.countHeader")]);
       incidentsByMainCause.forEach(item => sections.push([item.name, String(item.value)]));
       sections.push([]);
 
       // Incidents by Contributing Cause
-      sections.push(["Medvirkende årsak", "Antall"]);
+      sections.push([t("status.hookMessages.export.contributingCauseHeader"), t("status.hookMessages.export.countHeader")]);
       incidentsByContributingCause.forEach(item => sections.push([item.name, String(item.value)]));
       sections.push([]);
 
       // Incidents by Severity
-      sections.push(["Alvorlighetsgrad", "Antall"]);
+      sections.push([t("status.hookMessages.export.severityHeader"), t("status.hookMessages.export.countHeader")]);
       incidentsBySeverity.forEach(item => sections.push([item.name, String(item.value)]));
       sections.push([]);
 
       // Drone Status
-      sections.push(["Dronestatus", "Antall"]);
+      sections.push([t("status.hookMessages.export.droneStatusSheet"), t("status.hookMessages.export.countHeader")]);
       droneStatus.forEach(item => sections.push([item.name, String(item.value)]));
       sections.push([]);
 
       // Equipment Status
-      sections.push(["Utstyrstatus", "Antall"]);
+      sections.push([t("status.hookMessages.export.equipmentStatusSheet"), t("status.hookMessages.export.countHeader")]);
       equipmentStatus.forEach(item => sections.push([item.name, String(item.value)]));
       sections.push([]);
 
       // Flight Hours by Drone
-      sections.push(["Drone", "Flyvetimer"]);
+      sections.push([t("status.hookMessages.export.droneHeader"), t("status.hookMessages.export.flightHoursHeader")]);
       flightHoursByDrone.forEach(item => sections.push([item.name, String(item.hours)]));
       sections.push([]);
 
       // Expiring Documents
-      sections.push(["Dokumenter som utløper", "Antall"]);
-      sections.push(["Innen 30 dager", String(expiringDocs.thirtyDays)]);
-      sections.push(["Innen 60 dager", String(expiringDocs.sixtyDays)]);
-      sections.push(["Innen 90 dager", String(expiringDocs.ninetyDays)]);
+      sections.push([t("status.hookMessages.export.expiringDocsSheet"), t("status.hookMessages.export.countHeader")]);
+      sections.push([t("status.hookMessages.export.within30"), String(expiringDocs.thirtyDays)]);
+      sections.push([t("status.hookMessages.export.within60"), String(expiringDocs.sixtyDays)]);
+      sections.push([t("status.hookMessages.export.within90"), String(expiringDocs.ninetyDays)]);
       sections.push([]);
 
       // Deviation Reports
-      sections.push(["Avviksrapporter (sammendrag)", ""]);
-      sections.push(["Totalt antall avvik", String(deviationReports.length)]);
-      sections.push(["Unike flyturer med avvik", String(new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size)]);
-      sections.push(["Unike piloter", String(new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size)]);
+      sections.push([t("status.hookMessages.export.deviationSummaryHeading"), ""]);
+      sections.push([t("status.hookMessages.export.totalDeviations"), String(deviationReports.length)]);
+      sections.push([t("status.hookMessages.export.uniqueFlightsWithDeviations"), String(new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size)]);
+      sections.push([t("status.hookMessages.export.uniquePilots"), String(new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size)]);
       sections.push([]);
-      sections.push(["Hovedkategori", "Antall"]);
+      sections.push([t("status.hookMessages.export.mainCategoryHeader"), t("status.hookMessages.export.countHeader")]);
       Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
-        const root = r.category_path[0] || "Ukategorisert";
+        const root = r.category_path[0] || t("status.hookMessages.export.unknownCategory");
         acc[root] = (acc[root] || 0) + 1;
         return acc;
       }, {})).forEach(([name, value]) => sections.push([name, String(value)]));
       sections.push([]);
-      sections.push(["Dato", "Pilot", "Kategori", "Kommentar"]);
+      sections.push([t("status.hookMessages.export.dateHeader"), t("status.hookMessages.export.pilotHeader"), t("status.hookMessages.export.categoryHeader"), t("status.hookMessages.export.commentHeader")]);
       deviationReports.forEach(r => sections.push([
         format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
-        r.reporter_name || "Ukjent",
+        r.reporter_name || t("status.hookMessages.export.unknown"),
         r.category_path.join(" > "),
         r.comment || "",
       ]));
@@ -986,7 +988,7 @@ const Status = () => {
         .eq("id", user?.id)
         .single();
 
-      if (!profile?.company_id) throw new Error("Kunne ikke hente firmaopplysninger");
+      if (!profile?.company_id) throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
 
       const filePath = `${profile.company_id}/${fileName}`;
       const { error: uploadError } = await supabase.storage
@@ -995,19 +997,19 @@ const Status = () => {
 
       if (uploadError) throw uploadError;
 
-      const periodLabel = timePeriod === "month" ? "Siste måned" :
-                          timePeriod === "quarter" ? "Siste kvartal" : "Siste år";
+      const periodLabel = timePeriod === "month" ? t("status.page.periodMonth") :
+                          timePeriod === "quarter" ? t("status.page.periodQuarter") : t("status.page.periodYear");
 
       await supabase.from("documents").insert({
-        tittel: `Statistikkrapport CSV - ${periodLabel}`,
-        kategori: "Rapporter",
-        beskrivelse: `CSV-rapport generert ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`,
+        tittel: t("status.hookMessages.export.csvTitleSuffix", { period: periodLabel }),
+        kategori: t("status.hookMessages.export.docCategory"),
+        beskrivelse: t("status.hookMessages.export.csvDescription", { date: format(new Date(), "dd.MM.yyyy 'kl.' HH:mm") }),
         fil_navn: fileName,
         fil_url: filePath,
         fil_storrelse: blob.size,
         company_id: profile.company_id,
         user_id: user?.id,
-        opprettet_av: profile?.full_name || user?.email || "Ukjent",
+        opprettet_av: profile?.full_name || user?.email || t("status.hookMessages.export.unknown"),
       });
 
       queryClient.invalidateQueries({ queryKey: ["documents"] });
@@ -1022,12 +1024,12 @@ const Status = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success("CSV-rapport lagret", {
-        description: "Rapporten er lagret i dokumenter under kategorien Rapporter",
+      toast.success(t("status.hookMessages.csvSavedTitle"), {
+        description: t("status.hookMessages.reportSavedDescription"),
       });
     } catch (error) {
       console.error("Error exporting to CSV:", error);
-      toast.error("Feil ved eksport", { description: "Kunne ikke generere CSV-rapport" });
+      toast.error(t("status.hookMessages.exportErrorTitle"), { description: t("status.hookMessages.csvExportErrorDescription") });
     }
   };
 
@@ -1040,15 +1042,15 @@ const Status = () => {
         .eq("id", user?.id)
         .single();
 
-      const companyName = (profile as any)?.companies?.navn || "Ukjent selskap";
+      const companyName = (profile as any)?.companies?.navn || t("status.hookMessages.unknownCompany");
       const companyId = profile?.company_id;
       
       if (!companyId) {
-        throw new Error("Kunne ikke hente firmaopplysninger");
+        throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
       }
 
-      const periodLabel = timePeriod === "month" ? "Siste måned" : 
-                         timePeriod === "quarter" ? "Siste kvartal" : "Siste år";
+      const periodLabel = timePeriod === "month" ? t("status.page.periodMonth") : 
+                         timePeriod === "quarter" ? t("status.page.periodQuarter") : t("status.page.periodYear");
 
       // Create PDF document
       const doc = await createPdfDocument();
@@ -1075,7 +1077,7 @@ const Status = () => {
         if (data.length === 0 || data.every(d => d.value === 0)) {
           doc.setFontSize(10);
           setFontStyle(doc, 'normal');
-          doc.text("Ingen data", x, y + 20);
+          doc.text(t("status.hookMessages.pdf.noData"), x, y + 20);
           return;
         }
 
@@ -1124,7 +1126,7 @@ const Status = () => {
         if (total === 0) {
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
-          doc.text("Ingen data", x, y, { align: 'center' });
+          doc.text(t("status.hookMessages.pdf.noData"), x, y, { align: 'center' });
           return;
         }
 
@@ -1197,31 +1199,31 @@ const Status = () => {
       // Page 1: Header and KPIs
       doc.setFontSize(20);
       setFontStyle(doc, "bold");
-      doc.text(`Statistikkrapport - ${companyName}`, 20, yPos);
+      doc.text(`${t("status.hookMessages.export.reportTitlePrefix")} - ${companyName}`, 20, yPos);
       yPos += 10;
 
       doc.setFontSize(12);
       setFontStyle(doc, "normal");
-      doc.text(`Periode: ${periodLabel}`, 20, yPos);
+      doc.text(`${t("status.hookMessages.pdf.periodHeader")}: ${periodLabel}`, 20, yPos);
       yPos += 7;
-      doc.text(`Generert: ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm", { locale: nb })}`, 20, yPos);
+      doc.text(`${t("status.hookMessages.pdf.generatedLabel")}: ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm", { locale: nb })}`, 20, yPos);
       yPos += 15;
 
       // KPI Table
       doc.setFontSize(14);
       setFontStyle(doc, "bold");
-      doc.text("Nøkkeltall", 20, yPos);
+      doc.text(t("status.hookMessages.pdf.kpiTitle"), 20, yPos);
       yPos += 5;
 
       autoTable(doc, {
         startY: yPos,
-        head: [['KPI', 'Verdi']],
+        head: [[t("status.hookMessages.pdf.kpiHeaderLabel"), t("status.hookMessages.pdf.kpiHeaderValue")]],
         body: [
-          ['Totalt oppdrag', kpiData.totalMissions.toString()],
-          ['Fullførte oppdrag', `${kpiData.completedMissions} (${kpiData.totalMissions > 0 ? Math.round((kpiData.completedMissions / kpiData.totalMissions) * 100) : 0}%)`],
-          ['Totale flyvetimer', kpiData.totalFlightHours.toString()],
-          ['Hendelsesfrekvens', `${kpiData.incidentRate.toFixed(1)}%`],
-          ['Aktive ressurser', kpiData.activeResources.toString()],
+          [t("status.hookMessages.pdf.totalMissions"), kpiData.totalMissions.toString()],
+          [t("status.hookMessages.pdf.completedMissions"), `${kpiData.completedMissions} (${kpiData.totalMissions > 0 ? Math.round((kpiData.completedMissions / kpiData.totalMissions) * 100) : 0}%)`],
+          [t("status.hookMessages.pdf.totalFlightHours"), kpiData.totalFlightHours.toString()],
+          [t("status.hookMessages.pdf.incidentRate"), `${kpiData.incidentRate.toFixed(1)}%`],
+          [t("status.hookMessages.pdf.activeResources"), kpiData.activeResources.toString()],
         ],
         theme: 'grid',
         headStyles: { fillColor: COLORS.primary },
@@ -1241,7 +1243,7 @@ const Status = () => {
           yPos, 
           170, 
           60, 
-          "Oppdrag per måned"
+          t("status.hookMessages.pdf.missionsByMonth")
         );
         yPos += 70;
       }
@@ -1252,7 +1254,7 @@ const Status = () => {
           doc.addPage();
           yPos = 20;
         }
-        drawPieChart(missionsByStatus, 60, yPos + 35, 30, "Oppdrag per status");
+        drawPieChart(missionsByStatus, 60, yPos + 35, 30, t("status.hookMessages.pdf.missionsByStatus"));
         yPos += 100;
       }
 
@@ -1262,7 +1264,7 @@ const Status = () => {
 
       doc.setFontSize(16);
       setFontStyle(doc, "bold");
-      doc.text("Hendelser", 20, yPos);
+      doc.text(t("status.hookMessages.pdf.incidentsHeading"), 20, yPos);
       yPos += 15;
 
       // Incidents by Month Bar Chart
@@ -1273,7 +1275,7 @@ const Status = () => {
           yPos, 
           170, 
           60, 
-          "Hendelser per måned"
+          t("status.hookMessages.pdf.incidentsByMonth")
         );
         yPos += 70;
       }
@@ -1284,7 +1286,7 @@ const Status = () => {
           doc.addPage();
           yPos = 20;
         }
-        drawPieChart(incidentsByMainCause, 60, yPos + 35, 30, "Fordeling hovedårsaker");
+        drawPieChart(incidentsByMainCause, 60, yPos + 35, 30, t("status.hookMessages.pdf.mainCauseDistribution"));
         yPos += 100;
       }
 
@@ -1296,12 +1298,12 @@ const Status = () => {
         }
         doc.setFontSize(12);
         setFontStyle(doc, 'bold');
-        doc.text("Medvirkende årsaker", 20, yPos);
+        doc.text(t("status.hookMessages.pdf.contributingCauses"), 20, yPos);
         yPos += 5;
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Årsak', 'Antall']],
+          head: [[t("status.hookMessages.pdf.causeHeader"), t("status.hookMessages.pdf.countHeader")]],
           body: incidentsByContributingCause.map(item => [item.name, item.value.toString()]),
           theme: 'grid',
           headStyles: { fillColor: COLORS.warning },
@@ -1315,7 +1317,7 @@ const Status = () => {
           doc.addPage();
           yPos = 20;
         }
-        drawBarChart(incidentsBySeverity, 20, yPos, 170, 50, "Hendelser per alvorlighetsgrad");
+        drawBarChart(incidentsBySeverity, 20, yPos, 170, 50, t("status.hookMessages.pdf.incidentsBySeverity"));
         yPos += 60;
       }
 
@@ -1330,8 +1332,8 @@ const Status = () => {
       setFontStyle(doc, "bold");
       doc.setTextColor(255, 255, 255);
       const daysText = daysSinceLastSevere > 0 
-        ? `${daysSinceLastSevere} dager siden siste alvorlige hendelse`
-        : 'Ingen alvorlige hendelser registrert';
+        ? t("status.hookMessages.pdf.daysSinceSevere", { days: daysSinceLastSevere })
+        : t("status.hookMessages.pdf.noSevereIncidents");
       doc.text(daysText, 105, yPos + 12, { align: 'center' });
       doc.setTextColor(0, 0, 0);
       yPos += 30;
@@ -1342,12 +1344,12 @@ const Status = () => {
 
       doc.setFontSize(16);
       setFontStyle(doc, "bold");
-      doc.text("Ressurser", 20, yPos);
+      doc.text(t("status.hookMessages.pdf.resourcesHeading"), 20, yPos);
       yPos += 15;
 
       // Drone Status Pie Chart
       if (droneStatus.length > 0) {
-        drawPieChart(droneStatus, 60, yPos + 35, 30, "Dronestatus");
+        drawPieChart(droneStatus, 60, yPos + 35, 30, t("status.hookMessages.pdf.droneStatus"));
         yPos += 100;
       }
 
@@ -1357,7 +1359,7 @@ const Status = () => {
           doc.addPage();
           yPos = 20;
         }
-        drawPieChart(equipmentStatus, 60, yPos + 35, 30, "Utstyrsstatus");
+        drawPieChart(equipmentStatus, 60, yPos + 35, 30, t("status.hookMessages.pdf.equipmentStatus"));
         yPos += 100;
       }
 
@@ -1369,16 +1371,16 @@ const Status = () => {
 
       doc.setFontSize(14);
       setFontStyle(doc, "bold");
-      doc.text("Dokumenter som utløper", 20, yPos);
+      doc.text(t("status.hookMessages.pdf.expiringDocuments"), 20, yPos);
       yPos += 5;
 
       autoTable(doc, {
         startY: yPos,
-        head: [['Periode', 'Antall']],
+        head: [[t("status.hookMessages.pdf.periodHeader"), t("status.hookMessages.pdf.countHeader")]],
         body: [
-          ['Innen 30 dager', expiringDocs.thirtyDays.toString()],
-          ['Innen 60 dager', expiringDocs.sixtyDays.toString()],
-          ['Innen 90 dager', expiringDocs.ninetyDays.toString()],
+          [t("status.hookMessages.export.within30"), expiringDocs.thirtyDays.toString()],
+          [t("status.hookMessages.export.within60"), expiringDocs.sixtyDays.toString()],
+          [t("status.hookMessages.export.within90"), expiringDocs.ninetyDays.toString()],
         ],
         theme: 'grid',
         headStyles: { fillColor: COLORS.primary },
@@ -1390,18 +1392,18 @@ const Status = () => {
         yPos = 20;
         doc.setFontSize(16);
         setFontStyle(doc, "bold");
-        doc.text("Avviksrapporter", 20, yPos);
+        doc.text(t("status.hookMessages.pdf.deviationsHeading"), 20, yPos);
         yPos += 10;
 
         const rootCounts: Record<string, number> = {};
         deviationReports.forEach(r => {
-          const root = r.category_path[0] || "Ukategorisert";
+          const root = r.category_path[0] || t("status.hookMessages.export.unknownCategory");
           rootCounts[root] = (rootCounts[root] || 0) + 1;
         });
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Hovedkategori', 'Antall']],
+          head: [[t("status.hookMessages.pdf.mainCategoryHeader"), t("status.hookMessages.pdf.countHeader")]],
           body: Object.entries(rootCounts).map(([k, v]) => [k, v.toString()]),
           theme: 'grid',
           headStyles: { fillColor: COLORS.warning },
@@ -1410,10 +1412,10 @@ const Status = () => {
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Dato', 'Pilot', 'Kategori', 'Kommentar']],
+          head: [[t("status.hookMessages.pdf.dateHeader"), t("status.hookMessages.pdf.pilotHeader"), t("status.hookMessages.pdf.categoryHeader"), t("status.hookMessages.pdf.commentHeader")]],
           body: deviationReports.map(r => [
             format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
-            sanitizeForPdf(r.reporter_name || "Ukjent"),
+            sanitizeForPdf(r.reporter_name || t("status.hookMessages.pdf.unknown")),
             sanitizeForPdf(r.category_path.join(" > ")),
             sanitizeForPdf(r.comment || ""),
           ]),
@@ -1443,15 +1445,14 @@ const Status = () => {
       const { error: dbError } = await supabase
         .from('documents')
         .insert({
-          tittel: `Statistikkrapport - ${periodLabel}`,
-          kategori: 'Rapporter',
-          beskrivelse: `PDF-rapport generert ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`,
+          tittel: `${t("status.hookMessages.export.reportTitlePrefix")} - ${periodLabel}`,
+          kategori: t("status.hookMessages.export.docCategory"),
+          beskrivelse: t("status.hookMessages.export.pdfDescription", { date: format(new Date(), "dd.MM.yyyy 'kl.' HH:mm") }),
           fil_navn: fileName,
           fil_url: filePath,
           fil_storrelse: pdfBlob.size,
           company_id: companyId,
           user_id: user?.id,
-          opprettet_av: profile?.full_name || user?.email || 'Ukjent'
         });
 
       if (dbError) throw dbError;
@@ -1466,13 +1467,13 @@ const Status = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.success("PDF-rapport lagret", {
-        description: "Rapporten er lagret i dokumenter under kategorien Rapporter"
+      toast.success(t("status.hookMessages.pdfSavedTitle"), {
+        description: t("status.hookMessages.reportSavedDescription")
       });
     } catch (error) {
       console.error("Error exporting to PDF:", error);
-      toast.error("Feil ved eksport", {
-        description: "Kunne ikke generere PDF-rapport"
+      toast.error(t("status.hookMessages.exportErrorTitle"), {
+        description: t("status.hookMessages.pdfExportErrorDescription")
       });
     }
   };
@@ -1495,28 +1496,28 @@ const Status = () => {
       <main className="container mx-auto px-4 py-8 space-y-8">
         <div className="flex flex-col gap-4">
           <div className="bg-background/70 backdrop-blur-sm rounded-lg px-4 py-3 border border-border/30">
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Statistikk</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">{t("status.page.title")}</h1>
             {authCompanyName && (
               <p className="text-sm text-muted-foreground mt-1">
                 {parentCompanyName
-                  ? `${parentCompanyName} – ${authCompanyName}`
-                  : `${authCompanyName} – alle avdelinger`}
+                  ? t("status.page.subtitleWithParent", { parent: parentCompanyName, company: authCompanyName })
+                  : t("status.page.subtitleAllDepartments", { company: authCompanyName })}
               </p>
             )}
           </div>
 
           <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 w-full bg-background/70 backdrop-blur-sm rounded-lg px-4 py-3 border border-border/30">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground whitespace-nowrap">Periode:</span>
+              <span className="text-sm font-medium text-foreground whitespace-nowrap">{t("status.page.periodLabel")}</span>
               <Select value={timePeriod} onValueChange={(value: "month" | "quarter" | "year" | "custom") => setTimePeriod(value)}>
                 <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">Siste måned</SelectItem>
-                  <SelectItem value="quarter">Siste kvartal</SelectItem>
-                  <SelectItem value="year">Siste år</SelectItem>
-                  <SelectItem value="custom">Egendefinert</SelectItem>
+                  <SelectItem value="month">{t("status.page.periodMonth")}</SelectItem>
+                  <SelectItem value="quarter">{t("status.page.periodQuarter")}</SelectItem>
+                  <SelectItem value="year">{t("status.page.periodYear")}</SelectItem>
+                  <SelectItem value="custom">{t("status.page.periodCustom")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1524,7 +1525,7 @@ const Status = () => {
             {timePeriod === "custom" && (
               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium text-foreground whitespace-nowrap">Fra:</Label>
+                  <Label className="text-sm font-medium text-foreground whitespace-nowrap">{t("status.page.fromLabel")}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -1535,7 +1536,7 @@ const Status = () => {
                         )}
                       >
                         <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                        <span className="truncate">{customDateFrom ? format(customDateFrom, "dd.MM.yy") : "Velg"}</span>
+                        <span className="truncate">{customDateFrom ? format(customDateFrom, "dd.MM.yy") : t("status.page.pickDate")}</span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1552,7 +1553,7 @@ const Status = () => {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Label className="text-sm font-medium text-foreground whitespace-nowrap">Til:</Label>
+                  <Label className="text-sm font-medium text-foreground whitespace-nowrap">{t("status.page.toLabel")}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -1563,7 +1564,7 @@ const Status = () => {
                         )}
                       >
                         <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                        <span className="truncate">{customDateTo ? format(customDateTo, "dd.MM.yy") : "Velg"}</span>
+                        <span className="truncate">{customDateTo ? format(customDateTo, "dd.MM.yy") : t("status.page.pickDate")}</span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1590,27 +1591,27 @@ const Status = () => {
                 className="gap-2 w-full sm:w-auto disabled:opacity-100 disabled:bg-background disabled:text-foreground"
               >
                 {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {aiLoading ? "Analyserer..." : "Behandle med AI"}
+                {aiLoading ? t("status.page.aiAnalyzing") : t("status.page.aiButton")}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="default" size="default" className="gap-2 w-full sm:w-auto">
                     <Download className="w-4 h-4" />
-                    Eksporter
+                    {t("status.page.exportButton")}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-[200px]">
                   <DropdownMenuItem onClick={handleExportExcel}>
                     <Download className="w-4 h-4 mr-2" />
-                    Eksporter til Excel
+                    {t("status.page.exportExcel")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExportPDF}>
                     <Download className="w-4 h-4 mr-2" />
-                    Eksporter til PDF
+                    {t("status.page.exportPdf")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExportCSV}>
                     <Download className="w-4 h-4 mr-2" />
-                    Eksporter til CSV
+                    {t("status.page.exportCsv")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1624,18 +1625,18 @@ const Status = () => {
                 <div className="flex items-center justify-between gap-2">
                   <CollapsibleTrigger className="flex items-center gap-2 font-semibold text-foreground flex-1 text-left">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    AI-analyse for ledelsen
+                    {t("status.page.aiPanelTitle")}
                     <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${aiOpen ? "rotate-180" : ""}`} />
                   </CollapsibleTrigger>
                   {aiText && !aiLoading && (
-                    <Button size="sm" variant="ghost" onClick={runAiAnalysis} title="Generer på nytt">
+                    <Button size="sm" variant="ghost" onClick={runAiAnalysis} title={t("status.page.regenerate")}>
                       <RefreshCw className="w-4 h-4" />
                     </Button>
                   )}
                 </div>
                 <CollapsibleContent>
                   <div className="mt-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                    {aiText || (aiLoading ? "Genererer analyse..." : "")}
+                    {aiText || (aiLoading ? t("status.page.aiGenerating") : "")}
                     {aiLoading && aiText && <span className="inline-block w-2 h-4 bg-primary/60 animate-pulse ml-1 align-middle" />}
                   </div>
                 </CollapsibleContent>
@@ -1650,10 +1651,10 @@ const Status = () => {
             className="justify-start"
           >
             <ToggleGroupItem value="operational" className="bg-muted text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
-              Hendelser
+              {t("status.page.tabIncidents")}
             </ToggleGroupItem>
             <ToggleGroupItem value="deviation" className="bg-muted text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
-              Avvik
+              {t("status.page.tabDeviations")}
             </ToggleGroupItem>
           </ToggleGroup>
 
@@ -1665,10 +1666,10 @@ const Status = () => {
           <GlassCard className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Totale oppdrag</p>
+                <p className="text-sm text-muted-foreground">{t("status.metrics.totalMissions")}</p>
                 <p className="text-3xl font-bold text-foreground">{kpiData.totalMissions}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {completionRate}% fullført
+                  {t("status.metrics.completedPercent", { pct: completionRate })}
                 </p>
               </div>
               <Activity className="w-10 h-10 text-primary opacity-70" />
@@ -1678,9 +1679,9 @@ const Status = () => {
           <GlassCard className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Totale flyvetimer</p>
+                <p className="text-sm text-muted-foreground">{t("status.metrics.totalFlightHours")}</p>
                 <p className="text-3xl font-bold text-foreground">{kpiData.totalFlightHours.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground mt-1">timer</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("status.metrics.hoursUnit")}</p>
               </div>
               <Clock className="w-10 h-10 text-primary opacity-70" />
             </div>
@@ -1689,11 +1690,11 @@ const Status = () => {
           <GlassCard className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Hendelsesfrekvens</p>
+                <p className="text-sm text-muted-foreground">{t("status.metrics.incidentRate")}</p>
                 <p className="text-3xl font-bold text-foreground">
                   {kpiData.incidentRate.toFixed(2)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">per 100 flyvetimer</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("status.metrics.perHundredHours")}</p>
               </div>
               <AlertTriangle className="w-10 h-10 text-destructive opacity-70" />
             </div>
@@ -1702,9 +1703,9 @@ const Status = () => {
           <GlassCard className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Aktive ressurser</p>
+                <p className="text-sm text-muted-foreground">{t("status.metrics.activeResources")}</p>
                 <p className="text-3xl font-bold text-foreground">{kpiData.activeResources}</p>
-                <p className="text-xs text-muted-foreground mt-1">droner og utstyr</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("status.metrics.dronesAndEquipment")}</p>
               </div>
               <Package className="w-10 h-10 text-primary opacity-70" />
             </div>
@@ -1715,7 +1716,7 @@ const Status = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Oppdrag per måned
+              {t("status.metrics.missionsByMonth")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={missionsByMonth}>
@@ -1735,14 +1736,14 @@ const Status = () => {
                   dataKey="count"
                   stroke={COLORS.primary}
                   strokeWidth={2}
-                  name="Oppdrag"
+                  name={t("status.metrics.missionsLegend")}
                 />
               </LineChart>
             </ResponsiveContainer>
           </GlassCard>
 
           <GlassCard className="p-6">
-            <h2 className="text-xl font-semibold mb-4 text-foreground">Oppdrag per status</h2>
+            <h2 className="text-xl font-semibold mb-4 text-foreground">{t("status.metrics.missionsByStatus")}</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -1775,7 +1776,7 @@ const Status = () => {
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Oppdrag per risikonivå
+              {t("status.metrics.missionsByRisk")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={missionsByRisk}>
@@ -1789,20 +1790,20 @@ const Status = () => {
                     borderRadius: "8px",
                   }}
                 />
-                <Bar dataKey="value" fill={COLORS.primary} name="Antall" />
+                <Bar dataKey="value" fill={COLORS.primary} name={t("status.metrics.countLegend")} />
               </BarChart>
             </ResponsiveContainer>
           </GlassCard>
 
           <GlassCard className="p-6">
-            <h2 className="text-xl font-semibold mb-4 text-foreground">HMS - Sikkerhetsstatus</h2>
+            <h2 className="text-xl font-semibold mb-4 text-foreground">{t("status.metrics.hmsTitle")}</h2>
             <div className="flex items-center justify-center h-[300px]">
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">
-                  Dager siden siste alvorlige hendelse
+                  {t("status.metrics.daysSinceLastSevere")}
                 </p>
                 <p className="text-6xl font-bold text-foreground">{daysSinceLastSevere}</p>
-                <p className="text-sm text-muted-foreground mt-2">dager</p>
+                <p className="text-sm text-muted-foreground mt-2">{t("status.metrics.daysUnit")}</p>
               </div>
             </div>
           </GlassCard>
@@ -1812,11 +1813,11 @@ const Status = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Operasjonstype – fordeling
+              {t("status.metrics.operationTypeDistribution")}
             </h2>
             {operationTypeStats.totalFlights === 0 ? (
               <div className="flex items-center justify-center h-[300px] text-sm text-muted-foreground">
-                Ingen flyturer i valgt periode
+                {t("status.metrics.noFlightsInPeriod")}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
@@ -1854,7 +1855,7 @@ const Status = () => {
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Flytimer per operasjonstype
+              {t("status.metrics.hoursPerOperationType")}
             </h2>
             <div className="space-y-4 pt-4">
               {(["VLOS", "BVLOS", "EVLOS"] as const).map((type) => {
@@ -1884,14 +1885,14 @@ const Status = () => {
                 );
               })}
               <div className="pt-3 border-t border-border text-xs text-muted-foreground">
-                Totalt {(operationTypeStats.totalMinutes / 60).toFixed(1)} timer fordelt på {operationTypeStats.totalFlights} flyturer.
+                {t("status.metrics.totalHoursSummary", { hours: (operationTypeStats.totalMinutes / 60).toFixed(1), flights: operationTypeStats.totalFlights })}
               </div>
             </div>
           </GlassCard>
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Operasjonstype per måned
+              {t("status.metrics.operationTypeByMonth")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={operationTypeStats.monthly}>
@@ -1918,7 +1919,7 @@ const Status = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Hendelser per måned
+              {t("status.incidents.incidentsByMonth")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={incidentsByMonth}>
@@ -1932,14 +1933,14 @@ const Status = () => {
                     borderRadius: "8px",
                   }}
                 />
-                <Bar dataKey="count" fill={COLORS.destructive} name="Hendelser" />
+                <Bar dataKey="count" fill={COLORS.destructive} name={t("status.incidents.incidentsLegend")} />
               </BarChart>
             </ResponsiveContainer>
           </GlassCard>
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Fordeling hovedårsaker
+              {t("status.incidents.mainCauseDistribution")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -1981,7 +1982,7 @@ const Status = () => {
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Hendelser per alvorlighetsgrad
+              {t("status.incidents.incidentsBySeverity")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={incidentsBySeverity}>
@@ -1995,7 +1996,7 @@ const Status = () => {
                     borderRadius: "8px",
                   }}
                 />
-                <Bar dataKey="value" fill={COLORS.warning} name="Antall" />
+                <Bar dataKey="value" fill={COLORS.warning} name={t("status.metrics.countLegend")} />
               </BarChart>
             </ResponsiveContainer>
           </GlassCard>
@@ -2004,7 +2005,7 @@ const Status = () => {
         {/* Contributing Causes - Full Width Horizontal Bar Chart */}
         <GlassCard className="p-6">
           <h2 className="text-xl font-semibold mb-4 text-foreground">
-            Medvirkende årsaker
+            {t("status.incidents.contributingCauses")}
           </h2>
           <ResponsiveContainer width="100%" height={Math.max(300, incidentsByContributingCause.length * 35)}>
             <BarChart data={incidentsByContributingCause} layout="vertical">
@@ -2024,7 +2025,7 @@ const Status = () => {
                   borderRadius: "8px",
                 }}
               />
-              <Bar dataKey="value" fill={COLORS.warning} name="Antall" />
+              <Bar dataKey="value" fill={COLORS.warning} name={t("status.metrics.countLegend")} />
             </BarChart>
           </ResponsiveContainer>
         </GlassCard>
@@ -2033,7 +2034,7 @@ const Status = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Drone statusfordeling
+              {t("status.services.droneStatusDistribution")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -2069,7 +2070,7 @@ const Status = () => {
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Utstyr statusfordeling
+              {t("status.services.equipmentStatusDistribution")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -2105,7 +2106,7 @@ const Status = () => {
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Flyvetimer per drone (topp 10)
+              {t("status.services.flightHoursByDrone")}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={flightHoursByDrone} layout="vertical">
@@ -2124,19 +2125,19 @@ const Status = () => {
                     borderRadius: "8px",
                   }}
                 />
-                <Bar dataKey="hours" fill={COLORS.primary} name="Timer" />
+                <Bar dataKey="hours" fill={COLORS.primary} name={t("status.services.hoursLegend")} />
               </BarChart>
             </ResponsiveContainer>
           </GlassCard>
 
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
-              Dokumenter som utløper
+              {t("status.services.expiringDocuments")}
             </h2>
             <div className="space-y-6 pt-8">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-muted-foreground">Innen 30 dager</span>
+                  <span className="text-sm text-muted-foreground">{t("status.services.within30Days")}</span>
                   <span className="text-2xl font-bold text-destructive">
                     {expiringDocs.thirtyDays}
                   </span>
@@ -2163,7 +2164,7 @@ const Status = () => {
 
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-muted-foreground">Innen 60 dager</span>
+                  <span className="text-sm text-muted-foreground">{t("status.services.within60Days")}</span>
                   <span className="text-2xl font-bold text-warning">
                     {expiringDocs.sixtyDays}
                   </span>
@@ -2190,7 +2191,7 @@ const Status = () => {
 
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-muted-foreground">Innen 90 dager</span>
+                  <span className="text-sm text-muted-foreground">{t("status.services.within90Days")}</span>
                   <span className="text-2xl font-bold text-primary">
                     {expiringDocs.ninetyDays}
                   </span>
@@ -2246,7 +2247,7 @@ const Status = () => {
 
           const rootMap: Record<string, number> = {};
           deviationReports.forEach((r) => {
-            const root = r.category_path[0] || "Ukategorisert";
+            const root = r.category_path[0] || t("status.common.unknownCategory");
             rootMap[root] = (rootMap[root] || 0) + 1;
           });
           const rootData = Object.entries(rootMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
@@ -2266,12 +2267,12 @@ const Status = () => {
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                     <div>
-                      <p className="text-foreground font-medium">Avviksrapportering er ikke aktivert</p>
+                      <p className="text-foreground font-medium">{t("status.incidents.deviation.notEnabledTitle")}</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Aktiver «Avviksrapport ved endt flytur» under selskapsinnstillinger.
+                        {t("status.incidents.deviation.notEnabledDescription")}
                       </p>
                       <Button variant="link" className="px-0 mt-2" onClick={() => navigate("/admin")}>
-                        Gå til selskapsinnstillinger
+                        {t("status.incidents.deviation.goToSettings")}
                       </Button>
                     </div>
                   </div>
@@ -2280,46 +2281,46 @@ const Status = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <GlassCard className="p-6">
-                  <p className="text-sm text-muted-foreground">Totalt antall avvik</p>
+                  <p className="text-sm text-muted-foreground">{t("status.incidents.deviation.totalDeviations")}</p>
                   <p className="text-3xl font-bold text-foreground">{deviationReports.length}</p>
                 </GlassCard>
                 <GlassCard className="p-6">
-                  <p className="text-sm text-muted-foreground">Unike flyturer med avvik</p>
+                  <p className="text-sm text-muted-foreground">{t("status.incidents.deviation.uniqueFlights")}</p>
                   <p className="text-3xl font-bold text-foreground">{uniqueFlights}</p>
                 </GlassCard>
                 <GlassCard className="p-6">
-                  <p className="text-sm text-muted-foreground">Unike piloter</p>
+                  <p className="text-sm text-muted-foreground">{t("status.incidents.deviation.uniquePilots")}</p>
                   <p className="text-3xl font-bold text-foreground">{uniquePilots}</p>
                 </GlassCard>
                 <GlassCard className="p-6">
-                  <p className="text-sm text-muted-foreground">Snitt per flytur</p>
+                  <p className="text-sm text-muted-foreground">{t("status.incidents.deviation.avgPerFlight")}</p>
                   <p className="text-3xl font-bold text-foreground">{avgPerFlight}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{flightLogsCount} flyturer i perioden</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("status.incidents.deviation.flightsInPeriod", { count: flightLogsCount })}</p>
                 </GlassCard>
               </div>
 
               {deviationReports.length === 0 ? (
                 <GlassCard className="p-8 text-center">
-                  <p className="text-muted-foreground">Ingen avviksrapporter i valgt periode.</p>
+                  <p className="text-muted-foreground">{t("status.incidents.deviation.noDeviationsInPeriod")}</p>
                 </GlassCard>
               ) : (
                 <>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <GlassCard className="p-6">
-                      <h2 className="text-xl font-semibold mb-4 text-foreground">Avvik per måned</h2>
+                      <h2 className="text-xl font-semibold mb-4 text-foreground">{t("status.incidents.deviation.perMonth")}</h2>
                       <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={monthlyData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                           <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
                           <YAxis stroke="hsl(var(--muted-foreground))" />
                           <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                          <Bar dataKey="count" fill={COLORS.warning} name="Avvik" />
+                          <Bar dataKey="count" fill={COLORS.warning} name={t("status.incidents.deviation.deviationsLegend")} />
                         </BarChart>
                       </ResponsiveContainer>
                     </GlassCard>
 
                     <GlassCard className="p-6">
-                      <h2 className="text-xl font-semibold mb-4 text-foreground">Topp-kategorier (rotnivå)</h2>
+                      <h2 className="text-xl font-semibold mb-4 text-foreground">{t("status.incidents.deviation.topCategories")}</h2>
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie data={rootData} cx="50%" cy="50%" labelLine={false} label={(e: any) => `${e.name}: ${e.value}`} outerRadius={80} dataKey="value">
@@ -2335,15 +2336,15 @@ const Status = () => {
 
                   <GlassCard className="p-6">
                     <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                      <h2 className="text-xl font-semibold text-foreground">Underkategori-fordeling</h2>
+                      <h2 className="text-xl font-semibold text-foreground">{t("status.incidents.deviation.subcategoryDistribution")}</h2>
                       {deviationDrillPath.length > 0 && (
                         <Button variant="outline" size="sm" onClick={() => setDeviationDrillPath((p) => p.slice(0, -1))}>
-                          <ChevronLeft className="w-4 h-4 mr-1" /> Tilbake
+                          <ChevronLeft className="w-4 h-4 mr-1" /> {t("status.incidents.deviation.back")}
                         </Button>
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-1 mb-4 text-sm">
-                      <button onClick={() => setDeviationDrillPath([])} className="text-primary hover:underline">Alle</button>
+                      <button onClick={() => setDeviationDrillPath([])} className="text-primary hover:underline">{t("status.incidents.deviation.all")}</button>
                       {deviationDrillPath.map((seg, i) => (
                         <span key={i} className="flex items-center gap-1">
                           <ChevronRight className="w-3 h-3 text-muted-foreground" />
@@ -2352,7 +2353,7 @@ const Status = () => {
                       ))}
                     </div>
                     {distData.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-8 text-center">Ingen dypere kategorier å vise.</p>
+                      <p className="text-sm text-muted-foreground py-8 text-center">{t("status.incidents.deviation.noDeeperCategories")}</p>
                     ) : (
                       <ResponsiveContainer width="100%" height={Math.max(300, distData.length * 35)}>
                         <BarChart data={distData} layout="vertical" onClick={(e: any) => {
@@ -2363,23 +2364,23 @@ const Status = () => {
                           <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
                           <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" width={180} tick={{ fontSize: 12 }} />
                           <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                          <Bar dataKey="value" fill={COLORS.primary} name="Antall" cursor="pointer" />
+                          <Bar dataKey="value" fill={COLORS.primary} name={t("status.metrics.countLegend")} cursor="pointer" />
                         </BarChart>
                       </ResponsiveContainer>
                     )}
-                    <p className="text-xs text-muted-foreground mt-2">Tips: Klikk på en bar for å borre ned.</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t("status.incidents.deviation.drillTip")}</p>
                   </GlassCard>
 
                   <GlassCard className="p-6">
-                    <h2 className="text-xl font-semibold mb-4 text-foreground">Detaljer ({deviationReports.length})</h2>
+                    <h2 className="text-xl font-semibold mb-4 text-foreground">{t("status.incidents.deviation.details", { count: deviationReports.length })}</h2>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Dato</TableHead>
-                          <TableHead>Pilot</TableHead>
-                          <TableHead>Kategori</TableHead>
-                          <TableHead>Kommentar</TableHead>
-                          <TableHead className="text-right">Handlinger</TableHead>
+                          <TableHead>{t("status.incidents.deviation.tableDate")}</TableHead>
+                          <TableHead>{t("status.incidents.deviation.tablePilot")}</TableHead>
+                          <TableHead>{t("status.incidents.deviation.tableCategory")}</TableHead>
+                          <TableHead>{t("status.incidents.deviation.tableComment")}</TableHead>
+                          <TableHead className="text-right">{t("status.incidents.deviation.tableActions")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2390,7 +2391,7 @@ const Status = () => {
                             onClick={() => r.mission_id && openMissionFromDeviation(r.mission_id)}
                           >
                             <TableCell className="whitespace-nowrap">{format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb })}</TableCell>
-                            <TableCell>{r.reporter_name || "Ukjent"}</TableCell>
+                            <TableCell>{r.reporter_name || t("status.incidents.deviation.unknown")}</TableCell>
                             <TableCell>
                               <div className="flex flex-wrap items-center gap-1">
                                 {r.category_path.map((seg, i) => (
@@ -2401,7 +2402,7 @@ const Status = () => {
                                 ))}
                               </div>
                             </TableCell>
-                            <TableCell className="text-muted-foreground italic">{r.comment || "—"}</TableCell>
+                            <TableCell className="text-muted-foreground italic">{r.comment || t("status.common.dash")}</TableCell>
                             <TableCell className="text-right">
                               <Button
                                 variant="outline"
@@ -2415,7 +2416,7 @@ const Status = () => {
                                 }}
                               >
                                 <AlertCircle className="w-4 h-4 mr-1" />
-                                Opprett hendelse
+                                {t("status.incidents.deviation.createIncident")}
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -2424,9 +2425,9 @@ const Status = () => {
                     </Table>
                     {totalPages > 1 && (
                       <div className="flex items-center justify-between mt-4">
-                        <Button variant="outline" size="sm" disabled={deviationPage === 1} onClick={() => setDeviationPage((p) => p - 1)}>Forrige</Button>
-                        <span className="text-sm text-muted-foreground">Side {deviationPage} av {totalPages}</span>
-                        <Button variant="outline" size="sm" disabled={deviationPage === totalPages} onClick={() => setDeviationPage((p) => p + 1)}>Neste</Button>
+                        <Button variant="outline" size="sm" disabled={deviationPage === 1} onClick={() => setDeviationPage((p) => p - 1)}>{t("status.incidents.deviation.pagePrevious")}</Button>
+                        <span className="text-sm text-muted-foreground">{t("status.incidents.deviation.pageOf", { page: deviationPage, total: totalPages })}</span>
+                        <Button variant="outline" size="sm" disabled={deviationPage === totalPages} onClick={() => setDeviationPage((p) => p + 1)}>{t("status.incidents.deviation.pageNext")}</Button>
                       </div>
                     )}
                   </GlassCard>
