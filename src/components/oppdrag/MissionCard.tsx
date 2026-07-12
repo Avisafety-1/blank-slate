@@ -868,8 +868,8 @@ export const MissionCard = ({
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs text-muted-foreground italic">
                         {log.source === 'manual'
-                          ? 'Manuelt registrert flytid – ingen loggfil parset.'
-                          : 'Ingen posisjonsdata – analyse og ruteeksport er ikke tilgjengelig.'}
+                          ? t('pages.missions.card.manualFlightNoLog')
+                          : t('pages.missions.card.noPositionData')}
                       </span>
                       <Button
                         variant="outline"
@@ -878,7 +878,7 @@ export const MissionCard = ({
                         onClick={() => setUploadLogOpen(true)}
                       >
                         <Upload className="h-3 w-3" />
-                        Last opp DJI/ArduPilot-logg
+                        {t('pages.missions.card.uploadDjiArdupilotLog')}
                       </Button>
                     </div>
                   )}
