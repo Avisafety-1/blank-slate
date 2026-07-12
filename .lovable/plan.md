@@ -1,20 +1,13 @@
-## Problem
-Invitasjons-e-posten kommer på norsk selv når mål-selskapet har `default_language = 'en'`.
+## Mål
+Legg til en språkvelger (NO/EN) på innloggingssiden `/auth`, siden bruker ikke er logget inn eller knyttet til selskap enda.
 
-## Rotårsak
-`invokeEmailFunction`-wrapperen legger alltid inn `language: i18n.language` fra invitererens UI i request body. Min forrige `invite-user`-endring lot `body.language` vinne over mål-selskapets språk, så avsenderens norske UI overstyrte mottakerens engelske selskap.
-
-## Fix
-I `supabase/functions/invite-user/index.ts`: la mål-selskapets `default_language` **vinne** over `body.language`, siden invitasjonen sendes til mottaker i det selskapet — ikke til avsender. Rekkefølge blir:
-
-1. `targetCompanyLang` (fra `companies.default_language` for `registration_code`) — hvis satt
-2. `body.language` (fra kaller)
-3. `Accept-Language`-header / default `'no'` (via `resolveLanguage`)
-
-Konkret: bytt ut den nåværende `bodyForLang`/`resolveLanguage`-blokken slik at `language = targetCompanyLang ?? resolveLanguage(req, body)`.
+## Endring
+- I `src/pages/Auth.tsx`: legg til en liten `Globe`-toggle-knapp øverst til høyre (over kortet), samme visuelle stil som `LanguageToggleButton` i `Header.tsx` (ghost icon, `Globe` + språkbadge).
+- Klikk kaller `i18n.changeLanguage(target)` direkte (ikke `setLanguage()` fra `i18nHelpers`, siden den prøver å persistere til `profiles` og ville logge advarsel når ingen bruker er logget inn).
+- Bruker `getCurrentLanguage()` for å vise nåværende språk.
+- Overstyres fortsatt automatisk av selskapets `default_language` når bruker skriver inn en gyldig registreringskode (eksisterende oppførsel beholdes).
 
 ## Filer
-- `supabase/functions/invite-user/index.ts` (én endring)
+- `src/pages/Auth.tsx` (én liten UI-tilføyelse)
 
-## Verifisering
-Etter fix: kall `invite-user` mot «Engelsk testselskap»'s registreringskode → sjekk edge function-loggen og at maldata brukes fra `defaultTemplatesByLang.en.user_invite`.
+Ingen nye i18n-nøkler nødvendig — gjenbruker `header.switchToLanguage`.
