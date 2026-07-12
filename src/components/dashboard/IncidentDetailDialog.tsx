@@ -571,10 +571,10 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                 <AlertTriangle className="w-5 h-5 text-destructive mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-destructive">
-                    {incident.alvorlighetsgrad === "Kritisk" ? "Kritisk hendelse" : "Høy alvorlighetsgrad"}
+                    {incident.alvorlighetsgrad === "Kritisk" ? t('dashboard.incidents.criticalIncident') : t('dashboard.incidents.highSeverity')}
                   </p>
                   <p className="text-sm mt-1 text-destructive/90">
-                    Denne hendelsen krever umiddelbar oppmerksomhet og oppfølging.
+                    {t('dashboard.incidents.urgentAttention')}
                   </p>
                 </div>
               </div>
