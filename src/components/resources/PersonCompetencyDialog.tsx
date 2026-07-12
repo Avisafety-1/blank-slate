@@ -649,18 +649,18 @@ export function PersonCompetencyDialog({
                       )}
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         {competency.utstedt_dato && (
-                          <span>Utstedt: {format(new Date(competency.utstedt_dato), "dd.MM.yy", { locale: nb })}</span>
+                          <span>{t('resourceDialogs.personCompetency.issuedShort')} {format(new Date(competency.utstedt_dato), "dd.MM.yy", { locale: nb })}</span>
                         )}
                         {competency.utloper_dato && (
                           <span className={new Date(competency.utloper_dato) < new Date() ? "text-destructive" : ""}>
-                            Utløper: {format(new Date(competency.utloper_dato), "dd.MM.yy", { locale: nb })}
+                            {t('resourceDialogs.personCompetency.expiresShort')} {format(new Date(competency.utloper_dato), "dd.MM.yy", { locale: nb })}
                           </span>
                         )}
                       </div>
                       {competency.utloper_dato && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Bell className="h-3 w-3" />
-                          Gul varsling sendes {competency.varsel_dager ?? 30} dager før utløp
+                          {t('resourceDialogs.personCompetency.yellowWarningShort', { days: competency.varsel_dager ?? 30 })}
                         </p>
                       )}
                       {competency.fil_url && (
