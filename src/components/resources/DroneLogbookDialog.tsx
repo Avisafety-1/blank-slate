@@ -328,7 +328,7 @@ export const DroneLogbookDialog = ({
       setAllLogs(logs);
     } catch (error) {
       console.error("Error fetching logs:", error);
-      toast.error("Kunne ikke hente loggbok");
+      toast.error(t('resourceDialogs.droneLogbook.toasts.fetchError'));
     } finally {
       setIsLoading(false);
     }
