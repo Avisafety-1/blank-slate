@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Plus, AlertTriangle, Weight, Radio } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -53,6 +54,7 @@ export const AddEquipmentToDroneDialog = ({
   dronePayload,
   currentEquipmentWeight
 }: AddEquipmentToDroneDialogProps) => {
+  const { t } = useTranslation();
   const { user, companyId } = useAuth();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [dronetags, setDronetags] = useState<DronetagDevice[]>([]);
@@ -76,7 +78,7 @@ export const AddEquipmentToDroneDialog = ({
 
     if (error) {
       console.error("Error fetching equipment:", error);
-      toast.error("Kunne ikke hente utstyr");
+      toast.error(t('resourceDialogs.addEquipmentToDrone.fetchEquipmentFailed'));
     } else {
       const available = (data || []).filter(
         (item) => !existingEquipmentIds.includes(item.id)
@@ -93,7 +95,7 @@ export const AddEquipmentToDroneDialog = ({
 
     if (error) {
       console.error("Error fetching dronetag devices:", error);
-      toast.error("Kunne ikke hente DroneTag-enheter");
+      toast.error(t('resourceDialogs.addEquipmentToDrone.fetchDronetagFailed'));
     } else {
       // Filter out already linked dronetags (either to this drone or others)
       const available = (data || []).filter(
@@ -149,12 +151,12 @@ export const AddEquipmentToDroneDialog = ({
 
       await logEquipmentHistory(equipmentItem.id, equipmentItem.navn, 'equipment');
 
-      toast.success("Utstyr lagt til");
+      toast.success(t('resourceDialogs.addEquipmentToDrone.equipmentAdded'));
       onEquipmentAdded();
       fetchAvailableEquipment();
     } catch (error: any) {
       console.error("Error adding equipment:", error);
-      toast.error(`Kunne ikke legge til utstyr: ${error.message}`);
+      toast.error(t('resourceDialogs.addEquipmentToDrone.addEquipmentFailed', { msg: error.message }));
     } finally {
       setAdding(null);
     }
@@ -173,12 +175,12 @@ export const AddEquipmentToDroneDialog = ({
 
       await logEquipmentHistory(dronetag.id, dronetag.name || dronetag.device_id, 'dronetag');
 
-      toast.success("DroneTag lagt til");
+      toast.success(t('resourceDialogs.addEquipmentToDrone.dronetagAdded'));
       onEquipmentAdded();
       fetchAvailableDronetags();
     } catch (error: any) {
       console.error("Error adding dronetag:", error);
-      toast.error(`Kunne ikke legge til DroneTag: ${error.message}`);
+      toast.error(t('resourceDialogs.addEquipmentToDrone.addDronetagFailed', { msg: error.message }));
     } finally {
       setAdding(null);
     }
@@ -208,28 +210,28 @@ export const AddEquipmentToDroneDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Legg til utstyr</DialogTitle>
+          <DialogTitle>{t('resourceDialogs.addEquipmentToDrone.title')}</DialogTitle>
         </DialogHeader>
 
         {dronePayload !== null && activeTab === "equipment" && (
           <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg text-sm">
             <Weight className="w-4 h-4 text-muted-foreground" />
             <span>
-              Utstyrsvekt: <strong>{currentEquipmentWeight.toFixed(2)} kg</strong> / Payload: <strong>{dronePayload} kg</strong>
+              {t('resourceDialogs.addEquipmentToDrone.weightSummary', { cur: currentEquipmentWeight.toFixed(2), payload: dronePayload })}
             </span>
           </div>
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="equipment">Utstyr ({filteredEquipment.length})</TabsTrigger>
-            <TabsTrigger value="dronetag">DroneTag ({filteredDronetags.length})</TabsTrigger>
+            <TabsTrigger value="equipment">{t('resourceDialogs.addEquipmentToDrone.tabEquipment', { n: filteredEquipment.length })}</TabsTrigger>
+            <TabsTrigger value="dronetag">{t('resourceDialogs.addEquipmentToDrone.tabDronetag', { n: filteredDronetags.length })}</TabsTrigger>
           </TabsList>
 
           <div className="relative my-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={activeTab === "equipment" ? "Søk etter navn, type eller serienummer..." : "Søk etter navn, device ID eller callsign..."}
+              placeholder={activeTab === "equipment" ? t('resourceDialogs.addEquipmentToDrone.searchEquipment') : t('resourceDialogs.addEquipmentToDrone.searchDronetag')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -239,7 +241,7 @@ export const AddEquipmentToDroneDialog = ({
           <TabsContent value="equipment" className="flex-1 overflow-y-auto space-y-2 pr-2 mt-0">
             {filteredEquipment.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {search ? `Ingen treff for "${search}"` : "Ingen tilgjengelig utstyr"}
+                {search ? t('resourceDialogs.addEquipmentToDrone.noSearchHit', { q: search }) : t('resourceDialogs.addEquipmentToDrone.noAvailableEquipment')}
               </p>
             ) : (
               filteredEquipment.map((item) => {
@@ -261,7 +263,7 @@ export const AddEquipmentToDroneDialog = ({
                         </div>
                         <p className="text-sm text-muted-foreground">{item.type}</p>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                          <span>SN: {item.serienummer}</span>
+                          <span>{t('resourceDialogs.addEquipmentToDrone.sn')}: {item.serienummer}</span>
                           {item.vekt !== null && (
                             <span className="flex items-center gap-1">
                               <Weight className="w-3 h-3" />
@@ -277,7 +279,7 @@ export const AddEquipmentToDroneDialog = ({
                         className="gap-2 w-full sm:w-auto flex-shrink-0"
                       >
                         <Plus className="w-4 h-4" />
-                        {adding === item.id ? "Legger til..." : "Legg til"}
+                        {adding === item.id ? t('resourceDialogs.addEquipmentToDrone.adding') : t('resourceDialogs.addEquipmentToDrone.add')}
                       </Button>
                     </div>
                     
@@ -289,9 +291,9 @@ export const AddEquipmentToDroneDialog = ({
                       }`}>
                         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                         <span>
-                          {weightStatus === "exceeded" 
-                            ? `Overskrider payload! Ny totalvekt: ${newTotalWeight.toFixed(2)} kg`
-                            : `Nær payload-grense. Ny totalvekt: ${newTotalWeight.toFixed(2)} kg`
+                          {weightStatus === "exceeded"
+                            ? t('resourceDialogs.addEquipmentToDrone.exceedsPayload', { w: newTotalWeight.toFixed(2) })
+                            : t('resourceDialogs.addEquipmentToDrone.nearPayload', { w: newTotalWeight.toFixed(2) })
                           }
                         </span>
                       </div>
@@ -305,7 +307,7 @@ export const AddEquipmentToDroneDialog = ({
           <TabsContent value="dronetag" className="flex-1 overflow-y-auto space-y-2 pr-2 mt-0">
             {filteredDronetags.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {search ? `Ingen treff for "${search}"` : "Ingen tilgjengelige DroneTag-enheter"}
+                {search ? t('resourceDialogs.addEquipmentToDrone.noSearchHit', { q: search }) : t('resourceDialogs.addEquipmentToDrone.noAvailableDronetag')}
               </p>
             ) : (
               filteredDronetags.map((item) => (
@@ -320,8 +322,8 @@ export const AddEquipmentToDroneDialog = ({
                         <h4 className="font-medium break-words min-w-0">{item.name || item.device_id}</h4>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                        <span>Device: {item.device_id}</span>
-                        {item.callsign && <span>Callsign: {item.callsign}</span>}
+                        <span>{t('resourceDialogs.addEquipmentToDrone.device')}: {item.device_id}</span>
+                        {item.callsign && <span>{t('resourceDialogs.addEquipmentToDrone.callsign')}: {item.callsign}</span>}
                       </div>
                       {item.description && (
                         <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
@@ -334,7 +336,7 @@ export const AddEquipmentToDroneDialog = ({
                       className="gap-2 w-full sm:w-auto flex-shrink-0"
                     >
                       <Plus className="w-4 h-4" />
-                      {adding === item.id ? "Legger til..." : "Legg til"}
+                      {adding === item.id ? t('resourceDialogs.addEquipmentToDrone.adding') : t('resourceDialogs.addEquipmentToDrone.add')}
                     </Button>
                   </div>
                 </div>
@@ -345,7 +347,7 @@ export const AddEquipmentToDroneDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Lukk
+            {t('resourceDialogs.addEquipmentToDrone.close')}
           </Button>
         </DialogFooter>
       </DialogContent>

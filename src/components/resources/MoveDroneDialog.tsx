@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -51,21 +52,21 @@ const SUPPORTS_SHARE: Record<ResourceType, boolean> = {
   document: true,
 };
 
-const SECTION_LABELS: Record<ResourceType, string> = {
-  accessory: "Tilbehør",
-  dronetag: "DroneTag",
-  equipment: "Tilkoblet utstyr",
-  document: "Dokumenter & sjekklister",
-};
-
-const SHARE_HINT: Partial<Record<ResourceType, string>> = {
-  document: "Del med underavdelinger (gjør synlig for alle underavdelinger av eier).",
-  equipment: "Del synlighet med ny avdeling — eier endres ikke.",
-};
-
 export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: MoveDroneDialogProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  const SECTION_LABELS: Record<ResourceType, string> = {
+    accessory: t('resourceDialogs.moveDrone.sectionAccessory'),
+    dronetag: t('resourceDialogs.moveDrone.sectionDronetag'),
+    equipment: t('resourceDialogs.moveDrone.sectionEquipment'),
+    document: t('resourceDialogs.moveDrone.sectionDocument'),
+  };
+  const SHARE_HINT: Partial<Record<ResourceType, string>> = {
+    document: t('resourceDialogs.moveDrone.shareHintDocument'),
+    equipment: t('resourceDialogs.moveDrone.shareHintEquipment'),
+  };
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -75,7 +76,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
   const [resources, setResources] = useState<ResourceItem[]>([]);
   const [actions, setActions] = useState<Record<string, Action>>({}); // key = `${type}:${id}`
 
-  const fromCompanyName = drone.companies?.navn ?? "denne avdelingen";
+  const fromCompanyName = drone.companies?.navn ?? t('resourceDialogs.moveDrone.fromCompanyFallback');
 
   // Load sibling/parent departments and attached resources
   useEffect(() => {
@@ -120,14 +121,14 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
 
         const items: ResourceItem[] = [];
         for (const a of acc.data || []) items.push({ type: "accessory", id: a.id, name: a.navn });
-        for (const t of tags.data || []) items.push({ type: "dronetag", id: t.id, name: t.name || "DroneTag" });
+        for (const tag of tags.data || []) items.push({ type: "dronetag", id: tag.id, name: tag.name || t('resourceDialogs.moveDrone.unknownDronetag') });
 
         const eqIds: string[] = [];
         for (const r of (eqLinks.data || []) as any[]) {
           const e = r.equipment;
           if (e?.id) {
             eqIds.push(e.id);
-            items.push({ type: "equipment", id: e.id, name: e.navn || "Utstyr" });
+            items.push({ type: "equipment", id: e.id, name: e.navn || t('resourceDialogs.moveDrone.unknownEquipment') });
           }
         }
 
@@ -136,7 +137,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
           const d = r.documents;
           if (d?.id) {
             docIds.add(d.id);
-            items.push({ type: "document", id: d.id, name: d.tittel || "Dokument" });
+            items.push({ type: "document", id: d.id, name: d.tittel || t('resourceDialogs.moveDrone.unknownDocument') });
           }
         }
         // Add checklist documents referenced from the drone row itself
@@ -152,7 +153,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
             .in("id", extraChecklistIds);
           for (const d of extraDocs || []) {
             docIds.add(d.id);
-            items.push({ type: "document", id: d.id, name: (d as any).tittel || "Sjekkliste" });
+            items.push({ type: "document", id: d.id, name: (d as any).tittel || t('resourceDialogs.moveDrone.unknownChecklist') });
           }
         }
 
@@ -241,7 +242,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
 
   const handleSubmit = async () => {
     if (!targetCompanyId) {
-      toast.error("Velg en målavdeling");
+      toast.error(t('resourceDialogs.moveDrone.selectTargetError'));
       return;
     }
     setSubmitting(true);
@@ -258,7 +259,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
         _actions: payload as any,
       });
       if (error) throw error;
-      toast.success("Drone flyttet");
+      toast.success(t('resourceDialogs.moveDrone.moveSuccess'));
       onTransferred?.();
       // Invalidate everything that could reflect the move
       qc.invalidateQueries();
@@ -266,7 +267,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
       return data;
     } catch (e: any) {
       console.error("transfer_drone failed", e);
-      toast.error(e?.message || "Kunne ikke flytte drone");
+      toast.error(e?.message || t('resourceDialogs.moveDrone.moveFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -285,17 +286,17 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
       >
         <label className={`flex items-center gap-1.5 ${moveDisabled ? "opacity-50" : ""}`}>
           <RadioGroupItem value="move" id={`${key}-move`} disabled={moveDisabled} />
-          Flytt med
+          {t('resourceDialogs.moveDrone.moveWith')}
         </label>
         {supportsShare && (
           <label className="flex items-center gap-1.5">
             <RadioGroupItem value="share" id={`${key}-share`} />
-            {item.type === "document" ? "Del med underavd." : "Del synlighet"}
+            {item.type === "document" ? t('resourceDialogs.moveDrone.shareWithSub') : t('resourceDialogs.moveDrone.shareVisibility')}
           </label>
         )}
         <label className="flex items-center gap-1.5">
           <RadioGroupItem value="leave" id={`${key}-leave`} />
-          La være
+          {t('resourceDialogs.moveDrone.leave')}
         </label>
       </RadioGroup>
     );
@@ -310,12 +311,12 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h4 className="text-sm font-semibold">{SECTION_LABELS[type]}</h4>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Velg alle:</span>
-            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAllForType(type, "move")}>Flytt</Button>
+            <span className="text-muted-foreground">{t('resourceDialogs.moveDrone.selectAll')}</span>
+            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAllForType(type, "move")}>{t('resourceDialogs.moveDrone.move')}</Button>
             {supportsShare && (
-              <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAllForType(type, "share")}>Del</Button>
+              <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAllForType(type, "share")}>{t('resourceDialogs.moveDrone.share')}</Button>
             )}
-            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAllForType(type, "leave")}>La være</Button>
+            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setAllForType(type, "leave")}>{t('resourceDialogs.moveDrone.leave')}</Button>
           </div>
         </div>
         {SHARE_HINT[type] && supportsShare && (
@@ -329,7 +330,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
                   <div className="text-sm font-medium truncate">{item.name}</div>
                   {item.crossLinked && (
                     <div className="text-[11px] text-amber-600 dark:text-amber-400">
-                      Også koblet til andre droner — «Flytt med» deaktivert.
+                      {t('resourceDialogs.moveDrone.crossLinked')}
                     </div>
                   )}
                 </div>
@@ -348,7 +349,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="w-5 h-5 text-primary" />
-            Flytt drone til annen avdeling
+            {t('resourceDialogs.moveDrone.title')}
           </DialogTitle>
         </DialogHeader>
 
@@ -359,20 +360,20 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
         ) : (
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{drone.modell}</span> ({drone.serienummer}) – fra{" "}
+              <span className="font-medium text-foreground">{drone.modell}</span> ({drone.serienummer}) – {t('resourceDialogs.moveDrone.fromLine')}{" "}
               <span className="font-medium text-foreground">{fromCompanyName}</span>
             </div>
 
             <div className="space-y-2">
-              <Label>Til avdeling</Label>
+              <Label>{t('resourceDialogs.moveDrone.toDept')}</Label>
               {departments.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Ingen andre avdelinger i samme hierarki tilgjengelig.
+                  {t('resourceDialogs.moveDrone.noOtherDepts')}
                 </p>
               ) : (
                 <Select value={targetCompanyId} onValueChange={setTargetCompanyId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Velg målavdeling" />
+                    <SelectValue placeholder={t('resourceDialogs.moveDrone.selectTarget')} />
                   </SelectTrigger>
                   <SelectContent>
                     {departments.map((d) => (
@@ -386,22 +387,22 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
             </div>
 
             <div className="space-y-2">
-              <Label>Notat (valgfritt)</Label>
-              <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Begrunnelse, referanse e.l." />
+              <Label>{t('resourceDialogs.moveDrone.note')}</Label>
+              <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={t('resourceDialogs.moveDrone.notePlaceholder')} />
             </div>
 
             <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
               <div className="flex items-start gap-1.5">
                 <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Loggbok, inspeksjoner og utstyrshistorikk følger drona automatisk.</span>
+                <span>{t('resourceDialogs.moveDrone.infoHistoricalFollows')}</span>
               </div>
               <div className="flex items-start gap-1.5">
                 <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Flygelogger, hendelser og DJI-synkjobber beholdes på {fromCompanyName} som historikk.</span>
+                <span>{t('resourceDialogs.moveDrone.infoLogsKept', { from: fromCompanyName })}</span>
               </div>
               <div className="flex items-start gap-1.5">
                 <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Eksisterende delings-rader for drona fjernes — sett opp deling på nytt etter behov.</span>
+                <span>{t('resourceDialogs.moveDrone.infoSharesRemoved')}</span>
               </div>
             </div>
 
@@ -413,11 +414,11 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Avbryt
+            {t('resourceDialogs.moveDrone.cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={submitting || loading || !targetCompanyId}>
             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Bekreft flytting
+            {t('resourceDialogs.moveDrone.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

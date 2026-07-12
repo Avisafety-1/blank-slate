@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { Search, User, Plus } from "lucide-react";
 
@@ -47,6 +48,7 @@ export const AddPersonnelToDroneDialog = ({
   onPersonnelAdded,
   onVisibilityChanged,
 }: AddPersonnelToDroneDialogProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [personnel, setPersonnel] = useState<Person[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -157,14 +159,14 @@ export const AddPersonnelToDroneDialog = ({
 
       if (error) throw error;
 
-      toast.success("Personell lagt til");
+      toast.success(t('resourceDialogs.addPersonnelToDrone.added'));
       onPersonnelAdded();
 
       // Remove from local list
       setPersonnel((prev) => prev.filter((p) => p.id !== personId));
     } catch (error: any) {
       console.error("Error adding personnel:", error);
-      toast.error(`Kunne ikke legge til personell: ${error.message}`);
+      toast.error(t('resourceDialogs.addPersonnelToDrone.addFailed', { msg: error.message }));
     } finally {
       setAddingId(null);
     }
@@ -210,14 +212,14 @@ export const AddPersonnelToDroneDialog = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" />
-              Legg til personell
+              {t('resourceDialogs.addPersonnelToDrone.title')}
             </DialogTitle>
           </DialogHeader>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Søk etter personell..."
+              placeholder={t('resourceDialogs.addPersonnelToDrone.search')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -229,7 +231,7 @@ export const AddPersonnelToDroneDialog = ({
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <User className="w-12 h-12 text-muted-foreground/50 mb-3" />
                 <p className="text-muted-foreground">
-                  {searchTerm ? "Ingen treff" : "Ingen tilgjengelig personell"}
+                  {searchTerm ? t('resourceDialogs.addPersonnelToDrone.noHit') : t('resourceDialogs.addPersonnelToDrone.noAvailable')}
                 </p>
               </div>
             ) : (
@@ -241,7 +243,7 @@ export const AddPersonnelToDroneDialog = ({
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm sm:text-base truncate">{person.full_name || "Ukjent"}</p>
+                        <p className="font-medium text-sm sm:text-base truncate">{person.full_name || t('resourceDialogs.addPersonnelToDrone.unknown')}</p>
                         {person.company_id !== droneCompanyId && person.company_navn && (
                           <Badge variant="outline" className="text-xs shrink-0">
                             {person.company_navn}
@@ -262,7 +264,7 @@ export const AddPersonnelToDroneDialog = ({
                       className="gap-1 w-full sm:w-auto shrink-0"
                     >
                       <Plus className="w-4 h-4" />
-                      {addingId === person.id ? "..." : "Legg til"}
+                      {addingId === person.id ? "..." : t('resourceDialogs.addPersonnelToDrone.add')}
                     </Button>
                   </div>
                 ))}
@@ -272,7 +274,7 @@ export const AddPersonnelToDroneDialog = ({
 
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Lukk
+              {t('resourceDialogs.addPersonnelToDrone.close')}
             </Button>
           </div>
         </DialogContent>
@@ -281,19 +283,19 @@ export const AddPersonnelToDroneDialog = ({
       <AlertDialog open={!!visibilityPrompt} onOpenChange={(o) => { if (!o) setVisibilityPrompt(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Gjøre dronen synlig?</AlertDialogTitle>
+            <AlertDialogTitle>{t('resourceDialogs.addPersonnelToDrone.visibilityTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               {visibilityPrompt?.person.company_navn
-                ? `Ønsker du å gjøre dronen synlig for ${visibilityPrompt.person.company_navn}? Personellet du legger til tilhører en annen avdeling enn dronen.`
-                : "Ønsker du å gjøre dronen synlig for denne avdelingen?"}
+                ? t('resourceDialogs.addPersonnelToDrone.visibilityDescNamed', { name: visibilityPrompt.person.company_navn })
+                : t('resourceDialogs.addPersonnelToDrone.visibilityDescGeneric')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleVisibilityDecline}>
-              Nei, bare legg til
+              {t('resourceDialogs.addPersonnelToDrone.visibilityDecline')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleVisibilityConfirm}>
-              Ja, gjør synlig
+              {t('resourceDialogs.addPersonnelToDrone.visibilityAccept')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

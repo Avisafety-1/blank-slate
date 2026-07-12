@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertTriangle, FileText, Package, User } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { MissingVisibility, DepartmentInfo } from "@/lib/droneVisibilityCheck";
 import { grantMissingVisibility } from "@/lib/droneVisibilityCheck";
 import { toast } from "sonner";
@@ -21,10 +22,10 @@ interface Props {
   resourceLabel?: string;
 }
 
-const typeMeta: Record<MissingVisibility["resourceType"], { label: string; Icon: any }> = {
-  document: { label: "Dokument", Icon: FileText },
-  equipment: { label: "Utstyr", Icon: Package },
-  personnel: { label: "Personell", Icon: User },
+const typeIcons: Record<MissingVisibility["resourceType"], any> = {
+  document: FileText,
+  equipment: Package,
+  personnel: User,
 };
 
 export const ResourceVisibilityWarningDialog = ({
@@ -34,9 +35,16 @@ export const ResourceVisibilityWarningDialog = ({
   departments,
   onContinue,
   onCancel,
-  resourceLabel = "dronen",
+  resourceLabel,
 }: Props) => {
+  const { t } = useTranslation();
   const [working, setWorking] = useState(false);
+  const effectiveLabel = resourceLabel ?? t('resourceDialogs.resourceVisibility.descriptionDrone');
+  const typeLabel: Record<MissingVisibility["resourceType"], string> = {
+    document: t('resourceDialogs.resourceVisibility.typeDocument'),
+    equipment: t('resourceDialogs.resourceVisibility.typeEquipment'),
+    personnel: t('resourceDialogs.resourceVisibility.typePersonnel'),
+  };
 
   const deptName = (id: string) => departments.find((d) => d.id === id)?.navn || id.slice(0, 8);
   const autoFixable = missing.filter((m) => m.resourceType !== "personnel");
@@ -46,12 +54,12 @@ export const ResourceVisibilityWarningDialog = ({
     setWorking(true);
     try {
       await grantMissingVisibility(autoFixable);
-      toast.success(`${autoFixable.length} ressurs(er) gjort synlig`);
+      toast.success(t('resourceDialogs.resourceVisibility.grantSuccess', { n: autoFixable.length }));
       await onContinue();
       onOpenChange(false);
     } catch (e: any) {
       console.error("Grant visibility error:", e);
-      toast.error(`Kunne ikke oppdatere synlighet: ${e.message}`);
+      toast.error(t('resourceDialogs.resourceVisibility.grantFailed', { msg: e.message }));
     } finally {
       setWorking(false);
     }
@@ -78,11 +86,10 @@ export const ResourceVisibilityWarningDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
-            Manglende synlighet for tilknyttede ressurser
+            {t('resourceDialogs.resourceVisibility.title')}
           </DialogTitle>
           <DialogDescription>
-            Følgende ressurser er tilknyttet {resourceLabel}, men er ikke synlige for alle avdelingene
-            {" "}{resourceLabel} deles med. Du kan gjøre dem synlige automatisk eller fortsette uten endring.
+            {t('resourceDialogs.resourceVisibility.descriptionGeneric', { res: effectiveLabel })}
           </DialogDescription>
         </DialogHeader>
 
@@ -90,21 +97,20 @@ export const ResourceVisibilityWarningDialog = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Navn</TableHead>
-                <TableHead>Mangler synlighet for</TableHead>
+                <TableHead>{t('resourceDialogs.resourceVisibility.typeHead')}</TableHead>
+                <TableHead>{t('resourceDialogs.resourceVisibility.nameHead')}</TableHead>
+                <TableHead>{t('resourceDialogs.resourceVisibility.missingHead')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {missing.map((m, i) => {
-                const meta = typeMeta[m.resourceType];
-                const Icon = meta.Icon;
+                const Icon = typeIcons[m.resourceType];
                 return (
                   <TableRow key={`${m.resourceType}-${m.resourceId}-${i}`}>
                     <TableCell>
                       <div className="flex items-center gap-2 text-sm">
                         <Icon className="w-4 h-4 text-muted-foreground" />
-                        {meta.label}
+                        {typeLabel[m.resourceType]}
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">{m.resourceName}</TableCell>
@@ -128,22 +134,21 @@ export const ResourceVisibilityWarningDialog = ({
           <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
             <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <span>
-              Personell kan ikke gjøres synlig automatisk — de er bundet til sin avdeling.
-              Du må eventuelt invitere dem på nytt eller flytte dem manuelt.
+              {t('resourceDialogs.resourceVisibility.personnelWarning')}
             </span>
           </div>
         )}
 
         <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
           <Button variant="ghost" onClick={handleCancel} disabled={working}>
-            Avbryt
+            {t('resourceDialogs.resourceVisibility.cancel')}
           </Button>
           <Button variant="outline" onClick={handleProceed} disabled={working}>
-            Fortsett uten endring
+            {t('resourceDialogs.resourceVisibility.proceed')}
           </Button>
           {autoFixable.length > 0 && (
             <Button onClick={handleGrantAll} disabled={working}>
-              {working ? "Oppdaterer..." : `Gjør ${autoFixable.length} synlig`}
+              {working ? t('resourceDialogs.resourceVisibility.updating') : t('resourceDialogs.resourceVisibility.makeVisible', { n: autoFixable.length })}
             </Button>
           )}
         </DialogFooter>
