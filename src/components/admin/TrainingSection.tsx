@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,7 @@ interface Folder {
 }
 
 export const TrainingSection = () => {
+  const { t } = useTranslation();
   const { companyId, isSuperAdmin } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -138,7 +140,7 @@ export const TrainingSection = () => {
       );
     } catch (err) {
       console.error("Error fetching courses:", err);
-      toast.error("Kunne ikke hente kurs");
+      toast.error(t("training.section.toastFetchCoursesFailed"));
     } finally {
       setLoading(false);
     }
@@ -167,17 +169,17 @@ export const TrainingSection = () => {
           .update({ status: "draft", available_to_all: false, updated_at: new Date().toISOString() })
           .eq("id", course.id);
         if (error) throw error;
-        toast.success("Kurs satt til kladd");
+        toast.success(t("training.section.toastCourseSetDraft"));
         fetchCourses();
       } catch (err) {
         console.error("Error unpublishing:", err);
-        toast.error("Kunne ikke oppdatere kursstatus");
+        toast.error(t("training.section.toastCourseUnpublishFailed"));
       }
       return;
     }
     const isGuidedTour = (course as any).display_mode === "guided_tour" || !!(course as any).tour_id;
     if (!isGuidedTour && (course.question_count || 0) === 0) {
-      toast.error("Kurset må ha minst ett spørsmål for å publiseres");
+      toast.error(t("training.section.toastQuestionRequired"));
       return;
     }
     setPublishDialogCourse(course);
@@ -195,7 +197,7 @@ export const TrainingSection = () => {
         })
         .eq("id", publishDialogCourse.id);
       if (error) throw error;
-      toast.success("Kurs publisert");
+      toast.success(t("training.section.toastCoursePublished"));
       if (mode === "specific") {
         setAssignCourseId(publishDialogCourse.id);
       }
@@ -203,25 +205,25 @@ export const TrainingSection = () => {
       fetchCourses();
     } catch (err) {
       console.error("Error publishing:", err);
-      toast.error("Kunne ikke publisere kurs");
+      toast.error(t("training.section.toastPublishFailed"));
     }
   };
 
   const handleDeleteCourse = async (id: string) => {
-    if (!confirm("Er du sikker på at du vil slette dette kurset?")) return;
+    if (!confirm(t("training.section.confirmDeleteCourse"))) return;
     try {
       const { error } = await supabase.from("training_courses").delete().eq("id", id);
       if (error) throw error;
-      toast.success("Kurs slettet");
+      toast.success(t("training.section.toastCourseDeleted"));
       fetchCourses();
     } catch (err) {
       console.error("Error deleting course:", err);
-      toast.error("Kunne ikke slette kurs");
+      toast.error(t("training.section.toastDeleteCourseFailed"));
     }
   };
 
   const handleDeleteFolder = async (folderId: string) => {
-    if (!confirm("Er du sikker på at du vil slette denne mappen? Kurs i mappen flyttes ut.")) return;
+    if (!confirm(t("training.section.confirmDeleteFolder"))) return;
     try {
       // Unassign courses from the folder first
       const { error: moveErr } = await (supabase.from("training_courses") as any)
@@ -231,13 +233,13 @@ export const TrainingSection = () => {
 
       const { error } = await (supabase.from("training_course_folders") as any).delete().eq("id", folderId);
       if (error) throw error;
-      toast.success("Mappe slettet");
+      toast.success(t("training.section.toastFolderDeleted"));
       if (activeFolderId === folderId) setActiveFolderId(null);
       fetchFolders();
       fetchCourses();
     } catch (err) {
       console.error("Error deleting folder:", err);
-      toast.error("Kunne ikke slette mappe");
+      toast.error(t("training.section.toastDeleteFolderFailed"));
     }
   };
 
@@ -247,11 +249,11 @@ export const TrainingSection = () => {
         .update({ folder_id: folderId })
         .eq("id", courseId);
       if (error) throw error;
-      toast.success(folderId ? "Kurs flyttet til mappe" : "Kurs fjernet fra mappe");
+      toast.success(folderId ? t("training.section.toastCourseMovedToFolder") : t("training.section.toastCourseRemovedFromFolder"));
       fetchCourses();
     } catch (err) {
       console.error("Error moving course:", err);
-      toast.error("Kunne ikke flytte kurs");
+      toast.error(t("training.section.toastMoveCourseFailed"));
     }
   };
 
@@ -261,11 +263,11 @@ export const TrainingSection = () => {
         .update({ global_visibility: !course.global_visibility })
         .eq("id", course.id);
       if (error) throw error;
-      toast.success(course.global_visibility ? "Global deling deaktivert" : "Kurs delt med alle selskaper");
+      toast.success(course.global_visibility ? t("training.section.toastGlobalDisabled") : t("training.section.toastGlobalEnabled"));
       fetchCourses();
     } catch (err) {
       console.error("Error toggling global:", err);
-      toast.error("Kunne ikke oppdatere deling");
+      toast.error(t("training.section.toastToggleGlobalFailed"));
     }
   };
 
@@ -275,11 +277,11 @@ export const TrainingSection = () => {
         .update({ visible_to_children: !course.visible_to_children })
         .eq("id", course.id);
       if (error) throw error;
-      toast.success(course.visible_to_children ? "Deling med underavdelinger deaktivert" : "Kurs delt med underavdelinger");
+      toast.success(course.visible_to_children ? t("training.section.toastChildrenSharingDisabled") : t("training.section.toastChildrenSharingEnabled"));
       fetchCourses();
     } catch (err) {
       console.error("Error toggling visible_to_children:", err);
-      toast.error("Kunne ikke oppdatere deling");
+      toast.error(t("training.section.toastToggleGlobalFailed"));
     }
   };
 
@@ -289,11 +291,11 @@ export const TrainingSection = () => {
         .update({ shared_with_parent: !course.shared_with_parent })
         .eq("id", course.id);
       if (error) throw error;
-      toast.success(course.shared_with_parent ? "Deling med mor-avdeling deaktivert" : "Kurs delt med mor-avdeling");
+      toast.success(course.shared_with_parent ? t("training.section.toastParentSharingDisabled") : t("training.section.toastParentSharingEnabled"));
       fetchCourses();
     } catch (err) {
       console.error("Error toggling shared_with_parent:", err);
-      toast.error("Kunne ikke oppdatere deling");
+      toast.error(t("training.section.toastToggleGlobalFailed"));
     }
   };
 
@@ -303,11 +305,11 @@ export const TrainingSection = () => {
         .update({ visible_to_children: !folder.visible_to_children })
         .eq("id", folder.id);
       if (error) throw error;
-      toast.success(folder.visible_to_children ? "Mappe-deling deaktivert" : "Mappe delt med underavdelinger");
+      toast.success(folder.visible_to_children ? t("training.section.toastFolderSharingDisabled") : t("training.section.toastFolderSharingEnabled"));
       fetchFolders();
     } catch (err) {
       console.error("Error toggling folder visible_to_children:", err);
-      toast.error("Kunne ikke oppdatere mappe-deling");
+      toast.error(t("training.section.toastFolderSharingFailed"));
     }
   };
 
@@ -350,35 +352,35 @@ export const TrainingSection = () => {
           {course.global_visibility && (
             <Badge variant="outline" className="text-primary border-primary/30">
               <Globe className="h-3 w-3 mr-1" />
-              Global
+              {t("training.section.global")}
             </Badge>
           )}
           {!isOwner && (
             <Badge variant="outline" className="border-muted-foreground/30">
               <Building2 className="h-3 w-3 mr-1" />
-              Arvet{course.company_name ? ` fra ${course.company_name}` : ""}
+              {course.company_name ? t("training.section.inheritedFrom", { name: course.company_name }) : t("training.section.inherited")}
             </Badge>
           )}
           {course.visible_to_children && (isOwner || course.shared_with_parent) && (
             <Badge variant="outline" className="border-primary/30 text-primary">
               <ArrowDown className="h-3 w-3 mr-1" />
-              Delt nedover
+              {t("training.section.sharedDown")}
             </Badge>
           )}
           {isOwner && course.shared_with_parent && (
             <Badge variant="outline" className="border-primary/30 text-primary">
               <ArrowUp className="h-3 w-3 mr-1" />
-              Delt med mor
+              {t("training.section.sharedWithParent")}
             </Badge>
           )}
           {((course as any).display_mode === "guided_tour" || (course as any).tour_id) && (
             <Badge variant="outline" className="border-primary/40 text-primary bg-primary/5">
               <Compass className="h-3 w-3 mr-1" />
-              Guidet tour
+              {t("training.section.guidedTour")}
             </Badge>
           )}
           <Badge variant={course.status === "published" ? "default" : "secondary"}>
-            {course.status === "published" ? "Publisert" : "Kladd"}
+            {course.status === "published" ? t("training.section.published") : t("training.section.draft")}
           </Badge>
         </div>
         <CardTitle className="text-base leading-tight">{course.title}</CardTitle>
@@ -388,14 +390,14 @@ export const TrainingSection = () => {
       </CardHeader>
       <CardContent className="flex-1 flex flex-col justify-between gap-3">
         <div className="text-xs text-muted-foreground space-y-1">
-          <p>{course.question_count} spørsmål · Bestått: {course.passing_score}%</p>
-          <p>Gyldighet: {course.validity_months ? `${course.validity_months} mnd` : "Permanent"}</p>
+          <p>{t("training.section.questionsAndPassing", { count: course.question_count, score: course.passing_score })}</p>
+          <p>{t("training.section.validity", { validity: course.validity_months ? t("training.section.monthsShort", { count: course.validity_months }) : t("training.section.permanent") })}</p>
           {(course as any).available_to_all && course.status === "published" && (
-            <p className="text-primary flex items-center gap-1"><Globe className="h-3 w-3" /> Tilgjengelig for alle</p>
+            <p className="text-primary flex items-center gap-1"><Globe className="h-3 w-3" /> {t("training.section.availableToAll")}</p>
           )}
           {course.assignment_stats && course.assignment_stats.total > 0 && (
             <p className="text-foreground">
-              {course.assignment_stats.passed}/{course.assignment_stats.total} bestått
+              {t("training.section.passedStats", { passed: course.assignment_stats.passed, total: course.assignment_stats.total })}
             </p>
           )}
         </div>
@@ -408,23 +410,23 @@ export const TrainingSection = () => {
           {(course.question_count || 0) > 0 && (
             <Button size="sm" variant="outline" onClick={() => setPreviewCourseId(course.id)}>
               <Play className="h-3.5 w-3.5 mr-1" />
-              Preview
+              {t("training.section.preview")}
             </Button>
           )}
           {isOwner && (
             <Button size="sm" variant="outline" onClick={() => handleTogglePublish(course)}>
-              {course.status === "published" ? "Avpubliser" : "Publiser"}
+              {course.status === "published" ? t("training.section.unpublish") : t("training.section.publish")}
             </Button>
           )}
           {course.status === "published" && (
             <Button size="sm" variant="outline" onClick={() => setAssignCourseId(course.id)}>
               <Users className="h-3.5 w-3.5 mr-1" />
-              Tildel
+              {t("training.section.assign")}
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={() => setStatusCourseId(course.id)}>
             <Eye className="h-3.5 w-3.5 mr-1" />
-            Status
+            {t("training.section.status")}
           </Button>
           {/* Folder move */}
           {isOwner && folders.length > 0 && (
@@ -432,11 +434,11 @@ export const TrainingSection = () => {
               value={course.folder_id || "__none__"}
               onValueChange={(v) => handleMoveCourse(course.id, v === "__none__" ? null : v)}
             >
-              <SelectTrigger className="h-8 w-8 p-0 [&>svg.lucide-chevron-down]:hidden border flex items-center justify-center" title="Flytt til mappe">
+              <SelectTrigger className="h-8 w-8 p-0 [&>svg.lucide-chevron-down]:hidden border flex items-center justify-center" title={t("training.section.moveToFolder")}>
                 <FolderOpen className="h-4 w-4" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Ingen mappe</SelectItem>
+                <SelectItem value="__none__">{t("training.section.noFolder")}</SelectItem>
                 {folders.filter((f) => !f.inherited).map((f) => (
                   <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                 ))}
@@ -449,10 +451,10 @@ export const TrainingSection = () => {
               size="sm"
               variant={course.visible_to_children ? "default" : "ghost"}
               onClick={() => handleToggleVisibleToChildren(course)}
-              title={course.visible_to_children ? "Slutt å dele med underavdelinger" : "Del med underavdelinger"}
+              title={course.visible_to_children ? t("training.section.stopSharingWithChildren") : t("training.section.shareWithChildren")}
             >
               <ArrowDown className="h-3.5 w-3.5 mr-1" />
-              {course.visible_to_children ? "Delt nedover" : "Del nedover"}
+              {course.visible_to_children ? t("training.section.sharedDown") : t("training.section.shareWithChildren")}
             </Button>
           )}
           {/* Share with parent (owner + has parent) */}
@@ -461,7 +463,7 @@ export const TrainingSection = () => {
               size="sm"
               variant={course.shared_with_parent ? "default" : "ghost"}
               onClick={() => handleToggleSharedWithParent(course)}
-              title={course.shared_with_parent ? "Slutt å dele med mor-avdeling" : "Del med mor-avdeling"}
+              title={course.shared_with_parent ? t("training.section.stopSharingWithParent") : t("training.section.shareWithParent")}
             >
               <ArrowUp className="h-3.5 w-3.5" />
             </Button>
@@ -472,7 +474,7 @@ export const TrainingSection = () => {
               size="sm"
               variant={course.global_visibility ? "default" : "ghost"}
               onClick={() => handleToggleGlobal(course)}
-              title={course.global_visibility ? "Fjern global deling" : "Del med alle selskaper"}
+              title={course.global_visibility ? t("training.section.removeGlobalSharing") : t("training.section.shareWithAllCompanies")}
             >
               <Globe className="h-3.5 w-3.5" />
             </Button>
@@ -492,21 +494,21 @@ export const TrainingSection = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">Opplæring</h2>
-          <p className="text-sm text-muted-foreground">Opprett kurs og tester for dine ansatte</p>
+          <h2 className="text-xl font-bold">{t("training.section.title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("training.section.subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setAiGenOpen(true)} size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/10">
             <Sparkles className="h-4 w-4 mr-1" />
-            Generer med AI
+            {t("training.section.generateWithAi")}
           </Button>
           <Button onClick={() => setCreateFolderOpen(true)} size="sm" variant="outline">
             <FolderPlus className="h-4 w-4 mr-1" />
-            Ny mappe
+            {t("training.section.newFolder")}
           </Button>
           <Button onClick={handleNewCourse} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            Nytt kurs
+            {t("training.section.newCourse")}
           </Button>
         </div>
       </div>
@@ -528,7 +530,7 @@ export const TrainingSection = () => {
                 </div>
                 <div className="flex flex-col sm:items-center min-w-0">
                   <span className="text-sm sm:text-xs font-medium text-foreground text-left sm:text-center line-clamp-2 leading-tight">{folder.name}</span>
-                  <span className="text-[11px] sm:text-[10px] text-muted-foreground">{folder.course_count} kurs</span>
+                  <span className="text-[11px] sm:text-[10px] text-muted-foreground">{t("training.section.coursesCount", { count: folder.course_count })}</span>
                 </div>
               </button>
               {!folder.inherited && (
@@ -539,7 +541,7 @@ export const TrainingSection = () => {
                       variant="ghost"
                       className={`h-6 w-6 p-0 ${folder.visible_to_children ? "text-primary" : "text-muted-foreground"}`}
                       onClick={(e) => { e.stopPropagation(); handleToggleFolderVisibleToChildren(folder); }}
-                      title={folder.visible_to_children ? "Slutt å dele mappe med underavdelinger" : "Del mappe med underavdelinger"}
+                      title={folder.visible_to_children ? t("training.section.stopSharingFolderWithChildren") : t("training.section.shareFolderWithChildren")}
                     >
                       <ArrowDown className="h-3 w-3" />
                     </Button>
@@ -572,7 +574,7 @@ export const TrainingSection = () => {
           </Button>
           <FolderOpen className="h-5 w-5 text-primary" />
           <h3 className="font-semibold">{activeFolder.name}</h3>
-          <Badge variant="secondary" className="text-xs">{displayedCourses.length} kurs</Badge>
+          <Badge variant="secondary" className="text-xs">{t("training.section.coursesCount", { count: displayedCourses.length })}</Badge>
           {!activeFolder.inherited && (
             <Button
               size="sm"
@@ -581,41 +583,41 @@ export const TrainingSection = () => {
                 // Show courses not in any folder
                 const available = courses.filter(c => !c.folder_id);
                 if (available.length === 0) {
-                  toast.info("Ingen kurs tilgjengelig utenfor mapper");
+                  toast.info(t("training.section.noCoursesAvailableOutsideFolders"));
                   return;
                 }
                 const courseNames = available.map(c => c.title).join("\n");
                 // Simple multi-select via prompt isn't great, use a loop approach
-                const selected = prompt(`Skriv tittel (eller del av tittel) på kurset du vil legge til i mappen "${activeFolder.name}":\n\nTilgjengelige:\n${courseNames}`);
+                const selected = prompt(t("training.section.addCoursePrompt", { folder: activeFolder.name, courses: courseNames }));
                 if (selected) {
                   const match = available.find(c => c.title.toLowerCase().includes(selected.toLowerCase()));
                   if (match) {
                     handleMoveCourse(match.id, activeFolderId);
                   } else {
-                    toast.error("Fant ikke kurset");
+                    toast.error(t("training.section.courseNotFound"));
                   }
                 }
               }}
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
-              Legg til kurs
+              {t("training.section.addCourseToFolder")}
             </Button>
           )}
         </div>
       )}
 
       {loading ? (
-        <p className="text-muted-foreground text-sm">Laster kurs...</p>
+        <p className="text-muted-foreground text-sm">{t("training.section.loadingCourses")}</p>
       ) : displayedCourses.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
             <p className="text-muted-foreground">
-              {activeFolderId ? "Ingen kurs i denne mappen" : "Ingen kurs uten mappe"}
+              {activeFolderId ? t("training.section.noCoursesInFolder") : t("training.section.noCoursesWithoutFolder")}
             </p>
             <Button onClick={handleNewCourse} className="mt-4" variant="outline">
               <Plus className="h-4 w-4 mr-1" />
-              {courses.length === 0 ? "Opprett ditt første kurs" : "Nytt kurs"}
+              {courses.length === 0 ? t("training.section.createFirstCourse") : t("training.section.newCourse")}
             </Button>
           </CardContent>
         </Card>
@@ -642,9 +644,9 @@ export const TrainingSection = () => {
       <Dialog open={!!publishDialogCourse} onOpenChange={(open) => { if (!open) setPublishDialogCourse(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Publiser kurs</DialogTitle>
+            <DialogTitle>{t("training.section.publishDialogTitle")}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">Hvordan skal kurset gjøres tilgjengelig?</p>
+          <p className="text-sm text-muted-foreground">{t("training.section.publishDialogQuestion")}</p>
           <div className="grid gap-3 pt-2">
             <Button
               variant="outline"
@@ -653,8 +655,8 @@ export const TrainingSection = () => {
             >
               <Globe className="h-5 w-5 text-primary shrink-0" />
               <div className="text-left">
-                <p className="font-medium">Tilgjengelig for alle</p>
-                <p className="text-xs text-muted-foreground">Alle ansatte kan ta kurset fra sitt personellkort</p>
+                <p className="font-medium">{t("training.section.publishAllTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("training.section.publishAllDesc")}</p>
               </div>
             </Button>
             <Button
@@ -664,8 +666,8 @@ export const TrainingSection = () => {
             >
               <UserCheck className="h-5 w-5 text-primary shrink-0" />
               <div className="text-left">
-                <p className="font-medium">Tildel spesifikke personer</p>
-                <p className="text-xs text-muted-foreground">Velg hvilke ansatte som skal ta kurset</p>
+                <p className="font-medium">{t("training.section.publishSpecificTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("training.section.publishSpecificDesc")}</p>
               </div>
             </Button>
           </div>
@@ -694,7 +696,7 @@ export const TrainingSection = () => {
         initialFolderId={activeFolderId}
         onCourseCreated={(_courseId) => {
           fetchCourses();
-          toast.success("Kurs opprettet — lyd og innhold er bevart. Åpne for å redigere ved behov.");
+          toast.success(t("training.section.toastCourseCreated"));
         }}
       />
     </div>

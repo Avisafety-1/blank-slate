@@ -3595,7 +3595,8 @@
    "toastFolderSharingFailed": "Kunne ikke oppdatere mappe-deling",
    "toastCourseCreated": "Kurs opprettet — lyd og innhold er bevart. Åpne for å redigere ved behov.",
    "stopSharingFolderWithChildren": "Slutt å dele mappe med underavdelinger",
-   "shareFolderWithChildren": "Del mappe med underavdelinger"
+   "shareFolderWithChildren": "Del mappe med underavdelinger",
+   "toastFetchCoursesFailed": "Kunne ikke hente kurs"
   },
   "statusView": {
    "assignedCompletedPassed": "{{total}} tildelt · {{completed}} fullført · {{passed}} bestått",

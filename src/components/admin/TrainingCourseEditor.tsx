@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentLanguage } from "@/lib/i18nHelpers";
 import { useAuth } from "@/contexts/AuthContext";
@@ -75,6 +76,7 @@ interface Props {
 }
 
 export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
+  const { t } = useTranslation();
   const { companyId, user } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -104,11 +106,11 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     const cj = (s?.content_json as any) || {};
     const text: string = (cj.narration_text || "").trim();
     if (!text) {
-      toast.error("Skriv inn tekst først");
+      toast.error(t("training.courseEditor.toastEnterTextFirst"));
       return;
     }
     if (!courseId) {
-      toast.error("Lagre kurset før du genererer lyd");
+      toast.error(t("training.courseEditor.toastSaveCourseBeforeAudio"));
       return;
     }
     setGeneratingAudioIdx(sIdx);
@@ -120,16 +122,16 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       });
       if (error) throw error;
       const audioUrl = (data as any)?.audio_url;
-      if (!audioUrl) throw new Error("Ingen lyd-URL returnert");
+      if (!audioUrl) throw new Error(t("training.courseEditor.toastNoAudioUrl"));
       setSlides((prev) => prev.map((x, i) => {
         if (i !== sIdx) return x;
         const cj2 = { ...(x.content_json || {}), narration_audio_url: audioUrl, narration_enabled: true, narration_voice: voice, narration_speed: String(speed) };
         return { ...x, content_json: cj2 };
       }));
-      toast.success("Lyd generert med OpenAI");
+      toast.success(t("training.courseEditor.toastAudioGenerated"));
     } catch (err: any) {
       console.error("generate-narration error", err);
-      toast.error(err?.message || "Kunne ikke generere lyd");
+      toast.error(err?.message || t("training.courseEditor.toastAudioGenerateFailed"));
     } finally {
       setGeneratingAudioIdx(null);
     }
@@ -204,7 +206,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       }
     } catch (err) {
       console.error("Error loading course:", err);
-      toast.error("Kunne ikke laste kurs");
+      toast.error(t("training.section.toastFetchCoursesFailed"));
     } finally {
       setLoading(false);
     }
@@ -214,7 +216,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type !== "application/pdf") {
-      toast.error("Vennligst last opp en PDF-fil");
+      toast.error(t("training.courseEditor.toastPdfOnly"));
       return;
     }
 
@@ -240,7 +242,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
 
         newSlides.push({
           slide_type: "content",
-          question_text: `Slide ${startOrder + i}`,
+          question_text: t("training.courseEditor.slidePlaceholder", { number: startOrder + i }),
           content_json: null,
           image_url: null,
           sort_order: startOrder + (i - 1),
@@ -250,10 +252,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       }
 
       setSlides((prev) => [...prev, ...newSlides]);
-      toast.success(`${pageCount} sider lagt til fra PDF`);
+      toast.success(t("training.courseEditor.toastPdfPagesAdded", { count: pageCount }));
     } catch (err) {
       console.error("Error parsing PDF:", err);
-      toast.error("Kunne ikke lese PDF-filen");
+      toast.error(t("training.courseEditor.toastPdfParseFailed"));
     } finally {
       setUploadingPdf(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -277,7 +279,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         });
         newSlides.push({
           slide_type: "content",
-          question_text: `Slide ${startOrder + i + 1}`,
+          question_text: t("training.courseEditor.slidePlaceholder", { number: startOrder + i + 1 }),
           content_json: { heading: "", narration_text: "", narration_enabled: false },
           image_url: null,
           sort_order: startOrder + i,
@@ -286,14 +288,14 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         });
       }
       if (newSlides.length === 0) {
-        toast.error("Ingen gyldige bildefiler");
+        toast.error(t("training.courseEditor.toastNoValidImages"));
         return;
       }
       setSlides((prev) => [...prev, ...newSlides]);
-      toast.success(`${newSlides.length} bilde${newSlides.length > 1 ? "r" : ""} lagt til`);
+      toast.success(t("training.courseEditor.toastImagesAdded", { count: newSlides.length, plural: newSlides.length > 1 ? "r" : "" }));
     } catch (err) {
       console.error("Image upload error", err);
-      toast.error("Kunne ikke laste opp bilde");
+      toast.error(t("training.courseEditor.toastImageUploadFailed"));
     } finally {
       if (imageInputRef.current) imageInputRef.current.value = "";
     }
@@ -315,7 +317,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       });
       setSlides((prev) => prev.map((s, i) => i === idx ? { ...s, _localBlobUrl: dataUrl, image_url: null } : s));
     } catch (err) {
-      toast.error("Kunne ikke laste bilde");
+      toast.error(t("training.courseEditor.toastImageLoadFailed"));
     } finally {
       setSlideImageTargetIdx(null);
       if (slideImageInputRef.current) slideImageInputRef.current.value = "";
@@ -445,7 +447,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
 
   const handleSave = async () => {
     if (!companyId) {
-      toast.error("Mangler selskap");
+      toast.error(t("training.courseEditor.toastMissingCompany"));
       return;
     }
 
@@ -454,7 +456,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     // Multi-tour bulk-create when creating a new guided-tour course
     if (isGuidedTour && isNewCourse) {
       if (tourIds.length === 0) {
-        toast.error("Velg minst én veiledet gjennomgang");
+        toast.error(t("training.courseEditor.toastChooseTour"));
         return;
       }
       setSaving(true);
@@ -479,11 +481,11 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           const { error } = await supabase.from("training_courses").insert(payload);
           if (error) throw error;
         }
-        toast.success(`${tourIds.length} kurs opprettet`);
+        toast.success(t("training.courseEditor.toastToursCreated", { count: tourIds.length }));
         onClose();
       } catch (err) {
         console.error("Error bulk-creating tour courses:", err);
-        toast.error("Kunne ikke opprette kurs");
+        toast.error(t("training.courseEditor.toastCreateFailed"));
       } finally {
         setSaving(false);
       }
@@ -491,33 +493,33 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
     }
 
     if (!title.trim()) {
-      toast.error("Tittel er påkrevd");
+      toast.error(t("training.courseEditor.toastTitleRequired"));
       return;
     }
 
     if (isGuidedTour) {
       if (!tourId) {
-        toast.error("Velg en veiledet gjennomgang");
+        toast.error(t("training.courseEditor.toastChooseTourSingle"));
         return;
       }
     } else {
       const questionSlides = slides.filter(s => s.slide_type === "question");
       for (const q of questionSlides) {
         if (!q.question_text.trim()) {
-          toast.error("Spørsmålsside mangler tekst");
+          toast.error(t("training.courseEditor.toastQuestionTextMissing"));
           return;
         }
         if (q.options.length < 2) {
-          toast.error("Spørsmålet må ha minst 2 alternativer");
+          toast.error(t("training.courseEditor.toastMinTwoOptions"));
           return;
         }
         if (!q.options.some(o => o.is_correct)) {
-          toast.error("Spørsmålet må ha minst ett riktig svar");
+          toast.error(t("training.courseEditor.toastNeedCorrectAnswer"));
           return;
         }
         for (const o of q.options) {
           if (!o.option_text.trim()) {
-            toast.error("Alle alternativer må ha tekst");
+            toast.error(t("training.courseEditor.toastAllOptionsNeedText"));
             return;
           }
         }
@@ -526,7 +528,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       const videoSlides = slides.filter(s => s.slide_type === "video");
       for (const v of videoSlides) {
         if (!v.video_url || !parseYouTubeId(v.video_url)) {
-          toast.error("Ugyldig YouTube-URL på video-slide");
+          toast.error(t("training.courseEditor.toastInvalidVideoUrl"));
           return;
         }
         if (
@@ -534,7 +536,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           v.video_end_seconds != null &&
           v.video_end_seconds <= v.video_start_seconds
         ) {
-          toast.error("Sluttidspunkt må være etter starttidspunkt");
+          toast.error(t("training.courseEditor.toastEndAfterStart"));
           return;
         }
       }
@@ -597,7 +599,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             .from("training_questions")
             .insert({
               course_id: cId!,
-              question_text: s.question_text.trim() || (s.slide_type === "content" ? `Slide ${i + 1}` : s.slide_type === "video" ? `Video ${i + 1}` : ""),
+              question_text: s.question_text.trim() || (s.slide_type === "content" ? t("training.courseEditor.slidePlaceholder", { number: i + 1 }) : s.slide_type === "video" ? t("training.courseEditor.videoPlaceholder", { number: i + 1 }) : ""),
               image_url: s.image_url,
               sort_order: i,
               slide_type: s.slide_type,
@@ -624,17 +626,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         }
       }
 
-      toast.success("Kurs lagret");
+      toast.success(t("training.courseEditor.toastCourseSaved"));
       onClose();
     } catch (err) {
       console.error("Error saving course:", err);
-      toast.error("Kunne ikke lagre kurs");
+      toast.error(t("training.courseEditor.toastSaveFailed"));
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <p className="text-muted-foreground text-sm">Laster kurs...</p>;
+  if (loading) return <p className="text-muted-foreground text-sm">{t("training.courseEditor.loadingCourse")}</p>;
 
   const contentSlideCount = slides.filter(s => s.slide_type === "content").length;
   const questionSlideCount = slides.filter(s => s.slide_type === "question").length;
@@ -646,17 +648,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         <Button variant="ghost" size="sm" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-xl font-bold flex-1">{courseId ? "Rediger kurs" : "Nytt kurs"}</h2>
+        <h2 className="text-xl font-bold flex-1">{courseId ? t("training.courseEditor.editCourse") : t("training.courseEditor.newCourse")}</h2>
       </div>
 
       {/* Course details */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Kursdetaljer</CardTitle>
+          <CardTitle className="text-base">{t("training.courseEditor.courseDetails")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Kurstype</Label>
+            <Label>{t("training.courseEditor.courseType")}</Label>
             <RadioGroup
               value={courseType}
               onValueChange={(v) => setCourseType(v as "normal" | "guided_tour")}
@@ -664,11 +666,11 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
             >
               <div className="flex items-center gap-2">
                 <RadioGroupItem id="course-type-normal" value="normal" />
-                <Label htmlFor="course-type-normal" className="cursor-pointer">Vanlig kurs (slides / spørsmål / video)</Label>
+                <Label htmlFor="course-type-normal" className="cursor-pointer">{t("training.courseEditor.normalCourseLabel")}</Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem id="course-type-tour" value="guided_tour" />
-                <Label htmlFor="course-type-tour" className="cursor-pointer">Guidet tour</Label>
+                <Label htmlFor="course-type-tour" className="cursor-pointer">{t("training.courseEditor.guidedTourLabel")}</Label>
               </div>
             </RadioGroup>
           </div>
@@ -676,7 +678,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           {courseType === "guided_tour" && isNewCourse && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Velg veiledede gjennomganger *</Label>
+                <Label>{t("training.courseEditor.chooseTours")}</Label>
                 <Button
                   type="button"
                   variant="ghost"
@@ -689,11 +691,11 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                     )
                   }
                 >
-                  {tourIds.length === assignableTours.length ? "Fjern alle" : "Velg alle"}
+                  {tourIds.length === assignableTours.length ? t("training.courseEditor.removeAll") : t("training.courseEditor.selectAll")}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Velg én eller flere. Det opprettes ett kurs per tour, og tittel/beskrivelse fylles ut automatisk.
+                {t("training.courseEditor.chooseToursHint")}
               </p>
               <div className="rounded-md border divide-y">
                 {assignableTours.map((t) => {
@@ -721,17 +723,17 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                 })}
               </div>
               {tourIds.length > 0 && (
-                <p className="text-xs text-muted-foreground">{tourIds.length} valgt</p>
+                <p className="text-xs text-muted-foreground">{t("training.courseEditor.selectedCount", { count: tourIds.length })}</p>
               )}
             </div>
           )}
 
           {courseType === "guided_tour" && !isNewCourse && (
             <div>
-              <Label>Veiledet gjennomgang *</Label>
+              <Label>{t("training.courseEditor.guidedTourLabelRequired")}</Label>
               <Select value={tourId} onValueChange={setTourId}>
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Velg en tour…" />
+                  <SelectValue placeholder={t("training.courseEditor.chooseTourPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {assignableTours.map((t) => (
@@ -750,30 +752,30 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           {!(courseType === "guided_tour" && isNewCourse) && (
             <>
               <div>
-                <Label>Tittel *</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Navn på kurset" />
+                <Label>{t("training.courseEditor.titleLabel")}</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("training.courseEditor.titlePlaceholder")} />
               </div>
               <div>
-                <Label>Beskrivelse</Label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Valgfri beskrivelse" rows={3} />
+                <Label>{t("training.courseEditor.descriptionLabel")}</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("training.courseEditor.descriptionPlaceholder")} rows={3} />
               </div>
             </>
           )}
           <div className="grid grid-cols-2 gap-4">
             {courseType === "normal" && (
               <div>
-                <Label>Bestått-grense (%)</Label>
+                <Label>{t("training.courseEditor.passingScoreLabel")}</Label>
                 <Input type="number" min={1} max={100} value={passingScore} onChange={(e) => setPassingScore(Number(e.target.value))} />
               </div>
             )}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Switch checked={hasPermanentValidity} onCheckedChange={(v) => { setHasPermanentValidity(v); if (v) setValidityMonths(null); else setValidityMonths(12); }} />
-                <Label className="text-sm">Permanent gyldighet</Label>
+                <Label className="text-sm">{t("training.courseEditor.permanentValidity")}</Label>
               </div>
               {!hasPermanentValidity && (
                 <div>
-                  <Label>Gyldighet (måneder)</Label>
+                  <Label>{t("training.courseEditor.validityMonthsLabel")}</Label>
                   <Input type="number" min={1} value={validityMonths || ""} onChange={(e) => setValidityMonths(Number(e.target.value) || null)} />
                 </div>
               )}
@@ -782,22 +784,22 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
           {courseType === "normal" && (
             <div className="flex items-center gap-3 mt-3">
               <Switch checked={fullscreen} onCheckedChange={setFullscreen} id="fullscreen-toggle" />
-              <Label htmlFor="fullscreen-toggle">Fullskjerm-modus ved gjennomføring</Label>
+              <Label htmlFor="fullscreen-toggle">{t("training.courseEditor.fullscreenModeLabel")}</Label>
             </div>
           )}
           <Collapsible open={unlocksModulesOpen} onOpenChange={setUnlocksModulesOpen} className="pt-3 border-t">
             <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left hover:bg-muted/50 transition-colors">
               <div>
-                <Label className="cursor-pointer">Låser opp moduler ved bestått kurs</Label>
+                <Label className="cursor-pointer">{t("training.courseEditor.unlocksModulesLabel")}</Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {unlocksModules.length > 0 ? `${unlocksModules.length} moduler valgt` : "Ingen moduler valgt"}
+                  {unlocksModules.length > 0 ? t("training.courseEditor.modulesSelected", { count: unlocksModules.length }) : t("training.courseEditor.noModulesSelected")}
                 </p>
               </div>
               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${unlocksModulesOpen ? "rotate-180" : ""}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-2 pt-2">
               <p className="text-xs text-muted-foreground">
-                Disse modulene blir tilgjengelige for brukere under opplæring når kurset er bestått. Velges alle moduler, slås «Under opplæring» av ved bestått kurs.
+                {t("training.courseEditor.unlocksModulesHint")}
               </p>
               <Button
                 type="button"
@@ -806,7 +808,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                 className="w-full sm:w-auto"
                 onClick={() => setUnlocksModules(allModulesSelected ? [] : [...TRAINING_MODULE_KEYS])}
               >
-                {allModulesSelected ? "Fjern alle moduler" : "Lås opp alle moduler"}
+                {allModulesSelected ? t("training.courseEditor.removeAllModules") : t("training.courseEditor.unlockAllModules")}
               </Button>
               <TrainingModulePicker selected={unlocksModules} onChange={setUnlocksModules} />
             </CollapsibleContent>
@@ -818,11 +820,11 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       {courseType === "normal" && (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Last opp presentasjon</CardTitle>
+          <CardTitle className="text-base">{t("training.courseEditor.uploadPresentation")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Last opp en PDF (eksportert fra PowerPoint/Keynote) eller bilder. Sidene legges til etter de eksisterende.
+            {t("training.courseEditor.uploadPresentationHint")}
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <input
@@ -853,39 +855,39 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
               disabled={uploadingPdf}
             >
               <Upload className="h-4 w-4 mr-2" />
-              {uploadingPdf ? "Leser PDF..." : "Legg til sider fra PDF"}
+              {uploadingPdf ? t("training.courseEditor.readingPdf") : t("training.courseEditor.addPdfPages")}
             </Button>
             <Button
               variant="outline"
               onClick={() => imageInputRef.current?.click()}
             >
               <ImageIcon className="h-4 w-4 mr-2" />
-              Legg til bilde(r)
+              {t("training.courseEditor.addImages")}
             </Button>
             <Button
               variant="outline"
               onClick={() => addContentSlide()}
             >
               <FileText className="h-4 w-4 mr-2" />
-              Legg til tekst-slide
+              {t("training.courseEditor.addTextSlide")}
             </Button>
             {contentSlideCount > 0 && (
               <Badge variant="secondary">
                 <ImageIcon className="h-3 w-3 mr-1" />
-                {contentSlideCount} slides
+                {t("training.courseEditor.slidesCount", { count: contentSlideCount })}
               </Badge>
             )}
           </div>
           {uploadingPdf && (
-            <p className="text-xs text-muted-foreground">Konverterer sider til bilder...</p>
+            <p className="text-xs text-muted-foreground">{t("training.courseEditor.convertingPages")}</p>
           )}
           <div className="pt-2 border-t space-y-2">
             <Button variant="outline" size="sm" onClick={() => addVideoSlide()}>
               <Youtube className="h-4 w-4 mr-2" />
-              Legg til YouTube-video
+              {t("training.courseEditor.addYoutubeVideo")}
             </Button>
             <p className="text-xs text-muted-foreground">
-              Annonser fjernes automatisk når videoen spilles av i kurset (via klipping og YouTubes innebygde spiller uten reklame mellom segmenter).
+              {t("training.courseEditor.adRemovalHint")}
             </p>
           </div>
         </CardContent>
@@ -897,7 +899,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">
-              Sider ({slides.length}) · {questionSlideCount} spørsmål
+              {t("training.courseEditor.pagesCount", { count: slides.length, questions: questionSlideCount })}
             </h3>
           </div>
 
@@ -907,7 +909,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-medium text-muted-foreground w-6">{sIdx + 1}.</span>
                   <Badge variant={s.slide_type === "content" ? "secondary" : s.slide_type === "video" ? "default" : "outline"} className="text-xs">
-                    {s.slide_type === "content" ? "Slide" : s.slide_type === "video" ? "Video" : "Spørsmål"}
+                    {s.slide_type === "content" ? t("training.courseEditor.slideTypeSlide") : s.slide_type === "video" ? t("training.courseEditor.slideTypeVideo") : t("training.courseEditor.slideTypeQuestion")}
                   </Badge>
                   <div className="flex-1" />
                   <div className="flex gap-1">
@@ -941,7 +943,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           className="text-xs"
                         >
                           <ImageIcon className="h-3.5 w-3.5 mr-1" />
-                          {(s._localBlobUrl || s.image_url) ? "Bytt bilde" : "Legg til bilde"}
+                          {(s._localBlobUrl || s.image_url) ? t("training.courseEditor.changeImage") : t("training.courseEditor.addImage")}
                         </Button>
                         {(s._localBlobUrl || s.image_url) && (
                           <Button
@@ -950,24 +952,24 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                             onClick={() => setSlides((prev) => prev.map((x, i) => i === sIdx ? { ...x, _localBlobUrl: undefined, image_url: null } : x))}
                             className="text-xs text-destructive"
                           >
-                            Fjern bilde
+                            {t("training.courseEditor.removeImage")}
                           </Button>
                         )}
                       </div>
                       <div>
-                        <Label className="text-sm">Overskrift</Label>
+                        <Label className="text-sm">{t("training.courseEditor.headingLabel")}</Label>
                         <Input
                           value={cj.heading || ""}
                           onChange={(e) => updateContentField(sIdx, "heading", e.target.value)}
-                          placeholder="Valgfri overskrift"
+                          placeholder={t("training.courseEditor.headingPlaceholder")}
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">Tekst</Label>
+                        <Label className="text-sm">{t("training.courseEditor.textLabel")}</Label>
                         <Textarea
                           value={cj.narration_text || ""}
                           onChange={(e) => updateContentField(sIdx, "narration_text", e.target.value)}
-                          placeholder="Tekst som vises på sliden (kan også leses opp)"
+                          placeholder={t("training.courseEditor.textPlaceholder")}
                           rows={3}
                         />
                       </div>
@@ -978,14 +980,14 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           onCheckedChange={(v) => updateContentField(sIdx, "narration_enabled", v)}
                         />
                         <Label htmlFor={`narration-${sIdx}`} className="text-sm cursor-pointer">
-                          Les opp tekst (text-to-speech)
+                          {t("training.courseEditor.ttsToggleLabel")}
                         </Label>
                       </div>
                       {narrationToggle && (
                         <div className="space-y-2 pl-1">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-xs text-muted-foreground">Stemme</Label>
+                              <Label className="text-xs text-muted-foreground">{t("training.courseEditor.voiceLabel")}</Label>
                               <Select
                                 value={cj.narration_voice || "coral"}
                                 onValueChange={(v) => updateContentField(sIdx, "narration_voice", v)}
@@ -999,7 +1001,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                               </Select>
                             </div>
                             <div>
-                              <Label className="text-xs text-muted-foreground">Hastighet</Label>
+                              <Label className="text-xs text-muted-foreground">{t("training.courseEditor.speedLabel")}</Label>
                               <Select
                                 value={cj.narration_speed || "1"}
                                 onValueChange={(v) => updateContentField(sIdx, "narration_speed", v)}
@@ -1015,7 +1017,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           </div>
                           {cj.narration_audio_url ? (
                             <div className="space-y-2">
-                              <p className="text-xs text-muted-foreground">OpenAI-lyd lagret:</p>
+                              <p className="text-xs text-muted-foreground">{t("training.courseEditor.audioSavedLabel")}</p>
                               <audio src={cj.narration_audio_url} controls className="w-full max-w-md" />
                               <div className="flex gap-2">
                                 <Button
@@ -1025,7 +1027,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                                   disabled={generatingAudioIdx === sIdx || !(cj.narration_text || "").trim()}
                                   onClick={() => generateNarrationAudio(sIdx)}
                                 >
-                                  {generatingAudioIdx === sIdx ? "Genererer..." : "Generer på nytt"}
+                                  {generatingAudioIdx === sIdx ? t("training.courseEditor.regenerating") : t("training.courseEditor.regenerate")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1033,7 +1035,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                                   className="text-xs text-destructive"
                                   onClick={() => updateContentField(sIdx, "narration_audio_url", null)}
                                 >
-                                  Fjern lyd
+                                  {t("training.courseEditor.removeAudio")}
                                 </Button>
                               </div>
                             </div>
@@ -1046,10 +1048,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                                 disabled={generatingAudioIdx === sIdx || !(cj.narration_text || "").trim()}
                                 onClick={() => generateNarrationAudio(sIdx)}
                               >
-                                {generatingAudioIdx === sIdx ? "Genererer lyd..." : "🎙 Generer lyd (OpenAI)"}
+                                {generatingAudioIdx === sIdx ? t("training.courseEditor.generatingAudio") : t("training.courseEditor.generateAudioButton")}
                               </Button>
                               <span className="text-xs text-muted-foreground">
-                                Uten generert lyd brukes nettleserens innebygde stemme.
+                                {t("training.courseEditor.generateAudioHint")}
                               </span>
                             </div>
                           )}
@@ -1063,7 +1065,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           className="text-xs"
                         >
                           <HelpCircle className="h-3.5 w-3.5 mr-1" />
-                          Legg til spørsmål etter
+                          {t("training.courseEditor.addQuestionAfter")}
                         </Button>
                         <Button
                           size="sm"
@@ -1072,7 +1074,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           className="text-xs"
                         >
                           <Youtube className="h-3.5 w-3.5 mr-1" />
-                          Legg til video etter
+                          {t("training.courseEditor.addVideoAfter")}
                         </Button>
                         <Button
                           size="sm"
@@ -1081,7 +1083,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           className="text-xs"
                         >
                           <FileText className="h-3.5 w-3.5 mr-1" />
-                          Legg til slide etter
+                          {t("training.courseEditor.addSlideAfter")}
                         </Button>
                       </div>
                     </div>
@@ -1098,19 +1100,19 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                   return (
                     <div className="space-y-3">
                       <div>
-                        <Label className="text-sm">YouTube-URL</Label>
+                        <Label className="text-sm">{t("training.courseEditor.youtubeUrlLabel")}</Label>
                         <Input
                           value={s.video_url || ""}
                           onChange={(e) => updateSlide(sIdx, "video_url", e.target.value)}
-                          placeholder="https://www.youtube.com/watch?v=..."
+                          placeholder={t("training.courseEditor.youtubeUrlLabel")}
                         />
                         {!vid && (s.video_url?.length ?? 0) > 0 && (
-                          <p className="text-xs text-destructive mt-1">Ugyldig YouTube-URL</p>
+                          <p className="text-xs text-destructive mt-1">{t("training.courseEditor.invalidYoutubeUrl")}</p>
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-sm">Start (MM:SS eller sek)</Label>
+                          <Label className="text-sm">{t("training.courseEditor.startTimeLabel")}</Label>
                           <Input
                             defaultValue={formatSeconds(s.video_start_seconds ?? undefined)}
                             onBlur={(e) => {
@@ -1122,7 +1124,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           />
                         </div>
                         <div>
-                          <Label className="text-sm">Slutt (MM:SS eller sek)</Label>
+                          <Label className="text-sm">{t("training.courseEditor.endTimeLabel")}</Label>
                           <Input
                             defaultValue={formatSeconds(s.video_end_seconds ?? undefined)}
                             onBlur={(e) => {
@@ -1130,16 +1132,16 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                               updateSlide(sIdx, "video_end_seconds", parsed);
                               if (parsed != null) e.target.value = formatSeconds(parsed);
                             }}
-                            placeholder="(til slutt)"
+                            placeholder={t("training.courseEditor.endTimePlaceholder")}
                           />
                         </div>
                       </div>
                       {startInvalid && (
-                        <p className="text-xs text-destructive">Sluttidspunkt må være etter starttidspunkt</p>
+                        <p className="text-xs text-destructive">{t("training.courseEditor.endBeforeStartError")}</p>
                       )}
                       {vid && (
                         <div>
-                          <Label className="text-xs text-muted-foreground">Forhåndsvisning av klipp</Label>
+                          <Label className="text-xs text-muted-foreground">{t("training.courseEditor.clipPreviewLabel")}</Label>
                           <YouTubeClipPlayer
                             videoId={vid}
                             start={s.video_start_seconds ?? null}
@@ -1155,7 +1157,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                           onCheckedChange={(v) => updateSlide(sIdx, "video_required_complete", v)}
                         />
                         <Label htmlFor={`req-complete-${sIdx}`} className="text-sm cursor-pointer">
-                          Krev at brukeren ser hele videoen før «Neste»
+                          {t("training.courseEditor.requireFullVideoLabel")}
                         </Label>
                       </div>
                       <Button
@@ -1165,7 +1167,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                         className="text-xs"
                       >
                         <HelpCircle className="h-3.5 w-3.5 mr-1" />
-                        Legg til spørsmål etter denne videoen
+                        {t("training.courseEditor.addQuestionAfterVideo")}
                       </Button>
                     </div>
                   );
@@ -1175,16 +1177,16 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                 {s.slide_type === "question" && (
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-sm">Spørsmål</Label>
+                      <Label className="text-sm">{t("training.courseEditor.questionLabel")}</Label>
                       <Input
                         value={s.question_text}
                         onChange={(e) => updateSlide(sIdx, "question_text", e.target.value)}
-                        placeholder="Skriv spørsmålet her..."
+                        placeholder={t("training.courseEditor.questionPlaceholder")}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs text-muted-foreground">
-                        Svaralternativer (kryss av alle riktige svar)
+                        {t("training.courseEditor.answerOptionsLabel")}
                       </Label>
                       {s.options.map((o, oIdx) => (
                         <div key={oIdx} className="flex items-center gap-2">
@@ -1193,12 +1195,12 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                             checked={o.is_correct}
                             onChange={(e) => updateOption(sIdx, oIdx, "is_correct", e.target.checked)}
                             className="accent-primary h-4 w-4"
-                            title="Marker som riktig svar"
+                            title={t("training.courseEditor.markCorrect")}
                           />
                           <Input
                             value={o.option_text}
                             onChange={(e) => updateOption(sIdx, oIdx, "option_text", e.target.value)}
-                            placeholder={`Alternativ ${oIdx + 1}`}
+                            placeholder={t("training.courseEditor.optionPlaceholder", { number: oIdx + 1 })}
                             className="flex-1"
                           />
                           {s.options.length > 2 && (
@@ -1210,7 +1212,7 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
                       ))}
                       <Button size="sm" variant="ghost" onClick={() => addOption(sIdx)} className="text-xs">
                         <Plus className="h-3 w-3 mr-1" />
-                        Legg til alternativ
+                        {t("training.courseEditor.addOption")}
                       </Button>
                     </div>
                   </div>
@@ -1224,10 +1226,10 @@ export const TrainingCourseEditor = ({ courseId, onClose }: Props) => {
       {/* Save bar */}
       <div className="flex items-center gap-3 justify-end sticky bottom-4 bg-background/80 backdrop-blur-sm p-3 rounded-lg border">
         <Button variant="outline" onClick={onClose}>
-          Avbryt
+          {t("training.courseEditor.cancel")}
         </Button>
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? "Lagrer..." : "Lagre kurs"}
+          {saving ? t("training.courseEditor.savingCourse") : t("training.courseEditor.saveCourse")}
         </Button>
       </div>
     </div>

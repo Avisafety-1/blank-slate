@@ -3593,7 +3593,8 @@
    "toastFolderSharingFailed": "Could not update folder sharing",
    "toastCourseCreated": "Course created — audio and content preserved. Open to edit if needed.",
    "stopSharingFolderWithChildren": "Stop sharing folder with sub-departments",
-   "shareFolderWithChildren": "Share folder with sub-departments"
+   "shareFolderWithChildren": "Share folder with sub-departments",
+   "toastFetchCoursesFailed": "Failed to fetch courses"
   },
   "statusView": {
    "assignedCompletedPassed": "{{total}} assigned · {{completed}} completed · {{passed}} passed",
