@@ -620,6 +620,8 @@ export const ECCAIRS_FIELDS: EccairsFieldConfig[] = [
   },
 ];
 
+import i18n from '@/i18n';
+
 export function getFieldByCode(code: number): EccairsFieldConfig | undefined {
   return ECCAIRS_FIELDS.find(f => f.code === code);
 }
@@ -628,9 +630,40 @@ export function getRequiredFields(): EccairsFieldConfig[] {
   return ECCAIRS_FIELDS.filter(f => f.required);
 }
 
+/**
+ * i18n-aware label lookup for an ECCAIRS field. Falls back to the Norwegian
+ * label baked into the config if no translation key is present.
+ */
+export function getFieldLabel(field: EccairsFieldConfig): string {
+  const key = `eccairs.fields.${field.code}.label`;
+  const translated = i18n.t(key);
+  return translated && translated !== key ? translated : field.label;
+}
+
+export function getFieldHelpText(field: EccairsFieldConfig): string | undefined {
+  if (!field.helpText) return undefined;
+  const key = `eccairs.fields.${field.code}.helpText`;
+  const translated = i18n.t(key);
+  return translated && translated !== key ? translated : field.helpText;
+}
+
+export function getFieldAdditionalTextLabel(field: EccairsFieldConfig): string | undefined {
+  if (!field.additionalTextField) return undefined;
+  const key = `eccairs.fields.${field.code}.additionalTextField`;
+  const translated = i18n.t(key);
+  return translated && translated !== key ? translated : field.additionalTextField;
+}
+
+export function getGroupLabel(group: EccairsFieldGroup): string {
+  const key = `eccairs.groups.${group}`;
+  const translated = i18n.t(key);
+  return translated && translated !== key ? translated : ECCAIRS_FIELD_GROUP_LABELS[group];
+}
+
 export function getAttributeLabel(code: number): string {
   const field = getFieldByCode(code);
-  return field?.label || `Attributt ${code}`;
+  if (!field) return `Attribute ${code}`;
+  return getFieldLabel(field);
 }
 
 export function getFieldsByGroup(group: EccairsFieldGroup): EccairsFieldConfig[] {
@@ -643,3 +676,4 @@ export function getOrderedGroups(): EccairsFieldGroup[] {
 
 /** Groups that should be rendered as collapsible sections */
 export const COLLAPSIBLE_GROUPS: Set<EccairsFieldGroup> = new Set(['birdstrike']);
+

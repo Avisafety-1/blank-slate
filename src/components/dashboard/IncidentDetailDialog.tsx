@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import type { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { MapPin, Calendar, AlertTriangle, User, MessageSquare, Send, FileText, Edit, Image, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { getIncidentReporterDisplayName } from "@/lib/incidentVisibility";
+import { translateIncidentStatus } from "@/lib/i18nHelpers";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 type Incident = Tables<"incidents">;
@@ -57,7 +58,8 @@ const statusColors = {
 
 export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest }: IncidentDetailDialogProps) => {
   const { user, companyId, parentCompanyId, ensureValidToken, isAdmin, departmentsEnabled } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const companySettings = useCompanySettings();
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [relatedMission, setRelatedMission] = useState<{ id: string; tittel: string; lokasjon: string; status: string } | null>(null);
@@ -88,7 +90,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
           .eq('id', user.id)
           .single();
         
-        setCurrentUserName(profile?.full_name || 'Ukjent bruker');
+        setCurrentUserName(profile?.full_name || t('incidents.detail.unknownReporter'));
       }
     };
     
@@ -227,11 +229,11 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
 
       if (error) throw error;
 
-      toast.success("Status oppdatert");
+      toast.success(t('incidents.detail.statusUpdated'));
     } catch (error) {
       console.error("Error updating status:", error);
       setLocalStatus(incident.status); // Revert on error
-      toast.error("Kunne ikke oppdatere status");
+      toast.error(t('incidents.detail.statusUpdateFailed'));
     } finally {
       setUpdatingStatus(false);
     }
@@ -257,10 +259,10 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
       if (error) throw error;
 
       setNewComment("");
-      toast.success("Kommentar lagt til");
+      toast.success(t('incidents.detail.commentAdded'));
     } catch (error) {
       console.error("Error adding comment:", error);
-      toast.error("Kunne ikke legge til kommentar");
+      toast.error(t('incidents.detail.commentAddFailed'));
     } finally {
       setSubmittingComment(false);
     }
@@ -318,7 +320,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
       toast.success(t('dashboard.incidents.responsibleUpdated'));
     } catch (error) {
       console.error("Error updating responsible:", error);
-      toast.error("Kunne ikke oppdatere ansvarlig");
+      toast.error(t('incidents.detail.responsibleUpdateFailed'));
     } finally {
       setUpdatingResponsible(false);
     }
@@ -357,9 +359,9 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
     });
 
     if (success) {
-      toast.success("Hendelsesrapport lagret i dokumenter");
+      toast.success(t('incidents.detail.exportSaved'));
     } else {
-      toast.error("Kunne ikke eksportere rapport");
+      toast.error(t('incidents.detail.exportFailed'));
     }
     
     setExporting(false);
@@ -389,7 +391,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                 }}
               >
                 <Edit className="w-4 h-4 mr-2" />
-                Rediger
+                {t('actions.edit')}
               </Button>
             )}
             <Button
@@ -400,7 +402,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               disabled={exporting}
             >
               <FileText className="w-4 h-4 mr-2" />
-              {exporting ? "Eksporterer..." : "Eksporter PDF"}
+              {exporting ? t('incidents.detail.exportingPdf') : t('incidents.detail.exportPdfButton')}
             </Button>
           </div>
         </DialogHeader>
@@ -409,7 +411,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
           {isAdmin && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="status-select">Endre status (Admin)</Label>
+                <Label htmlFor="status-select">{t('incidents.detail.editAdminStatus')}</Label>
                 <Select 
                   value={localStatus || incident.status} 
                   onValueChange={handleStatusChange}
@@ -419,10 +421,10 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Åpen">{t('dashboard.incidents.statusOpen')}</SelectItem>
-                    <SelectItem value="Under behandling">Under behandling</SelectItem>
-                    <SelectItem value="Ferdigbehandlet">Ferdigbehandlet</SelectItem>
-                    <SelectItem value="Lukket">Lukket</SelectItem>
+                    <SelectItem value="Åpen">{translateIncidentStatus('Åpen')}</SelectItem>
+                    <SelectItem value="Under behandling">{translateIncidentStatus('Under behandling')}</SelectItem>
+                    <SelectItem value="Ferdigbehandlet">{translateIncidentStatus('Ferdigbehandlet')}</SelectItem>
+                    <SelectItem value="Lukket">{translateIncidentStatus('Lukket')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -433,10 +435,10 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                   persons={users}
                   value={selectedResponsibleId}
                   onValueChange={(val) => handleResponsibleChange(val || "ingen")}
-                  placeholder="Velg ansvarlig..."
+                  placeholder={t('incidents.detail.responsibleAdminPlaceholder')}
                   searchPlaceholder={t('dashboard.incidents.searchPerson')}
                   allowNone
-                  noneLabel="Ingen ansvarlig"
+                  noneLabel={t('incidents.detail.noneResponsible')}
                   disabled={updatingResponsible}
                 />
               </div>
@@ -445,10 +447,10 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
 
           <div className="flex flex-wrap gap-2">
             <Badge className={`${statusColors[(localStatus || incident.status) as keyof typeof statusColors] || 'bg-gray-500/20'} border`}>
-              {localStatus || incident.status}
+              {translateIncidentStatus(localStatus || incident.status)}
             </Badge>
             <Badge className={`${severityColors[incident.alvorlighetsgrad as keyof typeof severityColors] || 'bg-gray-500/20'} border`}>
-              Alvorlighetsgrad: {incident.alvorlighetsgrad}
+              {t('incidents.detail.severityPrefix')}{incident.alvorlighetsgrad}
             </Badge>
             {incident.kategori && (
               <Badge variant="outline">
@@ -462,15 +464,16 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             )}
             {incident.medvirkende_aarsak && incident.medvirkende_aarsak.split(", ").map((cause: string) => (
               <Badge key={cause} variant="outline" className="bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30">
-                Medvirkende: {cause}
+                {t('incidents.detail.contributingPrefix')}{cause}
               </Badge>
             ))}
           </div>
 
+
           <div className="space-y-3">
             {relatedMission && (
               <div className="p-3 bg-muted rounded-md border">
-                <p className="text-sm font-medium text-muted-foreground mb-1">Knyttet til oppdrag</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">{t('incidents.detail.linkedMission')}</p>
                 <p className="font-medium">{relatedMission.tittel}</p>
                 <p className="text-sm text-muted-foreground">
                   {relatedMission.lokasjon} • {relatedMission.status}
@@ -481,9 +484,9 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             <div className="flex items-start gap-3">
               <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Hendelsestidspunkt</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('incidents.detail.incidentTime')}</p>
                 <p className="text-base">
-                  {format(new Date(incident.hendelsestidspunkt), "dd. MMMM yyyy, HH:mm", { locale: nb })}
+                  {format(new Date(incident.hendelsestidspunkt), "dd. MMMM yyyy, HH:mm", { locale: dateLocale })}
                 </p>
               </div>
             </div>
@@ -492,7 +495,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               <div className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Lokasjon</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('incidents.detail.location')}</p>
                   <p className="text-base">{incident.lokasjon}</p>
                 </div>
               </div>
@@ -510,7 +513,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                 <div className="flex items-start gap-3">
                   <User className="w-5 h-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Rapportert av</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('incidents.detail.reportedBy')}</p>
                     <p className="text-base">{reporterName}</p>
                   </div>
                 </div>
@@ -521,9 +524,9 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               <div className="flex items-start gap-3">
                 <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Rapportert dato</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('incidents.detail.reportedDate')}</p>
                   <p className="text-base">
-                    {format(new Date(incident.opprettet_dato), "dd. MMMM yyyy, HH:mm", { locale: nb })}
+                    {format(new Date(incident.opprettet_dato), "dd. MMMM yyyy, HH:mm", { locale: dateLocale })}
                   </p>
                 </div>
               </div>
@@ -534,7 +537,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                 <User className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">{t('dashboard.incidents.responsible')}</p>
-                  <p className="text-base">{oppfolgingsansvarlig.full_name || 'Ukjent bruker'}</p>
+                  <p className="text-base">{oppfolgingsansvarlig.full_name || t('incidents.detail.unknownReporter')}</p>
                 </div>
               </div>
             )}
@@ -542,7 +545,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
 
           {incident.beskrivelse && (
             <div className="border-t border-border pt-4">
-              <p className="text-sm font-medium text-muted-foreground mb-2">Beskrivelse</p>
+              <p className="text-sm font-medium text-muted-foreground mb-2">{t('incidents.detail.description')}</p>
               <p className="text-base leading-relaxed whitespace-pre-wrap">{incident.beskrivelse}</p>
             </div>
           )}
@@ -551,20 +554,21 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             <Collapsible className="border-t border-border pt-4">
               <CollapsibleTrigger className="flex items-center gap-2 w-full text-left group">
                 <Image className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Vedlagt bilde</span>
+                <span className="text-sm font-medium text-muted-foreground">{t('incidents.detail.attachedImage')}</span>
                 <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3">
                 <a href={(incident as any).bilde_url} target="_blank" rel="noopener noreferrer">
                   <img
                     src={(incident as any).bilde_url}
-                    alt="Hendelsesbilde"
+                    alt={t('incidents.detail.imageAlt')}
                     className="w-full max-h-64 object-cover rounded-md border border-border cursor-pointer hover:opacity-90 transition-opacity"
                   />
                 </a>
               </CollapsibleContent>
             </Collapsible>
           )}
+
 
           {(incident.alvorlighetsgrad === "Høy" || incident.alvorlighetsgrad === "Kritisk") && incident.status === "Åpen" && (
             <div className="border border-destructive/30 bg-destructive/10 rounded-lg p-3">
@@ -609,7 +613,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
                       {comment.created_by_name}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {format(new Date(comment.created_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                      {format(new Date(comment.created_at), "d. MMM yyyy HH:mm", { locale: dateLocale })}
                     </span>
                   </div>
                   <p className="text-sm whitespace-pre-wrap">
@@ -623,7 +627,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
           {/* Legg til ny kommentar */}
           <div className="space-y-2">
             <Textarea
-              placeholder="Skriv en kommentar..."
+              placeholder={t('incidents.detail.commentPlaceholder')}
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               disabled={submittingComment}
@@ -636,7 +640,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               size="sm"
             >
               <Send className="w-4 h-4" />
-              {submittingComment ? "Legger til..." : "Legg til kommentar"}
+              {submittingComment ? t('incidents.detail.addingComment') : t('incidents.detail.addComment')}
             </Button>
           </div>
         </div>

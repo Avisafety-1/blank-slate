@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { getAttributeLabel } from "@/config/eccairsFields";
 import { getIncidentReporterDisplayName } from "@/lib/incidentVisibility";
+import { translateIncidentStatus, translateSeverity, translateIncidentCategory } from "@/lib/i18nHelpers";
 
 type IncidentComment = {
   id: string;
@@ -144,7 +145,8 @@ const getEccairsStatusClass = (status?: string): string => {
 };
 
 const Hendelser = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading, companyId, parentCompanyId, departmentsEnabled, isAdmin } = useAuth();
@@ -409,7 +411,7 @@ const Hendelser = () => {
         if (profiles) {
           const responsibleMap: Record<string, string> = {};
           profiles.forEach(profile => {
-            responsibleMap[profile.id] = profile.full_name || 'Ukjent bruker';
+            responsibleMap[profile.id] = profile.full_name || t('incidents.detail.unknownReporter');
           });
           setOppfolgingsansvarlige(responsibleMap);
         }
@@ -577,9 +579,9 @@ const Hendelser = () => {
         if (Array.isArray(errorDetails) && errorDetails.length > 0) {
           // Structured validation errors - show each one
           const errorMessages = errorDetails.map((d: { attribute_code?: number; taxonomy_code?: string; message?: string }) => {
-            const attrLabel = d.attribute_code ? getAttributeLabel(d.attribute_code) : 'Ukjent';
+            const attrLabel = d.attribute_code ? getAttributeLabel(d.attribute_code) : t('incidents.eccairs.unknown');
             const taxonomyInfo = d.taxonomy_code && d.taxonomy_code !== '24' ? ` (taxonomy ${d.taxonomy_code})` : '';
-            return `${attrLabel}${taxonomyInfo}: ${d.message || 'Ukjent feil'}`;
+            return `${attrLabel}${taxonomyInfo}: ${d.message || t('incidents.eccairs.unknownError')}`;
           });
           
           console.error('ECCAIRS structured validation errors:', errorDetails);
@@ -900,7 +902,7 @@ const Hendelser = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-foreground">Laster...</p>
+        <p className="text-foreground">{t('incidents.card.loadingApp')}</p>
       </div>
     );
   }
@@ -951,7 +953,7 @@ const Hendelser = () => {
                   size="sm" 
                   onClick={() => setSelectedStatus(status)}
                 >
-                  {status}
+                  {status === "Alle" ? t('incidents.filters.all') : translateIncidentStatus(status)}
                 </Button>
               ))}
             </div>
@@ -965,7 +967,7 @@ const Hendelser = () => {
             <GlassCard>
               <p className="text-center text-muted-foreground py-8">
                 {searchQuery || selectedStatus !== "Alle" 
-                  ? t('incidents.noIncidentsFound', 'Ingen hendelser funnet med valgte filtre') 
+                  ? t('incidents.card.noMatchingFilters')
                   : t('pages.incidents.noIncidentsReported')}
               </p>
             </GlassCard>
@@ -990,13 +992,13 @@ const Hendelser = () => {
                           </Badge>
                         )}
                         <Badge className={statusColors[incident.status] || ""}>
-                          {incident.status}
+                          {translateIncidentStatus(incident.status)}
                         </Badge>
                         <Badge className={severityColors[incident.alvorlighetsgrad] || ""}>
-                          {incident.alvorlighetsgrad}
+                          {translateSeverity(incident.alvorlighetsgrad)}
                         </Badge>
                         {incident.kategori && (
-                          <Badge variant="outline">{incident.kategori}</Badge>
+                          <Badge variant="outline">{translateIncidentCategory(incident.kategori)}</Badge>
                         )}
                         {incident.hovedaarsak && (
                           <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-900/30 dark:text-amber-100 dark:border-amber-700">
@@ -1018,7 +1020,7 @@ const Hendelser = () => {
                         onClick={() => handleEditRequest(incident)}
                       >
                         <Edit className="w-4 h-4 mr-2" />
-                        Rediger
+                        {t('actions.edit')}
                       </Button>
                       <Button 
                         variant="outline" 
@@ -1027,7 +1029,7 @@ const Hendelser = () => {
                         disabled={exportingId === incident.id}
                       >
                         <FileText className="w-4 h-4 mr-2" />
-                        {exportingId === incident.id ? "{t('incidents.eccairs.exporting')}" : "PDF"}
+                        {exportingId === incident.id ? t('incidents.eccairs.exporting') : "PDF"}
                       </Button>
                     </div>
                   </div>
@@ -1043,14 +1045,14 @@ const Hendelser = () => {
                     <div className="flex items-start gap-2">
                       <Calendar className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
                       <span>
-                        {format(new Date(incident.hendelsestidspunkt), "d. MMMM yyyy 'kl.' HH:mm", { locale: nb })}
+                        {format(new Date(incident.hendelsestidspunkt), "d. MMMM yyyy 'kl.' HH:mm", { locale: dateLocale })}
                       </span>
                     </div>
                     {incident.rapportert_av && (
                       <div className="flex items-start gap-2">
                         <User className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
                         <span>
-                          Rapportert av: {getIncidentReporterDisplayName({
+                          {t('incidents.card.reportedByPrefix')}{getIncidentReporterDisplayName({
                             incident,
                             hideReporterIdentity: companySettings.hide_reporter_identity,
                             isAdmin,
@@ -1063,13 +1065,13 @@ const Hendelser = () => {
                     {incident.company_name && incident.company_id !== companyId && (
                       <div className="flex items-start gap-2">
                         <Building2 className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                        <span>Avdeling: {incident.company_name}</span>
+                        <span>{t('incidents.card.departmentPrefix')}{incident.company_name}</span>
                       </div>
                     )}
                     {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && (
                       <div className="flex items-start gap-2">
                         <Bell className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                        <span>Ansvarlig: {oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id]}</span>
+                        <span>{t('incidents.card.responsiblePrefix')}{oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id]}</span>
                       </div>
                     )}
                   </div>
@@ -1078,7 +1080,7 @@ const Hendelser = () => {
                   {incident.beskrivelse && (
                     <div className="pt-3 border-t border-border/50">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Beskrivelse
+                        {t('incidents.card.descriptionLabel')}
                       </p>
                       <p className="text-sm whitespace-pre-wrap">{incident.beskrivelse}</p>
                     </div>
@@ -1092,8 +1094,8 @@ const Hendelser = () => {
                           <MessageSquare className="w-4 h-4" />
                           <span>
                             {commentCounts[incident.id] 
-                              ? `${commentCounts[incident.id]} kommentar${commentCounts[incident.id] > 1 ? 'er' : ''}`
-                              : 'Ingen kommentarer'
+                              ? t('incidents.card.commentCount', { count: commentCounts[incident.id] })
+                              : t('incidents.card.noCommentsShort')
                             }
                           </span>
                         </div>
@@ -1107,7 +1109,7 @@ const Hendelser = () => {
                               <div className="flex items-center justify-between mb-1">
                                 <span className="font-medium">{comment.created_by_name}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {format(new Date(comment.created_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                                  {format(new Date(comment.created_at), "d. MMM yyyy HH:mm", { locale: dateLocale })}
                                 </span>
                               </div>
                               <p className="text-muted-foreground">{comment.comment_text}</p>
@@ -1131,7 +1133,7 @@ const Hendelser = () => {
                   {incident.mission_id && missions[incident.mission_id] && (
                     <div className="pt-3 border-t border-border/50">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Tilknyttet oppdrag
+                        {t('incidents.card.linkedMissionLabel')}
                       </p>
                       <button
                         onClick={() => {
@@ -1188,7 +1190,7 @@ const Hendelser = () => {
                               <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground">{t('incidents.eccairs.lastAttemptLabel')}</span>
                                 <span>
-                                  {format(new Date(exp.last_attempt_at), 'd. MMM HH:mm', { locale: nb })}
+                                  {format(new Date(exp.last_attempt_at), 'd. MMM HH:mm', { locale: dateLocale })}
                                 </span>
                               </div>
                             )}
@@ -1278,7 +1280,7 @@ const Hendelser = () => {
                                     }}
                                   >
                                     <Paperclip className="w-4 h-4 mr-2" />
-                                    Vedlegg
+                                    {t('incidents.card.attachmentLabel')}
                                   </Button>
                                 </>
                               )}

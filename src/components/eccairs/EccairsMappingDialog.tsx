@@ -23,11 +23,14 @@ import {
   ECCAIRS_FIELDS, 
   EccairsFieldConfig, 
   EccairsFieldGroup,
-  ECCAIRS_FIELD_GROUP_LABELS,
   ECCAIRS_FIELD_GROUP_ICONS,
   COLLAPSIBLE_GROUPS,
   getOrderedGroups,
-  getFieldsByGroup
+  getFieldsByGroup,
+  getFieldLabel,
+  getFieldHelpText,
+  getFieldAdditionalTextLabel,
+  getGroupLabel,
 } from "@/config/eccairsFields";
 import { suggestEccairsMapping, OCCURRENCE_CLASS_LABELS } from "@/lib/eccairsAutoMapping";
 import { Loader2, Sparkles, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
@@ -80,7 +83,7 @@ export function EccairsMappingDialog({
 
   useEffect(() => {
     if (open && !hasAddon('eccairs')) {
-      toast.error('ECCAIRS-rapportering krever ECCAIRS-tilleggsmodulen');
+      toast.error(t('eccairs.mappingDialog.addonRequired'));
       onOpenChange(false);
     }
   }, [open]);
@@ -281,7 +284,7 @@ export function EccairsMappingDialog({
 
   const handleApplySuggestions = () => {
     applyAutoSuggestions();
-    toast.success("Forslag anvendt");
+    toast.success(t('eccairs.mappingDialog.suggestionsApplied'));
   };
 
   const handleSave = async () => {
@@ -320,12 +323,12 @@ export function EccairsMappingDialog({
       });
 
       await saveAllAttributes(attributesToSave);
-      toast.success("Klassifisering lagret");
+      toast.success(t('eccairs.mappingDialog.saved'));
       onSaved?.();
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to save mapping:", error);
-      toast.error("Kunne ikke lagre klassifisering");
+      toast.error(t('eccairs.mappingDialog.saveFailed'));
     }
   };
 
@@ -345,12 +348,17 @@ export function EccairsMappingDialog({
 
     const isMultiSelect = field.format === 'content_object_array';
     const fieldKey = makeFieldKey(field);
+    const label = getFieldLabel(field);
+    const helpText = getFieldHelpText(field);
+    const additionalTextLabel = getFieldAdditionalTextLabel(field);
+    const selectPlaceholder = t('eccairs.mappingDialog.selectPlaceholder', { field: label.toLowerCase() });
+    const writePlaceholder = t('eccairs.mappingDialog.writePlaceholder', { field: label.toLowerCase() });
 
     if (field.type === 'code_and_text') {
       return (
         <div key={fieldKey} className="space-y-2">
           <Label>
-            {field.label} ({getVLKey(field)})
+            {label} ({getVLKey(field)})
             {field.entityPath && (
               <Badge variant="secondary" className="ml-2 text-xs">
                 {t("eccairs.mappingDialog.entityBadge", { path: field.entityPath })}
@@ -358,24 +366,24 @@ export function EccairsMappingDialog({
             )}
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          {field.helpText && (
-            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          {helpText && (
+            <p className="text-xs text-muted-foreground">{helpText}</p>
           )}
           <EccairsTaxonomySelect
             valueListKey={getVLKey(field)}
             value={getFieldValue(field) || null}
             onChange={(val) => setFieldValue(field, val)}
-            placeholder={`Velg ${field.label.toLowerCase()}...`}
+            placeholder={selectPlaceholder}
             valueIdPrefix={field.valueIdPrefix}
             fixedLabel={field.fixedLabel}
           />
-          {field.additionalTextField && (
+          {additionalTextLabel && (
             <div className="mt-2">
-              <Label className="text-xs">{field.additionalTextField}</Label>
+              <Label className="text-xs">{additionalTextLabel}</Label>
               <Input
                 value={additionalTextValues[fieldKey] ?? ''}
                 onChange={(e) => setAdditionalTextValues(prev => ({ ...prev, [fieldKey]: e.target.value }))}
-                placeholder={`Skriv ${field.additionalTextField.toLowerCase()}...`}
+                placeholder={t('eccairs.mappingDialog.writePlaceholder', { field: additionalTextLabel.toLowerCase() })}
                 className="mt-1"
               />
             </div>
@@ -390,7 +398,7 @@ export function EccairsMappingDialog({
       return (
         <div key={fieldKey} className="space-y-2">
           <Label>
-            {field.label} ({getVLKey(field)})
+            {label} ({getVLKey(field)})
             {field.entityPath && (
               <Badge variant="secondary" className="ml-2 text-xs">
                 {t("eccairs.mappingDialog.entityBadge", { path: field.entityPath })}
@@ -398,27 +406,27 @@ export function EccairsMappingDialog({
             )}
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          {field.helpText && (
-            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          {helpText && (
+            <p className="text-xs text-muted-foreground">{helpText}</p>
           )}
           {field.code === 390 ? (
             <EccairsEventTypeTreeSelect
               value={getFieldValue(field) || null}
               onChange={(val) => setFieldValue(field, val)}
-              placeholder={`Velg ${field.label.toLowerCase()}...`}
+              placeholder={selectPlaceholder}
             />
           ) : field.code === 391 ? (
             <EccairsPhaseOfFlightSelect
               value={getFieldValue(field) || null}
               onChange={(val) => setFieldValue(field, val)}
-              placeholder={`Velg ${field.label.toLowerCase()}...`}
+              placeholder={selectPlaceholder}
             />
           ) : isMultiSelect ? (
             <EccairsMultiSelect
               valueListKey={getVLKey(field)}
               value={parseMultiSelectValue(getFieldValue(field))}
               onChange={(vals) => setFieldValue(field, JSON.stringify(vals))}
-              placeholder={`Velg ${field.label.toLowerCase()}...`}
+              placeholder={selectPlaceholder}
               maxItems={field.maxValues || 5}
             />
           ) : (
@@ -426,7 +434,7 @@ export function EccairsMappingDialog({
               valueListKey={getVLKey(field)}
               value={getFieldValue(field) || null}
               onChange={(val) => setFieldValue(field, val)}
-              placeholder={`Velg ${field.label.toLowerCase()}...`}
+              placeholder={selectPlaceholder}
               valueIdPrefix={field.valueIdPrefix}
               fixedLabel={field.fixedLabel}
             />
@@ -439,11 +447,11 @@ export function EccairsMappingDialog({
       return (
         <div key={fieldKey} className="space-y-2">
           <Label>
-            {field.label}
+            {label}
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          {field.helpText && (
-            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          {helpText && (
+            <p className="text-xs text-muted-foreground">{helpText}</p>
           )}
           <Input
             type="date"
@@ -459,11 +467,11 @@ export function EccairsMappingDialog({
       return (
         <div key={fieldKey} className="space-y-2">
           <Label>
-            {field.label}
+            {label}
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          {field.helpText && (
-            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          {helpText && (
+            <p className="text-xs text-muted-foreground">{helpText}</p>
           )}
           <Input
             type="time"
@@ -479,7 +487,7 @@ export function EccairsMappingDialog({
       return (
         <div key={fieldKey} className="space-y-2">
           <Label>
-            {field.label}
+            {label}
             {field.maxLength && (
               <span className="text-muted-foreground ml-2 text-xs">
                 {getFieldValue(field).length}/{field.maxLength}
@@ -487,8 +495,8 @@ export function EccairsMappingDialog({
             )}
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          {field.helpText && (
-            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          {helpText && (
+            <p className="text-xs text-muted-foreground">{helpText}</p>
           )}
           <Input
             value={getFieldValue(field)}
@@ -502,7 +510,7 @@ export function EccairsMappingDialog({
             }}
             inputMode={field.code === 244 ? 'numeric' : undefined}
             pattern={field.code === 244 ? '[0-9]*' : undefined}
-            placeholder={`Skriv ${field.label.toLowerCase()}...`}
+            placeholder={writePlaceholder}
           />
         </div>
       );
@@ -512,16 +520,16 @@ export function EccairsMappingDialog({
       return (
         <div key={fieldKey} className="space-y-2 col-span-full">
           <Label>
-            {field.label}
+            {label}
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
-          {field.helpText && (
-            <p className="text-xs text-muted-foreground">{field.helpText}</p>
+          {helpText && (
+            <p className="text-xs text-muted-foreground">{helpText}</p>
           )}
           <Textarea
             value={getFieldValue(field)}
             onChange={(e) => setFieldValue(field, e.target.value)}
-            placeholder={`Skriv ${field.label.toLowerCase()}...`}
+            placeholder={writePlaceholder}
             rows={4}
           />
         </div>
@@ -547,7 +555,7 @@ export function EccairsMappingDialog({
     if (fields.length === 0) return null;
 
     const icon = ECCAIRS_FIELD_GROUP_ICONS[group];
-    const label = ECCAIRS_FIELD_GROUP_LABELS[group];
+    const label = getGroupLabel(group);
     const isOpen = !collapsedGroups.has(group);
 
     return (
@@ -564,6 +572,7 @@ export function EccairsMappingDialog({
       </Collapsible>
     );
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
