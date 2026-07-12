@@ -6243,5 +6243,14 @@
     "desktopTitle": "Install on desktop",
     "desktopDescription": "Use your browser's install option",
     "desktopInstructions": "Look for the install icon in the address bar, or use the browser menu to install the app."
+  },
+  "notifications": {
+    "incident": {
+      "followUpHeader": "You have been assigned as follow-up owner",
+      "severityLabel": "Severity",
+      "locationLabel": "Location",
+      "descriptionLabel": "Description",
+      "loginPrompt": "Sign in to Avisafe to follow up on this incident."
+    }
   }
 }

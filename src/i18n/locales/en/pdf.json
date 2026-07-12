@@ -36,5 +36,1235 @@
       "title": "Incident report - {{title}} - {{date}}",
       "description": "Automatically generated report for incident: {{title}}"
     }
+  },
+  "mission": {
+    "title": "Mission Report",
+    "map": {
+      "title": "Map snapshot",
+      "legend": {
+        "plannedRoute": "Planned flight route",
+        "actualRoute": "Actual flown route",
+        "flightGeography": "Flight Geography (SORA)",
+        "contingencyArea": "Contingency Area (SORA)",
+        "groundRiskBuffer": "Ground Risk Buffer (SORA)"
+      }
+    },
+    "airspaceWarnings": {
+      "title": "Airspace warnings",
+      "levels": {
+        "warning": "WARNING",
+        "caution": "CAUTION",
+        "note": "INFORMATION"
+      },
+      "zoneTypePrefix": "Zone type: {{type}}",
+      "insideZone": "Inside zone",
+      "distanceAway": "{{distance}}m away",
+      "headers": {
+        "level": "Level",
+        "zone": "Zone",
+        "distance": "Distance",
+        "message": "Message"
+      }
+    },
+    "route": {
+      "title": "Planned flight route",
+      "pointCount": "Number of points",
+      "totalDistance": "Total distance",
+      "headers": {
+        "point": "Point",
+        "lat": "Latitude",
+        "lng": "Longitude"
+      }
+    },
+    "basicInfo": {
+      "title": "Basic information",
+      "labels": {
+        "status": "Status",
+        "riskLevel": "Risk level",
+        "location": "Location",
+        "dateTime": "Date/time",
+        "endTime": "End time",
+        "coordinates": "Coordinates"
+      }
+    },
+    "customer": {
+      "title": "Customer information",
+      "labels": {
+        "name": "Name",
+        "contactPerson": "Contact person",
+        "phone": "Phone",
+        "email": "Email"
+      }
+    },
+    "personnel": {
+      "title": "Personnel",
+      "headers": {
+        "name": "Name"
+      }
+    },
+    "drones": {
+      "title": "Drones",
+      "headers": {
+        "model": "Model",
+        "serialNumber": "Serial number"
+      }
+    },
+    "equipment": {
+      "title": "Equipment",
+      "headers": {
+        "name": "Name",
+        "type": "Type"
+      }
+    },
+    "soraBuffer": {
+      "title": "SORA buffer and adjacent areas",
+      "rows": {
+        "soraVolume": "SORA volume",
+        "flightGeography": "Flight Geography",
+        "contingencyBuffer": "Contingency buffer",
+        "contingencyHeight": "Contingency height",
+        "groundRiskBuffer": "Ground Risk Buffer",
+        "flightAltitude": "Flight altitude",
+        "bufferMode": "Buffer mode",
+        "convexHull": "Convex",
+        "routeCorridor": "Route corridor",
+        "drone": "Drone",
+        "selectedInRoutePlanner": "Selected in route planner",
+        "notSelected": "Not selected",
+        "cd": "CD",
+        "groundSpeed": "V0 / ground speed",
+        "adjacentAreas": "Adjacent areas",
+        "adjacentRadius": "Adjacent radius",
+        "area": "Area",
+        "populationFound": "Population found",
+        "avgDensity": "Average density",
+        "densityCategory": "Density category",
+        "uaSize": "UA Size",
+        "sail": "SAIL",
+        "outdoorAssemblies": "Outdoor assemblies",
+        "requiredContainment": "Required containment",
+        "result": "Result",
+        "withinBasis": "Within calculation basis",
+        "requiresFurtherAssessment": "Requires further assessment",
+        "calculated": "Calculated"
+      }
+    },
+    "sora": {
+      "title": "SORA analysis",
+      "status": {
+        "draft": "Draft",
+        "completed": "Completed",
+        "approved": "Approved"
+      },
+      "labels": {
+        "status": "Status",
+        "sailLevel": "SAIL level",
+        "residualRiskLevel": "Residual risk level",
+        "preparedBy": "Prepared by",
+        "approvedBy": "Approved by",
+        "environment": "Environment",
+        "conopsSummary": "ConOps description",
+        "igrc": "iGRC (initial ground risk)",
+        "fgrc": "fGRC (final)",
+        "groundMitigations": "Ground mitigations",
+        "initialArc": "Initial ARC",
+        "residualArc": "Residual ARC",
+        "airspaceMitigations": "Airspace mitigations",
+        "residualRiskComment": "Residual risk comment",
+        "operationalLimits": "Operational limits"
+      },
+      "grcHeader": "Ground risk (GRC)",
+      "arcHeader": "Airspace risk (ARC)"
+    },
+    "aiRisk": {
+      "title": "AI Risk Assessment",
+      "recommendation": {
+        "proceed": "Recommended",
+        "proceed_with_caution": "Caution recommended",
+        "not_recommended": "Not recommended"
+      },
+      "labels": {
+        "recommendation": "Recommendation",
+        "overallScore": "Overall score",
+        "weatherScore": "Weather score",
+        "airspaceScore": "Airspace score",
+        "pilotScore": "Pilot score",
+        "equipmentScore": "Equipment score",
+        "complexityScore": "Complexity score",
+        "assessedAt": "Assessed"
+      },
+      "summaryLabel": "Summary:",
+      "recommendationsLabel": "Recommendations:",
+      "priority": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      }
+    },
+    "incidents": {
+      "title": "Related incidents",
+      "headers": {
+        "title": "Title",
+        "severity": "Severity",
+        "status": "Status",
+        "rootCause": "Root cause",
+        "occurredAt": "Occurred"
+      }
+    },
+    "flightLogs": {
+      "title": "Flights",
+      "headers": {
+        "date": "Date",
+        "duration": "Duration",
+        "pilot": "Pilot",
+        "drone": "Drone",
+        "safesky": "SafeSky",
+        "checklists": "Checklists"
+      },
+      "safesky": {
+        "off": "Off",
+        "advisory": "Advisory (route)",
+        "liveUav": "Live position"
+      }
+    },
+    "flightLogsDetailed": {
+      "manualDisclaimer": "Manually logged flight — telemetry (distance, altitude, speed, battery, GPS, coordinates, warnings) is not available. Import a drone log to get detailed data.",
+      "source": {
+        "manual": "Manual",
+        "dji": "DJI",
+        "dronelogapi": "DJI (dronelog)",
+        "ardupilot": "ArduPilot",
+        "dronetag": "DroneTag"
+      },
+      "flightTitle": "Flight {{index}}: {{date}}",
+      "summaryHeaders": {
+        "summary": "Summary",
+        "value": "Value"
+      },
+      "summaryLabels": {
+        "pilot": "Pilot",
+        "drone": "Drone",
+        "source": "Source",
+        "duration": "Duration",
+        "departure": "Departure",
+        "landing": "Landing",
+        "totalDistance": "Total distance",
+        "maxDistance": "Max distance",
+        "maxHeight": "Max altitude",
+        "maxHorizSpeed": "Max horizontal speed",
+        "maxVertSpeed": "Max vertical speed",
+        "rthTriggered": "RTH triggered"
+      },
+      "batteryGpsHeader": "Battery and GPS",
+      "batteryLabels": {
+        "batterySn": "Battery SN",
+        "cycles": "Cycles",
+        "health": "Health",
+        "fullCapacity": "Full capacity",
+        "minVoltage": "Min voltage",
+        "maxCellDeviation": "Max cell deviation",
+        "tempMin": "Min temp",
+        "tempMax": "Max temp",
+        "gpsSatMin": "Min GPS satellites",
+        "gpsSatMax": "Max GPS satellites"
+      },
+      "graphs": {
+        "heightOverTime": "Altitude over time",
+        "speedOverTime": "Speed over time",
+        "batteryOverTime": "Battery level over time",
+        "batteryTempOverTime": "Battery temperature over time",
+        "rcStickOverTime": "RC stick input over time",
+        "windSpeedOverTime": "Wind speed over time"
+      },
+      "series": {
+        "height": "Altitude (m)",
+        "speed": "Speed (m/s)",
+        "battery1": "Battery 1 (%)",
+        "battery2": "Battery 2 (%)",
+        "battery": "Battery (%)",
+        "batteryTemp1": "Batt 1 temp (°C)",
+        "batteryTemp2": "Batt 2 temp (°C)",
+        "batteryTemp": "Batt temp (°C)",
+        "wind": "Wind (m/s)",
+        "maxWind": "Max wind (m/s)",
+        "rcThrottle": "Throttle",
+        "rcElevator": "Elevator",
+        "rcAileron": "Aileron",
+        "rcRudder": "Rudder"
+      },
+      "appWarningsTitle": "App warnings",
+      "noAppWarnings": "No app warnings",
+      "warningsHeaders": {
+        "type": "Type",
+        "time": "Time",
+        "message": "Message",
+        "value": "Value"
+      },
+      "moreWarningsNotShown": "+ {{count}} more warnings not shown",
+      "sampledCoordinatesTitle": "Coordinates from flown route ({{shown}} of {{total}} points)",
+      "coordHeaders": {
+        "lat": "Lat",
+        "lng": "Lng",
+        "alt": "Alt (m)"
+      }
+    },
+    "descriptionNotes": {
+      "descriptionTitle": "Description",
+      "notesTitle": "Notes"
+    },
+    "toasts": {
+      "exportSuccess": "PDF exported and saved to documents",
+      "exportError": "Could not export PDF"
+    },
+    "document": {
+      "title": "Mission report - {{title}}",
+      "description": "Exported report for mission {{title}}"
+    }
+  },
+  "riskAssessment": {
+    "categories": {
+      "weather": "Weather",
+      "airspace": "Airspace",
+      "pilot_experience": "Pilot experience",
+      "mission_complexity": "Mission complexity",
+      "equipment": "Equipment",
+      "regulatory": "Regulatory",
+      "environment": "Environment",
+      "population": "Population",
+      "terrain": "Terrain",
+      "communications": "Communications"
+    },
+    "go": {
+      "go": "GO",
+      "conditional": "CONDITIONAL GO",
+      "noGo": "NO-GO",
+      "notGo": "NOT GO",
+      "notApplicable": "N/A"
+    },
+    "mitigations": {
+      "m1aSheltering": "M1(A) Sheltering",
+      "m1bOperationalRestrictions": "M1(B) Operational restrictions",
+      "m1cGroundObservation": "M1(C) Ground observation",
+      "m2ImpactReduction": "M2 Impact reduction"
+    },
+    "sections": {
+      "operationClassification": "OPERATION CLASSIFICATION (STEP 0)",
+      "groundRisk": "GROUND RISK (GRC)",
+      "airRisk": "AIRSPACE RISK (ARC)",
+      "soraAnalysis": "SORA ANALYSIS (STEP 2 - RE-ASSESSMENT)",
+      "sailLookup": "STEP 7: SAIL LOOKUP",
+      "containment": "STEP 8: CONTAINMENT",
+      "osoRequirements": "STEP 9: OSO REQUIREMENTS",
+      "missionOverview": "MISSION OVERVIEW",
+      "assessmentMethod": "ASSESSMENT METHOD",
+      "overallAssessment": "OVERALL ASSESSMENT",
+      "categoryScores": "CATEGORY SCORES",
+      "recommendedActions": "RECOMMENDED ACTIONS",
+      "prerequisites": "PREREQUISITES"
+    },
+    "labels": {
+      "category": "Category",
+      "requiresSora": "Requires SORA",
+      "alosMax": "ALOS max (m)",
+      "alosCalculation": "ALOS calculation",
+      "sts": "STS",
+      "soraBuffersCalculated": "SORA buffers calculated",
+      "characteristicDimension": "Characteristic dimension",
+      "speedCategory": "Speed category",
+      "droneWeight": "Drone weight (kg)",
+      "populationDensity": "Population density",
+      "populationDensityPerKm2": "Population density (per km2)",
+      "avgDensityPerKm2": "Average density (per km2)",
+      "ssbGridPopulation": "Dimensioning SSB grid",
+      "grcMethod": "GRC method",
+      "tableBasis": "Table basis",
+      "igrc": "iGRC",
+      "documentedReduction": "Documented reduction",
+      "fgrc": "fGRC (final)",
+      "igrcReasoning": "iGRC reasoning:",
+      "ssbCalculationTitle": "SSB calculation (population density):",
+      "fgrcReasoning": "fGRC reasoning:",
+      "aec": "AEC (Air Encounter Category)",
+      "initialArc": "Initial ARC",
+      "residualArc": "Residual ARC",
+      "tmprLevel": "TMPR level",
+      "vlosExemption": "VLOS exemption",
+      "aecReasoning": "AEC reasoning:",
+      "arcReductionReasoning": "ARC reduction reasoning:",
+      "strategicMitigationsApplied": "Strategic mitigations (applied):",
+      "strategicMitigationsNotApplied": "Strategic mitigations (not applied):",
+      "tmprRequirements": "TMPR requirements:",
+      "environment": "Environment",
+      "conops": "ConOps:",
+      "groundMitigations": "Ground mitigations:",
+      "airspaceMitigations": "Airspace mitigations:",
+      "robustnessLevel": "Robustness level: {{level}}",
+      "ftsRequired": "FTS required",
+      "residualRiskComment": "Residual risk comment:",
+      "operationalLimits": "Operational limits:",
+      "sail": "SAIL",
+      "residualRisk": "Residual risk",
+      "recommendation": "Recommendation",
+      "fgrcUsed": "fGRC used",
+      "arcUsed": "ARC used",
+      "sailResult": "SAIL result",
+      "adjustments": "Adjustments",
+      "actualConditions": "Actual conditions",
+      "droneStatus": "Drone status",
+      "experienceSummary": "Experience summary",
+      "complexityFactors": "Complexity factors",
+      "positiveFactors": "Positive factors:",
+      "concerns": "Concerns:",
+      "priority": "{{priority}} priority:",
+      "reasoning": "Reasoning: {{reason}}",
+      "riskAddressed": "Addresses risk: {{risk}}",
+      "assessedAt": "Assessed: {{date}}"
+    },
+    "tmpr": {
+      "detect": "Detect",
+      "decide": "Decide",
+      "command": "Command",
+      "execute": "Execute",
+      "feedback_loop": "Feedback loop"
+    },
+    "priority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "headers": {
+      "mitigation": "Mitigation",
+      "applied": "Applied",
+      "robustness": "Robustness",
+      "reduction": "Reduction",
+      "reasoning": "Reasoning",
+      "criterion": "Criterion",
+      "requirement": "Requirement",
+      "documentation": "Documentation",
+      "oso": "OSO",
+      "description": "Description",
+      "categoryLabel": "Category",
+      "score": "Score",
+      "decision": "Decision",
+      "pilotComment": "Pilot comment",
+      "sailMatrixCol": "fGRC \\ ARC"
+    },
+    "titleSora": "SORA ANALYSIS",
+    "titleAi": "RISK ASSESSMENT",
+    "hardStop": "HARD STOP: {{reason}}",
+    "disclaimerSora": "This SORA analysis is generated as decision support. The pilot-in-command is responsible for assessing the risk associated with the mission.",
+    "disclaimerAi": "AI risk assessment can be used as decision support. The pilot-in-command must always assess the risk associated with the mission.",
+    "filenamePrefixSora": "sora-analysis",
+    "filenamePrefixAi": "risk-assessment",
+    "documentCategoryTitle": {
+      "sora": "SORA analysis - {{title}} - {{date}}",
+      "ai": "Risk assessment - {{title}} - {{date}}"
+    },
+    "documentDescription": {
+      "sora": "Automatically generated SORA analysis for mission: {{title}}",
+      "ai": "Automatically generated risk assessment for mission: {{title}}"
+    }
+  },
+  "userManual": {
+    "docTitle": "AviSafe",
+    "subtitle": "User Manual",
+    "subtitle2": "Drone Operations and Flight Safety",
+    "version": "Version 1.0 - {{date}}",
+    "toc": "Table of contents",
+    "footer": "AviSafe User Manual - Page {{page}} of {{total}}",
+    "sections": {
+      "s1": {
+        "title": "1. Introduction to AviSafe",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "AviSafe is a complete management system for drone operators covering the entire operational cycle - from planning and executing missions to incident reporting and document management. The system is built to meet the requirements of the drone regulations and supports ECCAIRS reporting to the Civil Aviation Authority."
+          }
+        ]
+      },
+      "s2": {
+        "title": "2. Login and User Registration",
+        "content": [
+          {
+            "type": "heading",
+            "text": "First-time registration"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Go to the login page",
+              "Click \"Create account\"",
+              "Fill in: Email address, Password, Full name, Registration code (6-character code from your company/administrator)",
+              "Click \"Register\"",
+              "Important: The account must be approved by an administrator before you get access"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Login"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Use email and password",
+              "If you have forgotten your password, click \"Forgot password\" to receive a reset link"
+            ]
+          }
+        ]
+      },
+      "s3": {
+        "title": "3. The Dashboard (Home Page)",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "When you log in you arrive at the dashboard - your central overview of the entire operation."
+          },
+          {
+            "type": "heading",
+            "text": "Widgets on the dashboard"
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Widget",
+              "Description"
+            ],
+            "rows": [
+              [
+                "News",
+                "Latest news and updates from the organization"
+              ],
+              [
+                "Status",
+                "Overview of resource status (drones, equipment, documents) with traffic lights"
+              ],
+              [
+                "Documents",
+                "Important documents with expiry warnings"
+              ],
+              [
+                "Calendar",
+                "Upcoming missions, maintenance and events"
+              ],
+              [
+                "Missions",
+                "List of upcoming and ongoing missions"
+              ],
+              [
+                "Incidents",
+                "Latest reported incidents"
+              ],
+              [
+                "KPI chart",
+                "Visualization of key figures"
+              ]
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Flight logging from the dashboard"
+          },
+          {
+            "type": "list",
+            "items": [
+              "\"Log flight time\" - Register flight time manually",
+              "\"Start flight\" - Start an active flight with timer and optional SafeSky sharing",
+              "\"Stop flight\" - End an ongoing flight and log details"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Customization"
+          },
+          {
+            "type": "paragraph",
+            "text": "You can drag and drop widgets to change the order. The layout is saved automatically."
+          }
+        ]
+      },
+      "s4": {
+        "title": "4. Missions",
+        "content": [
+          {
+            "type": "heading",
+            "text": "View all missions"
+          },
+          {
+            "type": "paragraph",
+            "text": "Click \"Missions\" in the menu to see ongoing, upcoming and completed missions."
+          },
+          {
+            "type": "heading",
+            "text": "Create a new mission"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"+ Add mission\"",
+              "Fill in: Title (required), Location (search for address), Time (start and optional end), Description, Customer, Personnel, Drones, Equipment, Documents, Status",
+              "Click \"Save\""
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Route planning"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"Plan route\" in the mission dialog",
+              "You are taken to the map view",
+              "Click on the map to set route points",
+              "See total distance and VLOS status",
+              "Click \"Save route\" to attach it to the mission"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Risk assessment"
+          },
+          {
+            "type": "list",
+            "items": [
+              "AI-based risk assessment - Automatic analysis based on weather data, airspace, etc.",
+              "Manual SORA analysis - Structured risk assessment using the SORA methodology"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Export"
+          },
+          {
+            "type": "list",
+            "items": [
+              "PDF export - Complete mission report incl. map and SORA",
+              "KMZ export - Route file for Google Earth"
+            ]
+          }
+        ]
+      },
+      "s5": {
+        "title": "5. The Map",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Interactive map with flight-relevant information."
+          },
+          {
+            "type": "heading",
+            "text": "Map layers (can be toggled on/off)"
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Layer",
+              "Content"
+            ],
+            "rows": [
+              [
+                "Airspace zones",
+                "CTR, TIZ, restricted areas from OpenAIP"
+              ],
+              [
+                "5km zones",
+                "Zones around airports (RPAS regulations)"
+              ],
+              [
+                "NSM restrictions",
+                "National security zones"
+              ],
+              [
+                "Active aircraft",
+                "Live position from ADS-B"
+              ],
+              [
+                "Weather stations",
+                "Local weather data"
+              ]
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Route planning on the map"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"Plan route\" (or arrive from the mission dialog)",
+              "Click on the map to add route points",
+              "See automatically: Total route length, Maximum distance from pilot (VLOS), Airspace conflict warnings",
+              "Click \"Save route\" to finish"
+            ]
+          }
+        ]
+      },
+      "s6": {
+        "title": "6. Documents",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Centralized document management with expiry warnings."
+          },
+          {
+            "type": "heading",
+            "text": "Categories"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Regulations",
+              "Procedures",
+              "Checklists",
+              "Reports",
+              "Websites",
+              "Mission documents",
+              "Logbook",
+              "KML/KMZ files",
+              "Document management",
+              "Risk assessments",
+              "Other"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Create a document"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"+ New document\"",
+              "Fill in: Title, Category, Description, Valid until (expiry date), Warning days before expiry",
+              "Upload a file OR specify a website URL"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Create a checklist"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"New checklist\"",
+              "Add checklist items",
+              "Checklists can be linked to: Drones (for inspection), Equipment (for maintenance), Flight (for takeoff)"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Expiry warnings"
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Color",
+              "Status"
+            ],
+            "rows": [
+              [
+                "Red",
+                "Expired"
+              ],
+              [
+                "Yellow",
+                "Expiring soon"
+              ],
+              [
+                "Green",
+                "OK"
+              ]
+            ]
+          }
+        ]
+      },
+      "s7": {
+        "title": "7. Incidents (Occurrence Reporting)",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Complete system for incident reporting and ECCAIRS integration."
+          },
+          {
+            "type": "heading",
+            "text": "Report an incident"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"+ Add incident\"",
+              "Fill in: Title, Time of occurrence, Severity (Low, Medium, High, Critical)",
+              "Select: Category, Location, Description, Root cause, Contributing cause",
+              "Link to a mission (optional) and select a follow-up owner"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Incident handling - Status"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Open - Recently reported",
+              "Under investigation - Being investigated",
+              "Resolved - Action identified",
+              "Closed - Finished"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "ECCAIRS reporting"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"Classify\" to map to the ECCAIRS taxonomy",
+              "Select: Occurrence type (VL390), Occurrence class, Flight phase, Aircraft category, Narrative",
+              "Click \"Create draft in ECCAIRS\" to create it in the E2 system",
+              "When ready: \"Send to Civil Aviation Authority\""
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Click the PDF icon to generate a complete incident report."
+          }
+        ]
+      },
+      "s8": {
+        "title": "8. Resources",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Management of all equipment, drones and personnel."
+          },
+          {
+            "type": "heading",
+            "text": "Drones"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Model and serial number",
+              "Registration number",
+              "Flight hours (accumulated automatically)",
+              "Maintenance interval",
+              "Next/last inspection",
+              "Linked equipment and personnel",
+              "Inspection checklist"
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "Logbook: Click \"Logbook\" to see the full history - flights, inspections, equipment changes."
+          },
+          {
+            "type": "heading",
+            "text": "Equipment"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Name, type, serial number",
+              "Maintenance interval",
+              "Status (Green/Yellow/Red)",
+              "Linked checklist"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "DroneTag devices"
+          },
+          {
+            "type": "paragraph",
+            "text": "For live tracking and LAANC/SafeSky integration: Register a DroneTag with a callsign. Linked to flights for automatic position tracking."
+          },
+          {
+            "type": "heading",
+            "text": "Personnel"
+          },
+          {
+            "type": "paragraph",
+            "text": "View all approved users with their competencies, certificates, expiry dates and status."
+          }
+        ]
+      },
+      "s9": {
+        "title": "9. Calendar",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Combined overview of all activities."
+          },
+          {
+            "type": "heading",
+            "text": "Shown automatically"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Planned missions",
+              "Maintenance dates for drones and equipment",
+              "Document expiry",
+              "Registered incidents",
+              "Custom calendar entries"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Add an entry"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click on a date",
+              "Choose type: Mission, Incident, Document, or custom",
+              "Fill in the details"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Perform maintenance from the calendar"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Find the maintenance entry",
+              "Click \"Mark as completed\"",
+              "If a checklist is linked, it must be completed first",
+              "The next maintenance date is calculated automatically"
+            ]
+          }
+        ]
+      },
+      "s10": {
+        "title": "10. Status (Statistics)",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Detailed statistics and KPIs."
+          },
+          {
+            "type": "heading",
+            "text": "Time period"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Last month",
+              "Last quarter",
+              "Last year",
+              "Custom period"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Charts and diagrams"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Missions per month",
+              "Missions per status and risk level",
+              "Incidents per month, root cause, contributing cause",
+              "Severity distribution",
+              "Days since last serious incident",
+              "Drone status and flight hours per drone",
+              "Equipment status",
+              "Documents expiring (30/60/90 days)"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Export"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Excel - All data in a spreadsheet",
+              "PDF - Formatted report"
+            ]
+          }
+        ]
+      },
+      "s11": {
+        "title": "11. Profile and Settings",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Click the profile icon in the header."
+          },
+          {
+            "type": "heading",
+            "text": "Personal information"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Name, title, phone, address",
+              "Profile picture",
+              "Digital signature (for logbooks/reports)"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Competencies"
+          },
+          {
+            "type": "paragraph",
+            "text": "View your certificates and competencies with expiry dates."
+          },
+          {
+            "type": "heading",
+            "text": "Emergency contact"
+          },
+          {
+            "type": "paragraph",
+            "text": "Register an emergency contact person with name and phone number."
+          },
+          {
+            "type": "heading",
+            "text": "Notification settings"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Email on new incidents",
+              "Email on new missions",
+              "Email on document expiry",
+              "Email when you are assigned a follow-up responsibility",
+              "Email about inspection reminders",
+              "Push notifications (requires activation)"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "My logbook"
+          },
+          {
+            "type": "paragraph",
+            "text": "View your personal flight log with all registered flight hours."
+          },
+          {
+            "type": "heading",
+            "text": "Follow-up tasks"
+          },
+          {
+            "type": "paragraph",
+            "text": "View incidents you are assigned follow-up responsibility for."
+          }
+        ]
+      },
+      "s12": {
+        "title": "12. Administration (administrators only)",
+        "content": [
+          {
+            "type": "heading",
+            "text": "Users"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Approve new users awaiting approval",
+              "Assign roles: Operator, Case handler, Admin, Superadmin",
+              "Remove roles or delete users"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Customers"
+          },
+          {
+            "type": "paragraph",
+            "text": "Manage the customer list for missions."
+          },
+          {
+            "type": "heading",
+            "text": "Email templates"
+          },
+          {
+            "type": "paragraph",
+            "text": "Customize automatic emails sent from the system."
+          },
+          {
+            "type": "heading",
+            "text": "Companies (superadmin only)"
+          },
+          {
+            "type": "paragraph",
+            "text": "Manage multiple companies in the system."
+          },
+          {
+            "type": "heading",
+            "text": "Registration code"
+          },
+          {
+            "type": "paragraph",
+            "text": "View and copy the company's registration code for new users."
+          }
+        ]
+      },
+      "s13": {
+        "title": "13. Flight Logging in Practice",
+        "content": [
+          {
+            "type": "heading",
+            "text": "Starting a flight"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"Start flight\" on the dashboard",
+              "Select a mission (optional)",
+              "Complete mandatory checklists",
+              "Choose a publishing mode: None (internal logging only), Advisory (shared via SafeSky), Live UAV (real-time tracking via DroneTag)",
+              "Click \"Start flight\""
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "During the flight"
+          },
+          {
+            "type": "list",
+            "items": [
+              "The timer is shown in the header",
+              "If DroneTag: position is logged automatically",
+              "Warnings on airspace conflicts"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Ending the flight"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"Stop flight\"",
+              "The log dialog opens automatically",
+              "Fill in/confirm: Duration, Drone, Any notes",
+              "Flight time is added to the drone log and personal log"
+            ]
+          }
+        ]
+      },
+      "s14": {
+        "title": "14. Relationships in the System",
+        "content": [
+          {
+            "type": "heading",
+            "text": "What affects the status indicator?"
+          },
+          {
+            "type": "table",
+            "headers": [
+              "Element",
+              "Green",
+              "Yellow",
+              "Red"
+            ],
+            "rows": [
+              [
+                "Drone",
+                "Inspection OK",
+                "Approaching inspection",
+                "Inspection overdue"
+              ],
+              [
+                "Equipment",
+                "Maintenance OK",
+                "Approaching maintenance",
+                "Maintenance overdue"
+              ],
+              [
+                "Document",
+                "Valid",
+                "Expiring soon",
+                "Expired"
+              ],
+              [
+                "Personnel",
+                "Competencies OK",
+                "Competency expiring soon",
+                "Competency expired"
+              ]
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Automatic links"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Flight log -> Accumulates hours on drone and pilot",
+              "Mission -> Can be linked to incidents",
+              "Inspection -> Calculates next based on interval",
+              "Maintenance -> Calculates next based on interval",
+              "Incident -> Can be exported to ECCAIRS"
+            ]
+          },
+          {
+            "type": "heading",
+            "text": "Notification chain"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Document/competency approaching expiry -> Email/push",
+              "New incident reported -> Email to relevant parties",
+              "Follow-up responsibility assigned -> Email",
+              "Mission assigned -> Email"
+            ]
+          }
+        ]
+      },
+      "s15": {
+        "title": "15. Language and Accessibility",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Click the globe icon in the header to switch between Norwegian and English",
+              "The system supports dark and light theme",
+              "Responsive design for mobile and desktop"
+            ]
+          }
+        ]
+      },
+      "s16": {
+        "title": "16. Installing as an App (PWA)",
+        "content": [
+          {
+            "type": "numbered-list",
+            "items": [
+              "Click \"Install app\" in the menu",
+              "Follow the instructions for your device",
+              "The app works offline for basic viewing"
+            ]
+          }
+        ]
+      },
+      "s17": {
+        "title": "17. Support",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "If you have questions or problems:"
+          },
+          {
+            "type": "numbered-list",
+            "items": [
+              "Contact your company administrator",
+              "Check the documentation in the Documents section",
+              "Report technical errors as an incident with category \"Technical\""
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "common": {
+    "exportedAt": "Exported: {{date}}",
+    "unknown": "Unknown",
+    "yes": "Yes",
+    "no": "No"
   }
 }

@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
+import i18n from "@/i18n";
 import { generateMissionMapSnapshot } from "@/lib/mapSnapshotUtils";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -26,33 +27,33 @@ const getRouteSoraRows = (route: any): string[][] => {
 
   if (sora?.enabled) {
     rows.push(
-      ["SORA volum", ""],
-      ["Flight Geography", fmtRouteDocNumber(sora.flightGeographyDistance, 0, " m")],
-      ["Contingency buffer", fmtRouteDocNumber(sora.contingencyDistance, 0, " m")],
-      ["Contingency høyde", fmtRouteDocNumber(sora.contingencyHeight, 0, " m")],
-      ["Ground Risk Buffer", fmtRouteDocNumber(sora.groundRiskDistance, 0, " m")],
-      ["Flyhøyde", fmtRouteDocNumber(sora.flightAltitude, 0, " m AGL")],
-      ["Buffermodus", sora.bufferMode === "convexHull" ? "Konveks" : "Rute-korridor"],
-      ["Drone", sora.droneName || (sora.droneId ? "Valgt i ruteplanlegger" : "Ikke valgt")],
-      ["CD", fmtRouteDocNumber(sora.characteristicDimensionM, 2, " m")],
-      ["V0 / bakkehastighet", fmtRouteDocNumber(sora.groundSpeedMps, 1, " m/s")],
+      [i18n.t('pdf.mission.soraBuffer.rows.soraVolume', { ns: 'pdf' }), ""],
+      [i18n.t('pdf.mission.soraBuffer.rows.flightGeography', { ns: 'pdf' }), fmtRouteDocNumber(sora.flightGeographyDistance, 0, " m")],
+      [i18n.t('pdf.mission.soraBuffer.rows.contingencyBuffer', { ns: 'pdf' }), fmtRouteDocNumber(sora.contingencyDistance, 0, " m")],
+      [i18n.t('pdf.mission.soraBuffer.rows.contingencyHeight', { ns: 'pdf' }), fmtRouteDocNumber(sora.contingencyHeight, 0, " m")],
+      [i18n.t('pdf.mission.soraBuffer.rows.groundRiskBuffer', { ns: 'pdf' }), fmtRouteDocNumber(sora.groundRiskDistance, 0, " m")],
+      [i18n.t('pdf.mission.soraBuffer.rows.flightAltitude', { ns: 'pdf' }), fmtRouteDocNumber(sora.flightAltitude, 0, " m AGL")],
+      [i18n.t('pdf.mission.soraBuffer.rows.bufferMode', { ns: 'pdf' }), sora.bufferMode === "convexHull" ? i18n.t('pdf.mission.soraBuffer.rows.convexHull', { ns: 'pdf' }) : i18n.t('pdf.mission.soraBuffer.rows.routeCorridor', { ns: 'pdf' })],
+      [i18n.t('pdf.mission.soraBuffer.rows.drone', { ns: 'pdf' }), sora.droneName || (sora.droneId ? i18n.t('pdf.mission.soraBuffer.rows.selectedInRoutePlanner', { ns: 'pdf' }) : i18n.t('pdf.mission.soraBuffer.rows.notSelected', { ns: 'pdf' }))],
+      [i18n.t('pdf.mission.soraBuffer.rows.cd', { ns: 'pdf' }), fmtRouteDocNumber(sora.characteristicDimensionM, 2, " m")],
+      [i18n.t('pdf.mission.soraBuffer.rows.groundSpeed', { ns: 'pdf' }), fmtRouteDocNumber(sora.groundSpeedMps, 1, " m/s")],
     );
   }
 
   if (adjacent?.enabled) {
     rows.push(
-      ["Tilstøtende områder", ""],
-      ["Tilstøtende radius", fmtRouteDocNumber((adjacent.adjacentRadiusM ?? 0) / 1000, 1, " km")],
-      ["Areal", fmtRouteDocNumber(adjacent.adjacentAreaKm2, 1, " km2")],
-      ["Innbyggere funnet", fmtRouteDocNumber(adjacent.totalPopulation, 0)],
-      ["Gj.snitt tetthet", fmtRouteDocNumber(adjacent.avgDensity, 1, " pers/km2")],
-      ["Grense/kategori", POPULATION_DENSITY_LABELS[adjacent.populationDensityCategory as keyof typeof POPULATION_DENSITY_LABELS] ?? adjacent.populationDensityCategory ?? "-"],
-      ["UA Size", UA_SIZE_LABELS[adjacent.uaSize as keyof typeof UA_SIZE_LABELS] ?? adjacent.uaSize ?? "-"],
-      ["SAIL", adjacent.sail ? `SAIL ${adjacent.sail}` : "-"],
-      ["Outdoor assemblies", OUTDOOR_ASSEMBLIES_LABELS[adjacent.outdoorAssemblies as keyof typeof OUTDOOR_ASSEMBLIES_LABELS] ?? adjacent.outdoorAssemblies ?? "-"],
-      ["Required containment", adjacent.requiredContainment ?? "-"],
-      ["Resultat", adjacent.statusText || (adjacent.pass ? "Innenfor beregningsgrunnlaget" : "Krever nærmere vurdering")],
-      ["Beregnet", adjacent.calculatedAt ? formatDateForPdf(adjacent.calculatedAt, "dd.MM.yyyy HH:mm") : "-"],
+      [i18n.t('pdf.mission.soraBuffer.rows.adjacentAreas', { ns: 'pdf' }), ""],
+      [i18n.t('pdf.mission.soraBuffer.rows.adjacentRadius', { ns: 'pdf' }), fmtRouteDocNumber((adjacent.adjacentRadiusM ?? 0) / 1000, 1, " km")],
+      [i18n.t('pdf.mission.soraBuffer.rows.area', { ns: 'pdf' }), fmtRouteDocNumber(adjacent.adjacentAreaKm2, 1, " km2")],
+      [i18n.t('pdf.mission.soraBuffer.rows.populationFound', { ns: 'pdf' }), fmtRouteDocNumber(adjacent.totalPopulation, 0)],
+      [i18n.t('pdf.mission.soraBuffer.rows.avgDensity', { ns: 'pdf' }), fmtRouteDocNumber(adjacent.avgDensity, 1, " pers/km2")],
+      [i18n.t('pdf.mission.soraBuffer.rows.densityCategory', { ns: 'pdf' }), POPULATION_DENSITY_LABELS[adjacent.populationDensityCategory as keyof typeof POPULATION_DENSITY_LABELS] ?? adjacent.populationDensityCategory ?? "-"],
+      [i18n.t('pdf.mission.soraBuffer.rows.uaSize', { ns: 'pdf' }), UA_SIZE_LABELS[adjacent.uaSize as keyof typeof UA_SIZE_LABELS] ?? adjacent.uaSize ?? "-"],
+      [i18n.t('pdf.mission.soraBuffer.rows.sail', { ns: 'pdf' }), adjacent.sail ? `SAIL ${adjacent.sail}` : "-"],
+      [i18n.t('pdf.mission.soraBuffer.rows.outdoorAssemblies', { ns: 'pdf' }), OUTDOOR_ASSEMBLIES_LABELS[adjacent.outdoorAssemblies as keyof typeof OUTDOOR_ASSEMBLIES_LABELS] ?? adjacent.outdoorAssemblies ?? "-"],
+      [i18n.t('pdf.mission.soraBuffer.rows.requiredContainment', { ns: 'pdf' }), adjacent.requiredContainment ?? "-"],
+      [i18n.t('pdf.mission.soraBuffer.rows.result', { ns: 'pdf' }), adjacent.statusText || (adjacent.pass ? i18n.t('pdf.mission.soraBuffer.rows.withinBasis', { ns: 'pdf' }) : i18n.t('pdf.mission.soraBuffer.rows.requiresFurtherAssessment', { ns: 'pdf' }))],
+      [i18n.t('pdf.mission.soraBuffer.rows.calculated', { ns: 'pdf' }), adjacent.calculatedAt ? formatDateForPdf(adjacent.calculatedAt, "dd.MM.yyyy HH:mm") : "-"],
     );
   }
 
@@ -92,7 +93,7 @@ export const exportToPDF = async (
       .select('full_name')
       .eq('id', userId)
       .single();
-    const pdfOpprettetAv = pdfUserProfile?.full_name || 'Ukjent';
+    const pdfOpprettetAv = pdfUserProfile?.full_name || i18n.t('pdf.common.unknown', { ns: 'pdf' });
 
     // Fetch company name
     let companyName: string | undefined;
@@ -141,7 +142,7 @@ export const exportToPDF = async (
 
     pdf.setFontSize(18);
     setFontStyle(pdf, "bold");
-    pdf.text("Oppdragsrapport", pageWidth / 2, headerY, { align: "center" });
+    pdf.text(i18n.t('pdf.mission.title', { ns: 'pdf' }), pageWidth / 2, headerY, { align: "center" });
     
     // Mission title
     pdf.setFontSize(14);
@@ -150,7 +151,7 @@ export const exportToPDF = async (
     
     pdf.setFontSize(10);
     pdf.setTextColor(100);
-    pdf.text(`Eksportert: ${formatDateForPdf(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`, pageWidth / 2, headerY + 20, { align: "center" });
+    pdf.text(i18n.t('pdf.common.exportedAt', { ns: 'pdf', date: formatDateForPdf(new Date(), "dd.MM.yyyy 'kl.' HH:mm") }), pageWidth / 2, headerY + 20, { align: "center" });
     pdf.setTextColor(0);
     
     let yPos = headerY + 28;
@@ -174,7 +175,7 @@ export const exportToPDF = async (
           pdf.setFontSize(12);
           setFontStyle(pdf, "bold");
           pdf.setTextColor(0);
-          pdf.text("Kartutsnitt", 15, yPos);
+          pdf.text(i18n.t('pdf.mission.map.title', { ns: 'pdf' }), 15, yPos);
           yPos += 7;
 
           pdf.addImage(mapDataUrl, "PNG", 15, yPos, 180, 90);
@@ -187,16 +188,16 @@ export const exportToPDF = async (
 
           type RGB = [number, number, number];
           const legendItems: Array<{ color: RGB; dash?: boolean; label: string }> = [
-            { color: [29, 78, 216], dash: true, label: "Planlagt flyrute" },
+            { color: [29, 78, 216], dash: true, label: i18n.t('pdf.mission.map.legend.plannedRoute', { ns: 'pdf' }) },
           ];
           if (flightTracks.length > 0) {
-            legendItems.push({ color: [249, 115, 22], label: "Faktisk fløyet rute" });
+            legendItems.push({ color: [249, 115, 22], label: i18n.t('pdf.mission.map.legend.actualRoute', { ns: 'pdf' }) });
           }
           if (soraSettings?.enabled) {
             legendItems.push(
-              { color: [34, 197, 94], label: "Flight Geography (SORA)" },
-              { color: [234, 179, 8], dash: true, label: "Contingency Area (SORA)" },
-              { color: [239, 68, 68], dash: true, label: "Ground Risk Buffer (SORA)" }
+              { color: [34, 197, 94], label: i18n.t('pdf.mission.map.legend.flightGeography', { ns: 'pdf' }) },
+              { color: [234, 179, 8], dash: true, label: i18n.t('pdf.mission.map.legend.contingencyArea', { ns: 'pdf' }) },
+              { color: [239, 68, 68], dash: true, label: i18n.t('pdf.mission.map.legend.groundRiskBuffer', { ns: 'pdf' }) }
             );
           }
 
@@ -232,16 +233,16 @@ export const exportToPDF = async (
     if (sections.airspaceWarnings && airspaceWarnings.length > 0) {
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Luftromsadvarsler", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.airspaceWarnings.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       const levelLabels: Record<string, string> = {
-        warning: "ADVARSEL",
-        WARNING: "ADVARSEL",
-        caution: "FORSIKTIGHET",
-        CAUTION: "FORSIKTIGHET",
-        note: "INFORMASJON",
-        NOTE: "INFORMASJON",
+        warning: i18n.t('pdf.mission.airspaceWarnings.levels.warning', { ns: 'pdf' }),
+        WARNING: i18n.t('pdf.mission.airspaceWarnings.levels.warning', { ns: 'pdf' }),
+        caution: i18n.t('pdf.mission.airspaceWarnings.levels.caution', { ns: 'pdf' }),
+        CAUTION: i18n.t('pdf.mission.airspaceWarnings.levels.caution', { ns: 'pdf' }),
+        note: i18n.t('pdf.mission.airspaceWarnings.levels.note', { ns: 'pdf' }),
+        NOTE: i18n.t('pdf.mission.airspaceWarnings.levels.note', { ns: 'pdf' }),
       };
       
       const airspaceData = airspaceWarnings.map((w: any) => {
@@ -250,18 +251,18 @@ export const exportToPDF = async (
         const isInside = w.is_inside ?? w.route_inside ?? false;
         const distanceM = w.distance_meters ?? w.min_distance ?? NaN;
         const zoneType = w.zone_type ?? w.z_type ?? "";
-        const msg = w.message ?? (zoneType ? `Sone type: ${zoneType}` : "-");
+        const msg = w.message ?? (zoneType ? i18n.t('pdf.mission.airspaceWarnings.zoneTypePrefix', { ns: 'pdf', type: zoneType }) : "-");
         return [
           sanitizeForPdf(levelLabels[level] || level || "-"),
           sanitizeForPdf(zoneName),
-          isInside ? "Innenfor sone" : (isNaN(distanceM) ? "-" : `${Math.round(distanceM)}m unna`),
+          isInside ? i18n.t('pdf.mission.airspaceWarnings.insideZone', { ns: 'pdf' }) : (isNaN(distanceM) ? "-" : i18n.t('pdf.mission.airspaceWarnings.distanceAway', { ns: 'pdf', distance: Math.round(distanceM) })),
           sanitizeForPdf(msg),
         ];
       });
       
       autoTable(pdf, {
         startY: yPos,
-        head: [["Nivå", "Sone", "Avstand", "Melding"]],
+        head: [[i18n.t('pdf.mission.airspaceWarnings.headers.level', { ns: 'pdf' }), i18n.t('pdf.mission.airspaceWarnings.headers.zone', { ns: 'pdf' }), i18n.t('pdf.mission.airspaceWarnings.headers.distance', { ns: 'pdf' }), i18n.t('pdf.mission.airspaceWarnings.headers.message', { ns: 'pdf' })]],
         body: airspaceData,
         theme: "grid",
         styles: { fontSize: 8, cellPadding: 2, font: getPdfFontName() },
@@ -280,13 +281,13 @@ export const exportToPDF = async (
     if (sections.routeCoordinates && mission.route && (mission.route as any).coordinates?.length > 0) {
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Planlagt flyrute", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.route.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       const routeData = mission.route as any;
       const routeInfo = [
-        ["Antall punkter", String(routeData.coordinates.length)],
-        ["Total avstand", `${(routeData.totalDistance || 0).toFixed(2)} km`],
+        [i18n.t('pdf.mission.route.pointCount', { ns: 'pdf' }), String(routeData.coordinates.length)],
+        [i18n.t('pdf.mission.route.totalDistance', { ns: 'pdf' }), `${(routeData.totalDistance || 0).toFixed(2)} km`],
       ];
       
       autoTable(pdf, {
@@ -308,7 +309,7 @@ export const exportToPDF = async (
       
       autoTable(pdf, {
         startY: yPos,
-        head: [["Punkt", "Breddegrad", "Lengdegrad"]],
+        head: [[i18n.t('pdf.mission.route.headers.point', { ns: 'pdf' }), i18n.t('pdf.mission.route.headers.lat', { ns: 'pdf' }), i18n.t('pdf.mission.route.headers.lng', { ns: 'pdf' })]],
         body: coordData,
         theme: "grid",
         styles: { fontSize: 8, font: getPdfFontName() },
@@ -326,19 +327,19 @@ export const exportToPDF = async (
     if (sections.basicInfo) {
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Grunnleggende informasjon", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.basicInfo.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       setFontStyle(pdf, "normal");
       pdf.setFontSize(10);
       
       const basicInfo = [
-        ["Status", sanitizeForPdf(mission.status)],
-        ["Risikonivå", sanitizeForPdf(mission.risk_nivå)],
-        ["Lokasjon", sanitizeForPdf(mission.lokasjon)],
-        ["Dato/tid", formatDateForPdf(mission.tidspunkt, "dd. MMMM yyyy HH:mm")],
-        ...(mission.slutt_tidspunkt ? [["Sluttid", formatDateForPdf(mission.slutt_tidspunkt, "dd. MMMM yyyy HH:mm")]] : []),
-        ...(mission.latitude && mission.longitude ? [["Koordinater", `${mission.latitude.toFixed(5)}, ${mission.longitude.toFixed(5)}`]] : [])
+        [i18n.t('pdf.mission.basicInfo.labels.status', { ns: 'pdf' }), sanitizeForPdf(mission.status)],
+        [i18n.t('pdf.mission.basicInfo.labels.riskLevel', { ns: 'pdf' }), sanitizeForPdf(mission.risk_nivå)],
+        [i18n.t('pdf.mission.basicInfo.labels.location', { ns: 'pdf' }), sanitizeForPdf(mission.lokasjon)],
+        [i18n.t('pdf.mission.basicInfo.labels.dateTime', { ns: 'pdf' }), formatDateForPdf(mission.tidspunkt, "dd. MMMM yyyy HH:mm")],
+        ...(mission.slutt_tidspunkt ? [[i18n.t('pdf.mission.basicInfo.labels.endTime', { ns: 'pdf' }), formatDateForPdf(mission.slutt_tidspunkt, "dd. MMMM yyyy HH:mm")]] : []),
+        ...(mission.latitude && mission.longitude ? [[i18n.t('pdf.mission.basicInfo.labels.coordinates', { ns: 'pdf' }), `${mission.latitude.toFixed(5)}, ${mission.longitude.toFixed(5)}`]] : [])
       ];
       
       autoTable(pdf, {
@@ -357,17 +358,17 @@ export const exportToPDF = async (
     if (sections.customerInfo && mission.customers) {
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Kundeinformasjon", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.customer.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       setFontStyle(pdf, "normal");
       pdf.setFontSize(10);
       
       const customerInfo = [
-        ["Navn", sanitizeForPdf(mission.customers.navn)],
-        ...(mission.customers.kontaktperson ? [["Kontaktperson", sanitizeForPdf(mission.customers.kontaktperson)]] : []),
-        ...(mission.customers.telefon ? [["Telefon", sanitizeForPdf(mission.customers.telefon)]] : []),
-        ...(mission.customers.epost ? [["E-post", sanitizeForPdf(mission.customers.epost)]] : [])
+        [i18n.t('pdf.mission.customer.labels.name', { ns: 'pdf' }), sanitizeForPdf(mission.customers.navn)],
+        ...(mission.customers.kontaktperson ? [[i18n.t('pdf.mission.customer.labels.contactPerson', { ns: 'pdf' }), sanitizeForPdf(mission.customers.kontaktperson)]] : []),
+        ...(mission.customers.telefon ? [[i18n.t('pdf.mission.customer.labels.phone', { ns: 'pdf' }), sanitizeForPdf(mission.customers.telefon)]] : []),
+        ...(mission.customers.epost ? [[i18n.t('pdf.mission.customer.labels.email', { ns: 'pdf' }), sanitizeForPdf(mission.customers.epost)]] : [])
       ];
       
       autoTable(pdf, {
@@ -386,16 +387,16 @@ export const exportToPDF = async (
     if (sections.personnel && mission.personnel?.length > 0) {
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Personell", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.personnel.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       const personnelData = mission.personnel.map((p: any) => [
-        sanitizeForPdf(p.profiles?.full_name) || "Ukjent"
+        sanitizeForPdf(p.profiles?.full_name) || i18n.t('pdf.common.unknown', { ns: 'pdf' })
       ]);
       
       autoTable(pdf, {
         startY: yPos,
-        head: [["Navn"]],
+        head: [[i18n.t('pdf.mission.personnel.headers.name', { ns: 'pdf' })]],
         body: personnelData,
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() }
@@ -408,17 +409,17 @@ export const exportToPDF = async (
     if (sections.drones && mission.drones?.length > 0) {
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Droner", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.drones.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       const dronesData = mission.drones.map((d: any) => [
-        d.drones?.modell || "Ukjent",
+        d.drones?.modell || i18n.t('pdf.common.unknown', { ns: 'pdf' }),
         d.drones?.serienummer || "-"
       ]);
       
       autoTable(pdf, {
         startY: yPos,
-        head: [["Modell", "Serienummer"]],
+        head: [[i18n.t('pdf.mission.drones.headers.model', { ns: 'pdf' }), i18n.t('pdf.mission.drones.headers.serialNumber', { ns: 'pdf' })]],
         body: dronesData,
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() }
@@ -436,17 +437,17 @@ export const exportToPDF = async (
       
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Utstyr", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.equipment.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       const equipmentData = mission.equipment.map((e: any) => [
-        e.equipment?.navn || "Ukjent",
+        e.equipment?.navn || i18n.t('pdf.common.unknown', { ns: 'pdf' }),
         e.equipment?.type || "-"
       ]);
       
       autoTable(pdf, {
         startY: yPos,
-        head: [["Navn", "Type"]],
+        head: [[i18n.t('pdf.mission.equipment.headers.name', { ns: 'pdf' }), i18n.t('pdf.mission.equipment.headers.type', { ns: 'pdf' })]],
         body: equipmentData,
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() }
@@ -465,7 +466,7 @@ export const exportToPDF = async (
 
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("SORA buffer og tilstøtende områder", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.soraBuffer.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
 
       autoTable(pdf, {
@@ -488,9 +489,9 @@ export const exportToPDF = async (
 
       const sora = mission.sora;
       const soraStatusLabels: Record<string, string> = {
-        draft: "Utkast",
-        completed: "Fullført",
-        approved: "Godkjent",
+        draft: i18n.t('pdf.mission.sora.status.draft', { ns: 'pdf' }),
+        completed: i18n.t('pdf.mission.sora.status.completed', { ns: 'pdf' }),
+        approved: i18n.t('pdf.mission.sora.status.approved', { ns: 'pdf' }),
       };
 
       // Fetch prepared_by / approved_by names
@@ -508,24 +509,24 @@ export const exportToPDF = async (
 
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("SORA-analyse", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.sora.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
 
       // 1. Oppsummering
       const soraSummary: string[][] = [
-        ["Status", sanitizeForPdf(soraStatusLabels[sora.sora_status] || sora.sora_status || "-")],
-        ...(sora.sail ? [["SAIL-nivå", sanitizeForPdf(sora.sail)]] : []),
-        ...(sora.residual_risk_level ? [["Rest-risikonivå", sanitizeForPdf(sora.residual_risk_level)]] : []),
+        [i18n.t('pdf.mission.sora.labels.status', { ns: 'pdf' }), sanitizeForPdf(soraStatusLabels[sora.sora_status] || sora.sora_status || "-")],
+        ...(sora.sail ? [[i18n.t('pdf.mission.sora.labels.sailLevel', { ns: 'pdf' }), sanitizeForPdf(sora.sail)]] : []),
+        ...(sora.residual_risk_level ? [[i18n.t('pdf.mission.sora.labels.residualRiskLevel', { ns: 'pdf' }), sanitizeForPdf(sora.residual_risk_level)]] : []),
       ];
       if (sora.prepared_by) {
         const name = soraNameMap[sora.prepared_by] || sora.prepared_by;
         const date = sora.prepared_at ? ` (${formatDateForPdf(sora.prepared_at, "dd.MM.yyyy")})` : "";
-        soraSummary.push(["Utarbeidet av", sanitizeForPdf(name + date)]);
+        soraSummary.push([i18n.t('pdf.mission.sora.labels.preparedBy', { ns: 'pdf' }), sanitizeForPdf(name + date)]);
       }
       if (sora.approved_by) {
         const name = soraNameMap[sora.approved_by] || sora.approved_by;
         const date = sora.approved_at ? ` (${formatDateForPdf(sora.approved_at, "dd.MM.yyyy")})` : "";
-        soraSummary.push(["Godkjent av", sanitizeForPdf(name + date)]);
+        soraSummary.push([i18n.t('pdf.mission.sora.labels.approvedBy', { ns: 'pdf' }), sanitizeForPdf(name + date)]);
       }
 
       autoTable(pdf, {
@@ -542,8 +543,8 @@ export const exportToPDF = async (
       if (sora.environment || sora.conops_summary) {
         if (yPos > 250) { pdf.addPage(); yPos = 20; }
         const envInfo: string[][] = [];
-        if (sora.environment) envInfo.push(["Miljø", sanitizeForPdf(sora.environment)]);
-        if (sora.conops_summary) envInfo.push(["ConOps-beskrivelse", sanitizeForPdf(sora.conops_summary)]);
+        if (sora.environment) envInfo.push([i18n.t('pdf.mission.sora.labels.environment', { ns: 'pdf' }), sanitizeForPdf(sora.environment)]);
+        if (sora.conops_summary) envInfo.push([i18n.t('pdf.mission.sora.labels.conopsSummary', { ns: 'pdf' }), sanitizeForPdf(sora.conops_summary)]);
 
         autoTable(pdf, {
           startY: yPos,
@@ -560,13 +561,13 @@ export const exportToPDF = async (
       if (sora.igrc != null || sora.fgrc != null || sora.ground_mitigations) {
         if (yPos > 250) { pdf.addPage(); yPos = 20; }
         const grcInfo: string[][] = [];
-        if (sora.igrc != null) grcInfo.push(["iGRC (grunnrisiko)", String(sora.igrc)]);
-        if (sora.fgrc != null) grcInfo.push(["fGRC (endelig)", String(sora.fgrc)]);
-        if (sora.ground_mitigations) grcInfo.push(["Bakkemitigeringer", sanitizeForPdf(sora.ground_mitigations)]);
+        if (sora.igrc != null) grcInfo.push([i18n.t('pdf.mission.sora.labels.igrc', { ns: 'pdf' }), String(sora.igrc)]);
+        if (sora.fgrc != null) grcInfo.push([i18n.t('pdf.mission.sora.labels.fgrc', { ns: 'pdf' }), String(sora.fgrc)]);
+        if (sora.ground_mitigations) grcInfo.push([i18n.t('pdf.mission.sora.labels.groundMitigations', { ns: 'pdf' }), sanitizeForPdf(sora.ground_mitigations)]);
 
         autoTable(pdf, {
           startY: yPos,
-          head: [["Bakkebasert risiko (GRC)", ""]],
+          head: [[i18n.t('pdf.mission.sora.grcHeader', { ns: 'pdf' }), ""]],
           body: grcInfo,
           theme: "grid",
           styles: { fontSize: 9, font: getPdfFontName() },
@@ -579,13 +580,13 @@ export const exportToPDF = async (
       if (sora.arc_initial || sora.arc_residual || sora.airspace_mitigations) {
         if (yPos > 250) { pdf.addPage(); yPos = 20; }
         const arcInfo: string[][] = [];
-        if (sora.arc_initial) arcInfo.push(["Initial ARC", sanitizeForPdf(sora.arc_initial)]);
-        if (sora.arc_residual) arcInfo.push(["Residual ARC", sanitizeForPdf(sora.arc_residual)]);
-        if (sora.airspace_mitigations) arcInfo.push(["Luftromsmitigeringer", sanitizeForPdf(sora.airspace_mitigations)]);
+        if (sora.arc_initial) arcInfo.push([i18n.t('pdf.mission.sora.labels.initialArc', { ns: 'pdf' }), sanitizeForPdf(sora.arc_initial)]);
+        if (sora.arc_residual) arcInfo.push([i18n.t('pdf.mission.sora.labels.residualArc', { ns: 'pdf' }), sanitizeForPdf(sora.arc_residual)]);
+        if (sora.airspace_mitigations) arcInfo.push([i18n.t('pdf.mission.sora.labels.airspaceMitigations', { ns: 'pdf' }), sanitizeForPdf(sora.airspace_mitigations)]);
 
         autoTable(pdf, {
           startY: yPos,
-          head: [["Luftromsrisiko (ARC)", ""]],
+          head: [[i18n.t('pdf.mission.sora.arcHeader', { ns: 'pdf' }), ""]],
           body: arcInfo,
           theme: "grid",
           styles: { fontSize: 9, font: getPdfFontName() },
@@ -598,8 +599,8 @@ export const exportToPDF = async (
       if (sora.residual_risk_comment || sora.operational_limits) {
         if (yPos > 250) { pdf.addPage(); yPos = 20; }
         const residualInfo: string[][] = [];
-        if (sora.residual_risk_comment) residualInfo.push(["Rest-risiko kommentar", sanitizeForPdf(sora.residual_risk_comment)]);
-        if (sora.operational_limits) residualInfo.push(["Operative begrensninger", sanitizeForPdf(sora.operational_limits)]);
+        if (sora.residual_risk_comment) residualInfo.push([i18n.t('pdf.mission.sora.labels.residualRiskComment', { ns: 'pdf' }), sanitizeForPdf(sora.residual_risk_comment)]);
+        if (sora.operational_limits) residualInfo.push([i18n.t('pdf.mission.sora.labels.operationalLimits', { ns: 'pdf' }), sanitizeForPdf(sora.operational_limits)]);
 
         autoTable(pdf, {
           startY: yPos,
@@ -625,13 +626,13 @@ export const exportToPDF = async (
         
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
-        pdf.text("AI Risikovurdering", 15, yPos);
+        pdf.text(i18n.t('pdf.mission.aiRisk.title', { ns: 'pdf' }), 15, yPos);
         yPos += 7;
         
         const recommendationLabels: Record<string, string> = {
-          'proceed': 'Anbefalt',
-          'proceed_with_caution': 'Forsiktighet anbefalt',
-          'not_recommended': 'Ikke anbefalt'
+          'proceed': i18n.t('pdf.mission.aiRisk.recommendation.proceed', { ns: 'pdf' }),
+          'proceed_with_caution': i18n.t('pdf.mission.aiRisk.recommendation.proceed_with_caution', { ns: 'pdf' }),
+          'not_recommended': i18n.t('pdf.mission.aiRisk.recommendation.not_recommended', { ns: 'pdf' })
         };
         
         const recommendation = mission.aiRisk.recommendation || '';
@@ -643,16 +644,16 @@ export const exportToPDF = async (
         const complexityScore = mission.aiRisk.mission_complexity_score;
         
         const riskInfo: string[][] = [
-          ["Anbefaling", sanitizeForPdf(recommendationLabels[recommendation.toLowerCase()] || recommendation)]
+          [i18n.t('pdf.mission.aiRisk.labels.recommendation', { ns: 'pdf' }), sanitizeForPdf(recommendationLabels[recommendation.toLowerCase()] || recommendation)]
         ];
         
-        if (overallScore != null) riskInfo.push(["Total score", `${Number(overallScore).toFixed(1)}/10`]);
-        if (weatherScore != null) riskInfo.push(["Vær-score", `${Number(weatherScore).toFixed(1)}/10`]);
-        if (airspaceScore != null) riskInfo.push(["Luftrom-score", `${Number(airspaceScore).toFixed(1)}/10`]);
-        if (pilotScore != null) riskInfo.push(["Pilot-score", `${Number(pilotScore).toFixed(1)}/10`]);
-        if (equipmentScore != null) riskInfo.push(["Utstyr-score", `${Number(equipmentScore).toFixed(1)}/10`]);
-        if (complexityScore != null) riskInfo.push(["Kompleksitet-score", `${Number(complexityScore).toFixed(1)}/10`]);
-        if (mission.aiRisk.created_at) riskInfo.push(["Vurdert", formatDateForPdf(mission.aiRisk.created_at, "dd.MM.yyyy HH:mm")]);
+        if (overallScore != null) riskInfo.push([i18n.t('pdf.mission.aiRisk.labels.overallScore', { ns: 'pdf' }), `${Number(overallScore).toFixed(1)}/10`]);
+        if (weatherScore != null) riskInfo.push([i18n.t('pdf.mission.aiRisk.labels.weatherScore', { ns: 'pdf' }), `${Number(weatherScore).toFixed(1)}/10`]);
+        if (airspaceScore != null) riskInfo.push([i18n.t('pdf.mission.aiRisk.labels.airspaceScore', { ns: 'pdf' }), `${Number(airspaceScore).toFixed(1)}/10`]);
+        if (pilotScore != null) riskInfo.push([i18n.t('pdf.mission.aiRisk.labels.pilotScore', { ns: 'pdf' }), `${Number(pilotScore).toFixed(1)}/10`]);
+        if (equipmentScore != null) riskInfo.push([i18n.t('pdf.mission.aiRisk.labels.equipmentScore', { ns: 'pdf' }), `${Number(equipmentScore).toFixed(1)}/10`]);
+        if (complexityScore != null) riskInfo.push([i18n.t('pdf.mission.aiRisk.labels.complexityScore', { ns: 'pdf' }), `${Number(complexityScore).toFixed(1)}/10`]);
+        if (mission.aiRisk.created_at) riskInfo.push([i18n.t('pdf.mission.aiRisk.labels.assessedAt', { ns: 'pdf' }), formatDateForPdf(mission.aiRisk.created_at, "dd.MM.yyyy HH:mm")]);
         
         autoTable(pdf, {
           startY: yPos,
@@ -669,7 +670,7 @@ export const exportToPDF = async (
         if (aiAnalysis?.summary) {
           pdf.setFontSize(10);
           setFontStyle(pdf, "bold");
-          pdf.text("Oppsummering:", 15, yPos);
+          pdf.text(i18n.t('pdf.mission.aiRisk.summaryLabel', { ns: 'pdf' }), 15, yPos);
           yPos += 5;
           
           setFontStyle(pdf, "normal");
@@ -688,7 +689,7 @@ export const exportToPDF = async (
           
           pdf.setFontSize(10);
           setFontStyle(pdf, "bold");
-          pdf.text("Anbefalinger:", 15, yPos);
+          pdf.text(i18n.t('pdf.mission.aiRisk.recommendationsLabel', { ns: 'pdf' }), 15, yPos);
           yPos += 5;
           
           setFontStyle(pdf, "normal");
@@ -705,7 +706,7 @@ export const exportToPDF = async (
             } else if (rec && typeof rec === 'object') {
               // Handle RiskRecommendations format: { priority, action, reason, risk_addressed }
               if (rec.action) {
-                const priorityLabels: Record<string, string> = { high: 'Høy', medium: 'Medium', low: 'Lav' };
+                const priorityLabels: Record<string, string> = { high: i18n.t('pdf.mission.aiRisk.priority.high', { ns: 'pdf' }), medium: i18n.t('pdf.mission.aiRisk.priority.medium', { ns: 'pdf' }), low: i18n.t('pdf.mission.aiRisk.priority.low', { ns: 'pdf' }) };
                 const pLabel = priorityLabels[rec.priority] || rec.priority || '';
                 const reasonText = rec.risk_addressed || rec.reason || '';
                 recText = pLabel ? `[${pLabel}] ${rec.action}` : rec.action;
@@ -739,7 +740,7 @@ export const exportToPDF = async (
       
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Tilknyttede hendelser", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.incidents.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       const incidentData = mission.incidents.map((incident: any) => [
@@ -752,7 +753,7 @@ export const exportToPDF = async (
       
       autoTable(pdf, {
         startY: yPos,
-        head: [["Tittel", "Alvorlighet", "Status", "Hovedårsak", "Tidspunkt"]],
+        head: [[i18n.t('pdf.mission.incidents.headers.title', { ns: 'pdf' }), i18n.t('pdf.mission.incidents.headers.severity', { ns: 'pdf' }), i18n.t('pdf.mission.incidents.headers.status', { ns: 'pdf' }), i18n.t('pdf.mission.incidents.headers.rootCause', { ns: 'pdf' }), i18n.t('pdf.mission.incidents.headers.occurredAt', { ns: 'pdf' })]],
         body: incidentData,
         theme: "grid",
         styles: { fontSize: 8, font: getPdfFontName() },
@@ -777,7 +778,7 @@ export const exportToPDF = async (
       
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
-      pdf.text("Flyturer", 15, yPos);
+      pdf.text(i18n.t('pdf.mission.flightLogs.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
       
       const allChecklistIds = mission.flightLogs
@@ -799,9 +800,9 @@ export const exportToPDF = async (
       }
       
       const safeskyLabels: Record<string, string> = {
-        'none': 'Av',
-        'advisory': 'Advisory (rute)',
-        'live_uav': 'Live posisjon'
+        'none': i18n.t('pdf.mission.flightLogs.safesky.off', { ns: 'pdf' }),
+        'advisory': i18n.t('pdf.mission.flightLogs.safesky.advisory', { ns: 'pdf' }),
+        'live_uav': i18n.t('pdf.mission.flightLogs.safesky.liveUav', { ns: 'pdf' })
       };
       
       const flightData = mission.flightLogs.map((log: any) => {
@@ -815,14 +816,14 @@ export const exportToPDF = async (
           `${log.flight_duration_minutes} min`,
           log.pilot?.full_name || '-',
           log.drones?.modell || '-',
-          safeskyLabels[log.safesky_mode] || 'Av',
+          safeskyLabels[log.safesky_mode] || i18n.t('pdf.mission.flightLogs.safesky.off', { ns: 'pdf' }),
           checklistNames
         ];
       });
       
       autoTable(pdf, {
         startY: yPos,
-        head: [["Dato", "Flytid", "Pilot", "Drone", "SafeSky", "Sjekklister"]],
+        head: [[i18n.t('pdf.mission.flightLogs.headers.date', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogs.headers.duration', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogs.headers.pilot', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogs.headers.drone', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogs.headers.safesky', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogs.headers.checklists', { ns: 'pdf' })]],
         body: flightData,
         theme: "grid",
         styles: { fontSize: 8, font: getPdfFontName() },
@@ -942,7 +943,7 @@ export const exportToPDF = async (
       };
 
       const sourceLabels: Record<string, string> = {
-        manual: "Manuell",
+        manual: i18n.t('pdf.mission.flightLogsDetailed.source.manual', { ns: 'pdf' }),
         dji: "DJI",
         dronelogapi: "DJI (dronelog)",
         ardupilot: "ArduPilot",
@@ -962,7 +963,7 @@ export const exportToPDF = async (
         setFontStyle(pdf, "bold");
         pdf.text(
           sanitizeForPdf(
-            `Flytur ${logIdx + 1}: ${format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: nb })}`
+            i18n.t('pdf.mission.flightLogsDetailed.flightTitle', { ns: 'pdf', index: logIdx + 1, date: format(new Date(log.flight_date), "dd.MM.yyyy HH:mm", { locale: nb }) })
           ),
           15,
           yPos
@@ -975,7 +976,7 @@ export const exportToPDF = async (
           setFontStyle(pdf, "normal");
           pdf.setTextColor(120);
           pdf.text(
-            sanitizeForPdf("Manuelt loggført flytur — telemetri (distanse, høyde, fart, batteri, GPS, koordinater, advarsler) er ikke tilgjengelig. Importer en dronelogg for å få detaljert data."),
+            sanitizeForPdf(i18n.t('pdf.mission.flightLogsDetailed.manualDisclaimer', { ns: 'pdf' })),
             15,
             yPos,
             { maxWidth: 180 }
@@ -988,22 +989,22 @@ export const exportToPDF = async (
 
         // Summary table
         const summaryRows: string[][] = [
-          ["Pilot", log.pilot?.full_name || "-"],
-          ["Drone", `${log.drones?.modell || log.drone_model || "-"}${log.aircraft_serial ? ` (SN: ${log.aircraft_serial})` : ""}`],
-          ["Kilde", sourceLabels[log.source || ""] || log.source || "-"],
-          ["Varighet", `${log.flight_duration_minutes ?? "-"} min`],
-          ["Avgang", log.departure_location || "-"],
-          ["Landing", log.landing_location || "-"],
-          ["Total distanse", log.total_distance_m != null ? `${Number(log.total_distance_m).toFixed(0)} m` : "-"],
-          ["Maks avstand", log.max_distance_m != null ? `${Number(log.max_distance_m).toFixed(0)} m` : "-"],
-          ["Maks høyde", log.max_height_m != null ? `${Number(log.max_height_m).toFixed(1)} m` : "-"],
-          ["Maks horisontal fart", log.max_horiz_speed_ms != null ? `${Number(log.max_horiz_speed_ms).toFixed(1)} m/s` : "-"],
-          ["Maks vertikal fart", log.max_vert_speed_ms != null ? `${Number(log.max_vert_speed_ms).toFixed(1)} m/s` : "-"],
-          ["RTH utløst", log.rth_triggered ? "Ja" : "Nei"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.pilot', { ns: 'pdf' }), log.pilot?.full_name || "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.drone', { ns: 'pdf' }), `${log.drones?.modell || log.drone_model || "-"}${log.aircraft_serial ? ` (SN: ${log.aircraft_serial})` : ""}`],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.source', { ns: 'pdf' }), sourceLabels[log.source || ""] || log.source || "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.duration', { ns: 'pdf' }), `${log.flight_duration_minutes ?? "-"} min`],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.departure', { ns: 'pdf' }), log.departure_location || "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.landing', { ns: 'pdf' }), log.landing_location || "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.totalDistance', { ns: 'pdf' }), log.total_distance_m != null ? `${Number(log.total_distance_m).toFixed(0)} m` : "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.maxDistance', { ns: 'pdf' }), log.max_distance_m != null ? `${Number(log.max_distance_m).toFixed(0)} m` : "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.maxHeight', { ns: 'pdf' }), log.max_height_m != null ? `${Number(log.max_height_m).toFixed(1)} m` : "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.maxHorizSpeed', { ns: 'pdf' }), log.max_horiz_speed_ms != null ? `${Number(log.max_horiz_speed_ms).toFixed(1)} m/s` : "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.maxVertSpeed', { ns: 'pdf' }), log.max_vert_speed_ms != null ? `${Number(log.max_vert_speed_ms).toFixed(1)} m/s` : "-"],
+          [i18n.t('pdf.mission.flightLogsDetailed.summaryLabels.rthTriggered', { ns: 'pdf' }), log.rth_triggered ? i18n.t('pdf.common.yes', { ns: 'pdf' }) : i18n.t('pdf.common.no', { ns: 'pdf' })],
         ];
         autoTable(pdf, {
           startY: yPos,
-          head: [["Sammendrag", "Verdi"]],
+          head: [[i18n.t('pdf.mission.flightLogsDetailed.summaryHeaders.summary', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogsDetailed.summaryHeaders.value', { ns: 'pdf' })]],
           body: summaryRows,
           theme: "grid",
           styles: { fontSize: 8, font: getPdfFontName() },
@@ -1026,25 +1027,25 @@ export const exportToPDF = async (
           const techRows: string[][] = [];
           if (hasBattery) {
             techRows.push(
-              ["Batteri SN", log.battery_sn || "-"],
-              ["Sykluser", log.battery_cycles != null ? String(log.battery_cycles) : "-"],
-              ["Helse", log.battery_health_pct != null ? `${Number(log.battery_health_pct).toFixed(0)} %` : "-"],
-              ["Full kapasitet", log.battery_full_capacity_mah != null ? `${log.battery_full_capacity_mah} mAh` : "-"],
-              ["Min spenning", log.battery_voltage_min_v != null ? `${Number(log.battery_voltage_min_v).toFixed(2)} V` : "-"],
-              ["Maks celleavvik", log.battery_cell_deviation_max_v != null ? `${Number(log.battery_cell_deviation_max_v).toFixed(3)} V` : "-"],
-              ["Temp min", log.battery_temp_min_c != null ? `${Number(log.battery_temp_min_c).toFixed(1)} °C` : "-"],
-              ["Temp maks", log.battery_temp_max_c != null ? `${Number(log.battery_temp_max_c).toFixed(1)} °C` : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.batterySn', { ns: 'pdf' }), log.battery_sn || "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.cycles', { ns: 'pdf' }), log.battery_cycles != null ? String(log.battery_cycles) : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.health', { ns: 'pdf' }), log.battery_health_pct != null ? `${Number(log.battery_health_pct).toFixed(0)} %` : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.fullCapacity', { ns: 'pdf' }), log.battery_full_capacity_mah != null ? `${log.battery_full_capacity_mah} mAh` : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.minVoltage', { ns: 'pdf' }), log.battery_voltage_min_v != null ? `${Number(log.battery_voltage_min_v).toFixed(2)} V` : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.maxCellDeviation', { ns: 'pdf' }), log.battery_cell_deviation_max_v != null ? `${Number(log.battery_cell_deviation_max_v).toFixed(3)} V` : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.tempMin', { ns: 'pdf' }), log.battery_temp_min_c != null ? `${Number(log.battery_temp_min_c).toFixed(1)} °C` : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.tempMax', { ns: 'pdf' }), log.battery_temp_max_c != null ? `${Number(log.battery_temp_max_c).toFixed(1)} °C` : "-"],
             );
           }
           if (log.gps_sat_min != null || log.gps_sat_max != null) {
             techRows.push(
-              ["GPS satellitter min", log.gps_sat_min != null ? String(log.gps_sat_min) : "-"],
-              ["GPS satellitter maks", log.gps_sat_max != null ? String(log.gps_sat_max) : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.gpsSatMin', { ns: 'pdf' }), log.gps_sat_min != null ? String(log.gps_sat_min) : "-"],
+              [i18n.t('pdf.mission.flightLogsDetailed.batteryLabels.gpsSatMax', { ns: 'pdf' }), log.gps_sat_max != null ? String(log.gps_sat_max) : "-"],
             );
           }
           autoTable(pdf, {
             startY: yPos,
-            head: [["Batteri og GPS", "Verdi"]],
+            head: [[i18n.t('pdf.mission.flightLogsDetailed.batteryGpsHeader', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogsDetailed.summaryHeaders.value', { ns: 'pdf' })]],
             body: techRows,
             theme: "grid",
             styles: { fontSize: 8, font: getPdfFontName() },
@@ -1068,7 +1069,7 @@ export const exportToPDF = async (
             }));
             const hasSpeed = sampled.some(p => p.speed != null);
             const series: { label: string; color: [number, number, number]; points: { x: number; y: number }[] }[] = [
-              { label: "Høyde (m)", color: [37, 99, 235], points: heightPts },
+              { label: i18n.t('pdf.mission.flightLogsDetailed.series.height', { ns: 'pdf' }), color: [37, 99, 235], points: heightPts },
             ];
             if (hasSpeed) {
               // Normalize speed onto same vertical scale as height for display only
@@ -1078,12 +1079,12 @@ export const exportToPDF = async (
               }));
               // Render as separate graph below
               if (yPos > 200) { pdf.addPage(); yPos = 20; }
-              drawLineGraph("Høyde over tid", series, 20, yPos + 4, 170, 35, " m");
+              drawLineGraph(i18n.t('pdf.mission.flightLogsDetailed.graphs.heightOverTime', { ns: 'pdf' }), series, 20, yPos + 4, 170, 35, " m");
               yPos += 50;
               if (yPos > 220) { pdf.addPage(); yPos = 20; }
               drawLineGraph(
-                "Hastighet over tid",
-                [{ label: "Fart (m/s)", color: [220, 38, 38], points: speedPts }],
+                i18n.t('pdf.mission.flightLogsDetailed.graphs.speedOverTime', { ns: 'pdf' }),
+                [{ label: i18n.t('pdf.mission.flightLogsDetailed.series.speed', { ns: 'pdf' }), color: [220, 38, 38], points: speedPts }],
                 20,
                 yPos + 4,
                 170,
@@ -1093,7 +1094,7 @@ export const exportToPDF = async (
               yPos += 50;
             } else {
               if (yPos > 200) { pdf.addPage(); yPos = 20; }
-              drawLineGraph("Høyde over tid", series, 20, yPos + 4, 170, 35, " m");
+              drawLineGraph(i18n.t('pdf.mission.flightLogsDetailed.graphs.heightOverTime', { ns: 'pdf' }), series, 20, yPos + 4, 170, 35, " m");
               yPos += 50;
             }
           }
@@ -1121,54 +1122,54 @@ export const exportToPDF = async (
 
             // Battery percentage
             const battSeries: any[] = [];
-            const b1 = buildSeries("Batteri 1 (%)", [22, 163, 74], ["battery1"]);
-            const b2 = buildSeries("Batteri 2 (%)", [234, 88, 12], ["battery2"]);
-            const bMain = buildSeries("Batteri (%)", [22, 163, 74], ["battery"]);
+            const b1 = buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.battery1', { ns: 'pdf' }), [22, 163, 74], ["battery1"]);
+            const b2 = buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.battery2', { ns: 'pdf' }), [234, 88, 12], ["battery2"]);
+            const bMain = buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.battery', { ns: 'pdf' }), [22, 163, 74], ["battery"]);
             if (b1) battSeries.push(b1);
             if (b2) battSeries.push(b2);
             if (!b1 && !b2 && bMain) battSeries.push(bMain);
             if (battSeries.length) {
               if (yPos > 200) { pdf.addPage(); yPos = 20; }
-              drawLineGraph("Batterinivå over tid", battSeries, 20, yPos + 4, 170, 35, " %");
+              drawLineGraph(i18n.t('pdf.mission.flightLogsDetailed.graphs.batteryOverTime', { ns: 'pdf' }), battSeries, 20, yPos + 4, 170, 35, " %");
               yPos += 50;
             }
 
             // Battery temperature
             const tempSeries: any[] = [];
-            const tA = buildSeries("Batt 1 temp (°C)", [220, 38, 38], ["temp1"]);
-            const tB = buildSeries("Batt 2 temp (°C)", [234, 88, 12], ["temp2"]);
-            const tMain = buildSeries("Batt temp (°C)", [220, 38, 38], ["temp"]);
+            const tA = buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.batteryTemp1', { ns: 'pdf' }), [220, 38, 38], ["temp1"]);
+            const tB = buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.batteryTemp2', { ns: 'pdf' }), [234, 88, 12], ["temp2"]);
+            const tMain = buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.batteryTemp', { ns: 'pdf' }), [220, 38, 38], ["temp"]);
             if (tA) tempSeries.push(tA);
             if (tB) tempSeries.push(tB);
             if (!tA && !tB && tMain) tempSeries.push(tMain);
             if (tempSeries.length) {
               if (yPos > 200) { pdf.addPage(); yPos = 20; }
-              drawLineGraph("Batteritemperatur over tid", tempSeries, 20, yPos + 4, 170, 35, " °C");
+              drawLineGraph(i18n.t('pdf.mission.flightLogsDetailed.graphs.batteryTempOverTime', { ns: 'pdf' }), tempSeries, 20, yPos + 4, 170, 35, " °C");
               yPos += 50;
             }
 
             // RC stick inputs
             const rcSeries = [
-              buildSeries("Throttle", [37, 99, 235], ["rcThrottle"]),
-              buildSeries("Elevator", [220, 38, 38], ["rcElevator"]),
-              buildSeries("Aileron", [22, 163, 74], ["rcAileron"]),
-              buildSeries("Rudder", [234, 88, 12], ["rcRudder"]),
+              buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.rcThrottle', { ns: 'pdf' }), [37, 99, 235], ["rcThrottle"]),
+              buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.rcElevator', { ns: 'pdf' }), [220, 38, 38], ["rcElevator"]),
+              buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.rcAileron', { ns: 'pdf' }), [22, 163, 74], ["rcAileron"]),
+              buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.rcRudder', { ns: 'pdf' }), [234, 88, 12], ["rcRudder"]),
             ].filter(Boolean) as any[];
             if (rcSeries.length) {
               if (yPos > 200) { pdf.addPage(); yPos = 20; }
-              drawLineGraph("RC stikkeinput over tid", rcSeries, 20, yPos + 4, 170, 35, "");
+              drawLineGraph(i18n.t('pdf.mission.flightLogsDetailed.graphs.rcStickOverTime', { ns: 'pdf' }), rcSeries, 20, yPos + 4, 170, 35, "");
               yPos += 50;
             }
 
             // Wind speed
             const windSeries: any[] = [];
-            const wS = buildSeries("Vind (m/s)", [2, 132, 199], ["windSpeed"]);
-            const wMax = buildSeries("Maks vind (m/s)", [220, 38, 38], ["maxWindSpeed"]);
+            const wS = buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.wind', { ns: 'pdf' }), [2, 132, 199], ["windSpeed"]);
+            const wMax = buildSeries(i18n.t('pdf.mission.flightLogsDetailed.series.maxWind', { ns: 'pdf' }), [220, 38, 38], ["maxWindSpeed"]);
             if (wS) windSeries.push(wS);
             if (wMax) windSeries.push(wMax);
             if (windSeries.length) {
               if (yPos > 200) { pdf.addPage(); yPos = 20; }
-              drawLineGraph("Vindhastighet over tid", windSeries, 20, yPos + 4, 170, 35, " m/s");
+              drawLineGraph(i18n.t('pdf.mission.flightLogsDetailed.graphs.windSpeedOverTime', { ns: 'pdf' }), windSeries, 20, yPos + 4, 170, 35, " m/s");
               yPos += 50;
             }
           }
@@ -1180,7 +1181,7 @@ export const exportToPDF = async (
           if (yPos > 250) { pdf.addPage(); yPos = 20; }
           pdf.setFontSize(9);
           setFontStyle(pdf, "bold");
-          pdf.text("App-advarsler", 15, yPos);
+          pdf.text(i18n.t('pdf.mission.flightLogsDetailed.appWarningsTitle', { ns: 'pdf' }), 15, yPos);
           yPos += 5;
           setFontStyle(pdf, "normal");
         }
@@ -1196,7 +1197,7 @@ export const exportToPDF = async (
           ]);
           autoTable(pdf, {
             startY: yPos,
-            head: [["Type", "Tid", "Melding", "Verdi"]],
+            head: [[i18n.t('pdf.mission.flightLogsDetailed.warningsHeaders.type', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogsDetailed.warningsHeaders.time', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogsDetailed.warningsHeaders.message', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogsDetailed.warningsHeaders.value', { ns: 'pdf' })]],
             body: warnRows,
             theme: "grid",
             styles: { fontSize: 7, font: getPdfFontName() },
@@ -1211,7 +1212,7 @@ export const exportToPDF = async (
           if (warnings.length > maxWarn) {
             pdf.setFontSize(7);
             pdf.setTextColor(120);
-            pdf.text(`+ ${warnings.length - maxWarn} flere advarsler ikke vist`, 15, yPos);
+            pdf.text(i18n.t('pdf.mission.flightLogsDetailed.moreWarningsNotShown', { ns: 'pdf', count: warnings.length - maxWarn }), 15, yPos);
             pdf.setTextColor(0);
             yPos += 4;
           }
@@ -1219,7 +1220,7 @@ export const exportToPDF = async (
         } else if (!isManual) {
           pdf.setFontSize(8);
           pdf.setTextColor(100);
-          pdf.text("Ingen app-advarsler", 15, yPos);
+          pdf.text(i18n.t('pdf.mission.flightLogsDetailed.noAppWarnings', { ns: 'pdf' }), 15, yPos);
           pdf.setTextColor(0);
           yPos += 6;
         }
@@ -1245,7 +1246,7 @@ export const exportToPDF = async (
           });
           autoTable(pdf, {
             startY: yPos,
-            head: [[`Koordinater fra fløyet rute (${sampled.length} av ${positions.length} punkter)`, "Lat", "Lng", "Alt (m)"]],
+            head: [[i18n.t('pdf.mission.flightLogsDetailed.sampledCoordinatesTitle', { ns: 'pdf', shown: sampled.length, total: positions.length }), i18n.t('pdf.mission.flightLogsDetailed.coordHeaders.lat', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogsDetailed.coordHeaders.lng', { ns: 'pdf' }), i18n.t('pdf.mission.flightLogsDetailed.coordHeaders.alt', { ns: 'pdf' })]],
             body: coordRows,
             theme: "grid",
             styles: { fontSize: 7, font: getPdfFontName() },
@@ -1272,7 +1273,7 @@ export const exportToPDF = async (
       if (mission.beskrivelse) {
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
-        pdf.text("Beskrivelse", 15, yPos);
+        pdf.text(i18n.t('pdf.mission.descriptionNotes.descriptionTitle', { ns: 'pdf' }), 15, yPos);
         yPos += 7;
         
         setFontStyle(pdf, "normal");
@@ -1290,7 +1291,7 @@ export const exportToPDF = async (
         
         pdf.setFontSize(12);
         setFontStyle(pdf, "bold");
-        pdf.text("Merknader", 15, yPos);
+        pdf.text(i18n.t('pdf.mission.descriptionNotes.notesTitle', { ns: 'pdf' }), 15, yPos);
         yPos += 7;
         
         setFontStyle(pdf, "normal");
@@ -1317,8 +1318,8 @@ export const exportToPDF = async (
     const { error: insertError } = await supabase
       .from('documents')
       .insert({
-        tittel: `Oppdragsrapport - ${mission.tittel}`,
-        beskrivelse: `Eksportert rapport for oppdrag ${mission.tittel}`,
+        tittel: i18n.t('pdf.mission.document.title', { ns: 'pdf', title: mission.tittel }),
+        beskrivelse: i18n.t('pdf.mission.document.description', { ns: 'pdf', title: mission.tittel }),
         kategori: 'oppdrag',
         fil_url: filePath,
         fil_navn: fileName,
@@ -1330,9 +1331,9 @@ export const exportToPDF = async (
     
     if (insertError) throw insertError;
     
-    toast.success("PDF eksportert og lagret i dokumenter");
+    toast.success(i18n.t('pdf.mission.toasts.exportSuccess', { ns: 'pdf' }));
   } catch (error) {
     console.error("Error exporting PDF:", error);
-    toast.error("Kunne ikke eksportere PDF");
+    toast.error(i18n.t('pdf.mission.toasts.exportError', { ns: 'pdf' }));
   }
 };

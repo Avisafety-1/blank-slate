@@ -6245,5 +6245,14 @@
     "desktopTitle": "Installer på datamaskinen",
     "desktopDescription": "Bruk nettleserens installasjonsvalg",
     "desktopInstructions": "Se etter installasjons-ikonet i adressefeltet, eller bruk nettlesermenyen for å installere appen."
+  },
+  "notifications": {
+    "incident": {
+      "followUpHeader": "Du er satt som oppfølgingsansvarlig",
+      "severityLabel": "Alvorlighetsgrad",
+      "locationLabel": "Lokasjon",
+      "descriptionLabel": "Beskrivelse",
+      "loginPrompt": "Logg inn i Avisafe for å følge opp denne hendelsen."
+    }
   }
 }

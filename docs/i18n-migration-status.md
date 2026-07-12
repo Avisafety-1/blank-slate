@@ -49,14 +49,14 @@ Statuskoder:
 | 4.1 | `src/pages/Admin.tsx` + `src/components/admin/*` | DONE – EmailTemplateEditor.tsx: alle `t()`-kall i `admin.emailTemplate.*` verifisert/manglende nøkler lagt til. FH2DevicesSection.tsx: manglende `admin.fh2Devices.*` nøkler (kamera, lagring, fastvare, HMS-felter, debug-sandkasse, legg-til-medlem-dialog) lagt til. ChildCompaniesSection.tsx (~2300 linjer): fullt migrert til `admin.childCompanies.*` med `useTranslation`, `t` skygges aldri. Alle nye nøkler lagt til i both no.json og en.json. RevenueCalculator er bevisst hoppet over per brukerens ønske (utenfor denne økten). Gjenstår ellers: CompanyManagementSection/Dialog, CustomerManagementSection/Dialog, CustomerDetailDialog, MissionTypesSection, BulkEmailSender (om ikke allerede dekket).
 | 4.2 | `src/pages/Status.tsx` + `useStatusData.ts` | DONE | Status.tsx migrert 2026-07-12: CSV/PDF-eksport, page-header, KPI-kort, chart-titler, deviation-view og tabellheadere bruker `status.*`-nøkler. `useStatusData.ts` har ingen brukervendte strenger (kun DB-enums Grønn/Gul/Rød beholdes). |
 | 4.3 | `src/pages/Priser.tsx`, `Installer.tsx`, `Changelog.tsx` | DONE | Priser.tsx: nøkler flyttet fra `pages.pricing.*` til toppnivå `pricing.*` namespace (var allerede fullt koblet til t()). Installer.tsx: nytt `installer.*` namespace lagt til i begge språkfiler (fantes bare som inline default-strenger tidligere, ingen faktiske oversettelsesnøkler). Changelog.tsx: var i stor grad allerede migrert til `changelog.*`; resterende hardkodede strenger (bildeopplasting-feilmeldinger, bilde-label, forhåndsvisning, lukk-aria-label) migrert til `changelog.dialog.*`.
-| 4.4 | `src/pages/Marketing.tsx` + `src/components/marketing/*` | TODO |
+| 4.4 | `src/pages/Marketing.tsx` + `src/components/marketing/*` | SKIP | Kun tilgjengelig for Avisafe-superadmins — utsatt/utelatt fra i18n-migrering. |
 
 ## Fase 5 – PDF, notifications, edge functions
 
 | # | Fil / område | Status |
 |--:|--------------|--------|
-| 5.1 | PDF-eksport (`oppdragPdfExport`, `riskAssessmentPdfExport`, `incidentPdfExport`, `userManualPdf`) | TODO |
-| 5.2 | `src/lib/notifications.ts` → namespace `notifications` | TODO |
+| 5.1 | PDF-eksport (`oppdragPdfExport`, `riskAssessmentPdfExport`, `incidentPdfExport`, `userManualPdf`) | DONE | userManualPdf.ts migrert 2026-07-13: alle 17 seksjoner (titler, avsnitt, lister, tabeller) flyttet til `pdf.userManual.sections.*` i no/en pdf.json, hentet via i18n.t(returnObjects). Tittelside, TOC, footer bruker eksisterende `pdf.userManual.*`-nøkler. Verifisert med bunx tsgo --noEmit (ingen feil). |
+| 5.2 | `src/lib/notifications.ts` → namespace `notifications` | DONE | Alle brukervendte strenger i incident-notification HTML migrert til `notifications.incident.*` 2026-07-12. |
 | 5.3 | Edge functions (bruker-vendte) → lokale `prompts.ts` | TODO |
 
 ## Fase 6 – Sluttopprydding

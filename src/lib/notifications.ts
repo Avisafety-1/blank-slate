@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import i18n from "@/i18n";
 
 type NotificationType = 
   | 'email_new_incident' 
@@ -72,14 +73,14 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
   <img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" />
 </div>
 <div class="header">
-<h1>Du er satt som oppfølgingsansvarlig</h1>
+<h1>${i18n.t('notifications.incident.followUpHeader')}</h1>
 </div>
 <div class="content">
 <h2>${incident.tittel}</h2>
-<p><strong>Alvorlighetsgrad:</strong> <span class="severity severity-${incident.alvorlighetsgrad}">${incident.alvorlighetsgrad}</span></p>
-${incident.lokasjon ? `<p><strong>Lokasjon:</strong> ${incident.lokasjon}</p>` : ''}
-${incident.beskrivelse ? `<p><strong>Beskrivelse:</strong><br>${incident.beskrivelse}</p>` : ''}
-<p style="margin-top: 20px;">Logg inn i Avisafe for å følge opp denne hendelsen.</p>
+<p><strong>${i18n.t('notifications.incident.severityLabel')}:</strong> <span class="severity severity-${incident.alvorlighetsgrad}">${incident.alvorlighetsgrad}</span></p>
+${incident.lokasjon ? `<p><strong>${i18n.t('notifications.incident.locationLabel')}:</strong> ${incident.lokasjon}</p>` : ''}
+${incident.beskrivelse ? `<p><strong>${i18n.t('notifications.incident.descriptionLabel')}:</strong><br>${incident.beskrivelse}</p>` : ''}
+<p style="margin-top: 20px;">${i18n.t('notifications.incident.loginPrompt')}</p>
 </div>
 </div>
 </body>
