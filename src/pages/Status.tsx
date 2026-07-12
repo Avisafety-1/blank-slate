@@ -1453,7 +1453,6 @@ const Status = () => {
           fil_storrelse: pdfBlob.size,
           company_id: companyId,
           user_id: user?.id,
-          opprettet_av_navn: profile?.full_name || t("status.hookMessages.export.unknown"),
         });
 
       if (dbError) throw dbError;
