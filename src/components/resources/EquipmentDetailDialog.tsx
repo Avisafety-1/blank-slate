@@ -12,6 +12,8 @@ import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
@@ -68,6 +70,8 @@ interface EquipmentDetailDialogProps {
 
 export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEquipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
   const { user, companyId, isAdmin } = useAuth();
+  const { t } = useTranslation();
+
   const queryClient = useQueryClient();
   const { checklists } = useChecklists();
   const deptVis = useDepartmentVisibility("equipment", initialEquipment?.id, companyId || undefined, open);
@@ -248,17 +252,18 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           user_id: user.id,
           entry_date: today,
           entry_type: "vedlikehold",
-          title: "Vedlikehold utført",
-          description: "Utført via utstyrskort",
+          title: t('resourceDialogs.equipmentDetail.maintenance.logTitle'),
+          description: t('resourceDialogs.equipmentDetail.maintenance.logDescription'),
         });
       }
 
-      toast.success(`Vedlikehold utført for ${equipment.navn}`);
+      toast.success(t('resourceDialogs.equipmentDetail.toasts.maintenanceSuccess', { name: equipment.navn }));
       onEquipmentUpdated();
     } catch (error: any) {
       console.error("Error performing maintenance:", error);
-      toast.error(`Kunne ikke oppdatere vedlikehold: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentDetail.toasts.maintenanceError', { message: error.message }));
     } finally {
+
       setIsSubmitting(false);
     }
   };
@@ -340,12 +345,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         await deptVis.saveVisibility();
       }
 
-      toast.success("Utstyr oppdatert");
+      toast.success(t('resourceDialogs.equipmentDetail.toasts.updated'));
       setIsEditing(false);
       onEquipmentUpdated();
     } catch (error: any) {
       console.error("Error updating equipment:", error);
-      toast.error(`Kunne ikke oppdatere utstyr: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentDetail.toasts.updateError', { message: error.message }));
+
     } finally {
       setIsSubmitting(false);
     }
@@ -362,12 +368,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
       if (error) throw error;
 
-      toast.success("Utstyr slettet");
+      toast.success(t('resourceDialogs.equipmentDetail.toasts.deleted'));
       onOpenChange(false);
       onEquipmentUpdated();
     } catch (error: any) {
       console.error("Error deleting equipment:", error);
-      toast.error(`Kunne ikke slette utstyr: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentDetail.toasts.deleteError', { message: error.message }));
+
     }
   };
 
@@ -384,7 +391,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            <span className="truncate">{isEditing ? "Rediger utstyr" : equipment.navn}</span>
+            <span className="truncate">{isEditing ? t('resourceDialogs.equipmentDetail.editTitle') : equipment.navn}</span>
           </DialogTitle>
           {(() => {
             const isSharedFromParent = !!equipment.company_id && !!companyId && equipment.company_id !== companyId;
@@ -392,7 +399,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               <>
                 {isSharedFromParent && (
                   <p className="text-xs text-muted-foreground mt-1 rounded-md bg-muted px-2 py-1.5">
-                    🔒 Dette utstyret er delt fra {equipment.companies?.navn || "mor-selskapet"} og kan kun redigeres derfra.
+                    {t('resourceDialogs.equipmentDetail.sharedFromParent', { company: equipment.companies?.navn || t('resourceDialogs.equipmentDetail.sharedFromParentFallback') })}
                   </p>
                 )}
                 {!isEditing && (
@@ -404,11 +411,12 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     className="w-full mt-2"
                   >
                     <Book className="w-4 h-4 mr-2" />
-                    Loggbok
+                    {t('resourceDialogs.equipmentDetail.logbook')}
                   </Button>
                 )}
               </>
             );
+
           })()}
         </DialogHeader>
 
@@ -418,38 +426,39 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Navn</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.name')}</p>
                   <p className="text-sm sm:text-base">{equipment.navn}</p>
                 </div>
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Type</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.type')}</p>
                   <p className="text-sm sm:text-base">{equipment.type}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Serienummer</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.serial')}</p>
                   <p className="text-sm sm:text-base">{equipment.serienummer}</p>
                 </div>
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Internt SN</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.internalSerial')}</p>
                   <p className="text-sm sm:text-base">{equipment.internal_serial || "-"}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vekt</p>
-                  <p className="text-sm sm:text-base">{equipment.vekt ? `${equipment.vekt} kg` : "Ikke angitt"}</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.weight')}</p>
+                  <p className="text-sm sm:text-base">{equipment.vekt ? `${equipment.vekt} ${t('resourceDialogs.equipmentDetail.labels.kgSuffix')}` : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Flyvetimer</p>
-                  <p className="text-sm sm:text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.flightHours')}</p>
+                  <p className="text-sm sm:text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} {t('resourceDialogs.equipmentDetail.labels.hoursSuffix')}</p>
                 </div>
+
                 {(() => {
                   const maintenanceOnlyStatus = calculateEquipmentMaintenanceStatus({
                     neste_vedlikehold: equipment.neste_vedlikehold,
@@ -468,7 +477,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                   return (
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Status</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.status')}</p>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
@@ -479,12 +488,16 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                           <div className="mt-1.5 space-y-1">
                             {maintenanceOnlyStatus !== "Grønn" && (
                               <p className="text-xs text-muted-foreground">
-                                🔧 Vedlikehold {maintenanceOnlyStatus === "Rød" ? "forfalt" : "nærmer seg"}
+                                {maintenanceOnlyStatus === "Rød"
+                                  ? t('resourceDialogs.equipmentDetail.statusHints.maintenanceDue')
+                                  : t('resourceDialogs.equipmentDetail.statusHints.maintenanceSoon')}
                               </p>
                             )}
                             {dbStatus !== "Grønn" && (
                               <p className="text-xs text-muted-foreground">
-                                ⚠️ {latestWarning ? `Advarsel: ${latestWarning.title}` : "Advarsel fra logg"}
+                                {latestWarning
+                                  ? t('resourceDialogs.equipmentDetail.statusHints.warningFromLog', { title: latestWarning.title })
+                                  : t('resourceDialogs.equipmentDetail.statusHints.warningFromLogFallback')}
                               </p>
                             )}
                           </div>
@@ -493,26 +506,26 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
-                                Kvitter ut advarsel
+                                {t('resourceDialogs.equipmentDetail.statusHints.clearWarning')}
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
+                                <AlertDialogTitle>{t('resourceDialogs.equipmentDetail.statusHints.clearWarningTitle')}</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   {latestWarning
-                                    ? `Advarsel: «${latestWarning.title}» (${new Date(latestWarning.entry_date).toLocaleDateString('nb-NO')}). Vil du kvittere ut og sette status tilbake til Grønn?`
-                                    : "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?"
+                                    ? t('resourceDialogs.equipmentDetail.statusHints.clearWarningWithDetail', { title: latestWarning.title, date: new Date(latestWarning.entry_date).toLocaleDateString() })
+                                    : t('resourceDialogs.equipmentDetail.statusHints.clearWarningDefault')
                                   }
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogCancel>{t('resourceDialogs.equipmentDetail.cancel')}</AlertDialogCancel>
                                 <AlertDialogAction onClick={async () => {
                                   if (!user || !companyId) return;
                                   const { error } = await supabase.from('equipment').update({ status: 'Grønn' }).eq('id', equipment.id);
                                   if (error) {
-                                    toast.error(`Kunne ikke kvittere ut: ${error.message}`);
+                                    toast.error(t('resourceDialogs.equipmentDetail.toasts.clearWarningError', { message: error.message }));
                                     return;
                                   }
                                   await supabase.from('equipment_log_entries').insert({
@@ -522,13 +535,15 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                                     entry_date: new Date().toISOString().split('T')[0],
                                     entry_type: 'Kvittering',
                                     title: 'Advarsel kvittert ut',
-                                    description: `Status endret fra ${equipment.status} til Grønn${latestWarning ? ` (${latestWarning.title})` : ''}`,
+                                    description: latestWarning
+                                      ? t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescriptionWithTitle', { from: equipment.status, title: latestWarning.title })
+                                      : t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescription', { from: equipment.status }),
                                   });
                                   queryClient.invalidateQueries({ queryKey: ['equipment'] });
                                   onEquipmentUpdated();
-                                  toast.success('Advarsel kvittert ut — status satt til Grønn');
+                                  toast.success(t('resourceDialogs.equipmentDetail.toasts.clearWarningSuccess'));
                                 }}>
-                                  Kvitter ut
+                                  {t('resourceDialogs.equipmentDetail.statusHints.clearWarningConfirm')}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -536,9 +551,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                         )}
                         {dbStatus !== "Grønn" && !dbDriving && (
                           <p className="text-xs text-muted-foreground mt-1.5 italic">
-                            Advarsel fra logg kan kvitteres ut etter at vedlikehold er utført
+                            {t('resourceDialogs.equipmentDetail.statusHints.afterMaintenanceNote')}
                           </p>
                         )}
+
                       </div>
                     </div>
                   );
@@ -550,12 +566,12 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 <div className="border border-border rounded-lg p-3 space-y-3">
                   <p className="text-sm font-medium flex items-center gap-2">
                     <Battery className="w-4 h-4 text-primary" />
-                    Batteristatus
+                    {t('resourceDialogs.equipmentDetail.battery.sectionTitle')}
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {equipment.battery_cycles != null && (
                       <div>
-                        <p className="text-xs text-muted-foreground">Sykluser</p>
+                        <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.battery.cycles')}</p>
                         <p className={`text-sm font-medium ${equipment.battery_cycles > 300 ? 'text-destructive' : equipment.battery_cycles > 200 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
                           {equipment.battery_cycles}
                         </p>
@@ -563,7 +579,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     )}
                     {equipment.battery_health_pct != null && (
                       <div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> Helse</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentDetail.battery.health')}</p>
                         <div className="flex items-center gap-2">
                           <p className={`text-sm font-medium ${equipment.battery_health_pct < 60 ? 'text-destructive' : equipment.battery_health_pct < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                             {equipment.battery_health_pct}%
@@ -579,13 +595,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     )}
                     {equipment.battery_full_capacity_mah != null && (
                       <div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> Kapasitet</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> {t('resourceDialogs.equipmentDetail.battery.capacity')}</p>
                         <p className="text-sm">{equipment.battery_full_capacity_mah} mAh</p>
                       </div>
                     )}
                     {equipment.battery_max_cell_deviation_v != null && (
                       <div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Activity className="w-3 h-3" /> Maks celleavvik</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Activity className="w-3 h-3" /> {t('resourceDialogs.equipmentDetail.battery.maxCellDeviation')}</p>
                         <p className={`text-sm font-medium ${equipment.battery_max_cell_deviation_v > 0.1 ? 'text-destructive' : ''}`}>
                           {equipment.battery_max_cell_deviation_v.toFixed(3)} V
                         </p>
@@ -603,7 +619,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
                 return (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Timer siden vedlikehold: {hoursSince.toFixed(1)} / {equipment.inspection_interval_hours}</p>
+                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.usage.hoursSinceMaintenance', { current: hoursSince.toFixed(1), limit: equipment.inspection_interval_hours })}</p>
                     <div className="w-full h-2 rounded-full bg-muted">
                       <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                     </div>
@@ -619,7 +635,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
                 return (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Oppdrag siden vedlikehold: {missionsSince} / {equipment.inspection_interval_missions}</p>
+                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.usage.missionsSinceMaintenance', { current: missionsSince, limit: equipment.inspection_interval_missions })}</p>
                     <div className="w-full h-2 rounded-full bg-muted">
                       <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                     </div>
@@ -631,34 +647,34 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full">
                   <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
-                  Vedlikeholdsdetaljer
+                  {t('resourceDialogs.equipmentDetail.maintenance.detailsTitle')}
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 pt-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (dager)</p>
-                      <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalDays')}</p>
+                      <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? t('resourceDialogs.equipmentDetail.maintenance.intervalDaysValue', { days: equipment.vedlikeholdsintervall_dager }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                     </div>
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (timer)</p>
-                      <p className="text-sm sm:text-base">{equipment.inspection_interval_hours ? `${equipment.inspection_interval_hours} timer` : "Ikke angitt"}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (oppdrag)</p>
-                      <p className="text-sm sm:text-base">{equipment.inspection_interval_missions ? `${equipment.inspection_interval_missions} oppdrag` : "Ikke angitt"}</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalHours')}</p>
+                      <p className="text-sm sm:text-base">{equipment.inspection_interval_hours ? t('resourceDialogs.equipmentDetail.maintenance.intervalHoursValue', { hours: equipment.inspection_interval_hours }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Varsel dager</p>
-                      <p className="text-sm sm:text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalMissions')}</p>
+                      <p className="text-sm sm:text-base">{equipment.inspection_interval_missions ? t('resourceDialogs.equipmentDetail.maintenance.intervalMissionsValue', { missions: equipment.inspection_interval_missions }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="flex justify-between sm:block">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.warningDays')}</p>
+                      <p className="text-sm sm:text-base">{t('resourceDialogs.equipmentDetail.maintenance.warningDaysValue', { days: equipment.varsel_dager ?? 14 })}</p>
                     </div>
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Sjekkliste</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.checklist')}</p>
                       <p className="text-sm sm:text-base flex items-center gap-1">
                         {linkedChecklist ? (
                           <>
@@ -666,17 +682,18 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                             {linkedChecklist.tittel}
                           </>
                         ) : (
-                          "Ingen"
+                          t('resourceDialogs.equipmentDetail.maintenance.none')
                         )}
                       </p>
                     </div>
                   </div>
+
                 </CollapsibleContent>
               </Collapsible>
 
               <div className="border-t border-border pt-3 sm:pt-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                  <p className="text-sm font-medium">Vedlikehold</p>
+                  <p className="text-sm font-medium">{t('resourceDialogs.equipmentDetail.maintenance.sectionTitle')}</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -685,24 +702,25 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     className="text-xs gap-1 w-full sm:w-auto"
                   >
                     <Wrench className="w-3 h-3" />
-                    Utfør vedlikehold
+                    {t('resourceDialogs.equipmentDetail.maintenance.perform')}
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="flex items-center justify-between sm:justify-start gap-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Sist vedl.</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.lastMaintenance')}</p>
                     </div>
-                    <p className="text-sm sm:text-base">{equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toLocaleDateString('nb-NO') : "Ikke utført"}</p>
+                    <p className="text-sm sm:text-base">{equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toLocaleDateString() : t('resourceDialogs.equipmentDetail.labels.notPerformed')}</p>
                   </div>
                   <div className="flex items-center justify-between sm:justify-start gap-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Neste vedl.</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.nextMaintenance')}</p>
                     </div>
-                    <p className="text-sm sm:text-base">{equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toLocaleDateString('nb-NO') : "Ikke satt"}</p>
+                    <p className="text-sm sm:text-base">{equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toLocaleDateString() : t('resourceDialogs.equipmentDetail.labels.notSetDate')}</p>
                   </div>
+
                 </div>
               </div>
 
@@ -711,7 +729,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-300">Merknader</p>
+                      <p className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-300">{t('resourceDialogs.equipmentDetail.notes')}</p>
                       <p className="text-xs sm:text-sm mt-1 text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words">{equipment.merknader}</p>
                     </div>
                   </div>
@@ -722,7 +740,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="navn" className="text-xs sm:text-sm">Navn</Label>
+                  <Label htmlFor="navn" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.name')}</Label>
                   <Input
                     id="navn"
                     value={formData.navn}
@@ -731,7 +749,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   />
                 </div>
                 <div>
-                  <Label htmlFor="type" className="text-xs sm:text-sm">Type</Label>
+                  <Label htmlFor="type" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.type')}</Label>
                   <Select
                     value={formData.type}
                     onValueChange={(val) => {
@@ -740,19 +758,19 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     }}
                   >
                     <SelectTrigger className="text-sm">
-                      <SelectValue placeholder="Velg type" />
+                      <SelectValue placeholder={t('resourceDialogs.equipmentDetail.labels.chooseType')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {equipmentTypes.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      {equipmentTypes.map((et) => (
+                        <SelectItem key={et} value={et}>{et}</SelectItem>
                       ))}
-                      <SelectItem value="__other__">Annet...</SelectItem>
+                      <SelectItem value="__other__">{t('resourceDialogs.equipmentDetail.labels.otherType')}</SelectItem>
                     </SelectContent>
                   </Select>
                   {formData.type === "__other__" && (
                     <Input
                       className="mt-2 text-sm"
-                      placeholder="Skriv inn ny type"
+                      placeholder={t('resourceDialogs.equipmentDetail.labels.otherTypePlaceholder')}
                       value={customType}
                       onChange={(e) => setCustomType(e.target.value)}
                       required
@@ -763,7 +781,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="serienummer" className="text-xs sm:text-sm">Serienummer</Label>
+                  <Label htmlFor="serienummer" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.serial')}</Label>
                   <Input
                     id="serienummer"
                     value={formData.serienummer}
@@ -772,20 +790,20 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   />
                 </div>
                 <div>
-                  <Label htmlFor="internal_serial" className="text-xs sm:text-sm">Internt serienummer</Label>
+                  <Label htmlFor="internal_serial" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.internalSerialLong')}</Label>
                   <Input
                     id="internal_serial"
                     value={formData.internal_serial}
                     onChange={(e) => setFormData({ ...formData, internal_serial: e.target.value })}
                     className="text-sm"
-                    placeholder="Valgfritt"
+                    placeholder={t('resourceDialogs.equipmentDetail.labels.optional')}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="vekt" className="text-xs sm:text-sm">Vekt (kg)</Label>
+                  <Label htmlFor="vekt" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.weightKg')}</Label>
                   <Input
                     id="vekt"
                     type="number"
@@ -798,9 +816,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </div>
               </div>
 
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="flyvetimer" className="text-xs sm:text-sm">Flyvetimer</Label>
+                  <Label htmlFor="flyvetimer" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.flightHours')}</Label>
                   <Input
                     id="flyvetimer"
                     type="number"
@@ -817,13 +836,14 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               <Collapsible open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
                 <CollapsibleTrigger className="flex items-center gap-2 w-full border-t border-border pt-3">
                   <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${maintenanceOpen ? 'rotate-180' : ''}`} />
-                  <span className="text-sm font-medium">Vedlikeholdsintervall</span>
+                  <span className="text-sm font-medium">{t('resourceDialogs.equipmentDetail.maintenance.intervalTitle')}</span>
                 </CollapsibleTrigger>
-                <p className="text-xs text-muted-foreground mt-1 ml-6">Status trigges av det som kommer først av dager, timer eller oppdrag</p>
+                <p className="text-xs text-muted-foreground mt-1 ml-6">{t('resourceDialogs.equipmentDetail.maintenance.intervalHelper')}</p>
+
                 <CollapsibleContent className="space-y-3 pt-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="vedlikeholdsintervall_dager" className="text-xs sm:text-sm">Intervall (dager)</Label>
+                      <Label htmlFor="vedlikeholdsintervall_dager" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.intervalDaysField')}</Label>
                       <Input
                         id="vedlikeholdsintervall_dager"
                         type="number"
@@ -835,7 +855,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       />
                     </div>
                     <div>
-                      <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">Varsel dager før gul</Label>
+                      <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.warnDaysField')}</Label>
                       <Input
                         id="varsel_dager"
                         type="number"
@@ -850,7 +870,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="inspection_interval_hours" className="text-xs sm:text-sm">Intervall (timer)</Label>
+                      <Label htmlFor="inspection_interval_hours" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.intervalHoursField')}</Label>
                       <Input
                         id="inspection_interval_hours"
                         type="number"
@@ -863,7 +883,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       />
                     </div>
                     <div>
-                      <Label htmlFor="varsel_timer" className="text-xs sm:text-sm">Varsel timer før gul</Label>
+                      <Label htmlFor="varsel_timer" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.warnHoursField')}</Label>
                       <Input
                         id="varsel_timer"
                         type="number"
@@ -879,7 +899,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="inspection_interval_missions" className="text-xs sm:text-sm">Intervall (oppdrag)</Label>
+                      <Label htmlFor="inspection_interval_missions" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.intervalMissionsField')}</Label>
                       <Input
                         id="inspection_interval_missions"
                         type="number"
@@ -891,7 +911,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       />
                     </div>
                     <div>
-                      <Label htmlFor="varsel_oppdrag" className="text-xs sm:text-sm">Varsel oppdrag før gul</Label>
+                      <Label htmlFor="varsel_oppdrag" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.warnMissionsField')}</Label>
                       <Input
                         id="varsel_oppdrag"
                         type="number"
@@ -906,7 +926,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="sist_vedlikeholdt" className="text-xs sm:text-sm">Sist vedlikeholdt</Label>
+                      <Label htmlFor="sist_vedlikeholdt" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.lastMaintDate')}</Label>
                       <Input
                         id="sist_vedlikeholdt"
                         type="date"
@@ -916,7 +936,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       />
                     </div>
                     <div>
-                      <Label htmlFor="neste_vedlikehold" className="text-xs sm:text-sm">Neste vedlikehold</Label>
+                      <Label htmlFor="neste_vedlikehold" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.nextMaintDate')}</Label>
                       <Input
                         id="neste_vedlikehold"
                         type="date"
@@ -928,16 +948,17 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   </div>
 
                   <div>
-                    <Label className="text-xs sm:text-sm">Sjekkliste for vedlikehold</Label>
+                    <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.checklistLabel')}</Label>
                     <Select
                       value={formData.sjekkliste_id}
                       onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value === "none" ? "" : value })}
                     >
                       <SelectTrigger className="text-sm">
-                        <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                        <SelectValue placeholder={t('resourceDialogs.equipmentDetail.maintenance.checklistPlaceholder')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                        <SelectItem value="none">{t('resourceDialogs.equipmentDetail.maintenance.noChecklist')}</SelectItem>
+
                         {checklists.map((checklist) => (
                           <SelectItem key={checklist.id} value={checklist.id}>
                             {checklist.tittel}
@@ -950,7 +971,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               </Collapsible>
 
               <div>
-                <Label htmlFor="merknader" className="text-xs sm:text-sm">Merknader</Label>
+                <Label htmlFor="merknader" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.notes')}</Label>
                 <Textarea
                   id="merknader"
                   value={formData.merknader}
@@ -965,14 +986,15 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
         {isEditing && isAdmin && deptVis.hasDepartments && (
           <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">Synlig for avdelinger</Label>
+            <Label className="text-sm font-medium mb-2 block">{t('resourceDialogs.equipmentDetail.visibleTo')}</Label>
             <DepartmentChecklist
               departments={deptVis.childDepartments}
               selectedIds={deptVis.selectedDeptIds}
               onToggle={deptVis.handleToggle}
               allSelected={deptVis.allSelected}
               onToggleAll={deptVis.handleToggleAll}
-              allLabel="Alle avdelinger"
+              allLabel={t('resourceDialogs.equipmentDetail.allDepartments')}
+
             />
           </div>
         )}
@@ -987,21 +1009,22 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" className="gap-2">
                         <Trash2 className="w-4 h-4" />
-                        Slett
+                        {t('resourceDialogs.equipmentDetail.delete')}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+                        <AlertDialogTitle>{t('resourceDialogs.equipmentDetail.deleteConfirmTitle')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Dette vil permanent slette utstyret "{equipment.navn}". Denne handlingen kan ikke angres.
+                          {t('resourceDialogs.equipmentDetail.deleteConfirmDescription', { name: equipment.navn })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                        <AlertDialogCancel>{t('resourceDialogs.equipmentDetail.cancel')}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          Slett
+                          {t('resourceDialogs.equipmentDetail.delete')}
                         </AlertDialogAction>
+
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -1009,15 +1032,16 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                 <div className="flex gap-2 ml-auto">
                   {!isEditing ? (
-                    <Button onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>Rediger</Button>
+                    <Button onClick={() => setIsEditing(true)} disabled={isSharedFromParent}>{t('resourceDialogs.equipmentDetail.edit')}</Button>
                   ) : (
                     <>
                       <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
-                        Avbryt
+                        {t('resourceDialogs.equipmentDetail.cancel')}
                       </Button>
                       <Button onClick={handleSave} disabled={isSubmitting}>
-                        {isSubmitting ? "Lagrer..." : "Lagre"}
+                        {isSubmitting ? t('resourceDialogs.equipmentDetail.saving') : t('resourceDialogs.equipmentDetail.save')}
                       </Button>
+
                     </>
                   )}
                 </div>
@@ -1050,19 +1074,20 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
       <AlertDialog open={confirmMaintenanceOpen} onOpenChange={setConfirmMaintenanceOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogTitle>{t('resourceDialogs.equipmentDetail.maintenance.confirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil registrere vedlikehold for {equipment.navn}?
+              {t('resourceDialogs.equipmentDetail.maintenance.confirmDescription', { name: equipment.navn })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('resourceDialogs.equipmentDetail.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 await performMaintenanceUpdate();
               }}
             >
-              Bekreft
+              {t('resourceDialogs.equipmentDetail.maintenance.confirm')}
+
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1073,7 +1098,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           onOpenChange={(o) => { if (!o) setVisibilityWarning(null); }}
           missing={visibilityWarning.missing}
           departments={deptVis.childDepartments}
-          resourceLabel="utstyret"
+          resourceLabel={t('resourceDialogs.equipmentDetail.resourceLabel')}
           onContinue={async () => {
             await visibilityWarning.onContinue();
             setVisibilityWarning(null);
