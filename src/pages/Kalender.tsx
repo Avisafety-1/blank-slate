@@ -1143,7 +1143,7 @@ export default function Kalender() {
           setSelectedDocument(null);
         }}
         onSaveSuccess={() => {
-          toast.success("Dokument oppdatert!");
+          toast.success(t('pages.calendar.documentUpdated'));
           setDocumentDetailDialogOpen(false);
           setSelectedDocument(null);
           fetchCustomEvents();
