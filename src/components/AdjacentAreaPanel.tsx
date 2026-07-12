@@ -111,8 +111,8 @@ export function AdjacentAreaPanel({
             outdoorAssemblies,
             requiredContainment: "Error",
             containmentLevel: "Error",
-            statusText: "Feil ved henting av data",
-            error: err?.message ?? "Ukjent feil",
+            statusText: t('adjacentAreaPanel.fetchError'),
+            error: err?.message ?? t('adjacentAreaPanel.unknownError'),
           });
           setLoading(false);
         }
