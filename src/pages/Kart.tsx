@@ -733,7 +733,7 @@ export default function KartPage() {
                       )}
                       <span className="leading-tight break-words">
                         {vlisInfo.maxDistanceMeters}m
-                        {!vlisInfo.isWithinVLOS && ` (${vlisInfo.pointsOutside} utenfor)`}
+                        {!vlisInfo.isWithinVLOS && ` (${t('pages.map.outsideCount', { count: vlisInfo.pointsOutside })})`}
                       </span>
                     </div>
                   )}
