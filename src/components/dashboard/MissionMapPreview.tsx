@@ -323,11 +323,11 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               if (zone.zone_type === 'ATZ') {
                 const tmp = L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any);
                 const center = tmp.getBounds().getCenter();
-                const displayName = zone.name || zone.zone_id || 'Ukjent småflyplass';
+                const displayName = zone.name || zone.zone_id || t("dashboard.missionMapPreview.airfieldUnknown");
                 L.circle(center, {
                   radius: 5000,
                   color, weight: 2, fillColor: color, fillOpacity: 0.15,
-                }).bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>Kontakt flyplassen — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a>`).addTo(zonesLayer);
+                }).bindPopup(`<strong>${label}</strong><br/><strong>${displayName}</strong><br/>${t("dashboard.missionMapPreview.contactAirfield")} <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a>`).addTo(zonesLayer);
                 continue;
               }
               L.geoJSON({ type: 'Feature', geometry: zone.geometry, properties: {} } as any, {
