@@ -1461,7 +1461,7 @@ const Admin = () => {
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-72 p-3 z-[1300]" align="start">
-                                      <p className="text-xs font-medium mb-2">Tilgang før kurs er bestått</p>
+                                      <p className="text-xs font-medium mb-2">{t('admin.page.accessBeforeCourse')}</p>
                                       <TrainingModulePicker
                                         selected={getManualTrainingModules(profile)}
                                         lockedModules={getCourseUnlockedModules(profile)}
