@@ -2220,7 +2220,7 @@ export const ProfileDialog = () => {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5" />
-                        Oppdrag til godkjenning ({pendingApprovalMissions.length})
+                        {t('profile.pendingApprovalTitle', { count: pendingApprovalMissions.length })}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -2263,12 +2263,12 @@ export const ProfileDialog = () => {
                                 )}
                                 <Badge variant="outline" className={`${mission.aiRisk ? getAIRiskBadgeColor(mission.aiRisk.recommendation) : 'bg-gray-500/20 text-gray-900 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
                                   <Brain className="w-3 h-3 mr-1" />
-                                  {mission.aiRisk ? Number(mission.aiRisk.overall_score).toFixed(1) : 'Risiko'}
+                                  {mission.aiRisk ? Number(mission.aiRisk.overall_score).toFixed(1) : t('profile.approval.risk')}
                                 </Badge>
                                 {mission.checklist_ids?.length > 0 && (
                                   <Badge variant="outline" className={`${mission.checklist_ids.every((id: string) => mission.checklist_completed_ids?.includes(id)) ? 'bg-green-500/20 text-green-900 border-green-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
                                     <ClipboardCheck className="w-3 h-3 mr-1" />
-                                    Sjekkliste
+                                    {t('profile.approval.checklist')}
                                   </Badge>
                                 )}
                                 {mission.notam_text && (
@@ -2320,7 +2320,7 @@ export const ProfileDialog = () => {
                               {commentingMissionId === mission.id && (
                                 <div className="space-y-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                                   <Textarea
-                                    placeholder="Skriv kommentar..."
+                                    placeholder={t('profile.approval.writeComment')}
                                     value={missionComment}
                                     onChange={(e) => setMissionComment(e.target.value)}
                                     rows={2}
@@ -2329,10 +2329,10 @@ export const ProfileDialog = () => {
                                   <div className="flex flex-wrap gap-2">
                                     <Button size="sm" variant="secondary" className="hover:bg-muted/50" onClick={async () => { await handleSaveComment(mission.id); await handleNotifyPilot(mission.id, missionComment); }}>
                                       <Send className="h-4 w-4 mr-1" />
-                                      Send varsel til pilot
+                                      {t('profile.approval.sendNotice')}
                                     </Button>
                                     <Button size="sm" variant="outline" className="hover:bg-muted/50" onClick={() => { setCommentingMissionId(null); setMissionComment(""); }}>
-                                      Tilbake
+                                      {t('profile.approval.back')}
                                     </Button>
                                   </div>
                                 </div>
@@ -2341,13 +2341,13 @@ export const ProfileDialog = () => {
                               {/* Approval section */}
                               {selfApprovalBlocked && (
                                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" onClick={(e) => e.stopPropagation()}>
-                                  Du er satt som flyger/personell på dette oppdraget og kan derfor ikke godkjenne det.
+                                  {t('profile.approval.selfBlocked')}
                                 </div>
                               )}
                               {approvingMissionId === mission.id ? (
                                 <div className="space-y-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
                                   <Textarea
-                                    placeholder="Kommentar (valgfritt)"
+                                    placeholder={t('profile.approval.commentOptional')}
                                     value={approvalComment}
                                     onChange={(e) => setApprovalComment(e.target.value)}
                                     rows={2}
@@ -2356,10 +2356,10 @@ export const ProfileDialog = () => {
                                   <div className="flex gap-2">
                                     <Button size="sm" onClick={() => handleApproveMission(mission.id)} disabled={selfApprovalBlocked}>
                                       <CheckCircle2 className="h-4 w-4 mr-1" />
-                                      Godkjenn
+                                      {t('profile.approval.approve')}
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={() => { setApprovingMissionId(null); setApprovalComment(""); }}>
-                                      Avbryt
+                                      {t('profile.approval.cancel')}
                                     </Button>
                                   </div>
                                 </div>
@@ -2367,11 +2367,11 @@ export const ProfileDialog = () => {
                                 <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                                   <Button size="sm" variant="outline" onClick={() => { setCommentingMissionId(mission.id); setMissionComment(""); }}>
                                     <MessageSquare className="h-4 w-4 mr-1" />
-                                    Kommentar
+                                    {t('profile.approval.comment')}
                                   </Button>
                                   <Button size="sm" variant="outline" onClick={() => setApprovingMissionId(mission.id)} disabled={selfApprovalBlocked}>
                                     <CheckCircle2 className="h-4 w-4 mr-1" />
-                                    Godkjenn
+                                    {t('profile.approval.approve')}
                                   </Button>
                                 </div>
                               )}
@@ -2382,7 +2382,7 @@ export const ProfileDialog = () => {
                                 <div className="pt-2 border-t border-border/50 space-y-1">
                                   {mission.approver_comments.map((c: any, i: number) => (
                                     <p key={i} className="text-xs text-muted-foreground">
-                                      <span className="font-medium">Kommentar fra godkjenner {c.author_name}:</span>{' '}
+                                      <span className="font-medium">{t('profile.approval.commentFrom', { name: c.author_name })}</span>{' '}
                                       {c.comment}
                                       <span className="ml-1 opacity-60">
                                         ({new Date(c.created_at).toLocaleDateString('no-NO', { day: '2-digit', month: 'short' })})
@@ -2396,7 +2396,7 @@ export const ProfileDialog = () => {
                           })}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">Ingen oppdrag venter på godkjenning</p>
+                        <p className="text-sm text-muted-foreground">{t('profile.approval.noneWaiting')}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -2405,7 +2405,7 @@ export const ProfileDialog = () => {
                 {/* Follow-up Incidents */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Hendelser til oppfølging ({followUpIncidents.length})</CardTitle>
+                    <CardTitle>{t('profile.followUpIncidentsTitle', { count: followUpIncidents.length })}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {followUpIncidents.length > 0 ? (
