@@ -2638,8 +2638,9 @@
         "clearWarningLogDescriptionWithTitle": "Status endret fra {{from}} til Grønn ({{title}})"
       }
     },
-
+    "droneLogbook": {
       "title": "Loggbok - {{model}}",
+
       "totalHours": "Totalt {{hours}} flyvetimer",
       "addEntry": "Legg til innlegg",
       "exportPdf": "Eksporter PDF",
