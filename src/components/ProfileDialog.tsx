@@ -999,7 +999,7 @@ export const ProfileDialog = () => {
                     className="w-full sm:w-auto"
                   >
                     <MessageSquare className="h-4 w-4 mr-1" />
-                    Gi tilbakemelding
+                    {t('profile.feedbackButton')}
                   </Button>
                   <Button
                     variant="outline"
@@ -1008,7 +1008,7 @@ export const ProfileDialog = () => {
                     className="w-full sm:w-auto"
                   >
                     <Activity className="h-4 w-4 mr-1" />
-                    Status og endringslogg
+                    {t('profile.statusChangelog')}
                   </Button>
                 </div>
               )}
