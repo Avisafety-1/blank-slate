@@ -420,10 +420,10 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           
           {/* Inspection interval section */}
           <div className="border-t pt-4 mt-4">
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">Inspeksjonsintervall</Label>
+            <Label className="text-sm font-medium text-muted-foreground mb-2 block">{t('resourceDialogs.addDrone.inspeksjonsintervall')}</Label>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="inspection_start_date">Startdato</Label>
+                <Label htmlFor="inspection_start_date">{t('resourceDialogs.addDrone.startdato')}</Label>
                 <Input 
                   id="inspection_start_date" 
                   type="date" 
@@ -432,11 +432,11 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 />
               </div>
               <div>
-                <Label htmlFor="inspection_interval_days">Intervall (dager)</Label>
+                <Label htmlFor="inspection_interval_days">{t('resourceDialogs.addDrone.intervallDager')}</Label>
                 <Input 
                   id="inspection_interval_days" 
                   type="number" 
-                  placeholder="f.eks. 90"
+                  placeholder={t('resourceDialogs.addDrone.intervallPlaceholder')}
                   value={inspectionIntervalDays}
                   onChange={(e) => setInspectionIntervalDays(e.target.value)}
                 />
@@ -444,7 +444,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             </div>
             {calculatedNextInspection && (
               <p className="text-sm text-muted-foreground mt-2">
-                Beregnet neste inspeksjon: <span className="font-medium">{new Date(calculatedNextInspection).toLocaleDateString('nb-NO')}</span>
+                {t('resourceDialogs.addDrone.beregnetNesteInspeksjon')} <span className="font-medium">{new Date(calculatedNextInspection).toLocaleDateString('nb-NO')}</span>
               </p>
             )}
           </div>
@@ -452,13 +452,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           {/* Checklist selection */}
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <Label htmlFor="sjekkliste">Sjekkliste for inspeksjon</Label>
+              <Label htmlFor="sjekkliste">{t('resourceDialogs.addDrone.sjekklisteInspeksjon')}</Label>
               <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                  <SelectValue placeholder={t('resourceDialogs.addDrone.velgSjekkliste')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                  <SelectItem value="none">{t('resourceDialogs.addDrone.ingenSjekkliste')}</SelectItem>
                   {checklists.map((checklist) => (
                     <SelectItem key={checklist.id} value={checklist.id}>
                       {checklist.tittel}
@@ -467,7 +467,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                Hvis valgt, må sjekklisten fullføres før inspeksjon registreres
+                {t('resourceDialogs.addDrone.sjekklisteHint')}
               </p>
             </div>
           )}
@@ -475,14 +475,14 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           {/* Operations checklist multi-select */}
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <Label>Operasjonssjekklister</Label>
+              <Label>{t('resourceDialogs.addDrone.operasjonsSjekklister')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal">
                     <span className="min-w-0 flex-1 truncate text-left">
                       {selectedOpsChecklistIds.length > 0
-                        ? `${selectedOpsChecklistIds.length} sjekkliste(r) valgt`
-                        : "Velg sjekklister (valgfritt)"}
+                        ? t('resourceDialogs.addDrone.sjekklisterValgt', { count: selectedOpsChecklistIds.length })
+                        : t('resourceDialogs.addDrone.velgSjekklister')}
                     </span>
                     <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -508,7 +508,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 </PopoverContent>
               </Popover>
               <p className="text-xs text-muted-foreground mt-1">
-                Kobles automatisk til oppdrag når dronen legges til
+                {t('resourceDialogs.addDrone.opsHint')}
               </p>
             </div>
           )}
@@ -516,13 +516,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           {/* Post flight checklist selection */}
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <Label htmlFor="post_flight_checklist">Post flight sjekkliste</Label>
+              <Label htmlFor="post_flight_checklist">{t('resourceDialogs.addDrone.postFlight')}</Label>
               <Select value={selectedPostFlightChecklistId} onValueChange={setSelectedPostFlightChecklistId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg post flight sjekkliste (valgfritt)" />
+                  <SelectValue placeholder={t('resourceDialogs.addDrone.velgPostFlight')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                  <SelectItem value="none">{t('resourceDialogs.addDrone.ingenSjekkliste')}</SelectItem>
                   {checklists.map((checklist) => (
                     <SelectItem key={checklist.id} value={checklist.id}>
                       {checklist.tittel}
@@ -531,13 +531,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                Vises som bekreftelsesdialog når oppdrag fullføres
+                {t('resourceDialogs.addDrone.postFlightHint')}
               </p>
             </div>
           )}
           
           <div>
-            <Label htmlFor="neste_inspeksjon">Neste inspeksjon {calculatedNextInspection && "(overstyrt av intervall)"}</Label>
+            <Label htmlFor="neste_inspeksjon">{t('resourceDialogs.addDrone.nesteInspeksjon')} {calculatedNextInspection && t('resourceDialogs.addDrone.overstyrtAvIntervall')}</Label>
             <Input 
               id="neste_inspeksjon" 
               name="neste_inspeksjon" 
@@ -552,7 +552,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             />
           </div>
           <div>
-            <Label htmlFor="merknader">Merknader</Label>
+            <Label htmlFor="merknader">{t('resourceDialogs.addDrone.merknader')}</Label>
             <Textarea 
               id="merknader" 
               name="merknader" 
@@ -561,7 +561,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             />
           </div>
           <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Legger til..." : terminology.addVehicle}
+            {isSubmitting ? t('resourceDialogs.addDrone.leggerTil') : terminology.addVehicle}
           </Button>
         </form>
       </DialogContent>
