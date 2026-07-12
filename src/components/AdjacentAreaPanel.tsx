@@ -293,7 +293,7 @@ export function AdjacentAreaPanel({
       <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 bg-muted/60 hover:bg-muted rounded-lg text-sm font-medium transition-colors">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-blue-500" />
-          <span>Tilstøtende område</span>
+          <span>{t('adjacentAreaPanel.title')}</span>
           {badgeJsx}
         </div>
         <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
