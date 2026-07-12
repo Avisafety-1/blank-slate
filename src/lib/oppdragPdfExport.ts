@@ -815,8 +815,8 @@ export const exportToPDF = async (
           .join(', ') || '-';
         
         return [
-          format(new Date(log.flight_date), "dd.MM.yyyy", { locale: nb }),
-          `${log.flight_duration_minutes} min`,
+          format(new Date(log.flight_date), "dd.MM.yyyy", { locale: dateLocale() }),
+          formatDurationForPdf(log.flight_duration_minutes),
           log.pilot?.full_name || '-',
           log.drones?.modell || '-',
           safeskyLabels[log.safesky_mode] || i18n.t('pdf.mission.flightLogs.safesky.off', { ns: 'pdf' }),
