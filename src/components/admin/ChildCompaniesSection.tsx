@@ -35,6 +35,7 @@ import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { MapPublicationDefaultsCard } from "@/components/admin/MapPublicationDefaultsCard";
 import { MapLayerDefaultsSection } from "@/components/admin/MapLayerDefaultsSection";
 import { MissionTypesSection } from "@/components/admin/MissionTypesSection";
+import { useTranslation } from "react-i18next";
 
 interface ChildCompany {
   id: string;
@@ -129,6 +130,7 @@ const SubSection = ({ title, icon: Icon, defaultOpen, children }: SubSectionProp
 );
 
 export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSectionProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
   const soraApprovalEnabled = useSoraApprovalEnabled();
@@ -325,19 +327,19 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .select("id")
       .single();
     if (error) {
-      if (error.code === '23505') toast.error("Mottaker finnes allerede");
-      else toast.error("Kunne ikke legge til mottaker");
+      if (error.code === '23505') t("admin.childCompanies.toastRecipientExists");
+      else t("admin.childCompanies.toastRecipientAddError");
       return;
     }
     const profile = companyProfiles.find(p => p.id === profileId);
     setAlertRecipients(prev => [...prev, { id: data.id, profile_id: profileId, full_name: profile?.full_name || null }]);
-    toast.success("Mottaker lagt til");
+    toast.success(t("admin.childCompanies.toastRecipientAdded"));
   };
 
   const handleRemoveRecipient = async (recipientId: string) => {
     await (supabase as any).from("company_flight_alert_recipients").delete().eq("id", recipientId);
     setAlertRecipients(prev => prev.filter(r => r.id !== recipientId));
-    toast.success("Mottaker fjernet");
+    toast.success(t("admin.childCompanies.toastRecipientRemoved"));
   };
 
   const fetchMissionRoles = useCallback(async () => {
@@ -358,12 +360,12 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .insert({ company_id: companyId, name: newRoleName.trim() });
     setSavingRole(false);
     if (error) {
-      if (error.code === '23505') toast.error("Rollen finnes allerede");
-      else toast.error("Kunne ikke legge til rolle");
+      if (error.code === '23505') t("admin.childCompanies.toastRoleExists");
+      else t("admin.childCompanies.toastRoleAddError");
       return;
     }
     setNewRoleName("");
-    toast.success("Rolle lagt til");
+    toast.success(t("admin.childCompanies.toastRoleAdded"));
     fetchMissionRoles();
   };
 
@@ -373,10 +375,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .delete()
       .eq("id", roleId);
     if (error) {
-      toast.error("Kunne ikke slette rolle");
+      toast.error(t("admin.childCompanies.toastRoleDeleteError"));
       return;
     }
-    toast.success("Rolle slettet");
+    toast.success(t("admin.childCompanies.toastRoleDeleted"));
     fetchMissionRoles();
   };
 
@@ -393,7 +395,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setChildren(data || []);
     } catch (error) {
       console.error("Error fetching child companies:", error);
-      toast.error("Kunne ikke laste avdelinger");
+      toast.error(t("admin.childCompanies.toastFetchChildrenError"));
     } finally {
       setLoading(false);
     }
@@ -623,7 +625,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -637,7 +639,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setShowAllAirspaceWarnings(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleHideReporter = async (checked: boolean) => {
@@ -649,7 +651,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -663,7 +665,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setHideReporterIdentity(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleIncidentReportsVisibleToAllCompanies = async (checked: boolean) => {
@@ -675,14 +677,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
     setSavingSettings(false);
     setIncidentReportsVisibleToAllCompanies(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const saveCurrencyRequirement = async (patch: Partial<{
@@ -703,11 +705,11 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     setSavingSettings(false);
     if (error) {
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleRequireMissionApproval = async (checked: boolean) => {
@@ -719,7 +721,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -733,7 +735,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setRequireMissionApproval(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleTogglePreventSelfApproval = async (checked: boolean) => {
@@ -745,7 +747,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -759,7 +761,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setPreventSelfApproval(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleAllUsersCanAcknowledgeMaintenance = async (checked: boolean) => {
@@ -771,7 +773,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -785,7 +787,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setAllUsersCanAcknowledgeMaintenance(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleRequireSora = async (checked: boolean) => {
@@ -799,7 +801,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .maybeSingle();
 
       if (soraApprovalEnabled || !!soraConfig?.sora_based_approval) {
-        toast.error("Kan ikke aktiveres når SORA-basert godkjenning er på");
+        toast.error(t("admin.childCompanies.toastCannotEnableSoraConflict"));
         return;
       }
     }
@@ -811,7 +813,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -825,7 +827,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setRequireSoraOnMissions(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleToggleDeviationReport = async (checked: boolean) => {
@@ -837,7 +839,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
     if (applySettingsToChildren) {
@@ -849,14 +851,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setDeviationReportEnabled(checked);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
     if (checked) {
       const { count } = await (supabase as any)
         .from("deviation_report_categories")
         .select("id", { count: "exact", head: true })
         .eq("company_id", companyId);
       if ((count || 0) === 0) {
-        toast.info("Husk å definere kategorier nedenfor – ellers vises ingen pop-up til pilotene.");
+        toast.info(t("admin.childCompanies.toastDefineCategoriesReminder"));
       }
     }
   };
@@ -870,7 +872,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .eq("id", companyId);
     if (error) {
       setSavingSettings(false);
-      toast.error("Kunne ikke lagre innstilling");
+      toast.error(t("admin.childCompanies.toastSettingSaveError"));
       return;
     }
 
@@ -884,7 +886,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setRequireSoraSteps(steps);
     invalidateCompanySettingsCache();
-    toast.success("Innstilling lagret");
+    toast.success(t("admin.childCompanies.toastSettingSaved"));
   };
 
   const handleChangeBufferMode = async (mode: "corridor" | "convexHull") => {
@@ -896,7 +898,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingSettings(false);
     setDefaultBufferMode(mode);
     invalidateCompanySettingsCache();
-    toast.success("Buffermodus lagret");
+    toast.success(t("admin.childCompanies.toastBufferModeSaved"));
   };
 
   const handleChangeDefaultFlightGeography = async (value: number) => {
@@ -908,7 +910,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .upsert({ company_id: companyId, default_flight_geography_m: value }, { onConflict: 'company_id' });
     setSavingSettings(false);
     invalidateCompanySettingsCache();
-    toast.success("Standard Flight Geography lagret");
+    toast.success(t("admin.childCompanies.toastFlightGeographySaved"));
   };
 
   const handleChangeDefaultFlightAltitude = async (value: number) => {
@@ -920,7 +922,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       .upsert({ company_id: companyId, default_flight_altitude_m: value }, { onConflict: 'company_id' });
     setSavingSettings(false);
     invalidateCompanySettingsCache();
-    toast.success("Standard flyhøyde lagret");
+    toast.success(t("admin.childCompanies.toastFlightAltitudeSaved"));
   };
 
   const handleSaveCallsign = async () => {
@@ -935,7 +937,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     const { error } = await supabase.from("companies").update(payload).eq("id", companyId);
     if (error) {
       setSavingCallsign(false);
-      toast.error("Kunne ikke lagre SafeSky-callsign");
+      toast.error(t("admin.childCompanies.toastCallsignSaveError"));
       return;
     }
     if (callsignPropagate) {
@@ -951,7 +953,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
     setSavingCallsign(false);
     callsignEditing.current = false;
     invalidateCompanySettingsCache();
-    toast.success("SafeSky-callsign lagret");
+    toast.success(t("admin.childCompanies.toastCallsignSaved"));
   };
 
   const FH2_MASK = "••••••••";
@@ -964,7 +966,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       return;
     }
     if (!cleanToken) {
-      toast.error("Fyll inn en nøkkel først");
+      toast.error(t("admin.childCompanies.toastFillKeyFirst"));
       return;
     }
     setSavingFh2(true);
@@ -979,9 +981,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       }
       setFh2Token(cleanToken ? FH2_MASK : "");
       fh2Editing.current = false;
-      toast.success(cleanToken ? "FlightHub 2-nøkkel lagret (kryptert)" : "FlightHub 2-nøkkel fjernet");
+      toast.success(t(cleanToken ? "admin.childCompanies.toastFh2KeySaved" : "admin.childCompanies.toastFh2KeyRemoved"));
     } catch (err: any) {
-      toast.error(err?.message || "Kunne ikke lagre");
+      toast.error(t("admin.childCompanies.toastSaveError"));
     } finally {
       setSavingFh2(false);
     }
@@ -995,9 +997,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       setFh2Token("");
       setFh2Connected(false);
       setFh2Projects([]);
-      toast.success("FlightHub 2-nøkkel slettet");
+      toast.success(t("admin.childCompanies.toastFh2KeyDeleted"));
     } catch (err: any) {
-      toast.error(err?.message || "Kunne ikke slette");
+      toast.error(t("admin.childCompanies.toastDeleteError"));
     } finally {
       setSavingFh2(false);
     }
@@ -1025,16 +1027,16 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         const projectNames: string[] = data.project_names || [];
         setFh2Projects(projectNames);
         setFh2Connected(true);
-        toast.success(`Gratulerer! Du er tilkoblet din FH2-konto med ${data.project_count || 0} prosjekter`);
+        toast.success(t("admin.childCompanies.toastFh2Connected", { count: data.project_count || 0 }));
       } else if (data?.server_ok && !data?.token_ok) {
-        toast.error("Server svarer, men nøkkelen ble avvist. Sjekk at nøkkelen er korrekt og ikke utløpt.", { duration: 10000 });
+        toast.error(t("admin.childCompanies.toastFh2KeyRejected", { duration: 10000 }));
       } else if (data?.error) {
-        toast.error(`FlightHub 2 feil: ${data.error}`, { duration: 10000 });
+        toast.error(t("admin.childCompanies.toastFh2Error", { error: data.error, duration: 10000 }));
       } else {
-        toast.error("Kunne ikke nå FlightHub 2-serveren.");
+        toast.error(t("admin.childCompanies.toastFh2Unreachable"));
       }
     } catch (err: any) {
-      toast.error(err?.message || "Tilkobling feilet");
+      toast.error(t("admin.childCompanies.toastConnectionFailed"));
     } finally {
       setTestingFh2(false);
     }
@@ -1056,7 +1058,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       );
     } catch (err: any) {
       setApplyFh2ToChildren(!checked);
-      toast.error(err?.message || "Kunne ikke lagre FlightHub 2-innstilling");
+      toast.error(t("admin.childCompanies.toastFh2SettingSaveError"));
     } finally {
       setSavingSettings(false);
     }
@@ -1084,9 +1086,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .from("companies")
         .update({ show_all_airspace_warnings: showAllAirspaceWarnings, hide_reporter_identity: hideReporterIdentity, require_mission_approval: requireMissionApproval, prevent_self_approval: preventSelfApproval, all_users_can_acknowledge_maintenance: allUsersCanAcknowledgeMaintenance, require_sora_on_missions: requireSoraOnMissions, require_sora_steps: requireSoraSteps, deviation_report_enabled: deviationReportEnabled } as any)
         .eq("parent_company_id", companyId);
-      toast.success("Selskapsinnstillinger anvendt på alle avdelinger og låst");
+      toast.success(t("admin.childCompanies.toastSettingsAppliedLocked"));
     } else {
-      toast.success("Avdelinger kan nå overstyre innstillingene selv");
+      toast.success(t("admin.childCompanies.toastSettingsUnlocked"));
     }
     setSavingSettings(false);
     invalidateCompanySettingsCache();
@@ -1120,9 +1122,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           }
         }
       }
-      toast.success("Roller anvendt på alle avdelinger og låst");
+      toast.success(t("admin.childCompanies.toastRolesAppliedLocked"));
     } else {
-      toast.success("Avdelinger kan nå redigere roller selv");
+      toast.success(t("admin.childCompanies.toastRolesUnlocked"));
     }
     setSavingSettings(false);
   };
@@ -1163,9 +1165,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           }
         }
       }
-      toast.success("Flylogg-varsler anvendt på alle avdelinger og låst");
+      toast.success(t("admin.childCompanies.toastAlertsAppliedLocked"));
     } else {
-      toast.success("Avdelinger kan nå redigere varsler selv");
+      toast.success(t("admin.childCompanies.toastAlertsUnlocked"));
     }
     setSavingSettings(false);
   };
@@ -1196,9 +1198,9 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             }, { onConflict: 'company_id' });
         }
       }
-      toast.success("SORA-standardverdier anvendt og låst");
+      toast.success(t("admin.childCompanies.toastSoraDefaultsAppliedLocked"));
     } else {
-      toast.success("Avdelinger kan nå redigere SORA-standardverdier");
+      toast.success(t("admin.childCompanies.toastSoraDefaultsUnlocked"));
     }
     setSavingSettings(false);
     invalidateCompanySettingsCache();
@@ -1228,13 +1230,13 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         .eq("id", companyToDelete.id);
 
       if (error) throw error;
-      toast.success("Avdeling slettet");
+      toast.success(t("admin.childCompanies.toastChildDeleted"));
       setDeleteDialogOpen(false);
       setCompanyToDelete(null);
       fetchChildren();
     } catch (error: any) {
       console.error("Error deleting child company:", error);
-      toast.error("Kunne ikke slette avdeling: " + error.message);
+      toast.error(t("admin.childCompanies.toastChildDeleteError", { error: error.message }));
     }
   };
 
@@ -1480,7 +1482,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {ruleEnabled && (
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <Label className="text-xs">Min. flytimer</Label>
+                            <Label className="text-xs">{t("admin.childCompanies.minFlightHoursLabel")}</Label>
                             <LocalNumberInput
                               min={0}
                               step={0.5}
@@ -1494,7 +1496,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">Siste antall dager</Label>
+                            <Label className="text-xs">{t("admin.childCompanies.lastDaysLabel")}</Label>
                             <LocalNumberInput
                               min={1}
                               max={3650}
@@ -1536,7 +1538,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     {!isChildDept && (
                       <div className="flex items-center justify-between border-t border-border/60 pt-3">
                         <Label htmlFor="currency-propagate" className="flex-1 cursor-pointer pr-4">
-                          <div className="text-xs font-medium">Tving samme krav på alle avdelinger</div>
+                          <div className="text-xs font-medium">{t("admin.childCompanies.forceSameRequirement")}</div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">
                             Når aktivert overstyrer kravet avdelingenes egne verdier — endringer her oppdateres automatisk hos avdelingene.
                           </div>
@@ -1586,7 +1588,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     </div>
                     {value && (
                       <div className="pl-1 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Antall påkrevde steg:</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t("admin.childCompanies.requiredStepsCount")}</p>
                         <RadioGroup
                           value={String(stepsValue)}
                           onValueChange={(v) => handleChangeSoraSteps(Number(v))}
@@ -1612,7 +1614,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               {!isChildDept && (
                 <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                   <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Disse innstillingene gjelder for alle underavdelinger</div>
+                    <div className="font-medium text-sm">{t("admin.childCompanies.settingsApplyToAllSub")}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Når aktivert settes innstillingene over på alle avdelinger og avdelingene kan ikke overstyre dem
                     </div>
@@ -1705,17 +1707,17 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       >
                         <div className="flex items-center gap-1.5">
                           <RadioGroupItem value="corridor" id="buffer-corridor" disabled={soraLocked} />
-                          <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+                          <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">{t("admin.childCompanies.routeCorridorLabel")}</Label>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <RadioGroupItem value="convexHull" id="buffer-convex" disabled={soraLocked} />
-                          <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
+                          <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">{t("admin.childCompanies.convexHullLabel")}</Label>
                         </div>
                       </RadioGroup>
                       <div className="space-y-1.5 pt-2 border-t border-border/50">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1">
-                            <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
+                            <Label className="text-xs text-muted-foreground">{t("admin.childCompanies.defaultFlightGeographyLabel")}</Label>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button type="button" className="inline-flex">
@@ -1742,7 +1744,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       <div className="space-y-1.5 pt-2 border-t border-border/50">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1">
-                            <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
+                            <Label className="text-xs text-muted-foreground">{t("admin.childCompanies.defaultFlightAltitudeLabel")}</Label>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button type="button" className="inline-flex">
@@ -1769,7 +1771,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {!isChildDept && (
                         <div className="border-t pt-2 flex items-center justify-between">
                           <Label htmlFor="apply-sora-defaults-children" className="flex-1 cursor-pointer pr-4">
-                            <div className="font-medium text-sm">SORA-standardverdier gjelder for alle underavdelinger</div>
+                            <div className="font-medium text-sm">{t("admin.childCompanies.soraDefaultsApplyToAllSub")}</div>
                             <div className="text-xs text-muted-foreground mt-0.5">
                               Når aktivert kopieres SORA-standardverdier til alle avdelinger og låses
                             </div>
@@ -1804,7 +1806,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">Callsign-prefix</Label>
+                        <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">{t("admin.childCompanies.callsignPrefixLabel")}</Label>
                         <Input
                           id="callsign-prefix"
                           value={csPrefix}
@@ -1816,7 +1818,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
+                        <Label className="text-xs text-muted-foreground">{t("admin.childCompanies.variableSuffixLabel")}</Label>
                         <RadioGroup
                           value={csVariable}
                           onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration' | 'none'); }}
@@ -1825,15 +1827,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         >
                           <div className="flex items-center gap-1.5">
                             <RadioGroupItem value="counter" id="cs-counter" disabled={callsignLocked} />
-                            <Label htmlFor="cs-counter" className="text-xs cursor-pointer">Teller (01, 02, …)</Label>
+                            <Label htmlFor="cs-counter" className="text-xs cursor-pointer">{t("admin.childCompanies.counterSuffix")}</Label>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <RadioGroupItem value="drone_registration" id="cs-drone" disabled={callsignLocked} />
-                            <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
+                            <Label htmlFor="cs-drone" className="text-xs cursor-pointer">{t("admin.childCompanies.droneRegistrationSuffix")}</Label>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <RadioGroupItem value="none" id="cs-none" disabled={callsignLocked} />
-                            <Label htmlFor="cs-none" className="text-xs cursor-pointer">Ingen suffiks</Label>
+                            <Label htmlFor="cs-none" className="text-xs cursor-pointer">{t("admin.childCompanies.noSuffix")}</Label>
                           </div>
                         </RadioGroup>
                       </div>
@@ -1845,7 +1847,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       </div>
                       <div className="border-t pt-2 flex items-center justify-between gap-3">
                         <Label htmlFor="callsign-test-mode" className="flex-1 cursor-pointer pr-4">
-                          <div className="font-medium text-sm">Test-modus</div>
+                          <div className="font-medium text-sm">{t("admin.childCompanies.testMode")}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
                             All trafikk publiseres til SafeSky med høyde 0 ft og status «on ground». Bruk for testing uten å vise drone i lufta.
                           </div>
@@ -1860,7 +1862,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {!isChildDept && (
                         <div className="border-t pt-2 flex items-center justify-between">
                           <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
-                            <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                            <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                             <div className="text-xs text-muted-foreground mt-0.5">
                               Propager prefix og variabel til alle avdelinger
                             </div>
@@ -1933,7 +1935,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 {!isChildDept && (
                   <div className="border-t pt-2 flex items-center justify-between">
                     <Label htmlFor="apply-roles-children" className="flex-1 cursor-pointer pr-4">
-                      <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                      <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         Når aktivert kopieres rollene til alle avdelinger i selskapet
                       </div>
@@ -1993,7 +1995,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         })}
                       </div>
                       <div className="border-t pt-2 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Mottakere av varsler:</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t("admin.childCompanies.alertRecipientsLabel")}</p>
                         {!alertsLocked && (
                           <SearchablePersonSelect
                             persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
@@ -2030,7 +2032,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 {!isChildDept && (
                   <div className="border-t pt-2 flex items-center justify-between">
                     <Label htmlFor="apply-alerts-children" className="flex-1 cursor-pointer pr-4">
-                      <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                      <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         Når aktivert kopieres varsler og mottakere til alle avdelinger
                       </div>
@@ -2140,7 +2142,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               {!isChildDept && departmentsEnabled && (
                 <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                   <Label htmlFor="apply-fh2-children" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Når aktivert arver underavdelinger FlightHub 2-nøkkelen fra morselskapet og kan ikke overstyre den.
                     </div>
@@ -2208,7 +2210,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         </div>
 
         {loading ? (
-          <p className="text-muted-foreground text-sm">Laster...</p>
+          <p className="text-muted-foreground text-sm">{t("admin.childCompanies.loading")}</p>
         ) : children.length === 0 ? (
           <p className="text-muted-foreground text-sm py-8 text-center">
             Ingen avdelinger opprettet ennå.
@@ -2243,12 +2245,12 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Navn</TableHead>
-                <TableHead>Org.nr</TableHead>
-                <TableHead>E-post</TableHead>
-                <TableHead>Telefon</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Handlinger</TableHead>
+                <TableHead>{t("admin.childCompanies.colName")}</TableHead>
+                <TableHead>{t("admin.childCompanies.colOrgNr")}</TableHead>
+                <TableHead>{t("admin.childCompanies.colEmail")}</TableHead>
+                <TableHead>{t("admin.childCompanies.colPhone")}</TableHead>
+                <TableHead>{t("admin.childCompanies.colStatus")}</TableHead>
+                <TableHead className="text-right">{t("admin.childCompanies.colActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2289,14 +2291,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Slett avdeling</AlertDialogTitle>
+            <AlertDialogTitle>{t("admin.childCompanies.deleteChildTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               Er du sikker på at du vil slette «{companyToDelete?.navn}»? Denne handlingen kan ikke angres.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Slett</AlertDialogAction>
+            <AlertDialogCancel>{t("admin.childCompanies.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>{t("admin.childCompanies.delete")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

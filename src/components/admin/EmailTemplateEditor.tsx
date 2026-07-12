@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Mail, Save, Eye, RefreshCw, Code, Eye as EyeIcon, Settings, Building2, Globe, RotateCcw, Paperclip, X, Plus } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -649,6 +650,7 @@ interface EmailTemplateEditorProps {
 const ALL_COMPANIES_ID = "__ALL_COMPANIES__";
 
 export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditorProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const { isSuperAdmin } = useRoleCheck();
   const isMobile = useIsMobile();
@@ -757,22 +759,22 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
           const quill = quillRef.current?.getEditor();
           if (quill) {
             const range = quill.getSelection(true);
-            const imageHtml = `<img src="${publicUrl}" alt="Bilde" width="${width}" height="${height}" style="max-width: 100%; height: auto; display: block;" />`;
+            const imageHtml = `<img src="${publicUrl}" alt="${t("admin.emailTemplate.image")}" width="${width}" height="${height}" style="max-width: 100%; height: auto; display: block;" />`;
             quill.clipboard.dangerouslyPasteHTML(range.index, imageHtml);
             quill.setSelection(range.index + 1, 0);
           }
 
-          toast.success("Bilde lastet opp");
+          toast.success(t("admin.emailTemplate.toastImageUploaded"));
         };
 
         img.onerror = () => {
-          toast.error("Kunne ikke lese bildedimensjoner");
+          toast.error(t("admin.emailTemplate.toastImageDimensionsError"));
         };
 
         img.src = publicUrl;
       } catch (error) {
         console.error("Error uploading image:", error);
-        toast.error("Kunne ikke laste opp bilde");
+        toast.error(t("admin.emailTemplate.toastImageUploadError"));
       }
     };
   };
@@ -860,7 +862,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
       } else {
         // Use default template if no custom template exists
         setTemplate(null);
-        const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
+        const currentTemplateType = templateTypes.find((tt) => tt.value === selectedTemplateType);
         const defaultContent = defaultTemplateContent[selectedTemplateType] || "";
         const defaultSubject = currentTemplateType?.defaultSubject || "";
         setSubject(defaultSubject);
@@ -869,7 +871,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
       }
     } catch (error: any) {
       console.error("Error fetching template:", error);
-      toast.error("Kunne ikke laste mal");
+      toast.error(t("admin.emailTemplate.toastLoadError"));
     } finally {
       setLoading(false);
     }
@@ -877,7 +879,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
   const handleSave = async () => {
     if (!activeCompanyId && !isAllCompaniesMode) {
-      toast.error("Velg en bedrift først");
+      toast.error(t("admin.emailTemplate.toastSelectCompanyFirst"));
       return;
     }
 
@@ -925,9 +927,9 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         }
         
         if (errorCount === 0) {
-          toast.success(`Mal lagret til alle ${successCount} selskaper`);
+          toast.success(t("admin.emailTemplate.toastSavedAll", { count: successCount }));
         } else {
-          toast.warning(`Lagret til ${successCount} selskaper, ${errorCount} feilet`);
+          toast.warning(t("admin.emailTemplate.toastSavedPartial", { success: successCount, error: errorCount }));
         }
       } else {
         // Save to single company
@@ -976,17 +978,17 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             
             if (attachmentError) {
               console.error("Error saving attachments:", attachmentError);
-              toast.warning("Mal lagret, men vedlegg kunne ikke lagres");
+              toast.warning(t("admin.emailTemplate.toastSavedNoAttachments"));
             }
           }
         }
         
-        toast.success("Mal lagret");
+        toast.success(t("admin.emailTemplate.toastSaved"));
         fetchTemplate();
       }
     } catch (error: any) {
       console.error("Error saving template:", error);
-      toast.error("Kunne ikke lagre mal: " + error.message);
+      toast.error(t("admin.emailTemplate.toastSaveError") + ": " + error.message);
     } finally {
       setSaving(false);
     }
@@ -1009,22 +1011,22 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
     if (template) {
       setSubject(template.subject);
       setContent(template.content);
-      toast.info("Endringer tilbakestilt");
+      toast.info(t("admin.emailTemplate.toastReset"));
     }
   };
 
   const handleResetToDefault = () => {
     const defaultContent = defaultTemplateContent[selectedTemplateType] || "";
-    const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
+    const currentTemplateType = templateTypes.find((tt) => tt.value === selectedTemplateType);
     const defaultSubject = currentTemplateType?.defaultSubject || "";
     
     setSubject(defaultSubject);
     setContent(defaultContent);
-    toast.info("Tilbakestilt til standardmal");
+    toast.info(t("admin.emailTemplate.toastResetDefault"));
   };
 
   const getPreviewContent = () => {
-    const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
+    const currentTemplateType = templateTypes.find((tt) => tt.value === selectedTemplateType);
     let previewContent = content;
     let previewSubject = subject;
 
@@ -1100,14 +1102,14 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
     return content;
   };
 
-  const currentTemplateType = templateTypes.find((t) => t.value === selectedTemplateType);
+  const currentTemplateType = templateTypes.find((tt) => tt.value === selectedTemplateType);
   const preview = getPreviewContent();
 
   if (loading && !loadingCompanies) {
     return (
       <GlassCard className="p-3 sm:p-6">
         <div className="flex items-center justify-center py-6 sm:py-8">
-          <p className="text-sm sm:text-base text-muted-foreground">Laster mal...</p>
+          <p className="text-sm sm:text-base text-muted-foreground">{t("admin.emailTemplate.loadingTemplate")}</p>
         </div>
       </GlassCard>
     );
@@ -1119,7 +1121,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
             <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <h2 className="text-base sm:text-xl font-semibold">E-postmaler</h2>
+            <h2 className="text-base sm:text-xl font-semibold">{t("admin.emailTemplate.title")}</h2>
             <Button
               onClick={onOpenEmailSettings}
               variant="outline"
@@ -1127,7 +1129,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               className="gap-2"
             >
               <Settings className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
-              {isMobile ? "Innstillinger" : "E-postinnstillinger"}
+              {isMobile ? t("admin.emailTemplate.settingsShort") : t("admin.emailTemplate.settings")}
             </Button>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -1136,10 +1138,10 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               onClick={handleResetToDefault}
               size={isMobile ? "sm" : "default"}
               className={isMobile ? "flex-1" : ""}
-              title="Tilbakestill til standardmal"
+              title={t("admin.emailTemplate.resetToDefaultTitle")}
             >
               <RotateCcw className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
-              {isMobile ? "Standard" : "Standardmal"}
+              {isMobile ? t("admin.emailTemplate.defaultShort") : t("admin.emailTemplate.defaultTemplate")}
             </Button>
             <Button
               variant="outline"
@@ -1149,7 +1151,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               className={isMobile ? "flex-1" : ""}
             >
               <RefreshCw className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
-              {isMobile ? "Tilbake" : "Tilbakestill"}
+              {isMobile ? t("admin.emailTemplate.backShort") : t("admin.emailTemplate.resetButton")}
             </Button>
             <Button
               variant="outline"
@@ -1158,7 +1160,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               className={isMobile ? "flex-1" : ""}
             >
               <Eye className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
-              {isMobile ? "Vis" : "Forhåndsvis"}
+              {isMobile ? t("admin.emailTemplate.showShort") : t("admin.emailTemplate.preview")}
             </Button>
             <Button
               onClick={handleSave}
@@ -1167,7 +1169,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               className={isMobile ? "flex-1" : ""}
             >
               <Save className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
-              {saving ? "Lagrer..." : "Lagre"}
+              {saving ? t("admin.emailTemplate.saving") : t("admin.emailTemplate.save")}
             </Button>
           </div>
         </div>
@@ -1178,17 +1180,17 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             <div className="space-y-2">
               <Label htmlFor="company-select" className="text-xs sm:text-sm flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                Velg bedrift
+                {t("admin.emailTemplate.selectCompany")}
               </Label>
               <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
                 <SelectTrigger className={isMobile ? "h-9 text-sm" : ""}>
-                  <SelectValue placeholder="Velg bedrift" />
+                  <SelectValue placeholder={t("admin.emailTemplate.selectCompany")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL_COMPANIES_ID} className="text-xs sm:text-sm font-semibold">
                     <span className="flex items-center gap-2">
                       <Globe className="h-4 w-4" />
-                      Alle selskaper
+                      {t("admin.emailTemplate.allCompanies")}
                     </span>
                   </SelectItem>
                   {companies.map((company) => (
@@ -1200,7 +1202,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               </Select>
               {isAllCompaniesMode && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Malen vil bli lagret til alle {companies.length} selskaper når du klikker "Lagre".
+                  {t("admin.emailTemplate.saveAllWarning", { count: companies.length })}
                 </p>
               )}
             </div>
@@ -1208,11 +1210,11 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
           <div className="space-y-2">
             <Label htmlFor="template-type" className="text-xs sm:text-sm">
-              Maltype
+              {t("admin.emailTemplate.templateType")}
             </Label>
             <Select value={selectedTemplateType} onValueChange={setSelectedTemplateType}>
               <SelectTrigger className={isMobile ? "h-9 text-sm" : ""}>
-                <SelectValue placeholder="Velg maltype" />
+                <SelectValue placeholder={t("admin.emailTemplate.selectTemplateType")} />
               </SelectTrigger>
               <SelectContent>
                 {templateTypes.map((type) => (
@@ -1225,7 +1227,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
           </div>
 
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
-            <h3 className="font-semibold text-xs sm:text-sm mb-2">Tilgjengelige variabler:</h3>
+            <h3 className="font-semibold text-xs sm:text-sm mb-2">{t("admin.emailTemplate.availableVariables")}:</h3>
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {currentTemplateType?.variables.map((variable) => (
                 <code
@@ -1233,26 +1235,26 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                   className="bg-white dark:bg-gray-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
                   onClick={() => {
                     navigator.clipboard.writeText(variable);
-                    toast.success("Variabel kopiert");
+                    toast.success(t("admin.emailTemplate.toastVariableCopied"));
                   }}
-                  title="Klikk for å kopiere"
+                  title={t("admin.emailTemplate.clickToCopy")}
                 >
                   {variable}
                 </code>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Klikk på en variabel for å kopiere den</p>
+            <p className="text-xs text-muted-foreground mt-2">{t("admin.emailTemplate.clickVariableToCopy")}</p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="subject" className="text-xs sm:text-sm">
-              E-post emne
+              {t("admin.emailTemplate.emailSubject")}
             </Label>
             <Input
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder={currentTemplateType?.defaultSubject || "Skriv inn e-post emne..."}
+              placeholder={currentTemplateType?.defaultSubject || t("admin.emailTemplate.emailSubjectPlaceholder")}
               className={isMobile ? "h-9 text-sm" : ""}
             />
           </div>
@@ -1261,7 +1263,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
           <div className="space-y-2">
             <Label className="text-xs sm:text-sm flex items-center gap-2">
               <Paperclip className="h-4 w-4" />
-              Vedlegg
+              {t("admin.emailTemplate.attachments")}
             </Label>
             <div className="flex flex-wrap gap-2 items-center">
               {attachments.map((doc) => (
@@ -1282,12 +1284,12 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                 className="gap-1"
               >
                 <Plus className="h-4 w-4" />
-                Legg til vedlegg
+                {t("admin.emailTemplate.addAttachment")}
               </Button>
             </div>
             {attachments.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                {attachments.length} vedlegg valgt. Disse vil bli sendt med alle e-poster som bruker denne malen.
+                {t("admin.emailTemplate.attachmentsSelected", { count: attachments.length })}
               </p>
             )}
           </div>
@@ -1296,17 +1298,17 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             <TabsList className={`grid w-full grid-cols-2 ${isMobile ? "h-8" : "max-w-md"}`}>
               <TabsTrigger value="visual" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? "text-xs" : ""}`}>
                 <EyeIcon className={`${isMobile ? "h-3 w-3" : "h-4 w-4"}`} />
-                {isMobile ? "Visuell" : "Visuell Editor"}
+                {isMobile ? t("admin.emailTemplate.visualShort") : t("admin.emailTemplate.visualEditor")}
               </TabsTrigger>
               <TabsTrigger value="html" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? "text-xs" : ""}`}>
                 <Code className={`${isMobile ? "h-3 w-3" : "h-4 w-4"}`} />
-                {isMobile ? "HTML" : "HTML Kode"}
+                {isMobile ? t("admin.emailTemplate.html") : t("admin.emailTemplate.htmlCode")}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="visual" className="mt-3 sm:mt-4">
               <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">E-post innhold (Visuell editor)</Label>
+                <Label className="text-xs sm:text-sm">{t("admin.emailTemplate.emailContentVisual")}</Label>
                 <div className="border rounded-lg overflow-hidden bg-white">
                   <style>{`
                     .quill-editor-container .ql-container {
@@ -1323,13 +1325,12 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                     onChange={handleVisualEditorChange}
                     modules={modules}
                     formats={formats}
-                    placeholder="Skriv inn e-postinnholdet her..."
+                    placeholder={t("admin.emailTemplate.emailContentPlaceholder")}
                     className="quill-editor-container"
                   />
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Bruk verktøylinjen ovenfor for å formatere teksten. Du kan bruke variabler fra listen ovenfor i
-                  teksten.
+                  {t("admin.emailTemplate.visualEditorHelp")}
                 </p>
               </div>
             </TabsContent>
@@ -1337,18 +1338,18 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             <TabsContent value="html" className="mt-3 sm:mt-4">
               <div className="space-y-2">
                 <Label htmlFor="content" className="text-xs sm:text-sm">
-                  E-post innhold (HTML)
+                  {t("admin.emailTemplate.emailContentHtml")}
                 </Label>
                 <Textarea
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="Skriv inn HTML-innhold..."
+                  placeholder={t("admin.emailTemplate.htmlContentPlaceholder")}
                   rows={isMobile ? 20 : 25}
                   className={`font-mono ${isMobile ? "text-xs" : "text-sm"}`}
                 />
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Du kan bruke HTML og inline CSS for å style e-posten.
+                  {t("admin.emailTemplate.htmlEditorHelp")}
                 </p>
               </div>
             </TabsContent>
@@ -1362,16 +1363,16 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
           className={`${isMobile ? "max-w-[95vw] max-h-[85vh]" : "max-w-3xl max-h-[90vh]"} overflow-y-auto`}
         >
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg">Forhåndsvisning av e-post</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">{t("admin.emailTemplate.previewTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 sm:space-y-4">
             <div>
-              <Label className="text-xs sm:text-sm text-muted-foreground">Maltype:</Label>
+              <Label className="text-xs sm:text-sm text-muted-foreground">{t("admin.emailTemplate.templateType")}:</Label>
               <p className="font-semibold text-sm sm:text-base">{currentTemplateType?.label}</p>
             </div>
             <div>
-              <Label className="text-xs sm:text-sm text-muted-foreground">Emne:</Label>
-              <p className="font-semibold text-sm sm:text-base">{preview.subject || "Ingen emne"}</p>
+              <Label className="text-xs sm:text-sm text-muted-foreground">{t("admin.emailTemplate.subject")}:</Label>
+              <p className="font-semibold text-sm sm:text-base">{preview.subject || t("admin.emailTemplate.noSubject")}</p>
             </div>
             <div className="border rounded-lg overflow-hidden">
               <div
