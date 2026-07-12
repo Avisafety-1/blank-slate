@@ -56,7 +56,7 @@ Statuskoder:
 | # | Fil / område | Status |
 |--:|--------------|--------|
 | 5.1 | PDF-eksport (`oppdragPdfExport`, `riskAssessmentPdfExport`, `incidentPdfExport`, `userManualPdf`) | DONE | userManualPdf.ts migrert 2026-07-13: alle 17 seksjoner (titler, avsnitt, lister, tabeller) flyttet til `pdf.userManual.sections.*` i no/en pdf.json, hentet via i18n.t(returnObjects). Tittelside, TOC, footer bruker eksisterende `pdf.userManual.*`-nøkler. Verifisert med bunx tsgo --noEmit (ingen feil). |
-| 5.2 | `src/lib/notifications.ts` → namespace `notifications` | TODO |
+| 5.2 | `src/lib/notifications.ts` → namespace `notifications` | DONE | Alle brukervendte strenger i incident-notification HTML migrert til `notifications.incident.*` 2026-07-12. |
 | 5.3 | Edge functions (bruker-vendte) → lokale `prompts.ts` | TODO |
 
 ## Fase 6 – Sluttopprydding
