@@ -1,5 +1,7 @@
 import L from "leaflet";
 import { supabase } from "@/integrations/supabase/client";
+import i18n from '@/i18n';
+const tp = (k: string, opts?: any): string => i18n.t(`safety.weatherPopup.${k}`, opts) as string;
 
 export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
   const popup = L.popup()
@@ -7,14 +9,14 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
     .setContent(`
       <div style="min-width: 280px; padding: 8px;">
         <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">
-          Dronevær for valgt posisjon
+          ${tp('title')}
         </div>
         <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
-          Koordinater: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+          ${tp('coordinates', { lat: lat.toFixed(4), lng: lng.toFixed(4) })}
         </div>
         <div id="weather-content-${Date.now()}" style="text-align: center; padding: 12px;">
           <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-          <div style="margin-top: 8px; font-size: 12px; color: #666;">Laster værdata...</div>
+          <div style="margin-top: 8px; font-size: 12px; color: #666;">${tp('loading')}</div>
         </div>
         <style>
           @keyframes spin {
@@ -34,7 +36,7 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
     if (!contentEl) return;
     
     if (error || !data) {
-      contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Kunne ikke hente værdata</div>';
+      contentEl.innerHTML = `<div style="color: #dc2626; padding: 8px;">${tp('errorFetch')}</div>`;
       return;
     }
     
@@ -47,33 +49,33 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
     const colors = recommendationColors[recommendation] || { bg: '#f3f4f6', border: '#9ca3af', color: '#6b7280' };
     
     const recommendationText: Record<string, string> = {
-      warning: 'Anbefales ikke å fly',
-      caution: 'Fly med forsiktighet',
-      ok: 'Gode flyforhold',
+      warning: tp('recommendationNoFly'),
+      caution: tp('recommendationCaution'),
+      ok: tp('recommendationOk'),
     };
     
     let html = `
       <div style="padding: 8px; background: ${colors.bg}; border: 1px solid ${colors.border}; border-radius: 6px; margin-bottom: 12px;">
         <div style="color: ${colors.color}; font-weight: 600; font-size: 13px;">
-          ${recommendationText[recommendation] || 'Ukjent'}
+          ${recommendationText[recommendation] || tp('recommendationUnknown')}
         </div>
       </div>
       <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; margin-bottom: 12px;">
         <div>
-          <div style="color: #6b7280; font-size: 11px;">Vind</div>
+          <div style="color: #6b7280; font-size: 11px;">${tp('wind')}</div>
           <div style="font-weight: 600;">${data.current.wind_speed?.toFixed(1) || '-'} m/s</div>
         </div>
         <div>
-          <div style="color: #6b7280; font-size: 11px;">Temp</div>
+          <div style="color: #6b7280; font-size: 11px;">${tp('temp')}</div>
           <div style="font-weight: 600;">${data.current.temperature?.toFixed(1) || '-'}°C</div>
         </div>
         <div>
-          <div style="color: #6b7280; font-size: 11px;">Nedbør</div>
+          <div style="color: #6b7280; font-size: 11px;">${tp('precipitation')}</div>
           <div style="font-weight: 600;">${data.current.precipitation?.toFixed(1) || '0'} mm</div>
         </div>
         ${data.current.dew_point != null ? `
         <div>
-          <div style="color: #6b7280; font-size: 11px;">Duggpunkt</div>
+          <div style="color: #6b7280; font-size: 11px;">${tp('dewPoint')}</div>
           <div style="font-weight: 600;">${data.current.dew_point.toFixed(1)}°C</div>
         </div>
         ` : ''}
@@ -103,9 +105,9 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
         warning: '#dc2626',
       };
       const recTexts: Record<string, string> = {
-        ok: 'Gode flyforhold',
-        caution: 'Fly med forsiktighet',
-        warning: 'Anbefales ikke å fly',
+        ok: tp('recommendationOk'),
+        caution: tp('recommendationCaution'),
+        warning: tp('recommendationNoFly'),
       };
       
       const getReasons = (h: any) => {
@@ -116,17 +118,17 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
         const temperature = h.temperature || 0;
         const symbol = h.symbol || '';
         
-        if (windSpeed > 10) reasons.push(`Sterk vind (${windSpeed.toFixed(1)} m/s)`);
-        if (windGust > 15) reasons.push(`Kraftige vindkast (${windGust.toFixed(1)} m/s)`);
-        if (precipitation > 2) reasons.push(`Kraftig nedbør (${precipitation.toFixed(1)} mm)`);
-        if (temperature < -10 || temperature > 40) reasons.push(`Ekstrem temperatur (${temperature.toFixed(0)}°C)`);
-        if (symbol.includes('fog')) reasons.push('Tåke');
+        if (windSpeed > 10) reasons.push(tp('reasons.strongWind', { value: windSpeed.toFixed(1) }));
+        if (windGust > 15) reasons.push(tp('reasons.strongGust', { value: windGust.toFixed(1) }));
+        if (precipitation > 2) reasons.push(tp('reasons.heavyPrecip', { value: precipitation.toFixed(1) }));
+        if (temperature < -10 || temperature > 40) reasons.push(tp('reasons.extremeTemp', { value: temperature.toFixed(0) }));
+        if (symbol.includes('fog')) reasons.push(tp('reasons.fog'));
         
         if (reasons.length === 0) {
-          if (windSpeed > 7) reasons.push(`Mye vind (${windSpeed.toFixed(1)} m/s)`);
-          if (windGust > 10) reasons.push(`Vindkast (${windGust.toFixed(1)} m/s)`);
-          if (precipitation > 0.5) reasons.push(`Nedbør (${precipitation.toFixed(1)} mm)`);
-          if (temperature < 0) reasons.push(`Kulde (${temperature.toFixed(0)}°C)`);
+          if (windSpeed > 7) reasons.push(tp('reasons.moderateWind', { value: windSpeed.toFixed(1) }));
+          if (windGust > 10) reasons.push(tp('reasons.gust', { value: windGust.toFixed(1) }));
+          if (precipitation > 0.5) reasons.push(tp('reasons.precip', { value: precipitation.toFixed(1) }));
+          if (temperature < 0) reasons.push(tp('reasons.cold', { value: temperature.toFixed(0) }));
         }
         return reasons;
       };
@@ -153,11 +155,11 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
       html += `
         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
           <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px;">
-            <div style="font-size: 11px; font-weight: 600; color: #6b7280; line-height: 1.3;">Prognose neste<br/>12 timer</div>
+            <div style="font-size: 11px; font-weight: 600; color: #6b7280; line-height: 1.3;">${tp('forecastNext')}<br/>${tp('hours12')}</div>
             <div style="display: flex; gap: 6px; font-size: 9px; color: #9ca3af;">
-              <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span>OK</span>
-              <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #f59e0b; border-radius: 2px;"></span>Forsiktig</span>
-              <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #dc2626; border-radius: 2px;"></span>Ikke fly</span>
+              <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #10b981; border-radius: 2px;"></span>${tp('legendOk')}</span>
+              <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #f59e0b; border-radius: 2px;"></span>${tp('legendCaution')}</span>
+              <span style="display: flex; align-items: center; gap: 2px;"><span style="width: 8px; height: 8px; background: #dc2626; border-radius: 2px;"></span>${tp('legendNoFly')}</span>
             </div>
           </div>
           <div id="${popupId}-container" style="display: flex; gap: 2px; position: relative;">
@@ -189,7 +191,7 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
         html += `
           <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500;">
             <span style="color: #10b981;">✨</span>
-            <span>Beste flyvindu: ${startTime} - ${endTime} (${data.best_flight_window.duration_hours}t)</span>
+            <span>${tp('bestFlightWindow', { start: startTime, end: endTime, hours: data.best_flight_window.duration_hours })}</span>
           </div>
         `;
       }
@@ -218,7 +220,7 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
             if (h.recommendation !== 'ok' && h.reasons.length > 0) {
               reasonsHtml = `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; color: ${h.color}; font-size: 10px; font-weight: 500;">${h.recText}<ul style="margin: 4px 0 0 14px; padding: 0; font-weight: 400;">${h.reasons.map((r: string) => `<li style="margin-bottom: 2px;">${r}</li>`).join('')}</ul></div>`;
             } else if (h.recommendation === 'ok') {
-              reasonsHtml = `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; color: #10b981; font-size: 10px; font-weight: 500;">Gode flyforhold</div>`;
+              reasonsHtml = `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #e5e7eb; color: #10b981; font-size: 10px; font-weight: 500;">${tp('recommendationOk')}</div>`;
             }
             
             popupEl.innerHTML = `
@@ -228,7 +230,7 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
                   <span>🌡️</span><span>${h.temp}°C</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                  <span>💨</span><span>${h.wind} m/s${h.windGust ? ` (kast ${h.windGust})` : ''}</span>
+                  <span>💨</span><span>${h.wind} m/s${h.windGust ? ` (${tp('gustSuffix', { value: h.windGust })})` : ''}</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
                   <span>💧</span><span>${h.precip} mm</span>
@@ -258,14 +260,14 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
       }, 100);
     }
     
-    html += '<div style="margin-top: 12px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px;">Værdata fra MET Norway</div>';
+    html += `<div style="margin-top: 12px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px;">${tp('footerSource')}</div>`;
     
     contentEl.innerHTML = html;
   } catch (err) {
     console.error('Error fetching weather in map popup:', err);
     const contentEl = document.querySelector(`[id^="weather-content-"]`) as HTMLElement;
     if (contentEl) {
-      contentEl.innerHTML = '<div style="color: #dc2626; padding: 8px;">Feil ved henting av værdata</div>';
+      contentEl.innerHTML = `<div style="color: #dc2626; padding: 8px;">${tp('errorGeneric')}</div>`;
     }
   }
 }

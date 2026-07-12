@@ -4897,5 +4897,191 @@
       "writePlaceholder": "Write {{field}}...",
       "commentsHeader": "Comments"
     }
+  },
+  "safety": {
+    "common": {
+      "unknown": "Unknown"
+    },
+    "arealbrukLegend": {
+      "title": "Land use:",
+      "bolig": "Residential",
+      "naeringKontor": "Commercial/Office",
+      "industriLager": "Industry/Warehouse",
+      "fritidPark": "Recreation/Park",
+      "offentlig": "Public",
+      "transport": "Transport"
+    },
+    "befolkningLegend": {
+      "title": "Population per km² {{suffix}}",
+      "suffix250m": "(SSB 250 m)",
+      "suffixSsb1km": "(SSB 1 km)",
+      "suffixEurostat": "(Eurostat 2021, 1 km)",
+      "suffixBoth": "(SSB 1 km / Eurostat 2021)",
+      "subtitle250m": "Risk assessment uses 250 m grids × 16.",
+      "subtitleSsb": "Source: SSB (Norway only)",
+      "subtitleEurostat": "Source: Eurostat GISCO Census 2021",
+      "subtitleBoth": "Norway: SSB · Europe: Eurostat GISCO (Census 2021)",
+      "range1": "1–9 residents per km²",
+      "range2": "10–19 residents per km²",
+      "range3": "20–99 residents per km²",
+      "range4": "100–499 residents per km²",
+      "range5": "500–1,999 residents per km²",
+      "range6": "2,000–4,999 residents per km²",
+      "range7": "5,000 or more residents per km²"
+    },
+    "eiendomsgrenserLegend": {
+      "title": "Property boundaries (Cadastre)",
+      "description": "Click the map to see the property ID. Use it to look up the owner in Kartverket's property register.",
+      "linkText": "Open property register"
+    },
+    "tettstederLegend": {
+      "title": "Urban settlements (SSB)",
+      "tettbygd": "Urban (≥200 residents, dense development)",
+      "spredtbygd": "Rural / sparsely populated area"
+    },
+    "mapLayerControl": {
+      "ariaLabel": "Map layers",
+      "title": "Map layers",
+      "groupLuftrom": "Airspace",
+      "groupRestriksjoner": "Restrictions",
+      "groupNaturBefolkning": "Nature & population",
+      "groupInfrastruktur": "Infrastructure",
+      "groupLiveTrafikk": "Live traffic",
+      "groupOppdrag": "Missions",
+      "groupAnnet": "Other"
+    },
+    "weatherPanel": {
+      "loading": "Fetching {{label}}...",
+      "errorFetch": "Could not fetch weather data",
+      "historicalUnavailable": "Weather data not available for historical missions",
+      "historicalIncomplete": "Weather data incomplete for this mission",
+      "actualWeather": "Actual weather",
+      "recordedAt": "Weather recorded at completion: {{date}}",
+      "actualConditionsFooter": "Actual weather conditions during the flight",
+      "recommendationNoFly": "Not recommended to fly",
+      "recommendationCaution": "Fly with caution",
+      "recommendationOk": "Good flying conditions",
+      "recommendationUnknown": "Unknown",
+      "forecastNext": "Forecast for the next",
+      "hours12": "12 hours",
+      "legendOk": "OK",
+      "legendCaution": "Caution",
+      "legendNoFly": "No fly",
+      "gustSuffix": "(gust {{value}})",
+      "dewPointSuffix": "dew pt.",
+      "bestFlightWindow": "Best flight window: {{start}} - {{end}} ({{hours}}h)",
+      "wind": "Wind",
+      "temperature": "Temperature",
+      "precipitation": "Precipitation",
+      "humidity": "Humidity",
+      "dewPoint": "Dew point",
+      "weatherAlerts": "Weather alerts",
+      "tabNow": "Now",
+      "tabForecast": "24h forecast",
+      "hourlyForecast": "Hourly forecast",
+      "bestFlightWindowLong": "Best flight window: {{start}} - {{end}} ({{hours}} hours)",
+      "footerSource": "Weather data from MET Norway • Updated {{time}}",
+      "reasons": {
+        "strongWind": "Strong wind ({{value}} m/s)",
+        "strongGust": "Strong gusts ({{value}} m/s)",
+        "heavyPrecip": "Heavy precipitation ({{value}} mm)",
+        "extremeTemp": "Extreme temperature ({{value}}°C)",
+        "fog": "Fog",
+        "condensation": "Condensation (dew point {{value}}°C)",
+        "moderateWind": "Strong wind ({{value}} m/s)",
+        "gust": "Gusts ({{value}} m/s)",
+        "precip": "Precipitation ({{value}} mm)",
+        "cold": "Cold ({{value}}°C)",
+        "nearDewPoint": "Near dew point ({{value}}°C)"
+      }
+    },
+    "weatherPopup": {
+      "title": "Drone weather for selected position",
+      "coordinates": "Coordinates: {{lat}}, {{lng}}",
+      "loading": "Loading weather data...",
+      "errorFetch": "Could not fetch weather data",
+      "errorGeneric": "Error fetching weather data",
+      "recommendationNoFly": "Not recommended to fly",
+      "recommendationCaution": "Fly with caution",
+      "recommendationOk": "Good flying conditions",
+      "recommendationUnknown": "Unknown",
+      "wind": "Wind",
+      "temp": "Temp",
+      "precipitation": "Precipitation",
+      "dewPoint": "Dew point",
+      "forecastNext": "Forecast for the next",
+      "hours12": "12 hours",
+      "legendOk": "OK",
+      "legendCaution": "Caution",
+      "legendNoFly": "No fly",
+      "bestFlightWindow": "Best flight window: {{start}} - {{end}} ({{hours}}h)",
+      "gustSuffix": "gust {{value}}",
+      "footerSource": "Weather data from MET Norway"
+    },
+    "natureProtection": {
+      "unknownName": "Unknown",
+      "factSheetNote": "📄 Open the fact sheet for the full protection regulation text",
+      "legalBasis": "Legal basis: {{basis}}",
+      "metaForvaltning": "Management authority:",
+      "metaKommune": "Municipality:",
+      "metaVernet": "Protected:",
+      "metaIucn": "IUCN:",
+      "linkFactSheet": "📄 Open fact sheet",
+      "linkSecureMessage": "✉️ Send application via secure message",
+      "linkDroneRules": "ℹ️ Drone rules"
+    },
+    "routeProximity": {
+      "autoShownBadge": "📍 Auto-shown along the route",
+      "vernRestriction": {
+        "ferdselsforbud": "Access prohibited",
+        "landingsforbud": "Landing prohibited",
+        "lavflyving": "Low-flying prohibited below 300m",
+        "genericRestriction": "Restriction"
+      },
+      "caaLabels": {
+        "restriksjoner": "Restricted area",
+        "fareomrader": "Danger area",
+        "notamSoner": "NOTAM zone",
+        "flyplasser": "Airport",
+        "fengsler": "Prison",
+        "ambassader": "Embassy",
+        "genericZone": "CAA zone"
+      },
+      "shipTypes": {
+        "fishing": "Fishing vessel",
+        "towing": "Towing",
+        "dredging": "Dredging",
+        "diving": "Diving",
+        "military": "Military",
+        "sailing": "Sailing vessel",
+        "pleasure": "Pleasure craft",
+        "highSpeed": "High-speed craft",
+        "pilot": "Pilot vessel",
+        "sar": "SAR",
+        "tug": "Tug",
+        "portTender": "Port tender",
+        "police": "Police",
+        "medical": "Medical",
+        "passenger": "Passenger ship",
+        "cargo": "Cargo ship",
+        "tanker": "Tanker",
+        "unknown": "Unknown",
+        "genericType": "Type {{type}}"
+      },
+      "vesselPopup": {
+        "mmsi": "MMSI",
+        "type": "Type",
+        "speed": "Speed",
+        "course": "Course",
+        "destination": "Dest"
+      },
+      "obstaclePopup": {
+        "title": "Obstacle",
+        "type": "Type",
+        "elevationMsl": "Elevation (MSL)",
+        "elevationAgl": "Height (AGL)",
+        "unknownType": "Unknown"
+      }
+    }
   }
 }

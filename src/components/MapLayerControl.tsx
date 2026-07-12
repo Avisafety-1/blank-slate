@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { 
   Layers, 
   Ban, 
@@ -70,7 +71,18 @@ const GROUP_ORDER = [
 ];
 
 export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+
+  const groupLabels: Record<string, string> = {
+    "Luftrom": t("safety.mapLayerControl.groupLuftrom"),
+    "Restriksjoner": t("safety.mapLayerControl.groupRestriksjoner"),
+    "Natur & befolkning": t("safety.mapLayerControl.groupNaturBefolkning"),
+    "Infrastruktur": t("safety.mapLayerControl.groupInfrastruktur"),
+    "Live trafikk": t("safety.mapLayerControl.groupLiveTrafikk"),
+    "Oppdrag": t("safety.mapLayerControl.groupOppdrag"),
+    "Annet": t("safety.mapLayerControl.groupAnnet"),
+  };
 
   const grouped = useMemo(() => {
     const map = new Map<string, LayerConfig[]>();
@@ -94,21 +106,21 @@ export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps)
           variant="secondary"
           size="icon"
           className="shadow-lg bg-card hover:bg-accent"
-          aria-label="Kartlag"
+          aria-label={t("safety.mapLayerControl.ariaLabel")}
         >
           <Layers className="h-5 w-5" />
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-[280px] sm:w-[320px]">
         <SheetHeader>
-          <SheetTitle>Kartlag</SheetTitle>
+          <SheetTitle>{t("safety.mapLayerControl.title")}</SheetTitle>
         </SheetHeader>
         <ScrollArea className="mt-6 h-[calc(100vh-8rem)]">
           <div className="space-y-5 pr-3">
             {grouped.map(([groupName, items]) => (
               <div key={groupName} className="space-y-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                  {groupName}
+                  {groupLabels[groupName] ?? groupName}
                 </div>
                 <div className="space-y-3">
                   {items.map((layer) => {

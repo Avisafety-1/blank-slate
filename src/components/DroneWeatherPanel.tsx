@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useTerminology } from "@/hooks/useTerminology";
+import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -87,6 +88,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const terminology = useTerminology();
+  const { t } = useTranslation();
 
   // Hvis vi har lagrede værdata (historisk), vis disse i stedet for å hente nye
   const isHistorical = !!savedWeatherData;
@@ -121,13 +123,13 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
   const getRecommendationText = (recommendation: string) => {
     switch (recommendation) {
       case 'warning':
-        return 'Anbefales ikke å fly';
+        return t('safety.weatherPanel.recommendationNoFly');
       case 'caution':
-        return 'Fly med forsiktighet';
+        return t('safety.weatherPanel.recommendationCaution');
       case 'ok':
-        return 'Gode flyforhold';
+        return t('safety.weatherPanel.recommendationOk');
       default:
-        return 'Ukjent';
+        return t('safety.weatherPanel.recommendationUnknown');
     }
   };
 
@@ -163,20 +165,20 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     const dewPoint = hour.dew_point;
 
     // Warning-nivå årsaker
-    if (windSpeed > 10) reasons.push(`Sterk vind (${windSpeed.toFixed(1)} m/s)`);
-    if (windGust > 15) reasons.push(`Kraftige vindkast (${windGust.toFixed(1)} m/s)`);
-    if (precipitation > 2) reasons.push(`Kraftig nedbør (${precipitation.toFixed(1)} mm)`);
-    if (temperature < -10 || temperature > 40) reasons.push(`Ekstrem temperatur (${temperature.toFixed(0)}°C)`);
-    if (symbol.includes('fog')) reasons.push('Tåke');
-    if (dewPoint != null && (temperature - dewPoint) < 1) reasons.push(`Kondens (duggpunkt ${dewPoint.toFixed(1)}°C)`);
+    if (windSpeed > 10) reasons.push(t('safety.weatherPanel.reasons.strongWind', { value: windSpeed.toFixed(1) }));
+    if (windGust > 15) reasons.push(t('safety.weatherPanel.reasons.strongGust', { value: windGust.toFixed(1) }));
+    if (precipitation > 2) reasons.push(t('safety.weatherPanel.reasons.heavyPrecip', { value: precipitation.toFixed(1) }));
+    if (temperature < -10 || temperature > 40) reasons.push(t('safety.weatherPanel.reasons.extremeTemp', { value: temperature.toFixed(0) }));
+    if (symbol.includes('fog')) reasons.push(t('safety.weatherPanel.reasons.fog'));
+    if (dewPoint != null && (temperature - dewPoint) < 1) reasons.push(t('safety.weatherPanel.reasons.condensation', { value: dewPoint.toFixed(1) }));
 
     // Caution-nivå årsaker (hvis ingen warning)
     if (reasons.length === 0) {
-      if (windSpeed > 7) reasons.push(`Mye vind (${windSpeed.toFixed(1)} m/s)`);
-      if (windGust > 10) reasons.push(`Vindkast (${windGust.toFixed(1)} m/s)`);
-      if (precipitation > 0.5) reasons.push(`Nedbør (${precipitation.toFixed(1)} mm)`);
-      if (temperature < 0) reasons.push(`Kulde (${temperature.toFixed(0)}°C)`);
-      if (dewPoint != null && (temperature - dewPoint) < 3) reasons.push(`Nær duggpunkt (${dewPoint.toFixed(1)}°C)`);
+      if (windSpeed > 7) reasons.push(t('safety.weatherPanel.reasons.moderateWind', { value: windSpeed.toFixed(1) }));
+      if (windGust > 10) reasons.push(t('safety.weatherPanel.reasons.gust', { value: windGust.toFixed(1) }));
+      if (precipitation > 0.5) reasons.push(t('safety.weatherPanel.reasons.precip', { value: precipitation.toFixed(1) }));
+      if (temperature < 0) reasons.push(t('safety.weatherPanel.reasons.cold', { value: temperature.toFixed(0) }));
+      if (dewPoint != null && (temperature - dewPoint) < 3) reasons.push(t('safety.weatherPanel.reasons.nearDewPoint', { value: dewPoint.toFixed(1) }));
     }
 
     return reasons;
@@ -212,7 +214,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
       setWeatherData(data);
     } catch (err: any) {
       console.error('Error fetching drone weather:', err);
-      setError(err.message || 'Kunne ikke hente værdata');
+      setError(err.message || t('safety.weatherPanel.errorFetch'));
     } finally {
       setLoading(false);
     }
@@ -226,7 +228,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Henter {terminology.vehicleWeather.toLowerCase()}...</span>
+        <span>{t('safety.weatherPanel.loading', { label: terminology.vehicleWeather.toLowerCase() })}</span>
       </div>
     );
   }
@@ -248,7 +250,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
         <Card className="mt-3 p-3 bg-card/50 border">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="w-3.5 h-3.5" />
-            <span>Værdata ikke tilgjengelig for historiske oppdrag</span>
+            <span>{t('safety.weatherPanel.historicalUnavailable')}</span>
           </div>
         </Card>
       );
@@ -258,7 +260,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
         <Card className="mt-3 p-3 bg-card/50 border">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Info className="w-3.5 h-3.5" />
-            <span>Værdata ufullstendig for dette oppdraget</span>
+            <span>{t('safety.weatherPanel.historicalIncomplete')}</span>
           </div>
         </Card>
       );
@@ -271,7 +273,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <h4 className="text-sm font-semibold">{terminology.vehicleWeather}</h4>
             <Badge variant="secondary" className="text-xs gap-1">
               <Clock className="w-3 h-3" />
-              Faktisk vær
+              {t('safety.weatherPanel.actualWeather')}
             </Badge>
           </div>
           <div className={cn(
@@ -287,13 +289,13 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
         <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
           <Info className="w-3.5 h-3.5 shrink-0" />
           <span>
-            Værdata registrert ved fullføring: {new Date(savedWeatherData.captured_at).toLocaleDateString('nb-NO', { 
-              day: 'numeric', 
-              month: 'long', 
+            {t('safety.weatherPanel.recordedAt', { date: new Date(savedWeatherData.captured_at).toLocaleDateString('nb-NO', {
+              day: 'numeric',
+              month: 'long',
               year: 'numeric',
               hour: '2-digit',
               minute: '2-digit'
-            })}
+            }) })}
           </span>
         </div>
 
@@ -333,13 +335,13 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
           {savedWeatherData.current.dew_point != null && (
             <div className="flex items-center gap-1.5 text-sm">
               <CloudRain className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium text-foreground">{savedWeatherData.current.dew_point.toFixed(1)}°C duggp.</span>
+              <span className="font-medium text-foreground">{savedWeatherData.current.dew_point.toFixed(1)}°C {t('safety.weatherPanel.dewPointSuffix')}</span>
             </div>
           )}
         </div>
 
         <div className="text-xs text-muted-foreground pt-2 border-t">
-          Faktiske værforhold under flygningen
+          {t('safety.weatherPanel.actualConditionsFooter')}
         </div>
       </Card>
     );
@@ -408,7 +410,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
           {weatherData.current.dew_point != null && (
             <div className="flex items-center gap-1.5 text-sm">
               <CloudRain className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium text-foreground">{weatherData.current.dew_point.toFixed(1)}°C duggp.</span>
+              <span className="font-medium text-foreground">{weatherData.current.dew_point.toFixed(1)}°C {t('safety.weatherPanel.dewPointSuffix')}</span>
             </div>
           )}
         </div>
@@ -420,23 +422,23 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
               <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Clock className="w-3.5 h-3.5" />
                 <div className="flex flex-col leading-tight">
-                  <span>Prognose neste</span>
-                  <span>12 timer</span>
+                  <span>{t('safety.weatherPanel.forecastNext')}</span>
+                  <span>{t('safety.weatherPanel.hours12')}</span>
                 </div>
               </div>
               {/* Legend */}
               <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <div className="w-2.5 h-2.5 rounded-sm bg-success" />
-                  <span>OK</span>
+                  <span>{t('safety.weatherPanel.legendOk')}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-2.5 h-2.5 rounded-sm bg-warning" />
-                  <span>Forsiktig</span>
+                  <span>{t('safety.weatherPanel.legendCaution')}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-2.5 h-2.5 rounded-sm bg-destructive" />
-                  <span>Ikke fly</span>
+                  <span>{t('safety.weatherPanel.legendNoFly')}</span>
                 </div>
               </div>
             </div>
@@ -466,7 +468,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                       <Wind className="w-3.5 h-3.5 text-muted-foreground" />
                       <span>{hour.wind_speed?.toFixed(1)} m/s</span>
                       {hour.wind_gust && hour.wind_gust > 0 && (
-                        <span className="text-muted-foreground">(kast {hour.wind_gust.toFixed(1)})</span>
+                        <span className="text-muted-foreground">{t('safety.weatherPanel.gustSuffix', { value: hour.wind_gust.toFixed(1) })}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -476,7 +478,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                     {hour.dew_point != null && (
                       <div className="flex items-center gap-2">
                         <CloudRain className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>Duggp. {hour.dew_point.toFixed(1)}°C</span>
+                        <span>{t('safety.weatherPanel.dewPointSuffix')} {hour.dew_point.toFixed(1)}°C</span>
                       </div>
                     )}
                     
@@ -510,7 +512,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             {weatherData.best_flight_window && (
               <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                 <Sparkles className="w-3.5 h-3.5 text-success" />
-                <span>Beste flyvindu: {formatTime(weatherData.best_flight_window.start_time)} - {formatTime(weatherData.best_flight_window.end_time)} ({weatherData.best_flight_window.duration_hours}t)</span>
+                <span>{t('safety.weatherPanel.bestFlightWindow', { start: formatTime(weatherData.best_flight_window.start_time), end: formatTime(weatherData.best_flight_window.end_time), hours: weatherData.best_flight_window.duration_hours })}</span>
               </div>
             )}
           </div>
@@ -535,8 +537,8 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
       <Tabs defaultValue="now" className="w-full">
         <TabsList className="w-full grid grid-cols-2">
-          <TabsTrigger value="now">Nå</TabsTrigger>
-          <TabsTrigger value="forecast">Prognose 24t</TabsTrigger>
+          <TabsTrigger value="now">{t('safety.weatherPanel.tabNow')}</TabsTrigger>
+          <TabsTrigger value="forecast">{t('safety.weatherPanel.tabForecast')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="now" className="space-y-3 mt-3">
@@ -544,13 +546,13 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Wind className="w-4 h-4" />
-                <span>Vind</span>
+                <span>{t('safety.weatherPanel.wind')}</span>
               </div>
               <div className="font-medium">
                 {weatherData.current.wind_speed?.toFixed(1) || '-'} m/s
                 {weatherData.current.wind_gust && weatherData.current.wind_gust > 0 && (
                   <span className="text-xs text-muted-foreground ml-1">
-                    (kast {weatherData.current.wind_gust.toFixed(1)} m/s)
+                    {t('safety.weatherPanel.gustSuffix', { value: `${weatherData.current.wind_gust.toFixed(1)} m/s` })}
                   </span>
                 )}
               </div>
@@ -559,7 +561,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Thermometer className="w-4 h-4" />
-                <span>Temperatur</span>
+                <span>{t('safety.weatherPanel.temperature')}</span>
               </div>
               <div className="font-medium">{weatherData.current.temperature?.toFixed(1) || '-'}°C</div>
             </div>
@@ -567,7 +569,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Droplets className="w-4 h-4" />
-                <span>Nedbør</span>
+                <span>{t('safety.weatherPanel.precipitation')}</span>
               </div>
               <div className="font-medium">{weatherData.current.precipitation?.toFixed(1) || '0'} mm/t</div>
             </div>
@@ -575,7 +577,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <CloudRain className="w-4 h-4" />
-                <span>Fuktighet</span>
+                <span>{t('safety.weatherPanel.humidity')}</span>
               </div>
               <div className="font-medium">{weatherData.current.humidity?.toFixed(0) || '-'}%</div>
             </div>
@@ -584,7 +586,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Droplets className="w-4 h-4" />
-                  <span>Duggpunkt</span>
+                  <span>{t('safety.weatherPanel.dewPoint')}</span>
                 </div>
                 <div className="font-medium">{weatherData.current.dew_point.toFixed(1)}°C</div>
               </div>
@@ -593,7 +595,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
           {weatherData.warnings.length > 0 && (
             <div className="space-y-2 pt-2 border-t">
-              <h4 className="text-xs font-semibold text-muted-foreground">Væradvarsler</h4>
+              <h4 className="text-xs font-semibold text-muted-foreground">{t('safety.weatherPanel.weatherAlerts')}</h4>
               {weatherData.warnings.map((warning, index) => (
                 <Alert
                   key={index}
@@ -618,7 +620,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 border border-success text-success text-sm">
               <Sparkles className="w-4 h-4" />
               <span className="font-medium">
-                Beste flyvindu: {formatTime(weatherData.best_flight_window.start_time)} - {formatTime(weatherData.best_flight_window.end_time)} ({weatherData.best_flight_window.duration_hours} timer)
+                {t('safety.weatherPanel.bestFlightWindowLong', { start: formatTime(weatherData.best_flight_window.start_time), end: formatTime(weatherData.best_flight_window.end_time), hours: weatherData.best_flight_window.duration_hours })}
               </span>
             </div>
           )}
@@ -627,7 +629,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
           <div className="space-y-2">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3 h-3" />
-              <span>Timeprognose</span>
+              <span>{t('safety.weatherPanel.hourlyForecast')}</span>
             </div>
             
             <TooltipProvider>
@@ -658,7 +660,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                         <Wind className="w-3 h-3" />
                         <span>{hour.wind_speed?.toFixed(1)} m/s</span>
                         {hour.wind_gust && hour.wind_gust > 0 && (
-                          <span className="text-muted-foreground">(kast {hour.wind_gust.toFixed(1)})</span>
+                          <span className="text-muted-foreground">{t('safety.weatherPanel.gustSuffix', { value: hour.wind_gust.toFixed(1) })}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
@@ -668,7 +670,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                       {hour.dew_point != null && (
                         <div className="flex items-center gap-2">
                           <CloudRain className="w-3 h-3" />
-                          <span>Duggp. {hour.dew_point.toFixed(1)}°C</span>
+                          <span>{t('safety.weatherPanel.dewPointSuffix')} {hour.dew_point.toFixed(1)}°C</span>
                         </div>
                       )}
                       <div className={cn(
@@ -689,15 +691,15 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-sm bg-success" />
-                <span>OK</span>
+                <span>{t('safety.weatherPanel.legendOk')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-sm bg-warning" />
-                <span>Forsiktighet</span>
+                <span>{t('safety.weatherPanel.legendCaution')}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-sm bg-destructive" />
-                <span>Ikke fly</span>
+                <span>{t('safety.weatherPanel.legendNoFly')}</span>
               </div>
             </div>
           </div>
@@ -705,7 +707,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
       </Tabs>
 
       <div className="text-xs text-muted-foreground pt-2 border-t">
-        Værdata fra MET Norway • Oppdatert {new Date(weatherData.timestamp).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+        {t('safety.weatherPanel.footerSource', { time: new Date(weatherData.timestamp).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' }) })}
       </div>
     </Card>
   );
