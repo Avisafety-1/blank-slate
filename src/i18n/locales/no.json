@@ -2328,6 +2328,23 @@
       "unknownDocument": "Dokument",
       "unknownDronetag": "DroneTag",
       "unknownChecklist": "Sjekkliste"
+    },
+    "personnelFlightKpi": {
+      "flightTime": "Flytid",
+      "requirement": "Krav",
+      "customizePeriods": "Tilpass perioder (dager)",
+      "period": "Periode {{n}}",
+      "lockedByCompany": "(låst av selskap)",
+      "companyRequires": "Selskapet krever {{req}}. Disse periodene vises alltid først.",
+      "cancel": "Avbryt",
+      "save": "Lagre",
+      "flightTimePerWeek": "Flytid per uke",
+      "flightTimePerDays": "Flytid per {{n}} dager",
+      "lastDays": "Siste {{n}}d",
+      "hourShort": "t",
+      "minuteShort": "m",
+      "bucketAria": "{{label}}, siste {{n}} dager",
+      "requirementLabel": "{{hours}}t/{{days}}d"
     }
   }
 }
