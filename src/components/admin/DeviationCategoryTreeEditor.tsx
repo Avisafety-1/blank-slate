@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Check, X, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { translateDeviationCategory } from "@/lib/i18nHelpers";
 
 const AVISAFE_PRESET: { label: string; children?: string[] }[] = [
   
@@ -259,7 +260,7 @@ export const DeviationCategoryTreeEditor = ({ companyId, readOnly = false }: Pro
             </>
           ) : (
             <>
-              <span className="flex-1 text-sm">{node.label}</span>
+              <span className="flex-1 text-sm">{translateDeviationCategory(node.label)}</span>
               {!readOnly && (
                 <>
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(node, -1)} title={t("admin.deviationCategory.moveUp")}>

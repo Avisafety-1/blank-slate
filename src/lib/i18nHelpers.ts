@@ -273,6 +273,52 @@ const RESOURCE_STATUS: DbValueMap = {
 export const translateResourceStatus = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
   lookup(RESOURCE_STATUS, v, lang);
 
+const DEVIATION_CATEGORY: DbValueMap = {
+  // Root categories
+  "Klima": { en: "Weather" },
+  "Teknisk svikt": { en: "Technical failure" },
+  "Nærhet (separasjon)": { en: "Proximity (separation)" },
+  "Overskridelse": { en: "Exceedance" },
+  "Pilot (PIC)": { en: "Pilot (PIC)" },
+  "Mangelfull lysføring": { en: "Insufficient lighting" },
+  "(N)MAC fugl (kollisjon/nær kollisjon med fugl)": { en: "(N)MAC bird (collision/near collision with bird)" },
+  "Annet (beskriv i kommentarfelt)": { en: "Other (describe in comment field)" },
+  // Weather children
+  "Ising (propell/kontrollflater)": { en: "Icing (propeller/control surfaces)" },
+  "Nedbør (regn/yr/vått vær)": { en: "Precipitation (rain/drizzle/wet weather)" },
+  "Vind og vindkast": { en: "Wind and wind gusts" },
+  // Technical failure children
+  "Kompassforstyrrelse": { en: "Compass interference" },
+  "GNSS (forstyrrelse/tap av signal)": { en: "GNSS (interference/loss of signal)" },
+  "Programvare": { en: "Software" },
+  "Radiokontakt (C2)": { en: "Radio link (C2)" },
+  "Batteri": { en: "Battery" },
+  "Flysensor": { en: "Flight sensor" },
+  "Strukturell": { en: "Structural" },
+  "Kommunikasjon (Multi-CREW)": { en: "Communication (Multi-CREW)" },
+  "Montering": { en: "Assembly" },
+  // Proximity children
+  "Annen drone (UA)": { en: "Other drone (UA)" },
+  "Småfly (GA)": { en: "Light aircraft (GA)" },
+  "Trafikkfly": { en: "Commercial aircraft" },
+  // Exceedance children
+  "Autorisasjon": { en: "Authorisation" },
+  "Avstandsbegrensning (horisontal)": { en: "Distance limit (horizontal)" },
+  "Energireserve": { en: "Energy reserve" },
+  "Høydebegrensning (vertikal)": { en: "Altitude limit (vertical)" },
+  "Luftromsavgrensning (Airspace Infringement)": { en: "Airspace infringement" },
+  "MTOM": { en: "MTOM" },
+  "Radiorekkevidde (BRLOS)": { en: "Radio range (BRLOS)" },
+  "VLOS (BLOS)": { en: "VLOS (BLOS)" },
+  // Pilot children
+  "Forstyrrelse under operasjon": { en: "Distraction during operation" },
+  "Ukvalifisert": { en: "Unqualified" },
+  "Udyktig (IMSAFE)": { en: "Unfit (IMSAFE)" },
+};
+
+export const translateDeviationCategory = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(DEVIATION_CATEGORY, v, lang);
+
 function lookup(
   map: DbValueMap,
   value: string | null | undefined,

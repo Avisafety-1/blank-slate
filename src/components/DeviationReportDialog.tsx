@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
+import { translateDeviationCategory } from "@/lib/i18nHelpers";
 
 interface Category {
   id: string;
@@ -185,10 +186,10 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
                         setSearch("");
                       }}
                     >
-                      <div className="font-medium">{cat.label}</div>
+                      <div className="font-medium">{translateDeviationCategory(cat.label)}</div>
                       {p.length > 1 && (
                         <div className="text-xs text-muted-foreground">
-                          {p.slice(0, -1).map((s) => s.label).join(" › ")}
+                          {p.slice(0, -1).map((s) => translateDeviationCategory(s.label)).join(" › ")}
                         </div>
                       )}
                     </button>
@@ -203,7 +204,7 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
                     {path.map((p, i) => (
                       <span key={p.id} className="flex items-center gap-1">
                         {i > 0 && <ChevronRight className="w-3 h-3" />}
-                        <span className="font-medium text-foreground">{p.label}</span>
+                        <span className="font-medium text-foreground">{translateDeviationCategory(p.label)}</span>
                       </span>
                     ))}
                   </div>
@@ -234,7 +235,7 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
                           className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded hover:bg-muted/50 text-left"
                           onClick={() => setPath((p) => [...p, opt])}
                         >
-                          <span>{opt.label}</span>
+                          <span>{translateDeviationCategory(opt.label)}</span>
                           {hasChildren && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                         </button>
                       );
