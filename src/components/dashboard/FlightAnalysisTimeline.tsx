@@ -139,9 +139,9 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
       {/* Scrubber */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatTime(0, positions)}</span>
-          <span className="font-medium text-foreground">{formatTime(currentIndex, positions)}</span>
-          <span>{formatTime(positions.length - 1, positions)}</span>
+          <span>{formatTime(0, positions, locale)}</span>
+          <span className="font-medium text-foreground">{formatTime(currentIndex, positions, locale)}</span>
+          <span>{formatTime(positions.length - 1, positions, locale)}</span>
         </div>
         <div className="relative">
           <Slider
