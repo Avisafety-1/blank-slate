@@ -430,8 +430,8 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
             <ClipboardCheck className="w-5 h-5 text-primary" />
             <span className="truncate">
               {showTabs
-                ? itemName || "Sjekklister"
-                : checklistTitles[activeChecklistId] || "Sjekkliste"}
+                ? itemName || t('resourceDialogs.checklistExecution.sjekklister')
+                : checklistTitles[activeChecklistId] || t('resourceDialogs.checklistExecution.sjekkliste')}
             </span>
           </DialogTitle>
           {showTabs && (
