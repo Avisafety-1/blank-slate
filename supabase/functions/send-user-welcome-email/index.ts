@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { resolveLanguage, t } from "../_shared/email-i18n.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,7 @@ interface UserWelcomeRequest {
   user_email: string;
   company_name: string;
   company_id: string;
+  language?: string;
 }
 
 serve(async (req) => {
@@ -21,12 +23,14 @@ serve(async (req) => {
   }
 
   try {
-    const { user_name, user_email, company_name, company_id }: UserWelcomeRequest = await req.json();
+    const body = await req.json() as UserWelcomeRequest;
+    const { user_name, user_email, company_name, company_id } = body;
+    const language = resolveLanguage(req, body);
     if (!user_email) {
-      return new Response(JSON.stringify({ message: "No email provided" }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ message: t(language, 'noEmailProvided') }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const templateResult = await getEmailTemplateWithFallback(company_id, 'user_welcome', { user_name, company_name });
+    const templateResult = await getEmailTemplateWithFallback(company_id, 'user_welcome', { user_name, company_name }, language);
 
     const emailConfig = await getEmailConfig(company_id);
     const fromName = emailConfig.fromName || "AviSafe";

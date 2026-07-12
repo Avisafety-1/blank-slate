@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { resolveLanguage } from "../_shared/email-i18n.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,7 +42,9 @@ serve(async (req) => {
       });
     }
 
-    const { email, companyName, registrationCode } = await req.json();
+    const body = await req.json();
+    const { email, companyName, registrationCode } = body;
+    const language = resolveLanguage(req, body);
     if (!email || !registrationCode) {
       return new Response(JSON.stringify({ error: 'email and registrationCode are required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -65,7 +68,8 @@ serve(async (req) => {
     const template = await getEmailTemplateWithFallback(
       companyId || '',
       'user_invite',
-      variables
+      variables,
+      language,
     );
 
     const emailConfig = await getEmailConfig(companyId || undefined);
