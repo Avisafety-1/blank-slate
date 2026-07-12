@@ -1986,5 +1986,30 @@
     "itemRouteKmz": "rutefil (KMZ)",
     "itemRouteAnnotation": "rute som annotasjon",
     "itemSoraZones": "{{count}} SORA-soner"
+  },
+  "adjacentAreaPanel": {
+    "description": "SORA 2.5 krever vurdering av gjennomsnittlig befolkningstetthet i tilstøtende område (fra bakkerisikobuffer til {{radius}} km radius). I Norge brukes SSB 250 m befolkningsrutenett; utenfor Norge brukes Eurostat GEOSTAT 2021 1 km grid.",
+    "uaSize": "UA Size",
+    "auto": "Auto: {{label}}",
+    "sail": "SAIL",
+    "sailLevel": "SAIL {{level}}",
+    "shelter": "Shelter: Er personer i området beskyttet (innendørs/under robust struktur)?",
+    "outdoorAssemblies": "Outdoor assemblies innen 1 km av OPS volume",
+    "fetchingSsb": "Henter SSB befolkningsdata…",
+    "adjacentRadius": "Tilstøtende radius",
+    "areaDonut": "Areal (donut)",
+    "populationFound": "Innbyggere funnet",
+    "avgDensity": "Gj.snitt tetthet",
+    "densityUnit": "pers/km²",
+    "dataSource": "Datagrunnlag",
+    "densityCategory": "Tetthetskategori",
+    "requiredContainment": "Required containment",
+    "outdoorAssembliesLabel": "Outdoor assemblies",
+    "planRouteHint": "Planlegg en rute (minst 2 punkter) for å beregne tilstøtende område. Oppdragets start-/lokasjonspunkt teller ikke som rute.",
+    "over": "OVER",
+    "ok": "OK",
+    "title": "Tilstøtende område",
+    "fetchError": "Feil ved henting av data",
+    "unknownError": "Ukjent feil"
   }
 }

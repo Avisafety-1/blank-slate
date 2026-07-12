@@ -1984,5 +1984,30 @@
     "itemRouteKmz": "route file (KMZ)",
     "itemRouteAnnotation": "route as annotation",
     "itemSoraZones": "{{count}} SORA zones"
+  },
+  "adjacentAreaPanel": {
+    "description": "SORA 2.5 requires an assessment of average population density in the adjacent area (from the ground risk buffer out to {{radius}} km radius). In Norway the SSB 250 m population grid is used; outside Norway the Eurostat GEOSTAT 2021 1 km grid is used.",
+    "uaSize": "UA Size",
+    "auto": "Auto: {{label}}",
+    "sail": "SAIL",
+    "sailLevel": "SAIL {{level}}",
+    "shelter": "Shelter: Are people in the area protected (indoors/under robust structure)?",
+    "outdoorAssemblies": "Outdoor assemblies within 1 km of OPS volume",
+    "fetchingSsb": "Fetching SSB population data…",
+    "adjacentRadius": "Adjacent radius",
+    "areaDonut": "Area (donut)",
+    "populationFound": "People found",
+    "avgDensity": "Avg density",
+    "densityUnit": "people/km²",
+    "dataSource": "Data source",
+    "densityCategory": "Density category",
+    "requiredContainment": "Required containment",
+    "outdoorAssembliesLabel": "Outdoor assemblies",
+    "planRouteHint": "Plan a route (at least 2 points) to compute the adjacent area. The mission's start/location point does not count as a route.",
+    "over": "OVER",
+    "ok": "OK",
+    "title": "Adjacent area",
+    "fetchError": "Error fetching data",
+    "unknownError": "Unknown error"
   }
 }
