@@ -243,21 +243,24 @@ export const EquipmentLogbookDialog = ({
 
         droneHistory.forEach(entry => {
           const isAdded = entry.action === 'added';
-          const droneName = droneMap.get(entry.drone_id) || 'Ukjent drone';
+          const droneName = droneMap.get(entry.drone_id) || t('resourceDialogs.equipmentLogbook.unknownDrone');
           logs.push({
             id: `drone-${entry.id}`,
             type: isAdded ? 'drone_added' : 'drone_removed',
             date: new Date(entry.created_at),
-            title: `${isAdded ? 'Lagt til' : 'Fjernet fra'} ${droneName}`,
-            description: `Dronekobling`,
-            userName: userMap.get(entry.user_id) || 'Ukjent',
+            title: isAdded
+              ? t('resourceDialogs.equipmentLogbook.logTitles.droneAdded', { drone: droneName })
+              : t('resourceDialogs.equipmentLogbook.logTitles.droneRemoved', { drone: droneName }),
+            description: t('resourceDialogs.equipmentLogbook.logTitles.droneConnection'),
+            userName: userMap.get(entry.user_id) || t('resourceDialogs.equipmentLogbook.unknownUser'),
             icon: isAdded ? <PackagePlus className="w-4 h-4" /> : <PackageMinus className="w-4 h-4" />,
             badgeColor: isAdded 
               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
               : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-            badgeText: isAdded ? 'Lagt til' : 'Fjernet',
+            badgeText: isAdded ? t('resourceDialogs.equipmentLogbook.badges.added') : t('resourceDialogs.equipmentLogbook.badges.removed'),
           });
         });
+
       }
 
       // Fetch manual entries (with image_url)
