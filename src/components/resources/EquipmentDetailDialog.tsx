@@ -926,7 +926,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label htmlFor="sist_vedlikeholdt" className="text-xs sm:text-sm">Sist vedlikeholdt</Label>
+                      <Label htmlFor="sist_vedlikeholdt" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.lastMaintDate')}</Label>
                       <Input
                         id="sist_vedlikeholdt"
                         type="date"
