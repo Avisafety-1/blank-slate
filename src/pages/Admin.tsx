@@ -1480,7 +1480,7 @@ const Admin = () => {
                                   className="scale-75"
                                   disabled={!canManageRoles}
                                 />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">Godkjenner for oppdrag</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">{t('admin.page.missionApprover')}</span>
                                 {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
                                   <Popover>
                                     <PopoverTrigger asChild>
