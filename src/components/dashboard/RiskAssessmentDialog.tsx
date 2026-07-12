@@ -1239,7 +1239,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           <Input
                             value={
                               existingSora?.prepared_by
-                                ? (preparedByProfile?.full_name || preparedByProfile?.email || "Ukjent")
+                                ? (preparedByProfile?.full_name || preparedByProfile?.email || t("riskAssessment.manualSora.unknown"))
                                 : (user?.email || "")
                             }
                             disabled
