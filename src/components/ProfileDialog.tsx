@@ -1589,10 +1589,10 @@ export const ProfileDialog = () => {
                 {/* Guided tour launcher */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Opplæring og guider</CardTitle>
+                    <CardTitle className="text-base">{t('profile.trainingAndGuides')}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">Få en interaktiv gjennomgang av AviSafe direkte i appen.</p>
+                    <p className="text-sm text-muted-foreground mb-3">{t('profile.trainingAndGuidesDesc')}</p>
                     <StartTourButton variant="default" />
                   </CardContent>
                 </Card>
@@ -1603,7 +1603,7 @@ export const ProfileDialog = () => {
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-base">
                         <GraduationCap className="h-5 w-5 shrink-0" />
-                        <span className="break-words">Kurs og tester ({pendingTraining.length})</span>
+                        <span className="break-words">{t('profile.coursesAndTests')} ({pendingTraining.length})</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1620,7 +1620,7 @@ export const ProfileDialog = () => {
                               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium text-sm break-words">
-                                    {(assignment.training_courses as any)?.title || "Kurs"}
+                                    {(assignment.training_courses as any)?.title || t('profile.course')}
                                   </p>
                                   {(assignment.training_courses as any)?.description && (
                                     <p className="text-xs text-muted-foreground line-clamp-2">
@@ -1629,7 +1629,7 @@ export const ProfileDialog = () => {
                                   )}
                                   {hasStarted && (
                                     <p className="text-xs text-muted-foreground mt-1">
-                                      ⏳ Påbegynt
+                                      {t('profile.inProgress')}
                                     </p>
                                   )}
                                 </div>
@@ -1639,7 +1639,7 @@ export const ProfileDialog = () => {
                                   onClick={() => setTakeCourseAssignmentId(assignment.id)}
                                 >
                                   <GraduationCap className="h-4 w-4 mr-1" />
-                                  {hasStarted ? "Fortsett kurs" : "Ta kurs"}
+                                  {hasStarted ? t('profile.continueCourse') : t('profile.takeCourse')}
                                 </Button>
                               </div>
                             </div>
@@ -1736,7 +1736,7 @@ export const ProfileDialog = () => {
                               {expired && (
                                 <div className="mt-2 flex items-center gap-1 text-xs text-destructive font-medium">
                                   <AlertCircle className="h-3 w-3" />
-                                  Utløpt
+                                  {t('profile.expiredLabel')}
                                 </div>
                               )}
                             </div>
@@ -1801,19 +1801,19 @@ export const ProfileDialog = () => {
 
                     <Separator />
                     <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Nødnumre</Label>
+                      <Label className="text-muted-foreground text-xs font-medium uppercase tracking-wide">{t('profile.emergencyNumbers')}</Label>
                       <div className="grid grid-cols-3 gap-2">
                         <a href="tel:110" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
                           <span className="text-lg font-bold">110</span>
-                          <span className="text-xs text-muted-foreground">Brann</span>
+                          <span className="text-xs text-muted-foreground">{t('profile.fire')}</span>
                         </a>
                         <a href="tel:112" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
                           <span className="text-lg font-bold">112</span>
-                          <span className="text-xs text-muted-foreground">Politi</span>
+                          <span className="text-xs text-muted-foreground">{t('profile.police')}</span>
                         </a>
                         <a href="tel:113" className="flex flex-col items-center gap-1 rounded-lg border-2 border-primary/30 bg-muted/30 p-3 text-center hover:bg-muted/50 transition-colors">
                           <span className="text-lg font-bold">113</span>
-                          <span className="text-xs text-muted-foreground">Ambulanse</span>
+                          <span className="text-xs text-muted-foreground">{t('profile.ambulance')}</span>
                         </a>
                       </div>
                     </div>
