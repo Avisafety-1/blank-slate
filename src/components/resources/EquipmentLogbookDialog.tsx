@@ -314,7 +314,7 @@ export const EquipmentLogbookDialog = ({
       setAllLogs(logs);
     } catch (error) {
       console.error("Error fetching logs:", error);
-      toast.error("Kunne ikke hente loggbok");
+      toast.error(t('resourceDialogs.equipmentLogbook.toasts.fetchError'));
     } finally {
       setIsLoading(false);
     }
