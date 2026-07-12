@@ -677,22 +677,22 @@ export const DroneLogbookDialog = ({
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}>
             <TabsList className="flex w-full overflow-x-auto no-scrollbar">
-              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
-              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Fly</TabsTrigger>
-              <TabsTrigger value="inspections" className="flex-1 min-w-[50px] text-xs sm:text-sm">Insp.</TabsTrigger>
-              <TabsTrigger value="equipment" className="flex-1 min-w-[50px] text-xs sm:text-sm">Utstyr</TabsTrigger>
-              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Man.</TabsTrigger>
+              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.all')}</TabsTrigger>
+              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.flights')}</TabsTrigger>
+              <TabsTrigger value="inspections" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.inspections')}</TabsTrigger>
+              <TabsTrigger value="equipment" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.equipment')}</TabsTrigger>
+              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.manual')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
               <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    Laster loggbok...
+                    {t('resourceDialogs.droneLogbook.loading')}
                   </div>
                 ) : filteredLogs.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
-                    Ingen oppføringer
+                    {t('resourceDialogs.droneLogbook.noEntries')}
                   </div>
                 ) : (
                   <div className="space-y-3">
