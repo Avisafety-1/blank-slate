@@ -554,7 +554,8 @@ const Auth = () => {
             emailRedirectTo: 'https://app.avisafe.no/auth',
             data: {
               full_name: fullName,
-              company_id: validatedCompany!.id
+              company_id: validatedCompany!.id,
+              preferred_language: validatedCompany!.defaultLanguage || 'no'
             }
           }
         });
