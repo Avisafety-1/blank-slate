@@ -87,14 +87,29 @@ export interface CaaLayerStyleEntry {
   iconLabel: string;
 }
 
-export const CAA_LAYER_STYLES: Record<string, CaaLayerStyleEntry> = {
-  fengsler:      { color: '#b91c1c', iconLabel: '🚫 Fengsel' },
-  ambassader:    { color: '#b91c1c', iconLabel: '🚫 Ambassade' },
-  fareomrader:   { color: '#eab308', iconLabel: '⚠️ Fareområde' },
-  flyplasser:    { color: '#dc2626', iconLabel: '✈️ Flyplass' },
-  notam_soner:   { color: '#eab308', iconLabel: '⚠️ NOTAM-sone' },
-  restriksjoner: { color: '#dc2626', iconLabel: '🚫 Restriksjonsområde' },
+const CAA_LAYER_COLORS: Record<string, string> = {
+  fengsler:      '#b91c1c',
+  ambassader:    '#b91c1c',
+  fareomrader:   '#eab308',
+  flyplasser:    '#dc2626',
+  notam_soner:   '#eab308',
+  restriksjoner: '#dc2626',
 };
+
+const caaIconLabel = (id: string): string =>
+  tp(`caa.iconLabels.${id}`, { defaultValue: tp('caa.zoneFallback') });
+
+export const CAA_LAYER_STYLES: Record<string, CaaLayerStyleEntry> = new Proxy({} as any, {
+  get: (_t, prop: string) => {
+    if (prop in CAA_LAYER_COLORS) {
+      return { color: CAA_LAYER_COLORS[prop], iconLabel: caaIconLabel(prop) };
+    }
+    return undefined;
+  },
+  has: (_t, prop: string) => prop in CAA_LAYER_COLORS,
+  ownKeys: () => Object.keys(CAA_LAYER_COLORS),
+  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+});
 
 export interface DkLayerStyleEntry {
   color: string;
@@ -102,37 +117,48 @@ export interface DkLayerStyleEntry {
   warningLevel: 'danger' | 'warning' | 'caution';
 }
 
-export const DK_LAYER_STYLES: Record<string, DkLayerStyleEntry> = {
-  rod:    { color: '#dc2626', iconLabel: '🚫 Flyvesikringskritisk', warningLevel: 'danger' },
-  orange: { color: '#f97316', iconLabel: '⚠️ Opmærksomhedsområde', warningLevel: 'warning' },
-  bla:    { color: '#2563eb', iconLabel: '🛡️ Sikringskritisk',       warningLevel: 'caution' },
+const DK_LAYER_META: Record<string, { color: string; warningLevel: DkLayerStyleEntry['warningLevel'] }> = {
+  rod:    { color: '#dc2626', warningLevel: 'danger' },
+  orange: { color: '#f97316', warningLevel: 'warning' },
+  bla:    { color: '#2563eb', warningLevel: 'caution' },
 };
+
+export const DK_LAYER_STYLES: Record<string, DkLayerStyleEntry> = new Proxy({} as any, {
+  get: (_t, prop: string) => {
+    const m = DK_LAYER_META[prop];
+    if (m) return { ...m, iconLabel: tp(`dk.iconLabels.${prop}`, { defaultValue: tp('dk.zoneFallback') }) };
+    return undefined;
+  },
+  has: (_t, prop: string) => prop in DK_LAYER_META,
+  ownKeys: () => Object.keys(DK_LAYER_META),
+  getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+});
 
 /** CAA NO drone-zone popup HTML — speiler eksisterende 2D-utseende 1:1. */
 export function buildCaaZonePopupHtml(zone: any): string {
   const layerId = zone?.layer_id ?? '';
-  const style = CAA_LAYER_STYLES[layerId] || { color: '#dc2626', iconLabel: '⚠️ Sone' };
+  const style = CAA_LAYER_STYLES[layerId] || { color: '#dc2626', iconLabel: tp('caa.zoneFallback') };
   const p = zone || {};
 
   let html = `<strong>${style.iconLabel}</strong><br/>`;
-  html += `<strong>${esc(p.name || 'Ukjent')}</strong><br/>`;
+  html += `<strong>${esc(p.name || tp('unknown'))}</strong><br/>`;
   if (p.message) {
     html += `<div style="margin-top:4px;max-width:280px;word-break:break-word">${sanitizeCaaMessageHtml(p.message)}</div>`;
   }
   if (p.lower_limit_m != null || p.upper_limit_m != null) {
-    html += `<div style="margin-top:4px">Høyde: ${p.lower_limit_m ?? 'GND'}–${p.upper_limit_m ?? '?'} m ${esc(p.upper_ref || 'AGL')}</div>`;
+    html += `<div style="margin-top:4px">${tp('caa.height')}: ${p.lower_limit_m ?? 'GND'}–${p.upper_limit_m ?? '?'} m ${esc(p.upper_ref || 'AGL')}</div>`;
   } else if (p.terrain_max_m != null) {
-    html += `<div style="margin-top:4px">Høyde: ≈${Math.round(p.terrain_min_m ?? p.terrain_max_m)}–${Math.round(p.terrain_max_m + 120)} m MSL (terreng + 120 m)</div>`;
+    html += `<div style="margin-top:4px">${tp('caa.heightTerrain', { min: Math.round(p.terrain_min_m ?? p.terrain_max_m), max: Math.round(p.terrain_max_m + 120) })}</div>`;
   }
   if (p.authority_name) {
-    html += `<div style="margin-top:4px"><em>Myndighet:</em> ${esc(p.authority_name)}`;
+    html += `<div style="margin-top:4px"><em>${tp('caa.authority')}</em> ${esc(p.authority_name)}`;
     if (p.authority_url) {
-      html += ` (<a href="${esc(p.authority_url)}" target="_blank" rel="noopener">info</a>)`;
+      html += ` (<a href="${esc(p.authority_url)}" target="_blank" rel="noopener">${tp('caa.info')}</a>)`;
     }
     html += `</div>`;
   }
   if (p.authority_phone) {
-    html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
+    html += `<div>${tp('caa.phone')}: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
   }
   return html;
 }
@@ -140,11 +166,11 @@ export function buildCaaZonePopupHtml(zone: any): string {
 /** CAA "småflyplass — 5 km sone" popup (sirkel rundt fly-plasser). */
 export function buildCaaSmallAirportPopupHtml(zone: any): string {
   const p = zone || {};
-  let html = `<strong>✈️ Småflyplass — 5 km sone</strong><br/>`;
-  html += `<strong>${esc(p.name || 'Ukjent')}</strong><br/>`;
-  html += `<div style="margin-top:4px">Kontakt flyplassen før flyging — <a href="https://myppr.no" target="_blank" rel="noopener noreferrer">myppr.no</a></div>`;
+  let html = `<strong>${tp('caa.smallAirportTitle')}</strong><br/>`;
+  html += `<strong>${esc(p.name || tp('unknown'))}</strong><br/>`;
+  html += `<div style="margin-top:4px">${tp('caa.smallAirportContact')}</div>`;
   if (p.authority_phone) {
-    html += `<div>Tlf: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
+    html += `<div>${tp('caa.phone')}: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
   }
   return html;
 }
@@ -152,20 +178,20 @@ export function buildCaaSmallAirportPopupHtml(zone: any): string {
 /** DK Trafikstyrelsen drone-zone popup HTML — speiler eksisterende 2D-utseende 1:1. */
 export function buildDkZonePopupHtml(zone: any): string {
   const layerId = zone?.layer_id ?? '';
-  const style = DK_LAYER_STYLES[layerId] || { color: '#dc2626', iconLabel: '⚠️ DK sone', warningLevel: 'danger' as const };
+  const style = DK_LAYER_STYLES[layerId] || { color: '#dc2626', iconLabel: tp('dk.zoneFallback'), warningLevel: 'danger' as const };
   let html = `<strong>${style.iconLabel}</strong><br/>`;
-  html += `<strong>${esc(zone?.name || zone?.icao || 'Ukjent')}</strong>`;
+  html += `<strong>${esc(zone?.name || zone?.icao || tp('unknown'))}</strong>`;
   if (zone?.category) html += `<div>${esc(zone.category)}</div>`;
-  if (zone?.buffer) html += `<div>Bufferzone: ${esc(zone.buffer)}</div>`;
-  html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: Trafikstyrelsen</div>`;
+  if (zone?.buffer) html += `<div>${tp('dk.buffer')}: ${esc(zone.buffer)}</div>`;
+  html += `<div style="margin-top:4px;font-size:11px;color:#666">${tp('dk.sourceLabel')}</div>`;
   return html;
 }
 
 /** DK / CAA layer-id => "caa" eller "dk" kilde (brukes i 3D popup-ruting). */
 export function zoneSource(layerId: string | null | undefined): 'caa' | 'dk' | 'unknown' {
   if (!layerId) return 'unknown';
-  if (layerId in CAA_LAYER_STYLES) return 'caa';
-  if (layerId in DK_LAYER_STYLES) return 'dk';
+  if (layerId in CAA_LAYER_COLORS) return 'caa';
+  if (layerId in DK_LAYER_META) return 'dk';
   return 'unknown';
 }
 
