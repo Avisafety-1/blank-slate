@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useChecklists } from "@/hooks/useChecklists";
 import { usePlanGating } from "@/hooks/usePlanGating";
+import { useTranslation } from "react-i18next";
 
 interface DroneModel {
   id: string;
@@ -46,6 +47,7 @@ interface AddDroneDialogProps {
 }
 
 export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defaultValues, onDroneCreated }: AddDroneDialogProps) => {
+  const { t } = useTranslation();
   const [companyId, setCompanyId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inspectionStartDate, setInspectionStartDate] = useState<string>("");
@@ -180,7 +182,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
 
     // Check drone limit
     if (droneCount >= maxDrones) {
-      toast.error(`Du har nådd maks antall droner (${maxDrones}) for din ${currentPlan.name}-plan (${currentPlan.maxDrones} per bruker × ${seatCount} brukere). Oppgrader for å legge til flere.`);
+      toast.error(t('resourceDialogs.addDrone.naddMaks', { max: maxDrones, plan: currentPlan.name, perUser: currentPlan.maxDrones, seats: seatCount }));
       return;
     }
 
@@ -190,7 +192,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     const formData = new FormData(form);
     
     if (!companyId) {
-      toast.error("Kunne ikke hente brukerinformasjon");
+      toast.error(t('resourceDialogs.addDrone.kunneIkkeHenteBruker'));
       setIsSubmitting(false);
       return;
     }
@@ -224,12 +226,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       if (error) {
         console.error("Error adding drone:", error);
         if (error.code === "42501" || error.message?.includes("policy")) {
-          toast.error(`Du har ikke tillatelse til å legge til ${terminology.vehicleLower}`);
+          toast.error(t('resourceDialogs.addDrone.ikkeTillatelse', { vehicle: terminology.vehicleLower }));
         } else {
-          toast.error(`Kunne ikke legge til ${terminology.vehicleLower}: ${error.message || "Ukjent feil"}`);
+          toast.error(t('resourceDialogs.addDrone.kunneIkkeLeggeTil', { vehicle: terminology.vehicleLower, message: error.message || t('resourceDialogs.addDrone.ukjentFeil') }));
         }
       } else {
-        toast.success(`${terminology.vehicle} lagt til`);
+        toast.success(t('resourceDialogs.addDrone.lagtTil', { vehicle: terminology.vehicle }));
         form.reset();
         setInspectionStartDate("");
         setInspectionIntervalDays("");
@@ -264,13 +266,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         <form onSubmit={handleAddDrone} className="space-y-4">
           {/* Drone catalog selector */}
           <div className="border-b pb-4 mb-4">
-            <Label>Velg fra katalog (valgfritt)</Label>
+            <Label>{t('resourceDialogs.addDrone.velgFraKatalog')}</Label>
             <Select value={selectedModelId} onValueChange={handleModelSelect}>
               <SelectTrigger>
-                <SelectValue placeholder="Velg dronemodell eller angi manuelt" />
+                <SelectValue placeholder={t('resourceDialogs.addDrone.velgDroneModell')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="manual">Angi manuelt</SelectItem>
+                <SelectItem value="manual">{t('resourceDialogs.addDrone.angiManuelt')}</SelectItem>
                 {droneModels.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
                     {model.name} ({model.eu_class})
@@ -279,12 +281,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1">
-              Velg en modell for å auto-fylle vekt, payload og klasse
+              {t('resourceDialogs.addDrone.katalogHint')}
             </p>
           </div>
 
           <div>
-            <Label htmlFor="modell">Modell</Label>
+            <Label htmlFor="modell">{t('resourceDialogs.addDrone.modell')}</Label>
             <Input 
               id="modell" 
               name="modell" 
@@ -294,27 +296,27 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             />
           </div>
           <div>
-            <Label htmlFor="serienummer">Serienummer</Label>
+            <Label htmlFor="serienummer">{t('resourceDialogs.addDrone.serienummer')}</Label>
             <Input id="serienummer" name="serienummer" defaultValue={defaultValues?.serienummer || ''} />
           </div>
           <div>
-            <Label htmlFor="internal_serial">Internt serienummer</Label>
+            <Label htmlFor="internal_serial">{t('resourceDialogs.addDrone.internalSerial')}</Label>
             <Input 
               id="internal_serial" 
               value={internalSerial}
               onChange={(e) => setInternalSerial(e.target.value)}
-              placeholder="Valgfritt"
+              placeholder={t('resourceDialogs.addDrone.valgfritt')}
             />
           </div>
           <div>
-            <Label htmlFor="registration_number">Registreringsnummer</Label>
-            <Input id="registration_number" name="registration_number" placeholder="Valgfritt" />
+            <Label htmlFor="registration_number">{t('resourceDialogs.addDrone.registration')}</Label>
+            <Input id="registration_number" name="registration_number" placeholder={t('resourceDialogs.addDrone.valgfritt')} />
           </div>
           <div>
-            <Label htmlFor="klasse">Klasse</Label>
+            <Label htmlFor="klasse">{t('resourceDialogs.addDrone.klasse')}</Label>
             <Select value={klasse} onValueChange={setKlasse}>
               <SelectTrigger>
-                <SelectValue placeholder="Velg klasse" />
+                <SelectValue placeholder={t('resourceDialogs.addDrone.velgKlasse')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="C0">C0</SelectItem>
@@ -328,25 +330,25 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="vekt">MTOW (kg)</Label>
+              <Label htmlFor="vekt">{t('resourceDialogs.addDrone.mtow')}</Label>
               <Input 
                 id="vekt" 
                 name="vekt" 
                 type="number" 
                 step="0.001" 
-                placeholder="f.eks. 0.9" 
+                placeholder={t('resourceDialogs.addDrone.mtowPlaceholder')} 
                 value={vekt}
                 onChange={(e) => setVekt(e.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor="payload">Payload (kg)</Label>
+              <Label htmlFor="payload">{t('resourceDialogs.addDrone.payload')}</Label>
               <Input 
                 id="payload" 
                 name="payload" 
                 type="number" 
                 step="0.001" 
-                placeholder="f.eks. 0.5" 
+                placeholder={t('resourceDialogs.addDrone.payloadPlaceholder')} 
                 value={payload}
                 onChange={(e) => setPayload(e.target.value)}
               />
@@ -359,51 +361,51 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
                 {model.weight_without_payload_kg != null && (
                   <div>
-                    <span className="font-medium">Vekt uten payload:</span> {model.weight_without_payload_kg} kg
+                    <span className="font-medium">{t('resourceDialogs.addDrone.vektUtenPayload')}</span> {model.weight_without_payload_kg} kg
                   </div>
                 )}
                 {model.standard_takeoff_weight_kg != null && (
                   <div>
-                    <span className="font-medium">Standard takeoff:</span> {model.standard_takeoff_weight_kg} kg
+                    <span className="font-medium">{t('resourceDialogs.addDrone.standardTakeoff')}</span> {model.standard_takeoff_weight_kg} kg
                   </div>
                 )}
                 {model.endurance_min != null && (
                   <div>
-                    <span className="font-medium">Flygetid:</span> {model.endurance_min} min
+                    <span className="font-medium">{t('resourceDialogs.addDrone.flygetid')}</span> {model.endurance_min} min
                   </div>
                 )}
                 {model.max_wind_mps != null && (
                   <div>
-                    <span className="font-medium">Maks vind:</span> {model.max_wind_mps} m/s
+                    <span className="font-medium">{t('resourceDialogs.addDrone.maksVind')}</span> {model.max_wind_mps} m/s
                   </div>
                 )}
                 {model.sensor_type && (
                   <div>
-                    <span className="font-medium">Sensor:</span> {model.sensor_type}
+                    <span className="font-medium">{t('resourceDialogs.addDrone.sensor')}</span> {model.sensor_type}
                   </div>
                 )}
                 {model.category && (
                   <div>
-                    <span className="font-medium">Kategori:</span> {model.category}
+                    <span className="font-medium">{t('resourceDialogs.addDrone.kategori')}</span> {model.category}
                   </div>
                 )}
               </div>
             );
           })()}
           <div>
-            <Label htmlFor="kjøpsdato">Kjøpsdato</Label>
+            <Label htmlFor="kjøpsdato">{t('resourceDialogs.addDrone.kjopsdato')}</Label>
             <Input id="kjøpsdato" name="kjøpsdato" type="date" />
           </div>
           <div>
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">{t('resourceDialogs.addDrone.status')}</Label>
             <Select name="status" defaultValue="Grønn">
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Grønn">Grønn</SelectItem>
-                <SelectItem value="Gul">Gul</SelectItem>
-                <SelectItem value="Rød">Rød</SelectItem>
+                <SelectItem value="Grønn">{t('resourceDialogs.addDrone.green')}</SelectItem>
+                <SelectItem value="Gul">{t('resourceDialogs.addDrone.yellow')}</SelectItem>
+                <SelectItem value="Rød">{t('resourceDialogs.addDrone.red')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -412,16 +414,16 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             <Input id="flyvetimer" name="flyvetimer" type="number" defaultValue={0} />
           </div>
           <div>
-            <Label htmlFor="sist_inspeksjon">Sist inspeksjon</Label>
+            <Label htmlFor="sist_inspeksjon">{t('resourceDialogs.addDrone.sistInspeksjon')}</Label>
             <Input id="sist_inspeksjon" name="sist_inspeksjon" type="date" />
           </div>
           
           {/* Inspection interval section */}
           <div className="border-t pt-4 mt-4">
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">Inspeksjonsintervall</Label>
+            <Label className="text-sm font-medium text-muted-foreground mb-2 block">{t('resourceDialogs.addDrone.inspeksjonsintervall')}</Label>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="inspection_start_date">Startdato</Label>
+                <Label htmlFor="inspection_start_date">{t('resourceDialogs.addDrone.startdato')}</Label>
                 <Input 
                   id="inspection_start_date" 
                   type="date" 
@@ -430,11 +432,11 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 />
               </div>
               <div>
-                <Label htmlFor="inspection_interval_days">Intervall (dager)</Label>
+                <Label htmlFor="inspection_interval_days">{t('resourceDialogs.addDrone.intervallDager')}</Label>
                 <Input 
                   id="inspection_interval_days" 
                   type="number" 
-                  placeholder="f.eks. 90"
+                  placeholder={t('resourceDialogs.addDrone.intervallPlaceholder')}
                   value={inspectionIntervalDays}
                   onChange={(e) => setInspectionIntervalDays(e.target.value)}
                 />
@@ -442,7 +444,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             </div>
             {calculatedNextInspection && (
               <p className="text-sm text-muted-foreground mt-2">
-                Beregnet neste inspeksjon: <span className="font-medium">{new Date(calculatedNextInspection).toLocaleDateString('nb-NO')}</span>
+                {t('resourceDialogs.addDrone.beregnetNesteInspeksjon')} <span className="font-medium">{new Date(calculatedNextInspection).toLocaleDateString('nb-NO')}</span>
               </p>
             )}
           </div>
@@ -450,13 +452,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           {/* Checklist selection */}
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <Label htmlFor="sjekkliste">Sjekkliste for inspeksjon</Label>
+              <Label htmlFor="sjekkliste">{t('resourceDialogs.addDrone.sjekklisteInspeksjon')}</Label>
               <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                  <SelectValue placeholder={t('resourceDialogs.addDrone.velgSjekkliste')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                  <SelectItem value="none">{t('resourceDialogs.addDrone.ingenSjekkliste')}</SelectItem>
                   {checklists.map((checklist) => (
                     <SelectItem key={checklist.id} value={checklist.id}>
                       {checklist.tittel}
@@ -465,7 +467,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                Hvis valgt, må sjekklisten fullføres før inspeksjon registreres
+                {t('resourceDialogs.addDrone.sjekklisteHint')}
               </p>
             </div>
           )}
@@ -473,14 +475,14 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           {/* Operations checklist multi-select */}
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <Label>Operasjonssjekklister</Label>
+              <Label>{t('resourceDialogs.addDrone.operasjonsSjekklister')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal">
                     <span className="min-w-0 flex-1 truncate text-left">
                       {selectedOpsChecklistIds.length > 0
-                        ? `${selectedOpsChecklistIds.length} sjekkliste(r) valgt`
-                        : "Velg sjekklister (valgfritt)"}
+                        ? t('resourceDialogs.addDrone.sjekklisterValgt', { count: selectedOpsChecklistIds.length })
+                        : t('resourceDialogs.addDrone.velgSjekklister')}
                     </span>
                     <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -506,7 +508,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 </PopoverContent>
               </Popover>
               <p className="text-xs text-muted-foreground mt-1">
-                Kobles automatisk til oppdrag når dronen legges til
+                {t('resourceDialogs.addDrone.opsHint')}
               </p>
             </div>
           )}
@@ -514,13 +516,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           {/* Post flight checklist selection */}
           {checklists.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <Label htmlFor="post_flight_checklist">Post flight sjekkliste</Label>
+              <Label htmlFor="post_flight_checklist">{t('resourceDialogs.addDrone.postFlight')}</Label>
               <Select value={selectedPostFlightChecklistId} onValueChange={setSelectedPostFlightChecklistId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg post flight sjekkliste (valgfritt)" />
+                  <SelectValue placeholder={t('resourceDialogs.addDrone.velgPostFlight')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                  <SelectItem value="none">{t('resourceDialogs.addDrone.ingenSjekkliste')}</SelectItem>
                   {checklists.map((checklist) => (
                     <SelectItem key={checklist.id} value={checklist.id}>
                       {checklist.tittel}
@@ -529,13 +531,13 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                Vises som bekreftelsesdialog når oppdrag fullføres
+                {t('resourceDialogs.addDrone.postFlightHint')}
               </p>
             </div>
           )}
           
           <div>
-            <Label htmlFor="neste_inspeksjon">Neste inspeksjon {calculatedNextInspection && "(overstyrt av intervall)"}</Label>
+            <Label htmlFor="neste_inspeksjon">{t('resourceDialogs.addDrone.nesteInspeksjon')} {calculatedNextInspection && t('resourceDialogs.addDrone.overstyrtAvIntervall')}</Label>
             <Input 
               id="neste_inspeksjon" 
               name="neste_inspeksjon" 
@@ -550,7 +552,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             />
           </div>
           <div>
-            <Label htmlFor="merknader">Merknader</Label>
+            <Label htmlFor="merknader">{t('resourceDialogs.addDrone.merknader')}</Label>
             <Textarea 
               id="merknader" 
               name="merknader" 
@@ -559,7 +561,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             />
           </div>
           <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Legger til..." : terminology.addVehicle}
+            {isSubmitting ? t('resourceDialogs.addDrone.leggerTil') : terminology.addVehicle}
           </Button>
         </form>
       </DialogContent>
