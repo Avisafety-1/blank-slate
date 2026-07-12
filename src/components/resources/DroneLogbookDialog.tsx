@@ -398,7 +398,7 @@ export const DroneLogbookDialog = ({
           .upload(filePath, imageFile, { contentType: imageFile.type });
 
         if (uploadError) {
-          toast.error("Innlegg lagret, men bilde kunne ikke lastes opp");
+          toast.error(t('resourceDialogs.droneLogbook.toasts.imageUploadError'));
         } else {
           await (supabase as any)
             .from("drone_log_entries")
@@ -407,7 +407,7 @@ export const DroneLogbookDialog = ({
         }
       }
 
-      toast.success(editingEntryId ? "Innlegg oppdatert" : "Innlegg lagt til");
+      toast.success(editingEntryId ? t('resourceDialogs.droneLogbook.toasts.entryUpdated') : t('resourceDialogs.droneLogbook.toasts.entryAdded'));
       setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
       clearImage();
       setShowAddEntry(false);
@@ -415,7 +415,7 @@ export const DroneLogbookDialog = ({
       fetchAllLogs();
     } catch (error: any) {
       console.error("Error saving entry:", error);
-      toast.error(`Kunne ikke lagre innlegg: ${error.message}`);
+      toast.error(t('resourceDialogs.droneLogbook.toasts.saveError', { message: error.message }));
     } finally {
       setIsSaving(false);
     }
