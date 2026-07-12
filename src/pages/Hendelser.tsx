@@ -579,9 +579,9 @@ const Hendelser = () => {
         if (Array.isArray(errorDetails) && errorDetails.length > 0) {
           // Structured validation errors - show each one
           const errorMessages = errorDetails.map((d: { attribute_code?: number; taxonomy_code?: string; message?: string }) => {
-            const attrLabel = d.attribute_code ? getAttributeLabel(d.attribute_code) : 'Ukjent';
+            const attrLabel = d.attribute_code ? getAttributeLabel(d.attribute_code) : t('incidents.eccairs.unknown');
             const taxonomyInfo = d.taxonomy_code && d.taxonomy_code !== '24' ? ` (taxonomy ${d.taxonomy_code})` : '';
-            return `${attrLabel}${taxonomyInfo}: ${d.message || 'Ukjent feil'}`;
+            return `${attrLabel}${taxonomyInfo}: ${d.message || t('incidents.eccairs.unknownError')}`;
           });
           
           console.error('ECCAIRS structured validation errors:', errorDetails);
