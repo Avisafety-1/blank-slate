@@ -150,7 +150,7 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
         <Collapsible defaultOpen={false}>
           <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/40 transition-colors">
             <p className="text-xs font-medium text-muted-foreground">
-              Hendelser under flyging ({mainEvents.reduce((s, g) => s + g.count, 0) + appWarningEvents.reduce((s, g) => s + g.count, 0)})
+              {t('dashboard.flightAnalysis.flightEvents', { count: mainEvents.reduce((s, g) => s + g.count, 0) + appWarningEvents.reduce((s, g) => s + g.count, 0) })}
             </p>
             <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
           </CollapsibleTrigger>
