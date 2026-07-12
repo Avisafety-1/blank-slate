@@ -182,7 +182,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
 
     // Check drone limit
     if (droneCount >= maxDrones) {
-      toast.error(`Du har nådd maks antall droner (${maxDrones}) for din ${currentPlan.name}-plan (${currentPlan.maxDrones} per bruker × ${seatCount} brukere). Oppgrader for å legge til flere.`);
+      toast.error(t('resourceDialogs.addDrone.naddMaks', { max: maxDrones, plan: currentPlan.name, perUser: currentPlan.maxDrones, seats: seatCount }));
       return;
     }
 
@@ -192,7 +192,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     const formData = new FormData(form);
     
     if (!companyId) {
-      toast.error("Kunne ikke hente brukerinformasjon");
+      toast.error(t('resourceDialogs.addDrone.kunneIkkeHenteBruker'));
       setIsSubmitting(false);
       return;
     }
