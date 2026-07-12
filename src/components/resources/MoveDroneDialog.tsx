@@ -52,21 +52,21 @@ const SUPPORTS_SHARE: Record<ResourceType, boolean> = {
   document: true,
 };
 
-const SECTION_LABELS: Record<ResourceType, string> = {
-  accessory: "Tilbehør",
-  dronetag: "DroneTag",
-  equipment: "Tilkoblet utstyr",
-  document: "Dokumenter & sjekklister",
-};
-
-const SHARE_HINT: Partial<Record<ResourceType, string>> = {
-  document: "Del med underavdelinger (gjør synlig for alle underavdelinger av eier).",
-  equipment: "Del synlighet med ny avdeling — eier endres ikke.",
-};
-
 export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: MoveDroneDialogProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  const SECTION_LABELS: Record<ResourceType, string> = {
+    accessory: t('resourceDialogs.moveDrone.sectionAccessory'),
+    dronetag: t('resourceDialogs.moveDrone.sectionDronetag'),
+    equipment: t('resourceDialogs.moveDrone.sectionEquipment'),
+    document: t('resourceDialogs.moveDrone.sectionDocument'),
+  };
+  const SHARE_HINT: Partial<Record<ResourceType, string>> = {
+    document: t('resourceDialogs.moveDrone.shareHintDocument'),
+    equipment: t('resourceDialogs.moveDrone.shareHintEquipment'),
+  };
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
