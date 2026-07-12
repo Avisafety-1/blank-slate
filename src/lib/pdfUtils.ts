@@ -133,9 +133,13 @@ export const sanitizeFilenameForPdf = (name: string): string => {
 /**
  * Formats a date for display in PDFs using Norwegian locale.
  */
-export const formatDateForPdf = (date: Date | string, formatStr: string = "dd.MM.yyyy HH:mm"): string => {
+export const formatDateForPdf = (
+  date: Date | string,
+  formatStr: string = "dd.MM.yyyy HH:mm",
+  language: AppLanguage = getCurrentLanguage(),
+): string => {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return sanitizeForPdf(format(dateObj, formatStr, { locale: nb }));
+  return sanitizeForPdf(format(dateObj, formatStr, { locale: dateFnsLocale(language) }));
 };
 
 /**
