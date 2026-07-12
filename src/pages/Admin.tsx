@@ -642,10 +642,10 @@ const Admin = () => {
       if (userId === user?.id) {
         await refetchUserInfo();
       }
-      toast.success(newValue ? 'Bruker er satt under opplæring' : 'Opplæringsmodus er slått av');
+      toast.success(newValue ? t('admin.page.userSetUnderTraining') : t('admin.page.trainingModeOff'));
     } catch (error) {
       console.error("Error toggling under training:", error);
-      toast.error("Kunne ikke oppdatere opplæringsstatus");
+      toast.error(t('admin.page.errorUpdatingTrainingStatus'));
     }
   };
 
@@ -663,10 +663,10 @@ const Admin = () => {
       if (userId === user?.id) {
         await refetchUserInfo();
       }
-      toast.success('Modultilgang oppdatert');
+      toast.success(t('admin.page.moduleAccessUpdated'));
     } catch (error) {
       console.error("Error updating training module access:", error);
-      toast.error("Kunne ikke oppdatere modultilgang");
+      toast.error(t('admin.page.errorUpdatingModuleAccess'));
     }
   };
 
@@ -684,10 +684,10 @@ const Admin = () => {
       if (userId === user?.id) {
         await refetchUserInfo();
       }
-      toast.success("Alle moduler er åpnet for brukeren");
+      toast.success(t('admin.page.allModulesOpened'));
     } catch (error) {
       console.error("Error opening all modules:", error);
-      toast.error("Kunne ikke åpne alle moduler");
+      toast.error(t('admin.page.errorOpeningModules'));
     }
   };
 
@@ -1185,7 +1185,7 @@ const Admin = () => {
                         type="text"
                         value={userSearchQuery}
                         onChange={(e) => setUserSearchQuery(e.target.value)}
-                        placeholder="Søk på navn..."
+                        placeholder={t('admin.page.searchByName')}
                         className="w-[180px] h-9 text-sm"
                       />
                       <Button
@@ -1262,7 +1262,7 @@ const Admin = () => {
                                       onValueChange={(value) => changeDepartment(profile.id, value)}
                                     >
                                       <SelectTrigger className="h-8 text-xs flex-1 min-w-[140px]">
-                                        <SelectValue placeholder="Avdeling" />
+                                        <SelectValue placeholder={t('admin.page.department')} />
                                       </SelectTrigger>
                                       <SelectContent className="z-[1300]">
                                         <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
@@ -1558,12 +1558,12 @@ const Admin = () => {
                               {!isChildCompany && childCompanies.length > 0 && (
                                 <div className="w-[180px]">
                                   <SearchablePersonSelect
-                                    persons={[{ id: companyId || '', full_name: companyName || 'Hovedselskap' }, ...childCompanies.map(c => ({ id: c.id, full_name: c.navn }))]}
+                                    persons={[{ id: companyId || '', full_name: companyName || t('admin.page.mainCompany') }, ...childCompanies.map(c => ({ id: c.id, full_name: c.navn }))]}
                                     value={profile.company_id || companyId || ""}
                                     onValueChange={(val) => { if (val) changeDepartment(profile.id, val); }}
-                                    placeholder="Avdeling"
-                                    searchPlaceholder="Søk avdeling..."
-                                    emptyText="Ingen avdelinger funnet."
+                                    placeholder={t('admin.page.department')}
+                                    searchPlaceholder={t('admin.page.searchDepartment')}
+                                    emptyText={t('admin.page.noDepartmentsFound')}
                                   />
                                 </div>
                               )}

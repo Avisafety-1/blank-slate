@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Radio, AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface WhepPlayerProps {
   url: string;
@@ -14,6 +15,7 @@ type PlayerState = "connecting" | "live" | "error" | "disconnected";
  * og rendrer videostrømmen i et <video>-element.
  */
 export const WhepPlayer = ({ url, onError }: WhepPlayerProps) => {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const [state, setState] = useState<PlayerState>("connecting");
@@ -56,7 +58,7 @@ export const WhepPlayer = ({ url, onError }: WhepPlayerProps) => {
         });
 
         if (!res.ok) {
-          throw new Error(`WHEP returnerte status ${res.status}`);
+          throw new Error(t('admin.whepPlayer.statusError', { status: res.status }));
         }
 
         const answerSdp = await res.text();
@@ -65,7 +67,7 @@ export const WhepPlayer = ({ url, onError }: WhepPlayerProps) => {
         await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
       } catch (err: any) {
         if (cancelled) return;
-        const msg = err?.message || "Ukjent feil ved tilkobling";
+        const msg = err?.message || t('admin.whepPlayer.unknownError');
         setErrorMsg(msg);
         setState("error");
         onError?.(msg);
@@ -79,7 +81,7 @@ export const WhepPlayer = ({ url, onError }: WhepPlayerProps) => {
       try { pcRef.current?.close(); } catch { /* ignore */ }
       pcRef.current = null;
     };
-  }, [url, onError]);
+  }, [url, onError, t]);
 
   return (
     <div className="space-y-2">
@@ -109,10 +111,10 @@ export const WhepPlayer = ({ url, onError }: WhepPlayerProps) => {
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Radio className={`h-3.5 w-3.5 ${state === "live" ? "text-green-500" : ""}`} />
         <span>
-          {state === "connecting" && "Kobler til…"}
-          {state === "live" && "Live"}
-          {state === "disconnected" && "Frakoblet"}
-          {state === "error" && "Feil"}
+          {state === "connecting" && t('admin.whepPlayer.connecting')}
+          {state === "live" && t('admin.whepPlayer.live')}
+          {state === "disconnected" && t('admin.whepPlayer.disconnected')}
+          {state === "error" && t('admin.whepPlayer.error')}
         </span>
       </div>
     </div>

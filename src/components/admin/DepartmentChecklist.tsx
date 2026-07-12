@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslation } from "react-i18next";
 
 interface DepartmentItem {
   id: string;
@@ -24,9 +25,10 @@ export const DepartmentChecklist = ({
   onToggle,
   allSelected,
   onToggleAll,
-  allLabel = "Alle avdelinger",
+  allLabel,
   className,
 }: DepartmentChecklistProps) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -46,7 +48,7 @@ export const DepartmentChecklist = ({
           onChange={(e) => onToggleAll(e.target.checked)}
           className="rounded border-border"
         />
-        <strong>{allLabel}</strong>
+        <strong>{allLabel ?? t('admin.departmentChecklist.allDepartments')}</strong>
       </label>
 
       {!allSelected && (
@@ -55,7 +57,7 @@ export const DepartmentChecklist = ({
             <div className="relative mb-1.5">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
               <Input
-                placeholder="Søk avdeling..."
+                placeholder={t('admin.departmentChecklist.searchPlaceholder')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-6 pl-6 text-xs"
@@ -78,7 +80,7 @@ export const DepartmentChecklist = ({
                 </label>
               ))}
               {filtered.length === 0 && (
-                <p className="text-xs text-muted-foreground col-span-2 py-1">Ingen treff</p>
+                <p className="text-xs text-muted-foreground col-span-2 py-1">{t('admin.departmentChecklist.noResults')}</p>
               )}
             </div>
           </ScrollArea>

@@ -46,7 +46,7 @@ Statuskoder:
 
 | # | Fil / område | Status |
 |--:|--------------|--------|
-| 4.1 | `src/pages/Admin.tsx` + `src/components/admin/*` | TODO |
+| 4.1 | `src/pages/Admin.tsx` + `src/components/admin/*` | WIP – Migrert 2026-07-13: WhepPlayer, DepartmentChecklist, NotamRssFeedsSection, MapLayerDefaultsSection, PlatformActivityLog, AttachmentPickerDialog, EmailSettingsDialog, CampaignHistorySection (MapPublicationDefaultsCard var allerede migrert til `mapPublication.*`). Nye nøkler under `admin.whepPlayer`, `admin.departmentChecklist`, `admin.notamRss`, `admin.mapLayerDefaults`, `admin.platformActivity`, `admin.attachmentPicker`, `admin.emailSettings`, `admin.campaignHistory`. Gjenstår: CompanyManagementSection/Dialog, CustomerManagementSection/Dialog, CustomerDetailDialog, MissionTypesSection, BulkEmailSender, EmailTemplateEditor, FH2DevicesSection, ChildCompaniesSection, RevenueCalculator (store filer, 400-2300 linjer hver — krever egen migreringsøkt).
 | 4.2 | `src/pages/Status.tsx` + `useStatusData.ts` | TODO |
 | 4.3 | `src/pages/Priser.tsx`, `Installer.tsx`, `Changelog.tsx` | TODO |
 | 4.4 | `src/pages/Marketing.tsx` + `src/components/marketing/*` | TODO |

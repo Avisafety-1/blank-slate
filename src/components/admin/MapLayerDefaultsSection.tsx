@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MAP_LAYER_CATALOG, MAP_LAYER_GROUP_ORDER, isLayerAvailableForCompany } from "@/config/mapLayers";
 import { resolveRootCompanyName } from "@/lib/companyHierarchy";
+import { useTranslation } from "react-i18next";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   layers: Layers, ban: Ban, alertTriangle: AlertTriangle, treePine: TreePine,
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) {
+  const { t } = useTranslation();
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [propagate, setPropagate] = useState(false);
   const [isRoot, setIsRoot] = useState(true);
@@ -93,10 +95,10 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
       .eq("id", companyId) as any);
     setSaving(false);
     if (error) {
-      toast.error("Kunne ikke lagre standard kartlag: " + error.message);
+      toast.error(t('admin.mapLayerDefaults.saveError', { message: error.message }));
       return;
     }
-    toast.success("Standard kartlag lagret");
+    toast.success(t('admin.mapLayerDefaults.saveSuccess'));
   }
 
   async function togglePropagate(next: boolean) {
@@ -109,11 +111,11 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
       .eq("id", companyId) as any);
     setSaving(false);
     if (error) {
-      toast.error("Kunne ikke oppdatere deling: " + error.message);
+      toast.error(t('admin.mapLayerDefaults.propagateError', { message: error.message }));
       return;
     }
     toast.success(
-      next ? "Standard kartlag deles nå med underavdelinger" : "Deling slått av",
+      next ? t('admin.mapLayerDefaults.propagateOnSuccess') : t('admin.mapLayerDefaults.propagateOffSuccess'),
     );
   }
 
@@ -123,13 +125,12 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Velg hvilke kartlag som er på som standard når brukere åpner /kart. Listen speiler
-        knappene i kartlag-menyen. Brukere kan fortsatt endre lagene lokalt for sin økt.
+        {t('admin.mapLayerDefaults.description')}
       </p>
 
       {locked && (
         <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-          Denne innstillingen er styrt av moderavdelingen og kan ikke endres her.
+          {t('admin.mapLayerDefaults.lockedNotice')}
         </div>
       )}
 
@@ -171,10 +172,9 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
       {isRoot && (
         <div className="flex items-start justify-between gap-3 pt-3 border-t border-border/50">
           <Label htmlFor="map-defaults-propagate" className="flex-1 cursor-pointer">
-            <div className="font-medium text-sm">Del med underavdelinger</div>
+            <div className="font-medium text-sm">{t('admin.mapLayerDefaults.shareWithSubDepartments')}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Når på: standardvalget over kopieres til alle underavdelinger, og disse
-              innstillingene låses hos dem.
+              {t('admin.mapLayerDefaults.shareDescription')}
             </div>
           </Label>
           <Switch

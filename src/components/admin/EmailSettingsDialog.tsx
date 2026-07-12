@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTranslation } from "react-i18next";
 
 interface EmailSettingsDialogProps {
   open: boolean;
@@ -31,6 +32,7 @@ interface EmailSettings {
 }
 
 export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
@@ -79,7 +81,7 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
       }
     } catch (error: any) {
       console.error("Error fetching email settings:", error);
-      toast.error("Kunne ikke laste innstillinger");
+      toast.error(t('admin.emailSettings.loadError'));
     } finally {
       setLoading(false);
     }
@@ -87,7 +89,7 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
 
   const handleSave = async () => {
     if (!companyId) {
-      toast.error("Du må være logget inn");
+      toast.error(t('admin.emailSettings.mustBeLoggedIn'));
       return;
     }
     setSaving(true);
@@ -99,11 +101,11 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
         p_enabled: settings.enabled,
       });
       if (error) throw error;
-      toast.success("Innstillinger lagret");
+      toast.success(t('admin.emailSettings.settingsSaved'));
       fetchSettings();
     } catch (error: any) {
       console.error("Error saving settings:", error);
-      toast.error("Kunne ikke lagre innstillinger: " + error.message);
+      toast.error(t('admin.emailSettings.saveError', { message: error.message }));
     } finally {
       setSaving(false);
     }
@@ -111,12 +113,12 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
 
   const handleTestEmail = async () => {
     if (!testEmail) {
-      toast.error("Vennligst skriv inn en e-postadresse for test");
+      toast.error(t('admin.emailSettings.enterTestEmail'));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(testEmail)) {
-      toast.error("Ugyldig e-postadresse");
+      toast.error(t('admin.emailSettings.invalidEmail'));
       return;
     }
     setTesting(true);
@@ -125,10 +127,10 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
         body: { company_id: companyId, recipient_email: testEmail },
       });
       if (error) throw error;
-      toast.success("Test e-post sendt! Sjekk innboksen din.");
+      toast.success(t('admin.emailSettings.testEmailSent'));
     } catch (error: any) {
       console.error("Error sending test email:", error);
-      toast.error("Kunne ikke sende test e-post: " + error.message);
+      toast.error(t('admin.emailSettings.testEmailError', { message: error.message }));
     } finally {
       setTesting(false);
     }
@@ -152,10 +154,10 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
         <DialogHeader>
           <DialogTitle className={`flex items-center gap-2 ${isMobile ? "text-base" : "text-lg"}`}>
             <Settings className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
-            E-postinnstillinger
+            {t('admin.emailSettings.title')}
           </DialogTitle>
           <DialogDescription className={isMobile ? "text-xs" : "text-sm"}>
-            Konfigurer avsender for e-post fra systemet
+            {t('admin.emailSettings.subtitle')}
           </DialogDescription>
         </DialogHeader>
 
@@ -163,14 +165,14 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
           <Alert>
             <Mail className="h-4 w-4" />
             <AlertDescription className={isMobile ? "text-xs" : "text-sm"}>
-              E-post sendes via AviSafe (Resend). Du kan tilpasse avsendernavn nedenfor.
+              {t('admin.emailSettings.infoText')}
             </AlertDescription>
           </Alert>
 
           {/* Enable/Disable Toggle */}
           <div className="flex items-center justify-between space-x-2">
             <Label htmlFor="enabled" className={isMobile ? "text-xs" : "text-sm"}>
-              Aktiver e-postsending
+              {t('admin.emailSettings.enableSending')}
             </Label>
             <Switch
               id="enabled"
@@ -181,36 +183,36 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
 
           {/* Sender name */}
           <div className="border-t pt-4 space-y-4">
-            <h3 className={`font-semibold ${isMobile ? "text-sm" : "text-base"}`}>Avsender</h3>
+            <h3 className={`font-semibold ${isMobile ? "text-sm" : "text-base"}`}>{t('admin.emailSettings.sender')}</h3>
             <div className="space-y-2">
-              <Label htmlFor="from_name" className={isMobile ? "text-xs" : "text-sm"}>Avsendernavn</Label>
+              <Label htmlFor="from_name" className={isMobile ? "text-xs" : "text-sm"}>{t('admin.emailSettings.senderName')}</Label>
               <Input
                 id="from_name"
                 value={settings.from_name}
                 onChange={(e) => setSettings({ ...settings, from_name: e.target.value })}
-                placeholder="Ditt Selskap"
+                placeholder={t('admin.emailSettings.senderNamePlaceholder')}
                 className={isMobile ? "h-9 text-sm" : ""}
               />
               <p className="text-xs text-muted-foreground">
-                Vises som avsendernavn i mottakerens innboks
+                {t('admin.emailSettings.senderNameHint')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label className={isMobile ? "text-xs" : "text-sm"}>Avsender e-post</Label>
+              <Label className={isMobile ? "text-xs" : "text-sm"}>{t('admin.emailSettings.senderEmail')}</Label>
               <Input
                 value={settings.from_email}
                 disabled
                 className={`${isMobile ? "h-9 text-sm" : ""} bg-muted`}
               />
               <p className="text-xs text-muted-foreground">
-                Domenet må være verifisert i Resend for å kunne brukes som avsender
+                {t('admin.emailSettings.senderEmailHint')}
               </p>
             </div>
           </div>
 
           {/* Test email */}
           <div className="border-t pt-4 space-y-4">
-            <h3 className={`font-semibold ${isMobile ? "text-sm" : "text-base"}`}>Test e-post</h3>
+            <h3 className={`font-semibold ${isMobile ? "text-sm" : "text-base"}`}>{t('admin.emailSettings.testEmailHeading')}</h3>
             <div className="flex gap-2">
               <Input
                 type="email"
@@ -230,11 +232,11 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
                 ) : (
                   <Send className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
                 )}
-                {isMobile ? "Send" : "Send test"}
+                {isMobile ? t('admin.emailSettings.send') : t('admin.emailSettings.sendTest')}
               </Button>
             </div>
             <p className={`text-muted-foreground ${isMobile ? "text-xs" : "text-sm"}`}>
-              Send en test-epost for å verifisere at innstillingene fungerer
+              {t('admin.emailSettings.testEmailDesc')}
             </p>
           </div>
 
@@ -250,7 +252,7 @@ export const EmailSettingsDialog = ({ open, onOpenChange }: EmailSettingsDialogP
               ) : (
                 <Save className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
               )}
-              {saving ? "Lagrer..." : "Lagre innstillinger"}
+              {saving ? t('admin.emailSettings.saving') : t('admin.emailSettings.saveSettings')}
             </Button>
           </div>
         </div>

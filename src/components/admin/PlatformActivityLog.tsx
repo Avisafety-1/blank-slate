@@ -31,7 +31,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 
 interface ActivityItem {
   type: string;
@@ -41,14 +42,14 @@ interface ActivityItem {
   timestamp: string;
 }
 
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-  mission: { icon: Target, label: "Oppdrag", color: "text-primary" },
-  risk_assessment: { icon: Shield, label: "Risikovurdering", color: "text-purple-500" },
-  incident: { icon: AlertTriangle, label: "Hendelse", color: "text-destructive" },
-  document: { icon: FileText, label: "Dokument", color: "text-green-500" },
-  new_user: { icon: UserPlus, label: "Ny bruker", color: "text-blue-500" },
-  drone: { icon: Package, label: "Drone", color: "text-orange-500" },
-  equipment: { icon: Wrench, label: "Utstyr", color: "text-muted-foreground" },
+const TYPE_CONFIG: Record<string, { icon: React.ElementType; labelKey: string; color: string }> = {
+  mission: { icon: Target, labelKey: "mission", color: "text-primary" },
+  risk_assessment: { icon: Shield, labelKey: "riskAssessment", color: "text-purple-500" },
+  incident: { icon: AlertTriangle, labelKey: "incident", color: "text-destructive" },
+  document: { icon: FileText, labelKey: "document", color: "text-green-500" },
+  new_user: { icon: UserPlus, labelKey: "newUser", color: "text-blue-500" },
+  drone: { icon: Package, labelKey: "drone", color: "text-orange-500" },
+  equipment: { icon: Wrench, labelKey: "equipment", color: "text-muted-foreground" },
 };
 
 interface Props {
@@ -56,6 +57,7 @@ interface Props {
 }
 
 export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
+  const { t, i18n } = useTranslation();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [hidden, setHidden] = useState(false);
@@ -92,7 +94,7 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
 
   const formatRelativeTime = (ts: string) => {
     try {
-      return formatDistanceToNow(new Date(ts), { addSuffix: true, locale: nb });
+      return formatDistanceToNow(new Date(ts), { addSuffix: true, locale: i18n.language === "en" ? enUS : nb });
     } catch {
       return ts;
     }
@@ -100,7 +102,7 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
 
   const formatFullTime = (ts: string) => {
     try {
-      return new Date(ts).toLocaleString("nb-NO", {
+      return new Date(ts).toLocaleString(i18n.language === "en" ? "en-US" : "nb-NO", {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -117,10 +119,10 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Activity className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground">Aktivitetslogg</h3>
+          <h3 className="font-semibold text-foreground">{t('admin.platformActivity.title')}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <Label htmlFor="hide-log" className="text-xs text-muted-foreground cursor-pointer">Skjul</Label>
+          <Label htmlFor="hide-log" className="text-xs text-muted-foreground cursor-pointer">{t('admin.platformActivity.hide')}</Label>
           <Switch id="hide-log" checked={hidden} onCheckedChange={setHidden} />
         </div>
       </div>
@@ -130,7 +132,7 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
       {loading && activities.length === 0 ? (
         <div className="flex items-center justify-center py-8 text-muted-foreground">
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Laster aktivitet...
+          {t('admin.platformActivity.loading')}
         </div>
       ) : (
         <>
@@ -139,11 +141,11 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
               <table className="w-full caption-bottom text-[11px] sm:text-sm">
                 <thead className="[&_tr]:border-b sticky top-0 bg-card z-10">
                   <tr className="border-b">
-                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">Type</th>
-                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">Beskrivelse</th>
-                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">Person</th>
-                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">Selskap</th>
-                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-right align-middle font-medium text-muted-foreground">Tid</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">{t('admin.platformActivity.type')}</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">{t('admin.platformActivity.description')}</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">{t('admin.platformActivity.person')}</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground">{t('admin.platformActivity.company')}</th>
+                    <th className="h-8 sm:h-10 px-2 sm:px-4 text-right align-middle font-medium text-muted-foreground">{t('admin.platformActivity.time')}</th>
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
@@ -155,7 +157,7 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
                         <td className="py-1.5 sm:py-2 px-2 sm:px-4 align-middle">
                           <div className="flex items-center gap-1 sm:gap-2">
                             <Icon className={`w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 ${config.color}`} />
-                            <span className="whitespace-nowrap">{config.label}</span>
+                            <span className="whitespace-nowrap">{t(`admin.platformActivity.types.${config.labelKey}`)}</span>
                           </div>
                         </td>
                         <td className="py-1.5 sm:py-2 px-2 sm:px-4 align-middle max-w-[80px] sm:max-w-[200px] truncate text-foreground">
@@ -185,7 +187,7 @@ export const PlatformActivityLog = ({ excludeAvisafe }: Props) => {
                   {activities.length === 0 && (
                     <tr>
                       <td colSpan={5} className="text-center text-muted-foreground py-8">
-                        Ingen aktivitet funnet.
+                        {t('admin.platformActivity.noActivity')}
                       </td>
                     </tr>
                   )}

@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanyMissionTypes, CompanyMissionType } from "@/hooks/useCompanyMissionTypes";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   companyId: string | null;
@@ -33,6 +34,7 @@ interface DocOption {
 
 export function MissionTypesSection({ companyId, disabled }: Props) {
   const { parentCompanyId } = useAuth();
+  const { t } = useTranslation();
   const { types, isInherited, effectiveCompanyId, reload } = useCompanyMissionTypes();
   const [newLabel, setNewLabel] = useState("");
   const [propagate, setPropagate] = useState(false);
@@ -83,11 +85,11 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     const label = newLabel.trim();
     if (!label || !companyId) return;
     if (label.toLowerCase() === "annet") {
-      toast({ title: "Reservert", description: "«Annet» finnes alltid som valg.", variant: "destructive" });
+      toast({ title: t("admin.missionTypes.toastReserved"), description: t("admin.missionTypes.toastReservedDesc"), variant: "destructive" });
       return;
     }
     if (types.some((t) => t.label.toLowerCase() === label.toLowerCase())) {
-      toast({ title: "Finnes allerede", variant: "destructive" });
+      toast({ title: t("admin.missionTypes.toastExists"), variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -100,7 +102,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     } as any) as any);
     setSaving(false);
     if (error) {
-      toast({ title: "Kunne ikke lagre", description: error.message, variant: "destructive" });
+      toast({ title: t("admin.missionTypes.toastSaveError"), description: error.message, variant: "destructive" });
       return;
     }
     setNewLabel("");
@@ -112,19 +114,19 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     const { error } = await (supabase.from("company_mission_types").delete().eq("id", id) as any);
     setSaving(false);
     if (error) {
-      toast({ title: "Kunne ikke slette", description: error.message, variant: "destructive" });
+      toast({ title: t("admin.missionTypes.toastDeleteError"), description: error.message, variant: "destructive" });
       return;
     }
     await reload();
   };
 
-  const handleToggleActive = async (t: CompanyMissionType) => {
+  const handleToggleActive = async (item: CompanyMissionType) => {
     const { error } = await (supabase
       .from("company_mission_types")
-      .update({ is_active: !t.is_active } as any)
-      .eq("id", t.id) as any);
+      .update({ is_active: !item.is_active } as any)
+      .eq("id", item.id) as any);
     if (error) {
-      toast({ title: "Feil", description: error.message, variant: "destructive" });
+      toast({ title: t("admin.missionTypes.toastGenericError"), description: error.message, variant: "destructive" });
       return;
     }
     await reload();
@@ -149,11 +151,11 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
       .eq("id", companyId) as any);
     setSaving(false);
     if (error) {
-      toast({ title: "Feil", description: error.message, variant: "destructive" });
+      toast({ title: t("admin.missionTypes.toastGenericError"), description: error.message, variant: "destructive" });
       return;
     }
     setPropagate(checked);
-    toast({ title: checked ? "Gjelder nå for alle avdelinger" : "Avdelinger bruker egen liste" });
+    toast({ title: checked ? t("admin.missionTypes.toastPropagateOn") : t("admin.missionTypes.toastPropagateOff") });
   };
 
   const setDefaultDocument = async (typeId: string, docId: string | null) => {
@@ -162,7 +164,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
       .update({ default_document_id: docId } as any)
       .eq("id", typeId) as any);
     if (error) {
-      toast({ title: "Kunne ikke lagre dokument", description: error.message, variant: "destructive" });
+      toast({ title: t("admin.missionTypes.toastDocumentSaveError"), description: error.message, variant: "destructive" });
       return;
     }
     await reload();
@@ -180,21 +182,20 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm flex items-center gap-2">
           <Lock className="h-4 w-4" />
           <span>
-            Styres av {parentName || "moderselskap"}. Listen kan ikke endres her.
+            {t("admin.missionTypes.inheritedNotice", { parent: parentName || t("admin.missionTypes.inheritedParentFallback") })}
           </span>
         </div>
       )}
 
       <p className="text-sm text-muted-foreground">
-        Listen brukes i både «Legg til oppdrag» og i AI-risikovurdering. «Annet» er alltid tilgjengelig som fritekstvalg.
-        Tilknytt et dokument til en oppdragstype så blir det automatisk lagt til på nye oppdrag av den typen.
+        {t("admin.missionTypes.description")}
       </p>
 
       <div className="space-y-2">
-        {types.map((t, i) => {
-          const linkedDoc = t.default_document_id ? docsById.get(t.default_document_id) : null;
+        {types.map((mt, i) => {
+          const linkedDoc = mt.default_document_id ? docsById.get(mt.default_document_id) : null;
           return (
-            <div key={t.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
+            <div key={mt.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
               <div className="flex flex-col">
                 <Button
                   size="icon"
@@ -215,14 +216,14 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                   <ArrowDown className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="flex-1 text-sm min-w-[100px]">{t.label}</div>
+              <div className="flex-1 text-sm min-w-[100px]">{mt.label}</div>
 
               {/* Document link */}
               {linkedDoc ? (
                 <Badge
                   variant="secondary"
                   className="gap-1 max-w-[180px] cursor-pointer hover:bg-secondary/80"
-                  onClick={() => !isReadOnly && setPickerOpenFor(t)}
+                  onClick={() => !isReadOnly && setPickerOpenFor(mt)}
                   title={linkedDoc.tittel}
                 >
                   <FileText className="h-3 w-3 flex-shrink-0" />
@@ -233,49 +234,49 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                       className="ml-1 hover:text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDefaultDocument(t.id, null);
+                        setDefaultDocument(mt.id, null);
                       }}
-                      aria-label="Fjern dokument"
+                      aria-label={t("admin.missionTypes.removeDocument")}
                     >
                       <X className="h-3 w-3" />
                     </button>
                   )}
                 </Badge>
-              ) : t.default_document_id ? (
+              ) : mt.default_document_id ? (
                 // Dokument-ID lagret, men ikke funnet i listen (kanskje slettet eller annet selskap)
                 <Badge variant="outline" className="gap-1 text-muted-foreground">
                   <FileText className="h-3 w-3" />
-                  <span className="text-xs">Ukjent dokument</span>
+                  <span className="text-xs">{t("admin.missionTypes.unknownDocument")}</span>
                 </Badge>
               ) : (
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-7 text-xs gap-1"
-                  onClick={() => setPickerOpenFor(t)}
+                  onClick={() => setPickerOpenFor(mt)}
                   disabled={isReadOnly}
                 >
                   <Paperclip className="h-3 w-3" />
-                  <span className="hidden sm:inline">Tilknytt dokument</span>
-                  <span className="sm:hidden">Dok.</span>
+                  <span className="hidden sm:inline">{t("admin.missionTypes.attachDocument")}</span>
+                  <span className="sm:hidden">{t("admin.missionTypes.attachDocumentShort")}</span>
                 </Button>
               )}
 
               <div className="flex items-center gap-2">
-                <Label htmlFor={`active-${t.id}`} className="text-xs text-muted-foreground">
-                  Aktiv
+                <Label htmlFor={`active-${mt.id}`} className="text-xs text-muted-foreground">
+                  {t("admin.missionTypes.active")}
                 </Label>
                 <Switch
-                  id={`active-${t.id}`}
-                  checked={t.is_active}
-                  onCheckedChange={() => handleToggleActive(t)}
+                  id={`active-${mt.id}`}
+                  checked={mt.is_active}
+                  onCheckedChange={() => handleToggleActive(mt)}
                   disabled={isReadOnly}
                 />
               </div>
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => handleDelete(t.id)}
+                onClick={() => handleDelete(mt.id)}
                 disabled={isReadOnly}
                 className="text-destructive"
               >
@@ -285,14 +286,14 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           );
         })}
         <div className="flex items-center gap-2 rounded-md border border-dashed p-2 text-sm text-muted-foreground">
-          <div className="flex-1">Annet (fast valg – kan ikke fjernes)</div>
+          <div className="flex-1">{t("admin.missionTypes.otherFixed")}</div>
         </div>
       </div>
 
       {!isReadOnly && (
         <div className="flex gap-2">
           <Input
-            placeholder="Ny oppdragstype (f.eks. Linjebefaring)"
+            placeholder={t("admin.missionTypes.newTypePlaceholder")}
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => {
@@ -305,7 +306,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           />
           <Button onClick={handleAdd} disabled={saving || !newLabel.trim()}>
             <Plus className="h-4 w-4 mr-1" />
-            Legg til
+            {t("admin.missionTypes.add")}
           </Button>
         </div>
       )}
@@ -314,10 +315,10 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
         <div className="flex items-center justify-between rounded-md border p-3">
           <div className="pr-4">
             <Label htmlFor="propagate-mission-types" className="cursor-pointer font-medium">
-              Gjelder for alle avdelinger
+              {t("admin.missionTypes.propagateLabel")}
             </Label>
             <p className="text-xs text-muted-foreground mt-1">
-              Når på vil alle datteravdelinger bruke denne listen og ikke kunne redigere den selv.
+              {t("admin.missionTypes.propagateDesc")}
             </p>
           </div>
           <Switch
@@ -343,14 +344,14 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Paperclip className="h-5 w-5" />
-              Tilknytt dokument til «{pickerOpenFor?.label}»
+              {t("admin.missionTypes.pickerTitle", { label: pickerOpenFor?.label })}
             </DialogTitle>
           </DialogHeader>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Søk etter dokument..."
+              placeholder={t("admin.missionTypes.pickerSearchPlaceholder")}
               value={pickerSearch}
               onChange={(e) => setPickerSearch(e.target.value)}
               className="pl-10"
@@ -361,7 +362,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
             {filteredDocs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm">
                 <FileText className="h-8 w-8 mb-2" />
-                <p>Ingen dokumenter funnet</p>
+                <p>{t("admin.missionTypes.pickerEmpty")}</p>
               </div>
             ) : (
               <div className="p-2 space-y-1">
@@ -406,7 +407,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                   setPickerSearch("");
                 }}
               >
-                Fjern tilknytning
+                {t("admin.missionTypes.removeLink")}
               </Button>
             )}
             <Button
@@ -416,7 +417,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                 setPickerSearch("");
               }}
             >
-              Avbryt
+              {t("admin.missionTypes.cancel")}
             </Button>
           </DialogFooter>
         </DialogContent>

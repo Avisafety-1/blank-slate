@@ -25,12 +25,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { useTranslation } from "react-i18next";
 
 type RecipientType = "users" | "customers" | "all_users";
 
 export const BulkEmailSender = () => {
   const { companyId, user } = useAuth();
   const { isSuperAdmin } = useRoleCheck();
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [recipientType, setRecipientType] = useState<RecipientType>("users");
   const [subject, setSubject] = useState("");
@@ -97,15 +99,15 @@ export const BulkEmailSender = () => {
 
   const uploadImageFile = async (file: File): Promise<string | null> => {
     if (!companyId) {
-      toast.error("Ingen bedrift valgt");
+      toast.error(t("admin.bulkEmail.toastNoCompany"));
       return null;
     }
     if (!file.type.startsWith("image/")) {
-      toast.error("Kun bildefiler er tillatt");
+      toast.error(t("admin.bulkEmail.toastOnlyImages"));
       return null;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("Bildet er for stort (maks 5 MB)");
+      toast.error(t("admin.bulkEmail.toastImageTooLarge"));
       return null;
     }
     const ext = file.name.split(".").pop() || "png";
@@ -115,7 +117,7 @@ export const BulkEmailSender = () => {
       upsert: false,
     });
     if (error) {
-      toast.error("Kunne ikke laste opp bilde: " + error.message);
+      toast.error(t("admin.bulkEmail.toastUploadError", { error: error.message }));
       return null;
     }
     const { data } = supabase.storage.from("email-images").getPublicUrl(path);
@@ -137,7 +139,7 @@ export const BulkEmailSender = () => {
       const range = editor.getSelection(true);
       editor.insertEmbed(range.index, "image", url, "user");
       editor.setSelection(range.index + 1, 0);
-      toast.success("Bilde lagt til");
+      toast.success(t("admin.bulkEmail.toastImageAdded"));
     };
   };
 
@@ -184,7 +186,7 @@ export const BulkEmailSender = () => {
     if (!url) return;
     const imgTag = `<img src="${url}" alt="" style="max-width:100%;height:auto;" />`;
     setContent((prev) => prev + "\n" + imgTag);
-    toast.success("Bilde lagt til i HTML");
+    toast.success(t("admin.bulkEmail.toastImageAddedHtml"));
   };
 
   const wrapContentInEmailTemplate = (htmlContent: string) => {
@@ -250,16 +252,16 @@ export const BulkEmailSender = () => {
 
   const handleSendClick = () => {
     if (!subject.trim()) {
-      toast.error("Vennligst skriv inn et emne");
+      toast.error(t("admin.bulkEmail.toastMissingSubject"));
       return;
     }
     if (!content.trim()) {
-      toast.error("Vennligst skriv inn innhold");
+      toast.error(t("admin.bulkEmail.toastMissingContent"));
       return;
     }
     const count = recipientType === "users" ? userCount : recipientType === "customers" ? customerCount : allUsersCount;
     if (count === 0) {
-      toast.error("Ingen mottakere å sende til");
+      toast.error(t("admin.bulkEmail.toastNoRecipients"));
       return;
     }
     setConfirmOpen(true);
@@ -267,7 +269,7 @@ export const BulkEmailSender = () => {
 
   const sendEmail = async (dryRun: boolean) => {
     if (!companyId) {
-      toast.error("Feil: Ingen bedrift valgt");
+      toast.error(t("admin.bulkEmail.toastNoCompanySelected"));
       return;
     }
 
@@ -294,16 +296,16 @@ export const BulkEmailSender = () => {
 
       const sentCount = data?.emailsSent || 0;
       if (dryRun) {
-        toast.success(`[DRY RUN] ${sentCount} mottakere ville ha fått e-post — kampanjen er lagret i historikken`);
+        toast.success(t("admin.bulkEmail.toastDryRunResult", { count: sentCount }));
       } else {
-        toast.success(`Sender e-post til ${sentCount} mottaker${sentCount !== 1 ? "e" : ""} — kampanje opprettet. Sjekk historikken om noen minutter for faktisk status.`);
+        toast.success(t("admin.bulkEmail.toastSendResult", { count: sentCount, plural: sentCount !== 1 ? "e" : "" }));
         // Reset form only on real send
         setSubject("");
         setContent("");
       }
     } catch (error: any) {
       console.error("Error sending bulk email:", error);
-      toast.error("Kunne ikke sende e-post: " + error.message);
+      toast.error(t("admin.bulkEmail.toastSendError", { error: error.message }));
     } finally {
       setSending(false);
       setConfirmOpen(false);
@@ -312,8 +314,8 @@ export const BulkEmailSender = () => {
 
   const handleSend = () => sendEmail(false);
   const handleDryRun = async () => {
-    if (!subject.trim()) { toast.error("Vennligst skriv inn et emne"); return; }
-    if (!content.trim()) { toast.error("Vennligst skriv inn innhold"); return; }
+    if (!subject.trim()) { toast.error(t("admin.bulkEmail.toastMissingSubject")); return; }
+    if (!content.trim()) { toast.error(t("admin.bulkEmail.toastMissingContent")); return; }
     await sendEmail(true);
   };
 
@@ -325,7 +327,7 @@ export const BulkEmailSender = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
             <Send className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <h2 className="text-base sm:text-xl font-semibold">Send e-post til grupper <span className="text-xs text-muted-foreground font-normal">v.2</span></h2>
+            <h2 className="text-base sm:text-xl font-semibold">{t("admin.bulkEmail.title")} <span className="text-xs text-muted-foreground font-normal">v.2</span></h2>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <Button
@@ -336,7 +338,7 @@ export const BulkEmailSender = () => {
               className={isMobile ? "flex-1" : ""}
             >
               <Eye className={`${isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"}`} />
-              {isMobile ? "Vis" : "Forhåndsvis"}
+              {isMobile ? t("admin.bulkEmail.previewMobile") : t("admin.bulkEmail.previewFull")}
             </Button>
             <Button
               variant="outline"
@@ -350,7 +352,7 @@ export const BulkEmailSender = () => {
               ) : (
                 <FlaskConical className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
               )}
-              {isMobile ? "Test" : "Test (dry run)"}
+              {isMobile ? t("admin.bulkEmail.testMobile") : t("admin.bulkEmail.testFull")}
             </Button>
             <Button
               onClick={handleSendClick}
@@ -363,7 +365,7 @@ export const BulkEmailSender = () => {
               ) : (
                 <Send className={isMobile ? "h-3 w-3 mr-1" : "h-4 w-4 mr-2"} />
               )}
-              {sending ? "Sender..." : `Send til ${recipientCount}`}
+              {sending ? t("admin.bulkEmail.sending") : t("admin.bulkEmail.sendTo", { count: recipientCount })}
             </Button>
           </div>
         </div>
@@ -371,7 +373,7 @@ export const BulkEmailSender = () => {
         <div className="space-y-4 sm:space-y-6">
           {/* Recipient Selection */}
           <div className="space-y-3">
-            <Label className="text-xs sm:text-sm">Mottakere</Label>
+            <Label className="text-xs sm:text-sm">{t("admin.bulkEmail.recipients")}</Label>
             <RadioGroup
               value={recipientType}
               onValueChange={(value) => setRecipientType(value as RecipientType)}
@@ -381,16 +383,16 @@ export const BulkEmailSender = () => {
                 <RadioGroupItem value="users" id="users" />
                 <Label htmlFor="users" className="flex items-center gap-2 cursor-pointer flex-1">
                   <Users className="h-4 w-4 text-primary" />
-                  <span className="text-sm sm:text-base">Alle brukere (min bedrift)</span>
-                  <span className="ml-auto text-sm text-muted-foreground">{userCount} mottakere</span>
+                  <span className="text-sm sm:text-base">{t("admin.bulkEmail.allUsersCompany")}</span>
+                  <span className="ml-auto text-sm text-muted-foreground">{t("admin.bulkEmail.recipientsCount", { count: userCount })}</span>
                 </Label>
               </div>
               <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-accent/5 cursor-pointer">
                 <RadioGroupItem value="customers" id="customers" />
                 <Label htmlFor="customers" className="flex items-center gap-2 cursor-pointer flex-1">
                   <UserCog className="h-4 w-4 text-primary" />
-                  <span className="text-sm sm:text-base">Alle kunder</span>
-                  <span className="ml-auto text-sm text-muted-foreground">{customerCount} mottakere</span>
+                  <span className="text-sm sm:text-base">{t("admin.bulkEmail.allCustomers")}</span>
+                  <span className="ml-auto text-sm text-muted-foreground">{t("admin.bulkEmail.recipientsCount", { count: customerCount })}</span>
                 </Label>
               </div>
               {isSuperAdmin && (
@@ -398,8 +400,8 @@ export const BulkEmailSender = () => {
                   <RadioGroupItem value="all_users" id="all_users" />
                   <Label htmlFor="all_users" className="flex items-center gap-2 cursor-pointer flex-1">
                     <Globe className="h-4 w-4 text-amber-600" />
-                    <span className="text-sm sm:text-base font-medium">Alle brukere (alle selskaper)</span>
-                    <span className="ml-auto text-sm text-amber-600 font-medium">{allUsersCount} mottakere</span>
+                    <span className="text-sm sm:text-base font-medium">{t("admin.bulkEmail.allUsersAllCompanies")}</span>
+                    <span className="ml-auto text-sm text-amber-600 font-medium">{t("admin.bulkEmail.recipientsCount", { count: allUsersCount })}</span>
                   </Label>
                 </div>
               )}
@@ -409,13 +411,13 @@ export const BulkEmailSender = () => {
           {/* Subject */}
           <div className="space-y-2">
             <Label htmlFor="bulk-subject" className="text-xs sm:text-sm">
-              Emne
+              {t("admin.bulkEmail.subject")}
             </Label>
             <Input
               id="bulk-subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Skriv inn e-post emne..."
+              placeholder={t("admin.bulkEmail.subjectPlaceholder")}
               className={isMobile ? "h-9 text-sm" : ""}
             />
           </div>
@@ -425,17 +427,17 @@ export const BulkEmailSender = () => {
             <TabsList className={`grid w-full grid-cols-2 ${isMobile ? "h-8" : "max-w-md"}`}>
               <TabsTrigger value="visual" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? "text-xs" : ""}`}>
                 <EyeIcon className={`${isMobile ? "h-3 w-3" : "h-4 w-4"}`} />
-                {isMobile ? "Visuell" : "Visuell Editor"}
+                {isMobile ? t("admin.bulkEmail.visualEditorMobile") : t("admin.bulkEmail.visualEditorFull")}
               </TabsTrigger>
               <TabsTrigger value="html" className={`flex items-center gap-1 sm:gap-2 ${isMobile ? "text-xs" : ""}`}>
                 <Code className={`${isMobile ? "h-3 w-3" : "h-4 w-4"}`} />
-                {isMobile ? "HTML" : "HTML Kode"}
+                {isMobile ? "HTML" : t("admin.bulkEmail.htmlEditorFull")}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="visual" className="mt-3 sm:mt-4">
               <div className="space-y-2">
-                <Label className="text-xs sm:text-sm">E-post innhold</Label>
+                <Label className="text-xs sm:text-sm">{t("admin.bulkEmail.emailContent")}</Label>
                 <div className="border rounded-lg overflow-hidden bg-white">
                   <style>{`
                     .bulk-quill-container .ql-container {
@@ -452,7 +454,7 @@ export const BulkEmailSender = () => {
                     onChange={handleVisualEditorChange}
                     modules={modules}
                     formats={formats}
-                    placeholder="Skriv inn e-postinnholdet her..."
+                    placeholder={t("admin.bulkEmail.contentPlaceholder")}
                     className="bulk-quill-container"
                   />
                 </div>
@@ -463,14 +465,14 @@ export const BulkEmailSender = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <Label htmlFor="bulk-content" className="text-xs sm:text-sm">
-                    E-post innhold (HTML)
+                    {t("admin.bulkEmail.emailContentHtml")}
                   </Label>
                   <Label
                     htmlFor="bulk-html-image-upload"
                     className="inline-flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-border hover:bg-accent/10"
                   >
                     <ImageIcon className="h-3 w-3" />
-                    Last opp bilde
+                    {t("admin.bulkEmail.uploadImage")}
                     <input
                       id="bulk-html-image-upload"
                       type="file"
@@ -484,7 +486,7 @@ export const BulkEmailSender = () => {
                   id="bulk-content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="Skriv inn HTML-innhold..."
+                  placeholder={t("admin.bulkEmail.htmlContentPlaceholder")}
                   className={`w-full border rounded-lg p-3 font-mono text-sm min-h-[300px] sm:min-h-[400px] bg-background resize-y`}
                 />
               </div>
@@ -498,10 +500,10 @@ export const BulkEmailSender = () => {
         <DialogContent className={`${isMobile ? "max-w-[95vw]" : "max-w-3xl"} max-h-[80vh] overflow-y-auto`}>
           <DialogHeader>
             <DialogTitle className={isMobile ? "text-base" : "text-lg"}>
-              Forhåndsvisning
+              {t("admin.bulkEmail.previewTitle")}
             </DialogTitle>
             <DialogDescription className={isMobile ? "text-xs" : "text-sm"}>
-              Emne: {subject || "(Ikke angitt)"}
+              {t("admin.bulkEmail.previewSubject", { subject: subject || t("admin.bulkEmail.previewNotSet") })}
             </DialogDescription>
           </DialogHeader>
           <div className="border rounded-lg overflow-hidden bg-white">
@@ -517,29 +519,29 @@ export const BulkEmailSender = () => {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft sending</AlertDialogTitle>
+            <AlertDialogTitle>{t("admin.bulkEmail.confirmSendTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil sende denne e-posten til{" "}
-              <strong>{recipientCount} {recipientType === "users" ? "brukere" : recipientType === "customers" ? "kunder" : "brukere i alle selskaper"}</strong>?
+              {t("admin.bulkEmail.confirmSendDesc")}{" "}
+              <strong>{recipientCount} {recipientType === "users" ? t("admin.bulkEmail.confirmSendUsers") : recipientType === "customers" ? t("admin.bulkEmail.confirmSendCustomers") : t("admin.bulkEmail.confirmSendAllUsers")}</strong>?
               {recipientType === "all_users" && (
                 <span className="block mt-2 text-amber-600 font-medium">
-                  Advarsel: Dette sender e-post til ALLE brukere i systemet!
+                  {t("admin.bulkEmail.confirmSendWarningAll")}
                 </span>
               )}
               <br /><br />
-              <strong>Emne:</strong> {subject}
+              <strong>{t("admin.bulkEmail.confirmSendSubjectLabel")}</strong> {subject}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={sending}>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel disabled={sending}>{t("admin.bulkEmail.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleSend} disabled={sending}>
               {sending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Sender...
+                  {t("admin.bulkEmail.sending")}
                 </>
               ) : (
-                "Send e-post"
+                t("admin.bulkEmail.send")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 
 interface Customer {
   id: string;
@@ -71,6 +72,7 @@ export const CustomerDetailDialog = ({
   onOpenChange,
   customer,
 }: CustomerDetailDialogProps) => {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -111,7 +113,7 @@ export const CustomerDetailDialog = ({
       }
     } catch (error: any) {
       console.error("Error fetching customer history:", error);
-      toast.error("Kunne ikke laste kundehistorikk");
+      toast.error(t("admin.customerDetail.toastFetchError"));
     } finally {
       setLoading(false);
     }
@@ -182,7 +184,7 @@ export const CustomerDetailDialog = ({
           {/* Customer Information */}
           <Card className={isMobile ? 'shadow-none border overflow-hidden' : ''}>
             <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
-              <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Kundeinformasjon</CardTitle>
+              <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>{t("admin.customerDetail.infoTitle")}</CardTitle>
             </CardHeader>
             <CardContent className={`space-y-2 ${isMobile ? 'p-3 pt-0 overflow-hidden' : ''}`}>
               <div className={`grid grid-cols-1 gap-2 ${isMobile ? '' : 'md:grid-cols-2 gap-4'}`}>
@@ -190,7 +192,7 @@ export const CustomerDetailDialog = ({
                   <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     <User className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
                     <div className="min-w-0">
-                      <span className="font-medium">Kontaktperson: </span>
+                      <span className="font-medium">{t("admin.customerDetail.contactPerson")}</span>
                       <span className="break-words">{customer.kontaktperson}</span>
                     </div>
                   </div>
@@ -199,7 +201,7 @@ export const CustomerDetailDialog = ({
                   <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     <User className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
                     <div className="min-w-0">
-                      <span className="font-medium">Intern POC: </span>
+                      <span className="font-medium">{t("admin.customerDetail.internPoc")}</span>
                       <span className="break-words">{customer.intern_poc.full_name}</span>
                     </div>
                   </div>
@@ -208,7 +210,7 @@ export const CustomerDetailDialog = ({
                   <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     <Mail className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
                     <div className="min-w-0">
-                      <span className="font-medium">E-post: </span>
+                      <span className="font-medium">{t("admin.customerDetail.email")}</span>
                       <span className="break-all">{customer.epost}</span>
                     </div>
                   </div>
@@ -217,7 +219,7 @@ export const CustomerDetailDialog = ({
                   <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     <Phone className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
                     <div className="min-w-0">
-                      <span className="font-medium">Telefon: </span>
+                      <span className="font-medium">{t("admin.customerDetail.phone")}</span>
                       <span>{customer.telefon}</span>
                     </div>
                   </div>
@@ -226,7 +228,7 @@ export const CustomerDetailDialog = ({
                   <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     <MapPin className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground flex-shrink-0 mt-0.5`} />
                     <div className="min-w-0">
-                      <span className="font-medium">Adresse: </span>
+                      <span className="font-medium">{t("admin.customerDetail.address")}</span>
                       <span className="break-words">{customer.adresse}</span>
                     </div>
                   </div>
@@ -237,7 +239,7 @@ export const CustomerDetailDialog = ({
                   <div className={`flex items-start gap-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
                     <FileText className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} text-muted-foreground mt-0.5 flex-shrink-0`} />
                     <div className="min-w-0">
-                      <span className="font-medium">Merknader:</span>
+                      <span className="font-medium">{t("admin.customerDetail.notes")}</span>
                       <p className="text-muted-foreground mt-1 break-words">{customer.merknader}</p>
                     </div>
                   </div>
@@ -245,7 +247,7 @@ export const CustomerDetailDialog = ({
               )}
               <div className={`pt-2 border-t flex items-center gap-2 text-muted-foreground ${isMobile ? 'text-[10px]' : 'text-sm pt-3'}`}>
                 <Calendar className={isMobile ? 'h-3 w-3' : 'h-4 w-4'} />
-                <span>Opprettet: {format(new Date(customer.opprettet_dato), "d. MMMM yyyy", { locale: nb })}</span>
+                <span>{t("admin.customerDetail.createdAt", { date: format(new Date(customer.opprettet_dato), "d. MMMM yyyy", { locale: nb }) })}</span>
               </div>
             </CardContent>
           </Card>
@@ -255,30 +257,30 @@ export const CustomerDetailDialog = ({
             <TabsList className={`grid w-full grid-cols-2 ${isMobile ? 'h-9' : ''}`}>
               <TabsTrigger value="missions" className={`flex items-center gap-1 ${isMobile ? 'text-xs px-2' : 'gap-2'}`}>
                 <Briefcase className={isMobile ? 'h-3 w-3' : 'h-4 w-4'} />
-                Oppdrag ({missions.length})
+                {t("admin.customerDetail.tabMissions", { count: missions.length })}
               </TabsTrigger>
               <TabsTrigger value="incidents" className={`flex items-center gap-1 ${isMobile ? 'text-xs px-2' : 'gap-2'}`}>
                 <AlertTriangle className={isMobile ? 'h-3 w-3' : 'h-4 w-4'} />
-                Hendelser ({incidents.length})
+                {t("admin.customerDetail.tabIncidents", { count: incidents.length })}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="missions" className={isMobile ? 'mt-2' : 'mt-4'}>
               <Card className={isMobile ? 'shadow-none border overflow-hidden' : ''}>
                 <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
-                  <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Oppdragshistorikk</CardTitle>
+                  <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>{t("admin.customerDetail.missionHistoryTitle")}</CardTitle>
                   {!isMobile && (
-                    <CardDescription>Alle oppdrag for denne kunden</CardDescription>
+                    <CardDescription>{t("admin.customerDetail.missionHistoryDesc")}</CardDescription>
                   )}
                 </CardHeader>
                 <CardContent className={isMobile ? 'p-3 pt-0' : ''}>
                   {loading ? (
                     <div className={`text-center py-4 text-muted-foreground ${isMobile ? 'text-xs' : ''}`}>
-                      Laster...
+                      {t("admin.customerDetail.loading")}
                     </div>
                   ) : missions.length === 0 ? (
                     <div className={`text-center py-4 text-muted-foreground ${isMobile ? 'text-xs' : ''}`}>
-                      Ingen oppdrag registrert
+                      {t("admin.customerDetail.noMissions")}
                     </div>
                   ) : isMobile ? (
                     <div className="space-y-2">
@@ -310,11 +312,11 @@ export const CustomerDetailDialog = ({
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b">
-                            <th className="text-left py-2 font-medium">Tittel</th>
-                            <th className="text-left py-2 font-medium">Lokasjon</th>
-                            <th className="text-left py-2 font-medium">Tidspunkt</th>
-                            <th className="text-left py-2 font-medium">Status</th>
-                            <th className="text-left py-2 font-medium">Risikonivå</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colTitle")}</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colLocation")}</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colTime")}</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colStatus")}</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colRisk")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -349,19 +351,19 @@ export const CustomerDetailDialog = ({
             <TabsContent value="incidents" className={isMobile ? 'mt-2' : 'mt-4'}>
               <Card className={isMobile ? 'shadow-none border overflow-hidden' : ''}>
                 <CardHeader className={isMobile ? 'p-3 pb-2' : ''}>
-                  <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>Hendelseshistorikk</CardTitle>
+                  <CardTitle className={isMobile ? 'text-sm' : 'text-lg'}>{t("admin.customerDetail.incidentHistoryTitle")}</CardTitle>
                   {!isMobile && (
-                    <CardDescription>Alle hendelser knyttet til kundens oppdrag</CardDescription>
+                    <CardDescription>{t("admin.customerDetail.incidentHistoryDesc")}</CardDescription>
                   )}
                 </CardHeader>
                 <CardContent className={isMobile ? 'p-3 pt-0' : ''}>
                   {loading ? (
                     <div className={`text-center py-4 text-muted-foreground ${isMobile ? 'text-xs' : ''}`}>
-                      Laster...
+                      {t("admin.customerDetail.loading")}
                     </div>
                   ) : incidents.length === 0 ? (
                     <div className={`text-center py-4 text-muted-foreground ${isMobile ? 'text-xs' : ''}`}>
-                      Ingen hendelser registrert
+                      {t("admin.customerDetail.noIncidents")}
                     </div>
                   ) : isMobile ? (
                     <div className="space-y-2">
@@ -395,11 +397,11 @@ export const CustomerDetailDialog = ({
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b">
-                            <th className="text-left py-2 font-medium">Tittel</th>
-                            <th className="text-left py-2 font-medium">Tidspunkt</th>
-                            <th className="text-left py-2 font-medium">Alvorlighetsgrad</th>
-                            <th className="text-left py-2 font-medium">Status</th>
-                            <th className="text-left py-2 font-medium">Lokasjon</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colTitle")}</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colTime")}</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colSeverity")}</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colStatus")}</th>
+                            <th className="text-left py-2 font-medium">{t("admin.customerDetail.colLocation")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -440,7 +442,7 @@ export const CustomerDetailDialog = ({
 
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)} size={isMobile ? 'sm' : 'default'}>
-              Lukk
+              {t("admin.customerDetail.close")}
             </Button>
           </div>
         </div>

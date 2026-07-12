@@ -26,6 +26,7 @@ import { Loader2, Plane, Radio } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { useTranslation } from "react-i18next";
 
 interface Company {
   id: string;
@@ -97,6 +98,7 @@ export const CompanyManagementDialog = ({
   const [departmentsEnabled, setDepartmentsEnabled] = useState(false);
   const [allCompanies, setAllCompanies] = useState<{id: string; navn: string}[]>([]);
   const { isSuperAdmin } = useAuth();
+  const { t } = useTranslation();
   const isCreating = !company;
 
   const form = useForm<CompanyFormData>({
@@ -208,7 +210,7 @@ export const CompanyManagementDialog = ({
           .insert(companyData as any);
 
         if (error) throw error;
-        toast.success("Selskap opprettet");
+        toast.success(t("admin.companyDialog.toastCreated"));
       } else {
         const { error } = await supabase
           .from("companies")
@@ -216,14 +218,14 @@ export const CompanyManagementDialog = ({
           .eq("id", company.id);
 
         if (error) throw error;
-        toast.success("Selskap oppdatert");
+        toast.success(t("admin.companyDialog.toastUpdated"));
       }
 
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error saving company:", error);
-      toast.error("Kunne ikke lagre selskap: " + error.message);
+      toast.error(t("admin.companyDialog.toastSaveError", { error: error.message }));
     } finally {
       setIsSubmitting(false);
     }
@@ -234,7 +236,7 @@ export const CompanyManagementDialog = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isCreating ? "Opprett nytt selskap" : "Rediger selskap"}
+            {isCreating ? t("admin.companyDialog.createTitle") : t("admin.companyDialog.editTitle")}
           </DialogTitle>
         </DialogHeader>
 
@@ -245,9 +247,9 @@ export const CompanyManagementDialog = ({
               name="navn"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Selskapsnavn *</FormLabel>
+                  <FormLabel>{t("admin.companyDialog.nameLabel")}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Skriv inn selskapsnavn" />
+                    <Input {...field} placeholder={t("admin.companyDialog.namePlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -260,7 +262,7 @@ export const CompanyManagementDialog = ({
               name="selskapstype"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel>Selskapstype *</FormLabel>
+                  <FormLabel>{t("admin.companyDialog.typeLabel")}</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
@@ -278,9 +280,9 @@ export const CompanyManagementDialog = ({
                           className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
                           <Radio className="mb-2 h-6 w-6" />
-                          <span className="font-medium">Droneoperatør</span>
+                          <span className="font-medium">{t("admin.companyDialog.droneoperator")}</span>
                           <span className="text-xs text-muted-foreground mt-1">
-                            For droneoperasjoner
+                            {t("admin.companyDialog.droneoperatorDesc")}
                           </span>
                         </label>
                       </div>
@@ -295,9 +297,9 @@ export const CompanyManagementDialog = ({
                           className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
                           <Plane className="mb-2 h-6 w-6" />
-                          <span className="font-medium">Flyselskap</span>
+                          <span className="font-medium">{t("admin.companyDialog.flyselskap")}</span>
                           <span className="text-xs text-muted-foreground mt-1">
-                            For flyoperasjoner
+                            {t("admin.companyDialog.flyselskapDesc")}
                           </span>
                         </label>
                       </div>
@@ -314,9 +316,9 @@ export const CompanyManagementDialog = ({
               name="org_nummer"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Organisasjonsnummer</FormLabel>
+                  <FormLabel>{t("admin.companyDialog.orgNrLabel")}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Skriv inn org.nummer" />
+                    <Input {...field} placeholder={t("admin.companyDialog.orgNrPlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -330,7 +332,7 @@ export const CompanyManagementDialog = ({
                 <FormItem>
                   <FormControl>
                     <AddressAutocomplete
-                      label="Adresse"
+                      label={t("admin.companyDialog.addressLabel")}
                       value={field.value || ""}
                       onChange={(val) => {
                         field.onChange(val);
@@ -340,7 +342,7 @@ export const CompanyManagementDialog = ({
                         form.setValue("adresse_lat", loc.lat);
                         form.setValue("adresse_lon", loc.lon);
                       }}
-                      placeholder="Søk etter adresse..."
+                      placeholder={t("admin.companyDialog.addressPlaceholder")}
                     />
                   </FormControl>
                   <FormMessage />
@@ -353,7 +355,7 @@ export const CompanyManagementDialog = ({
               name="kontakt_epost"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kontakt e-post</FormLabel>
+                  <FormLabel>{t("admin.companyDialog.emailLabel")}</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -371,9 +373,9 @@ export const CompanyManagementDialog = ({
               name="kontakt_telefon"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kontakt telefon</FormLabel>
+                  <FormLabel>{t("admin.companyDialog.phoneLabel")}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="+47 123 45 678" />
+                    <Input {...field} placeholder={t("admin.companyDialog.phonePlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -386,14 +388,14 @@ export const CompanyManagementDialog = ({
                 name="parent_company_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Morselskap (valgfritt)</FormLabel>
+                    <FormLabel>{t("admin.companyDialog.parentLabel")}</FormLabel>
                     <FormControl>
                       <select
                         className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                         value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value || null)}
                       >
-                        <option value="">Ingen (selvstendig selskap)</option>
+                        <option value="">{t("admin.companyDialog.parentNone")}</option>
                         {allCompanies
                           .filter(c => c.id !== company?.id)
                           .map(c => (
@@ -410,8 +412,8 @@ export const CompanyManagementDialog = ({
             {isSuperAdmin && (
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <label htmlFor="stripe_exempt" className="text-sm font-medium">Ekskluder fra Stripe</label>
-                  <p className="text-xs text-muted-foreground">Selskapet faktureres separat og trenger ikke Stripe-abonnement</p>
+                  <label htmlFor="stripe_exempt" className="text-sm font-medium">{t("admin.companyDialog.stripeExemptLabel")}</label>
+                  <p className="text-xs text-muted-foreground">{t("admin.companyDialog.stripeExemptDesc")}</p>
                 </div>
                 <Switch
                   id="stripe_exempt"
@@ -424,8 +426,8 @@ export const CompanyManagementDialog = ({
             {isSuperAdmin && (
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <label htmlFor="departments_enabled" className="text-sm font-medium">Avdelingsstruktur</label>
-                  <p className="text-xs text-muted-foreground">Aktiver avdelinger/underselskaper for dette selskapet</p>
+                  <label htmlFor="departments_enabled" className="text-sm font-medium">{t("admin.companyDialog.departmentsLabel")}</label>
+                  <p className="text-xs text-muted-foreground">{t("admin.companyDialog.departmentsDesc")}</p>
                 </div>
                 <Switch
                   id="departments_enabled"
@@ -443,11 +445,11 @@ export const CompanyManagementDialog = ({
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
-                Avbryt
+                {t("admin.companyDialog.cancel")}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isCreating ? "Opprett" : "Lagre"}
+                {isCreating ? t("admin.companyDialog.create") : t("admin.companyDialog.save")}
               </Button>
             </DialogFooter>
           </form>

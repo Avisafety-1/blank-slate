@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "react-i18next";
+import { enUS } from "date-fns/locale";
 
 interface Campaign {
   id: string;
@@ -33,11 +35,11 @@ interface Campaign {
   failed_emails: string[];
 }
 
-const recipientTypeLabel = (type: string) => {
-  if (type === "users") return "Brukere (min bedrift)";
-  if (type === "customers") return "Kunder";
-  if (type === "all_users") return "Alle brukere (alle selskaper)";
-  return type;
+const recipientTypeLabelKey = (type: string): string | null => {
+  if (type === "users") return "myCompanyUsers";
+  if (type === "customers") return "customers";
+  if (type === "all_users") return "allUsers";
+  return null;
 };
 
 const recipientTypeIcon = (type: string) => {
@@ -48,6 +50,7 @@ const recipientTypeIcon = (type: string) => {
 };
 
 export const CampaignHistorySection = () => {
+  const { t, i18n } = useTranslation();
   const { companyId } = useAuth();
   const { isSuperAdmin } = useRoleCheck();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -118,10 +121,10 @@ export const CampaignHistorySection = () => {
       });
       if (error) throw error;
       const sent = data?.emailsSent ?? 0;
-      toast.success(`E-post sendt til ${sent} nye mottaker${sent !== 1 ? "e" : ""}`);
+      toast.success(t('admin.campaignHistory.sentToNewRecipients', { count: sent }));
       fetchCampaigns();
     } catch (e: any) {
-      toast.error("Sending feilet: " + e.message);
+      toast.error(t('admin.campaignHistory.sendFailed', { message: e.message }));
     } finally {
       setSending(false);
       setConfirmOpen(false);
@@ -140,7 +143,7 @@ export const CampaignHistorySection = () => {
             onClick={() => setExpanded(v => !v)}
           >
             <History className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <h2 className="text-base sm:text-xl font-semibold">Tidligere kampanjer</h2>
+            <h2 className="text-base sm:text-xl font-semibold">{t('admin.campaignHistory.title')}</h2>
             {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
           <Button variant="ghost" size="sm" onClick={fetchCampaigns} disabled={loading}>
@@ -155,7 +158,7 @@ export const CampaignHistorySection = () => {
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : campaigns.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Ingen kampanjer ennå</p>
+              <p className="text-sm text-muted-foreground text-center py-4">{t('admin.campaignHistory.noCampaigns')}</p>
             ) : (
               campaigns.map((campaign) => (
                 <div
@@ -167,18 +170,21 @@ export const CampaignHistorySection = () => {
                       <p className="font-medium text-sm truncate">{campaign.subject}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <span>
-                          {format(new Date(campaign.sent_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                          {format(new Date(campaign.sent_at), "d. MMM yyyy HH:mm", { locale: i18n.language === "en" ? enUS : nb })}
                         </span>
                         <Badge variant="secondary" className="flex items-center gap-1 text-xs py-0">
                           {recipientTypeIcon(campaign.recipient_type)}
-                          {recipientTypeLabel(campaign.recipient_type)}
+                          {(() => {
+                            const key = recipientTypeLabelKey(campaign.recipient_type);
+                            return key ? t(`admin.campaignHistory.recipientTypes.${key}`) : campaign.recipient_type;
+                          })()}
                         </Badge>
                         <span className="text-foreground font-medium">
-                          {campaign.emails_sent} sendt
+                          {t('admin.campaignHistory.sentCount', { count: campaign.emails_sent })}
                         </span>
                         {campaign.failed_emails?.length > 0 && (
                           <span className="text-destructive">
-                            {campaign.failed_emails.length} feilet
+                            {t('admin.campaignHistory.failedCount', { count: campaign.failed_emails.length })}
                           </span>
                         )}
                       </div>
@@ -191,7 +197,7 @@ export const CampaignHistorySection = () => {
                         onClick={() => { setPreviewCampaign(campaign); setPreviewOpen(true); }}
                       >
                         <Eye className="h-3 w-3 mr-1" />
-                        Vis
+                        {t('admin.campaignHistory.view')}
                       </Button>
                       <Button
                         variant="outline"
@@ -200,7 +206,7 @@ export const CampaignHistorySection = () => {
                         onClick={() => handleSendToMissedClick(campaign)}
                       >
                         <Send className="h-3 w-3 mr-1" />
-                        Send til nye
+                        {t('admin.campaignHistory.sendToNew')}
                       </Button>
                     </div>
                   </div>
@@ -215,9 +221,9 @@ export const CampaignHistorySection = () => {
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Forhåndsvisning — {previewCampaign?.subject}</DialogTitle>
+            <DialogTitle>{t('admin.campaignHistory.previewTitle', { subject: previewCampaign?.subject })}</DialogTitle>
             <DialogDescription>
-              Sendt {previewCampaign ? format(new Date(previewCampaign.sent_at), "d. MMM yyyy HH:mm", { locale: nb }) : ""}
+              {t('admin.campaignHistory.sentAt', { date: previewCampaign ? format(new Date(previewCampaign.sent_at), "d. MMM yyyy HH:mm", { locale: i18n.language === "en" ? enUS : nb }) : "" })}
             </DialogDescription>
           </DialogHeader>
           <div className="border rounded-lg overflow-hidden bg-white">
@@ -233,35 +239,35 @@ export const CampaignHistorySection = () => {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Send til nye mottakere</AlertDialogTitle>
+            <AlertDialogTitle>{t('admin.campaignHistory.sendToNewTitle')}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
-                  Kampanje: <strong>{selectedCampaign?.subject}</strong>
+                  {t('admin.campaignHistory.campaignLabel')} <strong>{selectedCampaign?.subject}</strong>
                 </p>
                 {loadingMissed ? (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Teller nye mottakere...
+                    {t('admin.campaignHistory.countingRecipients')}
                   </div>
                 ) : missedCount !== null ? (
                   missedCount === 0 ? (
                     <p className="text-muted-foreground">
-                      Alle nåværende mottakere har allerede fått denne e-posten. Ingen å sende til.
+                      {t('admin.campaignHistory.allReceived')}
                     </p>
                   ) : (
                     <p>
-                      Det er <strong>{missedCount} nye mottaker{missedCount !== 1 ? "e" : ""}</strong> som ikke har mottatt denne e-posten. Vil du sende til dem nå?
+                      {t('admin.campaignHistory.missedCountMessage', { count: missedCount })}
                     </p>
                   )
                 ) : (
-                  <p className="text-muted-foreground">Kunne ikke hente antall nye mottakere.</p>
+                  <p className="text-muted-foreground">{t('admin.campaignHistory.missedCountError')}</p>
                 )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={sending}>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel disabled={sending}>{t('admin.campaignHistory.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSendToMissed}
               disabled={sending || loadingMissed || missedCount === 0}
@@ -269,10 +275,10 @@ export const CampaignHistorySection = () => {
               {sending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Sender...
+                  {t('admin.campaignHistory.sending')}
                 </>
               ) : (
-                "Send e-post"
+                t('admin.campaignHistory.sendEmail')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

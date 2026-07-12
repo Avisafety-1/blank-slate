@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, FileText, Paperclip, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB per attachment (larger files get download links)
 
@@ -37,6 +38,7 @@ export const AttachmentPickerDialog = ({
   onSelect,
   companyId,
 }: AttachmentPickerDialogProps) => {
+  const { t } = useTranslation();
   const { companyId: userCompanyId } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,8 +86,8 @@ export const AttachmentPickerDialog = ({
     // Check if trying to add a file that's too large
     if (doc && !selectedIds.includes(docId) && doc.fil_storrelse && doc.fil_storrelse > MAX_ATTACHMENT_SIZE_BYTES) {
       toast({
-        title: "Stort vedlegg",
-        description: `${doc.tittel} (${formatFileSize(doc.fil_storrelse)}) vil bli sendt som nedlastingslenke i stedet for direkte vedlegg`,
+        title: t('admin.attachmentPicker.largeAttachmentTitle'),
+        description: t('admin.attachmentPicker.largeAttachmentDesc', { title: doc.tittel, size: formatFileSize(doc.fil_storrelse) }),
         variant: "default",
       });
     }
@@ -109,19 +111,14 @@ export const AttachmentPickerDialog = ({
   };
 
   const getCategoryLabel = (kategori: string) => {
-    const labels: Record<string, string> = {
-      operasjonsmanual: "Operasjonsmanual",
-      sikkerhet: "Sikkerhet",
-      vedlikehold: "Vedlikehold",
-      sertifikater: "Sertifikater",
-      forsikring: "Forsikring",
-      kontrakter: "Kontrakter",
-      prosedyrer: "Prosedyrer",
-      sjekklister: "Sjekklister",
-      rapporter: "Rapporter",
-      annet: "Annet",
-    };
-    return labels[kategori] || kategori;
+    const keys = [
+      "operasjonsmanual", "sikkerhet", "vedlikehold", "sertifikater", "forsikring",
+      "kontrakter", "prosedyrer", "sjekklister", "rapporter", "annet",
+    ];
+    if (keys.includes(kategori)) {
+      return t(`admin.attachmentPicker.categories.${kategori}`);
+    }
+    return kategori;
   };
 
   return (
@@ -130,14 +127,14 @@ export const AttachmentPickerDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Paperclip className="h-5 w-5" />
-            Velg dokumenter som vedlegg
+            {t('admin.attachmentPicker.title')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Søk etter dokumenter..."
+            placeholder={t('admin.attachmentPicker.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -152,8 +149,8 @@ export const AttachmentPickerDialog = ({
           ) : filteredDocuments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <FileText className="h-8 w-8 mb-2" />
-              <p>Ingen dokumenter funnet</p>
-              <p className="text-xs">Kun dokumenter med filer kan velges som vedlegg</p>
+              <p>{t('admin.attachmentPicker.noDocuments')}</p>
+              <p className="text-xs">{t('admin.attachmentPicker.noDocumentsHint')}</p>
             </div>
           ) : (
             <div className="p-2 space-y-1">
@@ -186,13 +183,13 @@ export const AttachmentPickerDialog = ({
                         {doc.fil_storrelse && (
                           <span className={isLargeFile ? "text-amber-600 font-medium" : "text-muted-foreground"}>
                             ({formatFileSize(doc.fil_storrelse)})
-                            {isLargeFile && " → lenke"}
+                            {isLargeFile && ` → ${t('admin.attachmentPicker.link')}`}
                           </span>
                         )}
                       </div>
                     </div>
                     {isLargeFile && (
-                      <span className="text-xs text-amber-600 whitespace-nowrap">📎 Lenke</span>
+                      <span className="text-xs text-amber-600 whitespace-nowrap">📎 {t('admin.attachmentPicker.link')}</span>
                     )}
                   </div>
                 );
@@ -202,16 +199,16 @@ export const AttachmentPickerDialog = ({
         </div>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{selectedIds.length} dokument(er) valgt</span>
-          <span className="text-xs">Filer over 5 MB sendes som nedlastingslenke</span>
+          <span>{t('admin.attachmentPicker.selectedCount', { count: selectedIds.length })}</span>
+          <span className="text-xs">{t('admin.attachmentPicker.largeSizeHint')}</span>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Avbryt
+            {t('admin.attachmentPicker.cancel')}
           </Button>
           <Button onClick={handleConfirm}>
-            Legg til vedlegg ({selectedIds.length})
+            {t('admin.attachmentPicker.addAttachment', { count: selectedIds.length })}
           </Button>
         </DialogFooter>
       </DialogContent>
