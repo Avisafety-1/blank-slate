@@ -141,7 +141,7 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
         <div className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/30">
           <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
           <p className="text-sm font-medium text-destructive">
-            Return to Home (RTH) ble utløst under denne flygingen
+            {t('dashboard.flightAnalysis.rthTriggered')}
           </p>
         </div>
       )}
