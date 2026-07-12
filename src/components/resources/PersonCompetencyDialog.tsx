@@ -613,15 +613,15 @@ export function PersonCompetencyDialog({
                           onCheckedChange={setEditAffectsStatus}
                         />
                         <Label htmlFor={`edit-affects-status-${competency.id}`} className="text-xs">
-                          Påvirker status
+                          {t('resourceDialogs.personCompetency.affectsStatus')}
                         </Label>
                       </div>
                       <div className="flex gap-2 pt-2">
                         <Button onClick={() => handleUpdateCompetency(competency.id)} size="sm">
-                          Lagre
+                          {t('resourceDialogs.personCompetency.save')}
                         </Button>
                         <Button onClick={handleCancelEdit} variant="outline" size="sm">
-                          Avbryt
+                          {t('resourceDialogs.personCompetency.cancel')}
                         </Button>
                       </div>
                     </div>
