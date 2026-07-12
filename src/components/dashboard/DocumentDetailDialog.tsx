@@ -165,7 +165,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
       }
     } catch (error: any) {
       console.error('Error opening document:', error);
-      toast.error('Kunne ikke åpne dokumentet');
+      toast.error(t('dashboard.documents.openError'));
     }
   };
 
