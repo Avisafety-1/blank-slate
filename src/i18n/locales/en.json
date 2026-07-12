@@ -403,7 +403,8 @@
       "accessoryMaintDesc": "Accessory maintenance",
       "typeMission": "Mission",
       "typeDocument": "Document",
-      "typeMaintenance": "Maintenance"
+      "typeMaintenance": "Maintenance",
+      "eventsWillBeExportedSuffix": "events will be exported"
     },
     "calendarSubscription": {
       "or": "or",

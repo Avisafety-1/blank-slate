@@ -405,7 +405,8 @@
       "accessoryMaintDesc": "Tilbehørsvedlikehold",
       "typeMission": "Oppdrag",
       "typeDocument": "Dokument",
-      "typeMaintenance": "Vedlikehold"
+      "typeMaintenance": "Vedlikehold",
+      "eventsWillBeExportedSuffix": "hendelser vil bli eksportert"
     },
     "calendarSubscription": {
       "or": "eller",
