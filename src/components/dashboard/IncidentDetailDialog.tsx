@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 
 import { useAuth } from "@/contexts/AuthContext";
