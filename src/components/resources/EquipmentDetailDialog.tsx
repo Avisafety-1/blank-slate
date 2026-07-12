@@ -477,7 +477,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                   return (
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Status</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.status')}</p>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
@@ -488,12 +488,16 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                           <div className="mt-1.5 space-y-1">
                             {maintenanceOnlyStatus !== "Grønn" && (
                               <p className="text-xs text-muted-foreground">
-                                🔧 Vedlikehold {maintenanceOnlyStatus === "Rød" ? "forfalt" : "nærmer seg"}
+                                {maintenanceOnlyStatus === "Rød"
+                                  ? t('resourceDialogs.equipmentDetail.statusHints.maintenanceDue')
+                                  : t('resourceDialogs.equipmentDetail.statusHints.maintenanceSoon')}
                               </p>
                             )}
                             {dbStatus !== "Grønn" && (
                               <p className="text-xs text-muted-foreground">
-                                ⚠️ {latestWarning ? `Advarsel: ${latestWarning.title}` : "Advarsel fra logg"}
+                                {latestWarning
+                                  ? t('resourceDialogs.equipmentDetail.statusHints.warningFromLog', { title: latestWarning.title })
+                                  : t('resourceDialogs.equipmentDetail.statusHints.warningFromLogFallback')}
                               </p>
                             )}
                           </div>
@@ -502,26 +506,26 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
-                                Kvitter ut advarsel
+                                {t('resourceDialogs.equipmentDetail.statusHints.clearWarning')}
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Kvitter ut advarsel</AlertDialogTitle>
+                                <AlertDialogTitle>{t('resourceDialogs.equipmentDetail.statusHints.clearWarningTitle')}</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   {latestWarning
-                                    ? `Advarsel: «${latestWarning.title}» (${new Date(latestWarning.entry_date).toLocaleDateString('nb-NO')}). Vil du kvittere ut og sette status tilbake til Grønn?`
-                                    : "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?"
+                                    ? t('resourceDialogs.equipmentDetail.statusHints.clearWarningWithDetail', { title: latestWarning.title, date: new Date(latestWarning.entry_date).toLocaleDateString() })
+                                    : t('resourceDialogs.equipmentDetail.statusHints.clearWarningDefault')
                                   }
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                                <AlertDialogCancel>{t('resourceDialogs.equipmentDetail.cancel')}</AlertDialogCancel>
                                 <AlertDialogAction onClick={async () => {
                                   if (!user || !companyId) return;
                                   const { error } = await supabase.from('equipment').update({ status: 'Grønn' }).eq('id', equipment.id);
                                   if (error) {
-                                    toast.error(`Kunne ikke kvittere ut: ${error.message}`);
+                                    toast.error(t('resourceDialogs.equipmentDetail.toasts.clearWarningError', { message: error.message }));
                                     return;
                                   }
                                   await supabase.from('equipment_log_entries').insert({
@@ -531,13 +535,15 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                                     entry_date: new Date().toISOString().split('T')[0],
                                     entry_type: 'Kvittering',
                                     title: 'Advarsel kvittert ut',
-                                    description: `Status endret fra ${equipment.status} til Grønn${latestWarning ? ` (${latestWarning.title})` : ''}`,
+                                    description: latestWarning
+                                      ? t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescriptionWithTitle', { from: equipment.status, title: latestWarning.title })
+                                      : t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescription', { from: equipment.status }),
                                   });
                                   queryClient.invalidateQueries({ queryKey: ['equipment'] });
                                   onEquipmentUpdated();
-                                  toast.success('Advarsel kvittert ut — status satt til Grønn');
+                                  toast.success(t('resourceDialogs.equipmentDetail.toasts.clearWarningSuccess'));
                                 }}>
-                                  Kvitter ut
+                                  {t('resourceDialogs.equipmentDetail.statusHints.clearWarningConfirm')}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -545,9 +551,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                         )}
                         {dbStatus !== "Grønn" && !dbDriving && (
                           <p className="text-xs text-muted-foreground mt-1.5 italic">
-                            Advarsel fra logg kan kvitteres ut etter at vedlikehold er utført
+                            {t('resourceDialogs.equipmentDetail.statusHints.afterMaintenanceNote')}
                           </p>
                         )}
+
                       </div>
                     </div>
                   );
