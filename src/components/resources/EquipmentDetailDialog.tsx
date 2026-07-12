@@ -986,14 +986,15 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
         {isEditing && isAdmin && deptVis.hasDepartments && (
           <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">Synlig for avdelinger</Label>
+            <Label className="text-sm font-medium mb-2 block">{t('resourceDialogs.equipmentDetail.visibleTo')}</Label>
             <DepartmentChecklist
               departments={deptVis.childDepartments}
               selectedIds={deptVis.selectedDeptIds}
               onToggle={deptVis.handleToggle}
               allSelected={deptVis.allSelected}
               onToggleAll={deptVis.handleToggleAll}
-              allLabel="Alle avdelinger"
+              allLabel={t('resourceDialogs.equipmentDetail.allDepartments')}
+
             />
           </div>
         )}
