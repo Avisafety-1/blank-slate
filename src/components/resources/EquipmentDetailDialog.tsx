@@ -252,17 +252,18 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           user_id: user.id,
           entry_date: today,
           entry_type: "vedlikehold",
-          title: "Vedlikehold utført",
-          description: "Utført via utstyrskort",
+          title: t('resourceDialogs.equipmentDetail.maintenance.logTitle'),
+          description: t('resourceDialogs.equipmentDetail.maintenance.logDescription'),
         });
       }
 
-      toast.success(`Vedlikehold utført for ${equipment.navn}`);
+      toast.success(t('resourceDialogs.equipmentDetail.toasts.maintenanceSuccess', { name: equipment.navn }));
       onEquipmentUpdated();
     } catch (error: any) {
       console.error("Error performing maintenance:", error);
-      toast.error(`Kunne ikke oppdatere vedlikehold: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentDetail.toasts.maintenanceError', { message: error.message }));
     } finally {
+
       setIsSubmitting(false);
     }
   };
