@@ -817,7 +817,7 @@ export const EquipmentLogbookDialog = ({
                             </p>
                           </div>
                           <div className="border rounded-lg p-3 bg-card">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> Helse</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.health')}</p>
                             <p className={`text-lg font-bold ${healthColor}`}>
                               {latest?.health ?? '—'}%
                             </p>
