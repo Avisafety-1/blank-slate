@@ -863,7 +863,7 @@ const Status = () => {
           fil_storrelse: blob.size,
           company_id: profile.company_id,
           user_id: user?.id,
-          t("status.hookMessages.export.unknown")
+          opprettet_av_navn: profile?.full_name || t("status.hookMessages.export.unknown"),
         });
 
       if (dbError) throw dbError;
