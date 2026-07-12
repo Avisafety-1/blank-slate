@@ -556,7 +556,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+            <AlertDialogTitle>{t('dashboard.documents.confirmDeleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               Dette vil permanent slette dokumentet <span className="break-all [overflow-wrap:anywhere]">"{document.tittel}"</span>. Denne handlingen kan ikke angres.
             </AlertDialogDescription>
