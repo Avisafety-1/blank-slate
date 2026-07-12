@@ -606,7 +606,7 @@ export default function KartPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-foreground">Laster...</p>
+        <p className="text-foreground">{t('pages.map.loading')}</p>
       </div>
     );
   }
