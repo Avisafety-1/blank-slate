@@ -2499,6 +2499,35 @@
       "areYouSure": "Are you sure?",
       "confirmDeleteDesc": "This action cannot be undone. The competency will be permanently deleted.",
       "delete": "Delete"
+    },
+    "checklistExecution": {
+      "sjekklister": "Checklists",
+      "sjekkliste": "Checklist",
+      "fremgang": "Progress",
+      "avTotal": "{{done}} of {{total}}",
+      "laster": "Loading checklist...",
+      "pdfTittel": "PDF checklist",
+      "pdfAutoOpen": "The checklist opens automatically. If nothing happens, tap below.",
+      "openChecklist": "Open checklist",
+      "openInNewTab": "Open in new tab",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "resetZoom": "Reset zoom",
+      "pdfLoadError": "Could not load PDF. Try opening in a new tab.",
+      "loadingPdf": "Loading PDF...",
+      "convertingDocx": "Converting Word document...",
+      "noContent": "No content could be displayed.",
+      "downloadDocument": "Download document",
+      "wordLoadError": "Could not display the Word document. Use “Open in new tab” to download it.",
+      "checklistFile": "Checklist file",
+      "downloadHint": "Download the document to review the checklist",
+      "downloadChecklist": "Download checklist",
+      "noItems": "No items in the checklist",
+      "cancel": "Cancel",
+      "completing": "Completing...",
+      "complete": "Complete",
+      "markAsCompleted": "Mark the checklist as completed",
+      "checkAll": "Check all items ({{done}}/{{total}})"
     }
   }
 }

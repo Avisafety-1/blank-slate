@@ -2501,6 +2501,35 @@
       "areYouSure": "Er du sikker?",
       "confirmDeleteDesc": "Denne handlingen kan ikke angres. Kompetansen vil bli permanent slettet.",
       "delete": "Slett"
+    },
+    "checklistExecution": {
+      "sjekklister": "Sjekklister",
+      "sjekkliste": "Sjekkliste",
+      "fremgang": "Fremgang",
+      "avTotal": "{{done}} av {{total}}",
+      "laster": "Laster sjekkliste...",
+      "pdfTittel": "PDF-sjekkliste",
+      "pdfAutoOpen": "Sjekklisten åpnes automatisk. Hvis ingenting skjer, trykk under.",
+      "openChecklist": "Åpne sjekkliste",
+      "openInNewTab": "Åpne i ny fane",
+      "zoomOut": "Zoom ut",
+      "zoomIn": "Zoom inn",
+      "resetZoom": "Nullstill zoom",
+      "pdfLoadError": "Kunne ikke laste PDF. Prøv å åpne i ny fane.",
+      "loadingPdf": "Laster PDF...",
+      "convertingDocx": "Konverterer Word-dokument...",
+      "noContent": "Ingen innhold kunne vises.",
+      "downloadDocument": "Last ned dokument",
+      "wordLoadError": "Kunne ikke vise Word-dokumentet. Bruk «Åpne i ny fane» for å laste det ned.",
+      "checklistFile": "Sjekklistefil",
+      "downloadHint": "Last ned dokumentet for å gjennomgå sjekklisten",
+      "downloadChecklist": "Last ned sjekkliste",
+      "noItems": "Ingen punkter i sjekklisten",
+      "cancel": "Avbryt",
+      "completing": "Fullfører...",
+      "complete": "Fullfør",
+      "markAsCompleted": "Marker sjekklisten som utført",
+      "checkAll": "Kryss av alle punkter ({{done}}/{{total}})"
     }
   }
 }
