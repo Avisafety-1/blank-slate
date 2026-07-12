@@ -353,7 +353,7 @@ export const DroneLogbookDialog = ({
 
   const handleAddEntry = async () => {
     if (!user || !companyId || !newEntry.title.trim()) {
-      toast.error("Fyll inn tittel");
+      toast.error(t('resourceDialogs.droneLogbook.toasts.titleRequired'));
       return;
     }
     setIsSaving(true);
