@@ -518,14 +518,14 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                   >
                     {/* Zoom controls */}
                     <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md bg-background/90 backdrop-blur border shadow-sm p-1">
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale - 0.25)} aria-label="Zoom ut">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale - 0.25)} aria-label={t('resourceDialogs.checklistExecution.zoomOut')}>
                         <ZoomOut className="h-4 w-4" />
                       </Button>
                       <span className="text-xs tabular-nums w-10 text-center">{Math.round(pdfScale * 100)}%</span>
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale + 0.25)} aria-label="Zoom inn">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyScale(pdfScale + 0.25)} aria-label={t('resourceDialogs.checklistExecution.zoomIn')}>
                         <ZoomIn className="h-4 w-4" />
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={resetPdfZoom} aria-label="Nullstill zoom">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={resetPdfZoom} aria-label={t('resourceDialogs.checklistExecution.resetZoom')}>
                         <RotateCcw className="h-4 w-4" />
                       </Button>
                     </div>
