@@ -1,10 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
+import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, formatDurationForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import i18n from "@/i18n";
+import { getIntlLocale } from "@/lib/i18nHelpers";
 import { generateMissionMapSnapshot } from "@/lib/mapSnapshotUtils";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   OUTDOOR_ASSEMBLIES_LABELS,
