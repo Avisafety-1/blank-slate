@@ -843,7 +843,7 @@ export function PersonCompetencyDialog({
                           id="new-name"
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
-                          placeholder="Skriv inn kursnavn"
+                          placeholder={t('resourceDialogs.personCompetency.enterCourseName')}
                           className="h-9 mt-2"
                         />
                       )}
@@ -853,7 +853,7 @@ export function PersonCompetencyDialog({
                       id="new-name"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      placeholder="F.eks. A3 drone"
+                      placeholder={t('resourceDialogs.personCompetency.egA3')}
                       className="h-9"
                     />
                   )}
