@@ -47,6 +47,7 @@ interface AddDroneDialogProps {
 }
 
 export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defaultValues, onDroneCreated }: AddDroneDialogProps) => {
+  const { t } = useTranslation();
   const [companyId, setCompanyId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inspectionStartDate, setInspectionStartDate] = useState<string>("");
