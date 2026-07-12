@@ -635,7 +635,7 @@ export default function Kalender() {
     }
 
     if (!user || !companyId) {
-      toast.error("Du må være innlogget");
+      toast.error(t('pages.calendar.mustBeLoggedIn'));
       return;
     }
 
