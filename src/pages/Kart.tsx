@@ -549,7 +549,7 @@ export default function KartPage() {
     setPilotPosition(position);
     setIsPlacingPilot(false);
     if (position) {
-      toast.success("Pilotposisjon satt");
+      toast.success(t('pages.map.pilotPositionSet'));
     }
   }, []);
 
