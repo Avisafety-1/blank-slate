@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ const clearResetFlag = () => {
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("token_hash") ? "idle" : "resend";
@@ -47,7 +49,7 @@ const ResetPassword = () => {
 
   const startVerification = async () => {
     if (!tokenHash) {
-      toast.error("Ingen gyldig token funnet i lenken.");
+      toast.error(t('auth.resetPassword2.invalidToken'));
       setStage("resend");
       return;
     }
@@ -63,7 +65,7 @@ const ResetPassword = () => {
 
       if (error) {
         console.error("verifyOtp error:", error);
-        toast.error("Lenken er ugyldig eller utløpt. Prøv å sende en ny link.");
+        toast.error(t('auth.resetPassword2.linkInvalidOrExpired'));
         clearResetFlag();
         setStage("resend");
       } else {
@@ -71,7 +73,7 @@ const ResetPassword = () => {
       }
     } catch (err: any) {
       console.error("verifyOtp exception:", err);
-      toast.error("En feil oppstod. Prøv å sende en ny link.");
+      toast.error(t('auth.resetPassword2.errorOccurred'));
       clearResetFlag();
       setStage("resend");
     }
@@ -81,7 +83,7 @@ const ResetPassword = () => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      toast.error("Passordene er ikke like");
+      toast.error(t('auth.resetPassword2.passwordsDontMatch'));
       return;
     }
     const pwErr = passwordErrorMessage(password);
@@ -99,8 +101,8 @@ const ResetPassword = () => {
       console.error("Reset password error:", error);
       toast.error(
         error?.message
-          ? `Kunne ikke oppdatere passord: ${error.message}. Lenken er brukt opp — be om ny.`
-          : "Kunne ikke oppdatere passord. Lenken er brukt opp — be om ny."
+          ? t('auth.resetPassword2.couldNotUpdateWithMsg', { message: error.message })
+          : t('auth.resetPassword2.couldNotUpdate')
       );
     } finally {
       // Always tear down the transient recovery session so the user is NOT auto-logged in.
@@ -113,7 +115,7 @@ const ResetPassword = () => {
       setLoading(false);
 
       if (updateSucceeded) {
-        toast.success("Passord oppdatert! Logg inn med ditt nye passord.");
+        toast.success(t('auth.resetPassword2.passwordUpdated'));
         navigate("/auth");
       } else {
         setPassword("");
@@ -127,7 +129,7 @@ const ResetPassword = () => {
   const handleResendLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resendEmail) {
-      toast.error("Skriv inn e-postadressen din");
+      toast.error(t('auth.resetPassword2.enterEmail'));
       return;
     }
     setLoading(true);
@@ -137,10 +139,10 @@ const ResetPassword = () => {
       });
       if (error) throw error;
       setResendSent(true);
-      toast.success("Hvis e-posten finnes i systemet, vil du motta en ny tilbakestillingslenke.");
+      toast.success(t('auth.resetPassword2.resendSuccess'));
     } catch (error: any) {
       console.error("Resend error:", error);
-      toast.error("Kunne ikke sende ny link. Prøv igjen senere.");
+      toast.error(t('auth.resetPassword2.resendError'));
     } finally {
       setLoading(false);
     }
@@ -164,7 +166,7 @@ const ResetPassword = () => {
           <CardContent className="pt-6">
             <div className="text-center space-y-2">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-              <p className="text-muted-foreground">Verifiserer lenke...</p>
+              <p className="text-muted-foreground">{t('auth.resetPassword2.verifyingLink')}</p>
             </div>
           </CardContent>
         </Card>
@@ -179,31 +181,31 @@ const ResetPassword = () => {
               <img src={avisafeLogoText} alt="AviSafe" className="h-24 w-auto" />
             </div>
             <div className="text-center">
-              <CardTitle className="text-xl">Sett nytt passord</CardTitle>
-              <CardDescription>Skriv inn ditt nye passord nedenfor</CardDescription>
+              <CardTitle className="text-xl">{t('auth.resetPassword2.setNewPassword')}</CardTitle>
+              <CardDescription>{t('auth.resetPassword2.newPasswordDesc')}</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password">Nytt passord</Label>
+                <Label htmlFor="password">{t('auth.resetPassword2.newPassword')}</Label>
                 <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
               </div>
               <PasswordRequirements password={password} />
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Bekreft nytt passord</Label>
+                <Label htmlFor="confirmPassword">{t('auth.resetPassword2.confirmNewPassword')}</Label>
                 <Input id="confirmPassword" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={8} />
                 {confirmPassword.length > 0 && confirmPassword !== password && (
-                  <p className="text-xs text-destructive">Passordene er ikke like</p>
+                  <p className="text-xs text-destructive">{t('auth.resetPassword2.passwordsDontMatch')}</p>
                 )}
               </div>
               <Button type="submit" className="w-full" disabled={loading || !isPasswordValid(password) || password !== confirmPassword}>
-                {loading ? "Oppdaterer..." : "Oppdater passord"}
+                {loading ? t('auth.resetPassword2.updating') : t('auth.resetPassword2.updatePassword')}
               </Button>
             </form>
             <div className="text-center text-sm mt-4">
               <button type="button" onClick={() => navigate("/auth")} className="text-primary hover:underline">
-                Tilbake til innlogging
+                {t('auth.resetPassword2.backToLogin')}
               </button>
             </div>
           </CardContent>
@@ -219,9 +221,9 @@ const ResetPassword = () => {
               <img src={avisafeLogoText} alt="AviSafe" className="h-24 w-auto" />
             </div>
             <div className="text-center">
-              <CardTitle className="text-xl">Send ny tilbakestillingslenke</CardTitle>
+              <CardTitle className="text-xl">{t('auth.resetPassword2.sendNewResetLink')}</CardTitle>
               <CardDescription>
-                Skriv inn e-postadressen din så sender vi en ny lenke.
+                {t('auth.resetPassword2.sendNewResetLinkDesc')}
               </CardDescription>
             </div>
           </CardHeader>
@@ -232,25 +234,25 @@ const ResetPassword = () => {
                   <Send className="h-10 w-10 text-primary" />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Hvis e-posten finnes i systemet, vil du motta en ny tilbakestillingslenke. Sjekk innboksen din (og søppelpost).
+                  {t('auth.resetPassword2.checkInbox')}
                 </p>
                 <Button variant="outline" className="w-full" onClick={() => navigate("/auth")}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Tilbake til innlogging
+                  {t('auth.resetPassword2.backToLogin')}
                 </Button>
               </div>
             ) : (
               <form onSubmit={handleResendLink} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="resendEmail">E-postadresse</Label>
+                  <Label htmlFor="resendEmail">{t('auth.resetPassword2.emailAddress')}</Label>
                   <Input id="resendEmail" type="email" placeholder="din@epost.no" value={resendEmail} onChange={(e) => setResendEmail(e.target.value)} required />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Sender..." : "Send ny link"}
+                  {loading ? t('auth.resetPassword2.sending') : t('auth.resetPassword2.sendNewLink')}
                 </Button>
                 <Button type="button" variant="ghost" className="w-full" onClick={() => setStage("idle")}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Tilbake
+                  {t('auth.resetPassword2.back')}
                 </Button>
               </form>
             )}
@@ -268,25 +270,25 @@ const ResetPassword = () => {
             <img src={avisafeLogoText} alt="AviSafe" className="h-24 w-auto" />
           </div>
           <div className="text-center">
-            <CardTitle className="text-xl">Tilbakestill passord</CardTitle>
+            <CardTitle className="text-xl">{t('auth.resetPassword2.resetTitle')}</CardTitle>
             <CardDescription>
-              Klikk knappen under for å verifisere lenken og sette nytt passord.
+              {t('auth.resetPassword2.resetDesc')}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={startVerification} className="w-full" size="lg">
             <ShieldCheck className="mr-2 h-5 w-5" />
-            Verifiser og sett nytt passord
+            {t('auth.resetPassword2.verifyAndSet')}
           </Button>
           <div className="text-center">
             <button type="button" onClick={() => setStage("resend")} className="text-sm text-muted-foreground hover:text-primary hover:underline">
-              Fungerte ikke lenken? Send ny link
+              {t('auth.resetPassword2.linkNotWorking')}
             </button>
           </div>
           <div className="text-center">
             <button type="button" onClick={() => navigate("/auth")} className="text-sm text-primary hover:underline">
-              Tilbake til innlogging
+              {t('auth.resetPassword2.backToLogin')}
             </button>
           </div>
         </CardContent>

@@ -23,7 +23,7 @@ Statuskoder:
 | 1.5 | `src/pages/Resources.tsx` + `src/components/resources/*` | DONE | Alle dialoger migrert 2026-07-12. Resources.tsx var allerede fullstendig migrert (kun DB-enum-verdier "Grønn"/"Gul"/"Rød" og "alle"-filter-sentinel gjenstår som interne identifikatorer). Add*-dialoger og øvrige (AddCompetencyDialog, AddDronetagDialog, AddEquipmentDialog, AddEquipmentToDroneDialog, AddPersonnelToDroneDialog, DronetagDetailDialog, MoveDroneDialog, ResourceVisibilityWarningDialog, PersonnelFlightKpi) bruker allerede `t()`. |
 | 1.6 | `src/components/Header.tsx` | DONE | Plattformstatistikk/Marketing/Driftstatus/Lukk migrert til `header.*` 2026-07-12. |
 
-| 1.7 | `src/pages/Auth.tsx` + `src/pages/ResetPassword.tsx` | TODO | |
+| 1.7 | `src/pages/Auth.tsx` + `src/pages/ResetPassword.tsx` | DONE | Auth.tsx: siste hardkodede strenger (captcha-toast, signup-toast, "Selv-registrering midlertidig stengt"-blokker, allerede-innlogget-kort) migrert til `auth.*` 2026-07-12. ResetPassword.tsx: full migrering til nytt `auth.resetPassword2.*`-namespace. |
 
 ## Fase 2 – Hendelser, dokumenter, opplæring
 
