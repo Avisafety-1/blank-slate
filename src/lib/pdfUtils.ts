@@ -150,7 +150,8 @@ export const addSignatureToPdf = async (
   doc: jsPDF,
   signatureUrl: string,
   yPos: number,
-  label: string = "Signatur:"
+  label?: string,
+  language: AppLanguage = getCurrentLanguage(),
 ): Promise<number> => {
   try {
     const img = new Image();
