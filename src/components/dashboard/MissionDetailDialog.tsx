@@ -333,13 +333,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
           <div className="border-t border-border pt-4">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-sm font-medium text-muted-foreground">Merknader</p>
+              <p className="text-sm font-medium text-muted-foreground">{t('dashboard.missionDetail.notes')}</p>
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                title="Legg til merknad"
-                aria-label="Legg til merknad"
+                title={t('dashboard.missionDetail.addNote')}
+                aria-label={t('dashboard.missionDetail.addNote')}
                 className="h-8 w-8 shrink-0"
                 onClick={() => setNotesDialogOpen(true)}
               >
@@ -349,7 +349,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             {currentMission.merknader ? (
               <p className="text-sm whitespace-pre-wrap">{currentMission.merknader}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">Ingen merknader</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.missionDetail.noNotes')}</p>
             )}
           </div>
 
