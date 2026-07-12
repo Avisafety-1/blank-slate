@@ -20,6 +20,7 @@ import { FlightLogbookDialog } from "@/components/FlightLogbookDialog";
 import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
 import { TakeCourseDialog } from "@/components/training/TakeCourseDialog";
 import { PersonnelFlightKpi } from "@/components/resources/PersonnelFlightKpi";
+import { useTranslation } from "react-i18next";
 
 interface Competency {
   id: string;
