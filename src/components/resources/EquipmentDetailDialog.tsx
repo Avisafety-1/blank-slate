@@ -740,7 +740,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="navn" className="text-xs sm:text-sm">Navn</Label>
+                  <Label htmlFor="navn" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.name')}</Label>
                   <Input
                     id="navn"
                     value={formData.navn}
@@ -749,7 +749,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   />
                 </div>
                 <div>
-                  <Label htmlFor="type" className="text-xs sm:text-sm">Type</Label>
+                  <Label htmlFor="type" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.type')}</Label>
                   <Select
                     value={formData.type}
                     onValueChange={(val) => {
@@ -758,19 +758,19 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     }}
                   >
                     <SelectTrigger className="text-sm">
-                      <SelectValue placeholder="Velg type" />
+                      <SelectValue placeholder={t('resourceDialogs.equipmentDetail.labels.chooseType')} />
                     </SelectTrigger>
                     <SelectContent>
-                      {equipmentTypes.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      {equipmentTypes.map((et) => (
+                        <SelectItem key={et} value={et}>{et}</SelectItem>
                       ))}
-                      <SelectItem value="__other__">Annet...</SelectItem>
+                      <SelectItem value="__other__">{t('resourceDialogs.equipmentDetail.labels.otherType')}</SelectItem>
                     </SelectContent>
                   </Select>
                   {formData.type === "__other__" && (
                     <Input
                       className="mt-2 text-sm"
-                      placeholder="Skriv inn ny type"
+                      placeholder={t('resourceDialogs.equipmentDetail.labels.otherTypePlaceholder')}
                       value={customType}
                       onChange={(e) => setCustomType(e.target.value)}
                       required
@@ -781,7 +781,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="serienummer" className="text-xs sm:text-sm">Serienummer</Label>
+                  <Label htmlFor="serienummer" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.serial')}</Label>
                   <Input
                     id="serienummer"
                     value={formData.serienummer}
@@ -790,20 +790,20 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   />
                 </div>
                 <div>
-                  <Label htmlFor="internal_serial" className="text-xs sm:text-sm">Internt serienummer</Label>
+                  <Label htmlFor="internal_serial" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.internalSerialLong')}</Label>
                   <Input
                     id="internal_serial"
                     value={formData.internal_serial}
                     onChange={(e) => setFormData({ ...formData, internal_serial: e.target.value })}
                     className="text-sm"
-                    placeholder="Valgfritt"
+                    placeholder={t('resourceDialogs.equipmentDetail.labels.optional')}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="vekt" className="text-xs sm:text-sm">Vekt (kg)</Label>
+                  <Label htmlFor="vekt" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.weightKg')}</Label>
                   <Input
                     id="vekt"
                     type="number"
@@ -815,6 +815,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   />
                 </div>
               </div>
+
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
