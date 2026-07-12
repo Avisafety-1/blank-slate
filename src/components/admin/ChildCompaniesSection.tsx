@@ -35,6 +35,7 @@ import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { MapPublicationDefaultsCard } from "@/components/admin/MapPublicationDefaultsCard";
 import { MapLayerDefaultsSection } from "@/components/admin/MapLayerDefaultsSection";
 import { MissionTypesSection } from "@/components/admin/MissionTypesSection";
+import { useTranslation } from "react-i18next";
 
 interface ChildCompany {
   id: string;
@@ -129,6 +130,7 @@ const SubSection = ({ title, icon: Icon, defaultOpen, children }: SubSectionProp
 );
 
 export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSectionProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const isMobile = useIsMobile();
   const soraApprovalEnabled = useSoraApprovalEnabled();
@@ -1480,7 +1482,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {ruleEnabled && (
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <Label className="text-xs">Min. flytimer</Label>
+                            <Label className="text-xs">{t("admin.childCompanies.minFlightHoursLabel")}</Label>
                             <LocalNumberInput
                               min={0}
                               step={0.5}
@@ -1494,7 +1496,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">Siste antall dager</Label>
+                            <Label className="text-xs">{t("admin.childCompanies.lastDaysLabel")}</Label>
                             <LocalNumberInput
                               min={1}
                               max={3650}
@@ -1536,7 +1538,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     {!isChildDept && (
                       <div className="flex items-center justify-between border-t border-border/60 pt-3">
                         <Label htmlFor="currency-propagate" className="flex-1 cursor-pointer pr-4">
-                          <div className="text-xs font-medium">Tving samme krav på alle avdelinger</div>
+                          <div className="text-xs font-medium">{t("admin.childCompanies.forceSameRequirement")}</div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">
                             Når aktivert overstyrer kravet avdelingenes egne verdier — endringer her oppdateres automatisk hos avdelingene.
                           </div>
@@ -1586,7 +1588,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                     </div>
                     {value && (
                       <div className="pl-1 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Antall påkrevde steg:</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t("admin.childCompanies.requiredStepsCount")}</p>
                         <RadioGroup
                           value={String(stepsValue)}
                           onValueChange={(v) => handleChangeSoraSteps(Number(v))}
@@ -1612,7 +1614,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               {!isChildDept && (
                 <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                   <Label htmlFor="apply-settings-children" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Disse innstillingene gjelder for alle underavdelinger</div>
+                    <div className="font-medium text-sm">{t("admin.childCompanies.settingsApplyToAllSub")}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Når aktivert settes innstillingene over på alle avdelinger og avdelingene kan ikke overstyre dem
                     </div>
@@ -1705,17 +1707,17 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       >
                         <div className="flex items-center gap-1.5">
                           <RadioGroupItem value="corridor" id="buffer-corridor" disabled={soraLocked} />
-                          <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">Rute-korridor</Label>
+                          <Label htmlFor="buffer-corridor" className="text-xs cursor-pointer">{t("admin.childCompanies.routeCorridorLabel")}</Label>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <RadioGroupItem value="convexHull" id="buffer-convex" disabled={soraLocked} />
-                          <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">Konveks (convex hull)</Label>
+                          <Label htmlFor="buffer-convex" className="text-xs cursor-pointer">{t("admin.childCompanies.convexHullLabel")}</Label>
                         </div>
                       </RadioGroup>
                       <div className="space-y-1.5 pt-2 border-t border-border/50">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1">
-                            <Label className="text-xs text-muted-foreground">Standard Flight Geography Area (m)</Label>
+                            <Label className="text-xs text-muted-foreground">{t("admin.childCompanies.defaultFlightGeographyLabel")}</Label>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button type="button" className="inline-flex">
@@ -1742,7 +1744,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       <div className="space-y-1.5 pt-2 border-t border-border/50">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1">
-                            <Label className="text-xs text-muted-foreground">Standard flyhøyde (m AGL)</Label>
+                            <Label className="text-xs text-muted-foreground">{t("admin.childCompanies.defaultFlightAltitudeLabel")}</Label>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button type="button" className="inline-flex">
@@ -1769,7 +1771,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {!isChildDept && (
                         <div className="border-t pt-2 flex items-center justify-between">
                           <Label htmlFor="apply-sora-defaults-children" className="flex-1 cursor-pointer pr-4">
-                            <div className="font-medium text-sm">SORA-standardverdier gjelder for alle underavdelinger</div>
+                            <div className="font-medium text-sm">{t("admin.childCompanies.soraDefaultsApplyToAllSub")}</div>
                             <div className="text-xs text-muted-foreground mt-0.5">
                               Når aktivert kopieres SORA-standardverdier til alle avdelinger og låses
                             </div>
@@ -1804,7 +1806,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         Bestem hvilket callsign som publiseres til SafeSky for dette selskapets oppdrag.
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">Callsign-prefix</Label>
+                        <Label htmlFor="callsign-prefix" className="text-xs text-muted-foreground">{t("admin.childCompanies.callsignPrefixLabel")}</Label>
                         <Input
                           id="callsign-prefix"
                           value={csPrefix}
@@ -1816,7 +1818,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Variabel (suffiks)</Label>
+                        <Label className="text-xs text-muted-foreground">{t("admin.childCompanies.variableSuffixLabel")}</Label>
                         <RadioGroup
                           value={csVariable}
                           onValueChange={(v) => { callsignEditing.current = true; setCallsignVariable(v as 'counter' | 'drone_registration' | 'none'); }}
@@ -1825,15 +1827,15 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         >
                           <div className="flex items-center gap-1.5">
                             <RadioGroupItem value="counter" id="cs-counter" disabled={callsignLocked} />
-                            <Label htmlFor="cs-counter" className="text-xs cursor-pointer">Teller (01, 02, …)</Label>
+                            <Label htmlFor="cs-counter" className="text-xs cursor-pointer">{t("admin.childCompanies.counterSuffix")}</Label>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <RadioGroupItem value="drone_registration" id="cs-drone" disabled={callsignLocked} />
-                            <Label htmlFor="cs-drone" className="text-xs cursor-pointer">Drone-registreringsnummer</Label>
+                            <Label htmlFor="cs-drone" className="text-xs cursor-pointer">{t("admin.childCompanies.droneRegistrationSuffix")}</Label>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <RadioGroupItem value="none" id="cs-none" disabled={callsignLocked} />
-                            <Label htmlFor="cs-none" className="text-xs cursor-pointer">Ingen suffiks</Label>
+                            <Label htmlFor="cs-none" className="text-xs cursor-pointer">{t("admin.childCompanies.noSuffix")}</Label>
                           </div>
                         </RadioGroup>
                       </div>
@@ -1845,7 +1847,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       </div>
                       <div className="border-t pt-2 flex items-center justify-between gap-3">
                         <Label htmlFor="callsign-test-mode" className="flex-1 cursor-pointer pr-4">
-                          <div className="font-medium text-sm">Test-modus</div>
+                          <div className="font-medium text-sm">{t("admin.childCompanies.testMode")}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">
                             All trafikk publiseres til SafeSky med høyde 0 ft og status «on ground». Bruk for testing uten å vise drone i lufta.
                           </div>
@@ -1860,7 +1862,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       {!isChildDept && (
                         <div className="border-t pt-2 flex items-center justify-between">
                           <Label htmlFor="callsign-propagate" className="flex-1 cursor-pointer pr-4">
-                            <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                            <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                             <div className="text-xs text-muted-foreground mt-0.5">
                               Propager prefix og variabel til alle avdelinger
                             </div>
@@ -1933,7 +1935,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 {!isChildDept && (
                   <div className="border-t pt-2 flex items-center justify-between">
                     <Label htmlFor="apply-roles-children" className="flex-1 cursor-pointer pr-4">
-                      <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                      <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         Når aktivert kopieres rollene til alle avdelinger i selskapet
                       </div>
@@ -1993,7 +1995,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                         })}
                       </div>
                       <div className="border-t pt-2 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Mottakere av varsler:</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t("admin.childCompanies.alertRecipientsLabel")}</p>
                         {!alertsLocked && (
                           <SearchablePersonSelect
                             persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
@@ -2030,7 +2032,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                 {!isChildDept && (
                   <div className="border-t pt-2 flex items-center justify-between">
                     <Label htmlFor="apply-alerts-children" className="flex-1 cursor-pointer pr-4">
-                      <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                      <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         Når aktivert kopieres varsler og mottakere til alle avdelinger
                       </div>
@@ -2140,7 +2142,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               {!isChildDept && departmentsEnabled && (
                 <div className="rounded-lg border-2 border-primary/30 bg-muted/30 p-3 flex items-center justify-between">
                   <Label htmlFor="apply-fh2-children" className="flex-1 cursor-pointer pr-4">
-                    <div className="font-medium text-sm">Gjelder for alle underavdelinger</div>
+                    <div className="font-medium text-sm">{t("admin.childCompanies.appliesForAllSub")}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       Når aktivert arver underavdelinger FlightHub 2-nøkkelen fra morselskapet og kan ikke overstyre den.
                     </div>
@@ -2208,7 +2210,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
         </div>
 
         {loading ? (
-          <p className="text-muted-foreground text-sm">Laster...</p>
+          <p className="text-muted-foreground text-sm">{t("admin.childCompanies.loading")}</p>
         ) : children.length === 0 ? (
           <p className="text-muted-foreground text-sm py-8 text-center">
             Ingen avdelinger opprettet ennå.
@@ -2243,12 +2245,12 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Navn</TableHead>
-                <TableHead>Org.nr</TableHead>
-                <TableHead>E-post</TableHead>
-                <TableHead>Telefon</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Handlinger</TableHead>
+                <TableHead>{t("admin.childCompanies.colName")}</TableHead>
+                <TableHead>{t("admin.childCompanies.colOrgNr")}</TableHead>
+                <TableHead>{t("admin.childCompanies.colEmail")}</TableHead>
+                <TableHead>{t("admin.childCompanies.colPhone")}</TableHead>
+                <TableHead>{t("admin.childCompanies.colStatus")}</TableHead>
+                <TableHead className="text-right">{t("admin.childCompanies.colActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2289,14 +2291,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Slett avdeling</AlertDialogTitle>
+            <AlertDialogTitle>{t("admin.childCompanies.deleteChildTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               Er du sikker på at du vil slette «{companyToDelete?.navn}»? Denne handlingen kan ikke angres.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Slett</AlertDialogAction>
+            <AlertDialogCancel>{t("admin.childCompanies.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>{t("admin.childCompanies.delete")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
