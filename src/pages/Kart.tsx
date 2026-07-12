@@ -1175,7 +1175,7 @@ export default function KartPage() {
               variant="default"
               size="icon"
               className="shadow-lg"
-              title="Planlegg ny rute"
+              title={t('pages.map.planNewRoute')}
             >
               <Route className="h-5 w-5" />
             </Button>
