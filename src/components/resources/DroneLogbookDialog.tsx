@@ -80,6 +80,7 @@ export const DroneLogbookDialog = ({
   const { user, companyId } = useAuth();
   const { isAdmin } = useRoleCheck();
   const terminology = useTerminology();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [allLogs, setAllLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
