@@ -56,6 +56,7 @@ function tryParseChecklistItems(beskrivelse: string | null): ChecklistItem[] | n
 }
 
 export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) => {
+  const { t } = useTranslation();
   const { open, onOpenChange, itemName, onComplete, completedIds = [] } = props;
   const checklistIds: string[] = props.checklistIds ?? (props.checklistId ? [props.checklistId] : []);
 
