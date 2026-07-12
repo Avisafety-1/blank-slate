@@ -48,6 +48,8 @@ const checkOverlap = (a: TimelineEvent, b: TimelineEvent): boolean => {
 
 export function ResourceTimeline() {
   const isMobile = useIsMobile();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [resourceRows, setResourceRows] = useState<ResourceRow[]>([]);
   const [loading, setLoading] = useState(true);
