@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Chrome, CheckCircle2, Building2, KeyRound, Fingerprint, Loader2 } from "lucide-react";
+import { Chrome, CheckCircle2, Building2, KeyRound, Fingerprint, Loader2, Globe } from "lucide-react";
 import droneBackground from "@/assets/drone-background.webp";
 import type { User } from "@supabase/supabase-js";
 import { MfaChallengeDialog } from "@/components/MfaChallengeDialog";
@@ -918,6 +918,17 @@ const Auth = () => {
   if (showOpenAppFallback) {
     return (
       <div className="min-h-screen relative flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => { const target = (i18n.language || 'no').toLowerCase().startsWith('en') ? 'no' : 'en'; i18n.changeLanguage(target); }}
+          className="fixed top-4 right-4 z-20 h-9 w-9 rounded-md bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-foreground hover:bg-card transition-colors"
+          aria-label={t('header.switchToLanguage', { lang: (i18n.language || 'no').toLowerCase().startsWith('en') ? 'NO' : 'EN' })}
+        >
+          <Globe className="h-4 w-4" />
+          <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold leading-none bg-primary text-primary-foreground rounded px-0.5">
+            {(i18n.language || 'no').toLowerCase().startsWith('en') ? 'EN' : 'NO'}
+          </span>
+        </button>
         <div className="fixed inset-0 z-0" style={{
           backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url(${droneBackground})`,
           backgroundSize: "cover",
@@ -950,8 +961,27 @@ const Auth = () => {
     );
   }
 
+  const currentLang = (i18n.language || 'no').toLowerCase().startsWith('en') ? 'en' : 'no';
+  const targetLang: 'no' | 'en' = currentLang === 'en' ? 'no' : 'en';
+  const displayLang = currentLang === 'en' ? 'EN' : 'NO';
+  const LanguageToggle = () => (
+    <button
+      type="button"
+      onClick={() => { i18n.changeLanguage(targetLang); }}
+      className="fixed top-4 right-4 z-20 h-9 w-9 rounded-md bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-foreground hover:bg-card transition-colors"
+      title={t('header.switchToLanguage', { lang: targetLang === 'en' ? 'EN' : 'NO' })}
+      aria-label={t('header.switchToLanguage', { lang: targetLang === 'en' ? 'EN' : 'NO' })}
+    >
+      <Globe className="h-4 w-4" />
+      <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold leading-none bg-primary text-primary-foreground rounded px-0.5">
+        {displayLang}
+      </span>
+    </button>
+  );
+
   return (
     <div className="min-h-screen relative flex items-center justify-center">
+      <LanguageToggle />
       {/* Background */}
       <div className="fixed inset-0 z-0" style={{
         backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.4)), url(${droneBackground})`,
