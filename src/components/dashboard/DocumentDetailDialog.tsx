@@ -462,9 +462,9 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-destructive">Dokumentet har utløpt</p>
+                  <p className="text-sm font-medium text-destructive">{t('dashboard.documents.expiredTitle')}</p>
                   <p className="text-sm mt-1 text-destructive/90">
-                    Dette dokumentet må fornyes umiddelbart for å opprettholde compliance.
+                    {t('dashboard.documents.expiredWarning')}
                   </p>
                 </div>
               </div>
@@ -477,10 +477,10 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                 <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                    Dokumentet nærmer seg utløp
+                    {t('dashboard.documents.expiringSoonTitle')}
                   </p>
                   <p className="text-sm mt-1 text-amber-900 dark:text-amber-100">
-                    Vennligst sørg for fornyelse innen utløpsdato.
+                    {t('dashboard.documents.expiringSoonMessage')}
                   </p>
                 </div>
               </div>
