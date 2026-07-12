@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useChecklists } from "@/hooks/useChecklists";
 import { usePlanGating } from "@/hooks/usePlanGating";
+import { useTranslation } from "react-i18next";
 
 interface DroneModel {
   id: string;
