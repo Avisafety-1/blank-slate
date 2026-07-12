@@ -61,6 +61,8 @@ interface MissionMapPreviewProps {
 }
 
 export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, notam }: MissionMapPreviewProps) => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === "en" ? "en-GB" : "nb-NO";
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const terrainElevationsRef = useRef<globalThis.Map<string, number>>(new globalThis.Map());
