@@ -23,6 +23,7 @@ import {
   Send, CheckCircle2, Upload, Building2, BarChart3, Radio as RadioIcon
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
@@ -113,6 +114,7 @@ export const MissionCard = ({
   hasFh2Connection,
   onSendToFH2,
 }: MissionCardProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { companyId, departmentsEnabled } = useAuth();
   const [has5kmZone, setHas5kmZone] = useState(false);
@@ -144,7 +146,7 @@ export const MissionCard = ({
     if (!error) {
       setNinoxApproved(true);
       fetchMissions();
-      toast.success('Ninox-godkjenning bekreftet');
+      toast.success(t('pages.missions.card.ninoxConfirmedToast'));
     }
     setNinoxConfirmOpen(false);
   };
@@ -190,7 +192,7 @@ export const MissionCard = ({
               >
                 {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
                 {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                {approvalStatus === 'pending_approval' ? 'Venter på godkjenning' : approvalStatus === 'approved' ? 'Godkjent' : 'Ikke godkjent'}
+                {approvalStatus === 'pending_approval' ? t('pages.missions.card.approvalPending') : approvalStatus === 'approved' ? t('pages.missions.card.approved') : t('pages.missions.card.notApproved')}
               </Badge>
             )}
             {shouldShowAIRiskBadge(mission.aiRisk) && (
@@ -231,8 +233,8 @@ export const MissionCard = ({
                 {mission.checklist_ids.every((id: string) =>
                   mission.checklist_completed_ids?.includes(id)
                 )
-                  ? 'Sjekkliste utført'
-                  : 'Utfør sjekkliste/r'}
+                  ? t('pages.missions.card.checklistCompleted')
+                  : t('pages.missions.card.executeChecklist')}
               </Badge>
             )}
             {mission.notam_text && (
@@ -263,7 +265,7 @@ export const MissionCard = ({
                 }}
               >
                 <ShieldCheck className="h-3 w-3 mr-1" />
-                {ninoxApproved ? 'Godkjent i Ninox' : 'Ikke godkjent i Ninox'}
+                {ninoxApproved ? t('pages.missions.card.ninoxApproved') : t('pages.missions.card.ninoxNotApproved')}
               </Badge>
             )}
           </div>
@@ -271,18 +273,18 @@ export const MissionCard = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="w-full sm:w-auto">
-              <span>Flere valg</span>
+              <span>{t('pages.missions.card.moreOptions')}</span>
               <ChevronDown className="h-4 w-4 ml-2" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
             <DropdownMenuItem onClick={() => onEdit(mission)}>
               <Edit className="h-4 w-4 mr-2" />
-              Rediger
+              {t('pages.missions.card.edit')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onNewRiskAssessment(mission)}>
               <ShieldCheck className="h-4 w-4 mr-2" />
-              Ny risikovurdering
+              {t('pages.missions.card.newRiskAssessment')}
             </DropdownMenuItem>
             {onNotam && (
               <DropdownMenuItem onClick={() => onNotam(mission)}>
@@ -292,41 +294,41 @@ export const MissionCard = ({
             )}
             <DropdownMenuItem onClick={() => onChecklistPicker(mission)}>
               <ClipboardCheck className="h-4 w-4 mr-2" />
-              Tilknytt sjekkliste
+              {t('pages.missions.card.attachChecklist')}
             </DropdownMenuItem>
             {showApproval && canSubmitForApproval(mission.approval_status) && (
               <DropdownMenuItem onClick={() => setApprovalConfirmOpen(true)}>
                 <Send className="h-4 w-4 mr-2" />
-                Send til godkjenning
+                {t('pages.missions.card.sendForApproval')}
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onExportPdf(mission)}>
               <Download className="h-4 w-4 mr-2" />
-              Eksporter PDF
+              {t('pages.missions.card.exportPdf')}
             </DropdownMenuItem>
             {(mission.route as { coordinates?: any[] } | null)?.coordinates?.length > 0 && (
               <>
                 <DropdownMenuItem onClick={() => onExportKmz(mission)}>
                   <Navigation className="h-4 w-4 mr-2" />
-                  Eksporter KMZ
+                  {t('pages.missions.card.exportKmz')}
                 </DropdownMenuItem>
                 {hasFh2Connection && onSendToFH2 && (
                   <DropdownMenuItem onClick={() => onSendToFH2(mission)}>
                     <Upload className="h-4 w-4 mr-2" />
-                    Send til FlightHub 2
+                    {t('pages.missions.card.sendToFlightHub2')}
                   </DropdownMenuItem>
                 )}
               </>
             )}
             <DropdownMenuItem onClick={() => onImportKml(mission.id)} disabled={importingKml}>
               <Upload className="h-4 w-4 mr-2" />
-              {importingKml && kmlImportMissionId === mission.id ? 'Importerer…' : 'Importer KML/KMZ'}
+              {importingKml && kmlImportMissionId === mission.id ? t('pages.missions.card.importing') : t('pages.missions.card.importKmlKmz')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onReportIncident(mission)}>
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Rapporter hendelse
+              {t('pages.missions.card.reportIncident')}
             </DropdownMenuItem>
             {isAdmin && (
               <>
@@ -336,7 +338,7 @@ export const MissionCard = ({
                   className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Slett
+                  {t('pages.missions.card.delete')}
                 </DropdownMenuItem>
               </>
             )}
@@ -349,7 +351,7 @@ export const MissionCard = ({
         <div className="flex items-start gap-2">
           <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
           <div>
-            <p className="text-muted-foreground">Lokasjon</p>
+            <p className="text-muted-foreground">{t('pages.missions.card.location')}</p>
             <p className="text-foreground">{mission.lokasjon}</p>
             {effectiveLat != null && effectiveLng != null && (
               <p className="text-xs text-muted-foreground">
@@ -361,14 +363,14 @@ export const MissionCard = ({
         <div className="flex items-start gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
           <div>
-            <p className="text-muted-foreground">Tidspunkt</p>
+            <p className="text-muted-foreground">{t('pages.missions.card.time')}</p>
             <p className="text-foreground">
-              {mission.tidspunkt ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb }) : "Ikke angitt"}
+              {mission.tidspunkt ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb }) : t('pages.missions.card.notSet')}
             </p>
             {mission.slutt_tidspunkt && (() => {
               try {
                 return <p className="text-xs text-muted-foreground">
-                  til {format(new Date(mission.slutt_tidspunkt), "dd. MMMM HH:mm", { locale: nb })}
+                  {t('pages.missions.card.until')} {format(new Date(mission.slutt_tidspunkt), "dd. MMMM HH:mm", { locale: nb })}
                 </p>;
               } catch { return null; }
             })()}
@@ -379,7 +381,7 @@ export const MissionCard = ({
       {/* Created By */}
       {mission.created_by_name && (
         <div className="text-sm">
-          <span className="text-muted-foreground">Opprettet av: </span>
+          <span className="text-muted-foreground">{t('pages.missions.card.createdBy')}</span>
           <span className="text-foreground">{mission.created_by_name}</span>
         </div>
       )}
@@ -387,12 +389,12 @@ export const MissionCard = ({
       {/* Customer Info */}
       {mission.customers && (
         <div className="pt-2 border-t border-border/50">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">KUNDE</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t('pages.missions.card.customerHeader')}</p>
           <div className="space-y-1">
             <p className="text-sm text-foreground">{mission.customers.navn}</p>
             {mission.customers.kontaktperson && (
               <p className="text-xs text-muted-foreground">
-                Kontakt: {mission.customers.kontaktperson}
+                {t('pages.missions.card.contact')}{mission.customers.kontaktperson}
               </p>
             )}
             {(mission.customers.telefon || mission.customers.epost) && (
@@ -421,7 +423,7 @@ export const MissionCard = ({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground">PERSONELL</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.personnelHeader')}</p>
           </div>
           {mission.personnel?.length > 0 ? (
             <ul className="space-y-2">
@@ -438,7 +440,7 @@ export const MissionCard = ({
                 return (
                   <li key={p.profile_id} className="space-y-0.5">
                     <span className="text-sm text-foreground flex items-center gap-1">
-                      {p.profiles?.full_name || "Ukjent"}
+                      {p.profiles?.full_name || t('pages.missions.card.unknown')}
                       {p.company_mission_roles?.name && (
                         <span className="text-xs text-muted-foreground">({p.company_mission_roles.name})</span>
                       )}
@@ -454,7 +456,7 @@ export const MissionCard = ({
               })}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Ingen tilknyttet</p>
+            <p className="text-sm text-muted-foreground">{t('pages.missions.card.noneAttached')}</p>
           )}
         </div>
 
@@ -462,7 +464,7 @@ export const MissionCard = ({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Plane className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground">DRONER</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.dronesHeader')}</p>
           </div>
           {mission.drones?.length > 0 ? (
             <ul className="space-y-2">
@@ -492,7 +494,7 @@ export const MissionCard = ({
               })}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Ingen tilknyttet</p>
+            <p className="text-sm text-muted-foreground">{t('pages.missions.card.noneAttached')}</p>
           )}
         </div>
 
@@ -500,7 +502,7 @@ export const MissionCard = ({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Package className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground">UTSTYR</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.equipmentHeader')}</p>
           </div>
           {mission.equipment?.length > 0 ? (
             <ul className="space-y-2">
@@ -530,7 +532,7 @@ export const MissionCard = ({
               })}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Ingen tilknyttet</p>
+            <p className="text-sm text-muted-foreground">{t('pages.missions.card.noneAttached')}</p>
           )}
         </div>
       </div>
@@ -540,7 +542,7 @@ export const MissionCard = ({
         <div className="pt-2 border-t border-border/50">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground">DOKUMENTER</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.documentsHeader')}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {mission.documents.map((d: any) => {
@@ -565,12 +567,12 @@ export const MissionCard = ({
         <div className="pt-2 border-t border-border/50">
           <div className="flex items-center gap-2 mb-2">
             <Route className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground">PLANLAGT RUTE</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.plannedRouteHeader')}</p>
           </div>
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-primary" />
-              <span>{(mission.route as any).coordinates.length} punkter</span>
+              <span>{(mission.route as any).coordinates.length} {t('pages.missions.card.points')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Ruler className="h-3.5 w-3.5 text-muted-foreground" />
@@ -583,7 +585,7 @@ export const MissionCard = ({
       {/* Description */}
       {mission.beskrivelse && (
         <div className="pt-2 border-t border-border/50">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">BESKRIVELSE</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t('pages.missions.card.descriptionHeader')}</p>
           <p className="text-sm text-foreground whitespace-pre-wrap">{mission.beskrivelse}</p>
         </div>
       )}
@@ -621,7 +623,7 @@ export const MissionCard = ({
               }}
             />
             <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2">KART</p>
+              <p className="text-xs font-semibold text-muted-foreground mb-2">{t('pages.missions.card.mapHeader')}</p>
               <div 
                 className="h-[150px] sm:h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                 onClick={() => navigate(`/kart?missionId=${mission.id}`)}
@@ -647,7 +649,7 @@ export const MissionCard = ({
                   } : null}
                 />
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                  <span className="bg-background/90 px-2 py-1 rounded text-xs font-medium">Klikk for å forstørre</span>
+                  <span className="bg-background/90 px-2 py-1 rounded text-xs font-medium">{t('pages.missions.card.clickToEnlarge')}</span>
                 </div>
               </div>
             </div>
@@ -659,7 +661,7 @@ export const MissionCard = ({
       {mission.sora && (
         <div className="pt-2 border-t border-border/50">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-muted-foreground">SORA-ANALYSE</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.soraAnalysisHeader')}</p>
             <div className="flex items-center gap-2">
               <Button
                 onClick={() => onOpenSora(mission.id)}
@@ -668,7 +670,7 @@ export const MissionCard = ({
                 className="h-7 text-xs"
               >
                 <Edit className="h-3 w-3 mr-1" />
-                Rediger
+                {t('pages.missions.card.edit')}
               </Button>
               <Badge variant="outline" className={getSoraBadgeColor(mission.sora.sora_status)}>
                 {mission.sora.sora_status}
@@ -684,19 +686,19 @@ export const MissionCard = ({
             )}
             {mission.sora.igrc && (
               <div>
-                <p className="text-xs text-muted-foreground">Initial GRC</p>
+                <p className="text-xs text-muted-foreground">{t('pages.missions.card.initialGrc')}</p>
                 <p className="font-medium text-foreground">{mission.sora.igrc}</p>
               </div>
             )}
             {mission.sora.fgrc && (
               <div>
-                <p className="text-xs text-muted-foreground">Final GRC</p>
+                <p className="text-xs text-muted-foreground">{t('pages.missions.card.finalGrc')}</p>
                 <p className="font-medium text-foreground">{mission.sora.fgrc}</p>
               </div>
             )}
             {mission.sora.residual_risk_level && (
               <div>
-                <p className="text-xs text-muted-foreground">Residual Risk</p>
+                <p className="text-xs text-muted-foreground">{t('pages.missions.card.residualRisk')}</p>
                 <p className="font-medium text-foreground">{mission.sora.residual_risk_level}</p>
               </div>
             )}
@@ -715,7 +717,7 @@ export const MissionCard = ({
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-destructive" />
             <p className="text-xs font-semibold text-muted-foreground">
-              TILKNYTTEDE HENDELSER ({mission.incidents.length})
+              {t('pages.missions.card.linkedIncidentsHeader', { count: mission.incidents.length })}
             </p>
           </div>
           <div className="space-y-2">
@@ -761,7 +763,7 @@ export const MissionCard = ({
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-primary" />
             <p className="text-xs font-semibold text-muted-foreground">
-              FLYTURER ({mission.flightLogs.length})
+              {t('pages.missions.card.flightsHeader', { count: mission.flightLogs.length })}
             </p>
           </div>
           <div className="space-y-2">
@@ -777,7 +779,7 @@ export const MissionCard = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{log.flight_duration_minutes} min</span>
+                    <span>{log.flight_duration_minutes} {t('pages.missions.card.minutesShort')}</span>
                   </div>
                   {log.pilot && (
                     <div className="flex items-center gap-2">
@@ -834,7 +836,7 @@ export const MissionCard = ({
                         }}
                       >
                         <BarChart3 className="h-3 w-3" />
-                        Analyser
+                        {t('pages.missions.card.analyze')}
                       </Button>
                       <Button
                         variant="ghost"
@@ -866,8 +868,8 @@ export const MissionCard = ({
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs text-muted-foreground italic">
                         {log.source === 'manual'
-                          ? 'Manuelt registrert flytid – ingen loggfil parset.'
-                          : 'Ingen posisjonsdata – analyse og ruteeksport er ikke tilgjengelig.'}
+                          ? t('pages.missions.card.manualFlightNoLog')
+                          : t('pages.missions.card.noPositionData')}
                       </span>
                       <Button
                         variant="outline"
@@ -876,14 +878,14 @@ export const MissionCard = ({
                         onClick={() => setUploadLogOpen(true)}
                       >
                         <Upload className="h-3 w-3" />
-                        Last opp DJI/ArduPilot-logg
+                        {t('pages.missions.card.uploadDjiArdupilotLog')}
                       </Button>
                     </div>
                   )}
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
                       <Radio className="h-3 w-3 mr-1" />
-                      SafeSky: {log.safesky_mode === 'advisory' ? 'Advisory' : 'Live UAV'}
+                      SafeSky: {log.safesky_mode === 'advisory' ? t('pages.missions.card.safeSkyAdvisory') : t('pages.missions.card.safeSkyLiveUav')}
                     </Badge>
                   )}
                   {log.completed_checklists && log.completed_checklists.length > 0 && (
@@ -899,13 +901,13 @@ export const MissionCard = ({
       {/* Notes */}
       <div className="pt-2 border-t border-border/50">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <p className="text-xs font-semibold text-muted-foreground">MERKNADER</p>
+          <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.notesHeader')}</p>
           <Button
             type="button"
             size="icon"
             variant="ghost"
-            title="Legg til merknad"
-            aria-label="Legg til merknad"
+            title={t('pages.missions.card.addNote')}
+            aria-label={t('pages.missions.card.addNote')}
             className="h-8 w-8 shrink-0"
             onClick={() => setNotesDialogOpen(true)}
           >
@@ -915,18 +917,18 @@ export const MissionCard = ({
         {mission.merknader ? (
           <p className="text-sm text-foreground whitespace-pre-wrap">{mission.merknader}</p>
         ) : (
-          <p className="text-sm text-muted-foreground">Ingen merknader</p>
+          <p className="text-sm text-muted-foreground">{t('pages.missions.card.noNotes')}</p>
         )}
       </div>
 
       {/* Approver Comments */}
       {Array.isArray(mission.approver_comments) && mission.approver_comments.length > 0 && (
         <div className="pt-2 border-t border-border/50">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">KOMMENTARER</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t('pages.missions.card.commentsHeader')}</p>
           <div className="space-y-1.5">
             {mission.approver_comments.map((c: any, i: number) => (
               <div key={i} className="text-sm bg-muted/50 rounded-md p-2">
-                <span className="font-medium">Kommentar fra godkjenner {c.author_name}:</span>{' '}
+                <span className="font-medium">{t('pages.missions.card.approverCommentFrom', { name: c.author_name })}</span>{' '}
                 {c.comment}
                 {c.created_at && <span className="ml-1 text-xs text-muted-foreground">
                   ({new Date(c.created_at).toLocaleDateString('no-NO', { day: '2-digit', month: 'short', year: 'numeric' })})
@@ -944,16 +946,16 @@ export const MissionCard = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-amber-500" />
-            Ninox-godkjenning påkrevd
+            {t('pages.missions.card.ninoxRequiredTitle')}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Ditt oppdrag krever godkjenning i Ninox. Bekreft at du har innhentet dette.
+            {t('pages.missions.card.ninoxRequiredDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('pages.missions.card.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleNinoxConfirm}>
-            Bekreft godkjenning
+            {t('pages.missions.card.confirmApproval')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -961,15 +963,15 @@ export const MissionCard = ({
     <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Send til godkjenning?</AlertDialogTitle>
+          <AlertDialogTitle>{t('pages.missions.card.sendForApprovalTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            Er du sikker på at du vil sende dette oppdraget til godkjenning?
+            {t('pages.missions.card.sendForApprovalDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Avbryt</AlertDialogCancel>
+          <AlertDialogCancel>{t('pages.missions.card.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleSubmitForApproval}>
-            Send til godkjenning
+            {t('pages.missions.card.sendForApproval')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

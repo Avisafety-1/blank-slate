@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface OppdragFilterBarProps {
   filterTab: "active" | "completed";
@@ -38,26 +39,27 @@ export const OppdragFilterBar = ({
   uniqueDrones,
   onAddMission,
 }: OppdragFilterBarProps) => {
+  const { t } = useTranslation();
   return (
     <GlassCard className="p-3 sm:p-4 space-y-3 sm:space-y-4">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
         <Tabs value={filterTab} onValueChange={(v) => onFilterTabChange(v as "active" | "completed")} className="flex-1">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="active" className="text-xs sm:text-sm">Pågående og kommende</TabsTrigger>
-            <TabsTrigger value="completed" className="text-xs sm:text-sm">Fullførte</TabsTrigger>
+            <TabsTrigger value="active" className="text-xs sm:text-sm">{t('pages.missions.filterBar.ongoingAndUpcoming')}</TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs sm:text-sm">{t('pages.missions.filterBar.completed')}</TabsTrigger>
           </TabsList>
         </Tabs>
         <Button data-tour="mission-create-button" onClick={onAddMission} className="w-full sm:w-auto" size="lg">
           <Plus className="h-4 w-4 mr-2" />
-          <span className="hidden sm:inline">Legg til oppdrag</span>
-          <span className="sm:hidden">Nytt oppdrag</span>
+          <span className="hidden sm:inline">{t('pages.missions.filterBar.addMission')}</span>
+          <span className="sm:hidden">{t('pages.missions.filterBar.newMission')}</span>
         </Button>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Søk etter oppdrag..."
+          placeholder={t('pages.missions.filterBar.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-10"
@@ -67,10 +69,10 @@ export const OppdragFilterBar = ({
       <div className="flex flex-col sm:flex-row gap-2">
         <Select value={customerFilter} onValueChange={onCustomerFilterChange}>
           <SelectTrigger className="h-8 text-xs flex-1">
-            <SelectValue placeholder="Kunde" />
+            <SelectValue placeholder={t('pages.missions.filterBar.customer')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="alle">Alle kunder</SelectItem>
+            <SelectItem value="alle">{t('pages.missions.filterBar.allCustomers')}</SelectItem>
             {uniqueCustomers.map(c => (
               <SelectItem key={c} value={c}>{c}</SelectItem>
             ))}
@@ -78,10 +80,10 @@ export const OppdragFilterBar = ({
         </Select>
         <Select value={pilotFilter} onValueChange={onPilotFilterChange}>
           <SelectTrigger className="h-8 text-xs flex-1">
-            <SelectValue placeholder="Pilot" />
+            <SelectValue placeholder={t('pages.missions.filterBar.pilot')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="alle">Alle piloter</SelectItem>
+            <SelectItem value="alle">{t('pages.missions.filterBar.allPilots')}</SelectItem>
             {uniquePilots.map(p => (
               <SelectItem key={p} value={p}>{p}</SelectItem>
             ))}
@@ -89,10 +91,10 @@ export const OppdragFilterBar = ({
         </Select>
         <Select value={droneFilter} onValueChange={onDroneFilterChange}>
           <SelectTrigger className="h-8 text-xs flex-1">
-            <SelectValue placeholder="Drone" />
+            <SelectValue placeholder={t('pages.missions.filterBar.drone')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="alle">Alle droner</SelectItem>
+            <SelectItem value="alle">{t('pages.missions.filterBar.allDrones')}</SelectItem>
             {uniqueDrones.map(d => (
               <SelectItem key={d} value={d}>{d}</SelectItem>
             ))}
