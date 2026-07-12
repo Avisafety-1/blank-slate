@@ -237,12 +237,14 @@ export const DroneLogbookDialog = ({
             id: `inspection-${insp.id}`,
             type: 'inspection',
             date: new Date(insp.inspection_date),
-            title: `Inspeksjon${insp.inspection_type ? `: ${insp.inspection_type}` : ''}`,
+            title: insp.inspection_type
+              ? t('resourceDialogs.droneLogbook.logTitles.inspectionWithType', { type: insp.inspection_type })
+              : t('resourceDialogs.droneLogbook.logTitles.inspection'),
             description: insp.notes || undefined,
-            userName: userMap.get(insp.user_id) || 'Ukjent',
+            userName: userMap.get(insp.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: <Search className="w-4 h-4" />,
             badgeColor: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-            badgeText: 'Inspeksjon',
+            badgeText: t('resourceDialogs.droneLogbook.badges.inspection'),
           });
         });
       }
