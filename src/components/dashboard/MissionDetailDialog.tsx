@@ -360,7 +360,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           {/* Flight log analysis */}
           {missionFlightLogs && missionFlightLogs.length > 0 && (
             <div className="border-t border-border pt-4">
-              <p className="text-sm font-medium text-muted-foreground mb-2">Flylogger ({missionFlightLogs.length})</p>
+              <p className="text-sm font-medium text-muted-foreground mb-2">{t('dashboard.missionDetail.flightLogs')} ({missionFlightLogs.length})</p>
               <div className="space-y-1.5">
                 {missionFlightLogs.map((log: any) => (
                   <div key={log.id} className="flex items-center justify-between gap-2 bg-muted/50 rounded-md px-3 py-2 overflow-hidden">
