@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
+import { translateDeviationCategory } from "@/lib/i18nHelpers";
 
 interface Category {
   id: string;
