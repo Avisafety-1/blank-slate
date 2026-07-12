@@ -959,10 +959,10 @@ export default function KartPage() {
                 onClick={handleSaveRoute}
                 disabled={currentRoute.coordinates.length < 2}
                 className="h-8 px-2 sm:px-3"
-                title="Lagre rute"
+                title={t('pages.map.saveTitle')}
               >
                 <Save className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Lagre</span>
+                <span className="hidden sm:inline ml-1">{t('pages.map.save')}</span>
               </Button>
             </div>
           </div>
