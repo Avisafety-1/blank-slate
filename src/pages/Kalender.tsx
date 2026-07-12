@@ -684,7 +684,7 @@ export default function Kalender() {
   };
 
   const handleDocumentDeleteSuccess = () => {
-    toast.success("Dokument slettet!");
+    toast.success(t('pages.calendar.documentDeleted'));
     fetchCustomEvents();
     handleDocumentModalClose();
   };
