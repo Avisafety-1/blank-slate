@@ -120,11 +120,11 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     await reload();
   };
 
-  const handleToggleActive = async (t: CompanyMissionType) => {
+  const handleToggleActive = async (item: CompanyMissionType) => {
     const { error } = await (supabase
       .from("company_mission_types")
-      .update({ is_active: !t.is_active } as any)
-      .eq("id", t.id) as any);
+      .update({ is_active: !item.is_active } as any)
+      .eq("id", item.id) as any);
     if (error) {
       toast({ title: t("admin.missionTypes.toastGenericError"), description: error.message, variant: "destructive" });
       return;
