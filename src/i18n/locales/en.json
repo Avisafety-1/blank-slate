@@ -1498,7 +1498,6 @@
   },
   "admin": {
     "title": "SMS Admin",
-    "userApproval": "User approval",
     "users": "Users",
     "customers": "Customers",
     "emailTemplates": "Email templates",
