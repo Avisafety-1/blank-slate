@@ -1832,7 +1832,11 @@
       "toastSavedPartial": "Lagret for {{success}} selskaper, {{error}} feilet",
       "visualEditor": "Visuell editor",
       "visualEditorHelp": "Bruk verktøylinjen for å formatere innholdet. Bruk variabler i formatet {{variabel}}.",
-      "visualShort": "Visuell"
+      "visualShort": "Visuell",
+      "language": "Språk",
+      "languageNo": "Norsk",
+      "languageEn": "Engelsk",
+      "languageHelp": "Mottakere får e-post på sitt valgte språk. Legg inn samme mal på flere språk for full støtte."
     },
     "fh2Devices": {
       "title": "FlightHub 2 Enheter",

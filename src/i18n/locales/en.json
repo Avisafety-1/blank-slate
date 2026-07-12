@@ -1830,7 +1830,11 @@
       "toastSavedPartial": "Saved for {{success}} companies, {{error}} failed",
       "visualEditor": "Visual editor",
       "visualEditorHelp": "Use the toolbar to format the content. Use variables in the format {{variable}}.",
-      "visualShort": "Visual"
+      "visualShort": "Visual",
+      "language": "Language",
+      "languageNo": "Norwegian",
+      "languageEn": "English",
+      "languageHelp": "Recipients get emails in their selected language. Add the same template in multiple languages for full support."
     },
     "fh2Devices": {
       "title": "FlightHub 2 Devices",
