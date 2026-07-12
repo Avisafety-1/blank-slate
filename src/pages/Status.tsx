@@ -48,6 +48,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
@@ -79,6 +80,7 @@ const COLORS = {
 };
 
 const Status = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, companyId, companyName: authCompanyName, parentCompanyName } = useAuth();
@@ -147,15 +149,15 @@ const Status = () => {
     try {
       const { data: session } = await supabase.auth.getSession();
       const token = session?.session?.access_token;
-      if (!token) throw new Error("Ingen aktiv sesjon");
+      if (!token) throw new Error(t("status.hookMessages.noActiveSession"));
 
       const periodLabel =
-        timePeriod === "month" ? "Siste måned" :
-        timePeriod === "quarter" ? "Siste kvartal" :
-        timePeriod === "year" ? "Siste år" :
+        timePeriod === "month" ? t("status.page.periodMonth") :
+        timePeriod === "quarter" ? t("status.page.periodQuarter") :
+        timePeriod === "year" ? t("status.page.periodYear") :
         timePeriod === "custom" && customDateFrom && customDateTo
           ? `${format(customDateFrom, "dd.MM.yyyy")} – ${format(customDateTo, "dd.MM.yyyy")}`
-          : "Ukjent";
+          : t("status.hookMessages.periodUnknown");
 
       // Hent flåtestørrelse (anonyme antall) for normalisering av risiko
       const visibleIds = await supabase
@@ -231,10 +233,10 @@ const Status = () => {
       );
 
       if (!resp.ok || !resp.body) {
-        let msg = "AI-analyse feilet";
+        let msg = t("status.hookMessages.aiAnalysisFailed");
         try { const j = await resp.json(); msg = j.error || msg; } catch {}
-        if (resp.status === 429) msg = "Forespørselsgrense nådd. Prøv igjen om litt.";
-        if (resp.status === 402) msg = "AI-kreditter brukt opp. Legg til kreditter i workspace.";
+        if (resp.status === 429) msg = t("status.hookMessages.rateLimitReached");
+        if (resp.status === 402) msg = t("status.hookMessages.creditsExhausted");
         toast.error(msg);
         setAiText(msg);
         return;
@@ -271,7 +273,7 @@ const Status = () => {
       }
     } catch (err) {
       console.error("AI analysis error:", err);
-      const msg = err instanceof Error ? err.message : "Ukjent feil";
+      const msg = err instanceof Error ? err.message : t("status.hookMessages.unknownErrorGeneric");
       toast.error(msg);
       setAiText(msg);
     } finally {
@@ -286,7 +288,7 @@ const Status = () => {
       .eq("id", missionId)
       .maybeSingle();
     if (error || !data) {
-      toast.error("Kunne ikke åpne oppdraget");
+      toast.error(t("status.hookMessages.couldNotOpenMission"));
       return;
     }
     setSelectedMission(data);
@@ -675,7 +677,7 @@ const Status = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
         <main className="container mx-auto px-4 py-8">
-          <div className="text-center">Laster statistikk...</div>
+          <div className="text-center">{t("status.page.loading")}</div>
         </main>
       </div>
     );
@@ -691,131 +693,131 @@ const Status = () => {
 
       // KPI Sheet
       const kpiSheetData = [
-        ["Nøkkeltall (KPI)", ""],
-        ["Totale oppdrag", kpiData.totalMissions],
-        ["Fullførte oppdrag", kpiData.completedMissions],
-        ["Fullføringsgrad", `${completionRate}%`],
-        ["Totale flyvetimer", kpiData.totalFlightHours],
-        ["Hendelsesfrekvens", kpiData.incidentRate.toFixed(2)],
-        ["Aktive ressurser", kpiData.activeResources],
+        [t("status.hookMessages.export.kpiHeading"), ""],
+        [t("status.hookMessages.export.totalMissions"), kpiData.totalMissions],
+        [t("status.hookMessages.export.completedMissions"), kpiData.completedMissions],
+        [t("status.hookMessages.export.completionRate"), `${completionRate}%`],
+        [t("status.hookMessages.export.totalFlightHours"), kpiData.totalFlightHours],
+        [t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)],
+        [t("status.hookMessages.export.activeResources"), kpiData.activeResources],
       ];
       const wsKPI = XLSX.utils.aoa_to_sheet(kpiSheetData);
-      XLSX.utils.book_append_sheet(wb, wsKPI, "KPI");
+      XLSX.utils.book_append_sheet(wb, wsKPI, t("status.hookMessages.export.kpiSheet"));
 
       // Missions by Month
       const missionMonthData = [
-        ["Måned", "Antall oppdrag"],
+        [t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.missionCountHeader")],
         ...missionsByMonth.map(item => [item.month, item.count])
       ];
       const wsMissionsMonth = XLSX.utils.aoa_to_sheet(missionMonthData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsMonth, "Oppdrag per måned");
+      XLSX.utils.book_append_sheet(wb, wsMissionsMonth, t("status.hookMessages.export.missionsByMonthSheet"));
 
       // Missions by Status
       const missionStatusData = [
-        ["Status", "Antall"],
+        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
         ...missionsByStatus.map(item => [item.name, item.value])
       ];
       const wsMissionsStatus = XLSX.utils.aoa_to_sheet(missionStatusData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsStatus, "Oppdrag per status");
+      XLSX.utils.book_append_sheet(wb, wsMissionsStatus, t("status.hookMessages.export.missionsByStatusSheet"));
 
       // Missions by Risk
       const missionRiskData = [
-        ["Risikonivå", "Antall"],
+        [t("status.hookMessages.export.riskLevelHeader"), t("status.hookMessages.export.countHeader")],
         ...missionsByRisk.map(item => [item.name, item.value])
       ];
       const wsMissionsRisk = XLSX.utils.aoa_to_sheet(missionRiskData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsRisk, "Oppdrag per risiko");
+      XLSX.utils.book_append_sheet(wb, wsMissionsRisk, t("status.hookMessages.export.missionsByRiskSheet"));
 
       // Incidents by Month
       const incidentMonthData = [
-        ["Måned", "Antall hendelser"],
+        [t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.incidentCountHeader")],
         ...incidentsByMonth.map(item => [item.month, item.count])
       ];
       const wsIncidentsMonth = XLSX.utils.aoa_to_sheet(incidentMonthData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsMonth, "Hendelser per måned");
+      XLSX.utils.book_append_sheet(wb, wsIncidentsMonth, t("status.hookMessages.export.incidentsByMonthSheet"));
 
       // Incidents by Main Cause
       const incidentMainCauseData = [
-        ["Hovedårsak", "Antall"],
+        [t("status.hookMessages.export.mainCauseHeader"), t("status.hookMessages.export.countHeader")],
         ...incidentsByMainCause.map(item => [item.name, item.value])
       ];
       const wsIncidentsMainCause = XLSX.utils.aoa_to_sheet(incidentMainCauseData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsMainCause, "Hovedårsaker");
+      XLSX.utils.book_append_sheet(wb, wsIncidentsMainCause, t("status.hookMessages.export.mainCausesSheet"));
 
       // Incidents by Contributing Cause
       const incidentContributingData = [
-        ["Medvirkende årsak", "Antall"],
+        [t("status.hookMessages.export.contributingCauseHeader"), t("status.hookMessages.export.countHeader")],
         ...incidentsByContributingCause.map(item => [item.name, item.value])
       ];
       const wsIncidentsContributing = XLSX.utils.aoa_to_sheet(incidentContributingData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsContributing, "Medvirkende årsaker");
+      XLSX.utils.book_append_sheet(wb, wsIncidentsContributing, t("status.hookMessages.export.contributingCausesSheet"));
 
       // Incidents by Severity
       const incidentSeverityData = [
-        ["Alvorlighetsgrad", "Antall"],
+        [t("status.hookMessages.export.severityHeader"), t("status.hookMessages.export.countHeader")],
         ...incidentsBySeverity.map(item => [item.name, item.value])
       ];
       const wsIncidentsSeverity = XLSX.utils.aoa_to_sheet(incidentSeverityData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsSeverity, "Hendelser per alvorlighetsgrad");
+      XLSX.utils.book_append_sheet(wb, wsIncidentsSeverity, t("status.hookMessages.export.incidentsBySeveritySheet"));
 
       // Drone Status
       const droneStatusData = [
-        ["Status", "Antall"],
+        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
         ...droneStatus.map(item => [item.name, item.value])
       ];
       const wsDroneStatus = XLSX.utils.aoa_to_sheet(droneStatusData);
-      XLSX.utils.book_append_sheet(wb, wsDroneStatus, "Dronestatus");
+      XLSX.utils.book_append_sheet(wb, wsDroneStatus, t("status.hookMessages.export.droneStatusSheet"));
 
       // Equipment Status
       const equipmentStatusData = [
-        ["Status", "Antall"],
+        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
         ...equipmentStatus.map(item => [item.name, item.value])
       ];
       const wsEquipmentStatus = XLSX.utils.aoa_to_sheet(equipmentStatusData);
-      XLSX.utils.book_append_sheet(wb, wsEquipmentStatus, "Utstyrstatus");
+      XLSX.utils.book_append_sheet(wb, wsEquipmentStatus, t("status.hookMessages.export.equipmentStatusSheet"));
 
       // Flight Hours by Drone
       const flightHoursData = [
-        ["Drone", "Flyvetimer"],
+        [t("status.hookMessages.export.droneHeader"), t("status.hookMessages.export.flightHoursHeader")],
         ...flightHoursByDrone.map(item => [item.name, item.hours])
       ];
       const wsFlightHours = XLSX.utils.aoa_to_sheet(flightHoursData);
-      XLSX.utils.book_append_sheet(wb, wsFlightHours, "Flyvetimer per drone");
+      XLSX.utils.book_append_sheet(wb, wsFlightHours, t("status.hookMessages.export.flightHoursSheet"));
 
       // Expiring Documents
       const expiringDocsData = [
-        ["Tidsperiode", "Antall dokumenter"],
-        ["Innen 30 dager", expiringDocs.thirtyDays],
-        ["Innen 60 dager", expiringDocs.sixtyDays],
-        ["Innen 90 dager", expiringDocs.ninetyDays],
+        [t("status.hookMessages.export.periodHeader"), t("status.hookMessages.export.docCountHeader")],
+        [t("status.hookMessages.export.within30"), expiringDocs.thirtyDays],
+        [t("status.hookMessages.export.within60"), expiringDocs.sixtyDays],
+        [t("status.hookMessages.export.within90"), expiringDocs.ninetyDays],
       ];
       const wsExpiringDocs = XLSX.utils.aoa_to_sheet(expiringDocsData);
-      XLSX.utils.book_append_sheet(wb, wsExpiringDocs, "Dokumenter som utløper");
+      XLSX.utils.book_append_sheet(wb, wsExpiringDocs, t("status.hookMessages.export.expiringDocsSheet"));
 
       // Deviation Reports
       const deviationSummary = [
-        ["Avviksrapporter (sammendrag)", ""],
-        ["Totalt antall avvik", deviationReports.length],
-        ["Unike flyturer med avvik", new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size],
-        ["Unike piloter", new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size],
+        [t("status.hookMessages.export.deviationSummaryHeading"), ""],
+        [t("status.hookMessages.export.totalDeviations"), deviationReports.length],
+        [t("status.hookMessages.export.uniqueFlightsWithDeviations"), new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size],
+        [t("status.hookMessages.export.uniquePilots"), new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size],
         [],
-        ["Hovedkategori", "Antall"],
+        [t("status.hookMessages.export.mainCategoryHeader"), t("status.hookMessages.export.countHeader")],
         ...Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
-          const root = r.category_path[0] || "Ukategorisert";
+          const root = r.category_path[0] || t("status.hookMessages.export.unknownCategory");
           acc[root] = (acc[root] || 0) + 1;
           return acc;
         }, {})).map(([name, value]) => [name, value]),
         [],
-        ["Dato", "Pilot", "Kategori", "Kommentar"],
+        [t("status.hookMessages.export.dateHeader"), t("status.hookMessages.export.pilotHeader"), t("status.hookMessages.export.categoryHeader"), t("status.hookMessages.export.commentHeader")],
         ...deviationReports.map(r => [
           format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
-          r.reporter_name || "Ukjent",
+          r.reporter_name || t("status.hookMessages.export.unknown"),
           r.category_path.join(" > "),
           r.comment || "",
         ]),
       ];
       const wsDeviation = XLSX.utils.aoa_to_sheet(deviationSummary);
-      XLSX.utils.book_append_sheet(wb, wsDeviation, "Avviksrapporter");
+      XLSX.utils.book_append_sheet(wb, wsDeviation, t("status.hookMessages.export.deviationSheet"));
 
       // Generate filename with date
       const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.xlsx`;
@@ -832,7 +834,7 @@ const Status = () => {
         .single();
 
       if (!profile?.company_id) {
-        throw new Error("Kunne ikke hente firmaopplysninger");
+        throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
       }
 
       // Upload to Supabase Storage
@@ -847,8 +849,8 @@ const Status = () => {
       if (uploadError) throw uploadError;
 
       // Create document entry in database
-      const periodLabel = timePeriod === "month" ? "Siste måned" : 
-                         timePeriod === "quarter" ? "Siste kvartal" : "Siste år";
+      const periodLabel = timePeriod === "month" ? t("status.page.periodMonth") : 
+                         timePeriod === "quarter" ? t("status.page.periodQuarter") : t("status.page.periodYear");
       
       const { error: dbError } = await supabase
         .from('documents')
@@ -869,13 +871,13 @@ const Status = () => {
       // Also download the file for the user
       XLSX.writeFile(wb, fileName);
       
-      toast.success("Excel-rapport lagret", {
-        description: "Rapporten er lagret i dokumenter under kategorien Rapporter"
+      toast.success(t("status.hookMessages.excelSavedTitle"), {
+        description: t("status.hookMessages.reportSavedDescription")
       });
     } catch (error) {
       console.error("Error exporting to Excel:", error);
-      toast.error("Feil ved eksport", {
-        description: "Kunne ikke generere Excel-rapport"
+      toast.error(t("status.hookMessages.exportErrorTitle"), {
+        description: t("status.hookMessages.excelExportErrorDescription")
       });
     }
   };
@@ -986,7 +988,7 @@ const Status = () => {
         .eq("id", user?.id)
         .single();
 
-      if (!profile?.company_id) throw new Error("Kunne ikke hente firmaopplysninger");
+      if (!profile?.company_id) throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
 
       const filePath = `${profile.company_id}/${fileName}`;
       const { error: uploadError } = await supabase.storage
@@ -1022,12 +1024,12 @@ const Status = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success("CSV-rapport lagret", {
-        description: "Rapporten er lagret i dokumenter under kategorien Rapporter",
+      toast.success(t("status.hookMessages.csvSavedTitle"), {
+        description: t("status.hookMessages.reportSavedDescription"),
       });
     } catch (error) {
       console.error("Error exporting to CSV:", error);
-      toast.error("Feil ved eksport", { description: "Kunne ikke generere CSV-rapport" });
+      toast.error(t("status.hookMessages.exportErrorTitle"), { description: t("status.hookMessages.csvExportErrorDescription") });
     }
   };
 
@@ -1040,15 +1042,15 @@ const Status = () => {
         .eq("id", user?.id)
         .single();
 
-      const companyName = (profile as any)?.companies?.navn || "Ukjent selskap";
+      const companyName = (profile as any)?.companies?.navn || t("status.hookMessages.unknownCompany");
       const companyId = profile?.company_id;
       
       if (!companyId) {
-        throw new Error("Kunne ikke hente firmaopplysninger");
+        throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
       }
 
-      const periodLabel = timePeriod === "month" ? "Siste måned" : 
-                         timePeriod === "quarter" ? "Siste kvartal" : "Siste år";
+      const periodLabel = timePeriod === "month" ? t("status.page.periodMonth") : 
+                         timePeriod === "quarter" ? t("status.page.periodQuarter") : t("status.page.periodYear");
 
       // Create PDF document
       const doc = await createPdfDocument();
@@ -1466,13 +1468,13 @@ const Status = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.success("PDF-rapport lagret", {
-        description: "Rapporten er lagret i dokumenter under kategorien Rapporter"
+      toast.success(t("status.hookMessages.pdfSavedTitle"), {
+        description: t("status.hookMessages.reportSavedDescription")
       });
     } catch (error) {
       console.error("Error exporting to PDF:", error);
-      toast.error("Feil ved eksport", {
-        description: "Kunne ikke generere PDF-rapport"
+      toast.error(t("status.hookMessages.exportErrorTitle"), {
+        description: t("status.hookMessages.pdfExportErrorDescription")
       });
     }
   };
