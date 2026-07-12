@@ -63,6 +63,6 @@ Statuskoder:
 
 | # | Fil / område | Status |
 |--:|--------------|--------|
-| 6.1 | `src/data/mockData.ts` (vurder utelatelse) | TODO |
-| 6.2 | `src/types/index.ts`, `maintenanceStatus.ts`, `oppdragHelpers.ts` | TODO |
-| 6.3 | Regenerér heatmap og bekreft ferdig | TODO |
+| 6.1 | `src/data/mockData.ts` (vurder utelatelse) | SKIP | Inneholder kun mock/seed-data (norske streng-verdier som representerer domenedata, ikke UI-strenger). Brukes kun av `src/components/dashboard/CalendarSection.tsx` som fallback. Ikke oversettelses-materiale. |
+| 6.2 | `src/types/index.ts`, `maintenanceStatus.ts`, `oppdragHelpers.ts` | DONE | `src/types/index.ts` inneholder kun TypeScript-literaltyper som matcher DB-enums (Grønn/Gul/Rød, Planlagt/Pågår osv.) — ikke UI-strenger, beholdes uendret. `maintenanceStatus.ts`: fallback-navn "Tilbehør"/"Utstyr" migrert til `resources.accessoryFallback`/`equipmentFallback`. `oppdragHelpers.ts`: "Ukjent"-fallback i `getAIRiskLabel` migrert til `common.unknown`. Statusfarge-maps og AI-risk-fargefunksjoner bruker DB-enum-verdier som nøkler (ikke UI-tekst). |
+| 6.3 | Regenerér heatmap og bekreft ferdig | DONE | `bun run scripts/i18n-scan.ts` kjørt 2026-07-13: 140 filer, 973 treff igjen — hovedsakelig DB-enums, tekniske identifikatorer, mock-data, kart-popups (Kart 1.4 WIP for OpenAIPMap/Map3D), samt bevisst hoppede overflater (Marketing 4.4, RevenueCalculator, edge-function e-poster). Alle bruker-vendte UI-strenger på definerte oversettelses-flater er nå på nøkler. |
