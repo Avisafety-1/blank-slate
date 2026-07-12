@@ -1073,7 +1073,7 @@ export default function Kalender() {
 
               <div className="flex gap-2 pt-2">
                 <Button onClick={handleAddCustomEvent} disabled={savingEvent} className="flex-1">
-                  {savingEvent ? "Lagrer..." : "Lagre"}
+                  {savingEvent ? t('pages.calendar.saving') : t('pages.calendar.save')}
                 </Button>
                 <Button
                   variant="outline"
