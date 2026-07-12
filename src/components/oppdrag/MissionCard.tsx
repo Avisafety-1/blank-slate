@@ -779,7 +779,7 @@ export const MissionCard = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{log.flight_duration_minutes} min</span>
+                    <span>{log.flight_duration_minutes} {t('pages.missions.card.minutesShort')}</span>
                   </div>
                   {log.pilot && (
                     <div className="flex items-center gap-2">
