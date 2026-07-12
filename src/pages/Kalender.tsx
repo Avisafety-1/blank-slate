@@ -678,7 +678,7 @@ export default function Kalender() {
   };
 
   const handleDocumentSaveSuccess = () => {
-    toast.success("Dokument lagret!");
+    toast.success(t('pages.calendar.documentSaved'));
     fetchCustomEvents();
     handleDocumentModalClose();
   };
