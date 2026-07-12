@@ -291,7 +291,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               L.geoJSON(ctrData, {
                 style: { color: '#ec4899', weight: 2, fillColor: '#ec4899', fillOpacity: 0.15 },
                 onEachFeature: (feature, layer) => {
-                  const name = feature.properties?.navn || feature.properties?.name || 'CTR/TIZ';
+                  const name = feature.properties?.navn || feature.properties?.name || t("dashboard.missionMapPreview.ctrTizDefault");
                   layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
                 }
               }).addTo(zonesLayer);
