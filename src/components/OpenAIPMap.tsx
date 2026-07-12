@@ -626,13 +626,13 @@ export function OpenAIPMap({
         });
       }
 
-      let popupContent = `<strong>Punkt ${index + 1}</strong>`;
+      let popupContent = `<strong>${t('pages.map.routePointPopup.title', { n: index + 1 })}</strong>`;
       if (index > 0) {
         const dist = calculateDistance(points[index - 1].lat, points[index - 1].lng, point.lat, point.lng);
-        popupContent += `<br/>Avstand fra forrige: ${dist.toFixed(2)} km`;
+        popupContent += `<br/>${t('pages.map.routePointPopup.distanceFromPrev', { d: dist.toFixed(2) })}`;
       }
       if (modeRef.current === 'routePlanning') {
-        popupContent += '<br/><em style="font-size: 11px; color: #666;">Dra for å flytte, høyreklikk for å slette</em>';
+        popupContent += `<br/><em style="font-size: 11px; color: #666;">${t('pages.map.routePointPopup.dragOrRight')}</em>`;
       }
       marker.bindPopup(popupContent);
       marker.addTo(routeLayerRef.current!);
