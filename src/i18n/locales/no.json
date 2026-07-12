@@ -160,7 +160,9 @@
     "advisoryTooLargeTitle": "Området er for stort",
     "advisoryTooLargeDesc": "Advisoryen dekker {{area}} km², som er over grensen på 150 km² for SafeSky.",
     "advisoryTooLargeHint": "Du må redusere rutens størrelse for å kunne publisere en advisory.",
-    "advisoryPublishError": "Kunne ikke publisere advisory"
+    "advisoryPublishError": "Kunne ikke publisere advisory",
+    "prepareEndError": "Kunne ikkje førebu avslutting av flytur. Prøv igjen.",
+    "endError": "Feil ved avslutting av flytur. Prøv igjen."
   },
   "dronetag": {
     "addTitle": "Legg til DroneTag",
@@ -345,7 +347,11 @@
       "allDays": "alle dager",
       "fetchingElevation": "(henter terrenghøyde…)",
       "elevationUnavailable": "(terrenghøyde ikke tilgjengelig)"
-    }
+    },
+    "checkoutSuccess": "Abonnement aktivert! Velkommen til AviSafe.",
+    "checkoutCancelled": "Betaling ble avbrutt.",
+    "tourCourseCompleted": "Kurs fullført — kompetanse registrert",
+    "tourCourseError": "Kunne ikke registrere kursfullføring"
   },
   "resources": {
     "title": "Ressurser",
@@ -467,7 +473,6 @@
       "critical": "Kritisk"
     }
   },
-
   "incidents": {
     "title": "Hendelser",
     "severity": {
@@ -536,7 +541,6 @@
     "selectResponsible": "Velg ansvarlig...",
     "searchPerson": "Søk person...",
     "reportAnonymously": "Rapporter anonymt",
-    "reportAnonymously": "Rapporter anonymt",
     "anonymousNote": "Navnet ditt vil ikke vises på rapporten.",
     "anonymousCompanyNote": "Denne rapporten sendes inn anonymt (selskapsinnstilling).",
     "resourcesOptional": "Ressurser (valgfritt)",
@@ -558,8 +562,6 @@
       "Lukket": "Lukket"
     }
   },
-
-
   "profile": {
     "title": "Min profil",
     "info": "Profilinformasjon",
@@ -990,7 +992,9 @@
     "noPasskeysForEmail": "Ingen passkeys funnet for denne e-postadressen."
   },
   "pages": {
-    "missions": { "title": "Oppdrag" },
+    "missions": {
+      "title": "Oppdrag"
+    },
     "incidents": {
       "title": "Hendelser",
       "searchPlaceholder": "Søk i hendelser...",
@@ -1521,8 +1525,3 @@
     }
   }
 }
-
-
-
-
-

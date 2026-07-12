@@ -158,7 +158,9 @@
     "advisoryTooLargeTitle": "Area is too large",
     "advisoryTooLargeDesc": "The advisory covers {{area}} km², which exceeds the 150 km² limit for SafeSky.",
     "advisoryTooLargeHint": "You need to reduce the route size to publish an advisory.",
-    "advisoryPublishError": "Could not publish advisory"
+    "advisoryPublishError": "Could not publish advisory",
+    "prepareEndError": "Could not prepare flight ending. Please try again.",
+    "endError": "Error ending flight. Please try again."
   },
   "dronetag": {
     "addTitle": "Add DroneTag",
@@ -343,7 +345,11 @@
       "allDays": "all days",
       "fetchingElevation": "(fetching terrain elevation…)",
       "elevationUnavailable": "(terrain elevation unavailable)"
-    }
+    },
+    "checkoutSuccess": "Subscription activated! Welcome to AviSafe.",
+    "checkoutCancelled": "Payment was cancelled.",
+    "tourCourseCompleted": "Course completed — competency recorded",
+    "tourCourseError": "Could not record course completion"
   },
   "resources": {
     "title": "Resources",
@@ -465,7 +471,6 @@
       "critical": "Critical"
     }
   },
-
   "incidents": {
     "title": "Incidents",
     "severity": {
@@ -534,7 +539,6 @@
     "selectResponsible": "Select responsible...",
     "searchPerson": "Search person...",
     "reportAnonymously": "Report anonymously",
-    "reportAnonymously": "Report anonymously",
     "anonymousNote": "Your name will not be shown on the report.",
     "anonymousCompanyNote": "This report is submitted anonymously (company setting).",
     "resourcesOptional": "Resources (optional)",
@@ -556,8 +560,6 @@
       "Lukket": "Closed"
     }
   },
-
-
   "profile": {
     "title": "My profile",
     "info": "Profile information",
@@ -988,7 +990,9 @@
     "noPasskeysForEmail": "No passkeys found for this email address."
   },
   "pages": {
-    "missions": { "title": "Missions" },
+    "missions": {
+      "title": "Missions"
+    },
     "incidents": {
       "title": "Incidents",
       "searchPlaceholder": "Search incidents...",
@@ -1519,6 +1523,3 @@
     }
   }
 }
-
-
-
