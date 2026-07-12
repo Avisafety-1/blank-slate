@@ -518,7 +518,7 @@ const Admin = () => {
       setProfiles(prev => prev.map(p => 
         p.id === userId ? { ...p, can_approve_missions: newValue, approval_company_ids: updatePayload.approval_company_ids } : p
       ));
-      toast.success(newValue ? 'Bruker kan nå godkjenne oppdrag' : 'Godkjenningsrettighet fjernet');
+      toast.success(newValue ? t('admin.page.approverEnabled') : t('admin.page.approverDisabled'));
     } catch (error) {
       console.error("Error toggling approver:", error);
       toast.error("Kunne ikke oppdatere innstilling");
@@ -571,7 +571,7 @@ const Admin = () => {
       setProfiles(prev => prev.map(p => 
         p.id === userId ? { ...p, can_access_eccairs: !currentValue } : p
       ));
-      toast.success(!currentValue ? 'ECCAIRS-tilgang aktivert' : 'ECCAIRS-tilgang fjernet');
+      toast.success(!currentValue ? t('admin.page.eccairsEnabled') : t('admin.page.eccairsDisabled'));
     } catch (error) {
       console.error("Error toggling ECCAIRS:", error);
       toast.error("Kunne ikke oppdatere innstilling");
@@ -601,7 +601,7 @@ const Admin = () => {
       setProfiles(prev => prev.map(p => 
         p.id === userId ? { ...p, can_be_incident_responsible: newValue, incident_responsible_company_ids: updatePayload.incident_responsible_company_ids } : p
       ));
-      toast.success(newValue ? 'Bruker kan nå være oppfølgingsansvarlig' : 'Oppfølgingsansvarlig-rettighet fjernet');
+      toast.success(newValue ? t('admin.page.incidentResponsibleEnabled') : t('admin.page.incidentResponsibleDisabled'));
     } catch (error) {
       console.error("Error toggling incident responsible:", error);
       toast.error("Kunne ikke oppdatere innstilling");
@@ -619,7 +619,7 @@ const Admin = () => {
       setProfiles(prev => prev.map(p =>
         p.id === userId ? { ...p, is_technical_responsible: newValue } : p
       ));
-      toast.success(newValue ? 'Satt som teknisk ansvarlig' : 'Teknisk ansvarlig-rettighet fjernet');
+      toast.success(newValue ? t('admin.page.techResponsibleEnabled') : t('admin.page.techResponsibleDisabled'));
     } catch (error) {
       console.error("Error toggling tech responsible:", error);
       toast.error("Kunne ikke oppdatere innstilling");
@@ -998,10 +998,10 @@ const Admin = () => {
                 <CardHeader className="pb-3 sm:pb-6">
                   <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <Send className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                    Inviter ny bruker via e-post
+                    {t('admin.page.inviteNewUserEmail')}
                   </CardTitle>
                   <CardDescription className="text-xs sm:text-sm">
-                    Send en invitasjons-e-post med registreringskode og instruksjoner for å opprette konto.
+                    {t('admin.page.inviteEmailDescription')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6">
@@ -1011,17 +1011,17 @@ const Admin = () => {
                         type="email"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="ny.bruker@eksempel.no"
+                        placeholder={t('admin.page.emailPlaceholder')}
                         inputMode="email"
                         className="sm:max-w-sm"
                       />
                       {!isChildCompany && childCompanies.length > 0 && (
                         <Select value={inviteDepartment} onValueChange={setInviteDepartment}>
                           <SelectTrigger className="w-full sm:w-[200px]">
-                            <SelectValue placeholder="Velg avdeling" />
+                            <SelectValue placeholder={t('admin.page.selectDepartment')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="parent">{companyName || 'Hovedselskap'}</SelectItem>
+                            <SelectItem value="parent">{companyName || t('admin.page.mainCompany')}</SelectItem>
                             {childCompanies.map((c) => (
                               <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
                             ))}
@@ -1047,18 +1047,18 @@ const Admin = () => {
                           });
                           if (error) throw error;
 
-                          toast.success(`Invitasjon sendt til ${email}${selectedChild ? ` (${selectedChild.navn})` : ''}`);
+                          toast.success(selectedChild ? t('admin.page.inviteSentToDept', { email, dept: selectedChild.navn }) : t('admin.page.inviteSentTo', { email }));
                           setInviteEmail("");
                         } catch (err) {
                           console.error("Error sending invite:", err);
-                          toast.error("Kunne ikke sende invitasjon");
+                          toast.error(t('admin.page.couldNotSendInvite'));
                         } finally {
                           setSendingInvite(false);
                         }
                       }}
                     >
                       <Send className="w-4 h-4 mr-2" />
-                      {sendingInvite ? "Sender..." : "Send invitasjon"}
+                      {sendingInvite ? t('admin.page.sending') : t('admin.page.sendInvite')}
                     </Button>
                   </div>
                 </CardContent>
@@ -1195,8 +1195,8 @@ const Admin = () => {
                         className="px-2 sm:px-3"
                       >
                         <Mail className="w-4 h-4 sm:mr-1.5" />
-                        <span className="hidden sm:inline">{showEmailList ? 'Skjul mailliste' : 'Vis mailliste'}</span>
-                        <span className="sm:hidden">{showEmailList ? 'Skjul' : 'Vis'}</span>
+                        <span className="hidden sm:inline">{showEmailList ? t('admin.page.hideEmailList') : t('admin.page.showEmailList')}</span>
+                        <span className="sm:hidden">{showEmailList ? t('admin.page.hide') : t('admin.page.show')}</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -1206,16 +1206,16 @@ const Admin = () => {
                             .map(p => p.email)
                             .filter(Boolean) as string[];
                           if (emails.length === 0) {
-                            toast.error('Ingen e-postadresser funnet');
+                            toast.error(t('admin.page.noEmailsFound'));
                             return;
                           }
                           navigator.clipboard.writeText(emails.join(', '));
-                          toast.success(`${emails.length} e-postadresser kopiert`);
+                          toast.success(t('admin.page.emailsCopied', { count: emails.length }));
                         }}
                         className="px-2 sm:px-3"
                       >
                         <Copy className="w-4 h-4" />
-                        <span className="hidden sm:inline ml-1.5">Kopier mailliste</span>
+                        <span className="hidden sm:inline ml-1.5">{t('admin.page.copyEmailList')}</span>
                       </Button>
                     </div>
                   </div>
@@ -1230,7 +1230,7 @@ const Admin = () => {
                           .join('\n')}
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        {approvedUsers.filter(p => p.email).length} e-postadresser
+                        {approvedUsers.filter(p => p.email).length} {t('admin.page.emailAddresses')}
                       </p>
                     </div>
                   )}
@@ -1265,7 +1265,7 @@ const Admin = () => {
                                         <SelectValue placeholder={t('admin.page.department')} />
                                       </SelectTrigger>
                                       <SelectContent className="z-[1300]">
-                                        <SelectItem value={companyId || ""}>{companyName || 'Hovedselskap'}</SelectItem>
+                                        <SelectItem value={companyId || ""}>{companyName || t('admin.page.mainCompany')}</SelectItem>
                                         {childCompanies.map((c) => (
                                           <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
                                         ))}
@@ -1294,18 +1294,18 @@ const Admin = () => {
                                   <Popover>
                                     <PopoverTrigger asChild>
                                       <Button size="sm" variant="outline" className="h-8 text-xs gap-1">
-                                        Flere valg
+                                        {t('admin.page.moreOptions')}
                                         <ChevronRight className="h-3 w-3" />
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-64 p-3 space-y-3" align="end">
                                       <div className="space-y-3">
                                     <div className="space-y-2 pb-2 border-b border-border">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tilganger</p>
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('admin.page.permissions')}</p>
 
                                       <div className="space-y-2 rounded-md border border-border p-2">
                                         <div className="flex items-center justify-between">
-                                          <span className="text-xs text-muted-foreground">Under opplæring</span>
+                                          <span className="text-xs text-muted-foreground">{t('admin.page.underTraining')}</span>
                                           <Switch
                                             checked={profile.under_training === true}
                                             onCheckedChange={() => toggleUnderTraining(profile.id, profile.under_training === true)}
@@ -1324,7 +1324,7 @@ const Admin = () => {
                                         )}
                                       </div>
                                       <div className="flex items-center justify-between">
-                                        <span className="text-xs text-muted-foreground">Teknisk ansvarlig (droner)</span>
+                                        <span className="text-xs text-muted-foreground">{t('admin.page.technicalResponsibleDrones')}</span>
                                         <Switch
                                           checked={profile.is_technical_responsible === true}
                                           onCheckedChange={() => toggleTechResponsible(profile.id, profile.is_technical_responsible === true)}
@@ -1333,7 +1333,7 @@ const Admin = () => {
                                         />
                                       </div>
                                       <div className="flex items-center justify-between">
-                                        <span className="text-xs text-muted-foreground">Kan godkjenne oppdrag</span>
+                                        <span className="text-xs text-muted-foreground">{t('admin.page.canApproveMissions')}</span>
                                         <Switch
                                           checked={profile.can_approve_missions === true}
                                           onCheckedChange={() => toggleApprover(profile.id, profile.can_approve_missions === true)}
@@ -1343,9 +1343,9 @@ const Admin = () => {
                                       </div>
                                       {profile.can_approve_missions && !isChildCompany && childCompanies.length > 0 && (
                                         <div>
-                                          <span className="text-xs text-muted-foreground block mb-1">Godkjenner for avdelinger</span>
+                                          <span className="text-xs text-muted-foreground block mb-1">{t('admin.page.approverForDepartments')}</span>
                                           <DepartmentChecklist
-                                            departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                            departments={[{ id: companyId || '', navn: companyName || t('admin.page.mainCompany') }, ...childCompanies]}
                                             selectedIds={profile.approval_company_ids?.filter(id => id !== 'all') || []}
                                             allSelected={profile.approval_company_ids?.includes('all') || false}
                                             onToggleAll={(checked) => {
@@ -1362,7 +1362,7 @@ const Admin = () => {
                                       )}
                                       {eccairsEnabled && (
                                         <div className="flex items-center justify-between">
-                                          <span className="text-xs text-muted-foreground">ECCAIRS-tilgang</span>
+                                          <span className="text-xs text-muted-foreground">{t('admin.page.eccairsAccess')}</span>
                                           <Switch
                                             checked={profile.can_access_eccairs === true}
                                             onCheckedChange={() => toggleEccairs(profile.id, profile.can_access_eccairs === true)}
@@ -1372,7 +1372,7 @@ const Admin = () => {
                                         </div>
                                       )}
                                       <div className="flex items-center justify-between">
-                                        <span className="text-xs text-muted-foreground">Oppfølgingsansvarlig (hendelser)</span>
+                                        <span className="text-xs text-muted-foreground">{t('admin.page.incidentResponsibleFull')}</span>
                                         <Switch
                                           checked={profile.can_be_incident_responsible === true}
                                           onCheckedChange={() => toggleIncidentResponsible(profile.id, profile.can_be_incident_responsible === true)}
@@ -1382,9 +1382,9 @@ const Admin = () => {
                                       </div>
                                       {profile.can_be_incident_responsible && !isChildCompany && childCompanies.length > 0 && (
                                         <div>
-                                          <span className="text-xs text-muted-foreground block mb-1">Ansvarlig for avdelinger</span>
+                                          <span className="text-xs text-muted-foreground block mb-1">{t('admin.page.responsibleForDepartments')}</span>
                                           <DepartmentChecklist
-                                            departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                            departments={[{ id: companyId || '', navn: companyName || t('admin.page.mainCompany') }, ...childCompanies]}
                                             selectedIds={profile.incident_responsible_company_ids?.filter(id => id !== 'all') || []}
                                             allSelected={profile.incident_responsible_company_ids?.includes('all') || false}
                                             onToggleAll={(checked) => {
@@ -1396,14 +1396,14 @@ const Admin = () => {
                                               const newIds = checked ? [...current, id] : current.filter(i => i !== id);
                                               updateIncidentScope(profile.id, newIds.length > 0 ? newIds : ['all']);
                                             }}
-                                            allLabel="Alle avdelinger"
+                                            allLabel={t('admin.page.allDepartments')}
                                           />
                                         </div>
                                       )}
                                     </div>
 
                                     <div className="space-y-1.5">
-                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Fjern bruker</p>
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('admin.page.removeUser')}</p>
                                       <Button
                                         size="sm"
                                         variant="ghost"
@@ -1443,7 +1443,7 @@ const Admin = () => {
                                   className="scale-75"
                                   disabled={!canManageRoles}
                                 />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">Teknisk ansvarlig</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">{t('admin.page.technicalResponsible')}</span>
                               </div>
                               <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
                                 <Switch
@@ -1452,7 +1452,7 @@ const Admin = () => {
                                   className="scale-75"
                                   disabled={!canManageRoles}
                                 />
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">Under opplæring</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">{t('admin.page.underTraining')}</span>
                                 {profile.under_training && (
                                   <Popover>
                                     <PopoverTrigger asChild>
