@@ -318,22 +318,23 @@ export const Header = () => {
             {canShowModule('incidents') && <Button data-tour="nav-incidents" variant="ghost" size="sm" onClick={() => navigate("/hendelser")}>{t('nav.incidents')}</Button>}
             {canShowModule('status') && <Button data-tour="nav-status" variant="ghost" size="sm" onClick={() => navigate("/status")}>{t('nav.status')}</Button>}
             {canShowModule('resources') && <Button data-tour="nav-resources" variant="ghost" size="sm" onClick={() => navigate("/ressurser")}>{t('nav.resources')}</Button>}
-            <Button data-tour="nav-changelog" variant="ghost" size="sm" onClick={() => navigate("/changelog")} title="Driftstatus">
+            <Button data-tour="nav-changelog" variant="ghost" size="sm" onClick={() => navigate("/changelog")} title={t('header.operationalStatus')}>
               <Activity className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/installer")} title={t('nav.installApp', 'Installer app')}>
               <Download className="w-4 h-4" />
             </Button>
             {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/statistikk")} title="Plattformstatistikk">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/statistikk")} title={t('header.platformStatistics')}>
                 <BarChart3 className="w-4 h-4" />
               </Button>
             )}
             {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/marketing")} title="Marketing">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/marketing")} title={t('header.marketing')}>
                 <Megaphone className="w-4 h-4" />
               </Button>
             )}
+
           </nav>
           
           <nav className="hidden lg:flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
