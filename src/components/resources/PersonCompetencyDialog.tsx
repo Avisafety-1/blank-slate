@@ -390,12 +390,12 @@ export function PersonCompetencyDialog({
     const hasAttachment = file || docUrl || existingFilUrl;
     return (
       <div className="space-y-2">
-        <Label className="text-xs">Vedlegg (sertifikat/kompetansebevis)</Label>
+        <Label className="text-xs">{t('resourceDialogs.personCompetency.attachment')}</Label>
         {hasAttachment ? (
           <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
             <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-xs truncate flex-1">
-              {file ? file.name : docUrl ? "Dokument fra /dokumenter" : "Vedlegg"}
+              {file ? file.name : docUrl ? t('resourceDialogs.personCompetency.docFromDokumenter') : t('resourceDialogs.personCompetency.attachmentLabel')}
             </span>
             {(existingFilUrl && !file && !docUrl) && (
               <Button
