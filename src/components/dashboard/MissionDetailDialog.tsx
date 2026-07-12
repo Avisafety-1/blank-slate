@@ -158,12 +158,12 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 {onEditRoute && (
                   <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
                     <Route className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Rediger rute</span>
+                    <span className="hidden sm:inline">{t('dashboard.missionDetail.editRoute')}</span>
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={handleEditClick}>
                   <Pencil className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Rediger</span>
+                  <span className="hidden sm:inline">{t('dashboard.missionDetail.edit')}</span>
                 </Button>
               </div>
             </div>
