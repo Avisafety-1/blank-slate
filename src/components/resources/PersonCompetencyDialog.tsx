@@ -489,7 +489,7 @@ export function PersonCompetencyDialog({
       setTakeCourseAssignmentId(data.id);
     } catch (err) {
       console.error("Error creating assignment:", err);
-      toast({ title: "Feil", description: "Kunne ikke starte kurset", variant: "destructive" });
+      toast({ title: t('resourceDialogs.personCompetency.error'), description: t('resourceDialogs.personCompetency.couldNotStartCourse'), variant: "destructive" });
     }
   };
 
