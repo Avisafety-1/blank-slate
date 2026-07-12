@@ -358,7 +358,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
         // Suppress Leaflet _leaflet_pos errors during rapid unmount
       }
     };
-  }, [isVisible, latitude, longitude, route, flightTracks, notam]);
+  }, [isVisible, latitude, longitude, route, flightTracks, notam, t, locale]);
 
   return (
     <div ref={containerRef} className="relative w-full h-full rounded-lg overflow-hidden border border-border">
