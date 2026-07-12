@@ -45,6 +45,7 @@ export function AdjacentAreaPanel({
   onOpenChange,
   missionId,
 }: AdjacentAreaPanelProps) {
+  const { t } = useTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
